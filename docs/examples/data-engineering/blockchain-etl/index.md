@@ -24,10 +24,11 @@ But there's still a lot of data and these types of analyses typically need repea
 ```python
 !command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
 path=!echo $PATH
-%env PATH=./:{path[0]}
+%env PATH=./:{path[-1]}
 ```
 
-    env: PATH=./:/Users/phil/.cargo/bin:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+    /Users/phil/.zshenv:.:1: no such file or directory: /Users/phil/.cargo/env
+    env: PATH=./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/source/bacalhau-project/examples/workload-onboarding/rust-wasm/./bin:/Users/phil/.nexustools
 
 
 ## 1. Analysing Ethereum Data Locally
@@ -206,7 +207,7 @@ if __name__ == "__main__":
         main(tmp_dir, sys.argv[2])
 ```
 
-    Writing main.py
+    Overwriting main.py
 
 
 Next, let's make sure the file works as expected...
@@ -216,7 +217,7 @@ Next, let's make sure the file works as expected...
 python main.py . outputs/
 ```
 
-    Loading /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmphtgurgu0/output_850000/transactions/start_block=00850000/end_block=00899999/transactions_00850000_00899999.csv
+    Loading /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp63wukfr3/output_850000/transactions/start_block=00850000/end_block=00899999/transactions_00850000_00899999.csv
     Processing 115517 blocks
     Finished processing 11 days worth of records
     Saving to outputs/transactions_00850000_00899999.csv
@@ -264,7 +265,7 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=5466b0ae-4eca-429c-a7b7-a9a5eeb0268c
+    env: JOB_ID=0955253b-5221-4452-819f-351baac88dba
 
 
 
@@ -277,7 +278,7 @@ bacalhau list --id-filter ${JOB_ID}
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 11:35:52 [0m[97;40m 5466b0ae [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmeaJY77DrN2KD... [0m
+    [97;40m 14:03:17 [0m[97;40m 0955253b [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPnZdFNRXgVxe... [0m
 
 
 
@@ -292,12 +293,12 @@ bacalhau describe ${JOB_ID}
 
     APIVersion: V1beta1
     ClientID: 77cf46c04f88ffb1c3e0e4b6e443724e8d2d87074d088ef1a6294a448fa85d2e
-    CreatedAt: "2022-11-21T11:35:52.834067363Z"
+    CreatedAt: "2022-11-28T14:03:17.134938204Z"
     Deal:
       Concurrency: 1
     ExecutionPlan:
       ShardsTotal: 1
-    ID: 5466b0ae-4eca-429c-a7b7-a9a5eeb0268c
+    ID: 0955253b-5221-4452-819f-351baac88dba
     JobState:
       Nodes:
         QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86:
@@ -311,16 +312,9 @@ bacalhau describe ${JOB_ID}
           Shards:
             "0":
               NodeId: QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
-              PublishedResults: {}
-              State: Cancelled
-              VerificationResult: {}
-        QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF:
-          Shards:
-            "0":
-              NodeId: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
               PublishedResults:
-                CID: QmeaJY77DrN2KDMcuyVofEzkXggnWZYEqi6ePXKAbdkavf
-                Name: job-5466b0ae-4eca-429c-a7b7-a9a5eeb0268c-shard-0-host-QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+                CID: QmPnZdFNRXgVxec4ip5X7baebSr3jkHVTKuzVsVwiWkoQ1
+                Name: job-0955253b-5221-4452-819f-351baac88dba-shard-0-host-QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
                 StorageSource: IPFS
               RunOutput:
                 exitCode: 0
@@ -328,7 +322,7 @@ bacalhau describe ${JOB_ID}
                 stderr: ""
                 stderrtruncated: false
                 stdout: |
-                  Loading /tmp/tmpjgrd_43o/output_850000/transactions/start_block=00850000/end_block=00899999/transactions_00850000_00899999.csv
+                  Loading /tmp/tmp3rvwqb9f/output_850000/transactions/start_block=00850000/end_block=00899999/transactions_00850000_00899999.csv
                   Processing 115517 blocks
                   Finished processing 11 days worth of records
                   Saving to /outputs/transactions_00850000_00899999.csv
@@ -338,8 +332,8 @@ bacalhau describe ${JOB_ID}
               VerificationResult:
                 Complete: true
                 Result: true
-    RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
+    RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCehDIWl72XKJi1tsrYM9JjAWt3n6hNzrCA+IVRXixK1sJVTLMpsxEP8UKJI+koAWkAUuY8yi6DMzot0owK4VpM3PYp34HdKi2hTjzM8pjCVb70XVXt6k9bzj4KmbiQTuEkQfvwIRmgxb2jrkRdTpZmhMb1Q7StR/nrGa/bx75Vpupx1EYH6+LixYnnV5WbCUK/kjpBW8SF5v+f9ZO61KHd9DMpdhJnzocTGq17tAjHh3birke0xlP98JjxlMkzzvIAuFsnH0zBIgjmHDA1Yi5DcOPWgE0jUfGlSDC1t2xITVoofHQcXDjkHZE6OhxswNYPd7cnTf9OppLddFdQnga5AgMBAAE=
     Spec:
       Docker:
         Image: ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6
@@ -373,8 +367,8 @@ rm -rf ./results && mkdir -p ./results # Temporary directory to store the result
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
 
-    Fetching results of job '5466b0ae-4eca-429c-a7b7-a9a5eeb0268c'...
-    Results for job '5466b0ae-4eca-429c-a7b7-a9a5eeb0268c' have been written to...
+    Fetching results of job '0955253b-5221-4452-819f-351baac88dba'...
+    Results for job '0955253b-5221-4452-819f-351baac88dba' have been written to...
     ./results
 
 
@@ -386,9 +380,9 @@ ls -lah results/combined_results/outputs
 ```
 
     total 4.0K
-    drwxr-xr-x 3 phil staff  96 Nov 21 11:36 .
-    drwxr-xr-x 5 phil staff 160 Nov 21 11:36 ..
-    -rw-r--r-- 3 phil staff 387 Nov 21 11:36 transactions_00850000_00899999.csv
+    drwxr-xr-x 3 phil staff  96 Nov 28 14:04 .
+    drwxr-xr-x 5 phil staff 160 Nov 28 14:04 ..
+    -rw-r--r-- 3 phil staff 387 Nov 28 14:04 transactions_00850000_00899999.csv
 
 
 
@@ -440,60 +434,60 @@ Now take a look at the job id's. You can use these to check the status of the jo
 cat job_ids.txt
 ```
 
-    7e7b9df1-4904-45f5-a392-1f99d1c3a4dd
-    e3e5f500-0ebe-4948-a1b8-80d7b42dd534
-    56fd0c21-99d7-4bf5-8178-d171c91f8576
-    d026ff34-7ecd-42e0-8431-52d9497e9eb6
-    ab919292-74f3-493f-8d66-1f56c4afc819
-    ca6b0fbf-061d-4380-8c6e-faac5ec67a15
-    9d05a2a4-9981-4763-8490-3b849eaa628b
-    c5baf5cc-3259-4acf-ba75-92e1cb2235bb
-    32f97eaa-cad6-49f0-9b20-a2a1276980be
-    69bd1c82-1be7-4b1f-8ab0-d5d2bef19bb1
-    31a43a56-fc31-4254-83b2-8fa8f8a6e542
-    ecfdf8f8-dbad-4447-a275-af8fceb6abfc
-    d45365d4-9cf3-4a24-9ae1-c8c8d8d5856f
-    08cbab6e-88a4-4a20-bcd3-26e2c8f379a7
-    93bcb94e-19a3-49ba-af18-ea6566515b93
-    ce6a8215-b5d4-4cb3-b4ac-e24ef1f84e1c
-    354c3482-4f3a-4d56-b908-43bb8708450f
-    7cc6e343-2b97-4826-9b73-b5bd32019ffc
-    3d396eed-abb4-47bc-a4dc-24647c619db9
-    bc2c6361-39dc-4970-8284-be1f7f011c66
-    f421a3e8-009e-4205-898b-9811a78d6a36
-    ab73b414-edac-45f9-95e6-06a855629b23
-    44711531-3aff-4b65-9db9-9fc6d3948023
-    f6143867-f2ab-4701-a85a-375f080bcd3d
-    6b8552f8-8505-4139-bb88-ab5e5e0b8cef
-    d3e25508-7b28-4e83-be0d-be921dbfd7e9
-    0f4dfdb6-bf13-41af-bc7a-e045ac360ba7
-    cc16970e-a5be-42f4-bec5-098acbe4d7d9
-    37819801-f09b-4d3c-86ce-070a4f8c37a3
-    d55cc9e7-9e33-4485-9137-2b5c7e1e831a
-    8313e946-e587-468a-83e1-e464138d3935
-    65681fa0-44ee-46a4-ab46-6db705d1d318
-    c164e617-01a9-4967-ac29-f2c5e2ddeb3f
-    0e0b5e9b-d467-41f6-965e-249f06e7a32b
-    eb733f15-a129-499e-a59c-8eaba0dd68cc
-    fcf637d3-1817-4a99-9884-9db568e4d18d
-    e9450225-c2fb-47ea-b735-ebbde28bdd33
-    2183006a-3992-4c7f-9200-c4c4e0cd69ab
-    f86f2507-d408-4b70-8cdb-47f3ff2083a2
-    cb0670d4-eaa5-4181-808d-3bc92da9b4b8
-    868707f5-dfdc-48e3-ab44-f4d450922a0d
-    2dfc0ce6-d685-424b-95ff-921ad5da0812
-    d034fd07-e7fb-41c7-b8d3-5c9b1ea01fad
-    3e40318b-ba7a-4d67-9dfb-217e4776c62a
-    a2e17933-5eb5-4866-bb01-a88fb9429608
-    d1407c23-a485-43a3-87cf-9aeb28e656bf
-    55ef4899-03af-4667-8c93-d00c01d8d657
-    7085672f-0571-4a41-b5f7-a983fda9e2b1
-    1ba46518-bf45-45e5-afa6-928844f98e5f
-    ede7c3a2-3cf1-4d08-abe3-278f55d0c27e
-    7aa140ab-79c6-452f-a3f6-19035e7187cd
-    31787f8f-a566-4b2f-b3f4-91390d3bea68
-    b167a9f3-1c5f-40e8-b7c5-e864221deab9
-    adab8249-2fb8-49b4-bc01-faac00810a26
+    445a479c-1e3e-4b32-a1e2-2c973f5a185b
+    0fbdd9a9-fa7c-43b9-8c8a-efdec0830eb7
+    f9c2c3d1-b9de-464b-b110-92d8d3ccfc4e
+    bd5cac66-37f6-40cc-9373-68b9d7c742e2
+    357a22cf-f41e-4a75-a9ab-5dce2bd7f825
+    7e60e598-01b9-4bf7-9f96-4a68ede4c7c3
+    98c35b9d-118c-4931-bdce-cb62c2921a27
+    a6f8a9cc-78ca-4386-8337-380e022e60d1
+    3c73312f-ca84-4e20-acd7-6af367543383
+    84ea57ea-eb17-4d8e-937b-a2cf4a9d16e7
+    098a6da7-b5bc-4e68-a3bb-6f9188c85ba6
+    c8c61b72-4b88-4f59-b9d1-1beb155e88ae
+    df5b95a5-f1b9-435a-9c14-15fe79ccf24d
+    ade9eb7d-77a7-471c-8a90-47e2b073fa0f
+    9ff874e9-3c94-457e-9c57-be4097a30ff6
+    00740e37-9eb6-4da4-8483-ab362e7db64b
+    0afd0a29-2460-4bf9-b9c0-ec0b2cbf9e44
+    b63de8f7-d98f-49a5-af57-b67524474960
+    61f57708-6405-462f-872c-4aa5107d70a7
+    014ecad4-65ca-4166-85cc-d343b6f77f30
+    02e7c151-e012-4be6-a9d2-abc47c3b4155
+    d7df3cc3-9f11-4c1f-80c9-edae9b3290a2
+    f9d34193-b175-4e42-9f9d-aed190a24587
+    038f4dd4-fdb7-4411-822c-88bc814ab4b2
+    464ef40c-0b87-4c8d-83e6-92e7ef2fd558
+    de74b3a6-8d97-416d-96bd-feabae46aa66
+    6d836a92-e421-459d-a9fe-e7db3300d2a7
+    d94a89fd-a0c8-4983-b509-ceddaa4c13d8
+    f994f9d4-4745-4316-b40b-b7be880da0f0
+    056789ef-21e2-46a5-9015-d57fbcae921b
+    e459e6a3-95c4-4aa9-afd0-b3f4b2980968
+    19abbfcb-92ff-49c3-91bc-a7ead01724dc
+    2e10d740-4dbc-4cdd-a484-6d891cd0cddf
+    8e5b43a8-fbc4-4c22-9719-c47380a7ed2b
+    91bf0ee2-7669-4447-ba42-c88681b4ec27
+    fe9886dc-98f2-4775-83c4-7f203b213056
+    567e5063-093b-412a-a84f-b0d21da203b8
+    8e222c42-8ab6-44a2-a48e-6f5840240e5d
+    4abc9e04-318a-4fa6-8329-092e4de48666
+    f6d1969a-4c6c-4f49-9e51-34ef0a6c5489
+    2dc6919c-633f-42f9-b13b-b545de6a6fbd
+    3b0bb4a3-dc5a-48fb-939f-2b7b689842fe
+    ae6d6427-bafb-4043-8e4f-f1225dd5e8e4
+    65421c32-7c50-480f-bced-02ced556d238
+    e4cda61b-ca8d-444f-9fa3-efdba217aefc
+    b6e545a2-36b7-4203-8545-0b0f391767e4
+    bf9b1e4d-b94b-4cb3-8e91-b31cccd2a60e
+    a0684d59-413f-4354-ace1-f6d4b8a57700
+    44d40215-21a7-4071-9b8e-1507e462c4ef
+    a6308802-0792-47f1-a5af-9039d7e6fd70
+    8a1cadcc-4350-4253-90b2-1697e17f8940
+    080985dc-ec4e-4ddc-bbb2-7981705cf8f0
+    0750b53e-c4e3-4a8e-946c-4b86e3456dc2
+    04b88a32-760d-466f-ad5f-7bbf5c4572b9
 
 
 Wait until all of these jobs have completed:
@@ -504,523 +498,68 @@ bacalhau list -n 50
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 09:20:45 [0m[97;40m adab8249 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmYhXreDR4LKBq... [0m
-    [37;40m 09:20:44 [0m[37;40m b167a9f3 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmVcmigC4RGJjM... [0m
-    [97;40m 09:20:43 [0m[97;40m 7aa140ab [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmQahTAxdLWxCC... [0m
-    [37;40m 09:20:43 [0m[37;40m 31787f8f [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmXtbqVopAhc7D... [0m
-    [97;40m 09:20:42 [0m[97;40m ede7c3a2 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmVHcd4HrnhALb... [0m
-    [37;40m 09:20:41 [0m[37;40m 1ba46518 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmWxxBym5Rssai... [0m
-    [97;40m 09:20:41 [0m[97;40m 7085672f [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmX5vA9gCpKLMM... [0m
-    [37;40m 09:20:40 [0m[37;40m 55ef4899 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmV2ZQoyjFu1Bt... [0m
-    [97;40m 09:20:39 [0m[97;40m d1407c23 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmQafnmkoLP9fD... [0m
-    [37;40m 09:20:39 [0m[37;40m a2e17933 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmYJrU1xRyWZxn... [0m
-    [97;40m 09:20:38 [0m[97;40m 3e40318b [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmSG4ZMP5m5mko... [0m
-    [37;40m 09:20:37 [0m[37;40m 2dfc0ce6 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmYEEGsQYqoz5D... [0m
-    [97;40m 09:20:37 [0m[97;40m d034fd07 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmRYZiQrdPZoXf... [0m
-    [37;40m 09:20:36 [0m[37;40m 868707f5 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmRUjZFGXqAiEH... [0m
-    [97;40m 09:20:35 [0m[97;40m cb0670d4 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmSjZx4gTdmbCf... [0m
-    [37;40m 09:20:34 [0m[37;40m f86f2507 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmVH9JdUDo5aPG... [0m
-    [97;40m 09:20:34 [0m[97;40m 2183006a [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmR81jwpXVFJ6t... [0m
-    [37;40m 09:20:33 [0m[37;40m e9450225 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmSraHbxuprHTk... [0m
-    [97;40m 09:20:32 [0m[97;40m eb733f15 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmfV7e9iVDbSg6... [0m
-    [37;40m 09:20:32 [0m[37;40m fcf637d3 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmViFm5G8aeL7e... [0m
-    [97;40m 09:20:31 [0m[97;40m 0e0b5e9b [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmaYobcWeo9XC8... [0m
-    [37;40m 09:20:30 [0m[37;40m 65681fa0 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmSec41PLJm6Ba... [0m
-    [97;40m 09:20:30 [0m[97;40m c164e617 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmRva4GxizU8pt... [0m
-    [37;40m 09:20:29 [0m[37;40m 8313e946 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmSC5Pd6arQVDA... [0m
-    [97;40m 09:20:28 [0m[97;40m 37819801 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmUG36RPRZXdop... [0m
-    [37;40m 09:20:28 [0m[37;40m d55cc9e7 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmZc2ThoFfoqwc... [0m
-    [97;40m 09:20:27 [0m[97;40m cc16970e [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmSVm6z4Z9MD5t... [0m
-    [37;40m 09:20:26 [0m[37;40m 0f4dfdb6 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmW6bdwq3xWp8d... [0m
-    [97;40m 09:20:25 [0m[97;40m d3e25508 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmdKAxhWU527as... [0m
-    [37;40m 09:20:25 [0m[37;40m 6b8552f8 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmWAKGZ3rSDsY6... [0m
-    [97;40m 09:20:24 [0m[97;40m f6143867 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPfcKczWGWH4p... [0m
-    [37;40m 09:20:23 [0m[37;40m ab73b414 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmPFjzJ7ZZnefs... [0m
-    [97;40m 09:20:23 [0m[97;40m 44711531 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmNvk3hE8mULBd... [0m
-    [37;40m 09:20:22 [0m[37;40m f421a3e8 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmWooZw9qMSMy1... [0m
-    [97;40m 09:20:21 [0m[97;40m bc2c6361 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPRuHPd1htJNr... [0m
-    [37;40m 09:20:21 [0m[37;40m 3d396eed [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmPPxMjvY4Tj5t... [0m
-    [97;40m 09:20:20 [0m[97;40m 7cc6e343 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmaPQDQpaACyeX... [0m
-    [37;40m 09:20:19 [0m[37;40m ce6a8215 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmWs9RzYBMGsZo... [0m
-    [97;40m 09:20:19 [0m[97;40m 354c3482 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmRoAYAQtufUc7... [0m
-    [37;40m 09:20:18 [0m[37;40m 93bcb94e [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmRJ5jjUZ7jeoh... [0m
-    [97;40m 09:20:17 [0m[97;40m 08cbab6e [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmRGC8upqEejib... [0m
-    [37;40m 09:20:16 [0m[37;40m d45365d4 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmU9FuJWEDWfZJ... [0m
-    [97;40m 09:20:16 [0m[97;40m ecfdf8f8 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmWmiM83zF7HwC... [0m
-    [37;40m 09:20:15 [0m[37;40m 31a43a56 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmPjfMpy1cK9Mf... [0m
-    [97;40m 09:20:14 [0m[97;40m 32f97eaa [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmXUc75sJqJFYJ... [0m
-    [37;40m 09:20:14 [0m[37;40m 69bd1c82 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/Qma5gN7LGYeTC9... [0m
-    [97;40m 09:20:13 [0m[97;40m c5baf5cc [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPVJEx3CGZYKW... [0m
-    [37;40m 09:20:12 [0m[37;40m 9d05a2a4 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmNnPNY1K21345... [0m
-    [97;40m 09:20:12 [0m[97;40m ca6b0fbf [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmWj41DwL3iwH4... [0m
-    [37;40m 09:20:11 [0m[37;40m ab919292 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmQwsvzpT9iKzQ... [0m
+    [97;40m 14:05:06 [0m[97;40m 04b88a32 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:05:05 [0m[37;40m 080985dc [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:05:05 [0m[97;40m 0750b53e [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:05:04 [0m[37;40m 8a1cadcc [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:05:03 [0m[97;40m a6308802 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:05:03 [0m[37;40m 44d40215 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:05:02 [0m[97;40m a0684d59 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:05:01 [0m[37;40m bf9b1e4d [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:05:00 [0m[97;40m e4cda61b [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:05:00 [0m[37;40m b6e545a2 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:59 [0m[97;40m 65421c32 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:04:58 [0m[37;40m ae6d6427 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:58 [0m[97;40m 3b0bb4a3 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:04:57 [0m[37;40m 2dc6919c [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:56 [0m[97;40m f6d1969a [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qmb9x7oneehHxn... [0m
+    [37;40m 14:04:56 [0m[37;40m 4abc9e04 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmWZzcdirLCm4F... [0m
+    [97;40m 14:04:55 [0m[97;40m 8e222c42 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qmais14RCZNXBs... [0m
+    [37;40m 14:04:54 [0m[37;40m fe9886dc [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:54 [0m[97;40m 567e5063 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPPZRbBwJzugk... [0m
+    [37;40m 14:04:53 [0m[37;40m 91bf0ee2 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:52 [0m[97;40m 8e5b43a8 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:04:51 [0m[37;40m 19abbfcb [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmRm1DtKqNxYcC... [0m
+    [97;40m 14:04:51 [0m[97;40m 2e10d740 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:04:50 [0m[37;40m e459e6a3 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmVCj25SqVixwn... [0m
+    [97;40m 14:04:49 [0m[97;40m 056789ef [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmbgwKGpB3jteX... [0m
+    [37;40m 14:04:49 [0m[37;40m f994f9d4 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmXnU1iMfVxXXG... [0m
+    [97;40m 14:04:48 [0m[97;40m d94a89fd [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmXn7T4oGoxMKG... [0m
+    [37;40m 14:04:47 [0m[37;40m 6d836a92 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Cancelled [0m[37;40m          [0m[37;40m                         [0m
+    [97;40m 14:04:47 [0m[97;40m de74b3a6 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Cancelled [0m[97;40m          [0m[97;40m                         [0m
+    [37;40m 14:04:46 [0m[37;40m 464ef40c [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmcAdQzrmYNv6Q... [0m
+    [97;40m 14:04:45 [0m[97;40m 038f4dd4 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmVAjPB5GUdmmu... [0m
+    [37;40m 14:04:45 [0m[37;40m f9d34193 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmVY85VgAi1S4b... [0m
+    [97;40m 14:04:44 [0m[97;40m d7df3cc3 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmcjGZ6RAp1QxS... [0m
+    [37;40m 14:04:43 [0m[37;40m 02e7c151 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmTdR2RxCZLmwH... [0m
+    [97;40m 14:04:43 [0m[97;40m 014ecad4 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmWJ2ZEzveNLWR... [0m
+    [37;40m 14:04:42 [0m[37;40m 61f57708 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmbvUzsfP8r12f... [0m
+    [97;40m 14:04:41 [0m[97;40m b63de8f7 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qmd3p2YWn8v1XN... [0m
+    [37;40m 14:04:40 [0m[37;40m 00740e37 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmPfDFtiYFvSbe... [0m
+    [97;40m 14:04:40 [0m[97;40m 0afd0a29 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmVxHSi51xFPxe... [0m
+    [37;40m 14:04:39 [0m[37;40m 9ff874e9 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmRqgMa4V5Cdda... [0m
+    [97;40m 14:04:38 [0m[97;40m ade9eb7d [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmcjVqYQzj2KUb... [0m
+    [37;40m 14:04:38 [0m[37;40m df5b95a5 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmUqKQw8m1tGco... [0m
+    [97;40m 14:04:37 [0m[97;40m c8c61b72 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmetDQ1snDEiMN... [0m
+    [37;40m 14:04:36 [0m[37;40m 098a6da7 [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmYRTbboaXU1Cs... [0m
+    [97;40m 14:04:36 [0m[97;40m 84ea57ea [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmehKmebsHuzxd... [0m
+    [37;40m 14:04:35 [0m[37;40m 3c73312f [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmRKLcQha5ZZKP... [0m
+    [97;40m 14:04:34 [0m[97;40m 98c35b9d [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmTJ4P1nWxe9Qt... [0m
+    [37;40m 14:04:34 [0m[37;40m a6f8a9cc [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmVWr2Qx23srDu... [0m
+    [97;40m 14:04:33 [0m[97;40m 7e60e598 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPuQuQjjNjRWs... [0m
+    [37;40m 14:04:32 [0m[37;40m 357a22cf [0m[37;40m Docker ghcr.io/bacal... [0m[37;40m Completed [0m[37;40m          [0m[37;40m /ipfs/QmUZxRdMVnibEp... [0m
 
 
 And then download all the results and merge them into a single directory. This might take a while, so this is a good time to treat yourself to a nice Dark Mild. There's also been some issues in the past communicating with IPFS, so if you get an error, try again.
 
 
 ```bash
-rm -rf ./combined_results && mkdir -p ./combined_results
 for id in $(cat job_ids.txt); do \
-    rm -rf results && mkdir results
-    bacalhau get --output-dir ./results $id
-    cp results/combined_results/outputs/* ./combined_results
+    rm -rf results_$id && mkdir results_$id
+    bacalhau get --output-dir results_$id $id &
 done
+wait
 ```
-
-    Fetching results of job '7e7b9df1-4904-45f5-a392-1f99d1c3a4dd'...
-    Results for job '7e7b9df1-4904-45f5-a392-1f99d1c3a4dd' have been written to...
-    ./results
-    Fetching results of job 'e3e5f500-0ebe-4948-a1b8-80d7b42dd534'...
-    Results for job 'e3e5f500-0ebe-4948-a1b8-80d7b42dd534' have been written to...
-    ./results
-    Fetching results of job '56fd0c21-99d7-4bf5-8178-d171c91f8576'...
-    Results for job '56fd0c21-99d7-4bf5-8178-d171c91f8576' have been written to...
-    ./results
-    Fetching results of job 'd026ff34-7ecd-42e0-8431-52d9497e9eb6'...
-    Results for job 'd026ff34-7ecd-42e0-8431-52d9497e9eb6' have been written to...
-    ./results
-    Fetching results of job 'ab919292-74f3-493f-8d66-1f56c4afc819'...
-    Results for job 'ab919292-74f3-493f-8d66-1f56c4afc819' have been written to...
-    ./results
-    Fetching results of job 'ca6b0fbf-061d-4380-8c6e-faac5ec67a15'...
-    Results for job 'ca6b0fbf-061d-4380-8c6e-faac5ec67a15' have been written to...
-    ./results
-    Fetching results of job '9d05a2a4-9981-4763-8490-3b849eaa628b'...
-    Results for job '9d05a2a4-9981-4763-8490-3b849eaa628b' have been written to...
-    ./results
-    Fetching results of job 'c5baf5cc-3259-4acf-ba75-92e1cb2235bb'...
-    Results for job 'c5baf5cc-3259-4acf-ba75-92e1cb2235bb' have been written to...
-    ./results
-    Fetching results of job '32f97eaa-cad6-49f0-9b20-a2a1276980be'...
-    Results for job '32f97eaa-cad6-49f0-9b20-a2a1276980be' have been written to...
-    ./results
-    Fetching results of job '69bd1c82-1be7-4b1f-8ab0-d5d2bef19bb1'...
-    Results for job '69bd1c82-1be7-4b1f-8ab0-d5d2bef19bb1' have been written to...
-    ./results
-    Fetching results of job '31a43a56-fc31-4254-83b2-8fa8f8a6e542'...
-    Results for job '31a43a56-fc31-4254-83b2-8fa8f8a6e542' have been written to...
-    ./results
-    Fetching results of job 'ecfdf8f8-dbad-4447-a275-af8fceb6abfc'...
-    Results for job 'ecfdf8f8-dbad-4447-a275-af8fceb6abfc' have been written to...
-    ./results
-    Fetching results of job 'd45365d4-9cf3-4a24-9ae1-c8c8d8d5856f'...
-    Results for job 'd45365d4-9cf3-4a24-9ae1-c8c8d8d5856f' have been written to...
-    ./results
-    Fetching results of job '08cbab6e-88a4-4a20-bcd3-26e2c8f379a7'...
-    Results for job '08cbab6e-88a4-4a20-bcd3-26e2c8f379a7' have been written to...
-    ./results
-    Fetching results of job '93bcb94e-19a3-49ba-af18-ea6566515b93'...
-    Results for job '93bcb94e-19a3-49ba-af18-ea6566515b93' have been written to...
-    ./results
-    Fetching results of job 'ce6a8215-b5d4-4cb3-b4ac-e24ef1f84e1c'...
-    Results for job 'ce6a8215-b5d4-4cb3-b4ac-e24ef1f84e1c' have been written to...
-    ./results
-    Fetching results of job '354c3482-4f3a-4d56-b908-43bb8708450f'...
-    Results for job '354c3482-4f3a-4d56-b908-43bb8708450f' have been written to...
-    ./results
-    Fetching results of job '7cc6e343-2b97-4826-9b73-b5bd32019ffc'...
-    Results for job '7cc6e343-2b97-4826-9b73-b5bd32019ffc' have been written to...
-    ./results
-    Fetching results of job '3d396eed-abb4-47bc-a4dc-24647c619db9'...
-    Results for job '3d396eed-abb4-47bc-a4dc-24647c619db9' have been written to...
-    ./results
-    Fetching results of job 'bc2c6361-39dc-4970-8284-be1f7f011c66'...
-    Results for job 'bc2c6361-39dc-4970-8284-be1f7f011c66' have been written to...
-    ./results
-    Fetching results of job 'f421a3e8-009e-4205-898b-9811a78d6a36'...
-    Results for job 'f421a3e8-009e-4205-898b-9811a78d6a36' have been written to...
-    ./results
-    Fetching results of job 'ab73b414-edac-45f9-95e6-06a855629b23'...
-    Results for job 'ab73b414-edac-45f9-95e6-06a855629b23' have been written to...
-    ./results
-    Fetching results of job '44711531-3aff-4b65-9db9-9fc6d3948023'...
-    Results for job '44711531-3aff-4b65-9db9-9fc6d3948023' have been written to...
-    ./results
-    Fetching results of job 'f6143867-f2ab-4701-a85a-375f080bcd3d'...
-    Results for job 'f6143867-f2ab-4701-a85a-375f080bcd3d' have been written to...
-    ./results
-    Fetching results of job '6b8552f8-8505-4139-bb88-ab5e5e0b8cef'...
-    Results for job '6b8552f8-8505-4139-bb88-ab5e5e0b8cef' have been written to...
-    ./results
-    Fetching results of job 'd3e25508-7b28-4e83-be0d-be921dbfd7e9'...
-    Error: error downloading job: failed to write to '/Users/phil/source/bacalhau-project/examples/data-engineering/blockchain-etl/results/raw/QmdKAxhWU527asddidm49w3CuX4hymR4RSrXGuuHpVAyiC': context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to write to '/Users/phil/source/bacalhau-project/examples/data-engineering/blockchain-etl/results/raw/QmdKAxhWU527asddidm49w3CuX4hymR4RSrXGuuHpVAyiC': context deadline exceeded
-    Fetching results of job '0f4dfdb6-bf13-41af-bc7a-e045ac360ba7'...
-    Error: error downloading job: failed to get ipfs cid 'QmW6bdwq3xWp8dJmJ6SRdQK3wG8jqzEVUqh6zCog2ZzgHC': Post "http://127.0.0.1:54194/api/v0/files/stat?arg=%2Fipfs%2FQmW6bdwq3xWp8dJmJ6SRdQK3wG8jqzEVUqh6zCog2ZzgHC": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmW6bdwq3xWp8dJmJ6SRdQK3wG8jqzEVUqh6zCog2ZzgHC': Post "http://127.0.0.1:54194/api/v0/files/stat?arg=%2Fipfs%2FQmW6bdwq3xWp8dJmJ6SRdQK3wG8jqzEVUqh6zCog2ZzgHC": context deadline exceeded
-    Fetching results of job 'cc16970e-a5be-42f4-bec5-098acbe4d7d9'...
-    Error: error downloading job: failed to get ipfs cid 'QmSVm6z4Z9MD5thPjo4yPKKYcerNTnLbyjniSvzD1PNr8m': Post "http://127.0.0.1:62376/api/v0/files/stat?arg=%2Fipfs%2FQmSVm6z4Z9MD5thPjo4yPKKYcerNTnLbyjniSvzD1PNr8m": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmSVm6z4Z9MD5thPjo4yPKKYcerNTnLbyjniSvzD1PNr8m': Post "http://127.0.0.1:62376/api/v0/files/stat?arg=%2Fipfs%2FQmSVm6z4Z9MD5thPjo4yPKKYcerNTnLbyjniSvzD1PNr8m": context deadline exceeded
-    Fetching results of job '37819801-f09b-4d3c-86ce-070a4f8c37a3'...
-    Error: error downloading job: failed to get ipfs cid 'QmUG36RPRZXdop76dXcgiyW2mxeYkARapRmeAh6EcTHP81': Post "http://127.0.0.1:51957/api/v0/files/stat?arg=%2Fipfs%2FQmUG36RPRZXdop76dXcgiyW2mxeYkARapRmeAh6EcTHP81": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmUG36RPRZXdop76dXcgiyW2mxeYkARapRmeAh6EcTHP81': Post "http://127.0.0.1:51957/api/v0/files/stat?arg=%2Fipfs%2FQmUG36RPRZXdop76dXcgiyW2mxeYkARapRmeAh6EcTHP81": context deadline exceeded
-    Fetching results of job 'd55cc9e7-9e33-4485-9137-2b5c7e1e831a'...
-    Results for job 'd55cc9e7-9e33-4485-9137-2b5c7e1e831a' have been written to...
-    ./results
-    Fetching results of job '8313e946-e587-468a-83e1-e464138d3935'...
-    Results for job '8313e946-e587-468a-83e1-e464138d3935' have been written to...
-    ./results
-    Fetching results of job '65681fa0-44ee-46a4-ab46-6db705d1d318'...
-    Results for job '65681fa0-44ee-46a4-ab46-6db705d1d318' have been written to...
-    ./results
-    Fetching results of job 'c164e617-01a9-4967-ac29-f2c5e2ddeb3f'...
-    Results for job 'c164e617-01a9-4967-ac29-f2c5e2ddeb3f' have been written to...
-    ./results
-    Fetching results of job '0e0b5e9b-d467-41f6-965e-249f06e7a32b'...
-    Results for job '0e0b5e9b-d467-41f6-965e-249f06e7a32b' have been written to...
-    ./results
-    Fetching results of job 'eb733f15-a129-499e-a59c-8eaba0dd68cc'...
-    Results for job 'eb733f15-a129-499e-a59c-8eaba0dd68cc' have been written to...
-    ./results
-    Fetching results of job 'fcf637d3-1817-4a99-9884-9db568e4d18d'...
-    Results for job 'fcf637d3-1817-4a99-9884-9db568e4d18d' have been written to...
-    ./results
-    Fetching results of job 'e9450225-c2fb-47ea-b735-ebbde28bdd33'...
-    Error: error downloading job: failed to get ipfs cid 'QmSraHbxuprHTk92AXppyokhRmcbUwUziDJYvueGva8SQr': Post "http://127.0.0.1:51682/api/v0/files/stat?arg=%2Fipfs%2FQmSraHbxuprHTk92AXppyokhRmcbUwUziDJYvueGva8SQr": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmSraHbxuprHTk92AXppyokhRmcbUwUziDJYvueGva8SQr': Post "http://127.0.0.1:51682/api/v0/files/stat?arg=%2Fipfs%2FQmSraHbxuprHTk92AXppyokhRmcbUwUziDJYvueGva8SQr": context deadline exceeded
-    Fetching results of job '2183006a-3992-4c7f-9200-c4c4e0cd69ab'...
-    Error: error downloading job: failed to get ipfs cid 'QmR81jwpXVFJ6tLtgyokdfcVCJpZGfLjqjHvzo9ZG5UuWg': Post "http://127.0.0.1:60329/api/v0/files/stat?arg=%2Fipfs%2FQmR81jwpXVFJ6tLtgyokdfcVCJpZGfLjqjHvzo9ZG5UuWg": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmR81jwpXVFJ6tLtgyokdfcVCJpZGfLjqjHvzo9ZG5UuWg': Post "http://127.0.0.1:60329/api/v0/files/stat?arg=%2Fipfs%2FQmR81jwpXVFJ6tLtgyokdfcVCJpZGfLjqjHvzo9ZG5UuWg": context deadline exceeded
-    Fetching results of job 'f86f2507-d408-4b70-8cdb-47f3ff2083a2'...
-    Results for job 'f86f2507-d408-4b70-8cdb-47f3ff2083a2' have been written to...
-    ./results
-    Fetching results of job 'cb0670d4-eaa5-4181-808d-3bc92da9b4b8'...
-    Results for job 'cb0670d4-eaa5-4181-808d-3bc92da9b4b8' have been written to...
-    ./results
-    Fetching results of job '868707f5-dfdc-48e3-ab44-f4d450922a0d'...
-    Error: error downloading job: failed to get ipfs cid 'QmRUjZFGXqAiEHVKNCbqpK5j6NE9MP8Jr3M35UuBiMtYZ5': Post "http://127.0.0.1:51117/api/v0/files/stat?arg=%2Fipfs%2FQmRUjZFGXqAiEHVKNCbqpK5j6NE9MP8Jr3M35UuBiMtYZ5": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmRUjZFGXqAiEHVKNCbqpK5j6NE9MP8Jr3M35UuBiMtYZ5': Post "http://127.0.0.1:51117/api/v0/files/stat?arg=%2Fipfs%2FQmRUjZFGXqAiEHVKNCbqpK5j6NE9MP8Jr3M35UuBiMtYZ5": context deadline exceeded
-    Fetching results of job '2dfc0ce6-d685-424b-95ff-921ad5da0812'...
-    Results for job '2dfc0ce6-d685-424b-95ff-921ad5da0812' have been written to...
-    ./results
-    Fetching results of job 'd034fd07-e7fb-41c7-b8d3-5c9b1ea01fad'...
-    Error: error downloading job: failed to get ipfs cid 'QmRYZiQrdPZoXfdCmHXqSzn4X9pCuhWhSTbELR6UBu9wt8': Post "http://127.0.0.1:56199/api/v0/files/stat?arg=%2Fipfs%2FQmRYZiQrdPZoXfdCmHXqSzn4X9pCuhWhSTbELR6UBu9wt8": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmRYZiQrdPZoXfdCmHXqSzn4X9pCuhWhSTbELR6UBu9wt8': Post "http://127.0.0.1:56199/api/v0/files/stat?arg=%2Fipfs%2FQmRYZiQrdPZoXfdCmHXqSzn4X9pCuhWhSTbELR6UBu9wt8": context deadline exceeded
-    Fetching results of job '3e40318b-ba7a-4d67-9dfb-217e4776c62a'...
-    Results for job '3e40318b-ba7a-4d67-9dfb-217e4776c62a' have been written to...
-    ./results
-    Fetching results of job 'a2e17933-5eb5-4866-bb01-a88fb9429608'...
-    Results for job 'a2e17933-5eb5-4866-bb01-a88fb9429608' have been written to...
-    ./results
-    Fetching results of job 'd1407c23-a485-43a3-87cf-9aeb28e656bf'...
-    Results for job 'd1407c23-a485-43a3-87cf-9aeb28e656bf' have been written to...
-    ./results
-    Fetching results of job '55ef4899-03af-4667-8c93-d00c01d8d657'...
-    Results for job '55ef4899-03af-4667-8c93-d00c01d8d657' have been written to...
-    ./results
-    Fetching results of job '7085672f-0571-4a41-b5f7-a983fda9e2b1'...
-    Results for job '7085672f-0571-4a41-b5f7-a983fda9e2b1' have been written to...
-    ./results
-    Fetching results of job '1ba46518-bf45-45e5-afa6-928844f98e5f'...
-    Error: error downloading job: failed to get ipfs cid 'QmWxxBym5RssaiTajR4qzLA4tgDpXQMGRutqSkZe6ZGzN8': Post "http://127.0.0.1:63102/api/v0/files/stat?arg=%2Fipfs%2FQmWxxBym5RssaiTajR4qzLA4tgDpXQMGRutqSkZe6ZGzN8": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmWxxBym5RssaiTajR4qzLA4tgDpXQMGRutqSkZe6ZGzN8': Post "http://127.0.0.1:63102/api/v0/files/stat?arg=%2Fipfs%2FQmWxxBym5RssaiTajR4qzLA4tgDpXQMGRutqSkZe6ZGzN8": context deadline exceeded
-    Fetching results of job 'ede7c3a2-3cf1-4d08-abe3-278f55d0c27e'...
-    Error: error downloading job: failed to get ipfs cid 'QmVHcd4HrnhALbJSR8BvPjpkv5RGzaxeitCosa1fwp6Mfy': Post "http://127.0.0.1:53669/api/v0/files/stat?arg=%2Fipfs%2FQmVHcd4HrnhALbJSR8BvPjpkv5RGzaxeitCosa1fwp6Mfy": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmVHcd4HrnhALbJSR8BvPjpkv5RGzaxeitCosa1fwp6Mfy': Post "http://127.0.0.1:53669/api/v0/files/stat?arg=%2Fipfs%2FQmVHcd4HrnhALbJSR8BvPjpkv5RGzaxeitCosa1fwp6Mfy": context deadline exceeded
-    Fetching results of job '7aa140ab-79c6-452f-a3f6-19035e7187cd'...
-    Error: error downloading job: failed to get ipfs cid 'QmQahTAxdLWxCCH77GwwwAvCtLz8PZ4V1zD3aKGD2cbrBM': Post "http://127.0.0.1:59035/api/v0/files/stat?arg=%2Fipfs%2FQmQahTAxdLWxCCH77GwwwAvCtLz8PZ4V1zD3aKGD2cbrBM": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmQahTAxdLWxCCH77GwwwAvCtLz8PZ4V1zD3aKGD2cbrBM': Post "http://127.0.0.1:59035/api/v0/files/stat?arg=%2Fipfs%2FQmQahTAxdLWxCCH77GwwwAvCtLz8PZ4V1zD3aKGD2cbrBM": context deadline exceeded
-    Fetching results of job '31787f8f-a566-4b2f-b3f4-91390d3bea68'...
-    Error: error downloading job: failed to get ipfs cid 'QmXtbqVopAhc7DWZNrnDKEB7zfJ3gfdHytSFGSGaX9HS8i': Post "http://127.0.0.1:64785/api/v0/files/stat?arg=%2Fipfs%2FQmXtbqVopAhc7DWZNrnDKEB7zfJ3gfdHytSFGSGaX9HS8i": context deadline exceeded
-    Usage:
-      bacalhau get [id] [flags]
-    
-    Examples:
-      # Get the results of a job.
-      bacalhau get 51225160-807e-48b8-88c9-28311c7899e1
-      
-      # Get the results of a job, with a short ID.
-      bacalhau get ebd9bf2f
-    
-    Flags:
-          --download-timeout-secs int   Timeout duration for IPFS downloads. (default 300)
-      -h, --help                        help for get
-          --ipfs-swarm-addrs string     Comma-separated list of IPFS nodes to connect to.
-          --output-dir string           Directory to write the output to.
-    
-    Global Flags:
-          --api-host string   The host for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-          --api-port int      The port for the client and server to communicate on (via REST).
-                              Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
-    
-    error downloading job: failed to get ipfs cid 'QmXtbqVopAhc7DWZNrnDKEB7zfJ3gfdHytSFGSGaX9HS8i': Post "http://127.0.0.1:64785/api/v0/files/stat?arg=%2Fipfs%2FQmXtbqVopAhc7DWZNrnDKEB7zfJ3gfdHytSFGSGaX9HS8i": context deadline exceeded
-    Fetching results of job 'b167a9f3-1c5f-40e8-b7c5-e864221deab9'...
-    Results for job 'b167a9f3-1c5f-40e8-b7c5-e864221deab9' have been written to...
-    ./results
-    Fetching results of job 'adab8249-2fb8-49b4-bc01-faac00810a26'...
-    Results for job 'adab8249-2fb8-49b4-bc01-faac00810a26' have been written to...
-    ./results
-
-
-    2022/11/22 09:22:31 CleanupManager.fnsMutex violation CRITICAL section took 20.054ms 20054000 (threshold 10ms)
-    2022/11/22 09:25:46 CleanupManager.fnsMutex violation CRITICAL section took 19.095ms 19095000 (threshold 10ms)
-    2022/11/22 09:28:03 CleanupManager.fnsMutex violation CRITICAL section took 19.208ms 19208000 (threshold 10ms)
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    2022/11/22 09:48:21 CleanupManager.fnsMutex violation CRITICAL section took 19.451ms 19451000 (threshold 10ms)
-    09:49:41.718 | ??? providerquerymanager/providerquerymanager.go:344 > ERROR bitswap Received provider (12D3KooWGE4R98vokeLsRVdTv8D6jhMnifo81mm7NMRV8WJPNVHb) for cid (QmfV7e9iVDbSg6uLQFypUiMc2DH23PKuPBWcwZMmHYGQ2L) not requested
-    
-    2022/11/22 09:49:42 CleanupManager.fnsMutex violation CRITICAL section took 19.284ms 19284000 (threshold 10ms)
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    2022/11/22 10:00:56 CleanupManager.fnsMutex violation CRITICAL section took 19.428ms 19428000 (threshold 10ms)
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    2022/11/22 10:06:02 CleanupManager.fnsMutex violation CRITICAL section took 20.031ms 20031000 (threshold 10ms)
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    2022/11/22 10:11:08 CleanupManager.fnsMutex violation CRITICAL section took 19.805ms 19805000 (threshold 10ms)
-    2022/11/22 10:11:25 CleanupManager.fnsMutex violation CRITICAL section took 20.092ms 20092000 (threshold 10ms)
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    cp: cannot stat 'results/combined_results/outputs/*': No such file or directory
-    2022/11/22 10:31:40 CleanupManager.fnsMutex violation CRITICAL section took 19.283ms 19283000 (threshold 10ms)
-
 
 
 ```python
@@ -1028,7 +567,7 @@ import os, glob
 import pandas as pd
 
 # Get CSV files list from a folder
-path = os.path.join("combined_results", "*.csv")
+path = os.path.join("results_*", "combined_results", "outputs", "*.csv")
 csv_files = glob.glob(path)
 
 # Read each CSV file into a list of DataFrames
@@ -1058,6 +597,11 @@ df.plot(figsize=(16,9))
 
 
 That's it! There is several years of Ethereum transaction volume data.
+
+
+```bash
+rm -rf results_* output_* outputs results combined_results temp # Remove temporary results
+```
 
 ## Appendix 1: List Ethereum Data CIDs 
 
