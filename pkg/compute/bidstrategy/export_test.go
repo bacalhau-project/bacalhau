@@ -7,6 +7,9 @@ func getBidStrategyRequest() BidStrategyRequest {
 		NodeID: "node-id",
 		Job: model.Job{
 			ID: "job-id",
+			Spec: model.Spec{
+				Engine: model.EngineNoop,
+			},
 		},
 	}
 }

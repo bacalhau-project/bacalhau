@@ -71,6 +71,7 @@ type UpdateExecutionStateRequest struct {
 	Comment         string
 }
 
+// ExecutionStore A metadata store of job executions handled by the current compute node
 type ExecutionStore interface {
 	// GetExecution returns the execution for a given id
 	GetExecution(ctx context.Context, id string) (Execution, error)
