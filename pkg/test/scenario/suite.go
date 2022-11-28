@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -81,21 +81,21 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
 	}
 
-	if config.ComputeNodeConfig == nil {
-		conf := computenode.NewDefaultComputeNodeConfig()
-		config.ComputeNodeConfig = &conf
-	}
-
 	if config.RequesterNodeConfig == nil {
 		conf := requesternode.NewDefaultRequesterNodeConfig()
 		config.RequesterNodeConfig = &conf
+	}
+
+	empty := model.ResourceUsageData{}
+	if config.ComputeConfig.TotalResourceLimits == empty {
+		config.ComputeConfig = node.NewComputeConfigWithDefaults()
 	}
 
 	stack := testutils.SetupTestWithNoopExecutor(
 		s.Ctx,
 		s.T(),
 		*config.DevStackOptions,
-		*config.ComputeNodeConfig,
+		config.ComputeConfig,
 		*config.RequesterNodeConfig,
 		config.ExecutorConfig,
 	)

@@ -38,7 +38,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.debugResponse"
+                            "type": "string"
                         }
                     },
                     "500": {
@@ -538,20 +538,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "computenode.ActiveJob": {
-            "type": "object",
-            "properties": {
-                "CapacityRequirements": {
-                    "$ref": "#/definitions/model.ResourceUsageData"
-                },
-                "ShardID": {
-                    "type": "string"
-                },
-                "State": {
-                    "type": "string"
-                }
-            }
-        },
         "model.BuildVersionInfo": {
             "type": "object",
             "properties": {
@@ -994,30 +980,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ResourceUsageData": {
-            "type": "object",
-            "properties": {
-                "CPU": {
-                    "description": "cpu units",
-                    "type": "number",
-                    "example": 9.600000000000001
-                },
-                "Disk": {
-                    "description": "bytes",
-                    "type": "integer",
-                    "example": 212663867801
-                },
-                "GPU": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "Memory": {
-                    "description": "bytes",
-                    "type": "integer",
-                    "example": 27487790694
-                }
-            }
-        },
         "model.RunCommandResult": {
             "type": "object",
             "properties": {
@@ -1159,26 +1121,6 @@ const docTemplate = `{
                 },
                 "Result": {
                     "type": "boolean"
-                }
-            }
-        },
-        "publicapi.debugResponse": {
-            "type": "object",
-            "properties": {
-                "AvailableComputeCapacity": {
-                    "$ref": "#/definitions/model.ResourceUsageData"
-                },
-                "ComputeJobs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/computenode.ActiveJob"
-                    }
-                },
-                "RequesterJobs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/requesternode.ActiveJob"
-                    }
                 }
             }
         },
@@ -1342,23 +1284,6 @@ const docTemplate = `{
             "properties": {
                 "build_version_info": {
                     "$ref": "#/definitions/model.BuildVersionInfo"
-                }
-            }
-        },
-        "requesternode.ActiveJob": {
-            "type": "object",
-            "properties": {
-                "BiddingNodesCount": {
-                    "type": "integer"
-                },
-                "CompletedNodesCount": {
-                    "type": "integer"
-                },
-                "ShardID": {
-                    "type": "string"
-                },
-                "State": {
-                    "type": "string"
                 }
             }
         },

@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -55,7 +54,7 @@ func setupTest(t *testing.T) *node.Node {
 		CleanupManager:      cm,
 		LocalDB:             datastore,
 		Transport:           transport,
-		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
+		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 

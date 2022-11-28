@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -211,7 +211,7 @@ func (e *Executor) RunShard(
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacitymanager.ParseResourceUsageConfig(shard.Job.Spec.Resources)
+	resourceRequirements := capacity.ParseResourceUsageConfig(shard.Job.Spec.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest

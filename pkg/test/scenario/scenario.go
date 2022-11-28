@@ -16,11 +16,11 @@ features without needing to invent a real job.
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 )
 
@@ -74,7 +74,7 @@ type Scenario struct {
 // All the information that is needed to uniquely define a devstack.
 type StackConfig struct {
 	*devstack.DevStackOptions
-	*computenode.ComputeNodeConfig
+	node.ComputeConfig
 	*requesternode.RequesterNodeConfig
 	*noop.ExecutorConfig
 }
