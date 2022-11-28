@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -119,11 +118,7 @@ var devstackCmd = &cobra.Command{
 			}
 		}
 
-		computeNodeConfig := computenode.ComputeNodeConfig{
-			JobSelectionPolicy:    getJobSelectionConfig(),
-			CapacityManagerConfig: getCapacityManagerConfig(),
-		}
-
+		computeConfig := getComputeConfig()
 		if ODs.LocalNetworkLotus {
 			cmd.Println("Note that starting up the Lotus node can take many minutes!")
 		}
@@ -131,9 +126,9 @@ var devstackCmd = &cobra.Command{
 		var stack *devstack.DevStack
 		var stackErr error
 		if IsNoop {
-			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
+			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		} else {
-			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
+			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		}
 		if stackErr != nil {
 			return stackErr

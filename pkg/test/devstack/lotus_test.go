@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -50,7 +50,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	testCase := scenario.WasmHelloWorld
 	nodeCount := 1
 
-	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, computenode.NewDefaultComputeNodeConfig(), requesternode.NewDefaultRequesterNodeConfig())
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(s.T(), err)
