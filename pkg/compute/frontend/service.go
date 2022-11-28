@@ -54,22 +54,33 @@ func (s BaseService) AskForBid(ctx context.Context, request AskForBidRequest) (A
 	log.Ctx(ctx).Debug().Msgf("job created: %s", request.Job.ID)
 	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.ClientID}).Inc()
 
-	// calculate resource requirements for this job
-	shardRequirements, err := s.usageCalculator.Calculate(
-		ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
-	if err != nil {
-		return AskForBidResponse{}, fmt.Errorf("error calculating job requirements: %w", err)
-	}
-
 	// ask the bidding strategy if we should bid on this job
 	// TODO: we should check at the shard level, not the job level
-	bidStrategyResponse, err := s.bidStrategy.ShouldBid(ctx, bidstrategy.BidStrategyRequest{
-		NodeID:                    s.id,
-		Job:                       request.Job,
-		ResourceUsageRequirements: shardRequirements,
-	})
+	bidStrategyRequest := bidstrategy.BidStrategyRequest{
+		NodeID: s.id,
+		Job:    request.Job,
+	}
+
+	// Check bidding strategies before having to calculate resource usage
+	bidStrategyResponse, err := s.bidStrategy.ShouldBid(ctx, bidStrategyRequest)
 	if err != nil {
 		return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+	}
+
+	var shardRequirements model.ResourceUsageData
+	if bidStrategyResponse.ShouldBid {
+		// calculate resource requirements for this job
+		shardRequirements, err = s.usageCalculator.Calculate(
+			ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
+		if err != nil {
+			return AskForBidResponse{}, fmt.Errorf("error calculating job requirements: %w", err)
+		}
+
+		// Check bidding strategies after calculating resource usage
+		bidStrategyResponse, err = s.bidStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, shardRequirements)
+		if err != nil {
+			return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+		}
 	}
 
 	// prepare the response, which can include partial bids

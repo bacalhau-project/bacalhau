@@ -7,9 +7,8 @@ import (
 )
 
 type BidStrategyRequest struct {
-	NodeID                    string
-	Job                       model.Job
-	ResourceUsageRequirements model.ResourceUsageData
+	NodeID string
+	Job    model.Job
 }
 
 type BidStrategyResponse struct {
@@ -25,6 +24,7 @@ func newShouldBidResponse() BidStrategyResponse {
 
 type BidStrategy interface {
 	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
+	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, resourceUsage model.ResourceUsageData) (BidStrategyResponse, error)
 }
 
 // the JSON data we send to http or exec probes

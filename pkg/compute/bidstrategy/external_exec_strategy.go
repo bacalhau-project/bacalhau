@@ -59,3 +59,8 @@ func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request BidStra
 		Reason:    fmt.Sprintf("command `%s` returned non-zero exit code %d", s.command, exitCode),
 	}, nil
 }
+
+func (s *ExternalCommandStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
+	return newShouldBidResponse(), nil
+}

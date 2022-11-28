@@ -21,6 +21,8 @@ type BaseServiceParams struct {
 	Publishers publisher.PublisherProvider
 }
 
+// BaseService is the base implementation for backend service.
+// All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseService struct {
 	ID         string
 	callback   Callback
@@ -41,6 +43,7 @@ func NewBaseService(params BaseServiceParams) *BaseService {
 	}
 }
 
+// Run the execution of a shard after it has been accepted, and propose a result to the requester to be verified.
 func (s BaseService) Run(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
@@ -103,6 +106,7 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 	return err
 }
 
+// Publish the result of a shard execution after it has been verified.
 func (s BaseService) Publish(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
@@ -140,7 +144,7 @@ func (s BaseService) Publish(ctx context.Context, execution store.Execution) (er
 	return err
 }
 
-// Cancels the execution of a running shard.
+// Cancel the execution of a running shard.
 func (s BaseService) Cancel(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {

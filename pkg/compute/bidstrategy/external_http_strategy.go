@@ -58,3 +58,8 @@ func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request BidStrateg
 		Reason:    fmt.Sprintf("url `%s` returned %d status code", s.url, resp.StatusCode),
 	}, nil
 }
+
+func (s *ExternalHTTPStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
+	return newShouldBidResponse(), nil
+}

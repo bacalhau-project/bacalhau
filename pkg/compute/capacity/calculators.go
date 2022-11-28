@@ -47,9 +47,9 @@ func (c *ChainedUsageCalculator) Calculate(
 		if err != nil {
 			return model.ResourceUsageData{}, err
 		}
-		aggregatedUsage.Add(calculatedUsage)
+		aggregatedUsage = aggregatedUsage.Max(calculatedUsage)
 	}
-	return parsedUsage, nil
+	return aggregatedUsage, nil
 }
 
 // Compile-time check to ensure UsageCalculator interface implementation

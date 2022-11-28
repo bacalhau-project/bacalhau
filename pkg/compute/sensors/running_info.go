@@ -8,24 +8,26 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-type RunningInfoProviderParams struct {
+type RunningExecutionsInfoProviderParams struct {
 	Name          string
 	BackendBuffer *backend.ServiceBuffer
 }
 
-type RunningInfoProvider struct {
+// RunningExecutionsInfoProvider provides DebugInfo about the currently running executions.
+// The info can be used for logging, metric, or to handle /debug API implementation.
+type RunningExecutionsInfoProvider struct {
 	name          string
 	backendBuffer *backend.ServiceBuffer
 }
 
-func NewRunningInfoProvider(params RunningInfoProviderParams) *RunningInfoProvider {
-	return &RunningInfoProvider{
+func NewRunningExecutionsInfoProvider(params RunningExecutionsInfoProviderParams) *RunningExecutionsInfoProvider {
+	return &RunningExecutionsInfoProvider{
 		name:          params.Name,
 		backendBuffer: params.BackendBuffer,
 	}
 }
 
-func (r RunningInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
+func (r RunningExecutionsInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
 	executions := r.backendBuffer.RunningExecutions()
 	summaries := make([]store.ExecutionSummary, 0, len(executions))
 	for _, execution := range executions {
@@ -43,4 +45,4 @@ func (r RunningInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
 }
 
 // compile-time check that we implement the interface
-var _ model.DebugInfoProvider = (*RunningInfoProvider)(nil)
+var _ model.DebugInfoProvider = (*RunningExecutionsInfoProvider)(nil)

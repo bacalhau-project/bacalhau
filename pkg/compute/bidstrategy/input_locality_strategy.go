@@ -56,3 +56,8 @@ func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrate
 	}
 	return BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil
 }
+
+func (s *InputLocalityStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
+	return newShouldBidResponse(), nil
+}

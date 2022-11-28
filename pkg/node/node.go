@@ -2,26 +2,13 @@ package node
 
 import (
 	"context"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/backend"
-	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
-	"github.com/filecoin-project/bacalhau/pkg/compute/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/compute/sensors"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -67,7 +54,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
-	ComputeNode    frontend.Service
+	ComputeNode    Compute
 	RequesterNode  *requesternode.RequesterNode
 	LocalDB        localdb.LocalDB
 	Transport      transport.Transport
@@ -154,9 +141,11 @@ func NewNode(
 	}
 
 	// setup compute node
-	computeService, computeListener, debugInfoProviders := generateComputeNode(
+	computeNode := NewComputeNode(
 		ctx,
-		config,
+		config.HostID,
+		config.ComputeConfig,
+		config.LocalDB,
 		executors,
 		verifiers,
 		publishers,
@@ -170,7 +159,7 @@ func NewNode(
 		config.LocalDB,
 		config.Transport,
 		requesterNode,
-		debugInfoProviders,
+		computeNode.debugInfoProviders,
 		publishers,
 		storageProviders,
 	)
@@ -198,7 +187,7 @@ func NewNode(
 		// handles bid and result proposals
 		requesterNode,
 		// handles job execution
-		computeListener,
+		computeNode.frontendProxy,
 		// dispatches events to listening websockets
 		apiServer,
 	)
@@ -224,7 +213,7 @@ func NewNode(
 		IPFSClient:     config.IPFSClient,
 		LocalDB:        config.LocalDB,
 		Transport:      config.Transport,
-		ComputeNode:    computeService,
+		ComputeNode:    *computeNode,
 		RequesterNode:  requesterNode,
 		Executors:      executors,
 		HostID:         config.HostID,
@@ -232,129 +221,4 @@ func NewNode(
 	}
 
 	return node, nil
-}
-
-//nolint:funlen
-func generateComputeNode(
-	ctx context.Context,
-	nodeConfig NodeConfig,
-	executors executor.ExecutorProvider,
-	verifiers verifier.VerifierProvider,
-	publishers publisher.PublisherProvider,
-	jobEventPublisher eventhandler.JobEventHandler) (frontend.Service, *pubsub.FrontendEventProxy, []model.DebugInfoProvider) {
-	debugInfoProviders := []model.DebugInfoProvider{}
-	executionStore := inmemory.NewStore()
-
-	// backend
-	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: nodeConfig.ComputeConfig.TotalResourceLimits,
-	})
-	debugInfoProviders = append(debugInfoProviders, sensors.NewCapacityInfoProvider(sensors.CapacityInfoProviderParams{
-		CapacityTracker: capacityTracker,
-	}))
-
-	backendCallback := backend.NewChainedCallback(backend.ChainedCallbackParams{
-		Callbacks: []backend.Callback{
-			backend.NewStateUpdateCallback(backend.StateUpdateCallbackParams{
-				ExecutionStore: executionStore,
-			}),
-			pubsub.NewBackendCallback(pubsub.BackendCallbackParams{
-				NodeID:            nodeConfig.HostID,
-				ExecutionStore:    executionStore,
-				JobEventPublisher: jobEventPublisher,
-			}),
-		},
-	})
-
-	baseRunner := backend.NewBaseService(backend.BaseServiceParams{
-		ID:         nodeConfig.HostID,
-		Callback:   backendCallback,
-		Store:      executionStore,
-		Executors:  executors,
-		Verifiers:  verifiers,
-		Publishers: publishers,
-	})
-
-	bufferRunner := backend.NewServiceBuffer(backend.ServiceBufferParams{
-		DelegateService:            baseRunner,
-		Callback:                   backendCallback,
-		RunningCapacityTracker:     capacityTracker,
-		DefaultJobExecutionTimeout: nodeConfig.ComputeConfig.DefaultJobExecutionTimeout,
-		BackoffDuration:            50 * time.Millisecond,
-	})
-	runningInfoProvider := sensors.NewRunningInfoProvider(sensors.RunningInfoProviderParams{
-		BackendBuffer: bufferRunner,
-	})
-	debugInfoProviders = append(debugInfoProviders, runningInfoProvider)
-	loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
-		InfoProvider: runningInfoProvider,
-		Interval:     nodeConfig.ComputeConfig.LogRunningExecutionsInterval,
-	})
-	go loggingSensor.Start(ctx)
-
-	// frontend
-	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
-		Calculators: []capacity.UsageCalculator{
-			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
-				Defaults: nodeConfig.ComputeConfig.DefaultJobResourceLimits,
-			}),
-			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
-				Executors: executors,
-			}),
-		},
-	})
-
-	biddingStrategy := bidstrategy.NewChainedBidStrategy(
-		bidstrategy.NewMaxCapacityStrategy(bidstrategy.MaxCapacityStrategyParams{
-			MaxJobRequirements: nodeConfig.ComputeConfig.JobResourceLimits,
-		}),
-		bidstrategy.NewAvailableCapacityStrategy(bidstrategy.AvailableCapacityStrategyParams{
-			CapacityTracker: capacityTracker,
-			CommitFactor:    nodeConfig.ComputeConfig.OverCommitResourcesFactor,
-		}),
-		// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-		//  libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-		bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
-			NetworkSize: 1,
-		}),
-		bidstrategy.NewEnginesInstalledStrategy(bidstrategy.EnginesInstalledStrategyParams{
-			Executors: executors,
-			Verifiers: verifiers,
-		}),
-		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
-			Command: nodeConfig.ComputeConfig.JobSelectionPolicy.ProbeExec,
-		}),
-		bidstrategy.NewExternalHTTPStrategy(bidstrategy.ExternalHTTPStrategyParams{
-			URL: nodeConfig.ComputeConfig.JobSelectionPolicy.ProbeHTTP,
-		}),
-		bidstrategy.NewInputLocalityStrategy(bidstrategy.InputLocalityStrategyParams{
-			Locality:  nodeConfig.ComputeConfig.JobSelectionPolicy.Locality,
-			Executors: executors,
-		}),
-		bidstrategy.NewStatelessJobStrategy(bidstrategy.StatelessJobStrategyParams{
-			RejectStatelessJobs: nodeConfig.ComputeConfig.JobSelectionPolicy.RejectStatelessJobs,
-		}),
-		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
-			MaxJobExecutionTimeout: nodeConfig.ComputeConfig.MaxJobExecutionTimeout,
-			MinJobExecutionTimeout: nodeConfig.ComputeConfig.MinJobExecutionTimeout,
-		}),
-	)
-
-	frontendNode := frontend.NewBaseService(frontend.BaseServiceParams{
-		ID:              nodeConfig.HostID,
-		ExecutionStore:  executionStore,
-		UsageCalculator: capacityCalculator,
-		BidStrategy:     biddingStrategy,
-		Backend:         bufferRunner,
-	})
-
-	frontendProxy := pubsub.NewFrontendEventProxy(pubsub.FrontendEventProxyParams{
-		NodeID:            nodeConfig.HostID,
-		Frontend:          frontendNode,
-		JobStore:          nodeConfig.LocalDB,
-		ExecutionStore:    executionStore,
-		JobEventPublisher: jobEventPublisher,
-	})
-
-	return frontendNode, frontendProxy, debugInfoProviders
 }

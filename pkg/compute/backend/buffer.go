@@ -30,6 +30,12 @@ type ServiceBufferParams struct {
 	BackoffDuration            time.Duration
 }
 
+// ServiceBuffer is a backend.Service implementation that buffers executions locally until enough capacity is
+// available to be able to run them. The buffer accepts a delegate backend.Service that will be used to run the jobs.
+// The buffer is implemented as a FIFO queue, where the order of the executions is determined by the order in which
+// they were enqueued. However, an execution with high resource usage requirements might be skipped if there are newer
+// jobs with lower resource usage requirements that can be executed immediately. This is done to improve utilization
+// of compute nodes, though it might result in starvation and should be re-evaluated in the future.
 type ServiceBuffer struct {
 	runningCapacity            capacity.Tracker
 	delegateService            Service
@@ -63,6 +69,7 @@ func NewServiceBuffer(params ServiceBufferParams) *ServiceBuffer {
 	return r
 }
 
+// Run enqueues the execution and tries to run it if there is enough capacity.
 func (s *ServiceBuffer) Run(ctx context.Context, execution store.Execution) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -73,6 +80,8 @@ func (s *ServiceBuffer) Run(ctx context.Context, execution store.Execution) (err
 		}
 	}()
 
+	// There is no point in enqueuing a job that requires more than the total capacity of the node. Such jobs should
+	// have not reached this backend in the first place, and should have been rejected by the frontend when asked to bid
 	if !s.runningCapacity.IsWithinLimits(ctx, execution.ResourceUsage) {
 		err = fmt.Errorf("not enough capacity to run job")
 		return
@@ -92,6 +101,7 @@ func (s *ServiceBuffer) Run(ctx context.Context, execution store.Execution) (err
 	return
 }
 
+// doRun triggers the execution by the delegate backend.Service and frees up the capacity when the execution is done.
 func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 	timeout := task.execution.Shard.Job.Spec.GetTimeout()
 	if timeout == 0 {
@@ -121,6 +131,8 @@ func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 	s.deque()
 }
 
+// deque tries to run the next execution in the queue if there is enough capacity.
+// It is called every time a job is finished or enqueued, where a lock is already held.
 func (s *ServiceBuffer) deque() {
 	// If last attempt was very recent, and we still have jobs running,
 	// then we need to wait until backoffDuration has passed
@@ -129,10 +141,9 @@ func (s *ServiceBuffer) deque() {
 	}
 	ctx := context.Background()
 
-	// Since we want to keep the list of shard state machines ordered by their creation time,
-	// and since shards can complete at any time, we need to remove completed shards
-	// from the list without impacting the order of the remaining shards, and without
-	// having to copy things around.
+	// We are maintain the order of enqueued executions treat it as a FIFO queue, while allowing to skip over jobs
+	// that require more resources than the current capacity. This is done to improve utilization of compute nodes,
+	// though it might result in starvation and should be re-evaluated in the future.
 	remainingEnqueuedList := make([]string, 0, len(s.enqueuedList))
 
 	for _, executionID := range s.enqueuedList {

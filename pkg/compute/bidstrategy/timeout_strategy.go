@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type TimeoutStrategyParams struct {
@@ -40,5 +42,10 @@ func (s *TimeoutStrategy) ShouldBid(ctx context.Context, request BidStrategyRequ
 			Reason:    fmt.Sprintf("job timeout %s below minimum allowed %s", request.Job.Spec.GetTimeout(), s.minJobExecutionTimeout),
 		}, nil
 	}
+	return newShouldBidResponse(), nil
+}
+
+func (s *TimeoutStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
 	return newShouldBidResponse(), nil
 }

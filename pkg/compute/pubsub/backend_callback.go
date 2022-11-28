@@ -16,6 +16,11 @@ type BackendCallbackParams struct {
 	ExecutionStore    store.ExecutionStore
 	JobEventPublisher eventhandler.JobEventHandler
 }
+
+// BackendCallback implements backend.Callback interface, which listens to backend events on job completion or
+// cancellation, and forwards the events to GossipSub network.
+// This is a temporary solution that maintains backward compatibility with the current network until we fully switch
+// to direct API calls for job orchestration.
 type BackendCallback struct {
 	nodeID            string
 	executionStore    store.ExecutionStore

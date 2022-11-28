@@ -40,6 +40,9 @@ func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model
 }
 
 func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
+	if engineType != model.EngineNoop {
+		return nil, fmt.Errorf("noop executor doesn't support %s", engineType)
+	}
 	return p.noopExecutor, nil
 }
 

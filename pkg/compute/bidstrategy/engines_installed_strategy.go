@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
@@ -41,6 +42,11 @@ func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStr
 		}, nil
 	}
 
+	return newShouldBidResponse(), nil
+}
+
+func (s *EnginesInstalledStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
 	return newShouldBidResponse(), nil
 }
 

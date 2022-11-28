@@ -25,11 +25,8 @@ func (s *NoopPublisherProvider) GetPublisher(ctx context.Context, publisherType 
 
 type NoopPublisher struct{}
 
-func NewNoopPublisher(
-	ctx context.Context,
-	cm *system.CleanupManager,
-) (*NoopPublisher, error) {
-	return &NoopPublisher{}, nil
+func NewNoopPublisher() *NoopPublisher {
+	return &NoopPublisher{}
 }
 
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {

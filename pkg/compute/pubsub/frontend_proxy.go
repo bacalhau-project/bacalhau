@@ -26,6 +26,10 @@ type FrontendEventProxyParams struct {
 	ExecutionStore    store.ExecutionStore
 	JobEventPublisher eventhandler.JobEventHandler
 }
+
+// FrontendEventProxy listens to events from GossipSub and forwards them to the frontend.
+// This is a temporary solution that maintains backward compatibility with the current network until we fully switch
+// to direct API calls for job orchestration.
 type FrontendEventProxy struct {
 	nodeID            string
 	frontend          frontend.Service

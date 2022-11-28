@@ -6,6 +6,7 @@ type ChainedCallbackParams struct {
 	Callbacks []Callback
 }
 
+// ChainedCallback Callback that chains multiple callbacks and delegates the calls to them.
 type ChainedCallback struct {
 	callbacks []Callback
 }

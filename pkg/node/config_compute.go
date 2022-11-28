@@ -120,9 +120,10 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		OverCommitResourcesFactor:    params.OverCommitResourcesFactor,
 		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
 
-		JobNegotiationTimeout:  params.JobNegotiationTimeout,
-		MinJobExecutionTimeout: params.MinJobExecutionTimeout,
-		MaxJobExecutionTimeout: params.MaxJobExecutionTimeout,
+		JobNegotiationTimeout:      params.JobNegotiationTimeout,
+		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
+		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
+		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 

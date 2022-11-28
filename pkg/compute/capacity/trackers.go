@@ -11,6 +11,7 @@ type LocalTrackerParams struct {
 	MaxCapacity model.ResourceUsageData
 }
 
+// LocalTracker keeps track of the current resource usage of the local node in-memory.
 type LocalTracker struct {
 	maxCapacity  model.ResourceUsageData
 	usedCapacity model.ResourceUsageData

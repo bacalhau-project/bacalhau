@@ -48,7 +48,7 @@ func (r ResourceUsageData) Sub(other ResourceUsageData) ResourceUsageData {
 		GPU:    r.GPU - other.GPU,
 	}
 
-	if !r.LessThanEq(other) {
+	if r.LessThanEq(other) {
 		log.Warn().Msgf("Subtracting larger resource usage %s from %s. Replacing negative values with zeros",
 			other.String(), r.String())
 		if other.CPU > r.CPU {
@@ -88,6 +88,23 @@ func (r ResourceUsageData) Intersect(other ResourceUsageData) ResourceUsageData 
 		r.Disk = other.Disk
 	}
 	if r.GPU <= 0 {
+		r.GPU = other.GPU
+	}
+
+	return r
+}
+
+func (r ResourceUsageData) Max(other ResourceUsageData) ResourceUsageData {
+	if r.CPU < other.CPU {
+		r.CPU = other.CPU
+	}
+	if r.Memory < other.Memory {
+		r.Memory = other.Memory
+	}
+	if r.Disk < other.Disk {
+		r.Disk = other.Disk
+	}
+	if r.GPU < other.GPU {
 		r.GPU = other.GPU
 	}
 

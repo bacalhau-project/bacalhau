@@ -1,6 +1,10 @@
 package bidstrategy
 
-import "context"
+import (
+	"context"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
+)
 
 type StatelessJobStrategyParams struct {
 	RejectStatelessJobs bool
@@ -22,5 +26,10 @@ func (s *StatelessJobStrategy) ShouldBid(ctx context.Context, request BidStrateg
 		return BidStrategyResponse{ShouldBid: false, Reason: "stateless jobs not accepted"}, nil
 	}
 
+	return newShouldBidResponse(), nil
+}
+
+func (s *StatelessJobStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
 	return newShouldBidResponse(), nil
 }

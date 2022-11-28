@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,7 +27,7 @@ func NewDistanceDelayStrategy(params DistanceDelayStrategyParams) *DistanceDelay
 }
 
 func (s DistanceDelayStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
-	jobNodeDistanceDelayMs, shouldRunJob := s.CalculateJobNodeDistanceDelay(ctx, request)
+	jobNodeDistanceDelayMs, shouldRunJob := s.calculateJobNodeDistanceDelay(ctx, request)
 	if !shouldRunJob {
 		return BidStrategyResponse{
 			ShouldBid: false,
@@ -42,7 +43,12 @@ func (s DistanceDelayStrategy) ShouldBid(ctx context.Context, request BidStrateg
 	return newShouldBidResponse(), nil
 }
 
-func (s DistanceDelayStrategy) CalculateJobNodeDistanceDelay(ctx context.Context, request BidStrategyRequest) (int, bool) {
+func (s DistanceDelayStrategy) ShouldBidBasedOnUsage(
+	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
+	return newShouldBidResponse(), nil
+}
+
+func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context, request BidStrategyRequest) (int, bool) {
 	// Calculate how long to wait to bid on the job by using a circular hashing
 	// style approach: Invent a metric for distance between node ID and job ID.
 	// If the node and job ID happen to be close to eachother, such that we'd

@@ -13,6 +13,7 @@ type LoggingSensorParams struct {
 	Interval     time.Duration
 }
 
+// LoggingSensor is a sensor that periodically logs the debug info
 type LoggingSensor struct {
 	infoProvider model.DebugInfoProvider
 	interval     time.Duration

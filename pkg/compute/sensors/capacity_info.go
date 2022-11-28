@@ -7,24 +7,25 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-type CapacityInfoProviderParams struct {
+type CapacityDebugInfoProviderParams struct {
 	Name            string
 	CapacityTracker capacity.Tracker
 }
 
-type CapacityInfoProvider struct {
+// CapacityDebugInfoProvider is a debug info provider that returns the available capacity of the node.
+type CapacityDebugInfoProvider struct {
 	name            string
 	capacityTracker capacity.Tracker
 }
 
-func NewCapacityInfoProvider(params CapacityInfoProviderParams) *CapacityInfoProvider {
-	return &CapacityInfoProvider{
+func NewCapacityDebugInfoProvider(params CapacityDebugInfoProviderParams) *CapacityDebugInfoProvider {
+	return &CapacityDebugInfoProvider{
 		name:            params.Name,
 		capacityTracker: params.CapacityTracker,
 	}
 }
 
-func (r CapacityInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
+func (r CapacityDebugInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
 	availableCapacity := r.capacityTracker.AvailableCapacity(context.Background())
 	return model.DebugInfo{
 		Component: r.name,
@@ -33,4 +34,4 @@ func (r CapacityInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
 }
 
 // compile-time check that we implement the interface
-var _ model.DebugInfoProvider = (*CapacityInfoProvider)(nil)
+var _ model.DebugInfoProvider = (*CapacityDebugInfoProvider)(nil)
