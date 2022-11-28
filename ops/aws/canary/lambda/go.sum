@@ -275,6 +275,8 @@ github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBd
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/filecoin-project/bacalhau v0.3.13 h1:GFjDjkm+3DUIXVNdkF/giHsffd7braral4pRonjLPXc=
 github.com/filecoin-project/bacalhau v0.3.13/go.mod h1:k1Mmw28s8U1isLJWSisEG3Ta+wQMRlKjPYmMyl01Rmo=
+github.com/filecoin-project/bacalhau v0.3.14-0.20221128044615-86e346d62c04 h1:pT5dwYLCmcFt/I5S6BVgwo9GGIg6IqMuTmVAvZTqJsI=
+github.com/filecoin-project/bacalhau v0.3.14-0.20221128044615-86e346d62c04/go.mod h1:up3RZJwitl4VbfD481oof2TeppQdj8XPqX3xYIbWKQs=
 github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f/go.mod h1:+If3s2VxyjZn+KGGZIoRXBDSFQ9xL404JBJGf4WhEj0=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
@@ -1834,6 +1836,8 @@ go.opentelemetry.io/proto/otlp v0.7.0/go.mod h1:PqfVotwruBrMGOCsRd/89rSnXhoiJIqe
 go.opentelemetry.io/proto/otlp v0.16.0/go.mod h1:H7XAot3MsfNsj7EXtrA2q5xSNQ10UqI405h3+duxN4U=
 go.opentelemetry.io/proto/otlp v0.19.0 h1:IVN6GR+mhC4s5yfcTbmzHYODqvWAp3ZedA2SJPI1Nnw=
 go.opentelemetry.io/proto/otlp v0.19.0/go.mod h1:H7XAot3MsfNsj7EXtrA2q5xSNQ10UqI405h3+duxN4U=
+go.ptx.dk/multierrgroup v0.0.2 h1:o5OaGzED6+BFahVjOU8Yg7gjj1uBlNzwPH8xZ6BdK9Q=
+go.ptx.dk/multierrgroup v0.0.2/go.mod h1:vhkbE1x30Xp1q6uHcCq35dAVefZTPD6SqbKu09JNJgo=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.5.0/go.mod h1:sABNBOSYdrvTF6hTgEIbc7YasKWGhgEQZyfxyTvoXHQ=
