@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# TODO: make this work
+# TODO: make this work - in particular, slash the bad compute node in the
+# simulator server
 
 set -xeuo pipefail
 
