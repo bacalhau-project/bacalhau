@@ -67,11 +67,17 @@ func (wallets *walletsModel) logWallets() {
 // This won't be necessary once
 func fromClient(event model.JobEvent) model.JobEvent {
 	event.SourceNodeID = event.SourceNodeID + "-requestor"
+	if event.TargetNodeID != "" {
+		event.TargetNodeID = event.TargetNodeID + "-computenode"
+	}
 	return event
 }
 
 func fromServer(event model.JobEvent) model.JobEvent {
 	event.SourceNodeID = event.SourceNodeID + "-computenode"
+	if event.TargetNodeID != "" {
+		event.TargetNodeID = event.TargetNodeID + "-requestornode"
+	}
 	return event
 }
 
@@ -99,8 +105,10 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	case model.JobEventBidAccepted:
 		// C->S: Escrow & BidAccepted
 		event = fromClient(event)
+		client := wallets.jobOwners[event.JobID]
+		server := event.TargetNodeID
 		// TODO: price in job spec! verify price per hour!
-		err := wallets.escrowFunds(event.JobID, 33)
+		err := wallets.escrowFunds(client, server, event.JobID, 33)
 		if err != nil {
 			return err
 		}
@@ -114,8 +122,10 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	case model.JobEventResultsPublished:
 		// C->S: ResultsPublished
 		event = fromServer(event)
+		server := event.SourceNodeID
+		client := wallets.jobOwners[event.JobID]
 		// XXX how to verify results were accepted? record in smart contract?
-		err := wallets.releaseEscrow(event.JobID, event.SourceNodeID)
+		err := wallets.releaseEscrow(client, server, event.JobID)
 		if err != nil {
 			return err
 		}
@@ -142,7 +152,11 @@ func (wallets *walletsModel) ensureWallet(wallet string) {
 	}
 }
 
-func (wallets *walletsModel) escrowFunds(jobID string, amount uint64) error {
+func escrowID(client, server, jobID string) string {
+	return fmt.Sprintf("%s -> %s; jobID=%s", client, server, jobID)
+}
+
+func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount uint64) error {
 	wallets.moneyMutex.Lock()
 	defer wallets.moneyMutex.Unlock()
 	wallet, ok := wallets.jobOwners[jobID]
@@ -154,20 +168,21 @@ func (wallets *walletsModel) escrowFunds(jobID string, amount uint64) error {
 		return fmt.Errorf("wallet %s has insufficient funds to escrow %d", wallet, amount)
 	}
 	wallets.balances[wallet] -= amount
-	wallets.escrow[jobID] += amount
+	wallets.escrow[escrowID(client, server, jobID)] += amount
 	return nil
 }
 
-func (wallets *walletsModel) releaseEscrow(jobID string, to string) error {
+func (wallets *walletsModel) releaseEscrow(client, server, jobID string) error {
 	wallets.moneyMutex.Lock()
 	defer wallets.moneyMutex.Unlock()
-	amount, ok := wallets.escrow[jobID]
+	escrowID := escrowID(client, server, jobID)
+	amount, ok := wallets.escrow[escrowID]
 	if !ok {
-		return fmt.Errorf("no escrow found for job %s", jobID)
+		return fmt.Errorf("no escrow found for %s", escrowID)
 	}
-	wallets.ensureWallet(to)
-	wallets.balances[to] += amount
-	delete(wallets.escrow, jobID)
+	wallets.ensureWallet(server)
+	wallets.balances[server] += amount
+	delete(wallets.escrow, escrowID)
 	return nil
 }
 
