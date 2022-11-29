@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# TODO: make this work
+
 set -xeuo pipefail
 
 pkill -f bacalhau || true
@@ -20,7 +23,5 @@ while true; do
     bacalhau docker run --verfier deterministic --concurrency 3 ubuntu echo hello
 done
 
-# Now, dear human, observe with your eyes that the jobs stop working after the
-# requestor node balance is drained. This demonstrates that the "stop working
-# when you've run out of money" behavior is working.
+# Now, dear human, observe with your eyes that ...
 
