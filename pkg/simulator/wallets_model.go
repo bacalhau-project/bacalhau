@@ -16,7 +16,7 @@ import (
 // at < 1,000 we stop them putting any more messages on the network
 // before they deposit more
 
-const MIN_WALLET = 1000
+const MIN_WALLET = 100
 
 type walletsModel struct {
 	// keep track of which wallet address "owns" which job
@@ -148,7 +148,7 @@ func logWallet(event model.JobEvent) {
 
 func (wallets *walletsModel) ensureWallet(wallet string) {
 	if _, ok := wallets.balances[wallet]; !ok {
-		wallets.balances[wallet] = 10000
+		wallets.balances[wallet] = 1000
 	}
 }
 
