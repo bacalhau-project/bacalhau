@@ -235,12 +235,12 @@ jobs:
     executor: linux-amd64
     steps:
       - checkout
-      
+
       - run:
           name: Set canary dependency
           working_directory: ops/aws/canary/lambda
           command: make update
-          
+
       - run:
           name: Build
           working_directory: ops/aws/canary/lambda
@@ -257,7 +257,6 @@ jobs:
 
       - store_test_results:
           path: ops/aws/canary/lambda/unittests.xml
-
 
   coverage:
     executor: linux-amd64
@@ -480,8 +479,7 @@ jobs:
             golangci-lint version
       - run:
           name: Install Swagger
-          command:
-            go install github.com/swaggo/swag/cmd/swag@v1.8.7
+          command: go install github.com/swaggo/swag/cmd/swag@v1.8.7
       - run:
           name: Install Pre-commit
           command: |
@@ -497,8 +495,7 @@ jobs:
             golangci-lint version
       - run:
           name: Build Swagger Docs
-          command:
-            make swagger-docs
+          command: make swagger-docs
 
       - when:
           condition:
@@ -529,11 +526,78 @@ jobs:
                     git commit -m "[circleci] $COMMIT_MSG [skip ci]"
                     git push --set-upstream origin $GH_BRANCH_NAME
                     # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label documentation --repo filecoin-project/bacalhau)
+                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
                     echo "Pull request: $PR_URL"
                     sleep 3
                     gh pr merge --auto --delete-branch -r $PR_URL
                   fi
+
+  build_jsonschema_job:
+    executor: linux-amd64
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      GOLANGCILINT: v1.49.0
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Go
+          command: |
+            sudo rm -fr /usr/local/go /usr/local/bin/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+      - run:
+          name: Build JSONSchema
+          command: |
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt install python3.10 -y
+            python3 -m pip install --upgrade pip
+            cd scripts/build_schema_files
+            python3 -m pip install -r requirements.txt
+            python3 main.py
+
+      - run:
+          name: Install gh
+          command: |
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
+            echo "$GITHUB_PR_PAT" | gh auth login --with-token
+            rm gh_2.14.7_linux_amd64.deb
+      - run:
+          name: Install human-id generator
+          command: |
+            pip3 install human-id
+      - run:
+          name: Git commit
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            # Note: we delete this branch after the PR is merged
+            GH_BRANCH_NAME=(ci-build-jsonschema_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
+            git checkout -b $GH_BRANCH_NAME
+            if test -n "$(git ls-files --modified)"; then
+              git add --verbose -- ./schema.bacalhau.org
+              COMMIT_MSG="Build jsonschema - this is an automatic commit"
+              git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+              git push --set-upstream origin $GH_BRANCH_NAME
+              # Note: if you close the PR below manually, you should delete the `ci-build-jsonschema_*` branch as well
+              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+              echo "Pull request: $PR_URL"
+              sleep 3
+              gh pr merge --auto --delete-branch -r $PR_URL
+              curl \
+                -X POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer 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"\
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                https://api.github.com/repos/filecoin-project/bacalhau/dispatches \
+                -d '{"event_type":"build-schema-pages"}'
+            fi
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -555,7 +619,7 @@ workflows:
           name: Check canary build
           filters:
             tags:
-              ignore: /.*/ 
+              ignore: /.*/
 
   dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
@@ -649,7 +713,7 @@ workflows:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
-  
+
   build_swagger: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build_swagger:
@@ -657,6 +721,30 @@ workflows:
           filters:
             tags:
               ignore: /.*/
+
+  build_jsonschema: # Runs on new tags starting with 'v.'
+    jobs:
+      - build:
+          name: build-linux-amd64-<< pipeline.git.branch >>
+          matrix:
+            parameters:
+              target_os: ["linux"]
+              target_arch: ["amd64"]
+              run_tests: [false]
+              build_tags: [""]
+          filters: &filters_tags_only
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              # only run on tags that look like release tags e.g. v0.1.2 or
+              # v0.1.3alpha19 (actually v0.1.3anything...)
+              only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - build_jsonschema_job:
+          name: run-jsonschema-gen-<< pipeline.git.branch >>
+          requires:
+            - build
+          filters:
+            <<: *filters_tags_only
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
@@ -692,7 +780,7 @@ workflows:
             - release-all-binaries
           filters:
             <<: *filters_tags_only
-  
+
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
