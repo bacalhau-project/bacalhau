@@ -98,7 +98,13 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 		return wallets.bid(fromServer(event))
 	case model.JobEventBidAccepted:
 		// C->S: Escrow & BidAccepted
-		return wallets.bidAccepted(fromClient(event))
+		event = fromClient(event)
+		// TODO: price in job spec! verify price per hour!
+		err := wallets.escrowFunds(event.JobID, 33)
+		if err != nil {
+			return err
+		}
+		return wallets.bidAccepted(event)
 	case model.JobEventResultsProposed:
 		// S->C: ResultsProposed
 		return wallets.resultsProposed(fromServer(event))
@@ -107,7 +113,13 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 		return wallets.resultsAccepted(fromClient(event))
 	case model.JobEventResultsPublished:
 		// C->S: ResultsPublished
-		return wallets.resultsPublished(fromServer(event))
+		event = fromServer(event)
+		// XXX how to verify results were accepted? record in smart contract?
+		err := wallets.releaseEscrow(event.JobID, event.SourceNodeID)
+		if err != nil {
+			return err
+		}
+		return wallets.resultsPublished(event)
 	}
 	return nil
 }
@@ -128,17 +140,6 @@ func (wallets *walletsModel) ensureWallet(wallet string) {
 	if _, ok := wallets.balances[wallet]; !ok {
 		wallets.balances[wallet] = 10000
 	}
-}
-
-func (wallets *walletsModel) transferFunds(from, to string, amount uint64) error {
-	wallets.moneyMutex.Lock()
-	defer wallets.moneyMutex.Unlock()
-	if wallets.balances[from] < amount {
-		return fmt.Errorf("not enough funds in wallet %s", from)
-	}
-	wallets.balances[from] -= amount
-	wallets.balances[to] += amount
-	return nil
 }
 
 func (wallets *walletsModel) escrowFunds(jobID string, amount uint64) error {
