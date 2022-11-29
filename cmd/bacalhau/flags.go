@@ -169,15 +169,6 @@ func storageSpecToIPFSMount(input *model.StorageSpec) string {
 	return fmt.Sprintf("%s:%s", input.CID, input.Path)
 }
 
-func NewIPFSStorageSpecFlag(value *model.StorageSpec) *ValueFlag[model.StorageSpec] {
-	return &ValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseIPFSStorageSpec,
-		stringer: storageSpecToIPFSMount,
-		typeStr:  "cid:path",
-	}
-}
-
 func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
 	return &ArrayValueFlag[model.StorageSpec]{
 		value:    value,
@@ -197,15 +188,6 @@ func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
 		URL:           u.String(),
 		Path:          "/inputs",
 	}, nil
-}
-
-func NewURLStorageSpecFlag(value *model.StorageSpec) *ValueFlag[model.StorageSpec] {
-	return &ValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
-		typeStr:  "url",
-	}
 }
 
 func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {

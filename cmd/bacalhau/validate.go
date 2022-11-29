@@ -37,9 +37,6 @@ var (
 		# Output the jsonschema for a bacalhau job
 		bacalhau validate --output-schema
 `))
-
-	// Set Defaults (probably a better way to do this)
-	OV = NewValidateOptions()
 )
 
 type ValidateOptions struct {
@@ -58,103 +55,111 @@ func NewValidateOptions() *ValidateOptions {
 	}
 }
 
-func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+func newValidateCmd() *cobra.Command {
+	OV := NewValidateOptions()
+
+	validateCmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "validate a job using a json or yaml file.",
+		Long:    validateLong,
+		Example: validateExample,
+		Args:    cobra.MinimumNArgs(0),
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
+			return validate(cmd, cmdArgs, OV)
+		},
+	}
+
 	validateCmd.PersistentFlags().BoolVar(
 		&OV.OutputSchema, "output-schema", OV.OutputSchema,
 		`Output the JSON schema for a Job to stdout then exit`,
 	)
+
+	return validateCmd
 }
 
-var validateCmd = &cobra.Command{
-	Use:     "validate",
-	Short:   "validate a job using a json or yaml file.",
-	Long:    validateLong,
-	Example: validateExample,
-	Args:    cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
-		j := &model.Job{}
-		jsonSchemaData, err := GenerateJobJSONSchema()
+func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) error {
+	j := &model.Job{}
+	jsonSchemaData, err := GenerateJobJSONSchema()
+	if err != nil {
+		return err
+	}
+
+	if OV.OutputSchema {
+		//nolint
+		cmd.Printf("%s", jsonSchemaData)
+		return nil
+	}
+
+	if len(cmdArgs) == 0 {
+		_ = cmd.Usage()
+		Fatal(cmd, "You must specify a filename or provide the content to be validated via stdin.", 1)
+	}
+
+	OV.Filename = cmdArgs[0]
+	var byteResult []byte
+
+	if OV.Filename == "" {
+		// Read from stdin
+		byteResult, err = io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			Fatal(cmd, fmt.Sprintf("Error reading from stdin: %s", err), 1)
+		}
+		if byteResult == nil {
+			// Can you ever get here?
+			Fatal(cmd, "No filename provided.", 1)
+		}
+	} else {
+		var file *os.File
+		fileextension := filepath.Ext(OV.Filename)
+		file, err = os.Open(OV.Filename)
+
+		if err != nil {
+			Fatal(cmd, fmt.Sprintf("Error opening file (%s): %s", OV.Filename, err), 1)
+		}
+
+		byteResult, err = io.ReadAll(file)
+
 		if err != nil {
 			return err
 		}
 
-		if OV.OutputSchema {
-			//nolint
-			cmd.Printf("%s", jsonSchemaData)
-			return nil
-		}
-
-		if len(cmdArgs) == 0 {
-			_ = cmd.Usage()
-			Fatal("You must specify a filename or provide the content to be validated via stdin.", 1)
-		}
-
-		OV.Filename = cmdArgs[0]
-		var byteResult []byte
-
-		if OV.Filename == "" {
-			// Read from stdin
-			byteResult, err = io.ReadAll(cmd.InOrStdin())
+		if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
+			// Yaml can parse json
+			err = model.YAMLUnmarshalWithMax(byteResult, &j)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error reading from stdin: %s", err), 1)
-			}
-			if byteResult == nil {
-				// Can you ever get here?
-				Fatal("No filename provided.", 1)
+				Fatal(cmd, fmt.Sprintf("Error unmarshaling yaml from file (%s): %s", OV.Filename, err), 1)
 			}
 		} else {
-			var file *os.File
-			fileextension := filepath.Ext(OV.Filename)
-			file, err = os.Open(OV.Filename)
-
-			if err != nil {
-				Fatal(fmt.Sprintf("Error opening file (%s): %s", OV.Filename, err), 1)
-			}
-
-			byteResult, err = io.ReadAll(file)
-
-			if err != nil {
-				return err
-			}
-
-			if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
-				// Yaml can parse json
-				err = model.YAMLUnmarshalWithMax(byteResult, &j)
-				if err != nil {
-					Fatal(fmt.Sprintf("Error unmarshaling yaml from file (%s): %s", OV.Filename, err), 1)
-				}
-			} else {
-				Fatal(fmt.Sprintf("File extension (%s) not supported. The file must end in either .yaml, .yml or .json.", fileextension), 1)
-			}
-
+			Fatal(cmd, fmt.Sprintf("File extension (%s) not supported. The file must end in either .yaml, .yml or .json.", fileextension), 1)
 		}
-		// Convert the schema to JSON - this is required for the gojsonschema library
-		// Noop if you pass JSON through
-		fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error converting yaml to json: %s", err), 1)
-		}
+	}
 
-		// println(str)
-		schemaLoader := gojsonschema.NewStringLoader(string(jsonSchemaData))
-		documentLoader := gojsonschema.NewStringLoader(string(fileContentsAsJSONBytes))
+	// Convert the schema to JSON - this is required for the gojsonschema library
+	// Noop if you pass JSON through
+	fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error converting yaml to json: %s", err), 1)
+	}
 
-		result, err := gojsonschema.Validate(schemaLoader, documentLoader)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error validating json: %s", err), 1)
-		}
+	// println(str)
+	schemaLoader := gojsonschema.NewStringLoader(string(jsonSchemaData))
+	documentLoader := gojsonschema.NewStringLoader(string(fileContentsAsJSONBytes))
 
-		if result.Valid() {
-			cmd.Println("The Job is valid")
-		} else {
-			msg := "The Job is not valid. See errors:\n"
-			for _, desc := range result.Errors() {
-				msg += fmt.Sprintf("- %s\n", desc)
-			}
-			Fatal(msg, 1)
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error validating json: %s", err), 1)
+	}
+
+	if result.Valid() {
+		cmd.Println("The Job is valid")
+	} else {
+		msg := "The Job is not valid. See errors:\n"
+		for _, desc := range result.Errors() {
+			msg += fmt.Sprintf("- %s\n", desc)
 		}
-		return nil
-	},
+		Fatal(cmd, msg, 1)
+	}
+	return nil
 }
 
 func GenerateJobJSONSchema() ([]byte, error) {
