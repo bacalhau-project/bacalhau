@@ -54,6 +54,7 @@ for tag in listOfTagsToBuild:
 
     repo.git.checkout(tag)
     subprocess.run(["python", "scripts/build_schema_files/build_schema_files.py"])
+
 most_recent_tag = max(listOfTagsToBuild)
 
 if rebuild_all:
