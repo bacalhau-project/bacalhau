@@ -1046,7 +1046,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "Resources": {
-                    "description": "the compute (cpy, ram) resources this job requires",
+                    "description": "the compute (cpu, ram) resources this job requires",
                     "$ref": "#/definitions/model.ResourceUsageConfig"
                 },
                 "Sharding": {
