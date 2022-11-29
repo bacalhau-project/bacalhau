@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
@@ -23,11 +24,12 @@ type jobEventEnvelope struct {
 }
 
 type SimulationAPIServer struct {
-	Host          string
-	Port          int
-	localDB       localdb.LocalDB
-	eventConsumer *eventhandler.ChainedJobEventHandler
-	wallets       *walletsModel
+	Host           string
+	Port           int
+	localDB        localdb.LocalDB
+	eventConsumer  *eventhandler.ChainedJobEventHandler
+	wallets        *walletsModel
+	websocketMutex sync.Mutex
 }
 
 const ServerReadHeaderTimeout = 10 * time.Second
@@ -133,7 +135,11 @@ func (apiServer *SimulationAPIServer) websocketHandler(res http.ResponseWriter, 
 
 		// step 3: broacast the message back to all subscribers
 		for _, conn := range connections {
-			err := conn.WriteMessage(websocket.TextMessage, message)
+			err := func() error {
+				apiServer.websocketMutex.Lock()
+				defer apiServer.websocketMutex.Unlock()
+				return conn.WriteMessage(websocket.TextMessage, message)
+			}()
 			if err != nil {
 				log.Error().Msgf("error writing event JSON: %s\n", err.Error())
 			}
