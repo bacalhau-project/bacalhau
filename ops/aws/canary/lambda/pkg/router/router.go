@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/scenarios"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -10,11 +11,12 @@ import (
 )
 
 var TestcasesMap = map[string]Handler{
-	"list":                  scenarios.List,
-	"submit":                scenarios.Submit,
-	"submitAndGet":          scenarios.SubmitAndGet,
-	"submitAndDescribe":     scenarios.SubmitAnDescribe,
-	"submitWithConcurrency": scenarios.SubmitWithConcurrency,
+	"list":                      scenarios.List,
+	"submit":                    scenarios.Submit,
+	"submitAndGet":              scenarios.SubmitAndGet,
+	"submitDockerIPFSJobAndGet": scenarios.SubmitDockerIPFSJobAndGet,
+	"submitAndDescribe":         scenarios.SubmitAnDescribe,
+	"submitWithConcurrency":     scenarios.SubmitWithConcurrency,
 }
 
 func init() {
