@@ -29,20 +29,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var oV = &VersionOptions{}
-
 // Versions is a struct for version information
 type Versions struct {
 	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty"`
 	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
-func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
-	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
-	versionCmd.Flags().StringVarP(&oV.Output, "output", "o", oV.Output, "One of 'yaml' or 'json'.")
-}
-
-// Options is a struct to support version command
+// VersionOptions is a struct to support version command
 type VersionOptions struct {
 	ClientOnly bool
 	Output     string
@@ -50,41 +43,53 @@ type VersionOptions struct {
 	args []string
 }
 
-// NewOptions returns initialized Options
+// NewVersionOptions returns initialized Options
 func NewVersionOptions() *VersionOptions {
 	return &VersionOptions{}
 }
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:unparam // incorrectly suggesting unused
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
+func newVersionCmd() *cobra.Command {
+	oV := NewVersionOptions()
 
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/version")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Get the client and server version.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runVersion(cmd, oV)
+		},
+	}
+	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
+	versionCmd.Flags().StringVarP(&oV.Output, "output", "o", oV.Output, "One of 'yaml' or 'json'.")
 
-		oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
+	return versionCmd
+}
 
-		err := oV.Validate(cmd)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error validating version: %s\n", err), 1)
-		}
+func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
 
-		err = oV.Run(ctx, cmd)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error running version: %s\n", err), 1)
-		}
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/version")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		return nil
-	},
+	oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
+
+	err := oV.Validate(cmd)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error validating version: %s\n", err), 1)
+	}
+
+	err = oV.Run(ctx, cmd)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error running version: %s\n", err), 1)
+	}
+
+	return nil
 }
 
 // Validate validates the provided options
-func (oV *VersionOptions) Validate(cmd *cobra.Command) error {
+func (oV *VersionOptions) Validate(*cobra.Command) error {
 	if len(oV.args) != 0 {
 		return fmt.Errorf("extra arguments: %v", oV.args)
 	}

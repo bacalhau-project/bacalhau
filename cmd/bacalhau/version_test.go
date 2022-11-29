@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -36,12 +35,10 @@ func TestVersionSuite(t *testing.T) {
 
 type VersionSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // Before each test
 func (suite *VersionSuite) SetupTest() {
-	suite.rootCmd = RootCmd
 	logger.ConfigureTestLogging(suite.T())
 }
 
@@ -51,7 +48,7 @@ func (suite *VersionSuite) Test_Version() {
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "version",
+	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
 		"--api-host", host,
 		"--api-port", port,
 	)
@@ -67,7 +64,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "version",
+	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
 		"--api-host", host,
 		"--api-port", port,
 		"--output", JSONFormat,
@@ -79,7 +76,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 
-	_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "version",
+	_, out, err = ExecuteTestCobraCommand(suite.T(), "version",
 		"--api-host", host,
 		"--api-port", port,
 		"--output", YAMLFormat,
