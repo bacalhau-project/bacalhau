@@ -1,7 +1,8 @@
 title: Project Bacalhau Schema
 email: david.aronchick@protocol.ai
 description: >- # this means to ignore newlines until "baseurl:"
-  This site contains links to all schema for the Bacalhau service by version.
+  This site contains links to all the JSONSchema and OpenAPI for the Bacalhau service.
+baseurl: /schema.bacalhau.org # the subpath of your site, e.g. /blog
 url: "https://schema.bacalhau.org" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: bacalhauproject
 github_repo: "filecoin-project/bacalhau"
@@ -10,9 +11,3 @@ github_repo: "filecoin-project/bacalhau"
 theme: minima
 plugins:
   - jekyll-feed
-
-defaults:
-  - scope:
-      path: "jsonschema"
-    values:
-      schema: true
