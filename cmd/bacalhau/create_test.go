@@ -28,7 +28,6 @@ import (
 
 type CreateSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 func TestCreateSuite(t *testing.T) {
@@ -39,7 +38,6 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-	s.rootCmd = RootCmd
 }
 
 func (s *CreateSuite) TestCreateGenericSubmit() {
@@ -51,14 +49,41 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 	}
 
 	for i, tc := range tests {
-		testFiles := []string{
-			"../../testdata/job.json",
-			"../../testdata/job.yaml",
-			"../../testdata/job-url.yaml",
-			"../../pkg/model/tasks/docker_task.json",
-			"../../pkg/model/tasks/task_with_config.json",
-			"../../pkg/model/tasks/wasm_task.json",
-		}
+		func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
+			defer cm.Cleanup()
+
+			*OC = *NewCreateOptions()
+
+			parsedBasedURI, err := url.Parse(c.BaseURI)
+			require.NoError(s.T(), err)
+
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+				"--api-host", host,
+				"--api-port", port,
+				"../../testdata/job.json",
+			)
+			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+		}()
+	}
+}
+
+func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1}, // Test for one
+		{numberOfJobs: 5}, // Test for five
+	}
+
+	Fatal = FakeFatalErrorHandler
+
+	for i, tc := range tests {
+
+		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
 
 		for _, testFile := range testFiles {
 			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
@@ -89,18 +114,18 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	Fatal = FakeFatalErrorHandler
 
-	devstack, _ := devstack_tests.SetupTest(context.Background(), s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
+	defer cm.Cleanup()
 
 	*OC = *NewCreateOptions()
+
+	parsedBasedURI, err := url.Parse(c.BaseURI)
+	require.NoError(s.T(), err)
 
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	host := devstack.Nodes[0].APIServer.Host
-	port := fmt.Sprint(devstack.Nodes[0].APIServer.Port)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
@@ -110,7 +135,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), c, out)
-	_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", host,
 		"--api-port", port,
 		job.ID,
@@ -131,7 +156,7 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
@@ -171,7 +196,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create", "../../testdata/empty.yaml")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create", "../../testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

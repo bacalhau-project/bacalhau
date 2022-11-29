@@ -34,7 +34,6 @@ import (
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +44,6 @@ import (
 // returns the current testing context
 type DockerRunSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -61,7 +59,6 @@ func (s *DockerRunSuite) SetupTest() {
 
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-	s.rootCmd = RootCmd
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
@@ -79,12 +76,10 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			randomUUID := uuid.New()
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				fmt.Sprintf("ubuntu echo %s", randomUUID.String()),
@@ -108,14 +103,12 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			randomUUID := uuid.New()
 			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu",
@@ -159,13 +152,11 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
 
 			if tc.fatalErr {
 				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -202,12 +193,10 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
 
-			*ODR = *NewDockerRunOptions()
-
 			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(s.T(), err)
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -263,8 +252,6 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
-				*ODR = *NewDockerRunOptions()
-
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				flagsArray := []string{"docker", "run",
@@ -279,9 +266,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /inputs/foo.txt") // This doesn't exist, but shouldn't error
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
-					flagsArray...,
-				)
+				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
@@ -344,8 +329,6 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
-				*ODR = *NewDockerRunOptions()
-
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				flagsArray := []string{"docker", "run",
@@ -358,9 +341,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
-					flagsArray...,
-				)
+				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
@@ -418,8 +399,6 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
-				*ODR = *NewDockerRunOptions()
-
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				flagsArray := []string{"docker", "run",
@@ -439,9 +418,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu echo 'hello world'")
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
-					flagsArray...,
-				)
+				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 
 				if tcids.err != "" {
 					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -500,15 +477,13 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 
 	for i, tc := range tests {
 		func() {
-			*ODR = *NewDockerRunOptions()
-
 			ctx := context.Background()
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu",
@@ -570,8 +545,6 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
-				*ODR = *NewDockerRunOptions()
-
 				// log.Warn().Msgf("%s - Args: %+v", labelTest.Name, os.Args)
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				require.NoError(s.T(), err)
@@ -589,7 +562,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
 				args = append(args, fmt.Sprintf("ubuntu echo 'hello world - %s'", randNum.String()))
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+				_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
@@ -640,13 +613,11 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
 
 			if tc.fatalErr {
 				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -689,8 +660,6 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			flagsArray := []string{"docker", "run",
@@ -699,9 +668,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu pwd")
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
-				flagsArray...,
-			)
+			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 
 			if tc.error_code != 0 {
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -740,8 +707,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
-	*ODR = *NewDockerRunOptions()
-
 	dirPath := s.T().TempDir()
 
 	for _, video := range videos {
@@ -771,7 +736,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"ubuntu", "echo", "hello",
 	}
 
-	_, _, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
+	_, _, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
 	require.NoError(s.T(), submitErr)
 }
 
@@ -786,10 +751,7 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
-		ODR.Inputs = make([]string, 0)
-		ODR.InputVolumes = make([]string, 0)
-
-		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
+		_, out, err := ExecuteTestCobraCommand(s.T(),
 			"docker", "run",
 			"--api-host", host,
 			"--api-port", port,
@@ -909,8 +871,6 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*ODR = *NewDockerRunOptions()
-
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			flagsArray := []string{"docker", "run",
@@ -919,9 +879,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 
 			flagsArray = append(flagsArray, fmt.Sprintf(`ubuntu perl -e "print \"=\" x %d"`, tc.inputLength))
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
-				flagsArray...,
-			)
+			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
@@ -967,8 +925,6 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 		c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 		defer cm.Cleanup()
 
-		*ODR = *NewDockerRunOptions()
-
 		parsedBasedURI, _ := url.Parse(c.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
@@ -981,7 +937,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 		args = append(args, tc.inputFlags...)
 		args = append(args, "ubuntu", "--", "ls", "/input")
 
-		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+		_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 		require.NoError(s.T(), err, "Error submitting job")
 
 		j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
@@ -1032,7 +988,6 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 				node.NewComputeConfigWithDefaults(),
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
-			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -1045,7 +1000,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			)
 			args = append(args, tc.imageName, "--", tc.executable)
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+			_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 			require.NoError(s.T(), err, "Error submitting job")
 
 			if !tc.isValid {
@@ -1058,15 +1013,13 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
-	*ODR = *NewDockerRunOptions()
-
 	ctx := context.Background()
 	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+	_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 		"--api-host", host,
 		"--api-port", port,
 		"ubuntu",
@@ -1080,7 +1033,6 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
-	*ODR = *NewDockerRunOptions()
 	var expectedTimeout float64 = 999
 
 	ctx := context.Background()
@@ -1089,7 +1041,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+	_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 		"--api-host", host,
 		"--api-port", port,
 		"--timeout", fmt.Sprintf("%f", expectedTimeout),

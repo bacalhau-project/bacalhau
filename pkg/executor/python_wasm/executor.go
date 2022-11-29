@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type Executor struct {
@@ -24,8 +23,6 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
-	cm *system.CleanupManager,
 	executors executor.ExecutorProvider,
 ) (*Executor, error) {
 	e := &Executor{
@@ -35,14 +32,18 @@ func NewExecutor(
 }
 
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
+	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	if err != nil {
+		return false, err
+	}
+	return dockerExecutor.IsInstalled(ctx)
+}
+
+func (e *Executor) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	return true, nil
-}
-
-func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {
+func (e *Executor) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
@@ -50,7 +51,7 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 	*model.RunCommandResult, error) {
 	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
-	shard.Job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
+	shard.Job.Spec.Docker.Image = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
 	if shard.Job.Spec.Language.Command != "" {
 		// pass command through to node wasm wrapper
 		shard.Job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", shard.Job.Spec.Language.Command}
