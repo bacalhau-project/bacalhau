@@ -28,11 +28,6 @@ var (
 		# Describe a job and include all server and local events
 		bacalhau describe --include-events b6ad164a 
 `))
-
-	// Set Defaults (probably a better way to do this)
-	OD = NewDescribeOptions()
-
-	// For the -f flag
 )
 
 type DescribeOptions struct {
@@ -47,7 +42,22 @@ func NewDescribeOptions() *DescribeOptions {
 		OutputSpec:    false,
 	}
 }
-func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+
+func newDescribeCmd() *cobra.Command {
+	OD := NewDescribeOptions()
+
+	describeCmd := &cobra.Command{
+		Use:     "describe [id]",
+		Short:   "Describe a job on the network",
+		Long:    describeLong,
+		Example: describeExample,
+		Args:    cobra.ExactArgs(1),
+		PreRun:  applyPorcelainLogLevel,
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
+			return describe(cmd, cmdArgs, OD)
+		},
+	}
+
 	describeCmd.PersistentFlags().BoolVar(
 		&OD.OutputSpec, "spec", OD.OutputSpec,
 		`Output Jobspec to stdout`,
@@ -56,93 +66,83 @@ func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideoma
 		&OD.IncludeEvents, "include-events", OD.IncludeEvents,
 		`Include events in the description (could be noisy)`,
 	)
+
+	return describeCmd
 }
 
-var describeCmd = &cobra.Command{
-	Use:     "describe [id]",
-	Short:   "Describe a job on the network",
-	Long:    describeLong,
-	Example: describeExample,
-	Args:    cobra.ExactArgs(1),
-	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
+func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
 
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		var err error
-		inputJobID := cmdArgs[0]
-		if inputJobID == "" {
-			var byteResult []byte
-			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
-			if err != nil {
-				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
-				return err
-			}
-			inputJobID = string(byteResult)
-		}
-		j, foundJob, err := GetAPIClient().Get(ctx, inputJobID)
-
+	var err error
+	inputJobID := cmdArgs[0]
+	if inputJobID == "" {
+		var byteResult []byte
+		byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
+		// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 		if err != nil {
-			if er, ok := err.(*bacerrors.ErrorResponse); ok {
-				Fatal(er.Message, 1)
-				return nil
-			} else {
-				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", inputJobID, err), 1)
-				return nil
-			}
+			Fatal(cmd, fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+			return err
 		}
+		inputJobID = string(byteResult)
+	}
+	j, foundJob, err := GetAPIClient().Get(ctx, inputJobID)
 
-		if !foundJob {
-			cmd.Printf(err.Error() + "\n")
-			Fatal("", 1)
+	if err != nil {
+		if er, ok := err.(*bacerrors.ErrorResponse); ok {
+			Fatal(cmd, er.Message, 1)
+			return nil
+		} else {
+			Fatal(cmd, fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", inputJobID, err), 1)
+			return nil
 		}
+	}
 
-		shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)
-		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job states '%s': %s\n", j.ID, err), 1)
-		}
+	if !foundJob {
+		cmd.Printf(err.Error() + "\n")
+		Fatal(cmd, "", 1)
+	}
 
-		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
-		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
-		}
+	shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Failure retrieving job states '%s': %s\n", j.ID, err), 1)
+	}
 
-		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
-		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
-		}
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+	}
 
-		jobDesc := j
-		jobDesc.State = shardStates
+	localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+	}
 
-		if OD.IncludeEvents {
-			jobDesc.Events = jobEvents
-			jobDesc.LocalEvents = localEvents
-		}
+	jobDesc := j
+	jobDesc.State = shardStates
 
-		const (
-			ColumnID        ColumnEnum = "id"
-			ColumnCreatedAt ColumnEnum = "created_at"
-		)
-		b, err := model.JSONMarshalWithMax(jobDesc)
-		if err != nil {
-			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
-		}
+	if OD.IncludeEvents {
+		jobDesc.Events = jobEvents
+		jobDesc.LocalEvents = localEvents
+	}
 
-		// Convert Json to Yaml
-		y, err := yaml.JSONToYAML(b)
-		if err != nil {
-			Fatal(fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.ID, err), 1)
-		}
+	b, err := model.JSONMarshalWithMax(jobDesc)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
+	}
 
-		cmd.Print(string(y))
+	// Convert Json to Yaml
+	y, err := yaml.JSONToYAML(b)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.ID, err), 1)
+	}
 
-		return nil
-	},
+	cmd.Print(string(y))
+
+	return nil
 }
