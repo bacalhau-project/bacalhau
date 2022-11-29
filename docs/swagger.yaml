@@ -408,7 +408,7 @@ definitions:
         type: integer
       Resources:
         $ref: '#/definitions/model.ResourceUsageConfig'
-        description: the compute (cpy, ram) resources this job requires
+        description: the compute (cpu, ram) resources this job requires
       Sharding:
         $ref: '#/definitions/model.JobShardingConfig'
         description: |-
