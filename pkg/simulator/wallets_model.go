@@ -39,6 +39,19 @@ func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 	}
 }
 
+// For now, annotate message types that we know come from requestor nodes as
+// belonging to a requestor wallet, and similarly for compute nodes.
+// This won't be necessary once
+func fromClient(event model.JobEvent) model.JobEvent {
+	event.SourceNodeID = event.SourceNodeID + "-requestor"
+	return event
+}
+
+func fromServer(event model.JobEvent) model.JobEvent {
+	event.SourceNodeID = event.SourceNodeID + "-computenode"
+	return event
+}
+
 // interpret each event as it comes in and adjust the wallet balances accordingly
 // (as well as interrogate the localDB state)
 func (wallets *walletsModel) addEvent(event model.JobEvent) error {
@@ -56,40 +69,45 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	switch event.EventName {
 	case model.JobEventCreated:
 		// C->S: Created
-		return wallets.created(event)
+		return wallets.created(fromClient(event))
 	case model.JobEventBid:
 		// S->C: Bid
-		return wallets.bid(event)
+		return wallets.bid(fromServer(event))
 	case model.JobEventBidAccepted:
 		// C->S: Escrow & BidAccepted
-		return wallets.bidAccepted(event)
+		return wallets.bidAccepted(fromClient(event))
 	case model.JobEventResultsProposed:
 		// S->C: ResultsProposed
-		return wallets.resultsProposed(event)
+		return wallets.resultsProposed(fromServer(event))
 	case model.JobEventResultsAccepted:
 		// C->S: ResultsAccepted
-		return wallets.resultsAccepted(event)
+		return wallets.resultsAccepted(fromClient(event))
 	case model.JobEventResultsPublished:
 		// C->S: ResultsPublished
-		return wallets.resultsPublished(event)
+		return wallets.resultsPublished(fromServer(event))
 	}
 	return nil
 }
 
 func (wallets *walletsModel) created(event model.JobEvent) error {
 	log.Info().Msgf("SIM: received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
-	wallets.jobOwners[event.JobID] = event.ClientID
+	// wallets.jobOwners[event.JobID] = event.ClientID
 	// if we want to use the requester node as the wallet address then it's this
 	//wallets.jobOwners[event.JobID] = event.SourceNodeID
 	return nil
 }
 
+func logWallet(event model.JobEvent) {
+	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
+}
+
 // an example of an event handler that maps the wallet address that "owns" the job
 // and uses the state resolver to query the local DB for the current state of the job
 func (wallets *walletsModel) bid(event model.JobEvent) error {
+	logWallet(event)
+
 	ctx := context.Background()
-	walletAddress := wallets.jobOwners[event.JobID]
-	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
+	//walletAddress := wallets.jobOwners[event.JobID]
 
 	// here are examples of using the state resolver to query the localDB
 	_, err := wallets.localDB.GetJob(ctx, event.JobID)
@@ -106,21 +124,29 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) bidAccepted(event model.JobEvent) error {
+	logWallet(event)
+
 	log.Info().Msgf("SIM: received bidAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsProposed(event model.JobEvent) error {
+	logWallet(event)
+
 	log.Info().Msgf("SIM: received resultsProposed event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsAccepted(event model.JobEvent) error {
+	logWallet(event)
+
 	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsPublished(event model.JobEvent) error {
+	logWallet(event)
+
 	log.Info().Msgf("SIM: received resultsPublished event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
