@@ -2,7 +2,11 @@ package simulator
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
@@ -24,18 +28,37 @@ type walletsModel struct {
 	balances map[string]uint64
 
 	// keep track of a payment channel balance PER JOB, a.k.a per-job escrow
+	// NB: in the real implementation, this would be indexed on (client, server,
+	// job) and the payment channel would persist on the (client, server) prefix
+	// of the key
 	escrow map[string]uint64
 
 	// the local DB instance we can use to query state
 	localDB localdb.LocalDB
+
+	// money mutex - hold this when adding/subtracting to/from balances and
+	// escrow channels
+	moneyMutex sync.Mutex
 }
 
 func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
-	return &walletsModel{
+	w := &walletsModel{
 		jobOwners: map[string]string{},
 		balances:  map[string]uint64{},
 		escrow:    map[string]uint64{},
 		localDB:   localDB,
+	}
+	go w.logWallets()
+	return w
+}
+
+func (wallets *walletsModel) logWallets() {
+	for {
+		log.Info().Msg("======== WALLET BALANCES =========")
+		spew.Dump(wallets.balances)
+		log.Info().Msg("======== ESCROW BALANCES =========")
+		spew.Dump(wallets.escrow)
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -93,12 +116,58 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 	log.Info().Msgf("SIM: received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	// wallets.jobOwners[event.JobID] = event.ClientID
 	// if we want to use the requester node as the wallet address then it's this
-	//wallets.jobOwners[event.JobID] = event.SourceNodeID
+	wallets.jobOwners[event.JobID] = event.SourceNodeID
 	return nil
 }
 
 func logWallet(event model.JobEvent) {
 	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
+}
+
+func (wallets *walletsModel) ensureWallet(wallet string) {
+	if _, ok := wallets.balances[wallet]; !ok {
+		wallets.balances[wallet] = 10000
+	}
+}
+
+func (wallets *walletsModel) transferFunds(from, to string, amount uint64) error {
+	wallets.moneyMutex.Lock()
+	defer wallets.moneyMutex.Unlock()
+	if wallets.balances[from] < amount {
+		return fmt.Errorf("not enough funds in wallet %s", from)
+	}
+	wallets.balances[from] -= amount
+	wallets.balances[to] += amount
+	return nil
+}
+
+func (wallets *walletsModel) escrowFunds(jobID string, amount uint64) error {
+	wallets.moneyMutex.Lock()
+	defer wallets.moneyMutex.Unlock()
+	wallet, ok := wallets.jobOwners[jobID]
+	if !ok {
+		return fmt.Errorf("job %s not found", jobID)
+	}
+	wallets.ensureWallet(wallet)
+	if wallets.balances[wallet] < amount {
+		return fmt.Errorf("wallet %s has insufficient funds to escrow %d", wallet, amount)
+	}
+	wallets.balances[wallet] -= amount
+	wallets.escrow[jobID] += amount
+	return nil
+}
+
+func (wallets *walletsModel) releaseEscrow(jobID string, to string) error {
+	wallets.moneyMutex.Lock()
+	defer wallets.moneyMutex.Unlock()
+	amount, ok := wallets.escrow[jobID]
+	if !ok {
+		return fmt.Errorf("no escrow found for job %s", jobID)
+	}
+	wallets.ensureWallet(to)
+	wallets.balances[to] += amount
+	delete(wallets.escrow, jobID)
+	return nil
 }
 
 // an example of an event handler that maps the wallet address that "owns" the job
@@ -107,7 +176,9 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 	logWallet(event)
 
 	ctx := context.Background()
-	//walletAddress := wallets.jobOwners[event.JobID]
+	walletAddress := wallets.jobOwners[event.JobID]
+	wallets.ensureWallet(walletAddress)
+	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
 
 	// here are examples of using the state resolver to query the localDB
 	_, err := wallets.localDB.GetJob(ctx, event.JobID)
