@@ -38,13 +38,13 @@ var (
 
 func newDevStackOptions() *devstack.DevStackOptions {
 	return &devstack.DevStackOptions{
-		NumberOfNodes:     3,
-		NumberOfBadActors: 0,
-		Peer:              "",
-		PublicIPFSMode:    false,
-		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
-		LocalNetworkLotus: false,
-		SimulatorURL:      "",
+		NumberOfNodes:            3,
+		NumberOfBadComputeActors: 0,
+		Peer:                     "",
+		PublicIPFSMode:           false,
+		EstuaryAPIKey:            os.Getenv("ESTUARY_API_KEY"),
+		LocalNetworkLotus:        false,
+		SimulatorURL:             "",
 	}
 }
 
@@ -54,8 +54,12 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`How many nodes should be started in the cluster`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadActors, "bad-actors", ODs.NumberOfBadActors,
-		`How many nodes should be bad actors`,
+		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
+		`How many compute nodes should be bad actors`,
+	)
+	devstackCmd.PersistentFlags().IntVar(
+		&ODs.NumberOfBadComputeActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
+		`How many requester nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&IsNoop, "noop", false,
@@ -95,9 +99,9 @@ var devstackCmd = &cobra.Command{
 
 		config.DevstackSetShouldPrintInfo()
 
-		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
+		if ODs.NumberOfBadComputeActors >= ODs.NumberOfNodes {
 			Fatal(fmt.Sprintf("You cannot have more bad actors (%d) than there are nodes (%d).",
-				ODs.NumberOfBadActors, ODs.NumberOfNodes), 1)
+				ODs.NumberOfBadComputeActors, ODs.NumberOfNodes), 1)
 		}
 
 		// Context ensures main goroutine waits until killed with ctrl+c:

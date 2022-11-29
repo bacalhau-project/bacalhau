@@ -26,9 +26,8 @@ type StandardStorageProviderOptions struct {
 }
 
 type StandardExecutorOptions struct {
-	DockerID   string
-	IsBadActor bool
-	Storage    StandardStorageProviderOptions
+	DockerID string
+	Storage  StandardStorageProviderOptions
 }
 
 func NewStandardStorageProvider(
