@@ -8,6 +8,7 @@ authors = ["David Aronchick <aronchick@gmail.com>"]
 python = "^3.10"
 GitPython = "^3.1.29"
 semver = "^2.13.0"
+Jinja2 = "^3.1.2"
 
 [tool.poetry.dev-dependencies]
 
