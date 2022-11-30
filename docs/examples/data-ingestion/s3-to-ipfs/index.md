@@ -10,16 +10,24 @@ sidebar_position: 3
 
 ## Introduction
 
-In this example we will scrape all the links from public s3 buckets and copy the data from s3 to IPFS.
-It works by Extracting paths of files from the document tree, these links can be later be used to download the content of a s3 bucket and later we will use a shell script to submit bacalhau jobs that copy the data to IPFS
+In this example, we will scrape all the links from a public S3 buckets and copy the data from S3 to IPFS.
 
-By following this example you can move the datasets you want from s3 to IPFS
+This works by extracting paths of files from the document tree. These links can be later be used to download the content of a S3 bucket and later we will use a shell script to submit bacalhau jobs that copy the data to IPFS
 
+By following this example, you'll be able move the datasets you want from S3 to IPFS
+
+
+## Prerequisite
+
+- The Bacalhau client - [Installation instructions](https://docs.bacalhau.org/getting-started/installation#install-the-bacalhau-client)
 
 ## Getting the URL of files in the bucket
 
-Note:-There are certain limitations to this step, which only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs, you can pass in your own URL list of all the files
-that you want to copy if the bucket has more than 1000 files
+You can pass in your own URL list of all the files that you want to copy if the bucket has more than 1000 files.
+
+:::note
+There are certain limitations to this step, as this only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.
+:::
 
 Structure of the command
 
@@ -31,29 +39,12 @@ python \
 -- python3 extract.py https://%name-of-the-bucket%.s3.amazonaws.com/  /inputs
 ```
 
-replace %name-of-the-bucket% with the name of the bucket you want to extract the URLs from
+replace `%name-of-the-bucket%` with the name of the bucket you want to extract the URLs from
 
 
-
-```python
-!curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.3.11 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.3.11
-    Server Version: v0.3.11
-
-
- Command with all the place holders replaced
+## Running S3 bucket on Bacalhau
+ 
+Now we're ready to submit a Bacalhau job. Below is the command with the place holders that should replaced.
 
 
 ```bash
@@ -68,19 +59,14 @@ python \
 
 Structure of the command
 
--u https://noaa-goes16.s3.amazonaws.com/
-we replace the placeholders with `noaa-goes16` which is the name of the bucket we want to extract URLs from
+- `-u  https://noaa-goes16.s3.amazonaws.com/`: we replace the placeholders with `noaa-goes16` which is the name of the bucket we want to extract URLs from
 
--v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \
-Mounting the scrapper script, this script extracts the links from the XML document tree
+- `-v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \`: Mounting the scrapper script, this script extracts the links from the XML document tree
 
 
--- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'
-Executing the scrapper script
+- `-- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'`: Executing the scrapper script
 
-since the script extracts the path of the file in the bucket we need add the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/` 
-
-then we provide the path where the XML document tree of the URL is mounted which is `/inputs`
+Since the script extracts the path of the file in the bucket, we need to add the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/`  then provide the path where the XML document tree of the URL is mounted which is `/inputs`
 
 
 ```bash
@@ -91,7 +77,7 @@ bacalhau list --id-filter ${JOB_ID} --wide
     [97;40m 22-11-13-13:52:12 [0m[97;40m 12e1b4d9-00b0-4824-bbd1-6d75083dcae0 [0m[97;40m Docker python /bin/bash -c python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmaxiCCJ5vuwEfA2x7VVvMUXHxHN6iYNPhmvFhXSyUyNYx [0m
 
 
-Where it says "Completed", that means the job is done, and we can get the results.
+Where it says "`Completed`", that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
@@ -134,18 +120,18 @@ head -10 results/combined_results/stdout
     https://noaa-goes16.s3.amazonaws.com/ABI-L1b-RadC/2000/001/12/OR_ABI-L1b-RadC-M3C01_G16_s20000011200000_e20000011200000_c20171061215161.nc
 
 
-## Copying the data from s3 to IPFS
+## Copying the data from S3 to IPFS
 
-In this section we will just copy the first ten links that we got as a output from the previous job and save them to IPFS using bacalhau just to save time but you can select all the links
+In this section, we will just copy the first ten links that we got as a output from the previous job and save them to IPFS using Bacalhau just to save time.However,you can select all the links if that is what you are going for.
 
-selecting the first ten links
+Selecting the first ten links
 
 
 ```bash
 head -10 results/combined_results/stdout > links.txt
 ```
 
-selecting all the links
+Selecting all the links
 
 ```
 cat results/combined_results/stdout > links.txt
@@ -187,11 +173,9 @@ bash move.sh
     9c1acb25-6fec-4d14-a91a-4a1f60f985b9
 
 
-List the outputs of the jobs in json format
+### List the outputs of the jobs in json format
 
-since in this case we just move the first 10 URLs we set the no of jobs to list to 10
-
--n 10 but if you have submitted the whole list you can set -n to 1000
+In this case, we will move the first 10 URLs and set the no of jobs to 10 `-n 10`. If you have submitted the whole list you can set `-n` to 1000
 
 
 ```bash
