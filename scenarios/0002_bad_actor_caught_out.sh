@@ -12,7 +12,7 @@ bacalhau simulator &
 sleep 1
 
 export PREDICTABLE_API_PORT=1
-rm -rf /tmp/bacalhau-devstack* ; bacalhau devstack --bad-actors 1 \
+rm -rf /tmp/bacalhau-devstack* ; bacalhau devstack --bad-compute-actors 1 \
     --simulator-url ws://localhost:9075/websocket &
 
 sleep 1

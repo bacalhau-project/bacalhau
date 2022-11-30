@@ -142,8 +142,13 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 	return nil
 }
 
-func logWallet(event model.JobEvent) {
+func (wallets *walletsModel) checkWallet(event model.JobEvent) error {
 	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
+	walletID := event.SourceNodeID
+	if wallets.balances[walletID] < MIN_WALLET {
+		return fmt.Errorf("wallet %s fell below min balance, sorry", walletID)
+	}
+	return nil
 }
 
 func (wallets *walletsModel) ensureWallet(wallet string) {
@@ -164,8 +169,13 @@ func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount ui
 		return fmt.Errorf("job %s not found", jobID)
 	}
 	wallets.ensureWallet(wallet)
-	if wallets.balances[wallet] < amount {
-		return fmt.Errorf("wallet %s has insufficient funds to escrow %d", wallet, amount)
+	if wallets.balances[wallet]-MIN_WALLET < amount {
+		return fmt.Errorf(
+			"wallet %s has insufficient funds to escrow %d, taking into account minimum wallet balance of %d",
+			wallet,
+			amount,
+			MIN_WALLET,
+		)
 	}
 	wallets.balances[wallet] -= amount
 	wallets.escrow[escrowID(client, server, jobID)] += amount
@@ -189,7 +199,7 @@ func (wallets *walletsModel) releaseEscrow(client, server, jobID string) error {
 // an example of an event handler that maps the wallet address that "owns" the job
 // and uses the state resolver to query the local DB for the current state of the job
 func (wallets *walletsModel) bid(event model.JobEvent) error {
-	logWallet(event)
+	wallets.checkWallet(event)
 
 	ctx := context.Background()
 	walletAddress := wallets.jobOwners[event.JobID]
@@ -211,28 +221,31 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) bidAccepted(event model.JobEvent) error {
-	logWallet(event)
+	err := wallets.checkWallet(event)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Msgf("SIM: received bidAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsProposed(event model.JobEvent) error {
-	logWallet(event)
+	wallets.checkWallet(event)
 
 	log.Info().Msgf("SIM: received resultsProposed event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsAccepted(event model.JobEvent) error {
-	logWallet(event)
+	wallets.checkWallet(event)
 
 	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsPublished(event model.JobEvent) error {
-	logWallet(event)
+	wallets.checkWallet(event)
 
 	log.Info().Msgf("SIM: received resultsPublished event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
