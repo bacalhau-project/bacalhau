@@ -15,7 +15,7 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 		publicKey = []byte{}
 	}
 
-	return &model.Job{
+	j := &model.Job{
 		APIVersion: ev.APIVersion,
 		Metadata: model.Metadata{
 			ID:        ev.JobID,
@@ -30,6 +30,10 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 		},
 		Spec: ev.Spec,
 	}
+	j.Spec.Deal = ev.Deal
+	j.Spec.ExecutionPlan = ev.JobExecutionPlan
+
+	return j
 }
 
 // these are util methods for the CLI
