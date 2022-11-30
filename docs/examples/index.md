@@ -29,3 +29,9 @@ Each example is a self-contained Jupyter notebook that can be run locally or on 
 Data is typically stored externally in GCS (for remote data examples) or IPFS (for local data examples).
 
 The examples execute on the Bacalhau public network (a.k.a. `mainnet`).
+
+## Developer Information
+
+All of the examples are open source and available on GitHub. The examples exist in a separate repository located at https://github.com/bacalhau-project/examples/. Please see the [README.md for more instructions on how to contribute](https://github.com/bacalhau-project/examples/README.md).
+
+Note that the code for the rest of the documentation website [is located in a separate repository](https://github.com/bacalhau-project/docs.bacalhau.org/).
