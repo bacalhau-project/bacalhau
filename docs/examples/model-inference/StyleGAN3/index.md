@@ -45,7 +45,7 @@ Viewing the output image
 
 ## Building the docker image
 
-Instead of building from scratch we add the following lines to the existing docker file in the repo. Copy and paste the following lines of code to the container and set some other variables.
+Instead of building from scratch we add the following lines to the existing docker file in the repo. Copy and paste the following lines of code to the container and set your variables.
 
 
 ```
@@ -57,7 +57,7 @@ ENV HOME /scratch
 ```
 
 
-This step is done in the docker run command but since we’re running the command on a remote machine mounting local directory is not possible, so we add this step to the Dockerfile.
+This step is done in the docker run command but since we’re running the command on a remote machine mounting local directory is not possible, so we add this step to the `Dockerfile`.
 
 To build the docker container, run the docker build command
 
@@ -89,7 +89,7 @@ After the repo image has been pushed to docker hub, we can now run the container
 
 ## Running the container on Bacalhau
 
-Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results and prints the stdout. 
+Now we're ready to submit a Bacalhau job. The code below runs a job, downloads the results and prints the stdout. 
 
 The command below is similar to what we have run locally but we changed the output directory to the outputs folder so that the results are saved to IPFS.
 
