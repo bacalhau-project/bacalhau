@@ -2,7 +2,6 @@ package apicopy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,26 +64,19 @@ func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
 func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
-		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.CID)
-	})
-	if err != nil {
-		if errors.Is(err, system.ErrorTimeout) {
-			return 0, nil
-		} else {
-			return 0, err
-		}
-	}
-	if uintResult, ok := result.(uint64); ok {
-		return uintResult, nil
-	} else {
-		return 0, fmt.Errorf("error casting timeout result to uint64")
-	}
+	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
+	defer cancel()
+
+	return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.CID)
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.PrepareStorage")
 	defer span.End()
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, config.GetDownloadCidRequestTimeout(ctx))
+	defer cancel()
 
 	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.CID)
 	if err != nil {
@@ -173,10 +165,7 @@ func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageS
 		return storage.StorageVolume{}, err
 	}
 	if !ok {
-		_, err := system.Timeout(config.GetDownloadCidRequestTimeout(), func() (interface{}, error) {
-			innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.CID, outputPath)
-			return storage.StorageVolume{}, innerErr
-		})
+		err = dockerIPFS.IPFSClient.Get(ctx, storageSpec.CID, outputPath)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}

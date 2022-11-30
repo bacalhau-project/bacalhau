@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -42,9 +43,22 @@ func GetAPIPort() string {
 	return os.Getenv("BACALHAU_PORT")
 }
 
-// by default we wait 2 minutes for the IPFS network to resolve a CID
-// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-var getVolumeSizeRequestTimeoutSeconds int64 = 120
+type contextKey int
+
+const (
+	getVolumeSizeRequestTimeoutKey contextKey = iota
+	downloadCidRequestTimeoutKey
+)
+
+const (
+	// by default we wait 2 minutes for the IPFS network to resolve a CID
+	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
+	getVolumeSizeRequestTimeout time.Duration = 2 * time.Minute
+
+	// by default we wait 5 minutes for the IPFS network to download a CID
+	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
+	downloadCidRequestTimeout time.Duration = 5 * time.Minute
+)
 
 // how long do we wait for a volume size request to timeout
 // if a non-existing cid is asked for - the dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
@@ -53,17 +67,29 @@ var getVolumeSizeRequestTimeoutSeconds int64 = 120
 // in prod - we want to wait longer because we might be running a job that is
 // using non-local CIDs
 // the tests are expected to call SetVolumeSizeRequestTimeout to reduce this timeout
-func GetVolumeSizeRequestTimeout() time.Duration {
-	return time.Duration(getVolumeSizeRequestTimeoutSeconds) * time.Second
+func GetVolumeSizeRequestTimeout(ctx context.Context) time.Duration {
+	value := ctx.Value(getVolumeSizeRequestTimeoutKey)
+	if value == nil {
+		value = getVolumeSizeRequestTimeout
+	}
+	return value.(time.Duration)
 }
 
-// by default we wait 5 minutes for the IPFS network to download a CID
-// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-var downloadCidRequestTimeoutSeconds int64 = 300
+func SetVolumeSizeRequestTimeout(ctx context.Context, value time.Duration) context.Context {
+	return context.WithValue(ctx, getVolumeSizeRequestTimeoutKey, value)
+}
 
 // how long do we wait for a cid to download
-func GetDownloadCidRequestTimeout() time.Duration {
-	return time.Duration(downloadCidRequestTimeoutSeconds) * time.Second
+func GetDownloadCidRequestTimeout(ctx context.Context) time.Duration {
+	value := ctx.Value(downloadCidRequestTimeoutKey)
+	if value == nil {
+		value = downloadCidRequestTimeout
+	}
+	return value.(time.Duration)
+}
+
+func SetDownloadCidRequestTimeout(ctx context.Context, value time.Duration) context.Context {
+	return context.WithValue(ctx, downloadCidRequestTimeoutKey, value)
 }
 
 // by default we wait 5 minutes for a URL to download
