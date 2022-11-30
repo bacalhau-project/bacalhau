@@ -64,7 +64,7 @@ func (node *RequesterNode) HandleJobEvent(ctx context.Context, event model.JobEv
 	}
 
 	// we only care about jobs that we own
-	if j.RequesterNodeID != node.ID {
+	if j.Status.Requester.RequesterNodeID != node.ID {
 		return nil
 	}
 
@@ -104,7 +104,7 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	ev.APIVersion = data.Job.APIVersion
 	ev.ClientID = data.ClientID
 	ev.Spec = data.Job.Spec
-	ev.Deal = data.Job.Deal
+	ev.Deal = data.Job.Spec.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	// set a default timeout value if one is not passed or below an acceptable value
@@ -221,7 +221,7 @@ func (node *RequesterNode) verifyShard(
 		return verifiedResults, firstError
 	}
 
-	err = node.notifyVerificationComplete(ctx, shard.Job.ID)
+	err = node.notifyVerificationComplete(ctx, shard.Job.Metadata.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (node *RequesterNode) notifyBidDecision(ctx context.Context, shard model.Jo
 	// publish a local event
 	localEvent := model.JobLocalEvent{
 		EventName:    localEventName,
-		JobID:        shard.Job.ID,
+		JobID:        shard.Job.Metadata.ID,
 		ShardIndex:   shard.Index,
 		TargetNodeID: targetNodeID,
 	}
@@ -318,7 +318,7 @@ func (node *RequesterNode) constructJobEvent(jobID string, eventName model.JobEv
 }
 
 func (node *RequesterNode) constructShardEvent(shard model.JobShard, eventName model.JobEventType) model.JobEvent {
-	event := node.constructJobEvent(shard.Job.ID, eventName)
+	event := node.constructJobEvent(shard.Job.Metadata.ID, eventName)
 	event.ShardIndex = shard.Index
 	return event
 }

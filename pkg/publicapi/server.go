@@ -209,7 +209,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 }
 
 func verifySubmitRequest(req *submitRequest) error {
-	if req.Data.ClientID == "" {
+	if req.JobCreatePayload.ClientID == "" {
 		return errors.New("job deal must contain a client ID")
 	}
 	if req.ClientSignature == "" {
@@ -220,7 +220,7 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the client's public key matches the client ID:
-	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.ClientID)
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.JobCreatePayload.ClientID)
 	if err != nil {
 		return fmt.Errorf("error verifying client ID: %w", err)
 	}
@@ -229,7 +229,7 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the signature is valid:
-	jsonData, err := model.JSONMarshalWithMax(req.Data)
+	jsonData, err := model.JSONMarshalWithMax(req.JobCreatePayload)
 	if err != nil {
 		return fmt.Errorf("error marshaling job data: %w", err)
 	}

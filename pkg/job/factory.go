@@ -16,15 +16,19 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 	}
 
 	return &model.Job{
-		APIVersion:         ev.APIVersion,
-		ID:                 ev.JobID,
-		RequesterNodeID:    ev.SourceNodeID,
-		RequesterPublicKey: publicKey,
-		ClientID:           ev.ClientID,
-		Spec:               ev.Spec,
-		Deal:               ev.Deal,
-		ExecutionPlan:      ev.JobExecutionPlan,
-		CreatedAt:          time.Now(),
+		APIVersion: ev.APIVersion,
+		Metadata: model.Metadata{
+			ID:        ev.JobID,
+			ClientID:  ev.ClientID,
+			CreatedAt: time.Now(),
+		},
+		Status: model.JobStatus{
+			Requester: model.JobRequester{
+				RequesterNodeID:    ev.SourceNodeID,
+				RequesterPublicKey: publicKey,
+			},
+		},
+		Spec: ev.Spec,
 	}
 }
 
@@ -133,7 +137,7 @@ func ConstructDockerJob( //nolint:funlen
 		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 		MinBids:     minBids,
@@ -212,7 +216,7 @@ func ConstructLanguageJob(
 	j.Spec.Annotations = jobAnnotations
 	j.Spec.DoNotTrack = doNotTrack
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 		MinBids:     minBids,

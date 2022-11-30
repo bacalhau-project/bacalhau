@@ -103,27 +103,27 @@ var describeCmd = &cobra.Command{
 			Fatal("", 1)
 		}
 
-		shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)
+		shardStates, err := GetAPIClient().GetJobState(ctx, j.Metadata.ID)
 		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job states '%s': %s\n", j.ID, err), 1)
+			Fatal(fmt.Sprintf("Failure retrieving job states '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 
-		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID)
 		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 
-		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
+		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.Metadata.ID)
 		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 
 		jobDesc := j
-		jobDesc.State = shardStates
+		jobDesc.Status.State = shardStates
 
 		if OD.IncludeEvents {
-			jobDesc.Events = jobEvents
-			jobDesc.LocalEvents = localEvents
+			jobDesc.Status.Events = jobEvents
+			jobDesc.Status.LocalEvents = localEvents
 		}
 
 		const (
@@ -132,13 +132,13 @@ var describeCmd = &cobra.Command{
 		)
 		b, err := model.JSONMarshalWithMax(jobDesc)
 		if err != nil {
-			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
+			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
 		if err != nil {
-			Fatal(fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.ID, err), 1)
+			Fatal(fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 
 		cmd.Print(string(y))

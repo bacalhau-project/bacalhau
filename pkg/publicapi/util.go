@@ -232,7 +232,7 @@ func MakeJob(
 		// Outputs: testCase.Outputs,
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

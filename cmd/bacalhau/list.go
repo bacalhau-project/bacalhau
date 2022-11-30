@@ -239,8 +239,8 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
-		shortenTime(OL.OutputWide, j.CreatedAt),
-		shortID(OL.OutputWide, j.ID),
+		shortenTime(OL.OutputWide, j.Metadata.CreatedAt),
+		shortID(OL.OutputWide, j.Metadata.ID),
 		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 		shortenString(OL.OutputWide, stateSummary),
 		shortenString(OL.OutputWide, verifiedSummary),

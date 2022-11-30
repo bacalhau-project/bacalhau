@@ -357,13 +357,13 @@ func ExecuteJob(ctx context.Context,
 	// because all code after this point is related to
 	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
 	if !runtimeSettings.WaitForJobToFinish {
-		cmd.Print(j.ID + "\n")
+		cmd.Print(j.Metadata.ID + "\n")
 		return nil
 	}
 
 	// if we are in --id-only mode - print the id
 	if runtimeSettings.PrintJobIDOnly {
-		cmd.Print(j.ID + "\n")
+		cmd.Print(j.Metadata.ID + "\n")
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
@@ -379,15 +379,15 @@ func ExecuteJob(ctx context.Context,
 		}
 	}
 
-	jobReturn, found, err := apiClient.Get(ctx, j.ID)
+	jobReturn, found, err := apiClient.Get(ctx, j.Metadata.ID)
 	if err != nil {
 		Fatal(fmt.Sprintf("Error getting job: %s", err), 1)
 	}
 	if !found {
-		Fatal(fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.ID), 1)
+		Fatal(fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
 	}
 
-	js, err := apiClient.GetJobState(ctx, jobReturn.ID)
+	js, err := apiClient.GetJobState(ctx, jobReturn.Metadata.ID)
 	if err != nil {
 		Fatal(fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
@@ -444,7 +444,7 @@ To download the results, execute:
 
 To get more details about the run, execute:
 %s%s describe %s
-`, indentOne, getCommandLineExecutable(), j.ID, indentOne, getCommandLineExecutable(), j.ID)
+`, indentOne, getCommandLineExecutable(), j.Metadata.ID, indentOne, getCommandLineExecutable(), j.Metadata.ID)
 
 	// Have to do a final Sprintf so we can inject the resultsCID into the right place
 	if resultsCID != "" {
@@ -459,7 +459,7 @@ To get more details about the run, execute:
 			ctx,
 			cm,
 			cmd,
-			j.ID,
+			j.Metadata.ID,
 			downloadSettings,
 		)
 		if err != nil {
@@ -487,7 +487,7 @@ func downloadResultsHandler(
 		}
 	}
 
-	results, err := GetAPIClient().GetResults(ctx, j.ID)
+	results, err := GetAPIClient().GetResults(ctx, j.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -496,7 +496,7 @@ func downloadResultsHandler(
 		return fmt.Errorf("no results found")
 	}
 
-	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -584,15 +584,15 @@ func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
 func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
-	if j == nil || j.ID == "" {
+	if j == nil || j.Metadata.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
-   bacalhau describe %s`, j.ID)
+   bacalhau describe %s`, j.Metadata.ID)
 
 	if !quiet {
-		RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
+		RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
 		RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 	}
 
@@ -607,9 +607,9 @@ To get more information at any time, run:
 
 	time.Sleep(1 * time.Second)
 
-	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID)
 	if err != nil {
-		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Metadata.ID, err), 1)
 	}
 
 	// Capture Ctrl+C if the user wants to finish early the job
@@ -661,9 +661,9 @@ To get more information at any time, run:
 
 			if err != nil {
 				if _, ok := err.(*bacerrors.JobNotFound); ok {
-					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
+					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.Metadata.ID), 1)
 				} else {
-					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.ID, err), 1)
+					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.Metadata.ID, err), 1)
 				}
 			}
 
@@ -688,7 +688,7 @@ To get more information at any time, run:
 				signalChan <- syscall.SIGINT
 				break
 			} else {
-				jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
+				jobEvents, err = GetAPIClient().GetEvents(ctx, j.Metadata.ID)
 				if err != nil {
 					if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 						// We're done, the user canceled the job

@@ -243,7 +243,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 

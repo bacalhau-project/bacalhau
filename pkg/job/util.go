@@ -124,7 +124,7 @@ func ShortID(id string) string {
 
 func ComputeStateSummary(j *model.Job) string {
 	var currentJobState model.JobStateType
-	jobShardStates := FlattenShardStates(j.State)
+	jobShardStates := FlattenShardStates(j.Status.State)
 	for i := range jobShardStates {
 		if jobShardStates[i].State > currentJobState {
 			currentJobState = jobShardStates[i].State
@@ -139,7 +139,7 @@ func ComputeResultsSummary(j *model.Job) string {
 	if GetJobTotalShards(j) > 1 {
 		resultSummary = ""
 	} else {
-		completedShards := GetCompletedShardStates(j.State)
+		completedShards := GetCompletedShardStates(j.Status.State)
 		if len(completedShards) == 0 {
 			resultSummary = ""
 		} else {
@@ -155,7 +155,7 @@ func ComputeVerifiedSummary(j *model.Job) string {
 		verifiedSummary = ""
 	} else {
 		totalShards := GetJobTotalExecutionCount(j)
-		verifiedShardCount := CountVerifiedShardStates(j.State)
+		verifiedShardCount := CountVerifiedShardStates(j.Status.State)
 		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
 	}
 	return verifiedSummary
@@ -163,7 +163,7 @@ func ComputeVerifiedSummary(j *model.Job) string {
 
 func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
 	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.Metadata.ID, shard.Index, hostID),
 		StorageSource: storageType,
 		CID:           cid,
 		Metadata:      map[string]string{},

@@ -51,8 +51,8 @@ func (s BaseService) GetNodeID() string {
 func (s BaseService) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
 	ctx, span := s.newSpan(ctx, "AskForBid")
 	defer span.End()
-	log.Ctx(ctx).Debug().Msgf("job created: %s", request.Job.ID)
-	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.ClientID}).Inc()
+	log.Ctx(ctx).Debug().Msgf("job created: %s", request.Job.Metadata.ID)
+	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.Metadata.ClientID}).Inc()
 
 	// ask the bidding strategy if we should bid on this job
 	// TODO: we should check at the shard level, not the job level
@@ -164,7 +164,7 @@ func (s BaseService) BidAccepted(ctx context.Context, request BidAcceptedRequest
 	jobsAccepted.With(prometheus.Labels{
 		"node_id":     s.id,
 		"shard_index": strconv.Itoa(execution.Shard.Index),
-		"client_id":   execution.Shard.Job.ClientID,
+		"client_id":   execution.Shard.Job.Metadata.ClientID,
 	}).Inc()
 
 	err = s.backend.Run(ctx, execution)

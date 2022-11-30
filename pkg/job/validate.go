@@ -13,15 +13,15 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("job spec is empty")
 	}
 
-	if reflect.DeepEqual(model.Deal{}, j.Deal) {
+	if reflect.DeepEqual(model.Deal{}, j.Spec.Deal) {
 		return fmt.Errorf("job deal is empty")
 	}
 
-	if j.Deal.Concurrency <= 0 {
+	if j.Spec.Deal.Concurrency <= 0 {
 		return fmt.Errorf("concurrency must be >= 1")
 	}
 
-	if j.Deal.Confidence < 0 {
+	if j.Spec.Deal.Confidence < 0 {
 		return fmt.Errorf("confidence must be >= 0")
 	}
 
@@ -37,7 +37,7 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("invalid publisher type: %s", j.Spec.Publisher.String())
 	}
 
-	if j.Deal.Confidence > j.Deal.Concurrency {
+	if j.Spec.Deal.Confidence > j.Spec.Deal.Concurrency {
 		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
 	}
 

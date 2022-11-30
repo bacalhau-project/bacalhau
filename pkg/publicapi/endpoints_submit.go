@@ -20,7 +20,7 @@ import (
 
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	Data model.JobCreatePayload `json:"data" validate:"required"`
+	JobCreatePayload model.JobCreatePayload `json:"job_create_payload" validate:"required"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature" validate:"required"`
@@ -55,7 +55,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
-	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.Data.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.JobCreatePayload.ClientID)
 
 	if err := verifySubmitRequest(&submitReq); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
@@ -64,7 +64,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(ctx, submitReq.Data.Job); err != nil {
+	if err := job.VerifyJob(ctx, submitReq.JobCreatePayload.Job); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
@@ -72,9 +72,9 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// If we have a build context, pin it to IPFS and mount it in the job:
-	if submitReq.Data.Context != "" {
+	if submitReq.JobCreatePayload.Context != "" {
 		// TODO: gc pinned contexts
-		decoded, err := base64.StdEncoding.DecodeString(submitReq.Data.Context)
+		decoded, err := base64.StdEncoding.DecodeString(submitReq.JobCreatePayload.Context)
 		if err != nil {
 			log.Ctx(ctx).Debug().Msgf("====> DecodeContext error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
@@ -118,7 +118,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.Data.Job.Spec.Contexts = append(submitReq.Data.Job.Spec.Contexts, model.StorageSpec{
+		submitReq.JobCreatePayload.Job.Spec.Contexts = append(submitReq.JobCreatePayload.Job.Spec.Contexts, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           result.CID,
 			Path:          "/job",
@@ -127,10 +127,10 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	j, err := apiServer.Requester.SubmitJob(
 		ctx,
-		submitReq.Data,
+		submitReq.JobCreatePayload,
 	)
-	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.ID)
-	span.SetAttributes(attribute.String(model.TracerAttributeNameJobID, j.ID))
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
+	span.SetAttributes(attribute.String(model.TracerAttributeNameJobID, j.Metadata.ID))
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

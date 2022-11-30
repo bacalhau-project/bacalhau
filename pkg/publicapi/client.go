@@ -247,9 +247,9 @@ func (apiClient *APIClient) Submit(
 
 	var res submitResponse
 	req := submitRequest{
-		Data:            data,
-		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
+		JobCreatePayload: data,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
 	}
 
 	err = apiClient.post(ctx, "submit", req, &res)

@@ -69,7 +69,7 @@ func (noopVerifier *NoopVerifier) GetShardResultPath(
 	_ context.Context,
 	shard model.JobShard,
 ) (string, error) {
-	return noopVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)
+	return noopVerifier.results.EnsureShardResultsDir(shard.Job.Metadata.ID, shard.Index)
 }
 
 func (noopVerifier *NoopVerifier) GetShardProposal(
@@ -102,13 +102,13 @@ func (noopVerifier *NoopVerifier) VerifyShard(
 	defer span.End()
 
 	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, shard.Job.ID)
+	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, shard.Job.Metadata.ID)
 	if err != nil {
 		return results, err
 	}
 	shardStates := job.GetStatesForShardIndex(jobState, shard.Index)
 	if len(shardStates) == 0 {
-		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
 	}
 
 	for _, shardState := range shardStates { //nolint:gocritic
@@ -116,7 +116,7 @@ func (noopVerifier *NoopVerifier) VerifyShard(
 			continue
 		}
 		results = append(results, verifier.VerifierResult{
-			JobID:      shard.Job.ID,
+			JobID:      shard.Job.Metadata.ID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
 			Verified:   true,

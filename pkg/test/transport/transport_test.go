@@ -74,6 +74,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 
 	// Create a new job
 	j := &model.Job{}
+	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = model.Spec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
@@ -85,7 +86,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

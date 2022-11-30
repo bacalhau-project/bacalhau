@@ -109,7 +109,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          shard.Job.ID,
+				Id:          shard.Job.Metadata.ID,
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -331,9 +331,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			Resources: model.ResourceUsageConfig{
 				GPU: "1",
 			},
-		},
-		Deal: model.Deal{
-			Concurrency: 1,
+			Deal: model.Deal{
+				Concurrency: 1,
+			},
 		},
 	}
 
@@ -352,7 +352,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			Job:      jobConfig,
 		})
 		require.NoError(suite.T(), err)
-		jobIds = append(jobIds, submittedJob.ID)
+		jobIds = append(jobIds, submittedJob.Metadata.ID)
 		// this needs to be less than the time the job lasts
 		// so we are running jobs in parallel
 		time.Sleep(time.Millisecond * 500)
