@@ -12,9 +12,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// wallets get initialized with ₾10,000
-// at < 1,000 we stop them putting any more messages on the network
+// wallets get initialized with ₾1,000
+// at < 100 we stop them putting any more messages on the network
 // before they deposit more
+// we also slash by this amount - it ensures the nodes always have this much at
+// stake
 
 const MIN_WALLET = 100
 
@@ -100,6 +102,8 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	   S: ResultsPublished & Payout
 	*/
 
+	// TODO: factor actual logic into fns below
+
 	switch event.EventName {
 	case model.JobEventCreated:
 		// C->S: Created
@@ -113,34 +117,42 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 		client := wallets.jobOwners[event.JobID]
 		server := event.TargetNodeID
 		// TODO: price in job spec! verify price per hour!
+		// TODO: the client itself should escrow the funds, not the smart contract?
 		err := wallets.escrowFunds(client, server, event.JobID, 33)
 		if err != nil {
 			return err
 		}
+		// TODO: server should actually check that funds got escrowed?
 		return wallets.bidAccepted(event)
 	case model.JobEventResultsProposed:
 		// S->C: ResultsProposed
 		return wallets.resultsProposed(fromServer(event))
 	case model.JobEventResultsAccepted:
 		// C->S: ResultsAccepted
-
 		event = fromClient(event)
 		client := wallets.jobOwners[event.JobID]
 		server := event.TargetNodeID
 		escrowID := escrowID(client, server, event.JobID)
 		wallets.accepted[escrowID] = true
-
 		return wallets.resultsAccepted(event)
+	case model.JobEventResultsRejected:
+		event = fromClient(event)
+		client := wallets.jobOwners[event.JobID]
+		server := event.TargetNodeID
+		err := wallets.refundAndSlash(client, server, event.JobID)
+		if err != nil {
+			return err
+		}
 	case model.JobEventResultsPublished:
 		// S->C: ResultsPublished
 		event = fromServer(event)
 		client := wallets.jobOwners[event.JobID]
 		server := event.SourceNodeID
-
 		escrowID := escrowID(client, server, event.JobID)
 		if !wallets.accepted[escrowID] {
 			return fmt.Errorf(
-				"tried to release escrow on job %s that was not accepted! (on message from %s). naughty server",
+				"tried to release escrow on job %s that was not accepted! "+
+					"(on message from %s). naughty server",
 				escrowID,
 				server,
 			)
@@ -191,7 +203,8 @@ func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount ui
 	wallets.ensureWallet(wallet)
 	if wallets.balances[wallet]-MIN_WALLET < amount {
 		return fmt.Errorf(
-			"wallet %s has insufficient funds to escrow %d, taking into account minimum wallet balance of %d",
+			"wallet %s has insufficient funds to escrow %d, "+
+				"taking into account minimum wallet balance of %d",
 			wallet,
 			amount,
 			MIN_WALLET,
@@ -213,6 +226,33 @@ func (wallets *walletsModel) releaseEscrow(client, server, jobID string) error {
 	wallets.ensureWallet(server)
 	wallets.balances[server] += amount
 	delete(wallets.escrow, escrowID)
+	return nil
+}
+
+func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error {
+	wallets.moneyMutex.Lock()
+	defer wallets.moneyMutex.Unlock()
+	escrowID := escrowID(client, server, jobID)
+	amount, ok := wallets.escrow[escrowID]
+	if !ok {
+		return fmt.Errorf("no escrow found for %s", escrowID)
+	}
+	wallets.ensureWallet(client)
+	wallets.balances[client] += amount
+	delete(wallets.escrow, escrowID)
+
+	// and slash!
+	log.Info().Msgf(`
+ __________________________
+< YOU GOT SLASHED %s >
+ --------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+	`, server)
+	wallets.balances[server] -= MIN_WALLET
 	return nil
 }
 
