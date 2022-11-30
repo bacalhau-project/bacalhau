@@ -33,6 +33,10 @@ type walletsModel struct {
 	// of the key
 	escrow map[string]uint64
 
+	// don't trust the server publishing the result to mean the client accepted it
+	// mark in the smart contract that the client accepted it, instead
+	accepted map[string]bool
+
 	// the local DB instance we can use to query state
 	localDB localdb.LocalDB
 
@@ -46,6 +50,7 @@ func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 		jobOwners: map[string]string{},
 		balances:  map[string]uint64{},
 		escrow:    map[string]uint64{},
+		accepted:  map[string]bool{},
 		localDB:   localDB,
 	}
 	go w.logWallets()
@@ -91,8 +96,8 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	   S: Bid
 	   C: Escrow & BidAccepted
 	   S: ResultsProposed
-	   C: ResultsAccepted & Payout (or not yet?)
-	   C: ResultsPublished & Payout (now? can the smart contract verify the publishing?)
+	   C: ResultsAccepted
+	   S: ResultsPublished & Payout
 	*/
 
 	switch event.EventName {
@@ -118,13 +123,28 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 		return wallets.resultsProposed(fromServer(event))
 	case model.JobEventResultsAccepted:
 		// C->S: ResultsAccepted
-		return wallets.resultsAccepted(fromClient(event))
-	case model.JobEventResultsPublished:
-		// C->S: ResultsPublished
-		event = fromServer(event)
-		server := event.SourceNodeID
+
+		event = fromClient(event)
 		client := wallets.jobOwners[event.JobID]
-		// XXX how to verify results were accepted? record in smart contract?
+		server := event.TargetNodeID
+		escrowID := escrowID(client, server, event.JobID)
+		wallets.accepted[escrowID] = true
+
+		return wallets.resultsAccepted(event)
+	case model.JobEventResultsPublished:
+		// S->C: ResultsPublished
+		event = fromServer(event)
+		client := wallets.jobOwners[event.JobID]
+		server := event.SourceNodeID
+
+		escrowID := escrowID(client, server, event.JobID)
+		if !wallets.accepted[escrowID] {
+			return fmt.Errorf(
+				"tried to release escrow on job %s that was not accepted! (on message from %s). naughty server",
+				escrowID,
+				server,
+			)
+		}
 		err := wallets.releaseEscrow(client, server, event.JobID)
 		if err != nil {
 			return err
