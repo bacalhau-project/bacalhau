@@ -21,6 +21,28 @@ python-versions = ">=3.7"
 gitdb = ">=4.0.1,<5"
 
 [[package]]
+name = "jinja2"
+version = "3.1.2"
+description = "A very fast and expressive template engine."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+MarkupSafe = ">=2.0"
+
+[package.extras]
+i18n = ["Babel (>=2.7)"]
+
+[[package]]
+name = "markupsafe"
+version = "2.1.1"
+description = "Safely add untrusted strings to HTML/XML markup."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "semver"
 version = "2.13.0"
 description = "Python helper for Semantic Versioning (http://semver.org/)"
@@ -39,10 +61,12 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "efd1171ea1eccfc42f9c0ad474facb59e737d316a99f78d6c34b1485636428f2"
+content-hash = "4466510485beb61594448c6f6ecc4ca1e4ce2a651d2c6495eb8a1e8414dc13dc"
 
 [metadata.files]
 gitdb = []
 gitpython = []
+jinja2 = []
+markupsafe = []
 semver = []
 smmap = []
