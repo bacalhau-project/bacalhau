@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"golang.org/x/sync/errgroup"
+	"go.ptx.dk/multierrgroup"
 )
 
 // ParallelPrepareStorage downloads all of the data necessary for the passed
@@ -16,7 +16,7 @@ func ParallelPrepareStorage(
 	specs []model.StorageSpec,
 ) (map[*model.StorageSpec]StorageVolume, error) {
 	volumes := genericSyncMap[*model.StorageSpec, StorageVolume]{}
-	waitgroup := new(errgroup.Group)
+	waitgroup := multierrgroup.Group{}
 
 	for _, inputStorageSpec := range specs {
 		spec := inputStorageSpec // https://golang.org/doc/faq#closures_and_goroutines

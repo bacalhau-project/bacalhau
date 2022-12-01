@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/rs/zerolog/log"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
@@ -112,6 +113,7 @@ func (*InProcessTransport) Decrypt(ctx context.Context, data []byte) ([]byte, er
 func (t *InProcessTransport) applyEvent(ctx context.Context, ev model.JobEvent) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
+	ctx = logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
 	t.seenEvents = append(t.seenEvents, ev)
 	for _, fn := range t.subscribeFunctions {
 		fnToCall := fn

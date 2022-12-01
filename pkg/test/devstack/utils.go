@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -23,6 +22,36 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
+
+func SetupTest(
+	ctx context.Context,
+	t *testing.T,
+	nodes int, badActors int,
+	lotusNode bool,
+	//nolint:gocritic
+	computeConfig node.ComputeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
+) (*devstack.DevStack, *system.CleanupManager) {
+	require.NoError(t, system.InitConfigForTesting(t))
+
+	cm := system.NewCleanupManager()
+
+	options := devstack.DevStackOptions{
+		NumberOfNodes:     nodes,
+		NumberOfBadActors: badActors,
+		LocalNetworkLotus: lotusNode,
+	}
+
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)
+	require.NoError(t, err)
+
+	t.Cleanup(cm.Cleanup)
+
+	// important to give the pubsub network time to connect
+	time.Sleep(time.Second)
+
+	return stack, cm
+}
 
 func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
 	basePath := t.TempDir()
@@ -81,7 +110,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 
 	executorsFactory := node.ExecutorsFactoryFunc(func(
 		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
+		return executor_util.NewNoopExecutors(noop_executor.ExecutorConfig{
 			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
@@ -99,7 +128,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 					return runOutput, err
 				},
 			},
-		})
+		}), nil
 	})
 
 	injector := node.NewStandardNodeDependencyInjector()
@@ -110,7 +139,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctx,
 		cm,
 		options,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 		injector,
 	)

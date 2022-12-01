@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -96,7 +95,7 @@ type JobShard struct {
 }
 
 func (shard JobShard) ID() string {
-	return fmt.Sprintf("%s:%d", shard.Job.ID, shard.Index)
+	return GetShardID(shard.Job.ID, shard.Index)
 }
 
 func (shard JobShard) String() string {
@@ -203,7 +202,7 @@ type Spec struct {
 	Language JobSpecLanguage `json:"Language,omitempty"`
 	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
-	// the compute (cpy, ram) resources this job requires
+	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
 	// How long a job can run in seconds before it is killed.

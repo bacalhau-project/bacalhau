@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -31,7 +31,10 @@ type ScenarioTestSuite interface {
 // the job to complete, and then make assertions against the results of the job.
 //
 // ScenarioRunner implements a number of testify/suite interfaces making it
-// appropriate as the basis for a test suite.
+// appropriate as the basis for a test suite. If a test suite composes itself
+// from the ScenarioRunner then default set up and tear down methods that
+// instrument and configure the test will be used. Test suites should not define
+// their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx  context.Context
@@ -53,7 +56,7 @@ func (s *ScenarioRunner) TearDownTest() {
 	s.Span.End()
 }
 
-func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage ISetupStorage) []model.StorageSpec {
+func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []model.StorageSpec {
 	if getStorage == nil {
 		return []model.StorageSpec{}
 	}
@@ -78,21 +81,21 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
 	}
 
-	if config.ComputeNodeConfig == nil {
-		conf := computenode.NewDefaultComputeNodeConfig()
-		config.ComputeNodeConfig = &conf
-	}
-
 	if config.RequesterNodeConfig == nil {
 		conf := requesternode.NewDefaultRequesterNodeConfig()
 		config.RequesterNodeConfig = &conf
+	}
+
+	empty := model.ResourceUsageData{}
+	if config.ComputeConfig.TotalResourceLimits == empty {
+		config.ComputeConfig = node.NewComputeConfigWithDefaults()
 	}
 
 	stack := testutils.SetupTestWithNoopExecutor(
 		s.Ctx,
 		s.T(),
 		*config.DevStackOptions,
-		*config.ComputeNodeConfig,
+		config.ComputeConfig,
 		*config.RequesterNodeConfig,
 		config.ExecutorConfig,
 	)

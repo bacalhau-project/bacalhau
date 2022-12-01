@@ -185,7 +185,7 @@ func (resolver *StateResolver) WaitWithOptions(
 			}
 
 			// some of the check functions returned false
-			// let's see if we can quiet early because all expectedd states are
+			// let's see if we can quit early because all expected states are
 			// in terminal state
 			allTerminal, err := WaitForTerminalStates(options.TotalShards)(jobState)
 			if err != nil {
@@ -400,6 +400,11 @@ func WaitThrowErrors(errorStates []model.JobStateType) CheckStatesFunction {
 		for _, shard := range allShardStates { //nolint:gocritic
 			for _, errorState := range errorStates {
 				if shard.State == errorState {
+					e := log.Debug()
+					if shard.RunOutput != nil {
+						e = e.Str("stdout", shard.RunOutput.STDOUT).Str("stderr", shard.RunOutput.STDERR)
+					}
+					e.Msg("Shard failed")
 					return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
 				}
 			}

@@ -31,7 +31,7 @@ func RunDockerTest(
 	}
 
 	var j = &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -40,7 +40,7 @@ func RunDockerTest(
 		Outputs:   testCase.Outputs,
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: concurrency,
 	}
 
@@ -82,8 +82,8 @@ func RunDockerTest(
 			return err
 		}
 
-		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.CID)
+		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.CID, outputPath)
 		if err != nil {
 			return err
 		}

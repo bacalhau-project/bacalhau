@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Tracer is a JobEventHandler that will marshal the received event to a
@@ -43,6 +44,13 @@ func NewTracerToFile(filename string) (*Tracer, error) {
 	}, nil
 }
 
+// Returns an eventhandler.Tracer that uses zerolog configured default output (e.g. stdout)
+func NewDefaultTracer() *Tracer {
+	return &Tracer{
+		Logger: log.With().Logger(),
+	}
+}
+
 // HandleLocalEvent implements LocalEventHandler
 func (t *Tracer) HandleLocalEvent(ctx context.Context, event model.JobLocalEvent) error {
 	trace(t.Logger, event)
@@ -71,10 +79,13 @@ func trace[Event any](log zerolog.Logger, event Event) {
 }
 
 func (t *Tracer) Shutdown() error {
-	err := t.LogFile.Close()
-	t.LogFile = nil
-	t.Logger = zerolog.Nop()
-	return err
+	if t.LogFile != nil {
+		err := t.LogFile.Close()
+		t.LogFile = nil
+		t.Logger = zerolog.Nop()
+		return err
+	}
+	return nil
 }
 
 var _ JobEventHandler = (*Tracer)(nil)

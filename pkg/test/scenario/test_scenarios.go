@@ -2,21 +2,19 @@ package scenario
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-const HelloWorld = "hello world"
-const SimpleMountPath = "/data/file.txt"
-const SimpleOutputPath = "/output_data/output_file.txt"
+const helloWorld = "hello world"
+const simpleMountPath = "/data/file.txt"
+const simpleOutputPath = "/output_data/output_file.txt"
 const stdoutString = ipfs.DownloadFilenameStdout
-const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
+const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
 var CatFileToStdout = Scenario{
-	Name: "cat_file_to_stdout",
 	Inputs: StoredText(
-		HelloWorld,
-		SimpleMountPath,
+		helloWorld,
+		simpleMountPath,
 	),
 	Contexts: StoredFile(
 		"../../../testdata/wasm/cat/main.wasm",
@@ -24,26 +22,25 @@ var CatFileToStdout = Scenario{
 	),
 	ResultsChecker: ManyChecks(
 		FileEquals(ipfs.DownloadFilenameStderr, ""),
-		FileEquals(ipfs.DownloadFilenameStdout, HelloWorld),
+		FileEquals(ipfs.DownloadFilenameStdout, helloWorld),
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{
 			EntryPoint: "_start",
-			Parameters: []string{SimpleMountPath},
+			Parameters: []string{simpleMountPath},
 		},
 	},
 }
 
 var CatFileToVolume = Scenario{
-	Name: "cat_file_to_volume",
 	Inputs: StoredText(
-		CatProgram,
-		SimpleMountPath,
+		catProgram,
+		simpleMountPath,
 	),
 	ResultsChecker: FileEquals(
 		"test/output_file.txt",
-		CatProgram,
+		catProgram,
 	),
 	Outputs: []model.StorageSpec{
 		{
@@ -57,17 +54,16 @@ var CatFileToVolume = Scenario{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash",
-				SimpleMountPath,
+				simpleMountPath,
 			},
 		},
 	},
 }
 
 var GrepFile = Scenario{
-	Name: "grep_file",
 	Inputs: StoredFile(
 		"../../../testdata/grep_file.txt",
-		SimpleMountPath,
+		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
 		stdoutString,
@@ -81,17 +77,16 @@ var GrepFile = Scenario{
 			Entrypoint: []string{
 				"grep",
 				"kiwi",
-				SimpleMountPath,
+				simpleMountPath,
 			},
 		},
 	},
 }
 
 var SedFile = Scenario{
-	Name: "sed_file",
 	Inputs: StoredFile(
 		"../../../testdata/sed_file.txt",
-		SimpleMountPath,
+		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
 		stdoutString,
@@ -106,17 +101,16 @@ var SedFile = Scenario{
 				"sed",
 				"-n",
 				"/38.7[2-4]..,-9.1[3-7]../p",
-				SimpleMountPath,
+				simpleMountPath,
 			},
 		},
 	},
 }
 
 var AwkFile = Scenario{
-	Name: "awk_file",
 	Inputs: StoredFile(
 		"../../../testdata/awk_file.txt",
-		SimpleMountPath,
+		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
 		stdoutString,
@@ -131,14 +125,13 @@ var AwkFile = Scenario{
 				"awk",
 				"-F,",
 				"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
-				SimpleMountPath,
+				simpleMountPath,
 			},
 		},
 	},
 }
 
 var WasmHelloWorld = Scenario{
-	Name: "wasm_hello_world",
 	Contexts: StoredFile(
 		"../../../testdata/wasm/noop/main.wasm",
 		"/job",
@@ -157,7 +150,6 @@ var WasmHelloWorld = Scenario{
 }
 
 var WasmEnvVars = Scenario{
-	Name: "wasm_env_vars",
 	Contexts: StoredFile(
 		"../../../testdata/wasm/env/main.wasm",
 		"/job",
@@ -180,7 +172,6 @@ var WasmEnvVars = Scenario{
 }
 
 var WasmCsvTransform = Scenario{
-	Name: "wasm_csv_transform",
 	Inputs: StoredFile(
 		"../../../testdata/wasm/csv/inputs",
 		"/inputs",
@@ -212,15 +203,15 @@ var WasmCsvTransform = Scenario{
 	},
 }
 
-func GetAllScenarios() []Scenario {
-	return []Scenario{
-		CatFileToStdout,
-		CatFileToVolume,
-		GrepFile,
-		SedFile,
-		AwkFile,
-		WasmHelloWorld,
-		WasmEnvVars,
-		WasmCsvTransform,
+func GetAllScenarios() map[string]Scenario {
+	return map[string]Scenario{
+		"cat_file_to_stdout": CatFileToStdout,
+		"cat_file_to_volume": CatFileToVolume,
+		"grep_file":          GrepFile,
+		"sed_file":           SedFile,
+		"awk_file":           AwkFile,
+		"wasm_hello_world":   WasmHelloWorld,
+		"wasm_env_vars":      WasmEnvVars,
+		"wasm_csv_transform": WasmCsvTransform,
 	}
 }
