@@ -10,15 +10,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,7 +33,6 @@ func TestGetSuite(t *testing.T) {
 // returns the current testing context
 type GetSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // Before each test
@@ -43,7 +41,6 @@ func (suite *GetSuite) SetupTest() {
 
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
-	suite.rootCmd = RootCmd
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -156,10 +153,9 @@ func getDockerRunArgs(
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	*ODR = *NewDockerRunOptions()
 
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
@@ -168,7 +164,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 		"--wait",
 		"--download",
 	})
-	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := stack.Nodes[0].HostID
@@ -183,10 +179,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	*ODR = *NewDockerRunOptions()
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
@@ -196,7 +191,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 		"--download",
 		"--output-dir", tempDir,
 	})
-	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := stack.Nodes[0].HostID
@@ -210,11 +205,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	*ODR = *NewDockerRunOptions()
-	*OG = *NewGetOptions()
 
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(s.T(), err)
@@ -224,12 +217,12 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	args := getDockerRunArgs(s.T(), stack, []string{
 		"--wait",
 	})
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := stack.Nodes[0].HostID
 
-	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -246,11 +239,9 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	*ODR = *NewDockerRunOptions()
-	*OG = *NewGetOptions()
 
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(s.T(), err)
@@ -261,13 +252,13 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	args := getDockerRunArgs(s.T(), stack, []string{
 		"--wait",
 	})
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := stack.Nodes[0].HostID
 
-	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),

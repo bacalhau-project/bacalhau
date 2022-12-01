@@ -58,7 +58,7 @@ type NoopExecutorsFactory struct {
 func (f *NoopExecutorsFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-	return executor_util.NewNoopExecutors(ctx, nodeConfig.CleanupManager, f.config)
+	return executor_util.NewNoopExecutors(f.config), nil
 }
 
 func NewNoopExecutorsFactory() *NoopExecutorsFactory {
