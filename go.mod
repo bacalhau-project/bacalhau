@@ -46,7 +46,7 @@ require (
 	github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/go-wordwrap v1.0.1
-	github.com/multiformats/go-multiaddr v0.7.0
+	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/multiformats/go-multicodec v0.7.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
@@ -81,7 +81,7 @@ require (
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.2.0
 	google.golang.org/grpc v1.50.1
-	k8s.io/kubectl v0.25.3
+	k8s.io/kubectl v0.25.4
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -333,9 +333,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.3.0 // indirect
-	k8s.io/api v0.25.3 // indirect
-	k8s.io/apimachinery v0.25.3 // indirect
-	k8s.io/client-go v0.25.3 // indirect
+	k8s.io/api v0.25.4 // indirect
+	k8s.io/apimachinery v0.25.4 // indirect
+	k8s.io/client-go v0.25.4 // indirect
 	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
