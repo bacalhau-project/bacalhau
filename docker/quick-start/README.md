@@ -1,18 +1,25 @@
-# Quickstart a test Bacalhau node in containers
+# Quickstart a test public-cluster Bacalhau node using a container
 
 ```
-docker build -t ipfs --target ipfs .
 docker build -t bacalhau --target bacalhau .
 
-# TODO: run container as readonly fs
-docker run \
-    -dit \
-    --name bacalhau-ipfs \
-    --restart always \
-    --net host \
-    --volume bacalhau-ipfs:/data \
-        ipfs
 
+#ignoring the repo version - they're all too old atm
+export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
+export IPFS_VERSION=latest
+# run IPFS (this should eventually be run in the bacalhau entrypoint)
+# TODO: run container as readonly fs
+
+docker run -d \
+    --restart always \
+    --name bacalhau-ipfs \
+    -v ipfs_staging:/export \
+    -v ipfs_data:/data/ipfs \
+    -p 4001:4001 \
+    -p 4001:4001/udp \
+    -p 127.0.0.1:8080:8080 \
+    -p 127.0.0.1:5001:5001 \
+        ipfs/kubo:${IPFS_VERSION}
 
 docker logs -f bacalhau-ipfs
 
@@ -20,19 +27,21 @@ docker logs -f bacalhau-ipfs
 
 ctrl-c
 
+# check that your ipfs container can get data
 docker exec -it bacalhau-ipfs  ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
 
 #export IPFS_CONNECT=$(docker exec -it bacalhau-ipfs  ipfs id | grep #tcp | grep 127.0.0.1 | sed 's/4001/5001/' | sed 's/^[ \t]*//' | sed #'s/,//')
 
-#TODO: 02:07:28.327 | DBG bacalhau/serve.go:284 > libp2p connecting to: [/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL /ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF /ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3]
+#TODO - : 02:07:28.327 | DBG bacalhau/serve.go:284 > libp2p connecting to: [/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL /ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF /ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3]
 ': failed to parse multiaddr "\"/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWDN19JJkptojgerCwHYYJcZcz7whuMGsm7Dqd86kutGb3\"\r": must begin with /b3"
 
 # TODO: run container as readonly fs
+# TODO: and make a shared /tmp...?
 docker run \
     -dit \
     --name bacalhau \
     --restart always \
-    --env IPFS_CONNECT=$( docker exec -it bacalhau-ipfs ipfs id --format="/ip4/127.0.0.1/tcp/5001/p2p/<id>") \
+    --env IPFS_CONNECT=$(docker exec -it bacalhau-ipfs ipfs id --format="/ip4/127.0.0.1/tcp/5001/p2p/<id>") \
     --net host \
     --volume bacalhau-data:/data \
     --volume /run/docker.sock:/run/docker.sock \
@@ -55,6 +64,10 @@ docker exec -it \
 
 # Interestingly, because your bacalhau node is a part of the bootstrap-cluster, you can get info about your job directly from your node, or via the <<<insert dns..name>>>
 <<<<<< I wonder if the devstack turns that oof, or if those docs need more detail too>>>>>>
+
+## TODO: can get failures from:
+## 07:20:00.35 | INF system/cleanup.go:71 > could not create memory profile error="open /tmp/bacalhau-devstack-mem.prof: permission denied"
+## turned out my file was there and owned by my user, not the container root... (because it's made by the client side - and thus clashes with running it locally...)
 
 sven@p1:~/src/ipfs/bacalhau/docker/quick-start$ ../../bacalhau describe 6c9068ec-dff9-4273-b4c1-c160bfa29c57
 APIVersion: V1beta1

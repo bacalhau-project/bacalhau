@@ -6,6 +6,7 @@
 #  export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
 
 FROM ubuntu:22.04 as ipfs
+# NOT USED ANYMORE
 RUN apt-get update -y && apt-get install -y wget fuse
 
 RUN wget -q https://dist.ipfs.tech/go-ipfs/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz && \
