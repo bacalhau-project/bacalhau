@@ -3,6 +3,7 @@
 package job
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -30,7 +31,7 @@ func (suite *JobFactorySuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 }
 
-func (suite *JobFactorySuite) TestRun_Outputs() {
+func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -105,6 +106,116 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 						tcids.correctLength,
 						tcids.outputVolumes,
 					)
+				}
+			}()
+		}
+	}
+}
+
+func (suite *JobFactorySuite) TestRun_ConstructJobFromEvent() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1},
+	}
+
+	// // Expect a Job create form an event to have all of the following fields
+	// requiredJobFields := []string{
+	// 	"APIVersion",
+	// 	"Metadata",
+	// 	"Spec",
+	// 	"Status",
+	// }
+
+	for range tests {
+
+		testEvents := []struct {
+			jobEvent model.JobEvent
+
+			err string
+		}{
+			{
+				model.JobEvent{
+					APIVersion:      model.APIVersionLatest().String(),
+					JobID:           "1111",
+					ClientID:        "2222",
+					SourceNodeID:    "3333",
+					SenderPublicKey: []byte("sender-pub-key"),
+					Spec: model.Spec{
+						Engine:    model.EngineNoop,
+						Verifier:  model.VerifierNoop,
+						Publisher: model.PublisherNoop,
+					},
+					Deal: model.Deal{
+						Concurrency: 1,
+					},
+					JobExecutionPlan: model.JobExecutionPlan{
+						TotalShards: 1,
+					},
+				},
+				"",
+			},
+			{
+				model.JobEvent{
+					JobID:           "job-id1",
+					ClientID:        "test-client-id",
+					SourceNodeID:    "test-src-node-id",
+					SenderPublicKey: []byte("test-sender-pub-key"),
+					Spec: model.Spec{
+						Engine:    model.EngineNoop,
+						Verifier:  model.VerifierNoop,
+						Publisher: model.PublisherNoop,
+					},
+					Deal: model.Deal{
+						Concurrency: 1,
+					},
+					JobExecutionPlan: model.JobExecutionPlan{
+						TotalShards: 1,
+					},
+				},
+				"Missing APIVersion",
+			},
+		}
+
+		for _, tevent := range testEvents {
+			func() {
+				j := ConstructJobFromEvent(tevent.jobEvent)
+				// fmt.Println("********")
+				// fmt.Println("********")
+				// fmt.Println(j)
+				// fmt.Println(j.Metadata)
+				// fmt.Println(j.Spec)
+				// fmt.Printf("j: %+v\n", j)
+
+				if tevent.err != "" {
+					// require.Error(suite.T(), j, "No error received, but error expected - %+v", tevent)
+					fmt.Println(j)
+
+					// check for required fields
+					// for _, field := range requiredJobFields {
+					// 	require.False(suite.T(), reflect.DeepEqual(reflect.ValueOf(j).Elem().FieldByName(field), reflect.Value{}), "Field %s not found in job - %+v", field, tevent.jobEvent)
+
+					// 	fmt.Println(field)
+					// 	fmt.Println(reflect.ValueOf(j).Elem().FieldByName(field))
+					// }
+				} else {
+					// // Expect required fields to exist
+					// for _, field := range requiredJobFields {
+					// 	fmt.Println(field)
+					// 	fmt.Println(j)
+					// 	require.True(suite.T(), reflect.DeepEqual(reflect.ValueOf(j).Elem().FieldByName(field), reflect.Value{}), "Field %s not found in job - %+v", field, j)
+					// }
+
+					// // check if fields are correct
+					// require.Equal(suite.T(), j.APIVersion, tevent.jobEvent.APIVersion, "Job does not contain expected APIVersion value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Metadata.ID, tevent.jobEvent.JobID, "Job does not contain expected JobID value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Metadata.ClientID, tevent.jobEvent.ClientID, "Job does not contain expected ClientID value - %+v - %+v", tevent.jobEvent, j)
+
+					// require.Equal(suite.T(), j.Spec.Engine, tevent.jobEvent.Spec.Engine, "Job does not contain expected Spec.Engine value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Spec.Verifier, tevent.jobEvent.Spec.Verifier, "Job does not contain expected Spec.Verifier value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Spec.Publisher, tevent.jobEvent.Spec.Publisher, "Job does not contain expected Spec.Publisher value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Spec.Deal, tevent.jobEvent.Deal, "Job does not contain expected Spec.Deal value - %+v - %+v", tevent.jobEvent, j)
+					// require.Equal(suite.T(), j.Spec.ExecutionPlan, tevent.jobEvent.JobExecutionPlan, "Job does not contain expected Spec.ExecutionPlan value - %+v - %+v", tevent.jobEvent, j)
 				}
 			}()
 		}
