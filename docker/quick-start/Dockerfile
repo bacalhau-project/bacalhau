@@ -32,3 +32,13 @@ RUN curl -sL https://get.bacalhau.org/install.sh | bash
 ADD bacalhau-entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["bash", "/entrypoint.sh"]
 
+FROM ipfs as kitchensink
+RUN apt-get update -y && apt-get install -y curl
+
+
+RUN curl -sL https://get.bacalhau.org/install.sh | bash
+
+# TODO: need the docker binary.. (or another way to inject IPFS_CONNECT)
+
+ADD bacalhau-entrypoint.sh /bacalhau-entrypoint.sh
+ENTRYPOINT ["bash", "/bacalhau-entrypoint.sh"]
