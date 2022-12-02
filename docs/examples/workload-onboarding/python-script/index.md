@@ -207,7 +207,7 @@ def main(file: str, num_files: int = -1):
         print("finished saving results")
 
         # Do something with the results
-        shutil.rmtree("results")
+        shutil.rmtree("results", ignore_errors=True)
         os.makedirs("results", exist_ok=True)
         for r in results:
             path = os.path.join(r, "combined_results", "outputs", "*.csv")
