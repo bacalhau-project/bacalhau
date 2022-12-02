@@ -27,7 +27,6 @@ docker run \
     --volume bacalhau-data:/data \
     --volume /run/docker.sock:/run/docker.sock \
     --volume /tmp:/tmp \
-    --volume $(which docker):$(which docker) \
         bacalhau
 
 
