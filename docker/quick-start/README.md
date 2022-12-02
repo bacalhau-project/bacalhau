@@ -3,7 +3,6 @@
 ```
 docker build -t bacalhau --target bacalhau .
 
-
 #ignoring the repo version - they're all too old atm
 export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
 export IPFS_VERSION=latest
@@ -41,7 +40,6 @@ docker run \
     -dit \
     --name bacalhau \
     --restart always \
-    --env IPFS_CONNECT=$(docker exec -it bacalhau-ipfs ipfs id --format="/ip4/127.0.0.1/tcp/5001/p2p/<id>") \
     --net host \
     --volume bacalhau-data:/data \
     --volume /run/docker.sock:/run/docker.sock \
@@ -63,7 +61,7 @@ docker exec -it \
      bacalhau docker run ubuntu echo hello
 
 # Interestingly, because your bacalhau node is a part of the bootstrap-cluster, you can get info about your job directly from your node, or via the <<<insert dns..name>>>
-<<<<<< I wonder if the devstack turns that oof, or if those docs need more detail too>>>>>>
+<<<<<< I wonder if the devstack turns that off, or if those docs need more detail too>>>>>>
 
 ## TODO: can get failures from:
 ## 07:20:00.35 | INF system/cleanup.go:71 > could not create memory profile error="open /tmp/bacalhau-devstack-mem.prof: permission denied"
