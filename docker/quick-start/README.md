@@ -1,24 +1,6 @@
 # Quickstart a test public-cluster Bacalhau node using a container
 
 ```
-docker build -t bacalhau --target bacalhau .
-
-#ignoring the repo version - they're all too old atm
-export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
-export IPFS_VERSION=latest
-# run IPFS (this should eventually be run in the bacalhau entrypoint)
-# TODO: run container as readonly fs
-
-docker run -d \
-    --restart always \
-    --name bacalhau-ipfs \
-    -v ipfs_staging:/export \
-    -v ipfs_data:/data/ipfs \
-    -p 4001:4001 \
-    -p 4001:4001/udp \
-    -p 127.0.0.1:8080:8080 \
-    -p 127.0.0.1:5001:5001 \
-        ipfs/kubo:${IPFS_VERSION}
 
 docker logs -f bacalhau-ipfs
 
@@ -29,10 +11,11 @@ ctrl-c
 # check that your ipfs container can get data
 docker exec -it bacalhau-ipfs  ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
 
-#export IPFS_CONNECT=$(docker exec -it bacalhau-ipfs  ipfs id | grep #tcp | grep 127.0.0.1 | sed 's/4001/5001/' | sed 's/^[ \t]*//' | sed #'s/,//')
 
 #TODO - : 02:07:28.327 | DBG bacalhau/serve.go:284 > libp2p connecting to: [/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL /ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF /ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3]
 ': failed to parse multiaddr "\"/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWDN19JJkptojgerCwHYYJcZcz7whuMGsm7Dqd86kutGb3\"\r": must begin with /b3"
+
+docker build -t bacalhau --target bacalhau .
 
 # TODO: run container as readonly fs
 # TODO: and make a shared /tmp...?
