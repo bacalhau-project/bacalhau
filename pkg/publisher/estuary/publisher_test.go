@@ -23,7 +23,7 @@ func getPublisherWithGoodConfig(t *testing.T) publisher.Publisher {
 }
 
 func getPublisherWithErrorConfig(*testing.T) publisher.Publisher {
-	return NewEstuaryPublisher(EstuaryPublisherConfig{APIKey: ""})
+	return NewEstuaryPublisher(EstuaryPublisherConfig{APIKey: "TEST"})
 }
 
 func TestIsInstalled(t *testing.T) {
@@ -57,9 +57,5 @@ func TestUpload(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, spec.StorageSource, model.StorageSourceEstuary)
-	// TODO: Estuary doesn't seem to write content-headers properly so we aren't
-	// able to include CIDs in the return spec until
-	// https://github.com/application-research/estuary/issues/540 is fixed
-	//
-	// require.NotEmpty(t, spec.CID)
+	require.NotEmpty(t, spec.CID)
 }
