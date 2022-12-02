@@ -33,7 +33,7 @@ func NewEstuaryPublisher(config EstuaryPublisherConfig) publisher.Publisher {
 
 // IsInstalled implements publisher.Publisher
 func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	client := GetGatewayClient(ctx, e.config.APIKey)
+	client := GetClient(ctx, e.config.APIKey)
 	_, response, err := client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if response != nil {
 		defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", response.Body)
@@ -72,7 +72,7 @@ func (e *estuaryPublisher) PublishShardResult(
 		return model.StorageSpec{}, errors.Wrap(err, "error reading CAR data")
 	}
 
-	client := GetUploadClient(ctx, e.config.APIKey)
+	client := GetClient(ctx, e.config.APIKey)
 	timeout, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
 
