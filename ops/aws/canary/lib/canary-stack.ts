@@ -77,6 +77,7 @@ export class CanaryStack extends cdk.Stack {
             runtime: lambda.Runtime.GO_1_X,
             timeout: cdk.Duration.minutes(props.timeoutMinutes),
             memorySize: props.memorySize,
+            EphemeralStorage: 5120, // Required for Bacalhau Get scenarios
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': 'DEBUG',
