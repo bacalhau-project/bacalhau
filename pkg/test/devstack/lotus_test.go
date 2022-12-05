@@ -59,6 +59,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	require.NoError(s.T(), err)
 
 	j := &model.Job{}
+	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
 	j.Spec.Publisher = model.PublisherFilecoin
