@@ -31,7 +31,7 @@ func getSampleDockerJob() *model.Job {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 	return j
@@ -70,7 +70,7 @@ func getSampleDockerIPFSJob() *model.Job {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 	return j
@@ -93,7 +93,7 @@ func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submit
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(
 		ctx,
-		submittedJob.ID,
+		submittedJob.Metadata.ID,
 		totalShards,
 		job.WaitThrowErrors([]model.JobStateType{
 			model.JobStateError,

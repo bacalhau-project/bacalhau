@@ -24,14 +24,14 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.ID)
+	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
 		return err
 	}
 
-	results, err := client.GetResults(ctx, submittedJob.ID)
+	results, err := client.GetResults(ctx, submittedJob.Metadata.ID)
 	if err != nil {
 		return err
 	}

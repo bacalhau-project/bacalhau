@@ -19,7 +19,7 @@ func SubmitWithConcurrency(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.ID)
+	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
