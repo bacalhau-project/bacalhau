@@ -210,7 +210,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 
 func verifySubmitRequest(req *submitRequest) error {
 	if req.JobCreatePayload.ClientID == "" {
-		return errors.New("job deal must contain a client ID")
+		return errors.New("job create payload must contain a client ID")
 	}
 	if req.ClientSignature == "" {
 		return errors.New("client's signature is required")
