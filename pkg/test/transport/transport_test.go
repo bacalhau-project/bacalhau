@@ -91,8 +91,9 @@ func (suite *TransportSuite) TestTransportEvents() {
 	}
 
 	payload := model.JobCreatePayload{
-		ClientID: "123",
-		Job:      j,
+		ClientID:   "123",
+		APIVersion: j.APIVersion,
+		Spec:       &j.Spec,
 	}
 
 	_, err := node.RequesterNode.SubmitJob(ctx, payload)

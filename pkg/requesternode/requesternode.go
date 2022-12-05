@@ -96,15 +96,15 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 
 	ev := node.constructJobEvent(jobID, model.JobEventCreated)
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Job.Spec, node.storageProviders)
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, *data.Spec, node.storageProviders)
 	if err != nil {
 		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
-	ev.APIVersion = data.Job.APIVersion
+	ev.APIVersion = data.APIVersion
 	ev.ClientID = data.ClientID
-	ev.Spec = data.Job.Spec
-	ev.Deal = data.Job.Spec.Deal
+	ev.Spec = *data.Spec
+	ev.Deal = data.Spec.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	// set a default timeout value if one is not passed or below an acceptable value

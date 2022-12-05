@@ -64,8 +64,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(ctx, submitReq.JobCreatePayload.Job); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
+	if err := job.VerifyJobCreatePayload(ctx, &submitReq.JobCreatePayload); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> VerifyJobCreate error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
@@ -118,7 +118,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.JobCreatePayload.Job.Spec.Contexts = append(submitReq.JobCreatePayload.Job.Spec.Contexts, model.StorageSpec{
+		submitReq.JobCreatePayload.Spec.Contexts = append(submitReq.JobCreatePayload.Spec.Contexts, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           result.CID,
 			Path:          "/job",

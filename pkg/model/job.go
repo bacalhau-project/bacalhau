@@ -359,8 +359,10 @@ type JobCreatePayload struct {
 	// the id of the client that is submitting the job
 	ClientID string `json:"ClientID,omitempty" validate:"required"`
 
-	// The job specification:
-	Job *Job `json:"Job,omitempty" validate:"required"`
+	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1" validate:"required"`
+
+	// The specification of this job.
+	Spec *Spec `json:"Spec,omitempty" validate:"required"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't

@@ -227,8 +227,9 @@ func (apiClient *APIClient) Submit(
 	defer span.End()
 
 	data := model.JobCreatePayload{
-		ClientID: system.GetClientID(),
-		Job:      j,
+		ClientID:   system.GetClientID(),
+		APIVersion: j.APIVersion,
+		Spec:       &j.Spec,
 	}
 
 	if buildContext != nil {

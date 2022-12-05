@@ -154,8 +154,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			}
 
 			_, err := stack.Nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID: "123",
-				Job:      j,
+				ClientID:   "123",
+				APIVersion: j.APIVersion,
+				Spec:       &j.Spec,
 			})
 			require.NoError(suite.T(), err)
 
@@ -348,8 +349,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	for i := 0; i < nodeCount; i++ {
 		submittedJob, err := nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
-			ClientID: "123",
-			Job:      jobConfig,
+			ClientID:   "123",
+			APIVersion: jobConfig.APIVersion,
+			Spec:       &jobConfig.Spec,
 		})
 		require.NoError(suite.T(), err)
 		jobIds = append(jobIds, submittedJob.Metadata.ID)

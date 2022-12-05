@@ -8,6 +8,21 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
+func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
+	if jc.ClientID == "" {
+		return fmt.Errorf("ClientID is empty")
+	}
+
+	if jc.APIVersion == "" {
+		return fmt.Errorf("APIVersion is empty")
+	}
+
+	return VerifyJob(ctx, &model.Job{
+		APIVersion: jc.APIVersion,
+		Spec:       *jc.Spec,
+	})
+}
+
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")
