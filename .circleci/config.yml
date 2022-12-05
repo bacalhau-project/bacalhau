@@ -371,33 +371,31 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Run Perf and Upload Results
+          name: Run performance test
           command: |
-            export PATH="$HOME/.local/bin:${PATH}"
-            export SHA="<< pipeline.git.revision >>"
-            export DATETIME="$(date -u +"%FT%H%MZ")"
-            export BRANCH="<<pipeline.git.branch>>"
-            if [ "<<pipeline.git.tag>>" != "" ]; then
-              export TAG="<<pipeline.git.tag>>"
-            else
-              export TAG="v0.0.0-xxxxxxx"
-            fi
-            sudo dpkg --configure -a
-            sudo apt install python3.10 python3-pip build-essential -y
-            pip3 install gsutil
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
             source $HOME/.cargo/env
             cargo install hyperfine
-            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
             (
               cd benchmark
               bash start_and_run.sh
             )
-            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${BRANCH}-${TAG}-${SHA}"
+      - run:
+          name: Upload results
+          env:
+          command: |
+            export PATH="$HOME/.local/bin:${PATH}"
+            export DATETIME="$(date -u +"%FT%H%MZ")"
+            if test -z "${CIRCLE_TAG}"; then
+              export CIRCLE_TAG="v0.0.0-xxxxxxx"
+            fi
+            pip3 install gsutil
+            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
       - heroku/install
       - run:
+          name: Update dashboard
           command: |
-            # Updates dashboard data with latest from GCS
             heroku run build --app bacalhau-dashboards
 
   release:
@@ -501,38 +499,41 @@ jobs:
           name: Build Swagger Docs
           command:
             make swagger-docs
-      - run:
-          name: Install gh
-          command: |
-            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
-            sudo dpkg -i gh_2.14.7_linux_amd64.deb
-            echo "$GITHUB_PR_PAT" | gh auth login --with-token
-            rm gh_2.14.7_linux_amd64.deb
-      - run:
-          name: Install human-id generator
-          command: |
-            pip3 install human-id
-      - run:
-          name: Git commit
-          command: |
-            git config user.email "enrico.rotundo@gmail.com"
-            git config user.name "enricorotundo"
-            # Note: we delete this branch after the PR is merged
-            GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
-            git checkout -b $GH_BRANCH_NAME
-            git add --verbose -- ./docs
-            COMMIT_MSG="Build swagger reference - this is an automatic commit"
-            git commit --allow-empty -m "[circleci] $COMMIT_MSG [skip ci]"
-            git push --set-upstream origin $GH_BRANCH_NAME
-      - run:
-          name: Creating & merging pull request
-          command: |
-            git status --short
-            # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-            PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label documentation --repo filecoin-project/bacalhau)
-            echo "Pull request: $PR_URL"
-            sleep 3
-            gh pr merge --auto --delete-branch -r $PR_URL
+
+      - when:
+          condition:
+            equal: ["main", << pipeline.git.branch >>]
+          steps:
+            - run:
+                name: Install gh
+                command: |
+                  wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+                  sudo dpkg -i gh_2.14.7_linux_amd64.deb
+                  echo "$GITHUB_PR_PAT" | gh auth login --with-token
+                  rm gh_2.14.7_linux_amd64.deb
+            - run:
+                name: Install human-id generator
+                command: |
+                  pip3 install human-id
+            - run:
+                name: Git commit
+                command: |
+                  git config user.email "enrico.rotundo@gmail.com"
+                  git config user.name "enricorotundo"
+                  # Note: we delete this branch after the PR is merged
+                  GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
+                  git checkout -b $GH_BRANCH_NAME
+                  if test -n "$(git ls-files --modified)"; then
+                    git add --verbose -- ./docs
+                    COMMIT_MSG="Build swagger reference - this is an automatic commit"
+                    git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+                    git push --set-upstream origin $GH_BRANCH_NAME
+                    # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
+                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label documentation --repo filecoin-project/bacalhau)
+                    echo "Pull request: $PR_URL"
+                    sleep 3
+                    gh pr merge --auto --delete-branch -r $PR_URL
+                  fi
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -656,8 +657,6 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-            branches:
-              only: main
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:

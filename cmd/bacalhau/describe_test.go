@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,14 +24,12 @@ import (
 // returns the current testing context
 type DescribeSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
-	suite.rootCmd = RootCmd
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
@@ -76,14 +73,14 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				returnedJob := &model.Job{}
 
 				// No job id (should error)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err := ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
 				)
 				require.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
 					submittedJob.Metadata.ID,
@@ -99,7 +96,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					submittedJob.Metadata.ID,
 					"--api-port", port,
@@ -115,7 +112,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					submittedJob.Metadata.ID[0:model.ShortIDLength],
 					"--api-port", port,
@@ -168,7 +165,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 			}
 
 			// Job Id at the end
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
 			require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
 			err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
@@ -233,7 +230,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					jobID = tc.describeIDEdgecase
 				}
 
-				_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
 					jobID,

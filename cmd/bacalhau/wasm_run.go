@@ -22,13 +22,8 @@ import (
 
 const null rune = 0
 
-var wasmJob *model.Job
-
-var runtimeSettings *RunTimeSettings
-var downloadSettings *ipfs.IPFSDownloadSettings
-
-func init() { //nolint:gochecknoinits // idiomatic for cobra commands
-	wasmJob, _ = model.NewJobWithSaneProductionDefaults()
+func defaultWasmJobSpec() *model.Job {
+	wasmJob, _ := model.NewJobWithSaneProductionDefaults()
 	wasmJob.Spec.Engine = model.EngineWasm
 	wasmJob.Spec.Verifier = model.VerifierDeterministic
 	wasmJob.Spec.Timeout = DefaultTimeout.Seconds()
@@ -41,16 +36,53 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 		},
 	}
 
+	return wasmJob
+}
+
+func newWasmCmd() *cobra.Command {
+	wasmCmd := &cobra.Command{
+		Use:   "wasm",
+		Short: "Run and prepare WASM jobs on the network",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// Check that the server version is compatible with the client version
+			serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
+			if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
+				Fatal(cmd, fmt.Sprintf("version validation failed: %s", err), 1)
+				return err
+			}
+
+			return nil
+		},
+	}
+
 	wasmCmd.AddCommand(
-		runWasmCommand,
-		validateWasmCommand,
+		newRunWasmCmd(),
+		newValidateWasmCmd(),
 	)
 
-	runtimeSettings = NewRunTimeSettings()
+	return wasmCmd
+}
+
+func newRunWasmCmd() *cobra.Command {
+	wasmJob := defaultWasmJobSpec()
+	runtimeSettings := NewRunTimeSettings()
+	downloadSettings := ipfs.NewIPFSDownloadSettings()
+
+	runWasmCommand := &cobra.Command{
+		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
+		Short:   "Run a WASM job on the network",
+		Long:    languageRunLong,
+		Example: languageRunExample,
+		Args:    cobra.MinimumNArgs(1),
+		PreRun:  applyPorcelainLogLevel,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings)
+		},
+	}
+
 	settingsFlags := NewRunTimeSettingsFlags(runtimeSettings)
 	runWasmCommand.Flags().AddFlagSet(settingsFlags)
 
-	downloadSettings = ipfs.NewIPFSDownloadSettings()
 	downloadFlags := NewIPFSDownloadFlags(downloadSettings)
 	runWasmCommand.Flags().AddFlagSet(downloadFlags)
 
@@ -78,7 +110,7 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 		&wasmJob.Spec.Timeout, "timeout", wasmJob.Spec.Timeout,
 		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
 	)
-	wasmCmd.PersistentFlags().StringVar(
+	runWasmCommand.PersistentFlags().StringVar(
 		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that 
 		will execute the job.`,
@@ -106,140 +138,141 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Wasm.ImportModules), "import-module-volumes", "I",
 		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
 	)
+
+	return runWasmCommand
 }
 
-var wasmCmd = &cobra.Command{
-	Use:   "wasm",
-	Short: "Run and prepare WASM jobs on the network",
-	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		// Check that the server version is compatible with the client version
-		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
-		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-			Fatal(fmt.Sprintf("version validation failed: %s", err), 1)
-			return err
-		}
+func runWasm(
+	cmd *cobra.Command,
+	args []string,
+	wasmJob *model.Job,
+	runtimeSettings *RunTimeSettings,
+	downloadSettings *ipfs.IPFSDownloadSettings,
+) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
 
-		return nil
-	},
-}
+	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.runWasmCommand")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-var runWasmCommand = &cobra.Command{
-	Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
-	Short:   "Run a WASM job on the network",
-	Long:    languageRunLong,
-	Example: languageRunExample,
-	Args:    cobra.MinimumNArgs(1),
-	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
+	var buf bytes.Buffer
+	wasmCidOrPath := args[0]
+	wasmJob.Spec.Wasm.Parameters = args[1:]
 
-		ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.runWasmCommand")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-
-		var buf bytes.Buffer
-		wasmCidOrPath := args[0]
-		wasmJob.Spec.Wasm.Parameters = args[1:]
-
-		// Try interpreting this as a CID.
-		wasmCid, err := cid.Parse(wasmCidOrPath)
-		if err == nil {
-			// It is a valid CID – proceed to create IPFS context.
-			wasmJob.Spec.Contexts = append(wasmJob.Spec.Contexts, model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           wasmCid.String(),
-				Path:          "/job",
-			})
-		} else {
-			// Try interpreting this as a path.
-			info, err := os.Stat(wasmCidOrPath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					return fmt.Errorf("%q is not a valid CID or local file: %s", wasmCidOrPath, err.Error())
-				} else {
-					return err
-				}
-			}
-
-			if !info.Mode().IsRegular() {
-				return fmt.Errorf("%s should point to a single file", wasmCidOrPath)
-			}
-
-			err = os.Chdir(filepath.Dir(wasmCidOrPath))
-			if err != nil {
-				return err
-			}
-
-			cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", wasmCidOrPath)
-			time.Sleep(1 * time.Second)
-			err = targzip.Compress(ctx, filepath.Base(wasmCidOrPath), &buf)
-			if err != nil {
+	// Try interpreting this as a CID.
+	wasmCid, err := cid.Parse(wasmCidOrPath)
+	if err == nil {
+		// It is a valid CID – proceed to create IPFS context.
+		wasmJob.Spec.Contexts = append(wasmJob.Spec.Contexts, model.StorageSpec{
+			StorageSource: model.StorageSourceIPFS,
+			CID:           wasmCid.String(),
+			Path:          "/job",
+		})
+	} else {
+		// Try interpreting this as a path.
+		info, err := os.Stat(wasmCidOrPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("%q is not a valid CID or local file: %s", wasmCidOrPath, err.Error())
+			} else {
 				return err
 			}
 		}
 
-		// We can only use a Deterministic verifier if we have multiple nodes running the job
-		// If the user has selected a Deterministic verifier (or we are using it by default)
-		// then switch back to a Noop Verifier if the concurrency is too low.
-		if wasmJob.Spec.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
-			wasmJob.Spec.Verifier = model.VerifierNoop
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("%s should point to a single file", wasmCidOrPath)
 		}
 
-		// See wazero.ModuleConfig.WithEnv
-		for key, value := range wasmJob.Spec.Wasm.EnvironmentVariables {
-			for _, str := range []string{key, value} {
-				if str == "" || strings.ContainsRune(str, null) {
-					return fmt.Errorf("invalid environment variable %s=%s", key, value)
-				}
+		err = os.Chdir(filepath.Dir(wasmCidOrPath))
+		if err != nil {
+			return err
+		}
+
+		cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", wasmCidOrPath)
+		time.Sleep(1 * time.Second)
+		err = targzip.Compress(ctx, filepath.Base(wasmCidOrPath), &buf)
+		if err != nil {
+			return err
+		}
+	}
+
+	// We can only use a Deterministic verifier if we have multiple nodes running the job
+	// If the user has selected a Deterministic verifier (or we are using it by default)
+	// then switch back to a Noop Verifier if the concurrency is too low.
+	if wasmJob.Spec.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
+		wasmJob.Spec.Verifier = model.VerifierNoop
+	}
+
+	// See wazero.ModuleConfig.WithEnv
+	for key, value := range wasmJob.Spec.Wasm.EnvironmentVariables {
+		for _, str := range []string{key, value} {
+			if str == "" || strings.ContainsRune(str, null) {
+				return fmt.Errorf("invalid environment variable %s=%s", key, value)
 			}
 		}
+	}
 
-		return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings, &buf)
-	},
+	return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings, &buf)
 }
 
-var validateWasmCommand = &cobra.Command{
-	Use:   "validate <local.wasm> [--entry-point <string>]",
-	Short: "Check that a WASM program is runnable on the network",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
+func newValidateWasmCmd() *cobra.Command {
+	wasmJob := defaultWasmJobSpec()
 
-		ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	validateWasmCommand := &cobra.Command{
+		Use:   "validate <local.wasm> [--entry-point <string>]",
+		Short: "Check that a WASM program is runnable on the network",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return validateWasm(cmd, args, wasmJob)
+		},
+	}
 
-		programPath := args[0]
-		entryPoint := wasmJob.Spec.Wasm.EntryPoint
+	validateWasmCommand.PersistentFlags().StringVar(
+		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
+		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that 
+		will execute the job.`,
+	)
 
-		engine := wazero.NewRuntime(ctx)
-		module, err := wasm.LoadModule(ctx, engine, programPath)
-		if err != nil {
-			Fatal(err.Error(), 1)
-			return err
-		}
+	return validateWasmCommand
+}
 
-		wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
-		if err != nil {
-			Fatal(err.Error(), 3)
-			return err
-		}
+func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
 
-		err = wasm.ValidateModuleImports(module, wasi)
-		if err != nil {
-			Fatal(err.Error(), 2)
-			return err
-		}
+	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
-		if err != nil {
-			Fatal(err.Error(), 2)
-			return err
-		}
+	programPath := args[0]
+	entryPoint := wasmJob.Spec.Wasm.EntryPoint
 
-		cmd.Println("OK")
-		return nil
-	},
+	engine := wazero.NewRuntime(ctx)
+	module, err := wasm.LoadModule(ctx, engine, programPath)
+	if err != nil {
+		Fatal(cmd, err.Error(), 1)
+		return err
+	}
+
+	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
+	if err != nil {
+		Fatal(cmd, err.Error(), 3)
+		return err
+	}
+
+	err = wasm.ValidateModuleImports(module, wasi)
+	if err != nil {
+		Fatal(cmd, err.Error(), 2)
+		return err
+	}
+
+	err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
+	if err != nil {
+		Fatal(cmd, err.Error(), 2)
+		return err
+	}
+
+	cmd.Println("OK")
+	return nil
 }

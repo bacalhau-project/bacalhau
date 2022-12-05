@@ -24,7 +24,6 @@ import (
 
 type CreateSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 func TestCreateSuite(t *testing.T) {
@@ -35,7 +34,6 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-	s.rootCmd = RootCmd
 }
 
 func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
@@ -54,13 +52,11 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
-			*OC = *NewCreateOptions()
-
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			require.NoError(s.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 				"--api-host", host,
 				"--api-port", port,
 				"../../testdata/job.json",
@@ -91,13 +87,11 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
-				*OC = *NewCreateOptions()
-
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				require.NoError(s.T(), err)
 
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 					"--api-host", host,
 					"--api-port", port,
 					testFile,
@@ -119,8 +113,6 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
-	*OC = *NewCreateOptions()
-
 	parsedBasedURI, err := url.Parse(c.BaseURI)
 	require.NoError(s.T(), err)
 
@@ -128,7 +120,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err)
 
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
 	)
@@ -137,7 +129,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), c, out)
-	_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", host,
 		"--api-port", port,
 		job.Metadata.ID,
@@ -158,7 +150,7 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
@@ -198,7 +190,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create", "../../testdata/empty.yaml")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create", "../../testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

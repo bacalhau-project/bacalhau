@@ -18,43 +18,12 @@ var doNotTrack bool
 
 var Fatal = FatalErrorHandler
 
-func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
-	// ====== Start a job
+var defaultAPIHost string
+var defaultAPIPort int
 
-	// Create job from file
-	RootCmd.AddCommand(createCmd)
-
-	// Plumbing commands (advanced usage)
-	RootCmd.AddCommand(dockerCmd)
-	RootCmd.AddCommand(wasmCmd)
-
-	// Porcelain commands (language specific easy to use commands)
-	RootCmd.AddCommand(runCmd)
-
-	RootCmd.AddCommand(validateCmd)
-
-	RootCmd.AddCommand(versionCmd)
-
-	// ====== Get information or results about a job
-	// Describe a job
-	RootCmd.AddCommand(describeCmd)
-
-	// Get the results of a job
-	RootCmd.AddCommand(getCmd)
-
-	// List jobs
-	RootCmd.AddCommand(listCmd)
-
-	// ====== Run a server
-
-	// Serve commands
-	RootCmd.AddCommand(serveCmd)
-	RootCmd.AddCommand(simulatorCmd)
-	RootCmd.AddCommand(idCmd)
-	RootCmd.AddCommand(devstackCmd)
-
-	defaultAPIHost := system.Envs[system.Production].APIHost
-	defaultAPIPort := system.Envs[system.Production].APIPort
+func init() { //nolint:gochecknoinits
+	defaultAPIHost = system.Envs[system.Production].APIHost
+	defaultAPIPort = system.Envs[system.Production].APIPort
 
 	if config.GetAPIHost() != "" {
 		defaultAPIHost = config.GetAPIHost()
@@ -67,6 +36,51 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		}
 	}
 
+	// Force cobra to set apiHost & apiPort
+	NewRootCmd()
+}
+
+func NewRootCmd() *cobra.Command {
+	RootCmd := &cobra.Command{
+		Use:   getCommandLineExecutable(),
+		Short: "Compute over data",
+		Long:  `Compute over data`,
+	}
+
+	// ====== Start a job
+
+	// Create job from file
+	RootCmd.AddCommand(newCreateCmd())
+
+	// Plumbing commands (advanced usage)
+	RootCmd.AddCommand(newDockerCmd())
+	RootCmd.AddCommand(newWasmCmd())
+
+	// Porcelain commands (language specific easy to use commands)
+	RootCmd.AddCommand(newRunCmd())
+
+	RootCmd.AddCommand(newValidateCmd())
+
+	RootCmd.AddCommand(newVersionCmd())
+
+	// ====== Get information or results about a job
+	// Describe a job
+	RootCmd.AddCommand(newDescribeCmd())
+
+	// Get the results of a job
+	RootCmd.AddCommand(newGetCmd())
+
+	// List jobs
+	RootCmd.AddCommand(newListCmd())
+
+	// ====== Run a server
+
+	// Serve commands
+	RootCmd.AddCommand(newServeCmd())
+	RootCmd.AddCommand(newSimulatorCmd())
+	RootCmd.AddCommand(newIDCmd())
+	RootCmd.AddCommand(newDevStackCmd())
+
 	RootCmd.PersistentFlags().StringVar(
 		&apiHost, "api-host", defaultAPIHost,
 		`The host for the client and server to communicate on (via REST).
@@ -77,15 +91,11 @@ Ignored if BACALHAU_API_HOST environment variable is set.`,
 		`The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
-}
-
-var RootCmd = &cobra.Command{
-	Use:   getCommandLineExecutable(),
-	Short: "Compute over data",
-	Long:  `Compute over data`,
+	return RootCmd
 }
 
 func Execute() {
+	RootCmd := NewRootCmd()
 	// ANCHOR: Set global context here
 	RootCmd.SetContext(context.Background())
 
@@ -130,6 +140,6 @@ func Execute() {
 	RootCmd.SetOutput(system.Stdout)
 
 	if err := RootCmd.Execute(); err != nil {
-		Fatal(err.Error(), 1)
+		Fatal(RootCmd, err.Error(), 1)
 	}
 }

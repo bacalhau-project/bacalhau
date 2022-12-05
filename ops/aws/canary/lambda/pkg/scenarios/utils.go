@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -26,6 +27,45 @@ func getSampleDockerJob() *model.Job {
 			Entrypoint: []string{
 				"echo",
 				defaultEchoMessage,
+			},
+		},
+	}
+
+	j.Deal = model.Deal{
+		Concurrency: 1,
+	}
+	return j
+}
+
+func getSampleDockerIPFSJob() *model.Job {
+	var j = &model.Job{}
+	j.Spec = model.Spec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherIpfs,
+		Docker: model.JobSpecDocker{
+			Image: "ubuntu",
+			Entrypoint: []string{
+				"bash",
+				"-c",
+				"md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz",
+			},
+		},
+		Inputs: []model.StorageSpec{
+			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
+			// You can download via https://w3s.link/ipfs/bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy
+			{
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "inputs",
+				CID:           "bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy",
+				Path:          "/inputs/data.tar.gz",
+			},
+		},
+		Outputs: []model.StorageSpec{
+			{
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "outputs",
+				Path:          "/outputs",
 			},
 		},
 	}
@@ -72,4 +112,22 @@ func compareOutput(output []byte, expectedOutput string) error {
 		return fmt.Errorf("output mismatch: expected '%v' but got '%v'", expectedOutput, outputStr)
 	}
 	return nil
+}
+
+func osReadDir(root string) ([]string, error) {
+	var files []string
+	f, err := os.Open(root)
+	if err != nil {
+		return files, err
+	}
+	fileInfo, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		return files, err
+	}
+
+	for _, file := range fileInfo {
+		files = append(files, file.Name())
+	}
+	return files, nil
 }
