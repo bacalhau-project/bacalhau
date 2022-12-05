@@ -48,7 +48,7 @@ func getSampleDockerIPFSJob() *model.Job {
 			Entrypoint: []string{
 				"bash",
 				"-c",
-				"md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz",
+				"md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
 			},
 		},
 		Inputs: []model.StorageSpec{
