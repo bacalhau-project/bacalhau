@@ -371,7 +371,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Run Perf and Upload Results
+          name: Run performance test
           command: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
             source $HOME/.cargo/env
@@ -394,8 +394,8 @@ jobs:
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
       - heroku/install
       - run:
+          name: Update dashboard
           command: |
-            # Updates dashboard data with latest from GCS
             heroku run build --app bacalhau-dashboards
 
   release:
