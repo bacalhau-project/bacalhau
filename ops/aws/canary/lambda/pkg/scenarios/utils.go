@@ -17,7 +17,9 @@ import (
 const defaultEchoMessage = "hello λ!"
 
 func getSampleDockerJob() *model.Job {
-	var j = &model.Job{}
+	var j = &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
@@ -38,7 +40,9 @@ func getSampleDockerJob() *model.Job {
 }
 
 func getSampleDockerIPFSJob() *model.Job {
-	var j = &model.Job{}
+	var j = &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
