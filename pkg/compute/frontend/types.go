@@ -26,12 +26,18 @@ type Service interface {
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
 }
 
+type RequestMetadata struct {
+	SourcePeerID    string
+	DestPeerID      string
+	SourceRequestID string
+}
 type AskForBidRequest struct {
 	// Job specifies the job to be executed.
 	Job model.Job
 	// ShardIndexes specifies the shard indexes to be executed.
 	// This enables the requester to ask for bids for a subset of the shards of a job.
 	ShardIndexes []int
+	RequestMetadata
 }
 
 type AskForBidResponse struct {
@@ -47,6 +53,7 @@ type AskForBidShardResponse struct {
 
 type BidAcceptedRequest struct {
 	ExecutionID string
+	RequestMetadata
 }
 
 type BidAcceptedResult struct {
@@ -55,6 +62,7 @@ type BidAcceptedResult struct {
 type BidRejectedRequest struct {
 	ExecutionID   string
 	Justification string
+	RequestMetadata
 }
 
 type BidRejectedResult struct {
@@ -62,6 +70,7 @@ type BidRejectedResult struct {
 
 type ResultAcceptedRequest struct {
 	ExecutionID string
+	RequestMetadata
 }
 
 type ResultAcceptedResult struct {
@@ -70,6 +79,7 @@ type ResultAcceptedResult struct {
 type ResultRejectedRequest struct {
 	ExecutionID   string
 	Justification string
+	RequestMetadata
 }
 
 type ResultRejectedResult struct {
@@ -78,6 +88,7 @@ type ResultRejectedResult struct {
 type CancelJobRequest struct {
 	ExecutionID   string
 	Justification string
+	RequestMetadata
 }
 
 type CancelJobResult struct {

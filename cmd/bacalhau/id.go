@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	libp2p_transport "github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,11 @@ func id(cmd *cobra.Command, OS *ServeOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, []multiaddr.Multiaddr{})
+	libp2pHost, err := libp2p.NewHost(ctx, cm, OS.SwarmPort, []multiaddr.Multiaddr{})
+	if err != nil {
+		return err
+	}
+	transport, err := libp2p_transport.NewTransport(ctx, cm, libp2pHost)
 	if err != nil {
 		return err
 	}

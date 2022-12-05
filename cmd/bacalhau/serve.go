@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
@@ -18,7 +19,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	libp2p_transport "github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/multiformats/go-multiaddr"
 
@@ -285,7 +286,11 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	peers := getPeers(OS)
 	log.Debug().Msgf("libp2p connecting to: %s", peers)
 
-	transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
+	libp2pHost, err := libp2p.NewHost(ctx, cm, OS.SwarmPort, peers)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
+	}
+	transport, err := libp2p_transport.NewTransport(ctx, cm, libp2pHost)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
 	}

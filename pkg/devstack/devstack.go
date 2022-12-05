@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
@@ -21,7 +22,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	libp2p_transport "github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
@@ -183,9 +184,13 @@ func NewDevStack(
 				log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 			}
 
-			libp2pTransport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
-			if transportErr != nil {
-				return nil, transportErr
+			libp2pHost, libp2pError := libp2p.NewHost(ctx, cm, libp2pPort, libp2pPeer)
+			if libp2pError != nil {
+				return nil, libp2pError
+			}
+			libp2pTransport, libp2pError := libp2p_transport.NewTransport(ctx, cm, libp2pHost)
+			if err != nil {
+				return nil, libp2pError
 			}
 
 			useTransport = libp2pTransport

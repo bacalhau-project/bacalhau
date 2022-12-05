@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -43,13 +44,17 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	computeNodeTransport, err := NewTransport(ctx, cm, computeNodePort, []multiaddr.Multiaddr{})
+	computeNodeHost, err := libp2p.NewHost(ctx, cm, computeNodePort, []multiaddr.Multiaddr{})
+	require.NoError(suite.T(), err)
+	computeNodeTransport, err := NewTransport(ctx, cm, computeNodeHost)
 	require.NoError(suite.T(), err)
 	computeNodeID := computeNodeTransport.HostID()
 	require.NoError(suite.T(), err)
 	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID))
 	require.NoError(suite.T(), err)
-	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodePort, []multiaddr.Multiaddr{addr})
+	requesterNodeHost, err := libp2p.NewHost(ctx, cm, requesterNodePort, []multiaddr.Multiaddr{addr})
+	require.NoError(suite.T(), err)
+	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodeHost)
 	require.NoError(suite.T(), err)
 	requesterNodeID := requesterNodeTransport.HostID()
 	require.NoError(suite.T(), err)
