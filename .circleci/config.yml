@@ -386,11 +386,10 @@ jobs:
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
             export DATETIME="$(date -u +"%FT%H%MZ")"
-            sudo apt install python3.10 python3-pip build-essential -y
-            pip3 install gsutil
             if test -z "${CIRCLE_TAG}"; then
               export CIRCLE_TAG="v0.0.0-xxxxxxx"
             fi
+            pip3 install gsutil
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
       - heroku/install
