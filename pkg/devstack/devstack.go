@@ -386,11 +386,11 @@ export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
 	if !stack.PublicIPFSMode {
 		summaryShellVariablesString += `
 
-By default devstack is not running on public IPFS network.
-If you wish to connect devstack to public IPFS network consider running new IPFS node daemon localy
-and then connecting it to bacalhau using command bellow or by adding --public-ipfs flag:
+By default devstack is not running on the public IPFS network.
+If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
+You can also run a new IPFS daemon locally and connect it to Bacalhau using:
 
-ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
 	}
 
 	log.Debug().Msg(logString)
