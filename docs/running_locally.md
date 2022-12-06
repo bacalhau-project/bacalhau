@@ -31,7 +31,13 @@ go build
 
 This will start a 3 node Bacalhau cluster connected with libp2p.
 
-Each node has its own ipfs server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port. These IPFS nodes are not connected to public IPFS network. If you wish to connect devstack to public IPFS network, you can include `--public-ipfs` flag or starting your own IPFS node on same machine as devstack and connecting it by running following command after starting devstack `ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSE` (`BACALHAU_IPFS_SWARM_ADDRESSE` is an environment variable prompted after starting devstack).
+Each node has its own IPFS server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port. These IPFS nodes are not connected to the public IPFS network. If you wish to connect the devstack to the public IPFS network, you can include `--public-ipfs` flag.
+
+You can also use your own IPFS node and connect it to the devstack by running (after starting the devstack):
+```
+# $BACALHAU_IPFS_SWARM_ADDRESSES is an environment variable given after starting devstack
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
+```
 
 If you would like to make it a bit more predictable and/or ignore errors (such as during CI), you can add the following before your execution:
 ```
