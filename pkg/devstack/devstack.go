@@ -390,7 +390,7 @@ By default devstack is not running on the public IPFS network.
 If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
 You can also run a new IPFS daemon locally and connect it to Bacalhau using:
 
-ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
 	log.Debug().Msg(logString)
