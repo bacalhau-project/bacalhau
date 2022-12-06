@@ -25,7 +25,7 @@ build: ${BIN_TARGETS}
 test: unittests.xml
 
 unittests.xml: $(shell find ./pkg ./cmd -type f)
-	gotestsum --junitfile $@ -- -timeout 60s ./...
+	gotestsum --junitfile $@ -- -timeout 300s ./...
 
 
 .PHONY: clean
