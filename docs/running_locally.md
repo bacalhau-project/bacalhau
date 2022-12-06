@@ -31,14 +31,20 @@ go build
 
 This will start a 3 node Bacalhau cluster connected with libp2p.
 
-Each node has its own ipfs server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port.
+Each node has its own IPFS server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port. These IPFS nodes are not connected to the public IPFS network. If you wish to connect the devstack to the public IPFS network, you can include `--public-ipfs` flag.
+
+You can also use your own IPFS node and connect it to the devstack by running (after starting the devstack):
+```
+# $BACALHAU_IPFS_SWARM_ADDRESSES is an environment variable given after starting devstack
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
+```
 
 If you would like to make it a bit more predictable and/or ignore errors (such as during CI), you can add the following before your execution:
 ```
 IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1
 ```
 
-If you wish to also have a [Lotus](https://lotus.filecoin.io/) node to test against, then you can include the `--lotus-node` flag. This will start a Docker container running Lotus against a [local network](https://lotus.filecoin.io/lotus/developers/local-network/), making it easy to test the functionality without any cost concerns. 
+If you wish to also have a [Lotus](https://lotus.filecoin.io/) node to test against, then you can include the `--lotus-node` flag. This will start a Docker container running Lotus against a [local network](https://lotus.filecoin.io/lotus/developers/local-network/), making it easy to test the functionality without any cost concerns.
 
 Once everything has started up - you will see output like the following:
 
@@ -50,13 +56,18 @@ export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYt
 export BACALHAU_API_HOST=0.0.0.0
 export BACALHAU_API_PORT=39763
 
+By default devstack is not running on public IPFS network.
+If you wish to connect devstack to public IPFS network consider running new IPFS node daemon localy
+and then connecting it to bacalhau using command bellow or by adding --public-ipfs flag:
+
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
 ```
 
-The last three lines contain the environment variables you need for a new window.
+Message contains environment variables you need for a new window.
 
 ## New Terminal Window
 * Open an additional terminal window to be used for submitting jobs.
-* Copy and paste the last three lines into this window. EG:
+* Copy and paste environment variables from previous message into this window. EG:
 
 ```bash
 export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYtRzB2MXZPo6MxkeH6N2fYZRCLT57VsACn
