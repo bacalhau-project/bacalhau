@@ -78,14 +78,14 @@ if rebuild_all:
         proc = subprocess.Popen(
             ["bin/darwin_arm64/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
         )
-        schemaFile = SCHEMA_DIR / f"v{tag}.json"
+        schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
         schemaFile.write_text(proc.stdout.read().decode("utf-8"))
 else:
     proc = subprocess.Popen(["bacalhau", "version"], stdout=subprocess.PIPE)
     versionOutput = proc.stdout.read().decode("utf-8")
 
     proc = subprocess.Popen(["bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE)
-    schemaFile = SCHEMA_DIR / f"jsonschema/v{most_recent_tag}.json"
+    schemaFile = SCHEMA_DIR / "jsonschema" / f"v{most_recent_tag}.json"
     schemaFile.write_text(proc.stdout.read().decode("utf-8"))
 
 jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
