@@ -66,7 +66,7 @@ for tag in listOfTagsToBuild:
             print(f"Skipping {tag} because it already exists")
             continue
 
-    repo.git.checkout(tag)
+    repo.git.checkout(f"v{tag}")
     subprocess.run(["python", "scripts/build_schema_files/build_schema_files.py"])
 
 most_recent_tag = max(listOfTagsToBuild)
