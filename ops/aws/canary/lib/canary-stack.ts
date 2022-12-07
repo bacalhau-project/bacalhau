@@ -10,12 +10,22 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import {Construct} from 'constructs';
 import {BuildConfig} from "./build-config";
+import {Size} from "aws-cdk-lib";
 
 export interface LambdaProps {
     readonly action: string;
     readonly timeoutMinutes: number;
     readonly rateMinutes: number;
     readonly memorySize: number;
+    readonly storageSize: number;
+}
+
+const DEFAULT_LAMBDA_PROPS: LambdaProps = {
+    action: '_',
+    timeoutMinutes: 1,
+    rateMinutes: 2,
+    memorySize: 256,
+    storageSize: 512,
 }
 
 export class CanaryStack extends cdk.Stack {
@@ -35,12 +45,13 @@ export class CanaryStack extends cdk.Stack {
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
         this.createLambdaAlarmSlackHandlerFunc()
-        this.createLambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.createLambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.createLambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 1024});
-        this.createLambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.createLambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.createLambdaScenarioFunc({action: "submitDockerIPFSJobAndGet", timeoutMinutes: 10, rateMinutes: 2, memorySize: 1024});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "list"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submit"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndDescribe"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitWithConcurrency"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{
+            action: "submitDockerIPFSJobAndGet", timeoutMinutes: 10, memorySize: 2048, storageSize: 5012}});
         this.createOperatorGroup(id)
     }
 
@@ -77,6 +88,7 @@ export class CanaryStack extends cdk.Stack {
             runtime: lambda.Runtime.GO_1_X,
             timeout: cdk.Duration.minutes(props.timeoutMinutes),
             memorySize: props.memorySize,
+            ephemeralStorageSize: Size.mebibytes(props.storageSize),
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': 'DEBUG',

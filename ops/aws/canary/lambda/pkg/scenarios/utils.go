@@ -54,16 +54,16 @@ func getSampleDockerIPFSJob() *model.Job {
 			Entrypoint: []string{
 				"bash",
 				"-c",
-				"md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz",
+				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
 			},
 		},
 		Inputs: []model.StorageSpec{
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
-			// You can download via https://w3s.link/ipfs/bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy
+			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "inputs",
-				CID:           "bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy",
+				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
 				Path:          "/inputs/data.tar.gz",
 			},
 		},

@@ -69,16 +69,24 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	for _, file := range files {
 		log.Debug().Msgf("downloaded files: %s", file)
 	}
-	if len(files) != 2 {
+	if len(files) != 3 {
 		return fmt.Errorf("expected 2 files in output dir, got %d", len(files))
 	}
 	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
 	if err != nil {
 		return err
 	}
-	err = compareOutput(body, "07024a158889ccabb23c090a79558800  /inputs/data.tar.gz")
+	err = compareOutput(body, "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz")
 	if err != nil {
 		return fmt.Errorf("testing md5 of input: %s", err)
+	}
+	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
+	if err != nil {
+		return err
+	}
+	err = compareOutput(body, "62731802")
+	if err != nil {
+		return fmt.Errorf("testing ls of input: %s", err)
 	}
 
 	return nil
