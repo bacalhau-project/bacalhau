@@ -60,7 +60,6 @@ for longTag in tagList:
         continue
 
 for tag in listOfTagsToBuild:
-    print(f"Building schema files for {tag}")
     if not rebuild_all:
         if (SCHEMA_DIR / tag).exists():
             print(f"Skipping {tag} because it already exists")
@@ -73,11 +72,13 @@ most_recent_tag = max(listOfTagsToBuild)
 if rebuild_all:
     for tag in listOfTagsToBuild[0:-1]:
         repo.git.checkout(f"v{tag}")
+        print(f"Building schema files for {tag}")
         subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
         subprocess.call(["make", "build"], cwd=rootPath)
         proc = subprocess.Popen(
             ["bin/darwin_arm64/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
         )
+        repo.heads.main.checkout()
         schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
         with open(schemaFile, "w") as f:
             f.write_text(proc.stdout.read().decode("utf-8"))
