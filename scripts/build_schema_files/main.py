@@ -5,6 +5,8 @@ from sys import argv
 
 import subprocess
 
+from jinja2 import Environment, FileSystemLoader
+
 STARTING_SEMVER = semver.parse("0.3.11")
 SCHEMA_DIR = Path(__file__).parent.parent.parent / "schema.bacalhau.org"
 LATEST_SEMVER = None
@@ -70,7 +72,26 @@ if rebuild_all:
 else:
     proc = subprocess.Popen(["bacalhau", "version"], stdout=subprocess.PIPE)
     versionOutput = proc.stdout.read().decode("utf-8")
-    
+
     proc = subprocess.Popen(["bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE)
-    schemaFile = SCHEMA_DIR / f"v{most_recent_tag}.json"
+    schemaFile = SCHEMA_DIR / f"jsonschema/v{most_recent_tag}.json"
     schemaFile.write_text(proc.stdout.read().decode("utf-8"))
+
+# Load index.jinja file and render it into schema.bacalhau.org/index.md
+env = Environment(loader=FileSystemLoader(rootPath / "scripts" / "build_schema_files"))
+template = env.get_template("index.jinja")
+
+jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
+
+# Render the template and write it to the index.md file
+jsonSchemas = []
+maxSchema = semver.parse("0.0.0")
+for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
+    jsonSchemas.append({"name": schemaFile.name, "file": f"{schemaFile.name}.json"})
+    if semver.parse(schemaFile.name) > maxSchema:
+        maxSchema = schemaFile.name
+
+jsonSchemas = sorted(jsonSchemas.items(), key=lambda x: semver.parse(x[0].name), reverse=True)
+jsonSchemas.push(("LATEST", f"v{maxSchema}.json"))
+
+template.render(jsonSchemas=jsonSchemas)
