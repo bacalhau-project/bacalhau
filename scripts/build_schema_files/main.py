@@ -67,7 +67,6 @@ for tag in listOfTagsToBuild:
             continue
 
     repo.git.checkout(f"v{tag}")
-    subprocess.run(["python", "scripts/build_schema_files/build_schema_files.py"])
 
 most_recent_tag = max(listOfTagsToBuild)
 
