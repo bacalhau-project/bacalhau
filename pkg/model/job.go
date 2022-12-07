@@ -51,10 +51,6 @@ type JobStatus struct {
 	Requester JobRequester `json:"Requester,omitempty"`
 }
 
-// func (job Job) String() string {
-// 	return job.Metadata.ID
-// }
-
 // TODO: There's probably a better way we want to globally version APIs
 func NewJob() *Job {
 	return &Job{
