@@ -14,8 +14,8 @@ rootPath = Path(__file__).parent.parent.parent
 
 # Need to do this upfront because we'll be switching branches
 # Load index.jinja file and render it into schema.bacalhau.org/index.md
-env = Environment(loader=FileSystemLoader(rootPath))
-template = env.get_template(rootPath / "index.jinja")
+env = Environment(loader=FileSystemLoader("templates/"))
+template = env.get_template("index.jinja")
 
 
 # If --rebuild-all is passed, we will rebuild all schema files, even if they
@@ -59,14 +59,6 @@ for longTag in tagList:
         print(f"Skipping {tag} because it is not a valid semver tag: {ve}")
         continue
 
-for tag in listOfTagsToBuild:
-    if not rebuild_all:
-        if (SCHEMA_DIR / tag).exists():
-            print(f"Skipping {tag} because it already exists")
-            continue
-
-    repo.git.checkout(f"v{tag}")
-
 most_recent_tag = max(listOfTagsToBuild)
 
 if rebuild_all:
@@ -78,18 +70,18 @@ if rebuild_all:
         proc = subprocess.Popen(
             ["bin/darwin_arm64/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
         )
+        repo.git.reset("--hard")
         repo.heads.main.checkout()
         schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
-        with open(schemaFile, "w") as f:
-            f.write_text(proc.stdout.read().decode("utf-8"))
+        jsonFileContents = proc.stdout.read().decode("utf-8")
+        schemaFile.write_text(jsonFileContents)
 else:
     proc = subprocess.Popen(["bacalhau", "version"], stdout=subprocess.PIPE)
     versionOutput = proc.stdout.read().decode("utf-8")
 
     proc = subprocess.Popen(["bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE)
     schemaFile = SCHEMA_DIR / "jsonschema" / f"v{most_recent_tag}.json"
-    with open(schemaFile, "w") as f:
-        f.write_text(proc.stdout.read().decode("utf-8"))
+    schemaFile.write_text(proc.stdout.read().decode("utf-8"))
 
 jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
 
