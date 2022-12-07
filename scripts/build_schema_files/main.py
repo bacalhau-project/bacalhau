@@ -10,6 +10,13 @@ from jinja2 import Environment, FileSystemLoader
 STARTING_SEMVER = semver.parse("0.3.11")
 SCHEMA_DIR = Path(__file__).parent.parent.parent / "schema.bacalhau.org"
 LATEST_SEMVER = None
+rootPath = Path(__file__).parent.parent.parent
+
+# Need to do this upfront because we'll be switching branches
+# Load index.jinja file and render it into schema.bacalhau.org/index.md
+env = Environment(loader=FileSystemLoader(rootPath / "scripts" / "build_schema_files"))
+template = env.get_template("index.jinja")
+
 
 # If --rebuild-all is passed, we will rebuild all schema files, even if they
 # already exist in the schema.bacalhau.org directory
@@ -18,9 +25,14 @@ rebuild_all = False
 if len(argv) > 1 and argv[1] == "--rebuild-all":
     rebuild_all = True
 
-rootPath = Path(__file__).parent.parent.parent
-
 repo = git.Repo(rootPath)
+
+actor = git.Actor("Bacalhau JSONSchema Builder Actor", "")
+commit = git.Actor("Bacalhau JSONSchema Builder Committer", "")
+subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
+repo.git.add(all=True)
+repo.index.commit("Running JSONSchema Builder", author=actor, committer=commit)
+
 repo.heads.main.checkout()
 
 tagList = repo.git.ls_remote("--tags", "origin").split("refs/tags/")[1:]
@@ -76,10 +88,6 @@ else:
     proc = subprocess.Popen(["bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE)
     schemaFile = SCHEMA_DIR / f"jsonschema/v{most_recent_tag}.json"
     schemaFile.write_text(proc.stdout.read().decode("utf-8"))
-
-# Load index.jinja file and render it into schema.bacalhau.org/index.md
-env = Environment(loader=FileSystemLoader(rootPath / "scripts" / "build_schema_files"))
-template = env.get_template("index.jinja")
 
 jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
 
