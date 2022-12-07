@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -15,7 +14,7 @@ import (
 func SubmitAndGet(ctx context.Context) error {
 	// intentionally delay creation of the client so a new client is created for each
 	// scenario to mimic the behavior of bacalhau cli.
-	client := bacalhau.GetAPIClient()
+	client := getClient()
 
 	cm := system.NewCleanupManager()
 	j := getSampleDockerJob()

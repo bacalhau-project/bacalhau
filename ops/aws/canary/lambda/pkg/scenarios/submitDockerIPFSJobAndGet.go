@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -14,10 +13,16 @@ import (
 
 // This test submits a job that uses the Docker executor with an IPFS input.
 func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
-	client := bacalhau.GetAPIClient()
+	client := getClient()
 
 	cm := system.NewCleanupManager()
 	j := getSampleDockerIPFSJob()
+
+	// In test we use the cid of the file we uploaded in scenarios_test.go
+	if system.GetEnvironment() == system.EnvironmentTest {
+		j.Spec.Inputs[0].CID = os.Getenv("BACALHAU_CANARY_TEST_CID")
+	}
+
 	submittedJob, err := client.Submit(ctx, j, nil)
 	if err != nil {
 		return err

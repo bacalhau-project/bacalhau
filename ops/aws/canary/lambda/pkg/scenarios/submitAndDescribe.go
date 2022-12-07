@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,7 +13,7 @@ import (
 func SubmitAnDescribe(ctx context.Context) error {
 	// intentionally delay creation of the client so a new client is created for each
 	// scenario to mimic the behavior of bacalhau cli.
-	client := bacalhau.GetAPIClient()
+	client := getClient()
 
 	j := getSampleDockerJob()
 	submittedJob, err := client.Submit(ctx, j, nil)
