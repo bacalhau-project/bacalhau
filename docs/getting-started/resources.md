@@ -28,11 +28,11 @@ If there are no nodes that can satisfy the requirements, the job will wait for a
 
 ### Limitations
 
-The following limitations currently exist within Bacalhau. Bacalhau supports:
+The following limitations currently exist within Bacalhau.
 
 * Maximum CPU and memory limits depend on the participants in the network
-* NVIDIA GPUs only, a single GPU only
+* See [the dedicated page](docs/next-steps/gpu.md) on GPUs to see GPU limiations
 
 ### Also See
 
-* [GPU workload tutorial](docs/getting-started/gpu.md)
+* [GPU workload tutorial](docs/next-steps/gpu.md)

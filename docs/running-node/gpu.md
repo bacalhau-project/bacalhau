@@ -67,4 +67,4 @@ To limit the number of GPUs that individual jobs can use, use the `limit-job-gpu
 
 ## Limitations
 
-For limitations, see [the GPU page in the getting started guide](../getting-started/gpu.md#limitations).
+For limitations, see [the GPU page in the getting started guide](../next-steps/gpu.md#limitations).
