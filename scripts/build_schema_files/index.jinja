@@ -1,1 +1,13 @@
-JSON Schema:
+---
+layout: default
+---
+
+# JSON Schema
+<ul>
+{% raw %} {% for k, v in jsonSchemas %} <li><a href="jsonschema/{{ v }}">{{ k }}</a></li> {% endfor %} {% endraw %}
+</ul>
+
+# Open API
+<ul>
+{% raw %} {% for k, v in openAPIs %} <li><a href="openapi/{{ v }}">{{ k }}</a></li> {% endfor %} {% endraw %}
+</ul>
