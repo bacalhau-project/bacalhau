@@ -99,7 +99,7 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     if semver.parse(schemaFile.name) > maxSchema:
         maxSchema = schemaFile.name
 
-jsonSchemas = sorted(jsonSchemas.items(), key=lambda x: semver.parse(x[0].name), reverse=True)
+jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x[0].name), reverse=True)
 jsonSchemas.push(("LATEST", f"v{maxSchema}.json"))
 
 template.render(jsonSchemas=jsonSchemas)
