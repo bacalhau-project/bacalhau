@@ -64,7 +64,7 @@ most_recent_tag = max(listOfTagsToBuild)
 jsonFileContents = {}
 
 if not rebuild_all:
-    listOfTagsToBuild = listOfTagsToBuild.pop()
+    listOfTagsToBuild = [listOfTagsToBuild.pop()]
 
 for tag in listOfTagsToBuild:
     repo.git.checkout(f"v{tag}")
