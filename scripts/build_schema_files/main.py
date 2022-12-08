@@ -64,9 +64,9 @@ most_recent_tag = max(listOfTagsToBuild)
 jsonFileContents = {}
 
 if not rebuild_all:
-    listOfTagsToBuild = listOfTagsToBuild[::-1]
+    listOfTagsToBuild = listOfTagsToBuild.pop()
 
-for tag in listOfTagsToBuild[0:-1]:
+for tag in listOfTagsToBuild:
     repo.git.checkout(f"v{tag}")
     print(f"Building schema files for {tag}")
     subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
@@ -99,7 +99,7 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     if str(semver.parse(schemaFile.stem.lstrip("v"))) > maxSchema:
         maxSchema = schemaFile.name
 
-jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x[0].name), reverse=True)
+jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x.name), reverse=True)
 jsonSchemas.push(("LATEST", f"v{maxSchema}.json"))
 
 template.render(jsonSchemas=jsonSchemas)
