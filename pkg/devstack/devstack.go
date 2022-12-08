@@ -5,15 +5,11 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
@@ -43,8 +39,9 @@ type DevStackOptions struct {
 	SimulatorURL         string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
-	Nodes []*node.Node
-	Lotus *LotusNode
+	Nodes          []*node.Node
+	Lotus          *LotusNode
+	PublicIPFSMode bool
 }
 
 func NewDevStackForRunLocal(
@@ -289,24 +286,13 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	// do a GC before we start profiling
-	runtime.GC()
-
-	log.Trace().Msg("============= STARTING PROFILING ============")
-	// devstack always records a cpu profile, it will be generally useful.
-	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
-	f, err := os.Create(cpuprofile)
-	if err != nil {
-		log.Debug().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
-	}
-	defer closer.CloseWithLogOnError("cpuprofile", f)
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Debug().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
-	}
+	profiler := StartProfiling()
+	cm.RegisterCallback(profiler.Close)
 
 	return &DevStack{
-		Nodes: nodes,
-		Lotus: lotus,
+		Nodes:          nodes,
+		Lotus:          lotus,
+		PublicIPFSMode: options.PublicIPFSMode,
 	}, nil
 }
 
@@ -395,6 +381,16 @@ export BACALHAU_API_PORT=%s`,
 		summaryShellVariablesString += fmt.Sprintf(`
 export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
+	if !stack.PublicIPFSMode {
+		summaryShellVariablesString += `
+
+By default devstack is not running on the public IPFS network.
+If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
+You can also run a new IPFS daemon locally and connect it to Bacalhau using:
+
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
 	log.Debug().Msg(logString)
