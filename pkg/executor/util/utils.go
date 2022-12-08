@@ -143,7 +143,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	exPythonWasm, err := pythonwasm.NewExecutor(ctx, cm, executors)
+	exPythonWasm, err := pythonwasm.NewExecutor(executors)
 	if err != nil {
 		return nil, err
 	}
@@ -155,14 +155,7 @@ func NewStandardExecutorProvider(
 }
 
 // return noop executors for all engines
-func NewNoopExecutors(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	config noop_executor.ExecutorConfig,
-) (executor.ExecutorProvider, error) {
-	noopExecutor, err := noop_executor.NewNoopExecutorWithConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return noop_executor.NewNoopExecutorProvider(noopExecutor), nil
+func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
+	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
+	return noop_executor.NewNoopExecutorProvider(noopExecutor)
 }

@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -211,7 +211,7 @@ func (e *Executor) RunShard(
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacitymanager.ParseResourceUsageConfig(shard.Job.Spec.Resources)
+	resourceRequirements := capacity.ParseResourceUsageConfig(shard.Job.Spec.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
@@ -359,13 +359,13 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 }
 
 func (e *Executor) jobContainerName(shard model.JobShard) string {
-	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, shard.Job.ID, shard.Index)
+	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, shard.Job.Metadata.ID, shard.Index)
 }
 
 func (e *Executor) jobContainerLabels(job *model.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
-		"bacalhau-jobID":    job.ID,
+		"bacalhau-jobID":    job.Metadata.ID,
 	}
 }
 

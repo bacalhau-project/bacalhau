@@ -4,13 +4,11 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-
-	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -30,7 +28,7 @@ type NodeConfig struct {
 	APIPort              int
 	MetricsPort          int
 	IsBadActor           bool
-	ComputeNodeConfig    computenode.ComputeNodeConfig
+	ComputeConfig        ComputeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
 	LotusConfig          *filecoinlotus.PublisherConfig
 }
@@ -56,7 +54,7 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
-	ComputeNode    *computenode.ComputeNode
+	ComputeNode    Compute
 	RequesterNode  *requesternode.RequesterNode
 	LocalDB        localdb.LocalDB
 	Transport      transport.Transport
@@ -141,21 +139,18 @@ func NewNode(
 	if err != nil {
 		return nil, err
 	}
-	computeNode, err := computenode.NewComputeNode(
+
+	// setup compute node
+	computeNode := NewComputeNode(
 		ctx,
-		config.CleanupManager,
 		config.HostID,
+		config.ComputeConfig,
 		config.LocalDB,
-		localEventConsumer,
-		jobEventPublisher,
 		executors,
 		verifiers,
 		publishers,
-		config.ComputeNodeConfig,
+		jobEventPublisher,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	apiServer := publicapi.NewServer(
 		ctx,
@@ -164,7 +159,7 @@ func NewNode(
 		config.LocalDB,
 		config.Transport,
 		requesterNode,
-		computeNode,
+		computeNode.debugInfoProviders,
 		publishers,
 		storageProviders,
 	)
@@ -192,7 +187,9 @@ func NewNode(
 		// handles bid and result proposals
 		requesterNode,
 		// handles job execution
-		computeNode,
+		computeNode.frontendProxy,
+		// dispatches events to listening websockets
+		apiServer,
 	)
 	jobEventPublisher.AddHandlers(
 		// publish events to the network
@@ -216,7 +213,7 @@ func NewNode(
 		IPFSClient:     config.IPFSClient,
 		LocalDB:        config.LocalDB,
 		Transport:      config.Transport,
-		ComputeNode:    computeNode,
+		ComputeNode:    *computeNode,
 		RequesterNode:  requesterNode,
 		Executors:      executors,
 		HostID:         config.HostID,

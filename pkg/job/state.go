@@ -185,7 +185,7 @@ func (resolver *StateResolver) WaitWithOptions(
 			}
 
 			// some of the check functions returned false
-			// let's see if we can quiet early because all expectedd states are
+			// let's see if we can quit early because all expected states are
 			// in terminal state
 			allTerminal, err := WaitForTerminalStates(options.TotalShards)(jobState)
 			if err != nil {
@@ -269,15 +269,15 @@ func (resolver *StateResolver) CheckShardStates(
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	jobState, err := resolver.stateLoader(ctx, shard.Job.ID)
+	jobState, err := resolver.stateLoader(ctx, shard.Job.Metadata.ID)
 	if err != nil {
 		return false, err
 	}
 
-	concurrency := int(math.Max(float64(shard.Job.Deal.Concurrency), 1))
+	concurrency := int(math.Max(float64(shard.Job.Spec.Deal.Concurrency), 1))
 	shardStates := GetStatesForShardIndex(jobState, shard.Index)
 	if len(shardStates) == 0 {
-		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
 	}
 
 	shardCheckResult, err := shardStateChecker(shardStates, concurrency)
@@ -368,7 +368,7 @@ func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.J
 		}
 	}
 
-	return acceptedBidsSeen >= j.Deal.Concurrency
+	return acceptedBidsSeen >= j.Spec.Deal.Concurrency
 }
 
 // group states by shard index so we can easily iterate over a whole set of them
@@ -400,6 +400,11 @@ func WaitThrowErrors(errorStates []model.JobStateType) CheckStatesFunction {
 		for _, shard := range allShardStates { //nolint:gocritic
 			for _, errorState := range errorStates {
 				if shard.State == errorState {
+					e := log.Debug()
+					if shard.RunOutput != nil {
+						e = e.Str("stdout", shard.RunOutput.STDOUT).Str("stderr", shard.RunOutput.STDERR)
+					}
+					e.Msg("Shard failed")
 					return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
 				}
 			}

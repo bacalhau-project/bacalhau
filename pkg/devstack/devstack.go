@@ -5,21 +5,16 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -27,6 +22,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -40,39 +36,38 @@ type DevStackOptions struct {
 	LocalNetworkLotus    bool
 	FilecoinUnsealedPath string
 	EstuaryAPIKey        string
+	SimulatorURL         string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
-	Nodes []*node.Node
-	Lotus *LotusNode
+	Nodes          []*node.Node
+	Lotus          *LotusNode
+	PublicIPFSMode bool
 }
 
 func NewDevStackForRunLocal(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	count int,
-	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
+	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	options := DevStackOptions{
 		NumberOfNodes:  count,
 		PublicIPFSMode: true,
 	}
 
-	computeNodeConfig := computenode.ComputeNodeConfig{
+	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
+		TotalResourceLimits: model.ResourceUsageData{GPU: jobGPU},
 		JobSelectionPolicy: model.JobSelectionPolicy{
 			Locality:            model.Anywhere,
 			RejectStatelessJobs: false,
-		}, CapacityManagerConfig: capacitymanager.Config{
-			ResourceLimitTotal: model.ResourceUsageConfig{
-				GPU: jobGPU,
-			},
 		},
-	}
+	})
 
 	return NewStandardDevStack(
 		ctx,
 		cm,
 		options,
-		computeNodeConfig,
+		computeConfig,
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 }
@@ -81,20 +76,20 @@ func NewStandardDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -102,7 +97,7 @@ func NewDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
@@ -160,37 +155,52 @@ func NewDevStack(
 			return nil, err
 		}
 
-		//////////////////////////////////////
-		// libp2p
-		//////////////////////////////////////
-		libp2pPort, ports := ports[0], ports[1:]
-		libp2pPeer := []multiaddr.Multiaddr{}
+		var useTransport transport.Transport
 
-		if i == 0 {
-			if options.Peer != "" {
-				// connect 0'th node to external peer if specified
-				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
-				if addrErr != nil {
-					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+		var libp2pPort int
+		if options.SimulatorURL == "" {
+			//////////////////////////////////////
+			// libp2p
+			//////////////////////////////////////
+
+			libp2pPort, ports = ports[0], ports[1:]
+			libp2pPeer := []multiaddr.Multiaddr{}
+
+			if i == 0 {
+				if options.Peer != "" {
+					// connect 0'th node to external peer if specified
+					log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+					peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+					if addrErr != nil {
+						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+					}
+					libp2pPeer = []multiaddr.Multiaddr{peerAddr}
 				}
-				libp2pPeer = []multiaddr.Multiaddr{peerAddr}
+			} else {
+				libp2pPeer, err = nodes[0].Transport.HostAddrs()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+				}
+				log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 			}
-		} else {
-			libp2pPeer, err = nodes[0].Transport.HostAddrs()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
-			}
-			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
-		}
 
-		transport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
-		if transportErr != nil {
-			return nil, transportErr
+			libp2pTransport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
+			if transportErr != nil {
+				return nil, transportErr
+			}
+
+			useTransport = libp2pTransport
+		} else {
+			var simulatorTransport transport.Transport
+			simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+			if err != nil {
+				return nil, err
+			}
+			useTransport = simulatorTransport
 		}
 
 		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+		ctx = logger.ContextWithNodeIDLogger(ctx, useTransport.HostID())
 
 		//////////////////////////////////////
 		// port for API
@@ -226,14 +236,14 @@ func NewDevStack(
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
 			LocalDB:              datastore,
-			Transport:            transport,
+			Transport:            useTransport,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               transport.HostID(),
+			HostID:               useTransport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
-			ComputeNodeConfig:    computeNodeConfig,
+			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			IsBadActor:           isBadActor,
 		}
@@ -256,7 +266,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = transport.Start(ctx)
+		err = useTransport.Start(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -276,24 +286,13 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	// do a GC before we start profiling
-	runtime.GC()
-
-	log.Trace().Msg("============= STARTING PROFILING ============")
-	// devstack always records a cpu profile, it will be generally useful.
-	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
-	f, err := os.Create(cpuprofile)
-	if err != nil {
-		log.Debug().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
-	}
-	defer closer.CloseWithLogOnError("cpuprofile", f)
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Debug().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
-	}
+	profiler := StartProfiling()
+	cm.RegisterCallback(profiler.Close)
 
 	return &DevStack{
-		Nodes: nodes,
-		Lotus: lotus,
+		Nodes:          nodes,
+		Lotus:          lotus,
+		PublicIPFSMode: options.PublicIPFSMode,
 	}, nil
 }
 
@@ -382,6 +381,16 @@ export BACALHAU_API_PORT=%s`,
 		summaryShellVariablesString += fmt.Sprintf(`
 export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
+	if !stack.PublicIPFSMode {
+		summaryShellVariablesString += `
+
+By default devstack is not running on the public IPFS network.
+If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
+You can also run a new IPFS daemon locally and connect it to Bacalhau using:
+
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
 	log.Debug().Msg(logString)

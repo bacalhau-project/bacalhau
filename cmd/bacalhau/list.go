@@ -28,11 +28,6 @@ var (
 
 		# List jobs and output as json
 		bacalhau list --output json`))
-
-	// Set Defaults (probably a better way to do this)
-	OL = NewListOptions()
-
-	// For the -f flag
 )
 
 type ListOptions struct {
@@ -61,7 +56,20 @@ func NewListOptions() *ListOptions {
 	}
 }
 
-func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
+func newListCmd() *cobra.Command {
+	OL := NewListOptions()
+
+	listCmd := &cobra.Command{
+		Use:     "list",
+		Short:   "List jobs on the network",
+		Long:    listLong,
+		Example: listExample,
+		PreRun:  applyPorcelainLogLevel,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return list(cmd, OL)
+		},
+	}
+
 	listCmd.PersistentFlags().BoolVar(&OL.HideHeader, "hide-header", OL.HideHeader,
 		`do not print the column headers.`)
 	listCmd.PersistentFlags().StringVar(&OL.IDFilter, "id-filter", OL.IDFilter, `filter by Job List to IDs matching substring.`)
@@ -94,6 +102,8 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		//nolint:lll // Documentation
 		`Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.`,
 	)
+
+	return listCmd
 }
 
 // From: https://stackoverflow.com/questions/50824554/permitted-flag-values-for-cobra
@@ -124,98 +134,91 @@ func (c *ColumnEnum) Set(v string) error {
 	}
 }
 
-var listCmd = &cobra.Command{
-	Use:     "list",
-	Short:   "List jobs on the network",
-	Long:    listLong,
-	Example: listExample,
-	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
+func list(cmd *cobra.Command, OL *ListOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
 
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
-		log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
-		log.Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
-		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
-		log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
-		log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
-		log.Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
-		log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
-		log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
+	log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
+	log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
+	log.Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
+	log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
+	log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
+	log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
+	log.Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
+	log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
+	log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
-		jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
+	jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error listing jobs: %s", err), 1)
+	}
+
+	numberInTable := system.Min(OL.MaxJobs, len(jobs))
+	log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
+
+	var msgBytes []byte
+	if OL.OutputFormat == JSONFormat {
+		msgBytes, err = model.JSONMarshalWithMax(jobs)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error listing jobs: %s", err), 1)
+			Fatal(cmd, fmt.Sprintf("Error marshaling jobs to JSON: %s", err), 1)
 		}
+		cmd.Printf("%s\n", msgBytes)
+	} else {
+		tw := table.NewWriter()
+		tw.SetOutputMirror(cmd.OutOrStderr())
+		if !OL.HideHeader {
+			tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
+		}
+		columnConfig := []table.ColumnConfig{}
+		tw.SetColumnConfigs(columnConfig)
 
-		numberInTable := system.Min(OL.MaxJobs, len(jobs))
-		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
-
-		var msgBytes []byte
-		if OL.OutputFormat == JSONFormat {
-			msgBytes, err = model.JSONMarshalWithMax(jobs)
+		var rows []table.Row
+		for _, j := range jobs {
+			var summaryRow table.Row
+			summaryRow, err = summarizeJob(ctx, j, OL)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error marshaling jobs to JSON: %s", err), 1)
+				Fatal(cmd, fmt.Sprintf("Error summarizing job: %s", err), 1)
 			}
-			cmd.Printf("%s\n", msgBytes)
+			rows = append(rows, summaryRow)
+		}
+		if err != nil {
+			return err
+		}
+		tw.AppendRows(rows)
+
+		if OL.NoStyle {
+			tw.SetStyle(table.Style{
+				Name:   "StyleDefault",
+				Box:    table.StyleBoxDefault,
+				Color:  table.ColorOptionsDefault,
+				Format: table.FormatOptionsDefault,
+				HTML:   table.DefaultHTMLOptions,
+				Options: table.Options{
+					DrawBorder:      false,
+					SeparateColumns: false,
+					SeparateFooter:  false,
+					SeparateHeader:  false,
+					SeparateRows:    false,
+				},
+				Title: table.TitleOptionsDefault,
+			})
 		} else {
-			tw := table.NewWriter()
-			tw.SetOutputMirror(cmd.OutOrStderr())
-			if !OL.HideHeader {
-				tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
-			}
-			columnConfig := []table.ColumnConfig{}
-			tw.SetColumnConfigs(columnConfig)
-
-			rows := []table.Row{}
-			for _, j := range jobs {
-				var summaryRow table.Row
-				summaryRow, err = summarizeJob(ctx, j)
-				if err != nil {
-					Fatal(fmt.Sprintf("Error summarizing job: %s", err), 1)
-				}
-				rows = append(rows, summaryRow)
-			}
-			if err != nil {
-				return err
-			}
-			tw.AppendRows(rows)
-
-			if OL.NoStyle {
-				tw.SetStyle(table.Style{
-					Name:   "StyleDefault",
-					Box:    table.StyleBoxDefault,
-					Color:  table.ColorOptionsDefault,
-					Format: table.FormatOptionsDefault,
-					HTML:   table.DefaultHTMLOptions,
-					Options: table.Options{
-						DrawBorder:      false,
-						SeparateColumns: false,
-						SeparateFooter:  false,
-						SeparateHeader:  false,
-						SeparateRows:    false,
-					},
-					Title: table.TitleOptionsDefault,
-				})
-			} else {
-				tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
-			}
-
-			tw.Render()
+			tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
-		return nil
-	},
+		tw.Render()
+	}
+
+	return nil
 }
 
 // Renders job details into a table row
-func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
+func summarizeJob(ctx context.Context, j *model.Job, OL *ListOptions) (table.Row, error) {
 	//nolint:ineffassign,staticcheck // For tracing
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.summarizeJob")
 	defer span.End()
@@ -239,8 +242,8 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
-		shortenTime(OL.OutputWide, j.CreatedAt),
-		shortID(OL.OutputWide, j.ID),
+		shortenTime(OL.OutputWide, j.Metadata.CreatedAt),
+		shortID(OL.OutputWide, j.Metadata.ID),
 		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 		shortenString(OL.OutputWide, stateSummary),
 		shortenString(OL.OutputWide, verifiedSummary),

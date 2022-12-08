@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -31,26 +31,29 @@ func TestDevstackTimeoutSuite(t *testing.T) {
 
 func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	type TestCase struct {
-		name                   string
-		nodeCount              int
-		minBids                int
-		concurrency            int
-		computeTimeoutConfig   computenode.ComputeTimeoutConfig
-		requesterTimeoutConfig requesternode.RequesterTimeoutConfig
-		jobTimeout             time.Duration
-		sleepTime              time.Duration
-		completedCount         int
-		errorCount             int
+		name                          string
+		nodeCount                     int
+		minBids                       int
+		concurrency                   int
+		computeJobNegotiationTimeout  time.Duration
+		computeMinJobExecutionTimeout time.Duration
+		computeMaxJobExecutionTimeout time.Duration
+		requesterTimeoutConfig        requesternode.RequesterTimeoutConfig
+		jobTimeout                    time.Duration
+		sleepTime                     time.Duration
+		completedCount                int
+		errorCount                    int
 	}
 
 	runTest := func(testCase TestCase) {
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
-				ComputeNodeConfig: &computenode.ComputeNodeConfig{
-					TimeoutConfig:                      testCase.computeTimeoutConfig,
-					StateManagerBackgroundTaskInterval: 1 * time.Second,
-				},
+				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
+					JobNegotiationTimeout:  testCase.computeJobNegotiationTimeout,
+					MinJobExecutionTimeout: testCase.computeMinJobExecutionTimeout,
+					MaxJobExecutionTimeout: testCase.computeMaxJobExecutionTimeout,
+				}),
 				RequesterNodeConfig: &requesternode.RequesterNodeConfig{
 					TimeoutConfig:                      testCase.requesterTimeoutConfig,
 					StateManagerBackgroundTaskInterval: 1 * time.Second,
@@ -87,11 +90,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 
 	for _, testCase := range []TestCase{
 		{
-			name: "sleep_within_default_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "sleep_within_default_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 10 * time.Second,
@@ -103,11 +105,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			completedCount: 1,
 		},
 		{
-			name: "sleep_within_defined_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "sleep_within_defined_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 20 * time.Second,
@@ -120,11 +121,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			completedCount: 1,
 		},
 		{
-			name: "sleep_longer_than_default_running_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "sleep_longer_than_default_running_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 1 * time.Millisecond,
@@ -136,11 +136,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			errorCount:  1,
 		},
 		{
-			name: "sleep_longer_than_defined_running_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "sleep_longer_than_defined_running_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 40 * time.Second,
@@ -154,11 +153,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		},
 		{
 			// no bid will be submitted, so the requester node should timeout
-			name: "job_timeout_longer_than_max_running_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "job_timeout_longer_than_max_running_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      500 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,
@@ -172,11 +170,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		},
 		{
 			// no bid will be submitted, so the requester node should timeout
-			name: "job_timeout_less_than_min_running_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 5 * time.Minute,
-				MaxJobExecutionTimeout: 10 * time.Minute},
+			name:                          "job_timeout_less_than_min_running_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 5 * time.Minute,
+			computeMaxJobExecutionTimeout: 10 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      500 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,
@@ -189,11 +186,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			errorCount:  1,
 		},
 		{
-			name: "bid_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  200 * time.Millisecond,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "bid_timeout",
+			computeJobNegotiationTimeout:  200 * time.Millisecond,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 40 * time.Second,
@@ -205,11 +201,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			errorCount:  1,
 		},
 		{
-			name: "verification_timeout",
-			computeTimeoutConfig: computenode.ComputeTimeoutConfig{
-				JobNegotiationTimeout:  10 * time.Second,
-				MinJobExecutionTimeout: 0 * time.Nanosecond,
-				MaxJobExecutionTimeout: 1 * time.Minute},
+			name:                          "verification_timeout",
+			computeJobNegotiationTimeout:  10 * time.Second,
+			computeMinJobExecutionTimeout: 0 * time.Nanosecond,
+			computeMaxJobExecutionTimeout: 1 * time.Minute,
 			requesterTimeoutConfig: requesternode.RequesterTimeoutConfig{
 				JobNegotiationTimeout:      200 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,

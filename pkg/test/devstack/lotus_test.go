@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -50,7 +50,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	testCase := scenario.WasmHelloWorld
 	nodeCount := 1
 
-	stack, _ := SetupTest(ctx, s.T(), nodeCount, 0, true, computenode.NewDefaultComputeNodeConfig(), requesternode.NewDefaultRequesterNodeConfig())
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(s.T(), err)
@@ -59,12 +59,13 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	require.NoError(s.T(), err)
 
 	j := &model.Job{}
+	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
 	j.Spec.Publisher = model.PublisherFilecoin
 	j.Spec.Contexts = contextStorageList
 	j.Spec.Outputs = testCase.Outputs
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
@@ -78,7 +79,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 
 	err = resolver.Wait(
 		ctx,
-		submittedJob.ID,
+		submittedJob.Metadata.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]model.JobStateType{
 			model.JobStateError,
@@ -89,7 +90,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, submittedJob.ID)
+	shards, err := resolver.GetShards(ctx, submittedJob.Metadata.ID)
 	require.NoError(s.T(), err)
 
 	require.NotNil(s.T(), stack.Lotus)

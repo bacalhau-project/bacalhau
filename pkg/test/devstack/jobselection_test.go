@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -43,8 +43,10 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions:   &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
-				ComputeNodeConfig: &computenode.ComputeNodeConfig{JobSelectionPolicy: testCase.policy},
+				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
+					JobSelectionPolicy: testCase.policy,
+				}),
 			},
 			Inputs:   scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
 			Contexts: scenario.WasmCsvTransform.Contexts,

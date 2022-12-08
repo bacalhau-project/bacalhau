@@ -156,7 +156,7 @@ func (m *shardStateMachineManager) backgroundTask() {
 	}
 
 	for _, item := range timeoutShardStates {
-		go item.fail(ctx, fmt.Sprintf("shard timed out while in state %s", item.currentState))
+		go item.fail(ctx, fmt.Sprintf("shard timed out while in state %s, see --timeout", item.currentState))
 	}
 }
 
@@ -167,7 +167,7 @@ func (m *shardStateMachineManager) startShardsState(
 	defer m.mu.Unlock()
 
 	// explode the job into shard states
-	for i := 0; i < job.ExecutionPlan.TotalShards; i++ {
+	for i := 0; i < job.Spec.ExecutionPlan.TotalShards; i++ {
 		shard := model.JobShard{Job: job, Index: i}
 		if _, ok := m.shardStates[shard.ID()]; !ok {
 			shardState := m.newShardStateMachine(ctx, shard, n)
@@ -265,7 +265,11 @@ func (m *shardStateMachine) fail(ctx context.Context, reason string) {
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			go m.notifyInvalidRequest(ctx, request, "shard fsm is completed")
+			// It is acceptable to have multiple compute nodes publish the results for the same shard if we have
+			// multiple concurrent computations. Here we ignore publishing results after the shard has completed.
+			if request.action != actionResultsPublished {
+				go m.notifyInvalidRequest(ctx, request, "shard fsm is completed")
+			}
 		}
 	}()
 	m.req <- request
@@ -303,7 +307,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) stateFn {
 				m.biddingNodes[req.sourceNodeID] = struct{}{}
 
 				// we have received enough bids to start the selection process.
-				if len(m.biddingNodes) >= m.shard.Job.Deal.MinBids {
+				if len(m.biddingNodes) >= m.shard.Job.Spec.Deal.MinBids {
 					return selectingBidsState
 				}
 			} else {
@@ -340,7 +344,7 @@ func selectingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 	acceptedBids := make(map[string]struct{})
 
 	for _, candidate := range candidateBids {
-		if len(acceptedBids) < m.shard.Job.Deal.Concurrency {
+		if len(acceptedBids) < m.shard.Job.Spec.Deal.Concurrency {
 			err := m.node.notifyBidDecision(ctx, m.shard, candidate, true)
 			if err != nil {
 				log.Ctx(ctx).Error().Err(err).Msgf("%s failed to notify bid acceptance to %s", m, candidate)
@@ -359,7 +363,7 @@ func selectingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 	// updated biddingNodes to hold the accepted bids only.
 	m.biddingNodes = acceptedBids
 
-	if len(m.biddingNodes) < m.shard.Job.Deal.Concurrency {
+	if len(m.biddingNodes) < m.shard.Job.Spec.Deal.Concurrency {
 		// we still need more bids to reach the concurrency level.
 		return acceptingBidsState
 	} else {
@@ -383,7 +387,7 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 					// add the bid to the list of accepted bids.
 					m.biddingNodes[req.sourceNodeID] = struct{}{}
 
-					if len(m.biddingNodes) >= m.shard.Job.Deal.Concurrency {
+					if len(m.biddingNodes) >= m.shard.Job.Spec.Deal.Concurrency {
 						return waitingForResultsState
 					}
 				}
@@ -446,7 +450,7 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 				// TODO: technically we can start verifying if we have enough results compared to deal's confidence
 				//  and concurrency. Though we will have ot handle the case where verification fails, but can still
 				//  succeed if we wait for more results.
-				if len(m.completedNodes) >= m.shard.Job.Deal.Concurrency {
+				if len(m.completedNodes) >= m.shard.Job.Spec.Deal.Concurrency {
 					return verifyingResultsState
 				}
 			} else {
@@ -504,7 +508,7 @@ func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/requesterNode/ShardFSM.errorState")
 	defer span.End()
-	ctx = system.AddJobIDToBaggage(ctx, m.shard.Job.ID)
+	ctx = system.AddJobIDToBaggage(ctx, m.shard.Job.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	err := m.node.notifyShardError(

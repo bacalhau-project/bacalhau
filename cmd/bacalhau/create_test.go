@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -24,7 +24,6 @@ import (
 
 type CreateSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 func TestCreateSuite(t *testing.T) {
@@ -35,7 +34,6 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-	s.rootCmd = RootCmd
 }
 
 func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
@@ -51,28 +49,20 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
-
-			*OC = *NewCreateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			require.NoError(s.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 				"--api-host", host,
 				"--api-port", port,
 				"../../testdata/job.json",
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
-
-			jobID := system.FindJobIDInTestOutput(out)
-			uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
-			require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
-			job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
-			require.NoError(s.T(), err)
-			require.NotNil(s.T(), job, "Failed to get job with ID: %s", jobID)
+			testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 		}()
 	}
 }
@@ -94,16 +84,14 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
-
-				*OC = *NewCreateOptions()
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				require.NoError(s.T(), err)
 
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 					"--api-host", host,
 					"--api-port", port,
 					testFile,
@@ -111,12 +99,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				jobID := system.FindJobIDInTestOutput(out)
-				uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
-				require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
-				job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
-				require.NoError(s.T(), err)
-				require.NotNil(s.T(), job, "Failed to get job with ID: %s\nOutput: %s", out)
+				testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 			}()
 		}
 	}
@@ -127,10 +110,8 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	Fatal = FakeFatalErrorHandler
 
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
-
-	*OC = *NewCreateOptions()
 
 	parsedBasedURI, err := url.Parse(c.BaseURI)
 	require.NoError(s.T(), err)
@@ -139,22 +120,19 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err)
 
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
-	jobID := system.FindJobIDInTestOutput(out)
-	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
-	require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
-
 	// Now run describe on the ID we got back
-	_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), c, out)
+	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", host,
 		"--api-port", port,
-		jobID,
+		job.Metadata.ID,
 	)
 
 	require.NoError(s.T(), err, "Error describing job.")
@@ -172,7 +150,7 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
@@ -212,7 +190,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create", "../../testdata/empty.yaml")
+		c, out, err := ExecuteTestCobraCommand(s.T(), "create", "../../testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

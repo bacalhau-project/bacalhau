@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -48,11 +48,11 @@ func runURLTest(
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeNodeConfig: &computenode.ComputeNodeConfig{
+			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
 				JobSelectionPolicy: model.JobSelectionPolicy{
 					Locality: model.Anywhere,
 				},
-			},
+			}),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
@@ -218,11 +218,11 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeNodeConfig: &computenode.ComputeNodeConfig{
+			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
 				JobSelectionPolicy: model.JobSelectionPolicy{
 					Locality: model.Anywhere,
 				},
-			},
+			}),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
@@ -242,7 +242,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			},
 		},
 		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, URLContent+IPFSContent),
-		JobCheckers:    scenario.WaitUntilComplete(1),
+		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 
 	s.RunScenario(testScenario)

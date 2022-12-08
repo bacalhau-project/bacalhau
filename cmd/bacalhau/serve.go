@@ -6,13 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -42,8 +41,6 @@ var (
 
 	serveExample = templates.Examples(i18n.T(`
 		TBD`))
-
-	OS = NewServeOptions()
 )
 
 type ServeOptions struct {
@@ -94,7 +91,7 @@ func NewServeOptions() *ServeOptions {
 	}
 }
 
-func setupJobSelectionCLIFlags(cmd *cobra.Command) {
+func setupJobSelectionCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.JobSelectionDataLocality, "job-selection-data-locality", OS.JobSelectionDataLocality,
 		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
@@ -113,7 +110,7 @@ func setupJobSelectionCLIFlags(cmd *cobra.Command) {
 	)
 }
 
-func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
+func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.LimitTotalCPU, "limit-total-cpu", OS.LimitTotalCPU,
 		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
@@ -140,7 +137,7 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	)
 }
 
-func setupLibp2pCLIFlags(cmd *cobra.Command) {
+func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
 		`The libp2p multiaddress to connect to.`,
@@ -155,7 +152,7 @@ func setupLibp2pCLIFlags(cmd *cobra.Command) {
 	)
 }
 
-func getPeers() []multiaddr.Multiaddr {
+func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
 	var peersStrings []string
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
@@ -172,7 +169,7 @@ func getPeers() []multiaddr.Multiaddr {
 	return peers
 }
 
-func getJobSelectionConfig() model.JobSelectionPolicy {
+func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
 	typedJobSelectionDataLocality := model.Anywhere
 
@@ -190,28 +187,36 @@ func getJobSelectionConfig() model.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() capacitymanager.Config {
-	// the total amount of CPU / Memory the system can be using at one time
-	totalResourceLimit := model.ResourceUsageConfig{
-		CPU:    OS.LimitTotalCPU,
-		Memory: OS.LimitTotalMemory,
-		GPU:    OS.LimitTotalGPU,
-	}
-
-	// the per job CPU / Memory limits
-	jobResourceLimit := model.ResourceUsageConfig{
-		CPU:    OS.LimitJobCPU,
-		Memory: OS.LimitJobMemory,
-		GPU:    OS.LimitJobGPU,
-	}
-
-	return capacitymanager.Config{
-		ResourceLimitTotal: totalResourceLimit,
-		ResourceLimitJob:   jobResourceLimit,
-	}
+func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
+	return node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: getJobSelectionConfig(OS),
+		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
+			CPU:    OS.LimitTotalCPU,
+			Memory: OS.LimitTotalMemory,
+			GPU:    OS.LimitTotalGPU,
+		}),
+		JobResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
+			CPU:    OS.LimitJobCPU,
+			Memory: OS.LimitJobMemory,
+			GPU:    OS.LimitJobGPU,
+		}),
+		IgnorePhysicalResourceLimits: os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
+	})
 }
 
-func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
+func newServeCmd() *cobra.Command {
+	OS := NewServeOptions()
+
+	serveCmd := &cobra.Command{
+		Use:     "serve",
+		Short:   "Start the bacalhau compute node",
+		Long:    serveLong,
+		Example: serveExample,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return serve(cmd, OS)
+		},
+	}
+
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to.`,
@@ -245,111 +250,104 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		"The highest ping a Filecoin miner could have when selecting.",
 	)
 
-	setupLibp2pCLIFlags(serveCmd)
-	setupJobSelectionCLIFlags(serveCmd)
-	setupCapacityManagerCLIFlags(serveCmd)
+	setupLibp2pCLIFlags(serveCmd, OS)
+	setupJobSelectionCLIFlags(serveCmd, OS)
+	setupCapacityManagerCLIFlags(serveCmd, OS)
+
+	return serveCmd
 }
 
-var serveCmd = &cobra.Command{
-	Use:     "serve",
-	Short:   "Start the bacalhau compute node",
-	Long:    serveLong,
-	Example: serveExample,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
+func serve(cmd *cobra.Command, OS *ServeOptions) error {
+	// Cleanup manager ensures that resources are freed before exiting:
+	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+	defer cm.Cleanup()
 
-		ctx := cmd.Context()
+	ctx := cmd.Context()
 
-		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(ctx)
-		defer cancel()
+	// Context ensures main goroutine waits until killed with ctrl+c:
+	ctx, cancel := system.WithSignalShutdown(ctx)
+	defer cancel()
 
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		if OS.IPFSConnect == "" {
-			Fatal("You must specify --ipfs-connect.", 1)
+	if OS.IPFSConnect == "" {
+		Fatal(cmd, "You must specify --ipfs-connect.", 1)
+	}
+
+	if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
+		Fatal(cmd, "--job-selection-data-locality must be either 'local' or 'anywhere'", 1)
+	}
+
+	// Establishing p2p connection
+	peers := getPeers(OS)
+	log.Debug().Msgf("libp2p connecting to: %s", peers)
+
+	transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
+	}
+
+	// add nodeID to logging context
+	ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+
+	// Establishing IPFS connection
+	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating IPFS client: %s", err), 1)
+	}
+
+	datastore, err := inmemory.NewInMemoryDatastore()
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating in memory datastore: %s", err), 1)
+	}
+
+	// Create node config from cmd arguments
+	nodeConfig := node.NodeConfig{
+		IPFSClient:           ipfs,
+		CleanupManager:       cm,
+		LocalDB:              datastore,
+		Transport:            transport,
+		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+		EstuaryAPIKey:        OS.EstuaryAPIKey,
+		HostAddress:          OS.HostAddress,
+		APIPort:              apiPort,
+		MetricsPort:          OS.MetricsPort,
+		ComputeConfig:        getComputeConfig(OS),
+		RequesterNodeConfig:  requesternode.NewDefaultRequesterNodeConfig(),
+	}
+
+	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
+		OS.LotusFilecoinPathDirectory != "" &&
+		OS.LotusFilecoinMaximumPing != time.Duration(0) {
+		nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
+			StorageDuration: OS.LotusFilecoinStorageDuration,
+			PathDir:         OS.LotusFilecoinPathDirectory,
+			UploadDir:       OS.LotusFilecoinUploadDirectory,
+			MaximumPing:     OS.LotusFilecoinMaximumPing,
 		}
+	}
 
-		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
-			Fatal("--job-selection-data-locality must be either 'local' or 'anywhere'", 1)
-		}
+	// Create node
+	node, err := node.NewStandardNode(ctx, nodeConfig)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating node: %s", err), 1)
+	}
 
-		// Establishing p2p connection
-		peers := getPeers()
-		log.Debug().Msgf("libp2p connecting to: %s", peers)
+	// Start transport layer
+	err = transport.Start(ctx)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error starting transport layer: %s", err), 1)
+	}
 
-		transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
-		}
+	// Start node
+	err = node.Start(ctx)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error starting node: %s", err), 1)
+	}
 
-		// add nodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
-
-		// Establishing IPFS connection
-		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error creating IPFS client: %s", err), 1)
-		}
-
-		datastore, err := inmemory.NewInMemoryDatastore()
-		if err != nil {
-			Fatal(fmt.Sprintf("Error creating in memory datastore: %s", err), 1)
-		}
-
-		// Create node config from cmd arguments
-		nodeConfig := node.NodeConfig{
-			IPFSClient:           ipfs,
-			CleanupManager:       cm,
-			LocalDB:              datastore,
-			Transport:            transport,
-			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-			EstuaryAPIKey:        OS.EstuaryAPIKey,
-			HostAddress:          OS.HostAddress,
-			APIPort:              apiPort,
-			MetricsPort:          OS.MetricsPort,
-			ComputeNodeConfig: computenode.ComputeNodeConfig{
-				JobSelectionPolicy:    getJobSelectionConfig(),
-				CapacityManagerConfig: getCapacityManagerConfig(),
-			},
-			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
-		}
-
-		if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
-			OS.LotusFilecoinPathDirectory != "" &&
-			OS.LotusFilecoinMaximumPing != time.Duration(0) {
-			nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
-				StorageDuration: OS.LotusFilecoinStorageDuration,
-				PathDir:         OS.LotusFilecoinPathDirectory,
-				UploadDir:       OS.LotusFilecoinUploadDirectory,
-				MaximumPing:     OS.LotusFilecoinMaximumPing,
-			}
-		}
-
-		// Create node
-		node, err := node.NewStandardNode(ctx, nodeConfig)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error creating node: %s", err), 1)
-		}
-
-		// Start transport layer
-		err = transport.Start(ctx)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error starting transport layer: %s", err), 1)
-		}
-
-		// Start node
-		err = node.Start(ctx)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error starting node: %s", err), 1)
-		}
-
-		<-ctx.Done() // block until killed
-		return nil
-	},
+	<-ctx.Done() // block until killed
+	return nil
 }

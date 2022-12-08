@@ -12,14 +12,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type ValidateSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 func TestValidateSuite(t *testing.T) {
@@ -30,7 +28,6 @@ func TestValidateSuite(t *testing.T) {
 func (s *ValidateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-	s.rootCmd = RootCmd
 }
 
 func (s *ValidateSuite) TestValidate() {
@@ -46,16 +43,14 @@ func (s *ValidateSuite) TestValidate() {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
-
-			*OV = *NewValidateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			require.NoError(s.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "validate",
+			_, out, err := ExecuteTestCobraCommand(s.T(), "validate",
 				"--api-host", host,
 				"--api-port", port,
 				test.testFile,

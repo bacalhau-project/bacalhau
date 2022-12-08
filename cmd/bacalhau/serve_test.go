@@ -3,8 +3,9 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -27,7 +29,6 @@ import (
 // returns the current testing context
 type ServeSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -40,10 +41,9 @@ func TestServeSuite(t *testing.T) {
 func (suite *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
-	suite.rootCmd = RootCmd
 }
 
-func writeToServeChannel(c chan string, t *testing.T, rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
+func writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	fmt.Println("Starting")
@@ -55,7 +55,8 @@ func writeToServeChannel(c chan string, t *testing.T, rootCmd *cobra.Command, po
 
 	ipfsPort, _ := freeport.GetFreePort()
 
-	args := []string{"serve", "--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", ipfsPort), "--api-port", fmt.Sprintf("%d", port)}
+	// peer set to none to avoid accidentally talking to production endpoints
+	args := []string{"serve", "--peer", "none", "--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", ipfsPort), "--api-port", fmt.Sprintf("%d", port)}
 
 	rootCmd.SetArgs(args)
 
@@ -75,9 +76,9 @@ func curlEndpoint(URL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer closer.DrainAndCloseWithLogOnError(context.Background(), "test", resp.Body)
 
-	responseText, err := ioutil.ReadAll(resp.Body)
+	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -86,9 +87,6 @@ func curlEndpoint(URL string) (string, error) {
 }
 
 func (suite *ServeSuite) TestRun_GenericServe() {
-
-	*OS = *NewServeOptions()
-
 	port, err := freeport.GetFreePort()
 
 	require.NoError(suite.T(), err, "Error getting free port.")
@@ -96,8 +94,7 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	servingChannel := make(chan string, 100)
-	go writeToServeChannel(servingChannel, suite.T(), suite.rootCmd, port, &wg)
+	go writeToServeChannel(NewRootCmd(), port, &wg)
 
 	timeoutInMilliseconds := 20 * 1000
 	currentTime := 0

@@ -1,9 +1,8 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package executor
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -12,15 +11,13 @@ import (
 )
 
 func TestScenarios(t *testing.T) {
-	for _, testCase := range scenario.GetAllScenarios() {
-		for _, storageDriverFactory := range scenario.StorageDriverFactories {
-			t.Run(
-				strings.Join([]string{testCase.Name, storageDriverFactory.Name}, "-"),
-				func(t *testing.T) {
-					testutils.MaybeNeedDocker(t, testCase.Spec.Engine == model.EngineDocker)
-					RunTestCase(t, testCase)
-				},
-			)
-		}
+	for name, testCase := range scenario.GetAllScenarios() {
+		t.Run(
+			name,
+			func(t *testing.T) {
+				testutils.MaybeNeedDocker(t, testCase.Spec.Engine == model.EngineDocker)
+				RunTestCase(t, testCase)
+			},
+		)
 	}
 }

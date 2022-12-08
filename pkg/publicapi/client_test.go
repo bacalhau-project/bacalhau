@@ -15,7 +15,7 @@ import (
 func TestGet(t *testing.T) {
 	logger.ConfigureTestLogging(t)
 
-	c, cm := SetupRequesterNodeForTests(t)
+	c, cm := SetupRequesterNodeForTests(t, false)
 	defer cm.Cleanup()
 
 	ctx, span := system.Span(context.Background(),
@@ -32,8 +32,8 @@ func TestGet(t *testing.T) {
 	}
 
 	// Should be able to look up one of them:
-	job2, ok, err := c.Get(ctx, j.ID)
+	job2, ok, err := c.Get(ctx, j.Metadata.ID)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, job2.ID, j.ID)
+	require.Equal(t, job2.Metadata.ID, j.Metadata.ID)
 }

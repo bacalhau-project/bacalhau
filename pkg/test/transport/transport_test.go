@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -55,7 +54,7 @@ func setupTest(t *testing.T) *node.Node {
 		CleanupManager:      cm,
 		LocalDB:             datastore,
 		Transport:           transport,
-		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
+		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
@@ -75,6 +74,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 
 	// Create a new job
 	j := &model.Job{}
+	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = model.Spec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
@@ -86,13 +86,14 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
 	payload := model.JobCreatePayload{
-		ClientID: "123",
-		Job:      j,
+		ClientID:   "123",
+		APIVersion: j.APIVersion,
+		Spec:       &j.Spec,
 	}
 
 	_, err := node.RequesterNode.SubmitJob(ctx, payload)

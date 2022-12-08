@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -12,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -84,7 +84,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	dirPath, err := prepareFolderWithFoldersAndFiles(suite.T(), folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
 	ipfsProvider, err := apicopy.NewStorage(cm, node.APIAddress())
@@ -137,7 +137,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	}
 
 	// check that the merged stdout is correct
-	checks := []scenario.ICheckResults{}
+	checks := []scenario.CheckResults{}
 	for i := 0; i < totalFiles; i++ {
 		for j := 0; j < nodeCount; j++ {
 			content := fmt.Sprintf("hello /input/%d.txt", i)
@@ -203,14 +203,14 @@ func (suite *ShardingSuite) TestNoShards() {
 	const nodeCount = 1
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, cm := testutils.SetupTest(
 		ctx,
 		suite.T(),
 
 		nodeCount,
 		0,
 		false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
@@ -220,10 +220,12 @@ func (suite *ShardingSuite) TestNoShards() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	dirPath := prepareFolderWithFiles(suite.T(), 0)
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	j := &model.Job{}
+	j := &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
@@ -243,7 +245,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 
@@ -287,7 +289,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 				BatchSize:   1,
 			},
 		},
-		JobCheckers: scenario.WaitUntilComplete(len(videos)),
+		JobCheckers: scenario.WaitUntilSuccessful(len(videos)),
 	}
 
 	suite.RunScenario(testScenario)

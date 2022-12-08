@@ -18,10 +18,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	CompleteStatus = "Complete"
-)
-
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
 		Runs a job using the Docker executor on the node.
@@ -42,9 +38,6 @@ var (
 		saving the job specification to a yaml file
 		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
 		`))
-
-	// Set Defaults (probably a better way to do this)
-	ODR = NewDockerRunOptions()
 )
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
@@ -113,8 +106,40 @@ func NewDockerRunOptions() *DockerRunOptions {
 	}
 }
 
-func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is idomatic
-	dockerCmd.AddCommand(dockerRunCmd)
+func newDockerCmd() *cobra.Command {
+	dockerCmd := &cobra.Command{
+		Use:   "docker",
+		Short: "Run a docker job on the network (see run subcommand)",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// Check that the server version is compatible with the client version
+			serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
+			if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
+				cmd.Println(err.Error())
+				return err
+			}
+			return nil
+		},
+	}
+
+	dockerCmd.AddCommand(newDockerRunCmd())
+
+	return dockerCmd
+}
+
+func newDockerRunCmd() *cobra.Command { //nolint:funlen
+	ODR := NewDockerRunOptions()
+
+	dockerRunCmd := &cobra.Command{
+		Use:     "run",
+		Short:   "Run a docker job on the network",
+		Long:    dockerRunLong,
+		Example: dockerRunExample,
+		Args:    cobra.MinimumNArgs(1),
+		PreRun:  applyPorcelainLogLevel,
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+			return dockerRun(cmd, cmdArgs, ODR)
+		},
+	}
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
 	dockerRunCmd.PersistentFlags().StringVar(
@@ -137,7 +162,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	//nolint:lll // Documentation, ok if long.
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputUrls, "input-urls", "u", ODR.InputUrls,
-		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
+		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u https://example.com/bar.tar.gz'
 		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
 		and supports both HTTP and HTTPS.`,
 	)
@@ -218,74 +243,54 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
+
+	return dockerRunCmd
 }
 
-var dockerCmd = &cobra.Command{
-	Use:   "docker",
-	Short: "Run a docker job on the network (see run subcommand)",
-	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		// Check that the server version is compatible with the client version
-		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
-		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-			cmd.Println(err.Error())
-			return err
-		}
+func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
+
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
+	j, err := CreateJob(ctx, cmdArgs, ODR)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error creating job: %s", err), 1)
 		return nil
-	},
-}
-
-var dockerRunCmd = &cobra.Command{
-	Use:     "run",
-	Short:   "Run a docker job on the network",
-	Long:    dockerRunLong,
-	Example: dockerRunExample,
-	Args:    cobra.MinimumNArgs(1),
-	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
-
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-
-		j, err := CreateJob(ctx, cmdArgs, ODR)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
+	}
+	err = jobutils.VerifyJob(ctx, j)
+	if err != nil {
+		if _, ok := err.(*bacerrors.ImageNotFound); ok {
+			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+			return nil
+		} else {
+			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
 			return nil
 		}
-		err = jobutils.VerifyJob(ctx, j)
+	}
+	if ODR.DryRun {
+		// Converting job to yaml
+		var yamlBytes []byte
+		yamlBytes, err = yaml.Marshal(j)
 		if err != nil {
-			if _, ok := err.(*bacerrors.ImageNotFound); ok {
-				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-				return nil
-			} else {
-				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
-				return nil
-			}
-		}
-		if ODR.DryRun {
-			// Converting job to yaml
-			var yamlBytes []byte
-			yamlBytes, err = yaml.Marshal(j)
-			if err != nil {
-				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
-				return nil
-			}
-			cmd.Print(string(yamlBytes))
+			Fatal(cmd, fmt.Sprintf("Error converting job to yaml: %s", err), 1)
 			return nil
 		}
+		cmd.Print(string(yamlBytes))
+		return nil
+	}
 
-		return ExecuteJob(ctx,
-			cm,
-			cmd,
-			j,
-			ODR.RunTimeSettings,
-			ODR.DownloadFlags,
-			nil,
-		)
-	},
+	return ExecuteJob(ctx,
+		cm,
+		cmd,
+		j,
+		ODR.RunTimeSettings,
+		ODR.DownloadFlags,
+		nil,
+	)
 }
 
 func CreateJob(ctx context.Context,

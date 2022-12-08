@@ -21,8 +21,6 @@ var (
 
 	languageRunExample = templates.Examples(i18n.T(`
 		TBD`))
-
-	OLR = NewLanguageRunOptions()
 )
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
@@ -77,8 +75,25 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 	}
 }
 
-//nolint:gochecknoinits
-func init() {
+// TODO: move the adapter code (from wasm to docker) into a wasm executor, so
+// that the compute node can verify the job knowing that it was run properly,
+// rather than doing the translation in, and thereby trusting, the client (to
+// set up the wasm environment to be determinstic)
+
+func newRunPythonCmd() *cobra.Command {
+	OLR := NewLanguageRunOptions()
+
+	runPythonCmd := &cobra.Command{
+		Use:     "python",
+		Short:   "Run a python job on the network",
+		Long:    languageRunLong,
+		Example: languageRunExample,
+		Args:    cobra.MinimumNArgs(0),
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
+			return runPython(cmd, cmdArgs, OLR)
+		},
+	}
+
 	// determinism flag
 	runPythonCmd.PersistentFlags().BoolVar(
 		&OLR.Deterministic, "deterministic", OLR.Deterministic,
@@ -144,106 +159,89 @@ func init() {
 
 	runPythonCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&OLR.RuntimeSettings))
 	runPythonCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OLR.DownloadSettings))
+	return runPythonCmd
 }
 
-// TODO: move the adapter code (from wasm to docker) into a wasm executor, so
-// that the compute node can verify the job knowing that it was run properly,
-// rather than doing the translation in, and thereby trusting, the client (to
-// set up the wasm environment to be determinstic)
+func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
 
-var runPythonCmd = &cobra.Command{
-	Use:     "python",
-	Short:   "Run a python job on the network",
-	Long:    languageRunLong,
-	Example: languageRunExample,
-	Args:    cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	// error if determinism is false
+	if !OLR.Deterministic {
+		Fatal(cmd, "Determinism=false not supported yet "+
+			"(languages only support wasm backend with forced determinism)", 1)
+	}
 
-		// error if determinism is false
-		if !OLR.Deterministic {
-			Fatal("Determinism=false not supported yet "+
-				"(languages only support wasm backend with forced determinism)", 1)
-		}
+	var programPath string
+	if len(cmdArgs) > 0 {
+		programPath = cmdArgs[0]
+	}
 
-		var programPath string
-		if len(cmdArgs) > 0 {
-			programPath = cmdArgs[0]
-		}
+	if OLR.Command == "" && programPath == "" {
+		Fatal(cmd, "Please specify an inline command or a path to a python file.", 1)
+	}
 
-		if OLR.Command == "" && programPath == "" {
-			Fatal("Please specify an inline command or a path to a python file.", 1)
-		}
+	for _, i := range OLR.Inputs {
+		OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+	}
 
-		for _, i := range ODR.Inputs {
-			OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-		}
+	language := "python"
+	version := "3.10"
 
-		if len(OLR.InputVolumes) == 0 {
-			// TODO: #765 this is a hack to make the job run when no inputs provided
-			// Just put a default one down - nothing will be in there.
-			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
-		}
+	// TODO: #450 These two code paths make me nervous - the fact that we
+	// have ConstructLanguageJob and ConstructDockerJob as separate means
+	// manually keeping them in sync.
+	j, err := job.ConstructLanguageJob(
+		OLR.InputVolumes,
+		OLR.InputUrls,
+		OLR.OutputVolumes,
+		[]string{}, // no env vars (yet)
+		OLR.Concurrency,
+		OLR.Confidence,
+		OLR.MinBids,
+		OLR.Timeout,
+		language,
+		version,
+		OLR.Command,
+		programPath,
+		OLR.RequirementsPath,
+		OLR.ContextPath,
+		OLR.Deterministic,
+		OLR.Labels,
+		doNotTrack,
+	)
+	if err != nil {
+		return err
+	}
 
-		language := "python"
-		version := "3.10"
+	var buf bytes.Buffer
 
-		// TODO: #450 These two code paths make me nervous - the fact that we
-		// have ConstructLanguageJob and ConstructDockerJob as separate means
-		// manually keeping them in sync.
-		j, err := job.ConstructLanguageJob(
-			OLR.InputVolumes,
-			OLR.InputUrls,
-			OLR.OutputVolumes,
-			[]string{}, // no env vars (yet)
-			OLR.Concurrency,
-			OLR.Confidence,
-			OLR.MinBids,
-			OLR.Timeout,
-			language,
-			version,
-			OLR.Command,
-			programPath,
-			OLR.RequirementsPath,
-			OLR.ContextPath,
-			OLR.Deterministic,
-			OLR.Labels,
-			doNotTrack,
-		)
+	if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
+		cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+		OLR.ContextPath = ""
+	}
+
+	if OLR.ContextPath != "" {
+		// construct a tar file from the contextPath directory
+		// tar + gzip
+		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
+		time.Sleep(1 * time.Second)
+		err = targzip.Compress(ctx, OLR.ContextPath, &buf)
 		if err != nil {
 			return err
 		}
+	}
 
-		var buf bytes.Buffer
-
-		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
-			cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
-			OLR.ContextPath = ""
-		}
-
-		if OLR.ContextPath != "" {
-			// construct a tar file from the contextPath directory
-			// tar + gzip
-			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
-			time.Sleep(1 * time.Second)
-			err = targzip.Compress(ctx, OLR.ContextPath, &buf)
-			if err != nil {
-				return err
-			}
-		}
-
-		err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
-			return nil
-		}
-
+	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error executing job: %s", err), 1)
 		return nil
-	},
+	}
+
+	return nil
 }

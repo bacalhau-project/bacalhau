@@ -6,12 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -19,126 +18,94 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Evaluate if TestStack type is needed. It seems to wrap a single node, which already
-// exposes an IPFS client, and bunch of other IPFS clients.
-type TestStack struct {
-	Node      *node.Node
-	IpfsStack *devstack.DevStackIPFS
-}
-
-type TestStackMultinode struct {
-	CleanupManager *system.CleanupManager
-	Nodes          []*node.Node
-	IpfsStack      *devstack.DevStackIPFS
-}
-
-// Docker IPFS stack is designed to be a "as real as possible" stack to write tests against
-// but without a libp2p transport - it's useful for testing storage drivers or executors
-// it uses:
-// * a cluster of real IPFS nodes that form an isolated network
-// * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
-// * in process transport
-// * in memory datastore
-// * "standard" storage providers - i.e. the default storage stack as used by devstack
-// * "standard" executors - i.e. the default executor stack as used by devstack
-// * noop verifiers - don't use this stack if you are testing verification
-// * IPFS publishers - using the same IPFS cluster as the storage driver
-// TODO: this function lies - it only ever returns a single node
-func NewDevStackMultiNode(
+func SetupTest(
 	ctx context.Context,
 	t *testing.T,
-	computeNodeConfig computenode.ComputeNodeConfig, //nolint:gocritic
-	nodes int,
-) *TestStack {
+	nodes int, badActors int,
+	lotusNode bool,
+	computeConfig node.ComputeConfig, //nolint:gocritic
+	requesterNodeConfig requesternode.RequesterNodeConfig,
+) (*devstack.DevStack, *system.CleanupManager) {
+	require.NoError(t, system.InitConfigForTesting(t))
+
 	cm := system.NewCleanupManager()
+	t.Cleanup(cm.Cleanup)
 
-	ipfsStack, err := devstack.NewDevStackIPFS(ctx, cm, nodes)
-	require.NoError(t, err)
-
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
-	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
-
-	nodeConfig := node.NodeConfig{
-		IPFSClient:          ipfsStack.IPFSClients[0],
-		CleanupManager:      cm,
-		LocalDB:             datastore,
-		Transport:           transport,
-		ComputeNodeConfig:   computeNodeConfig,
-		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
+	options := devstack.DevStackOptions{
+		NumberOfNodes:     nodes,
+		NumberOfBadActors: badActors,
+		LocalNetworkLotus: lotusNode,
 	}
 
-	injector := node.NewStandardNodeDependencyInjector()
-	injector.VerifiersFactory = devstack.NewNoopVerifiersFactory()
-
-	node, err := node.NewNode(ctx, nodeConfig, injector)
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)
 	require.NoError(t, err)
 
-	return &TestStack{
-		Node:      node,
-		IpfsStack: ipfsStack,
+	return stack, cm
+}
+
+type mixedExecutorFactory struct {
+	*node.StandardExecutorsFactory
+	*devstack.NoopExecutorsFactory
+}
+
+// Get implements node.ExecutorsFactory
+func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
+	stdProvider, err := m.StandardExecutorsFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
 	}
+
+	noopProvider, err := m.NoopExecutorsFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	noopExecutor, err := noopProvider.GetExecutor(ctx, model.EngineNoop)
+	if err != nil {
+		return nil, err
+	}
+
+	err = stdProvider.AddExecutor(ctx, model.EngineNoop, noopExecutor)
+	return stdProvider, err
 }
 
-// Setup a docker ipfs devstack to run compute node tests against
-// This is a shortcut to NewDockerIpfsStackMultiNode but with 1 node
-// (formerly SetupTestDockerIpfs)
-func NewDevStack(
-	ctx context.Context,
-	t *testing.T,
-	config computenode.ComputeNodeConfig, //nolint:gocritic
-) *TestStack {
-	return NewDevStackMultiNode(ctx, t, config, 1)
-}
+var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
 
-// Noop stack is designed to be a "as mocked as possible" stack to write tests against
-// it's useful for testing the bidding workflow between requester node and compute nodes
-// if you are writing a test that is concerned with "did this control loop emit this event"
-// then this is the stack for you (as opposed to "did IPFS actually save the data" in which case
-// you want NewDockerIpfsStackMultiNode)
-// it uses:
-// * in process transport
-// * in memory datastore
-// * noop storage providers
-// * noop executors
-// * noop verifiers
-// * noop publishers
-func NewNoopStack(
+func SetupTestWithNoopExecutor(
 	ctx context.Context,
 	t *testing.T,
-	computeNodeconfig computenode.ComputeNodeConfig,
-	noopExecutorConfig noop_executor.ExecutorConfig,
-) *TestStack {
+	options devstack.DevStackOptions,
+	computeConfig node.ComputeConfig, //nolint:gocritic
+	requesterNodeConfig requesternode.RequesterNodeConfig,
+	executorConfig *noop_executor.ExecutorConfig,
+) *devstack.DevStack {
+	require.NoError(t, system.InitConfigForTesting(t))
+
+	var executorFactory node.ExecutorsFactory
+	if executorConfig != nil {
+		// We will take the standard executors and add in the noop executor
+		executorFactory = &mixedExecutorFactory{
+			StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
+			NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(*executorConfig),
+		}
+	} else {
+		executorFactory = node.NewStandardExecutorsFactory()
+	}
+
+	injector := node.NodeDependencyInjector{
+		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
+		ExecutorsFactory:        executorFactory,
+		VerifiersFactory:        node.NewStandardVerifiersFactory(),
+		PublishersFactory:       node.NewStandardPublishersFactory(),
+	}
+
 	cm := system.NewCleanupManager()
+	t.Cleanup(cm.Cleanup)
 
-	datastore, err := inmemory.NewInMemoryDatastore()
+	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, injector)
 	require.NoError(t, err)
 
-	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
-
-	nodeConfig := node.NodeConfig{
-		CleanupManager:      cm,
-		LocalDB:             datastore,
-		Transport:           transport,
-		ComputeNodeConfig:   computeNodeconfig,
-		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
-	}
-
-	injector := devstack.NewNoopNodeDependencyInjector()
-	injector.ExecutorsFactory = devstack.NewNoopExecutorsFactoryWithConfig(noopExecutorConfig)
-
-	node, err := node.NewNode(ctx, nodeConfig, injector)
-	require.NoError(t, err)
-
-	err = transport.Start(ctx)
-	require.NoError(t, err)
-
-	return &TestStack{
-		Node: node,
-	}
+	return stack
 }
 
 // same as n
@@ -146,10 +113,10 @@ func NewNoopStackMultinode(
 	ctx context.Context,
 	t *testing.T,
 	count int,
-	computeNodeconfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 	inprocessTransportConfig inprocess.InProcessTransportClusterConfig,
-) *TestStackMultinode {
+) ([]*node.Node, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
 	nodes := []*node.Node{}
@@ -167,7 +134,7 @@ func NewNoopStackMultinode(
 			CleanupManager:      cm,
 			LocalDB:             datastore,
 			Transport:           transport,
-			ComputeNodeConfig:   computeNodeconfig,
+			ComputeConfig:       computeConfig,
 			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 		}
 
@@ -181,8 +148,5 @@ func NewNoopStackMultinode(
 		nodes = append(nodes, node)
 	}
 
-	return &TestStackMultinode{
-		Nodes:          nodes,
-		CleanupManager: cm,
-	}
+	return nodes, cm
 }

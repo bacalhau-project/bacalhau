@@ -3,15 +3,10 @@ package system
 import (
 	"context"
 	"errors"
-	"os"
-	"path"
-	"runtime"
-	"runtime/pprof"
 	"time"
 
 	realsync "sync"
 
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/rs/zerolog/log"
@@ -62,24 +57,13 @@ func (cm *CleanupManager) Cleanup() {
 	// after we have been called
 	time.Sleep(SleepBeforeCleanup)
 
-	// stop profiling now, just before we clean up, if we're profiling.
-	log.Trace().Msg("============= STOPPING PROFILING ============")
-	pprof.StopCPUProfile()
-	memprofile := path.Join(os.TempDir(), "bacalhau-devstack-mem.prof")
-	f, err := os.Create(memprofile)
-	if err != nil {
-		log.Info().Err(err).Msg("could not create memory profile")
-	} else {
-		defer closer.CloseWithLogOnError("mem.prof", f) // error handling omitted for example
-
-		runtime.GC() // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Err(err).Msg("could not write memory profile")
-		}
-	}
-
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()
+
+	if cm.fnsDone {
+		log.Warn().Msg("CleanupManager: Cleanup called again after already called")
+		return
+	}
 
 	for i := 0; i < len(cm.fns); i++ {
 		go func(fn func() error) {
@@ -87,7 +71,7 @@ func (cm *CleanupManager) Cleanup() {
 
 			if err := fn(); err != nil {
 				if !errors.Is(err, context.Canceled) {
-					log.Error().Msgf("Error during clean-up callback: %v", err)
+					log.Error().Err(err).Msg("Error during clean-up callback")
 				}
 			}
 		}(cm.fns[i])
