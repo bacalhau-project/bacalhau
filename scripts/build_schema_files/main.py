@@ -94,7 +94,7 @@ jsonSchemas = []
 maxSchema = semver.parse("0.0.0")
 for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     jsonSchemas.append({"name": schemaFile.name, "file": f"{schemaFile.name}.json"})
-    if semver.parse(schemaFile.name.rsplit(".")[0]) > maxSchema:
+    if semver.parse(schemaFile.stem) > maxSchema:
         maxSchema = schemaFile.name
 
 jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x[0].name), reverse=True)
