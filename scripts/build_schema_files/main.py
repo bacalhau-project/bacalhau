@@ -61,27 +61,32 @@ for longTag in tagList:
 
 most_recent_tag = max(listOfTagsToBuild)
 
-if rebuild_all:
-    for tag in listOfTagsToBuild[0:-1]:
-        repo.git.checkout(f"v{tag}")
-        print(f"Building schema files for {tag}")
-        subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
-        subprocess.call(["make", "build"], cwd=rootPath)
-        proc = subprocess.Popen(
-            ["bin/darwin_arm64/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
-        )
-        repo.git.reset("--hard")
-        repo.heads.main.checkout()
-        schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
-        jsonFileContents = proc.stdout.read().decode("utf-8")
-        schemaFile.write_text(jsonFileContents)
-else:
-    proc = subprocess.Popen(["bacalhau", "version"], stdout=subprocess.PIPE)
-    versionOutput = proc.stdout.read().decode("utf-8")
+jsonFileContents = {}
 
-    proc = subprocess.Popen(["bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE)
-    schemaFile = SCHEMA_DIR / "jsonschema" / f"v{most_recent_tag}.json"
-    schemaFile.write_text(proc.stdout.read().decode("utf-8"))
+if not rebuild_all:
+    listOfTagsToBuild = listOfTagsToBuild[::-1]
+
+for tag in listOfTagsToBuild[0:-1]:
+    repo.git.checkout(f"v{tag}")
+    print(f"Building schema files for {tag}")
+    subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
+    subprocess.call(["make", "build"], cwd=rootPath)
+
+    GOOS = subprocess.check_output(["go", "env", "GOOS"], cwd=rootPath).decode("utf-8").strip()
+    GOARCH = subprocess.check_output(["go", "env", "GOARCH"], cwd=rootPath).decode("utf-8").strip()
+
+    proc = subprocess.Popen(
+        [f"bin/{GOOS}_{GOARCH}/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
+    )
+    schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
+    jsonFileContents[tag] = proc.stdout.read().decode("utf-8")
+
+repo.heads.main.checkout()
+
+for jsonFile in jsonFileContents:
+    schemaFile = SCHEMA_DIR / "jsonschema" / f"v{jsonFile}.json"
+    with open(schemaFile, "w") as f:
+        f.write(jsonFileContents[jsonFile])
 
 jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
 
