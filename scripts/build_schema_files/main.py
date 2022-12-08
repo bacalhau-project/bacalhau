@@ -14,7 +14,7 @@ rootPath = Path(__file__).parent.parent.parent
 
 # Need to do this upfront because we'll be switching branches
 # Load index.jinja file and render it into schema.bacalhau.org/index.md
-env = Environment(loader=FileSystemLoader("templates/"))
+env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates/"))
 template = env.get_template("index.jinja")
 
 
