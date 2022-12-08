@@ -40,8 +40,8 @@ type JobSelectionPolicyProbeData struct {
 func getJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
 	return JobSelectionPolicyProbeData{
 		NodeID:        request.NodeID,
-		JobID:         request.Job.ID,
+		JobID:         request.Job.Metadata.ID,
 		Spec:          request.Job.Spec,
-		ExecutionPlan: request.Job.ExecutionPlan,
+		ExecutionPlan: request.Job.Spec.ExecutionPlan,
 	}
 }

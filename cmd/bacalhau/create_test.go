@@ -132,7 +132,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", host,
 		"--api-port", port,
-		job.ID,
+		job.Metadata.ID,
 	)
 
 	require.NoError(s.T(), err, "Error describing job.")
