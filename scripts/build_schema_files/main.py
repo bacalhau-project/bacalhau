@@ -78,7 +78,6 @@ for tag in listOfTagsToBuild[0:-1]:
     proc = subprocess.Popen(
         [f"bin/{GOOS}_{GOARCH}/bacalhau", "validate", "--output-schema"], cwd=rootPath, stdout=subprocess.PIPE
     )
-    schemaFile = SCHEMA_DIR / "jsonschema" / f"v{tag}.json"
     jsonFileContents[tag] = proc.stdout.read().decode("utf-8")
 
 repo.heads.main.checkout()
