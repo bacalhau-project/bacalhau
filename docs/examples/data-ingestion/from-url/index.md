@@ -23,7 +23,7 @@ The example below uses a simple tool we have created to help make it easier to m
 * [The Bacalhau client](https://docs.bacalhau.org/getting-started/installation)
 * [`jq` to parse the Bacalhau output](https://stedolan.github.io/jq/download/)
 
-## Uploading A File From a URL
+## 1. Uploading A File From a URL
 
 To upload a file from a URL we will take advantage of the `--input-urls` parameter of the `bacalhau docker run` command. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default).
 
@@ -42,7 +42,7 @@ bacalhau docker run \
     ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
-    env: JOB_ID=f1725e46-141b-4e58-8b35-a62d85068ff1
+    env: JOB_ID=29994c8b-6b45-481c-b85b-2dd6aef29d91
 
 
 Just to be safe, double check that the job succeeded by running the describe command (and some `jq` to parse it).
@@ -53,7 +53,7 @@ bacalhau list $JOB_ID --output=json | jq '.[0].JobState.Nodes[] | .Shards."0" | 
 ```
 
     {
-      "NodeId": "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
+      "NodeId": "QmXMzb3GQRMyUyVvUB53nfkZ1sURTVxuR8BPowey7a3WKk",
       "State": "Completed",
       "Status": "Got results proposal of length: 0",
       "VerificationResult": {
@@ -62,11 +62,11 @@ bacalhau list $JOB_ID --output=json | jq '.[0].JobState.Nodes[] | .Shards."0" | 
       },
       "PublishedResults": {
         "StorageSource": "IPFS",
-        "Name": "job-f1725e46-141b-4e58-8b35-a62d85068ff1-shard-0-host-QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
-        "CID": "QmVkwhgH9j8MrjrWWv2SBXAD66m9DDpq4fMHs49seLGKWS"
+        "Name": "job-29994c8b-6b45-481c-b85b-2dd6aef29d91-shard-0-host-QmXMzb3GQRMyUyVvUB53nfkZ1sURTVxuR8BPowey7a3WKk",
+        "CID": "Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw"
       },
       "RunOutput": {
-        "stdout": "1:54PM INF Copying files InputPath=/inputs OutputPath=/outputs\n1:54PM INF Copying object dst=/outputs/README.md src=/inputs/README.md\n1:54PM INF Done copying all objects files=[\"/outputs\",\"/outputs/README.md\"]\n",
+        "stdout": "3:22PM INF Copying files InputPath=/inputs OutputPath=/outputs\n3:22PM INF Copying object dst=/outputs/README.md src=/inputs/README.md\n3:22PM INF Done copying all objects files=[\"/outputs\",\"/outputs/README.md\"]\n",
         "stdouttruncated": false,
         "stderr": "",
         "stderrtruncated": false,
@@ -76,7 +76,7 @@ bacalhau list $JOB_ID --output=json | jq '.[0].JobState.Nodes[] | .Shards."0" | 
     }
 
 
-## Get the CID From the Completed Job
+## 2. Get the CID From the Completed Job
 
 The job will upload the CID to the Filecoin network via Estuary. Let's get the CID from the output.
 
@@ -85,22 +85,16 @@ The job will upload the CID to the Filecoin network via Estuary. Let's get the C
 bacalhau list $JOB_ID --output=json | jq -r '.[0].JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
 ```
 
-    env: CID=QmVkwhgH9j8MrjrWWv2SBXAD66m9DDpq4fMHs49seLGKWS
+    env: CID=Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
 
 
 
-```python
-from IPython.core.display import display, HTML
-display(HTML('Your CID is <b>' + cid + '.</b><br/><a href="https://ipfs.io/ipfs/' + cid + '"><button>View files on ipfs.io</button></a>'))
-```
-
-
-Your CID is <b>QmVkwhgH9j8MrjrWWv2SBXAD66m9DDpq4fMHs49seLGKWS
-.</b><br/><a href="https://ipfs.io/ipfs/QmVkwhgH9j8MrjrWWv2SBXAD66m9DDpq4fMHs49seLGKWS
+Your CID is <b>Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
+.</b><br/><br/><a href="https://ipfs.io/ipfs/Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
 "><button>View files on ipfs.io</button></a>
 
 
-## Use the CID in a New Bacalhau Job
+## 3. Use the CID in a New Bacalhau Job
 
 Now that we have the CID, we can use it in a new job. This time we will use the `--inputs` parameter to tell Bacalhau to use the CID we just uploaded.
 
@@ -116,7 +110,7 @@ bacalhau docker run \
     bash -c "set -x; ls -l /inputs; ls -l /inputs/outputs; cat /inputs/outputs/README.md"
 ```
 
-    env: JOB_ID=0089acb8-e9c6-414c-ba86-8b4bd8a02361
+    env: JOB_ID=47edd7e7-9103-46e0-9e9d-b5865f7565bd
 
 
 
@@ -125,8 +119,8 @@ rm -rf results && mkdir ./results
 bacalhau get --output-dir ./results $JOB_ID 
 ```
 
-    Fetching results of job '0089acb8-e9c6-414c-ba86-8b4bd8a02361'...
-    Results for job '0089acb8-e9c6-414c-ba86-8b4bd8a02361' have been written to...
+    Fetching results of job '47edd7e7-9103-46e0-9e9d-b5865f7565bd'...
+    Results for job '47edd7e7-9103-46e0-9e9d-b5865f7565bd' have been written to...
     ./results
 
 
@@ -137,12 +131,12 @@ bacalhau get --output-dir ./results $JOB_ID
 
     /Users/phil/.zshenv:.:1: no such file or directory: /Users/phil/.cargo/env
     total 12
-    -rw-rw-r-- 1 1000 1000    1 Dec  8 14:36 exitCode
-    drwxrwxr-x 2 1000 1000 4096 Dec  8 14:36 outputs
-    -rw-rw-r-- 1 1000 1000    0 Dec  8 14:36 stderr
-    -rw-rw-r-- 1 1000 1000  210 Dec  8 14:36 stdout
+    -rw-rw-r-- 1 1000 1000    1 Dec  8 15:22 exitCode
+    drwxrwxr-x 2 1000 1000 4096 Dec  8 15:22 outputs
+    -rw-rw-r-- 1 1000 1000    0 Dec  8 15:22 stderr
+    -rw-rw-r-- 1 1000 1000  210 Dec  8 15:22 stdout
     total 4
-    -rw-rw-r-- 1 1000 1000 3802 Dec  8 14:36 README.md
+    -rw-rw-r-- 1 1000 1000 3802 Dec  8 15:22 README.md
     <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
     -->
     # The Filecoin Distributed Computation Framework  
