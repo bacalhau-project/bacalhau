@@ -2,10 +2,6 @@ package simulator
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -114,48 +110,55 @@ func (t *SimulatorTransport) Subscribe(ctx context.Context, fn transport.Subscri
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
-func (t *SimulatorTransport) Encrypt(ctx context.Context, data, privateKeyBytes []byte) ([]byte, error) {
-	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	publicKeyBytes, err := unmarshalledPublicKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("could not cast public key to RSA")
-	}
-	return rsa.EncryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPublicKey,
-		data,
-		nil,
-	)
+func (t *SimulatorTransport) Encrypt(ctx context.Context, data, keyBytes []byte) ([]byte, error) {
+	// log.Debug().Msgf("XXX wot r u %+v", keyBytes)
+	// unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(keyBytes)
+	// if err != nil {
+	// 	log.Debug().Msgf("XXX ARG 1 %s", err)
+	// 	return nil, err
+	// }
+	// publicKeyBytes, err := unmarshalledPublicKey.Raw()
+	// if err != nil {
+	// 	log.Debug().Msgf("XXX ARG 2 %s", err)
+	// 	return nil, err
+	// }
+	// genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
+	// if err != nil {
+	// 	log.Debug().Msgf("XXX ARG 3 %s", err)
+	// 	return nil, err
+	// }
+	// rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
+	// if !ok {
+	// 	log.Debug().Msgf("XXX ARG 4 %s", err)
+	// 	return nil, fmt.Errorf("could not cast public key to RSA")
+	// }
+	// return rsa.EncryptOAEP(
+	// 	sha512.New(),
+	// 	rand.Reader,
+	// 	rsaPublicKey,
+	// 	data,
+	// 	nil,
+	// )
+	return data, nil
 }
 
 func (t *SimulatorTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	privateKeyBytes, err := t.privateKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	return rsa.DecryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPrivateKey,
-		data,
-		nil,
-	)
+	// privateKeyBytes, err := t.privateKey.Raw()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return rsa.DecryptOAEP(
+	// 	sha512.New(),
+	// 	rand.Reader,
+	// 	rsaPrivateKey,
+	// 	data,
+	// 	nil,
+	// )
+	return data, nil
 }
 
 /*
@@ -178,6 +181,7 @@ func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobE
 
 	publicKeyBytes, err := t.privateKey.GetPublic().Raw()
 	if err != nil {
+		log.Debug().Msgf("XXX Error case 1 %s", err)
 		return err
 	}
 	event.SenderPublicKey = publicKeyBytes
@@ -187,15 +191,22 @@ func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobE
 		SentTime:  time.Now(),
 	})
 	if err != nil {
+		log.Debug().Msgf("XXX Error case 2 %s", err)
 		return err
 	}
 
 	if t.websocket == nil {
+		log.Debug().Msgf("XXX Error case 3")
 		return fmt.Errorf("websocket not connected")
 	}
 
 	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
-	return t.websocket.WriteMessage(websocket.TextMessage, bs)
+	err = t.websocket.WriteMessage(websocket.TextMessage, bs)
+	if err != nil {
+		log.Debug().Msgf("XXX Error case 4 %s", err)
+		return err
+	}
+	return nil
 }
 
 func (t *SimulatorTransport) readMessage(payload *jobEventEnvelope) {

@@ -82,6 +82,7 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 
 	var runCommandResult *model.RunCommandResult
 
+	log.Debug().Msgf("XXX We are about to run the fucking job")
 	if !s.simulatorConfig.IsBadActor {
 		runCommandResult, err = jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
 		if err != nil {
@@ -105,6 +106,7 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 
 	shardProposal, err := jobVerifier.GetShardProposal(ctx, execution.Shard, resultFolder)
 	if err != nil {
+		log.Debug().Msgf("XXX Err from GetShardProposal: %s", err)
 		return
 	}
 

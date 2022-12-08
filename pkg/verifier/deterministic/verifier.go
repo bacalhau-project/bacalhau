@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -62,17 +63,21 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 ) ([]byte, error) {
 	j, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
 	if err != nil {
+		log.Debug().Msgf("XXX ARF 1")
 		return nil, err
 	}
 	if len(j.RequesterPublicKey) == 0 {
+		log.Debug().Msgf("XXX ARF 2")
 		return nil, fmt.Errorf("no RequesterPublicKey found in the job")
 	}
 	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
 	if err != nil {
+		log.Debug().Msgf("XXX ARF 3")
 		return nil, err
 	}
 	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), j.RequesterPublicKey)
 	if err != nil {
+		log.Debug().Msgf("XXX ARF 4")
 		return nil, err
 	}
 	return encryptedHash, nil
