@@ -91,12 +91,12 @@ jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
 
 # Render the template and write it to the index.md file
 jsonSchemas = []
-maxSchema = semver.parse("0.0.0")
+maxSchema = str(semver.parse("0.0.0"))
 for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     jsonSchemas.append({"name": schemaFile.name, "file": f"{schemaFile.name}.json"})
 
     # Get the file name without the v prefix
-    if semver.parse(schemaFile.stem.lstrip("v")) > maxSchema:
+    if str(semver.parse(schemaFile.stem.lstrip("v"))) > maxSchema:
         maxSchema = schemaFile.name
 
 jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x[0].name), reverse=True)
