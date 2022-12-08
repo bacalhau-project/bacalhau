@@ -18,7 +18,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	cm := system.NewCleanupManager()
 	j := getSampleDockerIPFSJob()
 
-	// In test we use the cid of the file we uploaded in scenarios_test.go
+	// Tests use the cid of the file we uploaded in scenarios_test.go
 	if system.GetEnvironment() == system.EnvironmentTest {
 		j.Spec.Inputs[0].CID = os.Getenv("BACALHAU_CANARY_TEST_CID")
 	}
@@ -76,7 +76,13 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = compareOutput(body, "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz")
+
+	// Tests use the checksum of the data we uploaded in scenarios_test.go
+	if system.GetEnvironment() == system.EnvironmentProd {
+		err = compareOutput(body, "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz")
+	} else if system.GetEnvironment() == system.EnvironmentTest {
+		err = compareOutput(body, "c639efc1e98762233743a75e7798dd9c  /inputs/data.tar.gz")
+	}
 	if err != nil {
 		return fmt.Errorf("testing md5 of input: %s", err)
 	}
@@ -84,7 +90,12 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = compareOutput(body, "62731802")
+	// Tests use the stat of the data we uploaded in scenarios_test.go
+	if system.GetEnvironment() == system.EnvironmentProd {
+		err = compareOutput(body, "62731802")
+	} else if system.GetEnvironment() == system.EnvironmentTest {
+		err = compareOutput(body, "21")
+	}
 	if err != nil {
 		return fmt.Errorf("testing ls of input: %s", err)
 	}

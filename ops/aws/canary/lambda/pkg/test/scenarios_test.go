@@ -28,8 +28,9 @@ func TestScenarios(t *testing.T) {
 	os.Setenv("BACALHAU_IPFS_SWARM_ADDRESSES", strings.Join(swarmAddresses, ","))
 	t.Logf("BACALHAU_IPFS_SWARM_ADDRESSES: %s", os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"))
 
-	// Add file to devstack IPFS
-	cid, err := ipfs.AddFileToNodes(context.Background(), "data.tar.gz", stack.IPFSClients()...)
+	// Add data to devstack IPFS
+	testString := "This is a test string"
+	cid, err := ipfs.AddTextToNodes(context.Background(), []byte(testString), stack.IPFSClients()...)
 	require.NoError(t, err)
 	// Need to set the local ipfs CID for SubmitDockerIPFSJobAndGet() to work in test
 	os.Setenv("BACALHAU_CANARY_TEST_CID", cid)

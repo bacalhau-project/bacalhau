@@ -24,10 +24,7 @@ build: ${BIN_TARGETS}
 .PHONY: test
 test: unittests.xml
 
-pkg/test/data.tar.gz:
-	curl https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq -L -o $@
-
-unittests.xml: pkg/test/data.tar.gz $(shell find ./pkg ./cmd -type f)
+unittests.xml: $(shell find ./pkg ./cmd -type f)
 	gotestsum --junitfile $@ -- -timeout 300s ./...
 
 
