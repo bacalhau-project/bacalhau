@@ -53,7 +53,7 @@ for longTag in tagList:
     try:
         semVerTag = version.parse(tag)
         print(semVerTag)
-        if semVerTag > STARTING_SEMVER and semVerTag.prerelease is None:
+        if semVerTag.base_version > STARTING_SEMVER and semVerTag is None:
             listOfTagsToBuild.append(tag)
     except ValueError as ve:
         print(f"Skipping {tag} because it is not a valid semver tag: {ve}")
