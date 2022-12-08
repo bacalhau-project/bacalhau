@@ -97,7 +97,7 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     jsonSchemas.append({"schemaVersion": currentSchema, "file": schemaFile.name})
 
     # Get the file name without the v prefix
-    if str(currentSchema) > maxSchema:
+    if currentSchema > maxSchema:
         maxSchema = currentSchema
 
 jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
