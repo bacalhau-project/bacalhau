@@ -1,13 +1,13 @@
 import git
 from pathlib import Path
-import semver
+from packaging import version
 from sys import argv
 
 import subprocess
 
 from jinja2 import Environment, FileSystemLoader
 
-STARTING_SEMVER = semver.parse("0.3.11")
+STARTING_SEMVER = version.parse("0.3.11")
 SCHEMA_DIR = Path(__file__).parent.parent.parent / "schema.bacalhau.org"
 LATEST_SEMVER = None
 rootPath = Path(__file__).parent.parent.parent
@@ -51,7 +51,7 @@ for longTag in tagList:
         tag = tag[1:]
 
     try:
-        semVerTag = semver.VersionInfo.parse(tag)
+        semVerTag = version.parse(tag)
         print(semVerTag)
         if semVerTag > STARTING_SEMVER and semVerTag.prerelease is None:
             listOfTagsToBuild.append(tag)
@@ -91,15 +91,16 @@ jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
 
 # Render the template and write it to the index.md file
 jsonSchemas = []
-maxSchema = str(semver.parse("0.0.0"))
+maxSchema = version.parse("0.0.0")
 for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
-    jsonSchemas.append({"name": schemaFile.name, "file": f"{schemaFile.name}.json"})
+    currentSchema = version.parse(schemaFile.stem.lstrip("v"))
+    jsonSchemas.append({"schemaVersion": currentSchema, "file": schemaFile.name})
 
     # Get the file name without the v prefix
-    if str(semver.parse(schemaFile.stem.lstrip("v"))) > maxSchema:
-        maxSchema = schemaFile.name
+    if str(currentSchema) > maxSchema:
+        maxSchema = currentSchema
 
-jsonSchemas = sorted(jsonSchemas, key=lambda x: semver.parse(x.name), reverse=True)
+jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
 jsonSchemas.push(("LATEST", f"v{maxSchema}.json"))
 
 template.render(jsonSchemas=jsonSchemas)

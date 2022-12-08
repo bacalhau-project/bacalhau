@@ -43,6 +43,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "packaging"
+version = "22.0"
+description = "Core utilities for Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "semver"
 version = "2.13.0"
 description = "Python helper for Semantic Versioning (http://semver.org/)"
@@ -61,12 +69,13 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "4466510485beb61594448c6f6ecc4ca1e4ce2a651d2c6495eb8a1e8414dc13dc"
+content-hash = "7b06bce740a51811a417709725e95adb22a0864f05f624fa549d52e1db05b211"
 
 [metadata.files]
 gitdb = []
 gitpython = []
 jinja2 = []
 markupsafe = []
+packaging = []
 semver = []
 smmap = []
