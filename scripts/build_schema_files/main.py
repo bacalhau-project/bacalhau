@@ -103,6 +103,9 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
 jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
 jsonSchemas.insert(0, {"schemaVersion": "LATEST", "file": f"v{maxSchema}.json"})
 
+tempPkl = Path(__file__).parent / "temp.pkl"
+tempPkl.write_text(str(jsonSchemas))
+
 jsonSchemaIndex = template.render(jsonSchemas=jsonSchemas)
 
 jsonSchemaIndexFile.write_text(jsonSchemaIndex)
