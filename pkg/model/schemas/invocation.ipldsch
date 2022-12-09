@@ -1,0 +1,15 @@
+type Closure struct {
+  with   URI
+  do     Ability
+  inputs Any
+}
+
+type Task struct {
+  with   URI
+  do     Ability
+  inputs Any
+  meta   {String : Any} (optional)
+}
+
+type URI string
+type Ability string
