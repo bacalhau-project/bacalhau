@@ -101,6 +101,6 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
         maxSchema = currentSchema
 
 jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
-jsonSchemas.push(("LATEST", f"v{maxSchema}.json"))
+jsonSchemas.insert(("LATEST", f"v{maxSchema}.json"))
 
 template.render(jsonSchemas=jsonSchemas)
