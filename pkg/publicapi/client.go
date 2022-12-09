@@ -227,8 +227,9 @@ func (apiClient *APIClient) Submit(
 	defer span.End()
 
 	data := model.JobCreatePayload{
-		ClientID: system.GetClientID(),
-		Job:      j,
+		ClientID:   system.GetClientID(),
+		APIVersion: j.APIVersion,
+		Spec:       &j.Spec,
 	}
 
 	if buildContext != nil {
@@ -247,9 +248,9 @@ func (apiClient *APIClient) Submit(
 
 	var res submitResponse
 	req := submitRequest{
-		Data:            data,
-		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
+		JobCreatePayload: data,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
 	}
 
 	err = apiClient.post(ctx, "submit", req, &res)

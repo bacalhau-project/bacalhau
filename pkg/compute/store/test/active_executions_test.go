@@ -65,7 +65,11 @@ func newExecution() store.Execution {
 	return *store.NewExecution(
 		uuid.NewString(),
 		model.JobShard{
-			Job:   &model.Job{ID: uuid.NewString()},
+			Job: &model.Job{
+				Metadata: model.Metadata{
+					ID: uuid.NewString(),
+				},
+			},
 			Index: 1,
 		},
 		model.ResourceUsageData{
