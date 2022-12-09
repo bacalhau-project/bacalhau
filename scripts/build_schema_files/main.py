@@ -87,7 +87,7 @@ for jsonFile in jsonFileContents:
     with open(schemaFile, "w") as f:
         f.write(jsonFileContents[jsonFile])
 
-jsonSchemaIndex = SCHEMA_DIR / "jsonschema" / "index.md"
+jsonSchemaIndexFile = SCHEMA_DIR / "jsonschema" / "index.md"
 
 # Render the template and write it to the index.md file
 jsonSchemas = []
@@ -103,4 +103,6 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
 jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
 jsonSchemas.insert(0, {"schemaVersion": "LATEST", "file": f"v{maxSchema}.json"})
 
-template.render(jsonSchemas=jsonSchemas)
+jsonSchemaIndex = template.render(jsonSchemas=jsonSchemas)
+
+jsonSchemaIndexFile.write_text(jsonSchemaIndex)
