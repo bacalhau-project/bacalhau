@@ -5,6 +5,7 @@ package bacalhau
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -34,9 +35,11 @@ func TestCreateSuite(t *testing.T) {
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+
+	Fatal = FakeFatalErrorHandler
 }
 
-func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
+func (s *CreateSuite) TestCreateGenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -44,45 +47,19 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
-	Fatal = FakeFatalErrorHandler
-
 	for i, tc := range tests {
-		func() {
-			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-			defer cm.Cleanup()
-
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(s.T(), err)
-
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
-				"--api-host", host,
-				"--api-port", port,
-				"../../testdata/job.json",
-			)
-			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
-			testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
-		}()
-	}
-}
-
-func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
-	tests := []struct {
-		numberOfJobs int
-	}{
-		{numberOfJobs: 1}, // Test for one
-		{numberOfJobs: 5}, // Test for five
-	}
-
-	Fatal = FakeFatalErrorHandler
-
-	for i, tc := range tests {
-
-		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
+		testFiles := []string{
+			"../../testdata/job.json",
+			"../../testdata/job.yaml",
+			"../../testdata/job-url.yaml",
+			"../../pkg/model/tasks/docker_task.json",
+			"../../pkg/model/tasks/task_with_config.json",
+			"../../pkg/model/tasks/wasm_task.json",
+		}
 
 		for _, testFile := range testFiles {
-			func() {
+			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
+			s.Run(name, func() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
@@ -100,15 +77,13 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
-			}()
+			})
 		}
 	}
 }
 
 func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job.yaml"
-
-	Fatal = FakeFatalErrorHandler
 
 	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
@@ -138,9 +113,11 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error describing job.")
 }
 
-func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
-	Fatal = FakeFatalErrorHandler
+func (s *CreateSuite) TestCreateFromUCANTask() {
 
+}
+
+func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	type commandReturn struct {
 		c   *cobra.Command
 		out string
@@ -179,8 +156,6 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
-	Fatal = FakeFatalErrorHandler
-
 	type commandReturn struct {
 		c   *cobra.Command
 		out string
