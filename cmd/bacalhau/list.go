@@ -21,13 +21,18 @@ var (
 		List jobs on the network.
 `))
 
-	//nolint:lll // Documentation
 	listExample = templates.Examples(i18n.T(`
 		# List jobs on the network
 		bacalhau list
 
 		# List jobs and output as json
 		bacalhau list --output json`))
+
+	// The tags that will be excluded by default, if the user does not pass any
+	// others to the list command.
+	defaultExcludedTags = []model.ExcludedTag{
+		"canary",
+	}
 )
 
 type ListOptions struct {
@@ -49,7 +54,7 @@ func NewListOptions() *ListOptions {
 		HideHeader:   false,
 		IDFilter:     "",
 		IncludeTags:  model.IncludeAny,
-		ExcludeTags:  model.ExcludeNone,
+		ExcludeTags:  defaultExcludedTags,
 		NoStyle:      false,
 		MaxJobs:      10,
 		OutputFormat: "text",
