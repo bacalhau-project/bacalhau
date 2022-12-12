@@ -89,7 +89,7 @@ func (s *ArrayValueFlag[T]) Set(input string) error {
 
 // String implements pflag.Value
 func (s *ArrayValueFlag[T]) String() string {
-	strs := make([]string, len(*s.value))
+	strs := make([]string, 0, len(*s.value))
 	for _, spec := range *s.value {
 		spec := spec
 		strs = append(strs, s.stringer(&spec))
