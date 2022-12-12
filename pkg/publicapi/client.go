@@ -123,10 +123,7 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
 	defer span.End()
 
-	shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
-
 	if jobID == "" {
-		cancelFn()
 		return model.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
@@ -139,16 +136,16 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	var outerErr error
 
 	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
 		err := apiClient.post(shortTimeoutCtx, "states", req, &res)
 		if err == nil {
-			cancelFn()
 			return res.State, nil
 		} else {
 			log.Debug().Err(err).Msg("apiclient read state error")
 			outerErr = err
 		}
 	}
-	cancelFn()
 	return model.JobState{}, outerErr
 }
 
@@ -170,10 +167,7 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetEvents")
 	defer span.End()
 
-	shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
-
 	if jobID == "" {
-		cancelFn()
 		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
 	}
 
@@ -187,9 +181,10 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 	var outerErr error
 
 	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
 		err = apiClient.post(shortTimeoutCtx, "events", req, &res)
 		if err == nil {
-			cancelFn()
 			return res.Events, nil
 		} else {
 			log.Debug().Err(err).Msg("apiclient read events error")
@@ -199,7 +194,6 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 			}
 		}
 	}
-	cancelFn()
 	return nil, outerErr
 }
 
