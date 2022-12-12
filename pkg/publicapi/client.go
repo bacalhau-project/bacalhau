@@ -23,6 +23,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// for some queries (like read events and read state)
+// we want to fail early (10 seconds should be ample time)
+// but retry a number of times - this is to avoid network
+// flakes failing the canary
+const APIRetryCount = 5
+const APIShortTimeoutSeconds = 10
+
 // APIClient is a utility for interacting with a node's API server.
 type APIClient struct {
 	BaseURI string
@@ -116,7 +123,10 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
 	defer span.End()
 
+	shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+
 	if jobID == "" {
+		cancelFn()
 		return model.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
@@ -126,11 +136,20 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	}
 
 	var res stateResponse
-	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return model.JobState{}, err
-	}
+	var outerErr error
 
-	return res.State, nil
+	for i := 0; i < APIRetryCount; i++ {
+		err := apiClient.post(shortTimeoutCtx, "states", req, &res)
+		if err == nil {
+			cancelFn()
+			return res.State, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read state error")
+			outerErr = err
+		}
+	}
+	cancelFn()
+	return model.JobState{}, outerErr
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
@@ -151,7 +170,10 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetEvents")
 	defer span.End()
 
+	shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+
 	if jobID == "" {
+		cancelFn()
 		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
 	}
 
@@ -162,17 +184,23 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 
 	// Test if the context has been canceled before making the request.
 	var res eventsResponse
-	err = apiClient.post(ctx, "events", req, &res)
-	if err != nil {
-		if strings.Contains(err.Error(), "context canceled") {
-			return nil, bacerrors.NewContextCanceledError(ctx.Err().Error())
+	var outerErr error
+
+	for i := 0; i < APIRetryCount; i++ {
+		err = apiClient.post(shortTimeoutCtx, "events", req, &res)
+		if err == nil {
+			cancelFn()
+			return res.Events, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read events error")
+			outerErr = err
+			if strings.Contains(err.Error(), "context canceled") {
+				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())
+			}
 		}
-
-		log.Debug().Err(err).Msg("request error")
-		return nil, err
 	}
-
-	return res.Events, nil
+	cancelFn()
+	return nil, outerErr
 }
 
 func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
