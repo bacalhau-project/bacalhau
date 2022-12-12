@@ -124,21 +124,15 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			continue
 		}
 
+		// If we are not using include tags, by default every job is included.
+		// If a job is specifically included, that overrides it being excluded.
 		included := len(query.IncludeTags) == 0
-		for _, tag := range query.IncludeTags {
-			if slices.Contains(j.Spec.Annotations, string(tag)) {
+		for _, tag := range j.Spec.Annotations {
+			if slices.Contains(query.IncludeTags, model.IncludedTag(tag)) {
 				included = true
 				break
 			}
-		}
-
-		if !included {
-			continue
-		}
-
-		included = true
-		for _, tag := range query.ExcludeTags {
-			if slices.Contains(j.Spec.Annotations, string(tag)) {
+			if slices.Contains(query.ExcludeTags, model.ExcludedTag(tag)) {
 				included = false
 				break
 			}
