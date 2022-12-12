@@ -1185,9 +1185,27 @@ const docTemplate = `{
                     "type": "string",
                     "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
                 },
+                "exclude_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
+                },
                 "id": {
                     "type": "string",
                     "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                },
+                "include_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
                 },
                 "max_jobs": {
                     "type": "integer",
