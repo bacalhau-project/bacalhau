@@ -3,6 +3,7 @@ package scenarios
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -11,7 +12,7 @@ func List(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := getClient()
 
-	jobs, err := client.List(ctx, "", 10, false, "created_at", true)
+	jobs, err := client.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, false, "created_at", true)
 	if err != nil {
 		return err
 	}
