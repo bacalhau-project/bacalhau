@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/spf13/pflag"
@@ -223,5 +224,37 @@ func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
 		parser:   separatorParser("="),
 		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
 		typeStr:  "key=value",
+	}
+}
+
+func parseTag(s string) (string, error) {
+	var err error
+	if !job.IsSafeAnnotation(s) {
+		err = fmt.Errorf("%q is not a valid tag", s)
+	}
+	return s, err
+}
+
+func IncludedTagFlag(value *[]model.IncludedTag) *ArrayValueFlag[model.IncludedTag] {
+	return &ArrayValueFlag[model.IncludedTag]{
+		value: value,
+		parser: func(s string) (model.IncludedTag, error) {
+			s, err := parseTag(s)
+			return model.IncludedTag(s), err
+		},
+		stringer: func(t *model.IncludedTag) string { return string(*t) },
+		typeStr:  "tag",
+	}
+}
+
+func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedTag] {
+	return &ArrayValueFlag[model.ExcludedTag]{
+		value: value,
+		parser: func(s string) (model.ExcludedTag, error) {
+			s, err := parseTag(s)
+			return model.ExcludedTag(s), err
+		},
+		stringer: func(t *model.ExcludedTag) string { return string(*t) },
+		typeStr:  "tag",
 	}
 }
