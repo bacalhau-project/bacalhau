@@ -23,6 +23,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// for some queries (like read events and read state)
+// we want to fail early (10 seconds should be ample time)
+// but retry a number of times - this is to avoid network
+// flakes failing the canary
+const APIRetryCount = 5
+const APIShortTimeoutSeconds = 10
+
 // APIClient is a utility for interacting with a node's API server.
 type APIClient struct {
 	BaseURI string
@@ -137,11 +144,20 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	}
 
 	var res stateResponse
-	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return model.JobState{}, err
-	}
+	var outerErr error
 
-	return res.State, nil
+	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
+		err := apiClient.post(shortTimeoutCtx, "states", req, &res)
+		if err == nil {
+			return res.State, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read state error")
+			outerErr = err
+		}
+	}
+	return model.JobState{}, outerErr
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
@@ -173,17 +189,23 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 
 	// Test if the context has been canceled before making the request.
 	var res eventsResponse
-	err = apiClient.post(ctx, "events", req, &res)
-	if err != nil {
-		if strings.Contains(err.Error(), "context canceled") {
-			return nil, bacerrors.NewContextCanceledError(ctx.Err().Error())
+	var outerErr error
+
+	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
+		err = apiClient.post(shortTimeoutCtx, "events", req, &res)
+		if err == nil {
+			return res.Events, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read events error")
+			outerErr = err
+			if strings.Contains(err.Error(), "context canceled") {
+				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())
+			}
 		}
-
-		log.Debug().Err(err).Msg("request error")
-		return nil, err
 	}
-
-	return res.Events, nil
+	return nil, outerErr
 }
 
 func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
