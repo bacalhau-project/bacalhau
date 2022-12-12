@@ -8,6 +8,8 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -109,48 +111,66 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 		if err != nil {
 			return nil, err
 		}
+		return []*model.Job{j}, nil
+	}
+
+	for _, j := range maps.Values(d.jobs) {
+		if len(result) == query.Limit {
+			break
+		}
+
+		if !query.ReturnAll && query.ClientID != "" && query.ClientID != j.Metadata.ClientID {
+			// Job is not for the requesting client, so ignore it.
+			continue
+		}
+
+		included := len(query.IncludeTags) == 0
+		for _, tag := range query.IncludeTags {
+			if slices.Contains(j.Spec.Annotations, string(tag)) {
+				included = true
+				break
+			}
+		}
+
+		if !included {
+			continue
+		}
+
+		included = true
+		for _, tag := range query.ExcludeTags {
+			if slices.Contains(j.Spec.Annotations, string(tag)) {
+				included = false
+				break
+			}
+		}
+
+		if !included {
+			continue
+		}
+
 		result = append(result, j)
-	} else {
-		if query.ReturnAll {
-			log.Ctx(ctx).Debug().Msgf("querying for all jobs, limit %d", query.Limit)
-			for _, j := range d.jobs {
-				result = append(result, j)
-			}
-		} else if query.ClientID != "" {
-			log.Ctx(ctx).Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
-			for _, j := range d.jobs {
-				if j.Metadata.ClientID == query.ClientID {
-					result = append(result, j)
-				}
-			}
-		}
-
-		listSorter := func(i, j int) bool {
-			switch query.SortBy {
-			case "id":
-				if query.SortReverse {
-					// what does it mean to sort by ID?
-					return result[i].Metadata.ID > result[j].Metadata.ID
-				} else {
-					return result[i].Metadata.ID < result[j].Metadata.ID
-				}
-			case "created_at":
-				if query.SortReverse {
-					return result[i].Metadata.CreatedAt.UTC().Unix() > result[j].Metadata.CreatedAt.UTC().Unix()
-				} else {
-					return result[i].Metadata.CreatedAt.UTC().Unix() < result[j].Metadata.CreatedAt.UTC().Unix()
-				}
-			default:
-				return false
-			}
-		}
-		sort.Slice(result, listSorter)
-	}
-	// apply limit
-	if len(result) >= query.Limit {
-		result = result[:query.Limit]
 	}
 
+	listSorter := func(i, j int) bool {
+		switch query.SortBy {
+		case "id":
+			if query.SortReverse {
+				// what does it mean to sort by ID?
+				return result[i].Metadata.ID > result[j].Metadata.ID
+			} else {
+				return result[i].Metadata.ID < result[j].Metadata.ID
+			}
+		case "created_at":
+			if query.SortReverse {
+				return result[i].Metadata.CreatedAt.UTC().Unix() > result[j].Metadata.CreatedAt.UTC().Unix()
+			} else {
+				return result[i].Metadata.CreatedAt.UTC().Unix() < result[j].Metadata.CreatedAt.UTC().Unix()
+			}
+		default:
+			return false
+		}
+	}
+	sort.Slice(result, listSorter)
 	return result, nil
 }
 

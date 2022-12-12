@@ -41,7 +41,7 @@ func (s *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx, "", 10, true, "created_at", true)
+	jobs, err := c.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
 	require.NoError(s.T(), err)
 	require.Empty(s.T(), jobs)
 
@@ -52,7 +52,7 @@ func (s *ServerSuite) TestList() {
 	require.NoError(s.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx, "", 10, true, "created_at", true)
+	jobs, err = c.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
 	require.NoError(s.T(), err)
 	require.Len(s.T(), jobs, 1)
 }
@@ -124,8 +124,9 @@ func (s *ServerSuite) TestMaxBodyReader() {
 	c, cm := SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
-	// Due to headers we need MaxBytes minus 163
-	maxSizeOfString := int(MaxBytesToReadInBody) - 163
+	// Due to the rest of the List payload we need MaxBytes minus
+	// an amount that accounts for the other data we send
+	maxSizeOfString := int(MaxBytesToReadInBody) - 207
 	testCases := []struct {
 		name        string
 		size        int
@@ -133,20 +134,23 @@ func (s *ServerSuite) TestMaxBodyReader() {
 	}{
 		{name: "Max - 1", size: maxSizeOfString - 1, expectError: false},
 		{name: "Max", size: maxSizeOfString, expectError: false},
-		{name: "Max + 1", size: maxSizeOfString + 1, expectError: true}}
+		{name: "Max + 1", size: maxSizeOfString + 1, expectError: true},
+	}
 
 	_ = testCases
 
 	for _, tc := range testCases {
-		_, _, err := c.Get(context.TODO(), strings.Repeat("a", tc.size))
-		if !strings.Contains(err.Error(), "Job not found") {
-			if tc.expectError {
-				require.Error(s.T(), err, "%s: Expected error", tc.name)
-				require.Contains(s.T(), err.Error(), "http: request body too large", "%s: Expected to error with body too large", tc.name)
-			} else {
-				require.NoError(s.T(), err, "%s: Expected no error", tc.name)
+		s.Run(tc.name, func() {
+			_, _, err := c.Get(context.TODO(), strings.Repeat("a", tc.size))
+			if !strings.Contains(err.Error(), "Job not found") {
+				if tc.expectError {
+					require.Error(s.T(), err, "expected error")
+					require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
+				} else {
+					require.NoError(s.T(), err, "expected no error")
+				}
 			}
-		}
+		})
 	}
 }
 
