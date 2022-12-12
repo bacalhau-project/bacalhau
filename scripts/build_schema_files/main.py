@@ -3,6 +3,8 @@ from pathlib import Path
 from packaging import version
 from sys import argv
 
+import pickle
+
 import subprocess
 
 from jinja2 import Environment, FileSystemLoader
@@ -94,7 +96,7 @@ jsonSchemas = []
 maxSchema = version.parse("0.0.0")
 for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
     currentSchema = version.parse(schemaFile.stem.lstrip("v"))
-    jsonSchemas.append({"schemaVersion": currentSchema, "file": schemaFile.name})
+    jsonSchemas.append({"schemaVersion": str(currentSchema), "file": schemaFile.name})
 
     # Get the file name without the v prefix
     if currentSchema > maxSchema:
@@ -104,7 +106,9 @@ jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True
 jsonSchemas.insert(0, {"schemaVersion": "LATEST", "file": f"v{maxSchema}.json"})
 
 tempPkl = Path(__file__).parent / "temp.pkl"
-tempPkl.write_text(str(jsonSchemas))
+# Pickel the jsonSchemas list so we can use it in the index.jinja file
+with open(tempPkl, "wb") as f:
+    pickle.dump(jsonSchemas, f)
 
 jsonSchemaIndex = template.render(jsonSchemas=jsonSchemas)
 
