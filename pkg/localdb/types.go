@@ -7,12 +7,14 @@ import (
 )
 
 type JobQuery struct {
-	ID          string `json:"id"`
-	ClientID    string `json:"clientID"`
-	Limit       int    `json:"limit"`
-	ReturnAll   bool   `json:"return_all"`
-	SortBy      string `json:"sort_by"`
-	SortReverse bool   `json:"sort_reverse"`
+	ID          string              `json:"id"`
+	ClientID    string              `json:"clientID"`
+	IncludeTags []model.IncludedTag `json:"include_tags"`
+	ExcludeTags []model.ExcludedTag `json:"exclude_tags"`
+	Limit       int                 `json:"limit"`
+	ReturnAll   bool                `json:"return_all"`
+	SortBy      string              `json:"sort_by"`
+	SortReverse bool                `json:"sort_reverse"`
 }
 
 type LocalEventFilter func(ev model.JobLocalEvent) bool
