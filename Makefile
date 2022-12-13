@@ -25,6 +25,11 @@ export PRECOMMIT = poetry run pre-commit
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
 
+# docker images
+export IMAGE_ORG ?= bacalhauproject
+export IMAGE_NAME ?= ${BINARY_NAME}
+export IMAGE_TAG ?= dev
+
 ifeq ($(GOOS),windows)
 BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
@@ -124,6 +129,11 @@ build-ci: build-bacalhau
 build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
+# no sudo (used in Dockerfile)
+.PHONY: build-image-dev
+build-image-dev: build-ci
+	cp ${BINARY_PATH} /usr/local/bin
+
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
@@ -143,6 +153,10 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
+.PHONY: build-bacalhau-image
+build-bacalhau-image:
+	docker build --target builder -t $(IMAGE_ORG)/$(IMAGE_NAME):builder-$(IMAGE_TAG) .
+	docker build --target daemon -t $(IMAGE_ORG)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 .PHONY: build-docker-images
 build-docker-images:

@@ -76,5 +76,5 @@ alias bacalhau='docker exec -it \
 ```
 
 docker rm -f bacalhau-ipfs bacalhau
-docker volume rm bacalhau-ipfs bacalhau-data
+docker volume rm bacalhau_ipfs_staging bacalhau_ipfs_data bacalhau-data
 ```
