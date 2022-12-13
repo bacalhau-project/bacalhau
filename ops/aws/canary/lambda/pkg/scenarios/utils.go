@@ -17,6 +17,7 @@ import (
 )
 
 const defaultEchoMessage = "hello λ!"
+const canaryAnnotation = "canary"
 
 func getSampleDockerJob() *model.Job {
 	var j = &model.Job{
@@ -33,6 +34,7 @@ func getSampleDockerJob() *model.Job {
 				defaultEchoMessage,
 			},
 		},
+		Annotations: []string{canaryAnnotation},
 	}
 
 	j.Spec.Deal = model.Deal{
@@ -74,6 +76,7 @@ func getSampleDockerIPFSJob() *model.Job {
 				Path:          "/outputs",
 			},
 		},
+		Annotations: []string{canaryAnnotation},
 	}
 
 	j.Spec.Deal = model.Deal{
