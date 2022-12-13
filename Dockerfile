@@ -61,6 +61,8 @@ ENV BACALHAU_API_PORT=1234
 EXPOSE 1235
 # REST API port for bacalhau client
 EXPOSE ${BACALHAU_API_PORT}
+# metrics port
+EXPOSE 2112
 
 
 COPY --from=builder /usr/local/bin/bacalhau /usr/local/bin/bacalhau
