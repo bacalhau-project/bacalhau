@@ -95,7 +95,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		*config.DevStackOptions,
 		config.ComputeConfig,
 		config.RequesterConfig,
-		config.ExecutorConfig,
+		*config.ExecutorConfig,
 	)
 
 	return stack, stack.Nodes[0].CleanupManager

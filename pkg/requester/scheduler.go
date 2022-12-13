@@ -328,7 +328,7 @@ func (s *Scheduler) OnCancelComplete(ctx context.Context, result compute.CancelR
 }
 
 func (s *Scheduler) OnComputeFailure(ctx context.Context, result compute.ComputeError) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s received ComputeFailure for execution: %s from %s",
+	log.Ctx(ctx).Debug().Err(result).Msgf("Requester node %s received ComputeFailure for execution: %s from %s",
 		s.id, result.ExecutionID, result.SourcePeerID)
 	s.eventEmitter.EmitComputeFailure(ctx, result)
 	shardState := s.getShardState(ctx, result.ExecutionMetadata)

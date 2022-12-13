@@ -72,7 +72,9 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
 				"--api-host", s.host,
 				"--api-port", s.port,
-				fmt.Sprintf("ubuntu echo %s", randomUUID.String()),
+				"ubuntu",
+				"echo",
+				randomUUID.String(),
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
@@ -113,6 +115,9 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 }
 
 func (s *DockerRunSuite) TestRun_GPURequests() {
+	if !s.node.ComputeNode.Capacity.IsWithinLimits(context.Background(), model.ResourceUsageData{GPU: 1}) {
+		s.T().Skip("Skipping test as no GPU is available in current host")
+	}
 	tests := []struct {
 		submitArgs []string
 		fatalErr   bool
@@ -238,7 +243,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 					}
 					flagsArray = append(flagsArray, iv.flag, ivString)
 				}
-				flagsArray = append(flagsArray, "ubuntu cat /inputs/foo.txt") // This doesn't exist, but shouldn't error
+				flagsArray = append(flagsArray, "ubuntu", "cat", "/inputs/foo.txt") // This doesn't exist, but shouldn't error
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
@@ -308,7 +313,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 					iurlString := iurl.url
 					flagsArray = append(flagsArray, iurl.flag, iurlString)
 				}
-				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
+				flagsArray = append(flagsArray, "ubuntu", "cat", "/app/foo_data.txt")
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
@@ -379,7 +384,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 						flagsArray = append(flagsArray, "-o", ovString)
 					}
 				}
-				flagsArray = append(flagsArray, "ubuntu echo 'hello world'")
+				flagsArray = append(flagsArray, "ubuntu", "echo", "'hello world'")
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 
@@ -445,7 +450,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 				"--api-host", s.host,
 				"--api-port", s.port,
 				"ubuntu",
-				"echo 'hello world'",
+				"echo", "'hello world'",
 			)
 			assert.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
@@ -509,7 +514,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				}
 
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
-				args = append(args, fmt.Sprintf("ubuntu echo 'hello world - %s'", randNum.String()))
+				args = append(args, "ubuntu", "echo", fmt.Sprintf("'hello world - %s'", randNum.String()))
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
@@ -605,7 +610,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 				"--api-host", s.host,
 				"--api-port", s.port}
 			flagsArray = append(flagsArray, "-w", tc.workdir)
-			flagsArray = append(flagsArray, "ubuntu pwd")
+			flagsArray = append(flagsArray, "ubuntu", "pwd")
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 
@@ -811,7 +816,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 				"--api-host", s.host,
 				"--api-port", s.port}
 
-			flagsArray = append(flagsArray, fmt.Sprintf(`ubuntu perl -e "print \"=\" x %d"`, tc.inputLength))
+			flagsArray = append(flagsArray, "ubuntu", "--", "perl", fmt.Sprintf(`-e "print \"=\" x %d"`, tc.inputLength))
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
@@ -946,7 +951,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 		"--api-host", s.host,
 		"--api-port", s.port,
 		"ubuntu",
-		"echo 'hello world'",
+		"echo", "'hello world'",
 	)
 	assert.NoError(s.T(), err, "Error submitting job without defining a timeout value")
 
@@ -964,7 +969,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 		"--api-port", s.port,
 		"--timeout", fmt.Sprintf("%f", expectedTimeout),
 		"ubuntu",
-		"echo 'hello world'",
+		"echo", "'hello world'",
 	)
 	assert.NoError(s.T(), err, "Error submitting job with a defined a timeout value")
 

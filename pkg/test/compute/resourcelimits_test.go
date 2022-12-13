@@ -130,7 +130,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				TotalResourceLimits: capacity.ParseResourceUsageConfig(testCase.totalLimits),
 			}),
 			node.NewRequesterConfigWithDefaults(),
-			&noop_executor.ExecutorConfig{
+			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
@@ -302,7 +302,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 		}),
 		node.NewRequesterConfigWithDefaults(),
-		&noop_executor.ExecutorConfig{
+		noop_executor.ExecutorConfig{
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: jobHandler,
 			},

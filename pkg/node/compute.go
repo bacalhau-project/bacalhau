@@ -23,6 +23,7 @@ type Compute struct {
 	// Visible for testing
 	Endpoint           compute.Endpoint
 	LocalEndpoint      compute.Endpoint
+	Capacity           capacity.Tracker
 	nodeID             string
 	ExecutionStore     store.ExecutionStore
 	debugInfoProviders []model.DebugInfoProvider
@@ -152,6 +153,7 @@ func NewComputeNode(
 		nodeID:             host.ID().String(),
 		Endpoint:           endpointProxy,
 		LocalEndpoint:      baseEndpoint,
+		Capacity:           capacityTracker,
 		ExecutionStore:     executionStore,
 		debugInfoProviders: debugInfoProviders,
 		computeCallback:    computeCallback,

@@ -23,20 +23,15 @@ func SetupTest(
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
-	require.NoError(t, system.InitConfigForTesting(t))
-
 	cm := system.NewCleanupManager()
-	//t.Cleanup(cm.Cleanup)
+	t.Cleanup(cm.Cleanup)
 
 	options := devstack.DevStackOptions{
 		NumberOfNodes:     nodes,
 		NumberOfBadActors: badActors,
 		LocalNetworkLotus: lotusNode,
 	}
-
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterConfig)
-	require.NoError(t, err)
-
+	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{})
 	return stack, cm
 }
 
@@ -74,19 +69,13 @@ func SetupTestWithNoopExecutor(
 	options devstack.DevStackOptions,
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
-	executorConfig *noop_executor.ExecutorConfig,
+	executorConfig noop_executor.ExecutorConfig,
 ) *devstack.DevStack {
 	require.NoError(t, system.InitConfigForTesting(t))
-
-	var executorFactory node.ExecutorsFactory
-	if executorConfig != nil {
-		// We will take the standard executors and add in the noop executor
-		executorFactory = &mixedExecutorFactory{
-			StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
-			NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(*executorConfig),
-		}
-	} else {
-		executorFactory = node.NewStandardExecutorsFactory()
+	// We will take the standard executors and add in the noop executor
+	executorFactory := &mixedExecutorFactory{
+		StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
+		NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
 	}
 
 	injector := node.NodeDependencyInjector{

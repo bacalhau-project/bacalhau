@@ -6,8 +6,10 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -28,8 +30,15 @@ func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
+		node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobSelectionPolicy: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
+			},
+		}),
+		node.NewRequesterConfigWith(node.RequesterConfigParams{
+			JobNegotiationTimeout:              5 * time.Second,
+			StateManagerBackgroundTaskInterval: 1 * time.Second,
+		}),
 	)
 	s.node = stack.Nodes[0]
 	s.client = publicapi.NewAPIClient(s.node.APIServer.GetURI())

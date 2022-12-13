@@ -40,7 +40,7 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 				"--api-host", s.host,
 				"--api-port", s.port,
-				"../../testdata/job.json",
+				"../../testdata/job-noop.json",
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 			testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
@@ -60,7 +60,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 
 	for i, tc := range tests {
 
-		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
+		testFiles := []string{"../../testdata/job-noop.yaml", "../../testdata/job-noop-url.yaml"}
 
 		for _, testFile := range testFiles {
 			func() {
@@ -81,7 +81,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 }
 
 func (s *CreateSuite) TestCreateFromStdin() {
-	testFile := "../../testdata/job.yaml"
+	testFile := "../../testdata/job-noop.yaml"
 
 	Fatal = FakeFatalErrorHandler
 	testSpec, err := os.Open(testFile)

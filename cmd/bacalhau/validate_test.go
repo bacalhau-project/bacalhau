@@ -25,8 +25,8 @@ func (s *ValidateSuite) TestValidate() {
 		testFile string
 		valid    bool
 	}{
-		"validJobFile":   {testFile: "../../testdata/job.yaml", valid: true},
-		"InvalidJobFile": {testFile: "../../testdata/job-invalid.yml", valid: false},
+		"validJobFile":   {testFile: "../../testdata/job-noop.yaml", valid: true},
+		"InvalidJobFile": {testFile: "../../testdata/job-noop-invalid.yml", valid: false},
 	}
 	for name, test := range tests {
 		func() {
