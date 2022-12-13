@@ -192,16 +192,16 @@ func NewDevStack(
 			cm.RegisterCallback(func() error {
 				return libp2pHost.Close()
 			})
-
-		} else {
-			// TODO: implement simulator transport
-			//var simulatorTransport transport.Transport
-			//simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
-			//if err != nil {
-			//	return nil, err
-			//}
-			//useTransport = simulatorTransport
 		}
+		//TODO: implement simulator transport
+		//else {
+		//var simulatorTransport transport.Transport
+		//simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//useTransport = simulatorTransport
+		//}
 
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())

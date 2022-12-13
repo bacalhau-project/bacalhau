@@ -108,7 +108,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 	s.enqueued[execution.ID] = newBufferTask(execution)
 	s.enqueuedList = append(s.enqueuedList, execution.ID)
 	s.deque()
-	return
+	return err
 }
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.

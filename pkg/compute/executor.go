@@ -208,7 +208,7 @@ func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (er
 			TargetPeerID: execution.RequesterNodeID,
 		},
 	})
-	return
+	return err
 }
 
 func (e BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {

@@ -92,7 +92,6 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
-
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
 	if err != nil {
 		return nil, err
