@@ -73,6 +73,8 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 }
 
 func (s *WebsocketSuite) TestWebsocketSingleJob() {
+	s.T().Skip("TODO: test is flaky as by the time we connect to the websocket, " +
+		"the job has already progressed and first event is not guaranteed to be 'Created'")
 	ctx := context.Background()
 
 	genericJob := testutils.MakeGenericJob()
