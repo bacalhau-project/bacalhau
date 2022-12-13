@@ -271,7 +271,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ExecutorConfig: &noop.ExecutorConfig{},
+			ExecutorConfig: noop.ExecutorConfig{},
 		},
 		Inputs:   scenario.StoredFile(dirPath, "/inputs"),
 		Contexts: scenario.WasmHelloWorld.Contexts,

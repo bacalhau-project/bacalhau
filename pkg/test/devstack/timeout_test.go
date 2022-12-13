@@ -60,7 +60,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					DefaultJobExecutionTimeout:         testCase.requesterDefaultJobExecutionTimeout,
 					StateManagerBackgroundTaskInterval: 1 * time.Second,
 				}),
-				ExecutorConfig: &noop.ExecutorConfig{
+				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
 						JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
 							time.Sleep(testCase.sleepTime)

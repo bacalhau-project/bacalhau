@@ -79,5 +79,5 @@ type StackConfig struct {
 	*devstack.DevStackOptions
 	node.ComputeConfig
 	node.RequesterConfig
-	*noop.ExecutorConfig
+	noop.ExecutorConfig
 }
