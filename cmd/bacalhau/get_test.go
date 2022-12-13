@@ -10,9 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -33,9 +31,9 @@ type GetSuite struct {
 }
 
 // Before each test
-func (suite *GetSuite) SetupTest() {
-	testutils.MustHaveDocker(suite.T())
-	suite.BaseSuite.SetupTest()
+func (s *GetSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+	s.BaseSuite.SetupTest()
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -117,17 +115,13 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 	}
 }
 
-func getDockerRunArgs(
-	t *testing.T,
-	stack *devstack.DevStack,
-	extraArgs []string,
-) []string {
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(t, err)
+func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.host,
+		"--api-port", s.port,
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"-o", "data:/data",
 		"--wait",
@@ -146,23 +140,17 @@ func getDockerRunArgs(
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
-
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--download",
 	})
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].Host.ID().String()
+	hostID := s.node.Host.ID().String()
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID)
@@ -172,16 +160,10 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // this tests that when we do docker run with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
-
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--download",
 		"--output-dir", tempDir,
@@ -189,7 +171,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].Host.ID().String()
+	hostID := s.node.Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID)
 }
@@ -198,28 +180,22 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
-
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(s.T(), err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].Host.ID().String()
+	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.node.APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
@@ -233,29 +209,24 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
-
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(ctx)
 	require.NoError(s.T(), err)
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].Host.ID().String()
+	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.node.APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
 		jobID,

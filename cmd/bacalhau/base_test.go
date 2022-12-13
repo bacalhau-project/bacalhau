@@ -49,5 +49,7 @@ func (s *BaseSuite) SetupTest() {
 
 // After each test
 func (s *BaseSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
+	if s.node != nil {
+		s.node.CleanupManager.Cleanup()
+	}
 }

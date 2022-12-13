@@ -633,23 +633,12 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 	ctx := context.TODO()
-	const nodeCount = 1
 
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
 		"Prominent Late Gothic styled architecture.mp4",
 	}
-
-	stack, _ := testutils.SetupTest(
-		ctx,
-		s.T(),
-		nodeCount,
-		0,
-		false,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
 
 	dirPath := s.T().TempDir()
 
@@ -662,16 +651,13 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(s.T(), err)
 	}
 
-	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients([]*node.Node{s.node})...)
 	require.NoError(s.T(), err)
-
-	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
 	allArgs := []string{
 		"docker", "run",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", s.host,
+		"--api-port", s.port,
 		"--wait",
 		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
 		"--sharding-base-path", "/inputs",
