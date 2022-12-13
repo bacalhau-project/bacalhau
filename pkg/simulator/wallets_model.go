@@ -27,13 +27,13 @@ type walletsModel struct {
 	jobOwners map[string]string
 
 	// keep track of wallet balances - STUB (for Luke to fill in)
-	balances map[string]uint64
+	balances map[string]int64
 
 	// keep track of a payment channel balance PER JOB, a.k.a per-job escrow
 	// NB: in the real implementation, this would be indexed on (client, server,
 	// job) and the payment channel would persist on the (client, server) prefix
 	// of the key
-	escrow map[string]uint64
+	escrow map[string]int64
 
 	// don't trust the server publishing the result to mean the client accepted it
 	// mark in the smart contract that the client accepted it, instead
@@ -50,8 +50,8 @@ type walletsModel struct {
 func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 	w := &walletsModel{
 		jobOwners: map[string]string{},
-		balances:  map[string]uint64{},
-		escrow:    map[string]uint64{},
+		balances:  map[string]int64{},
+		escrow:    map[string]int64{},
 		accepted:  map[string]bool{},
 		localDB:   localDB,
 	}
