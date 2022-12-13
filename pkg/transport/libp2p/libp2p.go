@@ -2,11 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -169,15 +164,6 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
-
-	closeErr := t.host.Close()
-
-	if closeErr != nil {
-		log.Ctx(ctx).Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
-	} else {
-		log.Ctx(ctx).Debug().Msg("Libp2p transport has stopped")
-	}
-
 	return nil
 }
 
@@ -208,57 +194,6 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
-}
-
-func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
-	defer span.End()
-
-	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	publicKeyBytes, err := unmarshalledPublicKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("could not cast public key to RSA")
-	}
-	return rsa.EncryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPublicKey,
-		data,
-		nil,
-	)
-}
-
-func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
-	defer span.End()
-
-	privateKeyBytes, err := t.privateKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	return rsa.DecryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPrivateKey,
-		data,
-		nil,
-	)
 }
 
 /*

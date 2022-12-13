@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -47,7 +46,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		0,
 		false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	t := system.GetTracer()

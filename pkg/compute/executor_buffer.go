@@ -1,4 +1,4 @@
-package backend
+package compute
 
 import (
 	"context"
@@ -22,23 +22,25 @@ func newBufferTask(execution store.Execution) *bufferTask {
 	}
 }
 
-type ServiceBufferParams struct {
-	DelegateService            Service
+type ExecutorBufferParams struct {
+	ID                         string
+	DelegateExecutor           Executor
 	Callback                   Callback
 	RunningCapacityTracker     capacity.Tracker
 	DefaultJobExecutionTimeout time.Duration
 	BackoffDuration            time.Duration
 }
 
-// ServiceBuffer is a backend.Service implementation that buffers executions locally until enough capacity is
-// available to be able to run them. The buffer accepts a delegate backend.Service that will be used to run the jobs.
+// ExecutorBuffer is a backend.Executor implementation that buffers executions locally until enough capacity is
+// available to be able to run them. The buffer accepts a delegate backend.Executor that will be used to run the jobs.
 // The buffer is implemented as a FIFO queue, where the order of the executions is determined by the order in which
 // they were enqueued. However, an execution with high resource usage requirements might be skipped if there are newer
 // jobs with lower resource usage requirements that can be executed immediately. This is done to improve utilization
 // of compute nodes, though it might result in starvation and should be re-evaluated in the future.
-type ServiceBuffer struct {
+type ExecutorBuffer struct {
+	ID                         string
 	runningCapacity            capacity.Tracker
-	delegateService            Service
+	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
 	enqueued                   map[string]*bufferTask
@@ -49,10 +51,11 @@ type ServiceBuffer struct {
 	mu                         sync.Mutex
 }
 
-func NewServiceBuffer(params ServiceBufferParams) *ServiceBuffer {
-	r := &ServiceBuffer{
+func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
+	r := &ExecutorBuffer{
+		ID:                         params.ID,
 		runningCapacity:            params.RunningCapacityTracker,
-		delegateService:            params.DelegateService,
+		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
 		enqueued:                   make(map[string]*bufferTask),
@@ -63,20 +66,27 @@ func NewServiceBuffer(params ServiceBufferParams) *ServiceBuffer {
 
 	r.mu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
-		Id:        "ServiceBuffer.mu",
+		Id:        "ExecutorBuffer.mu",
 	})
 
 	return r
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ServiceBuffer) Run(ctx context.Context, execution store.Execution) (err error) {
+func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	defer func() {
 		if err != nil {
-			s.callback.OnRunFailure(ctx, execution.ID, err)
+			s.callback.OnComputeFailure(ctx, ComputeError{
+				ExecutionMetadata: NewExecutionMetadata(execution),
+				RoutingMetadata: RoutingMetadata{
+					SourcePeerID: s.ID,
+					TargetPeerID: execution.RequesterNodeID,
+				},
+				Err: err.Error(),
+			})
 		}
 	}()
 
@@ -101,8 +111,8 @@ func (s *ServiceBuffer) Run(ctx context.Context, execution store.Execution) (err
 	return
 }
 
-// doRun triggers the execution by the delegate backend.Service and frees up the capacity when the execution is done.
-func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
+// doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
+func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 	timeout := task.execution.Shard.Job.Spec.GetTimeout()
 	if timeout == 0 {
 		timeout = s.defaultJobExecutionTimeout
@@ -117,11 +127,17 @@ func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 	select {
 	case <-ctx.Done():
-		s.callback.OnRunFailure(ctx, task.execution.ID, ctx.Err())
-	case runError := <-ch:
-		if runError != nil {
-			s.callback.OnRunFailure(ctx, task.execution.ID, runError)
-		}
+		s.callback.OnComputeFailure(ctx, ComputeError{
+			ExecutionMetadata: NewExecutionMetadata(task.execution),
+			RoutingMetadata: RoutingMetadata{
+				SourcePeerID: s.ID,
+				TargetPeerID: task.execution.RequesterNodeID,
+			},
+			Err: fmt.Sprintf("execution timed out after %s", timeout),
+		})
+	case <-ch:
+		// no need to check for run errors as they are already handled by the delegate backend.Executor and
+		// to the callback.
 	}
 
 	s.mu.Lock()
@@ -133,7 +149,7 @@ func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 // deque tries to run the next execution in the queue if there is enough capacity.
 // It is called every time a job is finished or enqueued, where a lock is already held.
-func (s *ServiceBuffer) deque() {
+func (s *ExecutorBuffer) deque() {
 	// If last attempt was very recent, and we still have jobs running,
 	// then we need to wait until backoffDuration has passed
 	if len(s.running) != 0 && time.Now().Before(s.backoffUntil) {
@@ -161,25 +177,33 @@ func (s *ServiceBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ServiceBuffer) Publish(ctx context.Context, execution store.Execution) error {
-	return s.delegateService.Publish(ctx, execution)
+func (s *ExecutorBuffer) Publish(ctx context.Context, execution store.Execution) error {
+	// TODO: Enqueue publish tasks
+	go func() {
+		_ = s.delegateService.Publish(context.Background(), execution)
+	}()
+	return nil
 }
 
-func (s *ServiceBuffer) Cancel(ctx context.Context, execution store.Execution) error {
-	return s.delegateService.Cancel(ctx, execution)
+func (s *ExecutorBuffer) Cancel(ctx context.Context, execution store.Execution) error {
+	// TODO: Enqueue cancel tasks
+	go func() {
+		_ = s.delegateService.Cancel(context.Background(), execution)
+	}()
+	return nil
 }
 
 // RunningExecutions return list of running executions
-func (s *ServiceBuffer) RunningExecutions() []store.Execution {
+func (s *ExecutorBuffer) RunningExecutions() []store.Execution {
 	return s.mapValues(s.running)
 }
 
 // EnqueuedExecutions return list of enqueued executions
-func (s *ServiceBuffer) EnqueuedExecutions() []store.Execution {
+func (s *ExecutorBuffer) EnqueuedExecutions() []store.Execution {
 	return s.mapValues(s.enqueued)
 }
 
-func (s *ServiceBuffer) mapValues(m map[string]*bufferTask) []store.Execution {
+func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.Execution {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	executions := make([]store.Execution, 0, len(m))
@@ -190,4 +214,4 @@ func (s *ServiceBuffer) mapValues(m map[string]*bufferTask) []store.Execution {
 }
 
 // compile-time interface check
-var _ Service = (*ServiceBuffer)(nil)
+var _ Executor = (*ExecutorBuffer)(nil)

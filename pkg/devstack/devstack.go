@@ -11,19 +11,15 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	libp2p_transport "github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -68,7 +64,7 @@ func NewDevStackForRunLocal(
 		cm,
 		options,
 		computeConfig,
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 }
 
@@ -77,7 +73,7 @@ func NewStandardDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 ) (*DevStack, error) {
 	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
@@ -87,7 +83,7 @@ func NewNoopDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 ) (*DevStack, error) {
 	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
@@ -98,7 +94,7 @@ func NewDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
@@ -155,16 +151,15 @@ func NewDevStack(
 			return nil, err
 		}
 
-		var useTransport transport.Transport
-
+		var libp2pHost host.Host
 		var libp2pPort int
+		libp2pPeer := []multiaddr.Multiaddr{}
 		if options.SimulatorURL == "" {
 			//////////////////////////////////////
 			// libp2p
 			//////////////////////////////////////
 
 			libp2pPort, ports = ports[0], ports[1:]
-			libp2pPeer := []multiaddr.Multiaddr{}
 
 			if i == 0 {
 				if options.Peer != "" {
@@ -177,34 +172,39 @@ func NewDevStack(
 					libp2pPeer = []multiaddr.Multiaddr{peerAddr}
 				}
 			} else {
-				libp2pPeer, err = nodes[0].Transport.HostAddrs()
+				for _, addrs := range nodes[0].Host.Addrs() {
+					p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
+					if p2pAddrErr != nil {
+						return nil, p2pAddrErr
+					}
+					libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
+				}
 				if err != nil {
 					return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
 				}
-				log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
+				log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 			}
 
-			libp2pHost, libp2pError := libp2p.NewHost(ctx, cm, libp2pPort, libp2pPeer)
-			if libp2pError != nil {
-				return nil, libp2pError
-			}
-			libp2pTransport, libp2pError := libp2p_transport.NewTransport(ctx, cm, libp2pHost)
-			if err != nil {
-				return nil, libp2pError
-			}
-
-			useTransport = libp2pTransport
-		} else {
-			var simulatorTransport transport.Transport
-			simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+			libp2pHost, err = libp2p.NewHost(libp2pPort)
 			if err != nil {
 				return nil, err
 			}
-			useTransport = simulatorTransport
+			cm.RegisterCallback(func() error {
+				return libp2pHost.Close()
+			})
+
+		} else {
+			// TODO: implement simulator transport
+			//var simulatorTransport transport.Transport
+			//simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+			//if err != nil {
+			//	return nil, err
+			//}
+			//useTransport = simulatorTransport
 		}
 
 		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, useTransport.HostID())
+		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 		//////////////////////////////////////
 		// port for API
@@ -240,11 +240,10 @@ func NewDevStack(
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
 			LocalDB:              datastore,
-			Transport:            useTransport,
+			Host:                 libp2pHost,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               useTransport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
@@ -270,7 +269,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = useTransport.Start(ctx)
+		err = libp2p.ConnectToPeers(ctx, libp2pHost, libp2pPeer)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +290,9 @@ func NewDevStack(
 
 	// only start profiling after we've set everything up!
 	profiler := StartProfiling()
-	cm.RegisterCallback(profiler.Close)
+	if profiler != nil {
+		cm.RegisterCallback(profiler.Close)
+	}
 
 	return &DevStack{
 		Nodes: nodes,
@@ -397,7 +398,7 @@ To use the devstack, run the following commands in your shell: %s`, summaryShell
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
-		if node.Transport.HostID() == nodeID {
+		if node.Host.ID().String() == nodeID {
 			return node, nil
 		}
 	}
@@ -415,8 +416,7 @@ func (stack *DevStack) IPFSClients() []*ipfs.Client {
 func (stack *DevStack) GetNodeIds() ([]string, error) {
 	var ids []string
 	for _, node := range stack.Nodes {
-		ids = append(ids, node.Transport.HostID())
+		ids = append(ids, node.Host.ID().String())
 	}
-
 	return ids, nil
 }

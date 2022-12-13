@@ -5,17 +5,12 @@ package bacalhau
 import (
 	"context"
 	"errors"
-	"net"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -23,17 +18,11 @@ import (
 )
 
 type CreateSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
-}
-
-// before each test
-func (s *CreateSuite) SetupTest() {
-	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 }
 
 func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
@@ -48,21 +37,13 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 
 	for i, tc := range tests {
 		func() {
-			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-			defer cm.Cleanup()
-
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(s.T(), err)
-
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
-				"--api-host", host,
-				"--api-port", port,
+				"--api-host", s.host,
+				"--api-port", s.port,
 				"../../testdata/job.json",
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
-			testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+			testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
 		}()
 	}
 }
@@ -84,22 +65,16 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-				defer cm.Cleanup()
 
-				parsedBasedURI, err := url.Parse(c.BaseURI)
-				require.NoError(s.T(), err)
-
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", s.host,
+					"--api-port", s.port,
 					testFile,
 				)
 
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+				testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 			}()
 		}
 	}
@@ -109,29 +84,21 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job.yaml"
 
 	Fatal = FakeFatalErrorHandler
-
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-	defer cm.Cleanup()
-
-	parsedBasedURI, err := url.Parse(c.BaseURI)
-	require.NoError(s.T(), err)
-
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", s.host,
+		"--api-port", s.port,
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
-	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), c, out)
+	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
 	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", s.host,
+		"--api-port", s.port,
 		job.ID,
 	)
 

@@ -35,7 +35,6 @@ func (suite *Libp2pTransportSuite) SetupTest() {
 }
 
 func (suite *Libp2pTransportSuite) TestEncryption() {
-	TestData := "hello encryption my old friend"
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 	ctx := context.Background()
@@ -44,7 +43,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	computeNodeHost, err := libp2p.NewHost(ctx, cm, computeNodePort, []multiaddr.Multiaddr{})
+	computeNodeHost, err := libp2p.NewHost(computeNodePort)
 	require.NoError(suite.T(), err)
 	computeNodeTransport, err := NewTransport(ctx, cm, computeNodeHost)
 	require.NoError(suite.T(), err)
@@ -52,7 +51,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID))
 	require.NoError(suite.T(), err)
-	requesterNodeHost, err := libp2p.NewHost(ctx, cm, requesterNodePort, []multiaddr.Multiaddr{addr})
+	requesterNodeHost, err := libp2p.NewHost(requesterNodePort)
 	require.NoError(suite.T(), err)
 	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodeHost)
 	require.NoError(suite.T(), err)
@@ -60,30 +59,16 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 
 	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) error {
-		if ev.EventName == model.JobEventBidAccepted {
-			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
-			require.NoError(suite.T(), err)
-			err = computeNodeTransport.Publish(ctx, model.JobEvent{
-				EventName:            model.JobEventResultsProposed,
-				SourceNodeID:         computeNodeID,
-				TargetNodeID:         requesterNodeID,
-				VerificationProposal: encryptedData,
-			})
-			require.NoError(suite.T(), err)
-		}
 		return nil
 	})
 	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
 	requesterNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) error {
-		if ev.EventName == model.JobEventResultsProposed {
-			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
-			require.NoError(suite.T(), err)
-			require.Equal(suite.T(), TestData, string(decryptedData), "the decrypted data should be the same as the original data")
-		}
 		return nil
 	})
+	err = libp2p.ConnectToPeers(ctx, requesterNodeHost, []multiaddr.Multiaddr{addr})
+	require.NoError(suite.T(), err)
 	err = requesterNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 

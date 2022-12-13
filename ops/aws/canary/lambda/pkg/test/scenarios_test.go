@@ -9,13 +9,12 @@ import (
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestScenarios(t *testing.T) {
-	stack, _ := testutils.SetupTest(context.Background(), t, 1, 0, false, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
+	stack, _ := testutils.SetupTest(context.Background(), t, 1, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
 
 	host := stack.Nodes[0].APIServer.Host
 	port := stack.Nodes[0].APIServer.Port

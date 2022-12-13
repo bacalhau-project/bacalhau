@@ -1,4 +1,4 @@
-package requesternode
+package requester
 
 import (
 	"context"
@@ -44,6 +44,7 @@ func (a shardStateAction) String() string {
 type shardStateRequest struct {
 	action       shardStateAction
 	sourceNodeID string // optional field indicating the node that triggered the request
+	executionID  string
 	reason       string
 }
 
@@ -89,33 +90,35 @@ type shardStateMachineManager struct {
 	// Used to find the job state machine for a given ID.
 	shardStates map[string]*shardStateMachine
 	// configure the timeout for each shard state
-	timeoutConfig RequesterTimeoutConfig
-	mu            sync.Mutex
+	jobNegotiationTimeout time.Duration
+	mu                    sync.Mutex
 }
 
 func newShardStateMachineManager(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	config RequesterNodeConfig) *shardStateMachineManager {
+	jobNegotiationTimeout time.Duration,
+	stateManagerBackgroundTaskInterval time.Duration,
+) *shardStateMachineManager {
 	stateManager := &shardStateMachineManager{
-		shardStates:   make(map[string]*shardStateMachine),
-		timeoutConfig: config.TimeoutConfig,
+		shardStates:           make(map[string]*shardStateMachine),
+		jobNegotiationTimeout: jobNegotiationTimeout,
 	}
 
 	stateManager.mu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
-		Id:        "RequesterNode.ShardStateMachineManagerMu",
+		Id:        "Requester.ShardStateMachineManagerMu",
 	})
 
-	go stateManager.backgroundTaskSetup(ctx, cm, config)
+	go stateManager.backgroundTaskSetup(ctx, cm, stateManagerBackgroundTaskInterval)
 	return stateManager
 }
 
 func (m *shardStateMachineManager) backgroundTaskSetup(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	config RequesterNodeConfig) {
-	ticker := time.NewTicker(config.StateManagerBackgroundTaskInterval)
+	stateManagerBackgroundTaskInterval time.Duration) {
+	ticker := time.NewTicker(stateManagerBackgroundTaskInterval)
 	ctx, cancelFunction := context.WithCancel(ctx)
 	cm.RegisterCallback(func() error {
 		cancelFunction()
@@ -162,7 +165,7 @@ func (m *shardStateMachineManager) backgroundTask() {
 
 // Start a state machine for all the shards in the job, if they don't exit already
 func (m *shardStateMachineManager) startShardsState(
-	ctx context.Context, job *model.Job, n *RequesterNode) {
+	ctx context.Context, job *model.Job, n *Scheduler) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -190,7 +193,7 @@ func (m *shardStateMachineManager) GetShardState(shard model.JobShard) (*shardSt
 type shardStateMachine struct {
 	shard   model.JobShard
 	manager *shardStateMachineManager
-	node    *RequesterNode
+	node    *Scheduler
 	req     chan shardStateRequest
 
 	currentState  shardStateType
@@ -200,28 +203,28 @@ type shardStateMachine struct {
 
 	// keep track of nodes that have already bid on this shard to deduplicate bids and only accept results
 	// from nodes that have an accepted bid.
-	biddingNodes map[string]struct{}
+	biddingNodes map[string]string
 
 	// keep track of nodes that have already submitted their result proposals to deduplicate results, and know when
 	// result verification should start.
-	completedNodes map[string]struct{}
+	completedNodes map[string]string
 }
 
-func (m *shardStateMachineManager) newShardStateMachine(ctx context.Context, shard model.JobShard, node *RequesterNode) *shardStateMachine {
+func (m *shardStateMachineManager) newShardStateMachine(ctx context.Context, shard model.JobShard, node *Scheduler) *shardStateMachine {
 	return &shardStateMachine{
 		shard:          shard,
 		manager:        m,
 		node:           node,
 		req:            make(chan shardStateRequest),
 		currentState:   shardInitialState,
-		biddingNodes:   make(map[string]struct{}),
-		completedNodes: make(map[string]struct{}),
-		timeoutAt:      time.Now().Add(m.timeoutConfig.JobNegotiationTimeout),
+		biddingNodes:   make(map[string]string),
+		completedNodes: make(map[string]string),
+		timeoutAt:      time.Now().Add(m.jobNegotiationTimeout),
 	}
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:model.ShortIDLength], m.shard, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.id[:model.ShortIDLength], m.shard, m.currentState)
 }
 
 // run the state machine until it is completed.
@@ -235,20 +238,32 @@ func (m *shardStateMachine) run(ctx context.Context) {
 	close(m.req)
 }
 
-func (m *shardStateMachine) bid(ctx context.Context, sourceNodeID string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionBidReceived, sourceNodeID: sourceNodeID})
+func (m *shardStateMachine) bid(ctx context.Context, sourceNodeID, executionID string) {
+	m.sendRequest(ctx, shardStateRequest{
+		action:       actionBidReceived,
+		sourceNodeID: sourceNodeID,
+		executionID:  executionID})
 }
 
-func (m *shardStateMachine) computeError(ctx context.Context, sourceNodeID string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionComputeError, sourceNodeID: sourceNodeID})
+func (m *shardStateMachine) computeError(ctx context.Context, sourceNodeID, executionID string) {
+	m.sendRequest(ctx, shardStateRequest{
+		action:       actionComputeError,
+		sourceNodeID: sourceNodeID,
+		executionID:  executionID})
 }
 
-func (m *shardStateMachine) verifyResult(ctx context.Context, sourceNodeID string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionResultReceived, sourceNodeID: sourceNodeID})
+func (m *shardStateMachine) verifyResult(ctx context.Context, sourceNodeID, executionID string) {
+	m.sendRequest(ctx, shardStateRequest{
+		action:       actionResultReceived,
+		sourceNodeID: sourceNodeID,
+		executionID:  executionID})
 }
 
-func (m *shardStateMachine) resultsPublished(ctx context.Context, sourceNodeID string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionResultsPublished, sourceNodeID: sourceNodeID})
+func (m *shardStateMachine) resultsPublished(ctx context.Context, sourceNodeID, executionID string) {
+	m.sendRequest(ctx, shardStateRequest{
+		action:       actionResultsPublished,
+		sourceNodeID: sourceNodeID,
+		executionID:  executionID})
 }
 
 func (m *shardStateMachine) fail(ctx context.Context, reason string) {
@@ -278,10 +293,7 @@ func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateR
 // Notify the compute node that the request is invalid.
 func (m *shardStateMachine) notifyInvalidRequest(ctx context.Context, request shardStateRequest, reason string) {
 	log.Ctx(ctx).Warn().Msgf("%s ignoring request due to `%s`: %+v", m, reason, request)
-
-	if err := m.node.notifyShardInvalidRequest(ctx, m.shard, request.sourceNodeID, reason); err != nil {
-		log.Ctx(ctx).Warn().Msgf("%s failed to notify invalid request `%s`: %+v due to %s", m, reason, request, err)
-	}
+	m.node.notifyCancel(ctx, reason, request.sourceNodeID, request.executionID)
 }
 
 // ------------------------------------
@@ -304,7 +316,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) stateFn {
 		switch req.action {
 		case actionBidReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; !ok {
-				m.biddingNodes[req.sourceNodeID] = struct{}{}
+				m.biddingNodes[req.sourceNodeID] = req.executionID
 
 				// we have received enough bids to start the selection process.
 				if len(m.biddingNodes) >= m.shard.Job.Deal.MinBids {
@@ -341,22 +353,15 @@ func selectingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 	})
 
 	// to hold the bids that were selected and successfully notified.
-	acceptedBids := make(map[string]struct{})
+	acceptedBids := make(map[string]string)
 
 	for _, candidate := range candidateBids {
+		executionID := m.biddingNodes[candidate]
 		if len(acceptedBids) < m.shard.Job.Deal.Concurrency {
-			err := m.node.notifyBidDecision(ctx, m.shard, candidate, true)
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("%s failed to notify bid acceptance to %s", m, candidate)
-				continue
-			} else {
-				acceptedBids[candidate] = struct{}{}
-			}
+			m.node.notifyBidAccepted(ctx, candidate, executionID)
+			acceptedBids[candidate] = executionID
 		} else {
-			err := m.node.notifyBidDecision(ctx, m.shard, candidate, false)
-			if err != nil {
-				log.Ctx(ctx).Warn().Err(err).Msgf("%s failed to notify bid rejection to %s", m, candidate)
-			}
+			m.node.notifyBidRejected(ctx, candidate, executionID)
 		}
 	}
 
@@ -380,16 +385,12 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 		switch req.action {
 		case actionBidReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; !ok {
-				err := m.node.notifyBidDecision(ctx, m.shard, req.sourceNodeID, true)
-				if err != nil {
-					log.Ctx(ctx).Error().Msgf("%s failed to notify bid acceptance. Will wait for more bids: %s", m, err)
-				} else {
-					// add the bid to the list of accepted bids.
-					m.biddingNodes[req.sourceNodeID] = struct{}{}
+				m.node.notifyBidAccepted(ctx, req.sourceNodeID, req.executionID)
+				// add the bid to the list of accepted bids.
+				m.biddingNodes[req.sourceNodeID] = req.executionID
 
-					if len(m.biddingNodes) >= m.shard.Job.Deal.Concurrency {
-						return waitingForResultsState
-					}
+				if len(m.biddingNodes) >= m.shard.Job.Deal.Concurrency {
+					return waitingForResultsState
 				}
 			} else {
 				log.Ctx(ctx).Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
@@ -406,7 +407,7 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 			}
 		case actionResultReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
-				m.completedNodes[req.sourceNodeID] = struct{}{}
+				m.completedNodes[req.sourceNodeID] = req.executionID
 			} else {
 				m.notifyInvalidRequest(ctx, req, "results received from a non-bidding node")
 			}
@@ -429,10 +430,7 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 		switch req.action {
 		case actionBidReceived:
 			// reject all bids at this state
-			err := m.node.notifyBidDecision(ctx, m.shard, req.sourceNodeID, false)
-			if err != nil {
-				log.Ctx(ctx).Warn().Msgf("%s failed to notify bid rejection: %s", m, err)
-			}
+			m.node.notifyBidRejected(ctx, req.sourceNodeID, req.executionID)
 		case actionComputeError:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
 				// remove the node from the bidding nodes list to be able to accept more bids
@@ -445,7 +443,7 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 			}
 		case actionResultReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
-				m.completedNodes[req.sourceNodeID] = struct{}{}
+				m.completedNodes[req.sourceNodeID] = req.executionID
 
 				// TODO: technically we can start verifying if we have enough results compared to deal's confidence
 				//  and concurrency. Though we will have ot handle the case where verification fails, but can still
@@ -511,16 +509,11 @@ func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 	ctx = system.AddJobIDToBaggage(ctx, m.shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	err := m.node.notifyShardError(
-		ctx,
-		m.shard,
-		errMessage,
-	)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("%s failed to report error of job due to %s",
-			m, err.Error())
-	}
+	allExecutions := make(map[string]string, len(m.biddingNodes)+len(m.completedNodes))
+	maps.Copy(allExecutions, m.biddingNodes)
+	maps.Copy(allExecutions, m.completedNodes)
 
+	m.node.notifyShardError(ctx, m.shard, errMessage, allExecutions)
 	return completedState
 }
 

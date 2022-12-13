@@ -4,46 +4,43 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/backend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
-	"github.com/filecoin-project/bacalhau/pkg/compute/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/compute/sensors"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
 	// Visible for testing
-	Frontend           frontend.Service
+	Endpoint           compute.Endpoint
+	LocalEndpoint      compute.Endpoint
 	nodeID             string
 	ExecutionStore     store.ExecutionStore
-	frontendProxy      pubsub.FrontendEventProxy
 	debugInfoProviders []model.DebugInfoProvider
+	computeCallback    *bprotocol.CallbackProxy
 }
 
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
-	nodeID string,
+	host host.Host,
 	config ComputeConfig,
-	jobStore localdb.LocalDB,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
-	publishers publisher.PublisherProvider,
-	jobEventPublisher eventhandler.JobEventHandler) *Compute {
+	publishers publisher.PublisherProvider) *Compute {
 	debugInfoProviders := []model.DebugInfoProvider{}
 	executionStore := inmemory.NewStore()
 
-	// backend
+	// executor/backend
 	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
 	})
@@ -51,31 +48,23 @@ func NewComputeNode(
 		CapacityTracker: capacityTracker,
 	}))
 
-	backendCallback := backend.NewChainedCallback(backend.ChainedCallbackParams{
-		Callbacks: []backend.Callback{
-			backend.NewStateUpdateCallback(backend.StateUpdateCallbackParams{
-				ExecutionStore: executionStore,
-			}),
-			pubsub.NewBackendCallback(pubsub.BackendCallbackParams{
-				NodeID:            nodeID,
-				ExecutionStore:    executionStore,
-				JobEventPublisher: jobEventPublisher,
-			}),
-		},
+	computeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
+		Host: host,
 	})
 
-	baseRunner := backend.NewBaseService(backend.BaseServiceParams{
-		ID:         nodeID,
-		Callback:   backendCallback,
+	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
+		ID:         host.ID().String(),
+		Callback:   computeCallback,
 		Store:      executionStore,
 		Executors:  executors,
 		Verifiers:  verifiers,
 		Publishers: publishers,
 	})
 
-	bufferRunner := backend.NewServiceBuffer(backend.ServiceBufferParams{
-		DelegateService:            baseRunner,
-		Callback:                   backendCallback,
+	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
+		ID:                         host.ID().String(),
+		DelegateExecutor:           baseExecutor,
+		Callback:                   computeCallback,
 		RunningCapacityTracker:     capacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
 		BackoffDuration:            50 * time.Millisecond,
@@ -92,7 +81,7 @@ func NewComputeNode(
 		go loggingSensor.Start(ctx)
 	}
 
-	// frontend
+	// endpoint/frontend
 	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
 			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
@@ -140,27 +129,35 @@ func NewComputeNode(
 		}),
 	)
 
-	frontendNode := frontend.NewBaseService(frontend.BaseServiceParams{
-		ID:              nodeID,
+	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
+		ID:              host.ID().String(),
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
 		BidStrategy:     biddingStrategy,
-		Backend:         bufferRunner,
+		Executor:        bufferRunner,
 	})
 
-	frontendProxy := *pubsub.NewFrontendEventProxy(pubsub.FrontendEventProxyParams{
-		NodeID:            nodeID,
-		Frontend:          frontendNode,
-		JobStore:          jobStore,
-		ExecutionStore:    executionStore,
-		JobEventPublisher: jobEventPublisher,
+	// register a handler for the bacalhau protocol handler that will forward requests to baseEndpoint
+	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+		Host:            host,
+		ComputeEndpoint: baseEndpoint,
+	})
+
+	endpointProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
+		Host:          host,
+		LocalEndpoint: baseEndpoint,
 	})
 
 	return &Compute{
-		nodeID:             nodeID,
-		Frontend:           frontendNode,
+		nodeID:             host.ID().String(),
+		Endpoint:           endpointProxy,
+		LocalEndpoint:      baseEndpoint,
 		ExecutionStore:     executionStore,
-		frontendProxy:      frontendProxy,
 		debugInfoProviders: debugInfoProviders,
+		computeCallback:    computeCallback,
 	}
+}
+
+func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
+	c.computeCallback.RegisterLocalCallback(callback)
 }

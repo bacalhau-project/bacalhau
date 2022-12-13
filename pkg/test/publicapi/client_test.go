@@ -9,14 +9,14 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
 	logger.ConfigureTestLogging(t)
-
-	c, cm := SetupRequesterNodeForTests(t, false)
-	defer cm.Cleanup()
+	n, c := setupNodeForTest(t)
+	defer n.CleanupManager.Cleanup()
 
 	ctx, span := system.Span(context.Background(),
 		"publicapi/client_test", "TestGet")
@@ -26,7 +26,7 @@ func TestGet(t *testing.T) {
 	var err error
 	var j *model.Job
 	for i := 0; i < 5; i++ {
-		genericJob := MakeGenericJob()
+		genericJob := testutils.MakeGenericJob()
 		j, err = c.Submit(ctx, genericJob, nil)
 		require.NoError(t, err)
 	}

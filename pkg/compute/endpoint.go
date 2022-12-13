@@ -1,11 +1,10 @@
-package frontend
+package compute
 
 import (
 	"context"
 	"fmt"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/backend"
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
@@ -17,41 +16,41 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type BaseServiceParams struct {
+type BaseEndpointParams struct {
 	ID              string
 	ExecutionStore  store.ExecutionStore
 	UsageCalculator capacity.UsageCalculator
 	BidStrategy     bidstrategy.BidStrategy
-	Backend         backend.Service
+	Executor        Executor
 }
 
-// Base implementation of Service
-type BaseService struct {
+// Base implementation of Endpoint
+type BaseEndpoint struct {
 	id              string
 	executionStore  store.ExecutionStore
 	usageCalculator capacity.UsageCalculator
 	bidStrategy     bidstrategy.BidStrategy
-	backend         backend.Service
+	executor        Executor
 }
 
-func NewBaseService(params BaseServiceParams) BaseService {
-	return BaseService{
+func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
+	return BaseEndpoint{
 		id:              params.ID,
 		executionStore:  params.ExecutionStore,
 		usageCalculator: params.UsageCalculator,
 		bidStrategy:     params.BidStrategy,
-		backend:         params.Backend,
+		executor:        params.Executor,
 	}
 }
 
-func (s BaseService) GetNodeID() string {
+func (s BaseEndpoint) GetNodeID() string {
 	return s.id
 }
 
-func (s BaseService) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
+func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
 	ctx, span := s.newSpan(ctx, "AskForBid")
 	defer span.End()
-	log.Ctx(ctx).Debug().Msgf("job created: %s", request.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.ClientID}).Inc()
 
 	// ask the bidding strategy if we should bid on this job
@@ -106,7 +105,7 @@ func (s BaseService) AskForBid(ctx context.Context, request AskForBidRequest) (A
 
 // Enqueues the shard in the execution executionStore, and returns the shard response.
 // Failure to enqueue the shard will return BOTH an error and a shard response with Accepted=false.
-func (s BaseService) prepareAskForBidShardResponse(
+func (s BaseEndpoint) prepareAskForBidShardResponse(
 	ctx context.Context,
 	request AskForBidRequest,
 	shardIndex int,
@@ -114,15 +113,19 @@ func (s BaseService) prepareAskForBidShardResponse(
 	bidStrategyResponse bidstrategy.BidStrategyResponse) (AskForBidShardResponse, error) {
 	if !bidStrategyResponse.ShouldBid {
 		return AskForBidShardResponse{
-			ShardIndex: shardIndex,
-			Accepted:   false,
-			Reason:     bidStrategyResponse.Reason,
+			ExecutionMetadata: ExecutionMetadata{
+				JobID:      request.Job.ID,
+				ShardIndex: shardIndex,
+			},
+			Accepted: false,
+			Reason:   bidStrategyResponse.Reason,
 		}, nil
 	}
 
 	execution := *store.NewExecution(
 		"e-"+uuid.NewString(),
 		model.JobShard{Job: &request.Job, Index: shardIndex},
+		request.SourcePeerID,
 		shardRequirements,
 	)
 
@@ -130,21 +133,27 @@ func (s BaseService) prepareAskForBidShardResponse(
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("error adding shard %s to backlog", execution.Shard)
 		return AskForBidShardResponse{
-			ShardIndex: shardIndex,
-			Accepted:   false,
-			Reason:     "error adding shard to backlog",
+			ExecutionMetadata: ExecutionMetadata{
+				JobID:      request.Job.ID,
+				ShardIndex: shardIndex,
+			},
+			Accepted: false,
+			Reason:   "error adding shard to backlog",
 		}, err
 	} else {
 		log.Ctx(ctx).Debug().Msgf("bidding for shard %s with execution %s", execution.Shard, execution.ID)
 		return AskForBidShardResponse{
-			ShardIndex:  shardIndex,
-			Accepted:    true,
-			ExecutionID: execution.ID,
+			ExecutionMetadata: ExecutionMetadata{
+				ExecutionID: execution.ID,
+				JobID:       request.Job.ID,
+				ShardIndex:  shardIndex,
+			},
+			Accepted: true,
 		}, nil
 	}
 }
 
-func (s BaseService) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResult, error) {
+func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid accepted: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   request.ExecutionID,
@@ -152,12 +161,12 @@ func (s BaseService) BidAccepted(ctx context.Context, request BidAcceptedRequest
 		NewState:      store.ExecutionStateBidAccepted,
 	})
 	if err != nil {
-		return BidAcceptedResult{}, err
+		return BidAcceptedResponse{}, err
 	}
 
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return BidAcceptedResult{}, err
+		return BidAcceptedResponse{}, err
 	}
 
 	// Increment the number of jobs accepted by this compute node:
@@ -167,14 +176,16 @@ func (s BaseService) BidAccepted(ctx context.Context, request BidAcceptedRequest
 		"client_id":   execution.Shard.Job.ClientID,
 	}).Inc()
 
-	err = s.backend.Run(ctx, execution)
+	err = s.executor.Run(ctx, execution)
 	if err != nil {
-		return BidAcceptedResult{}, err
+		return BidAcceptedResponse{}, err
 	}
-	return BidAcceptedResult{}, nil
+	return BidAcceptedResponse{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
 }
 
-func (s BaseService) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResult, error) {
+func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid rejected: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   request.ExecutionID,
@@ -183,12 +194,18 @@ func (s BaseService) BidRejected(ctx context.Context, request BidRejectedRequest
 		Comment:       "bid rejected due to: " + request.Justification,
 	})
 	if err != nil {
-		return BidRejectedResult{}, err
+		return BidRejectedResponse{}, err
 	}
-	return BidRejectedResult{}, nil
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	if err != nil {
+		return BidRejectedResponse{}, err
+	}
+	return BidRejectedResponse{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
 }
 
-func (s BaseService) ResultAccepted(ctx context.Context, request ResultAcceptedRequest) (ResultAcceptedResult, error) {
+func (s BaseEndpoint) ResultAccepted(ctx context.Context, request ResultAcceptedRequest) (ResultAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("results accepted: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   request.ExecutionID,
@@ -196,21 +213,23 @@ func (s BaseService) ResultAccepted(ctx context.Context, request ResultAcceptedR
 		NewState:      store.ExecutionStateResultAccepted,
 	})
 	if err != nil {
-		return ResultAcceptedResult{}, err
+		return ResultAcceptedResponse{}, err
 	}
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return ResultAcceptedResult{}, err
+		return ResultAcceptedResponse{}, err
 	}
 
-	err = s.backend.Publish(ctx, execution)
+	err = s.executor.Publish(ctx, execution)
 	if err != nil {
-		return ResultAcceptedResult{}, err
+		return ResultAcceptedResponse{}, err
 	}
-	return ResultAcceptedResult{}, nil
+	return ResultAcceptedResponse{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
 }
 
-func (s BaseService) ResultRejected(ctx context.Context, request ResultRejectedRequest) (ResultRejectedResult, error) {
+func (s BaseEndpoint) ResultRejected(ctx context.Context, request ResultRejectedRequest) (ResultRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("results rejected: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   request.ExecutionID,
@@ -219,25 +238,31 @@ func (s BaseService) ResultRejected(ctx context.Context, request ResultRejectedR
 		Comment:       "result rejected due to: " + request.Justification,
 	})
 	if err != nil {
-		return ResultRejectedResult{}, err
+		return ResultRejectedResponse{}, err
 	}
-	return ResultRejectedResult{}, nil
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	if err != nil {
+		return ResultRejectedResponse{}, err
+	}
+	return ResultRejectedResponse{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
 }
 
-func (s BaseService) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
+func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("canceling execution: %s", request.ExecutionID)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return CancelJobResult{}, err
+		return CancelExecutionResponse{}, err
 	}
 	if execution.State.IsTerminal() {
-		return CancelJobResult{}, fmt.Errorf("cannot cancel execution %s in state %s", execution.ID, execution.State)
+		return CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s", execution.ID, execution.State)
 	}
 
 	if execution.State.IsExecuting() {
-		err = s.backend.Cancel(ctx, execution)
+		err = s.executor.Cancel(ctx, execution)
 		if err != nil {
-			return CancelJobResult{}, err
+			return CancelExecutionResponse{}, err
 		}
 	}
 
@@ -247,16 +272,18 @@ func (s BaseService) CancelJob(ctx context.Context, request CancelJobRequest) (C
 		Comment:     "execution canceled due to: " + request.Justification,
 	})
 	if err != nil {
-		return CancelJobResult{}, err
+		return CancelExecutionResponse{}, err
 	}
-	return CancelJobResult{}, nil
+	return CancelExecutionResponse{
+		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
 }
 
-func (s BaseService) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+func (s BaseEndpoint) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {
 	return system.Span(ctx, "pkg/compute/node", name,
 		trace.WithSpanKind(trace.SpanKindInternal),
 	)
 }
 
 // Compile-time interface check:
-var _ Service = (*BaseService)(nil)
+var _ Endpoint = (*BaseEndpoint)(nil)

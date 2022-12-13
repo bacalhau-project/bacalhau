@@ -68,6 +68,7 @@ func newExecution() store.Execution {
 			Job:   &model.Job{ID: uuid.NewString()},
 			Index: 1,
 		},
+		"nodeID-1",
 		model.ResourceUsageData{
 			CPU:    1,
 			Memory: 2,

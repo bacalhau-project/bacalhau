@@ -6,9 +6,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	libp2p_transport "github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/spf13/cobra"
 )
 
@@ -37,20 +34,16 @@ func id(cmd *cobra.Command, OS *ServeOptions) error {
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 	defer cm.Cleanup()
-	ctx := cmd.Context()
 
-	libp2pHost, err := libp2p.NewHost(ctx, cm, OS.SwarmPort, []multiaddr.Multiaddr{})
-	if err != nil {
-		return err
-	}
-	transport, err := libp2p_transport.NewTransport(ctx, cm, libp2pHost)
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
 	if err != nil {
 		return err
 	}
 
 	info := IDInfo{
-		ID: transport.HostID(),
+		ID: libp2pHost.ID().String(),
 	}
+	_ = libp2pHost.Close()
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")

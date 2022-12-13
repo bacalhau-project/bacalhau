@@ -10,12 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -32,15 +29,13 @@ func TestGetSuite(t *testing.T) {
 // functionality from testify - including a T() method which
 // returns the current testing context
 type GetSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 // Before each test
 func (suite *GetSuite) SetupTest() {
 	testutils.MustHaveDocker(suite.T())
-
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+	suite.BaseSuite.SetupTest()
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -154,7 +149,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	tempDir, cleanup := setupTempWorkingDir(s.T())
@@ -167,7 +162,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].HostID
+	hostID := stack.Nodes[0].Host.ID().String()
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID)
@@ -180,7 +175,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
@@ -194,7 +189,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].HostID
+	hostID := stack.Nodes[0].Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID)
 }
@@ -206,7 +201,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
@@ -220,7 +215,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].HostID
+	hostID := stack.Nodes[0].Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,
@@ -240,7 +235,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
@@ -256,7 +251,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].HostID
+	hostID := stack.Nodes[0].Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,

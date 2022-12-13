@@ -15,11 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -40,7 +38,7 @@ const (
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
 	AutoDownloadFolderPerm               = 0755
-	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
+	DefaultTimeout         time.Duration = 30 * time.Minute
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{

@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -130,9 +129,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	var stack *devstack.DevStack
 	var stackErr error
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requesternode.NewDefaultRequesterNodeConfig())
+		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requesternode.NewDefaultRequesterNodeConfig())
+		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
 	}
 	if stackErr != nil {
 		return stackErr

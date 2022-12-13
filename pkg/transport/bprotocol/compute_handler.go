@@ -1,31 +1,33 @@
-package libp2p
+package bprotocol
 
 import (
 	"context"
 	"encoding/json"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rs/zerolog/log"
 )
 
-type HandlerParams struct {
-	Host     host.Host
-	Frontend frontend.Service
+type ComputeHandlerParams struct {
+	Host            host.Host
+	ComputeEndpoint compute.Endpoint
 }
 
-type Handler struct {
-	host     host.Host
-	frontend frontend.Service
+// ComputeHandler is a handler for compute requests that registers for incoming libp2p requests to Bacalhau compute
+// protocol, and delegates the requests to the compute endpoint.
+type ComputeHandler struct {
+	host            host.Host
+	computeEndpoint compute.Endpoint
 }
 
-func NewHandler(params HandlerParams) *Handler {
-	handler := &Handler{
-		host:     params.Host,
-		frontend: params.Frontend,
+func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
+	handler := &ComputeHandler{
+		host:            params.Host,
+		computeEndpoint: params.ComputeEndpoint,
 	}
 
 	handler.host.SetStreamHandler(AskForBidProtocolID, handler.onAskForBid)
@@ -34,37 +36,38 @@ func NewHandler(params HandlerParams) *Handler {
 	handler.host.SetStreamHandler(ResultAcceptedProtocolID, handler.onResultAccepted)
 	handler.host.SetStreamHandler(ResultRejectedProtocolID, handler.onResultRejected)
 	handler.host.SetStreamHandler(CancelProtocolID, handler.onCancelJob)
+	log.Info().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
 	return handler
 }
 
-func (h *Handler) onAskForBid(stream network.Stream) {
+func (h *ComputeHandler) onAskForBid(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.AskForBidRequest, frontend.AskForBidResponse](ctx, stream, h.frontend.AskForBid)
+	handleStream[compute.AskForBidRequest, compute.AskForBidResponse](ctx, stream, h.computeEndpoint.AskForBid)
 }
 
-func (h *Handler) onBidAccepted(stream network.Stream) {
+func (h *ComputeHandler) onBidAccepted(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.BidAcceptedRequest, frontend.BidAcceptedResult](ctx, stream, h.frontend.BidAccepted)
+	handleStream[compute.BidAcceptedRequest, compute.BidAcceptedResponse](ctx, stream, h.computeEndpoint.BidAccepted)
 }
 
-func (h *Handler) onBidRejected(stream network.Stream) {
+func (h *ComputeHandler) onBidRejected(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.BidRejectedRequest, frontend.BidRejectedResult](ctx, stream, h.frontend.BidRejected)
+	handleStream[compute.BidRejectedRequest, compute.BidRejectedResponse](ctx, stream, h.computeEndpoint.BidRejected)
 }
 
-func (h *Handler) onResultAccepted(stream network.Stream) {
+func (h *ComputeHandler) onResultAccepted(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.ResultAcceptedRequest, frontend.ResultAcceptedResult](ctx, stream, h.frontend.ResultAccepted)
+	handleStream[compute.ResultAcceptedRequest, compute.ResultAcceptedResponse](ctx, stream, h.computeEndpoint.ResultAccepted)
 }
 
-func (h *Handler) onResultRejected(stream network.Stream) {
+func (h *ComputeHandler) onResultRejected(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.ResultRejectedRequest, frontend.ResultRejectedResult](ctx, stream, h.frontend.ResultRejected)
+	handleStream[compute.ResultRejectedRequest, compute.ResultRejectedResponse](ctx, stream, h.computeEndpoint.ResultRejected)
 }
 
-func (h *Handler) onCancelJob(stream network.Stream) {
+func (h *ComputeHandler) onCancelJob(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleStream[frontend.CancelJobRequest, frontend.CancelJobResult](ctx, stream, h.frontend.CancelJob)
+	handleStream[compute.CancelExecutionRequest, compute.CancelExecutionResponse](ctx, stream, h.computeEndpoint.CancelExecution)
 }
 
 //nolint:errcheck
@@ -72,7 +75,7 @@ func handleStream[Request any, Response any](
 	ctx context.Context,
 	stream network.Stream,
 	f func(ctx context.Context, r Request) (Response, error)) {
-	if err := stream.Scope().SetService(ServiceName); err != nil {
+	if err := stream.Scope().SetService(ComputeServiceName); err != nil {
 		log.Ctx(ctx).Debug().Msgf("error attaching stream to compute service: %s", err)
 		stream.Reset()
 		return

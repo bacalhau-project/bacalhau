@@ -19,7 +19,7 @@ const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
-func NewHost(ctx context.Context, cm *system.CleanupManager, port int, bootstrapPeers []multiaddr.Multiaddr) (host.Host, error) {
+func NewHost(port int) (host.Host, error) {
 	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
 	if err != nil {
 		return nil, err
@@ -50,16 +50,13 @@ func NewHost(ctx context.Context, cm *system.CleanupManager, port int, bootstrap
 		return nil, err
 	}
 
-	if len(bootstrapPeers) != 0 {
-		go connectToPeersContinuously(ctx, cm, h, bootstrapPeers)
-	}
 	return h, err
 }
 
-func connectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, h host.Host, peers []multiaddr.Multiaddr) {
-	err := connectToPeers(ctx, h, peers)
+func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, h host.Host, peers []multiaddr.Multiaddr) error {
+	err := ConnectToPeers(ctx, h, peers)
 	if err != nil {
-		log.Ctx(ctx).Info().Msgf("Error initially connecting to peers: %s, retrying again in 10 seconds", err)
+		return err
 	}
 	ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
 	ctx, cancelFunction := context.WithCancel(ctx)
@@ -69,20 +66,24 @@ func connectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, 
 	})
 	defer ticker.Stop()
 	log.Ctx(ctx).Debug().Msgf("Starting peer reconnection loop every %d seconds", ContinuouslyConnectPeersLoopDelaySeconds)
-	for {
-		select {
-		case <-ticker.C:
-			err = connectToPeers(ctx, h, peers)
-			if err != nil {
-				log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				err := ConnectToPeers(ctx, h, peers)
+				if err != nil {
+					log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+				}
+			case <-ctx.Done():
+				log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
+				return
 			}
-		case <-ctx.Done():
-			log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
-			return
 		}
-	}
+	}()
+	return nil
 }
-func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiaddr) error {
+
+func ConnectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiaddr) error {
 	errors := []error{}
 	for _, peerAddress := range peers {
 		// Extract the peer ID from the multiaddr.

@@ -9,6 +9,9 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -19,6 +22,8 @@ import (
 // returns the current testing context
 type WebsocketSuite struct {
 	suite.Suite
+	node   *node.Node
+	client *publicapi.APIClient
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -30,15 +35,20 @@ func TestWebsocketSuite(t *testing.T) {
 // Before each test
 func (s *WebsocketSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	n, client := setupNodeForTest(s.T())
+	s.node = n
+	s.client = client
+}
+
+// After each test
+func (s *WebsocketSuite) TearDownTest() {
+	s.node.CleanupManager.Cleanup()
 }
 
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
-	// hairpin on as this depends on seeing our own events
-	c, cm := SetupRequesterNodeForTests(s.T(), true)
-	defer cm.Cleanup()
 	// string.Replace http with ws in c.BaseURI
-	url := "ws" + c.BaseURI[4:] + "/websocket"
+	url := "ws" + s.client.BaseURI[4:] + "/websocket"
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
@@ -53,30 +63,28 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 		}
 	}()
 
-	genericJob := MakeGenericJob()
-	_, err = c.Submit(ctx, genericJob, nil)
+	genericJob := testutils.MakeGenericJob()
+	_, err = s.client.Submit(ctx, genericJob, nil)
 	require.NoError(s.T(), err)
 
 	event := <-eventChan
-	require.Equal(s.T(), event.EventName.String(), "Created")
+	require.Equal(s.T(), "Created", event.EventName.String())
 
 }
 
 func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	ctx := context.Background()
-	c, cm := SetupRequesterNodeForTests(s.T(), true)
-	defer cm.Cleanup()
 
-	genericJob := MakeGenericJob()
-	j, err := c.Submit(ctx, genericJob, nil)
+	genericJob := testutils.MakeGenericJob()
+	j, err := s.client.Submit(ctx, genericJob, nil)
 	require.NoError(s.T(), err)
 
-	url := "ws" + c.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.ID)
+	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.ID)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
 
 	var event model.JobEvent
 	err = conn.ReadJSON(&event)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), event.EventName.String(), "Created")
+	require.Equal(s.T(), "Created", event.EventName.String())
 }
