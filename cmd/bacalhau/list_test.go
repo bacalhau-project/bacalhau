@@ -151,17 +151,38 @@ func (suite *ListSuite) TestList_IdFilter() {
 }
 
 func (suite *ListSuite) TestList_AnnotationFilter() {
-	testCases := []struct {
+	type testCase struct {
 		Name                                              string
 		JobLabels, ListLabels                             []string
 		AppearByDefault, AppearOnInclude, AppearOnExclude bool
-	}{
+	}
+
+	testCases := []testCase{
 		{"empty filters have no effect", []string{}, []string{}, true, true, true},
 		{"include filters unlabelled jobs", []string{}, []string{"test"}, true, false, true},
 		{"exclude filters labelled jobs", []string{"test"}, []string{"test"}, true, true, false},
 		{"filters match job labels", []string{"jobb"}, []string{"test"}, true, false, true},
 		{"multiple annotations match any", []string{"test", "jobb"}, []string{"test"}, true, true, false},
 		{"multiple filters match any", []string{"t1"}, []string{"t1", "t2"}, true, true, false},
+	}
+
+	for _, tag := range defaultExcludedTags {
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s filtered by default", string(tag)),
+			[]string{string(tag)},
+			[]string{string(tag)},
+			false,
+			true,
+			false,
+		})
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s excluded with other tags", string(tag)),
+			[]string{string(tag)},
+			[]string{string("test")},
+			false,
+			false,
+			false,
+		})
 	}
 
 	for _, tc := range testCases {
