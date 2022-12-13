@@ -1,5 +1,3 @@
-//go:build unit || !integration
-
 package bacalhau
 
 import (
