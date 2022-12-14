@@ -107,8 +107,8 @@ endif
 .PHONY: swagger-docs
 swagger-docs:
 	@echo "Building swagger docs..."
-	swag fmt --exclude "testground" -g "pkg/publicapi/server.go" && \
-	swag init --parseDependency --exclude "testground" --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag fmt -g "pkg/publicapi/server.go" && \
+	swag init --parseDependency --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
 
 ################################################################################
@@ -210,10 +210,6 @@ test-devstack:
 .PHONY: test-commands
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
-
-# .PHONY: test-badactors
-# test-badactors:
-# 	TEST=TestCatchBadActors make test-one
 
 # .PHONY: test-pythonwasm
 # test-pythonwasm:

@@ -1,0 +1,18 @@
+{
+	"with": "ubuntu",
+	"do": "docker/run",
+	"inputs": {
+		"entrypoint": ["date"],
+		"workdir": "/",
+		"mounts": {
+			"/inputs": "ipfs://bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi"
+		},
+		"outputs": {
+			"/outputs": ""
+		},
+		"env": {
+			"HELLO": "world"
+		}
+	},
+    "meta": {}
+}

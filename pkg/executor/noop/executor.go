@@ -21,7 +21,6 @@ type ExecutorConfigExternalHooks struct {
 }
 
 type ExecutorConfig struct {
-	IsBadActor    bool
 	ExternalHooks ExecutorConfigExternalHooks
 }
 

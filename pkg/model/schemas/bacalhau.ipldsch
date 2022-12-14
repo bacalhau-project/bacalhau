@@ -1,0 +1,58 @@
+type Resource union {
+    | IPFS "ipfs"
+    | HTTP "http"
+} representation stringprefix
+
+type IPFS string
+type HTTP string
+
+type DockerInputs struct {
+    entrypoint [String]
+    workdir String
+    mounts {String:Resource}
+    outputs {String:nullable Any}
+    env {String:String}
+}
+
+type WasmInputs struct {
+    entrypoint String
+    parameters [String]
+    modules [Resource]
+    mounts {String:Resource}
+    outputs {String:nullable Any}
+    env {String:String}
+}
+
+type BacalhauConfig struct {
+    publisher Publisher
+    verifier Verifier
+    timeout Duration
+    resources ResourceSpec
+    annotations [String]
+    dnt Bool
+}
+
+type Publisher enum {
+    | Noop ("1")
+    | IPFS ("2")
+    | Estuary ("3")
+    | FilecoinLotus ("4")
+} representation int
+
+type Verifier enum {
+    | Noop ("1")
+    | Deterministic ("2")
+} representation int
+
+type ResourceSpec struct {
+    cpu Millicores
+    disk ByteSize
+    memory ByteSize
+    gpu Int
+}
+
+type Duration int
+
+type ByteSize int
+
+type Millicores int
