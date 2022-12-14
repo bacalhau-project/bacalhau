@@ -18,7 +18,7 @@ import (
 // we also slash by this amount - it ensures the nodes always have this much at
 // stake
 
-const MIN_WALLET = 100
+const MinWallet = 100 //nolint:gomnd
 
 type walletsModel struct {
 	// keep track of which wallet address "owns" which job
@@ -65,7 +65,7 @@ func (wallets *walletsModel) logWallets() {
 		spew.Dump(wallets.balances)
 		log.Info().Msg("======== ESCROW BALANCES =========")
 		spew.Dump(wallets.escrow)
-		time.Sleep(10 * time.Second)
+		time.Sleep(10 * time.Second) //nolint:gomnd
 	}
 }
 
@@ -118,7 +118,7 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 		server := event.TargetNodeID
 		// TODO: price in job spec! verify price per hour!
 		// TODO: the client itself should escrow the funds, not the smart contract?
-		err := wallets.escrowFunds(client, server, event.JobID, 33)
+		err := wallets.escrowFunds(client, server, event.JobID, 33) //nolint:gomnd
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 func (wallets *walletsModel) checkWallet(event model.JobEvent) error {
 	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
 	walletID := event.SourceNodeID
-	if wallets.balances[walletID] < MIN_WALLET {
+	if wallets.balances[walletID] < MinWallet {
 		return fmt.Errorf("wallet %s fell below min balance, sorry", walletID)
 	}
 	return nil
@@ -201,13 +201,13 @@ func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount in
 		return fmt.Errorf("job %s not found", jobID)
 	}
 	wallets.ensureWallet(wallet)
-	if wallets.balances[wallet]-MIN_WALLET < amount {
+	if wallets.balances[wallet]-MinWallet < amount {
 		return fmt.Errorf(
 			"wallet %s has insufficient funds to escrow %d, "+
 				"taking into account minimum wallet balance of %d",
 			wallet,
 			amount,
-			MIN_WALLET,
+			MinWallet,
 		)
 	}
 	wallets.balances[wallet] -= amount
@@ -254,14 +254,17 @@ func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error 
                 ||     ||
 	`, server)
 	// NB: the following is slash and burn
-	wallets.balances[server] -= MIN_WALLET
+	wallets.balances[server] -= MinWallet
 	return nil
 }
 
 // an example of an event handler that maps the wallet address that "owns" the job
 // and uses the state resolver to query the local DB for the current state of the job
 func (wallets *walletsModel) bid(event model.JobEvent) error {
-	wallets.checkWallet(event)
+	err := wallets.checkWallet(event)
+	if err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 	walletAddress := wallets.jobOwners[event.JobID]
@@ -269,7 +272,7 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
 
 	// here are examples of using the state resolver to query the localDB
-	_, err := wallets.localDB.GetJob(ctx, event.JobID)
+	_, err = wallets.localDB.GetJob(ctx, event.JobID)
 	if err != nil {
 		return err
 	}
@@ -293,21 +296,30 @@ func (wallets *walletsModel) bidAccepted(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) resultsProposed(event model.JobEvent) error {
-	wallets.checkWallet(event)
+	err := wallets.checkWallet(event)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Msgf("SIM: received resultsProposed event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsAccepted(event model.JobEvent) error {
-	wallets.checkWallet(event)
+	err := wallets.checkWallet(event)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
 
 func (wallets *walletsModel) resultsPublished(event model.JobEvent) error {
-	wallets.checkWallet(event)
+	err := wallets.checkWallet(event)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Msgf("SIM: received resultsPublished event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
