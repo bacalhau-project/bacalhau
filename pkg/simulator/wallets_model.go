@@ -177,6 +177,7 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 func (wallets *walletsModel) checkWallet(event model.JobEvent) error {
 	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
 	walletID := event.SourceNodeID
+	wallets.ensureWallet(walletID)
 	if wallets.balances[walletID] < MinWallet {
 		return fmt.Errorf("wallet %s fell below min balance, sorry", walletID)
 	}
