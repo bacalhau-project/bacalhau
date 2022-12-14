@@ -238,6 +238,7 @@ func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error 
 		return fmt.Errorf("no escrow found for %s", escrowID)
 	}
 	wallets.ensureWallet(client)
+	wallets.ensureWallet(server)
 	wallets.balances[client] += amount
 	delete(wallets.escrow, escrowID)
 
@@ -252,6 +253,7 @@ func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error 
                 ||----w |
                 ||     ||
 	`, server)
+	// NB: the following is slash and burn
 	wallets.balances[server] -= MIN_WALLET
 	return nil
 }
