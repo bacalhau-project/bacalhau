@@ -95,7 +95,7 @@ func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) frontend.A
 
 	// setup default values
 	job := testCase.job
-	if job.ID == "" {
+	if job.Metadata.ID == "" {
 		job = generateJob()
 	}
 	shardCount := testCase.shardCount
