@@ -15,4 +15,8 @@ template = env.get_template("index.jinja")
 with open(Path(__file__).parent / "temp.pkl", "rb") as f:
     jsonSchemas = pickle.load(f)
 
-jsonSchemaIndexFile = SCHEMA_DIR / "jsonschema" / "index.md"
+jsonSchemaIndexFile = SCHEMA_DIR / "index.md"
+
+jsonSchemaIndex = template.render(jsonSchemas=jsonSchemas)
+
+jsonSchemaIndexFile.write_text(jsonSchemaIndex)
