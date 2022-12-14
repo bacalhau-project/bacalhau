@@ -107,8 +107,8 @@ endif
 .PHONY: swagger-docs
 swagger-docs:
 	@echo "Building swagger docs..."
-	swag fmt --exclude "testground" -g "pkg/publicapi/server.go" && \
-	swag init --parseDependency --exclude "testground" --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag fmt -g "pkg/publicapi/server.go" && \
+	swag init --parseDependency --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
 
 ################################################################################

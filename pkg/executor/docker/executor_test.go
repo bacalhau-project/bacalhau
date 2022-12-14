@@ -119,7 +119,9 @@ func runJobGetStdout(
 	result := t.TempDir()
 
 	j := &model.Job{
-		ID:   "test",
+		Metadata: model.Metadata{
+			ID: "test",
+		},
 		Spec: spec,
 	}
 	shard := model.JobShard{

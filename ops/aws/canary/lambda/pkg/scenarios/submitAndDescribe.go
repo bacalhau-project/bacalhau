@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,7 +13,7 @@ import (
 func SubmitAnDescribe(ctx context.Context) error {
 	// intentionally delay creation of the client so a new client is created for each
 	// scenario to mimic the behavior of bacalhau cli.
-	client := bacalhau.GetAPIClient()
+	client := getClient()
 
 	j := getSampleDockerJob()
 	submittedJob, err := client.Submit(ctx, j, nil)
@@ -22,27 +21,27 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.ID)
+	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
-	_, ok, err := client.Get(ctx, submittedJob.ID)
+	_, ok, err := client.Get(ctx, submittedJob.Metadata.ID)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("job not found matching id: %s", submittedJob.ID)
+		return fmt.Errorf("job not found matching id: %s", submittedJob.Metadata.ID)
 	}
 
-	_, err = client.GetJobState(ctx, submittedJob.ID)
+	_, err = client.GetJobState(ctx, submittedJob.Metadata.ID)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.ID)
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.GetLocalEvents(ctx, submittedJob.ID)
+	_, err = client.GetLocalEvents(ctx, submittedJob.Metadata.ID)
 	if err != nil {
 		return err
 	}

@@ -24,11 +24,6 @@ var (
 		# Get the results of a job, with a short ID.
 		bacalhau get ebd9bf2f
 `))
-
-	// Set Defaults (probably a better way to do this)
-	OG = NewGetOptions()
-
-	// For the -f flag
 )
 
 type GetOptions struct {
@@ -45,51 +40,59 @@ func NewGetOptions() *GetOptions {
 	}
 }
 
-func init() { //nolint:gochecknoinits
+func newGetCmd() *cobra.Command {
+	OG := NewGetOptions()
+
+	getCmd := &cobra.Command{
+		Use:     "get [id]",
+		Short:   "Get the results of a job",
+		Long:    getLong,
+		Example: getExample,
+		Args:    cobra.ExactArgs(1),
+		PreRun:  applyPorcelainLogLevel,
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+			return get(cmd, cmdArgs, OG)
+		},
+	}
+
 	getCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OG.IPFSDownloadSettings))
+
+	return getCmd
 }
 
-var getCmd = &cobra.Command{
-	Use:     "get [id]",
-	Short:   "Get the results of a job",
-	Long:    getLong,
-	Example: getExample,
-	Args:    cobra.ExactArgs(1),
-	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
+func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := cmd.Context()
 
-		ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
-		defer span.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
+	defer span.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
-		var err error
+	var err error
 
-		jobID := cmdArgs[0]
-		if jobID == "" {
-			var byteResult []byte
-			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			if err != nil {
-				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
-				return err
-			}
-			jobID = string(byteResult)
-		}
-
-		err = downloadResultsHandler(
-			ctx,
-			cm,
-			cmd,
-			jobID,
-			OG.IPFSDownloadSettings,
-		)
-
+	jobID := cmdArgs[0]
+	if jobID == "" {
+		var byteResult []byte
+		byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
 		if err != nil {
-			return errors.Wrap(err, "error downloading job")
+			Fatal(cmd, fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+			return err
 		}
+		jobID = string(byteResult)
+	}
 
-		return nil
-	},
+	err = downloadResultsHandler(
+		ctx,
+		cm,
+		cmd,
+		jobID,
+		OG.IPFSDownloadSettings,
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "error downloading job")
+	}
+
+	return nil
 }

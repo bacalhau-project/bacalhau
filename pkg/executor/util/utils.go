@@ -142,7 +142,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	exPythonWasm, err := pythonwasm.NewExecutor(ctx, cm, executors)
+	exPythonWasm, err := pythonwasm.NewExecutor(executors)
 	if err != nil {
 		return nil, err
 	}

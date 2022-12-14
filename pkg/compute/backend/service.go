@@ -89,13 +89,13 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 			jobsFailed.With(prometheus.Labels{
 				"node_id":     s.ID,
 				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.ClientID,
+				"client_id":   execution.Shard.Job.Metadata.ClientID,
 			}).Inc()
 		} else {
 			jobsCompleted.With(prometheus.Labels{
 				"node_id":     s.ID,
 				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.ClientID,
+				"client_id":   execution.Shard.Job.Metadata.ClientID,
 			}).Inc()
 		}
 

@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,14 +24,12 @@ import (
 // returns the current testing context
 type DescribeSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
-	suite.rootCmd = RootCmd
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
@@ -76,55 +73,55 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				returnedJob := &model.Job{}
 
 				// No job id (should error)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err := ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
 				)
 				require.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
-					submittedJob.ID,
+					submittedJob.Metadata.ID,
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
-					submittedJob.ID,
+					submittedJob.Metadata.ID,
 					"--api-port", port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
-				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", host,
-					submittedJob.ID[0:model.ShortIDLength],
+					submittedJob.Metadata.ID[0:model.ShortIDLength],
 					"--api-port", port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
@@ -162,13 +159,13 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", host, "--api-port", port, submittedJob.ID)
+			args = append(args, "describe", "--api-host", host, "--api-port", port, submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
 
 			// Job Id at the end
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
 			require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
 			err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
@@ -228,12 +225,12 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				// If describeID is empty, should return use submitted ID. Otherwise, use describeID
 				if tc.describeIDEdgecase == "" {
-					jobID = submittedJob.ID
+					jobID = submittedJob.Metadata.ID
 				} else {
 					jobID = tc.describeIDEdgecase
 				}
 
-				_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+				_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 					"--api-host", host,
 					"--api-port", port,
 					jobID,
@@ -243,7 +240,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-					require.Equal(s.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
 						submittedJob.Spec.Docker.Entrypoint[0],
 						returnedJob.Spec.Docker.Entrypoint[0],

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,12 +23,10 @@ func TestUtilsSuite(t *testing.T) {
 // returns the current testing context
 type UtilsSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // Before each test
 func (s *UtilsSuite) SetupTest() {
-	s.rootCmd = RootCmd
 	logger.ConfigureTestLogging(s.T())
 }
 

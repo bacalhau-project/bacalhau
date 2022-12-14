@@ -14,12 +14,14 @@ import (
 )
 
 type listRequest struct {
-	JobID       string `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	ClientID    string `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	MaxJobs     int    `json:"max_jobs" example:"10"`
-	ReturnAll   bool   `json:"return_all" `
-	SortBy      string `json:"sort_by" example:"created_at"`
-	SortReverse bool   `json:"sort_reverse"`
+	JobID       string              `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ClientID    string              `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	IncludeTags []model.IncludedTag `json:"include_tags" example:"['any-tag']"`
+	ExcludeTags []model.ExcludedTag `json:"exclude_tags" example:"['any-tag']"`
+	MaxJobs     int                 `json:"max_jobs" example:"10"`
+	ReturnAll   bool                `json:"return_all" `
+	SortBy      string              `json:"sort_by" example:"created_at"`
+	SortReverse bool                `json:"sort_reverse"`
 }
 
 type listResponse struct {
@@ -87,6 +89,8 @@ func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
+		IncludeTags: listReq.IncludeTags,
+		ExcludeTags: listReq.ExcludeTags,
 		ReturnAll:   listReq.ReturnAll,
 		SortBy:      listReq.SortBy,
 		SortReverse: listReq.SortReverse,
@@ -103,7 +107,7 @@ func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.J
 
 	var err error
 	for k := range jobList {
-		jobList[k].State, err = apiServer.localdb.GetJobState(ctx, jobList[k].ID)
+		jobList[k].Status.State, err = apiServer.localdb.GetJobState(ctx, jobList[k].Metadata.ID)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
 			return err

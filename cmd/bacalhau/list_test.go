@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -27,7 +26,6 @@ import (
 // returns the current testing context
 type ListSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -38,7 +36,6 @@ func TestListSuite(t *testing.T) {
 
 // Before each test
 func (suite *ListSuite) SetupTest() {
-	suite.rootCmd = RootCmd
 	logger.ConfigureTestLogging(suite.T())
 }
 
@@ -59,14 +56,10 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	}
 
 	for _, tc := range tests {
-		func() {
+		suite.Run(fmt.Sprintf("%d jobs %d output", tc.numberOfJobs, tc.numberOfJobsOutput), func() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 			defer cm.Cleanup()
-
-			*OL = *NewListOptions()
-			OL.IDFilter = ""
-			OL.SortReverse = false
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				j := publicapi.MakeNoopJob()
@@ -76,16 +69,17 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+			_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
 				"--hide-header",
 				"--api-host", host,
 				"--api-port", port,
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
+				"--reverse", "false",
 			)
 			require.NoError(suite.T(), err)
 
 			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
-		}()
+		})
 	}
 }
 
@@ -94,8 +88,6 @@ func (suite *ListSuite) TestList_IdFilter() {
 	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 	defer cm.Cleanup()
 
-	*OL = *NewListOptions()
-
 	// submit 10 jobs
 	jobIds := []string{}
 	jobLongIds := []string{}
@@ -103,14 +95,14 @@ func (suite *ListSuite) TestList_IdFilter() {
 		var err error
 		j := publicapi.MakeNoopJob()
 		j, err = c.Submit(ctx, j, nil)
-		jobIds = append(jobIds, shortID(OL.OutputWide, j.ID))
-		jobLongIds = append(jobIds, j.ID)
+		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
+		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+	_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
 		"--hide-header",
 		"--api-host", host,
 		"--api-port", port,
@@ -133,7 +125,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	//// Test --output json
 
 	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
-	_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+	_, out, err = ExecuteTestCobraCommand(suite.T(), "list",
 		"--hide-header",
 		"--api-host", host,
 		"--api-port", port,
@@ -154,8 +146,104 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), firstItem.ID, jobLongIds[0], "The filtered job id was not found in the response")
+	require.Contains(suite.T(), firstItem.Metadata.ID, jobLongIds[0], "The filtered job id was not found in the response")
 	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
+}
+
+func (suite *ListSuite) TestList_AnnotationFilter() {
+	type testCase struct {
+		Name                                              string
+		JobLabels, ListLabels                             []string
+		AppearByDefault, AppearOnInclude, AppearOnExclude bool
+	}
+
+	testCases := []testCase{
+		{"empty filters have no effect", []string{}, []string{}, true, true, true},
+		{"include filters unlabelled jobs", []string{}, []string{"test"}, true, false, true},
+		{"exclude filters labelled jobs", []string{"test"}, []string{"test"}, true, true, false},
+		{"filters match job labels", []string{"jobb"}, []string{"test"}, true, false, true},
+		{"multiple annotations match any", []string{"test", "jobb"}, []string{"test"}, true, true, false},
+		{"multiple filters match any", []string{"t1"}, []string{"t1", "t2"}, true, true, false},
+	}
+
+	for _, tag := range defaultExcludedTags {
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s filtered by default", string(tag)),
+			[]string{string(tag)},
+			[]string{string(tag)},
+			false,
+			true,
+			false,
+		})
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s excluded with other tags", string(tag)),
+			[]string{string(tag)},
+			[]string{string("test")},
+			false,
+			false,
+			false,
+		})
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.Name, func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
+			defer cm.Cleanup()
+
+			// create job with label
+			j := publicapi.MakeNoopJob()
+			j.Spec.Annotations = tc.JobLabels
+			j, err := c.Submit(ctx, j, nil)
+			require.NoError(suite.T(), err)
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			checkList := func(shouldAppear bool, flags ...string) {
+				args := []string{"list",
+					"--hide-header",
+					"--api-host", host,
+					"--api-port", port,
+					"--output", "json",
+				}
+				args = append(args, flags...)
+				_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
+				require.NoError(suite.T(), err)
+
+				response := listResponse{}
+				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				if shouldAppear {
+					require.NotEmpty(suite.T(), response.Jobs)
+					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Metadata.ID)
+				} else {
+					require.Empty(suite.T(), response.Jobs)
+				}
+			}
+
+			// default list
+			suite.Run("default", func() {
+				checkList(tc.AppearByDefault)
+			})
+
+			// list with label included
+			suite.Run("label_included", func() {
+				flags := []string{}
+				for _, label := range tc.ListLabels {
+					flags = append(flags, "--include-tag", label)
+				}
+				checkList(tc.AppearOnInclude, flags...)
+			})
+
+			// list with label excluded
+			suite.Run("label_excluded", func() {
+				flags := []string{}
+				for _, label := range tc.ListLabels {
+					flags = append(flags, "--exclude-tag", label)
+				}
+				checkList(tc.AppearOnExclude, flags...)
+			})
+		})
+	}
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
@@ -189,22 +277,18 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 	for _, tc := range combinationOfJobSizes {
 		for _, sortFlags := range sortFlagsToTest {
-			func() {
+			suite.Run(fmt.Sprintf("%#v/%#v", tc, sortFlags), func() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 				defer cm.Cleanup()
 
-				*OL = *NewListOptions()
-				OL.IDFilter = ""
-				OL.SortReverse = false
-
-				jobIDs := []string{}
+				var jobIDs []string
 				for i := 0; i < tc.numberOfJobs; i++ {
 					var err error
 					j := publicapi.MakeNoopJob()
 					j, err = c.Submit(ctx, j, nil)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, shortID(OL.OutputWide, j.ID))
+					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ
@@ -220,12 +304,12 @@ func (suite *ListSuite) TestList_SortFlags() {
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
 				require.NoError(suite.T(), err)
 
-				reverseString := ""
+				reverseString := "--reverse=false"
 				if sortFlags.reverseFlag {
 					reverseString = "--reverse"
 				}
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				_, out, err := ExecuteTestCobraCommand(suite.T(),
 					"list",
 					"--hide-header",
 					"--no-style",
@@ -291,7 +375,7 @@ Compare Ids:
 						}
 					}
 				}
-			}()
+			})
 		}
 	}
 }

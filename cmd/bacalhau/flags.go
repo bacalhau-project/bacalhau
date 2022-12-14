@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/spf13/pflag"
@@ -88,7 +89,7 @@ func (s *ArrayValueFlag[T]) Set(input string) error {
 
 // String implements pflag.Value
 func (s *ArrayValueFlag[T]) String() string {
-	strs := make([]string, len(*s.value))
+	strs := make([]string, 0, len(*s.value))
 	for _, spec := range *s.value {
 		spec := spec
 		strs = append(strs, s.stringer(&spec))
@@ -169,15 +170,6 @@ func storageSpecToIPFSMount(input *model.StorageSpec) string {
 	return fmt.Sprintf("%s:%s", input.CID, input.Path)
 }
 
-func NewIPFSStorageSpecFlag(value *model.StorageSpec) *ValueFlag[model.StorageSpec] {
-	return &ValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseIPFSStorageSpec,
-		stringer: storageSpecToIPFSMount,
-		typeStr:  "cid:path",
-	}
-}
-
 func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
 	return &ArrayValueFlag[model.StorageSpec]{
 		value:    value,
@@ -197,15 +189,6 @@ func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
 		URL:           u.String(),
 		Path:          "/inputs",
 	}, nil
-}
-
-func NewURLStorageSpecFlag(value *model.StorageSpec) *ValueFlag[model.StorageSpec] {
-	return &ValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
-		typeStr:  "url",
-	}
 }
 
 func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
@@ -241,5 +224,37 @@ func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
 		parser:   separatorParser("="),
 		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
 		typeStr:  "key=value",
+	}
+}
+
+func parseTag(s string) (string, error) {
+	var err error
+	if !job.IsSafeAnnotation(s) {
+		err = fmt.Errorf("%q is not a valid tag", s)
+	}
+	return s, err
+}
+
+func IncludedTagFlag(value *[]model.IncludedTag) *ArrayValueFlag[model.IncludedTag] {
+	return &ArrayValueFlag[model.IncludedTag]{
+		value: value,
+		parser: func(s string) (model.IncludedTag, error) {
+			s, err := parseTag(s)
+			return model.IncludedTag(s), err
+		},
+		stringer: func(t *model.IncludedTag) string { return string(*t) },
+		typeStr:  "tag",
+	}
+}
+
+func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedTag] {
+	return &ArrayValueFlag[model.ExcludedTag]{
+		value: value,
+		parser: func(s string) (model.ExcludedTag, error) {
+			s, err := parseTag(s)
+			return model.ExcludedTag(s), err
+		},
+		stringer: func(t *model.ExcludedTag) string { return string(*t) },
+		typeStr:  "tag",
 	}
 }
