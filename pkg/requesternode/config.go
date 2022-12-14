@@ -2,6 +2,8 @@ package requesternode
 
 import (
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 // DefaultJobNegotiationTimeout default timeout value to wait for enough bids to be submitted
@@ -52,6 +54,8 @@ type RequesterNodeConfig struct {
 
 	// background task interval that periodically checks for expired states among other things.
 	StateManagerBackgroundTaskInterval time.Duration
+
+	SimulatorConfig model.SimulatorConfigRequester
 }
 
 func NewDefaultRequesterNodeConfig() RequesterNodeConfig {

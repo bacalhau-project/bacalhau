@@ -65,12 +65,13 @@ func NewComputeNode(
 	})
 
 	baseRunner := backend.NewBaseService(backend.BaseServiceParams{
-		ID:         nodeID,
-		Callback:   backendCallback,
-		Store:      executionStore,
-		Executors:  executors,
-		Verifiers:  verifiers,
-		Publishers: publishers,
+		ID:              nodeID,
+		Callback:        backendCallback,
+		Store:           executionStore,
+		Executors:       executors,
+		Verifiers:       verifiers,
+		Publishers:      publishers,
+		SimulatorConfig: config.SimulatorConfig,
 	})
 
 	bufferRunner := backend.NewServiceBuffer(backend.ServiceBufferParams{
