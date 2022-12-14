@@ -51,7 +51,7 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	ctx, span := s.newSpan(ctx, "AskForBid")
 	defer span.End()
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
-	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.ClientID}).Inc()
+	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.Metadata.ClientID}).Inc()
 
 	// ask the bidding strategy if we should bid on this job
 	// TODO: we should check at the shard level, not the job level
@@ -114,7 +114,7 @@ func (s BaseEndpoint) prepareAskForBidShardResponse(
 	if !bidStrategyResponse.ShouldBid {
 		return AskForBidShardResponse{
 			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.ID,
+				JobID:      request.Job.Metadata.ID,
 				ShardIndex: shardIndex,
 			},
 			Accepted: false,
@@ -134,7 +134,7 @@ func (s BaseEndpoint) prepareAskForBidShardResponse(
 		log.Ctx(ctx).Error().Err(err).Msgf("error adding shard %s to backlog", execution.Shard)
 		return AskForBidShardResponse{
 			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.ID,
+				JobID:      request.Job.Metadata.ID,
 				ShardIndex: shardIndex,
 			},
 			Accepted: false,
@@ -145,7 +145,7 @@ func (s BaseEndpoint) prepareAskForBidShardResponse(
 		return AskForBidShardResponse{
 			ExecutionMetadata: ExecutionMetadata{
 				ExecutionID: execution.ID,
-				JobID:       request.Job.ID,
+				JobID:       request.Job.Metadata.ID,
 				ShardIndex:  shardIndex,
 			},
 			Accepted: true,
@@ -173,7 +173,7 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 	jobsAccepted.With(prometheus.Labels{
 		"node_id":     s.id,
 		"shard_index": strconv.Itoa(execution.Shard.Index),
-		"client_id":   execution.Shard.Job.ClientID,
+		"client_id":   execution.Shard.Job.Metadata.ClientID,
 	}).Inc()
 
 	err = s.executor.Run(ctx, execution)

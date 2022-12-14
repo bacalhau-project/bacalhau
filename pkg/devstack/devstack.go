@@ -36,8 +36,9 @@ type DevStackOptions struct {
 	SimulatorURL         string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
-	Nodes []*node.Node
-	Lotus *LotusNode
+	Nodes          []*node.Node
+	Lotus          *LotusNode
+	PublicIPFSMode bool
 }
 
 func NewDevStackForRunLocal(
@@ -295,8 +296,9 @@ func NewDevStack(
 	}
 
 	return &DevStack{
-		Nodes: nodes,
-		Lotus: lotus,
+		Nodes:          nodes,
+		Lotus:          lotus,
+		PublicIPFSMode: options.PublicIPFSMode,
 	}, nil
 }
 
@@ -385,6 +387,16 @@ export BACALHAU_API_PORT=%s`,
 		summaryShellVariablesString += fmt.Sprintf(`
 export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
+	if !stack.PublicIPFSMode {
+		summaryShellVariablesString += `
+
+By default devstack is not running on the public IPFS network.
+If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
+You can also run a new IPFS daemon locally and connect it to Bacalhau using:
+
+ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
 	log.Debug().Msg(logString)

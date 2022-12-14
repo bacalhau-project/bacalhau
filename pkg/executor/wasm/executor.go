@@ -247,35 +247,35 @@ func (e *Executor) RunShard(
 
 	// Load and instantiate imported modules
 	for _, wasmSpec := range wasmSpec.ImportModules {
-		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.ID)
+		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.Metadata.ID)
 		importedWasi, importErr := e.loadRemoteModule(ctx, wasmSpec)
 		if importErr != nil {
 			return failResult(importErr)
 		}
 		importedModules = append(importedModules, importedWasi)
 
-		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.ID)
+		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.Metadata.ID)
 		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
 			return failResult(instantiateErr)
 		}
 	}
 
-	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.Metadata.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
 	if err != nil {
 		return failResult(err)
 	}
 	defer wasi.Close(ctx)
 
-	log.Ctx(ctx).Debug().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.Metadata.ID)
 	_, err = namespace.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return failResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	log.Ctx(ctx).Debug().Msgf("Instantiation of module for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Instantiation of module for job '%s'", shard.Job.Metadata.ID)
 	instance, err := namespace.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return failResult(err)
@@ -292,7 +292,7 @@ func (e *Executor) RunShard(
 	// the exit code for inclusion in the job output, and ignore the return code
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Debug().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.Metadata.ID)
 	entryFunc := instance.ExportedFunction(entryPoint)
 	exitCode := int(-1)
 	_, wasmErr := entryFunc.Call(ctx)

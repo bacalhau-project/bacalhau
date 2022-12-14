@@ -1,0 +1,21 @@
+{
+	"with": "ipfs://bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi",
+	"do": "wasm32-wasi/run",
+	"inputs": {
+		"entrypoint": "_start",
+		"parameters": ["/inputs/data.tar.gz"],
+		"modules": [
+			"ipfs://bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi"
+		],
+		"mounts": {
+			"/inputs": "https://www.example.com/data.tar.gz"
+		},
+		"outputs": {
+			"/outputs": ""
+		},
+		"env": {
+			"HELLO": "world"
+		}
+	},
+	"meta": {}
+}

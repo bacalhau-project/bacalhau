@@ -5,6 +5,7 @@ package bacalhau
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
 }
 
-func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
+func (s *CreateSuite) TestCreateGenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -33,37 +34,20 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
-	Fatal = FakeFatalErrorHandler
-
+	// TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network
 	for i, tc := range tests {
-		func() {
-			_, out, err := ExecuteTestCobraCommand(s.T(), "create",
-				"--api-host", s.host,
-				"--api-port", s.port,
-				"../../testdata/job-noop.json",
-			)
-			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
-			testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
-		}()
-	}
-}
-
-func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
-	tests := []struct {
-		numberOfJobs int
-	}{
-		{numberOfJobs: 1}, // Test for one
-		{numberOfJobs: 5}, // Test for five
-	}
-
-	Fatal = FakeFatalErrorHandler
-
-	for i, tc := range tests {
-
-		testFiles := []string{"../../testdata/job-noop.yaml", "../../testdata/job-noop-url.yaml"}
+		testFiles := []string{
+			"../../testdata/job-noop.json",
+			"../../testdata/job-noop.yaml",
+			"../../testdata/job-noop-url.yaml",
+			"../../pkg/model/tasks/docker_task.json",
+			"../../pkg/model/tasks/task_with_config.json",
+			//"../../pkg/model/tasks/wasm_task.json",
+		}
 
 		for _, testFile := range testFiles {
-			func() {
+			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
+			s.Run(name, func() {
 				ctx := context.Background()
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
@@ -75,7 +59,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
-			}()
+			})
 		}
 	}
 }
@@ -83,7 +67,6 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job-noop.yaml"
 
-	Fatal = FakeFatalErrorHandler
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
@@ -99,15 +82,17 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", s.host,
 		"--api-port", s.port,
-		job.ID,
+		job.Metadata.ID,
 	)
 
 	require.NoError(s.T(), err, "Error describing job.")
 }
 
-func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
-	Fatal = FakeFatalErrorHandler
+func (s *CreateSuite) TestCreateFromUCANTask() {
 
+}
+
+func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	type commandReturn struct {
 		c   *cobra.Command
 		out string

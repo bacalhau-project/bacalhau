@@ -32,8 +32,8 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 func (e EventEmitter) EmitJobCreated(
 	ctx context.Context, job model.Job) {
 	event := model.JobEvent{
-		SourceNodeID: job.RequesterNodeID,
-		JobID:        job.ID,
+		SourceNodeID: job.Status.Requester.RequesterNodeID,
+		JobID:        job.Metadata.ID,
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
 	}

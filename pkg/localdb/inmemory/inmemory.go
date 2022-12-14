@@ -8,6 +8,8 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -109,48 +111,60 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 		if err != nil {
 			return nil, err
 		}
+		return []*model.Job{j}, nil
+	}
+
+	for _, j := range maps.Values(d.jobs) {
+		if len(result) == query.Limit {
+			break
+		}
+
+		if !query.ReturnAll && query.ClientID != "" && query.ClientID != j.Metadata.ClientID {
+			// Job is not for the requesting client, so ignore it.
+			continue
+		}
+
+		// If we are not using include tags, by default every job is included.
+		// If a job is specifically included, that overrides it being excluded.
+		included := len(query.IncludeTags) == 0
+		for _, tag := range j.Spec.Annotations {
+			if slices.Contains(query.IncludeTags, model.IncludedTag(tag)) {
+				included = true
+				break
+			}
+			if slices.Contains(query.ExcludeTags, model.ExcludedTag(tag)) {
+				included = false
+				break
+			}
+		}
+
+		if !included {
+			continue
+		}
+
 		result = append(result, j)
-	} else {
-		if query.ReturnAll {
-			log.Ctx(ctx).Debug().Msgf("querying for all jobs, limit %d", query.Limit)
-			for _, j := range d.jobs {
-				result = append(result, j)
-			}
-		} else if query.ClientID != "" {
-			log.Ctx(ctx).Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
-			for _, j := range d.jobs {
-				if j.ClientID == query.ClientID {
-					result = append(result, j)
-				}
-			}
-		}
-
-		listSorter := func(i, j int) bool {
-			switch query.SortBy {
-			case "id":
-				if query.SortReverse {
-					// what does it mean to sort by ID?
-					return result[i].ID > result[j].ID
-				} else {
-					return result[i].ID < result[j].ID
-				}
-			case "created_at":
-				if query.SortReverse {
-					return result[i].CreatedAt.UTC().Unix() > result[j].CreatedAt.UTC().Unix()
-				} else {
-					return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
-				}
-			default:
-				return false
-			}
-		}
-		sort.Slice(result, listSorter)
-	}
-	// apply limit
-	if len(result) >= query.Limit {
-		result = result[:query.Limit]
 	}
 
+	listSorter := func(i, j int) bool {
+		switch query.SortBy {
+		case "id":
+			if query.SortReverse {
+				// what does it mean to sort by ID?
+				return result[i].Metadata.ID > result[j].Metadata.ID
+			} else {
+				return result[i].Metadata.ID < result[j].Metadata.ID
+			}
+		case "created_at":
+			if query.SortReverse {
+				return result[i].Metadata.CreatedAt.UTC().Unix() > result[j].Metadata.CreatedAt.UTC().Unix()
+			} else {
+				return result[i].Metadata.CreatedAt.UTC().Unix() < result[j].Metadata.CreatedAt.UTC().Unix()
+			}
+		default:
+			return false
+		}
+	}
+	sort.Slice(result, listSorter)
 	return result, nil
 }
 
@@ -176,14 +190,14 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	existingJob, ok := d.jobs[j.ID]
+	existingJob, ok := d.jobs[j.Metadata.ID]
 	if ok {
-		if len(j.RequesterPublicKey) > 0 {
-			existingJob.RequesterPublicKey = j.RequesterPublicKey
+		if len(j.Status.Requester.RequesterPublicKey) > 0 {
+			existingJob.Status.Requester.RequesterPublicKey = j.Status.Requester.RequesterPublicKey
 		}
 		return nil
 	}
-	d.jobs[j.ID] = j
+	d.jobs[j.Metadata.ID] = j
 	return nil
 }
 
@@ -238,7 +252,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	if !ok {
 		return bacerrors.NewJobNotFound(jobID)
 	}
-	job.Deal = deal
+	job.Spec.Deal = deal
 	return nil
 }
 

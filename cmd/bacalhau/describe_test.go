@@ -68,13 +68,13 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", suite.host,
 					"--api-port", suite.port,
-					submittedJob.ID,
+					submittedJob.Metadata.ID,
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
@@ -83,14 +83,14 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				// Job Id in the middle
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", suite.host,
-					submittedJob.ID,
+					submittedJob.Metadata.ID,
 					"--api-port", suite.port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
@@ -99,14 +99,14 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				// Short job id
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
 					"--api-host", suite.host,
-					submittedJob.ID[0:model.ShortIDLength],
+					submittedJob.Metadata.ID[0:model.ShortIDLength],
 					"--api-port", suite.port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
@@ -140,7 +140,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", suite.host, "--api-port", suite.port, submittedJob.ID)
+			args = append(args, "describe", "--api-host", suite.host, "--api-port", suite.port, submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
@@ -202,7 +202,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				// If describeID is empty, should return use submitted ID. Otherwise, use describeID
 				if tc.describeIDEdgecase == "" {
-					jobID = submittedJob.ID
+					jobID = submittedJob.Metadata.ID
 				} else {
 					jobID = tc.describeIDEdgecase
 				}
@@ -217,7 +217,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-					require.Equal(s.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
 						submittedJob.Spec.Docker.Entrypoint[0],
 						returnedJob.Spec.Docker.Entrypoint[0],

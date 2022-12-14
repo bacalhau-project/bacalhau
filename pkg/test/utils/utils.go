@@ -100,11 +100,9 @@ func MakeJob(
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,
 		},
-		// Inputs:  inputStorageList,
-		// Outputs: testCase.Outputs,
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

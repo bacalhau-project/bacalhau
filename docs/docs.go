@@ -422,7 +422,7 @@ const docTemplate = `{
         },
         "/submit": {
             "post": {
-                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `data` + "`" + `\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n    * ` + "`" + `Job` + "`" + `: see example below.\n\nExample request\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\t\"data\": {\n\t\t\"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n\t\t\"Job\": {\n\t\t\t\"APIVersion\": \"V1beta1\",\n\t\t\t\"Spec\": {\n\t\t\t\t\"Engine\": \"Docker\",\n\t\t\t\t\"Verifier\": \"Noop\",\n\t\t\t\t\"Publisher\": \"Estuary\",\n\t\t\t\t\"Docker\": {\n\t\t\t\t\t\"Image\": \"ubuntu\",\n\t\t\t\t\t\"Entrypoint\": [\n\t\t\t\t\t\t\"date\"\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t\"Timeout\": 1800,\n\t\t\t\t\"outputs\": [\n\t\t\t\t\t{\n\t\t\t\t\t\t\"StorageSource\": \"IPFS\",\n\t\t\t\t\t\t\"Name\": \"outputs\",\n\t\t\t\t\t\t\"path\": \"/outputs\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"Sharding\": {\n\t\t\t\t\t\"BatchSize\": 1,\n\t\t\t\t\t\"GlobPatternBasePath\": \"/inputs\"\n\t\t\t\t}\n\t\t\t},\n\t\t\t\"Deal\": {\n\t\t\t\t\"Concurrency\": 1\n\t\t\t}\n\t\t}\n\t},\n\t\"signature\": \"...\",\n\t\"client_public_key\": \"...\"\n}\n` + "`" + `` + "`" + `` + "`" + `",
+                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `job_create_payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -595,72 +595,31 @@ const docTemplate = `{
                     "type": "string",
                     "example": "V1beta1"
                 },
-                "ClientID": {
-                    "description": "The ID of the client that created this job.",
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                },
-                "CreatedAt": {
-                    "description": "Time the job was submitted to the bacalhau network.",
-                    "type": "string",
-                    "example": "2022-11-17T13:29:01.871140291Z"
-                },
-                "Deal": {
-                    "description": "The deal the client has made, such as which job bids they have accepted.",
-                    "$ref": "#/definitions/model.Deal"
-                },
-                "ExecutionPlan": {
-                    "description": "how will this job be executed by nodes on the network",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
-                },
-                "ID": {
-                    "description": "The unique global ID of this job in the bacalhau network.",
-                    "type": "string",
-                    "example": "92d5d4ee-3765-4f78-8353-623f5f26df08"
-                },
-                "JobEvents": {
-                    "description": "All events associated with the job",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobEvent"
-                    }
-                },
-                "JobState": {
-                    "description": "The current state of the job",
-                    "$ref": "#/definitions/model.JobState"
-                },
-                "LocalJobEvents": {
-                    "description": "All local events associated with the job",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobLocalEvent"
-                    }
-                },
-                "RequesterNodeID": {
-                    "description": "The ID of the requester node that owns this job.",
-                    "type": "string",
-                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
-                },
-                "RequesterPublicKey": {
-                    "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                "Metadata": {
+                    "$ref": "#/definitions/model.Metadata"
                 },
                 "Spec": {
                     "description": "The specification of this job.",
                     "$ref": "#/definitions/model.Spec"
+                },
+                "Status": {
+                    "description": "The status of the job: where are the nodes at, what are the events",
+                    "$ref": "#/definitions/model.JobStatus"
                 }
             }
         },
         "model.JobCreatePayload": {
             "type": "object",
             "required": [
+                "APIVersion",
                 "ClientID",
-                "Job"
+                "Spec"
             ],
             "properties": {
+                "APIVersion": {
+                    "type": "string",
+                    "example": "V1beta1"
+                },
                 "ClientID": {
                     "description": "the id of the client that is submitting the job",
                     "type": "string"
@@ -669,9 +628,9 @@ const docTemplate = `{
                     "description": "Optional base64-encoded tar file that will be pinned to IPFS and\nmounted as storage for the job. Not part of the spec so we don't\nflood the transport layer with it (potentially very large).",
                     "type": "string"
                 },
-                "Job": {
-                    "description": "The job specification:",
-                    "$ref": "#/definitions/model.Job"
+                "Spec": {
+                    "description": "The specification of this job.",
+                    "$ref": "#/definitions/model.Spec"
                 }
             }
         },
@@ -786,6 +745,23 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {
                         "$ref": "#/definitions/model.JobShardState"
+                    }
+                }
+            }
+        },
+        "model.JobRequester": {
+            "type": "object",
+            "properties": {
+                "RequesterNodeID": {
+                    "description": "The ID of the requester node that owns this job.",
+                    "type": "string",
+                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
+                },
+                "RequesterPublicKey": {
+                    "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     }
                 }
             }
@@ -946,6 +922,52 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobStatus": {
+            "type": "object",
+            "properties": {
+                "JobEvents": {
+                    "description": "All events associated with the job",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.JobEvent"
+                    }
+                },
+                "JobState": {
+                    "description": "The current state of the job",
+                    "$ref": "#/definitions/model.JobState"
+                },
+                "LocalJobEvents": {
+                    "description": "All local events associated with the job",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.JobLocalEvent"
+                    }
+                },
+                "Requester": {
+                    "$ref": "#/definitions/model.JobRequester"
+                }
+            }
+        },
+        "model.Metadata": {
+            "type": "object",
+            "properties": {
+                "ClientID": {
+                    "description": "The ID of the client that created this job.",
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                },
+                "CreatedAt": {
+                    "description": "Time the job was submitted to the bacalhau network.",
+                    "type": "string",
+                    "example": "2022-11-17T13:29:01.871140291Z"
+                },
+                "ID": {
+                    "description": "The unique global ID of this job in the bacalhau network.",
+                    "type": "string",
+                    "example": "92d5d4ee-3765-4f78-8353-623f5f26df08"
+                }
+            }
+        },
         "model.PublishedResult": {
             "type": "object",
             "properties": {
@@ -1026,6 +1048,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
+                "Deal": {
+                    "description": "The deal the client has made, such as which job bids they have accepted.",
+                    "$ref": "#/definitions/model.Deal"
+                },
                 "DoNotTrack": {
                     "description": "Do not track specified by the client",
                     "type": "boolean"
@@ -1037,6 +1063,10 @@ const docTemplate = `{
                 "Engine": {
                     "description": "e.g. docker or language",
                     "type": "integer"
+                },
+                "ExecutionPlan": {
+                    "description": "how will this job be executed by nodes on the network",
+                    "$ref": "#/definitions/model.JobExecutionPlan"
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
@@ -1155,9 +1185,27 @@ const docTemplate = `{
                     "type": "string",
                     "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
                 },
+                "exclude_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
+                },
                 "id": {
                     "type": "string",
                     "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                },
+                "include_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['any-tag']"
+                    ]
                 },
                 "max_jobs": {
                     "type": "integer",
@@ -1244,7 +1292,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "client_public_key",
-                "data",
+                "job_create_payload",
                 "signature"
             ],
             "properties": {
@@ -1252,7 +1300,7 @@ const docTemplate = `{
                     "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "data": {
+                "job_create_payload": {
                     "description": "The data needed to submit and run a job on the network:",
                     "$ref": "#/definitions/model.JobCreatePayload"
                 },

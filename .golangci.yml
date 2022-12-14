@@ -127,7 +127,6 @@ run:
     - experimental$
     - vendor$
     - viz$
-    - testground$
     - ops$
     - testdata$
   # Enables skipping of directories:

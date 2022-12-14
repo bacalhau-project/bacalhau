@@ -48,7 +48,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	}
 
 	for _, tc := range tests {
-		func() {
+		suite.Run(fmt.Sprintf("%d jobs %d output", tc.numberOfJobs, tc.numberOfJobsOutput), func() {
 			ctx := context.Background()
 
 			for i := 0; i < tc.numberOfJobs; i++ {
@@ -67,7 +67,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			require.NoError(suite.T(), err)
 
 			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
-		}()
+		})
 	}
 }
 
@@ -81,8 +81,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 		var err error
 		j := testutils.MakeNoopJob()
 		j, err = suite.client.Submit(ctx, j, nil)
-		jobIds = append(jobIds, shortID(false, j.ID))
-		jobLongIds = append(jobIds, j.ID)
+		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
+		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
 	_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
@@ -129,8 +129,102 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), firstItem.ID, jobLongIds[0], "The filtered job id was not found in the response")
+	require.Contains(suite.T(), firstItem.Metadata.ID, jobLongIds[0], "The filtered job id was not found in the response")
 	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
+}
+
+func (suite *ListSuite) TestList_AnnotationFilter() {
+	type testCase struct {
+		Name                                              string
+		JobLabels, ListLabels                             []string
+		AppearByDefault, AppearOnInclude, AppearOnExclude bool
+	}
+
+	testCases := []testCase{
+		{"empty filters have no effect", []string{}, []string{}, true, true, true},
+		{"include filters unlabelled jobs", []string{}, []string{"test"}, true, false, true},
+		{"exclude filters labelled jobs", []string{"test"}, []string{"test"}, true, true, false},
+		{"filters match job labels", []string{"jobb"}, []string{"test"}, true, false, true},
+		{"multiple annotations match any", []string{"test", "jobb"}, []string{"test"}, true, true, false},
+		{"multiple filters match any", []string{"t1"}, []string{"t1", "t2"}, true, true, false},
+	}
+
+	for _, tag := range defaultExcludedTags {
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s filtered by default", string(tag)),
+			[]string{string(tag)},
+			[]string{string(tag)},
+			false,
+			true,
+			false,
+		})
+		testCases = append(testCases, testCase{
+			fmt.Sprintf("%s excluded with other tags", string(tag)),
+			[]string{string(tag)},
+			[]string{string("test")},
+			false,
+			false,
+			false,
+		})
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.Name, func() {
+			ctx := context.Background()
+			// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
+			suite.TearDownTest()
+			suite.SetupTest()
+
+			j := testutils.MakeNoopJob()
+			j.Spec.Annotations = tc.JobLabels
+			j, err := suite.client.Submit(ctx, j, nil)
+			require.NoError(suite.T(), err)
+
+			checkList := func(shouldAppear bool, flags ...string) {
+				args := []string{"list",
+					"--hide-header",
+					"--api-host", suite.host,
+					"--api-port", suite.port,
+					"--output", "json",
+				}
+				args = append(args, flags...)
+				_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
+				require.NoError(suite.T(), err)
+
+				response := listResponse{}
+				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				if shouldAppear {
+					require.NotEmpty(suite.T(), response.Jobs)
+					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Metadata.ID)
+				} else {
+					require.Empty(suite.T(), response.Jobs)
+				}
+			}
+
+			// default list
+			suite.Run("default", func() {
+				checkList(tc.AppearByDefault)
+			})
+
+			// list with label included
+			suite.Run("label_included", func() {
+				flags := []string{}
+				for _, label := range tc.ListLabels {
+					flags = append(flags, "--include-tag", label)
+				}
+				checkList(tc.AppearOnInclude, flags...)
+			})
+
+			// list with label excluded
+			suite.Run("label_excluded", func() {
+				flags := []string{}
+				for _, label := range tc.ListLabels {
+					flags = append(flags, "--exclude-tag", label)
+				}
+				checkList(tc.AppearOnExclude, flags...)
+			})
+		})
+	}
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
@@ -177,7 +271,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					j := testutils.MakeNoopJob()
 					j, err = suite.client.Submit(ctx, j, nil)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, shortID(false, j.ID))
+					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ

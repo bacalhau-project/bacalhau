@@ -79,6 +79,10 @@ func newDevStackCmd() *cobra.Command {
 		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
 		`Use the simulator transport at the given URL`,
 	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
+		`Connect devstack to public IPFS`,
+	)
 
 	setupJobSelectionCLIFlags(devstackCmd, OS)
 	setupCapacityManagerCLIFlags(devstackCmd, OS)

@@ -23,7 +23,7 @@ type Endpoint interface {
 	ResultAccepted(context.Context, ResultAcceptedRequest) (ResultAcceptedResponse, error)
 	// ResultRejected rejects a result for a given executionID.
 	ResultRejected(context.Context, ResultRejectedRequest) (ResultRejectedResponse, error)
-	// CancelJob cancels a job for a given executionID.
+	// CancelExecution cancels a job for a given executionID.
 	CancelExecution(context.Context, CancelExecutionRequest) (CancelExecutionResponse, error)
 }
 
@@ -64,7 +64,7 @@ type ExecutionMetadata struct {
 func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
-		JobID:       execution.Shard.Job.ID,
+		JobID:       execution.Shard.Job.Metadata.ID,
 		ShardIndex:  execution.Shard.Index,
 	}
 }

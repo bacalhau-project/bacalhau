@@ -199,6 +199,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 }
 
 func (s *DockerRunSuite) TestRun_SubmitInputs() {
+	s.T().Skip("TODO: test stack is not connected to public IPFS and can't resolve the CIDs")
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -280,26 +281,23 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		{numberOfJobs: 1},
 	}
 
-	Fatal = FakeFatalErrorHandler
-
 	for i, tc := range tests {
 		type (
 			InputURL struct {
 				url             string
 				pathInContainer string
 				flag            string
+				filename        string
 			}
 		)
 
 		// For URLs, the input should be a file, the output a directory
 		// Internally the URL storage provider appends the filename to the directory path
 		testURLs := []struct {
-			inputURLs []InputURL
-			err       error
+			inputURL InputURL
 		}{
-			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://ifps.io/CID", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md", pathInContainer: "/inputs", filename: "README.md", flag: "-u"}},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/filecoin-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-u"}},
 		}
 
 		for _, turls := range testURLs {
@@ -309,30 +307,18 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 					"--api-host", s.host,
 					"--api-port", s.port}
 
-				for _, iurl := range turls.inputURLs {
-					iurlString := iurl.url
-					flagsArray = append(flagsArray, iurl.flag, iurlString)
-				}
-				flagsArray = append(flagsArray, "ubuntu", "cat", "/app/foo_data.txt")
+				flagsArray = append(flagsArray, turls.inputURL.flag, turls.inputURL.url)
+				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURL.pathInContainer, turls.inputURL.filename))
 
 				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				require.Equal(s.T(), len(turls.inputURLs), len(j.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(s.T(), 1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(s.T(), turls.inputURL.url, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
+				require.Equal(s.T(), turls.inputURL.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
 
-				// Need to do the below because ordering is not guaranteed
-				for _, turlIU := range turls.inputURLs {
-					testURLinJobInputs := false
-					for _, jobInput := range j.Spec.Inputs {
-						if turlIU.url == jobInput.URL && turlIU.pathInContainer == jobInput.Path {
-							testURLinJobInputs = true
-						}
-					}
-					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs: %s", turlIU.url)
-
-				}
 			}()
 		}
 	}
@@ -367,7 +353,6 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 
 		for _, tcids := range testCids {
 			func() {
-				Fatal = FakeFatalErrorHandler
 				ctx := context.Background()
 				flagsArray := []string{"docker", "run",
 					"--api-host", s.host,
@@ -456,10 +441,10 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 
 			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-			require.LessOrEqual(s.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.LessOrEqual(s.T(), j.Metadata.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			require.GreaterOrEqual(s.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(s.T(), j.Metadata.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
@@ -603,8 +588,6 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 	for _, tc := range tests {
 		func() {
-			Fatal = FakeFatalErrorHandler
-
 			ctx := context.Background()
 			flagsArray := []string{"docker", "run",
 				"--api-host", s.host,
@@ -698,7 +681,7 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 			return "", err
 		}
 		j := testutils.GetJobFromTestOutput(ctx, s.T(), apiClient, out)
-		return j.ID, nil
+		return j.Metadata.ID, nil
 	}
 
 	// test that we must have more than one node to run the job

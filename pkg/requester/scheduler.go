@@ -64,15 +64,15 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Debug().Msgf("found %d nodes for job %s", len(nodeIDs), req.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("found %d nodes for job %s", len(nodeIDs), req.Job.Metadata.ID)
 
 	rankedNodes, err := s.nodeRanker.RankNodes(ctx, req.Job, nodeIDs)
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.ID)
+	log.Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
 
-	minBids := max(req.Job.Deal.MinBids, req.Job.Deal.Concurrency)
+	minBids := max(req.Job.Spec.Deal.MinBids, req.Job.Spec.Deal.Concurrency)
 	if len(rankedNodes) < minBids {
 		return NewErrNotEnoughNodes(minBids, len(rankedNodes))
 	}
@@ -93,7 +93,7 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	for _, node := range rankedNodes[:min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
 		// create a new space linked to request context, but call noitfyAskForBid with a new context
 		// as the request context will be canceled the request returns
-		_, span := s.newSpan(ctx, "askForBid", req.Job.ID)
+		_, span := s.newSpan(ctx, "askForBid", req.Job.Metadata.ID)
 		go s.notifyAskForBid(context.Background(), span, &req.Job, node.ID.String())
 	}
 
@@ -103,8 +103,8 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *model.Job, nodeID string) {
 	defer span.End()
 	// TODO: ask to bid on certain shards rather than asking all compute nodes to bid on all shards
-	shardIndexes := make([]int, job.ExecutionPlan.TotalShards)
-	for i := 0; i < job.ExecutionPlan.TotalShards; i++ {
+	shardIndexes := make([]int, job.Spec.ExecutionPlan.TotalShards)
+	for i := 0; i < job.Spec.ExecutionPlan.TotalShards; i++ {
 		shardIndexes[i] = i
 	}
 
@@ -228,7 +228,7 @@ func (s *Scheduler) notifyShardError(ctx context.Context, shard model.JobShard, 
 		}
 		s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 			SourceNodeID: s.id,
-			JobID:        shard.Job.ID,
+			JobID:        shard.Job.Metadata.ID,
 			ShardIndex:   shard.Index,
 			Status:       message,
 			EventName:    model.JobEventError,

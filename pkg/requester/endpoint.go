@@ -70,22 +70,28 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/controller.SubmitJob")
 	// defer span.End()
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Job.Spec, node.storageProviders)
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, *data.Spec, node.storageProviders)
 	if err != nil {
 		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
 	job := &model.Job{
-		ID:                 jobID,
-		APIVersion:         data.Job.APIVersion,
-		ClientID:           data.ClientID,
-		Spec:               data.Job.Spec,
-		Deal:               data.Job.Deal,
-		ExecutionPlan:      executionPlan,
-		CreatedAt:          time.Now(),
-		RequesterNodeID:    node.id,
-		RequesterPublicKey: node.publicKey,
+		APIVersion: data.APIVersion,
+		Metadata: model.Metadata{
+			ID:        jobID,
+			ClientID:  data.ClientID,
+			CreatedAt: time.Now(),
+		},
+		Status: model.JobStatus{
+			Requester: model.JobRequester{
+				RequesterNodeID:    node.id,
+				RequesterPublicKey: node.publicKey,
+			},
+		},
+		Spec: *data.Spec,
 	}
+	job.Spec.Deal = data.Spec.Deal
+	job.Spec.ExecutionPlan = executionPlan
 
 	// set a default timeout value if one is not passed or below an acceptable value
 	if job.Spec.GetTimeout() <= node.minJobExecutionTimeout {

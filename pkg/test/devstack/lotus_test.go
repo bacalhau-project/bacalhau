@@ -57,12 +57,13 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	require.NoError(s.T(), err)
 
 	j := &model.Job{}
+	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
 	j.Spec.Publisher = model.PublisherFilecoin
 	j.Spec.Contexts = contextStorageList
 	j.Spec.Outputs = testCase.Outputs
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
@@ -76,7 +77,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 
 	err = resolver.Wait(
 		ctx,
-		submittedJob.ID,
+		submittedJob.Metadata.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]model.JobStateType{
 			model.JobStateError,
@@ -87,7 +88,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, submittedJob.ID)
+	shards, err := resolver.GetShards(ctx, submittedJob.Metadata.ID)
 	require.NoError(s.T(), err)
 
 	require.NotNil(s.T(), stack.Lotus)

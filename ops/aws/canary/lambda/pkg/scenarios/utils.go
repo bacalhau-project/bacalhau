@@ -7,17 +7,22 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
+const canaryAnnotation = "canary"
 
 func getSampleDockerJob() *model.Job {
-	var j = &model.Job{}
+	var j = &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
@@ -29,16 +34,19 @@ func getSampleDockerJob() *model.Job {
 				defaultEchoMessage,
 			},
 		},
+		Annotations: []string{canaryAnnotation},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 	return j
 }
 
 func getSampleDockerIPFSJob() *model.Job {
-	var j = &model.Job{}
+	var j = &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
@@ -48,16 +56,16 @@ func getSampleDockerIPFSJob() *model.Job {
 			Entrypoint: []string{
 				"bash",
 				"-c",
-				"md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz",
+				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
 			},
 		},
 		Inputs: []model.StorageSpec{
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
-			// You can download via https://w3s.link/ipfs/bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy
+			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "inputs",
-				CID:           "bafybeicumr67jkyarg5lspqi2w4zqopvgii5dgdbe5vtbbq53mbyftduxy",
+				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
 				Path:          "/inputs/data.tar.gz",
 			},
 		},
@@ -68,9 +76,10 @@ func getSampleDockerIPFSJob() *model.Job {
 				Path:          "/outputs",
 			},
 		},
+		Annotations: []string{canaryAnnotation},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 	return j
@@ -81,11 +90,30 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    60,
-		OutputDir:      dir,
-		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-	}, nil
+
+	var downloadSettings *ipfs.IPFSDownloadSettings
+	switch system.GetEnvironment() {
+	case system.EnvironmentProd:
+		downloadSettings = &ipfs.IPFSDownloadSettings{
+			TimeoutSecs:    60,
+			OutputDir:      dir,
+			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+		}
+	case system.EnvironmentTest:
+		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
+			downloadSettings = &ipfs.IPFSDownloadSettings{
+				TimeoutSecs:    60,
+				OutputDir:      dir,
+				IPFSSwarmAddrs: os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"),
+			}
+		}
+	case system.EnvironmentDev:
+		log.Warn().Msg("Development environment has no download settings attached")
+	case system.EnvironmentStaging:
+		log.Warn().Msg("Staging environment has no download settings attached")
+	}
+
+	return downloadSettings, nil
 }
 
 func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
@@ -93,7 +121,7 @@ func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submit
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(
 		ctx,
-		submittedJob.ID,
+		submittedJob.Metadata.ID,
 		totalShards,
 		job.WaitThrowErrors([]model.JobStateType{
 			model.JobStateError,
@@ -130,4 +158,17 @@ func osReadDir(root string) ([]string, error) {
 		files = append(files, file.Name())
 	}
 	return files, nil
+}
+
+func getClient() *publicapi.APIClient {
+	apiHost := config.GetAPIHost()
+	apiPort := config.GetAPIPort()
+	if apiHost == "" {
+		apiHost = system.Envs[system.Production].APIHost
+	}
+	if apiPort == "" {
+		apiPort = fmt.Sprint(system.Envs[system.Production].APIPort)
+	}
+	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
+	return client
 }

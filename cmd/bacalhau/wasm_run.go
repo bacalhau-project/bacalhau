@@ -95,15 +95,15 @@ func newRunWasmCmd() *cobra.Command {
 		`What publisher engine to use to publish the job results`,
 	)
 	runWasmCommand.PersistentFlags().IntVarP(
-		&wasmJob.Deal.Concurrency, "concurrency", "c", wasmJob.Deal.Concurrency,
+		&wasmJob.Spec.Deal.Concurrency, "concurrency", "c", wasmJob.Spec.Deal.Concurrency,
 		`How many nodes should run the job`,
 	)
 	runWasmCommand.PersistentFlags().IntVar(
-		&wasmJob.Deal.Confidence, "confidence", wasmJob.Deal.Confidence,
+		&wasmJob.Spec.Deal.Confidence, "confidence", wasmJob.Spec.Deal.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
 	runWasmCommand.PersistentFlags().IntVar(
-		&wasmJob.Deal.MinBids, "min-bids", wasmJob.Deal.MinBids,
+		&wasmJob.Spec.Deal.MinBids, "min-bids", wasmJob.Spec.Deal.MinBids,
 		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
 	runWasmCommand.PersistentFlags().Float64Var(
@@ -200,7 +200,7 @@ func runWasm(
 	// We can only use a Deterministic verifier if we have multiple nodes running the job
 	// If the user has selected a Deterministic verifier (or we are using it by default)
 	// then switch back to a Noop Verifier if the concurrency is too low.
-	if wasmJob.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
+	if wasmJob.Spec.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
 		wasmJob.Spec.Verifier = model.VerifierNoop
 	}
 
