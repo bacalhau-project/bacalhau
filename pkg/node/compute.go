@@ -54,12 +54,13 @@ func NewComputeNode(
 	})
 
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
-		ID:         host.ID().String(),
-		Callback:   computeCallback,
-		Store:      executionStore,
-		Executors:  executors,
-		Verifiers:  verifiers,
-		Publishers: publishers,
+		ID:              host.ID().String(),
+		Callback:        computeCallback,
+		Store:           executionStore,
+		Executors:       executors,
+		Verifiers:       verifiers,
+		Publishers:      publishers,
+		SimulatorConfig: config.SimulatorConfig,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{

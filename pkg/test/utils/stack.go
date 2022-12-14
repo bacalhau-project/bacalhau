@@ -27,9 +27,9 @@ func SetupTest(
 	t.Cleanup(cm.Cleanup)
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:     nodes,
-		NumberOfBadActors: badActors,
-		LocalNetworkLotus: lotusNode,
+		NumberOfNodes:            nodes,
+		NumberOfBadComputeActors: badActors,
+		LocalNetworkLotus:        lotusNode,
 	}
 	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{})
 	return stack, cm

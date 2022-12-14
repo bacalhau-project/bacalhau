@@ -26,7 +26,6 @@ type NodeConfig struct {
 	HostAddress          string
 	APIPort              int
 	MetricsPort          int
-	IsBadActor           bool
 	ComputeConfig        ComputeConfig
 	RequesterNodeConfig  RequesterConfig
 	APIServerConfig      publicapi.APIServerConfig

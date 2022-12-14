@@ -3,6 +3,8 @@ package node
 import (
 	"fmt"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type RequesterConfigParams struct {
@@ -13,6 +15,7 @@ type RequesterConfigParams struct {
 
 	StateManagerBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
+	SimulatorConfig                    model.SimulatorConfigRequester
 }
 
 type RequesterConfig struct {
@@ -31,6 +34,7 @@ type RequesterConfig struct {
 	StateManagerBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
+	SimulatorConfig         model.SimulatorConfigRequester
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -70,6 +74,7 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		StateManagerBackgroundTaskInterval: params.StateManagerBackgroundTaskInterval,
 
 		NodeRankRandomnessRange: params.NodeRankRandomnessRange,
+		SimulatorConfig:         params.SimulatorConfig,
 	}
 
 	return config
