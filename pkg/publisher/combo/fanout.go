@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -11,25 +12,36 @@ import (
 	"go.uber.org/multierr"
 )
 
+// TODO: Update docs
 // A fanoutPublisher is a publisher that will try multiple publishers in
 // parallel and return the result from the first one to succeed. Other
 // publishers will continue to run but their results and errors from the other
 // publishers are also ignored. An error is only returned if all publishers fail
 // to produce a result.
 type fanoutPublisher struct {
+	preferred  publisher.Publisher
 	publishers []publisher.Publisher
 }
 
 func NewFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
-	return &fanoutPublisher{publishers}
+	return &fanoutPublisher{
+		publishers[0],
+		publishers,
+	}
 }
 
 // fanout runs the passed method for all publishers in parallel. It immediately
 // returns two channels from which the results can be read. Return values are
 // written immediately to the value channel. A single error is written to the
 // error channel only when all publishers have returned.
-func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T, error)) (chan T, chan error) {
-	valueChannel := make(chan T, len(publishers))
+func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T, error)) (chan struct {
+	Sender P
+	Value  T
+}, chan error) {
+	valueChannel := make(chan struct {
+		Sender P
+		Value  T
+	}, len(publishers))
 	internalErrorChannel := make(chan error, len(publishers))
 	externalErrorChannel := make(chan error, 1)
 
@@ -50,7 +62,10 @@ func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T
 	runFunc := func(p P) {
 		value, err := method(p)
 		if err == nil {
-			valueChannel <- value
+			valueChannel <- struct {
+				Sender P
+				Value  T
+			}{p, value}
 			log.Ctx(ctx).Debug().Str("Publisher", fmt.Sprintf("%T", p)).Interface("Value", value).Send()
 		} else {
 			internalErrorChannel <- err
@@ -80,8 +95,8 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	for {
 		select {
 		case installed := <-valueChannel:
-			if installed {
-				return installed, nil
+			if installed.Value {
+				return installed.Value, nil
 			}
 		case err := <-errorChannel:
 			return false, err
@@ -102,13 +117,46 @@ func (f *fanoutPublisher) PublishShardResult(
 		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
 	})
 
-	// Just return the first storage spec that we get
-	select {
-	case value := <-valueChannel:
-		return value, nil
-	case err := <-errorChannel:
-		return model.StorageSpec{}, err
+	type result struct {
+		Sender publisher.Publisher
+		Value  model.StorageSpec
 	}
+
+	timeoutChannel := make(chan bool, 1)
+	results := make([]result, 0)
+
+loop:
+	for {
+		select {
+		case value := <-valueChannel:
+			results = append(results, value)
+			if len(results) == len(f.publishers) {
+				// break because everyone returned
+				break loop
+			}
+
+			// start timeout for other results
+			go func() {
+				// TODO: Make timeout value configurable
+				time.Sleep(time.Second * 2)
+				timeoutChannel <- true
+			}()
+		case <-timeoutChannel:
+			break loop
+		case err := <-errorChannel:
+			return model.StorageSpec{}, err
+		}
+	}
+
+	// search for preferred result
+	for _, result := range results {
+		if result.Sender == f.preferred {
+			return result.Value, nil
+		}
+	}
+
+	// return first result if preferred not found
+	return results[0].Value, nil
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)

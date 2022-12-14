@@ -22,13 +22,20 @@ var uninstalledPublisher = mockPublisher{
 	sleepTime:             0,
 }
 
+var preferredPublisher = mockPublisher{
+	isInstalled:        true,
+	publishShardResult: model.StorageSpec{CID: "123", StorageSource: model.StorageSourceEstuary},
+	sleepTime:          50 * time.Millisecond,
+}
+
 func TestFanoutPublisher(t *testing.T) {
 	runTestCases(t, map[string]comboTestCase{
-		"single publsiher":      {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
-		"takes first value":     {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
-		"waits for installed":   {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
-		"noone is installed":    {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
-		"waits for good value":  {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
-		"returns error for all": {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
+		"single publisher":          {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
+		"takes first value":         {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
+		"waits for installed":       {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
+		"noone is installed":        {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
+		"waits for good value":      {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
+		"returns error for all":     {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
+		"waits for preferred value": {NewFanoutPublisher(&preferredPublisher, &healthyPublisher), preferredPublisher},
 	})
 }
