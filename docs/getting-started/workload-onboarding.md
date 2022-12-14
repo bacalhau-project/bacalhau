@@ -29,7 +29,7 @@ The following lists current limitations:
 
 * Public container registries only
 * Containers must have an `x86_64` CPU architecture
-* The `--inputs` and `--input-voumes` flags do not support CID subpaths. Directories only.
+* The `--inputs` and `--input-volumes` flags do not support CID subpaths. Directories only.
 * The `--input-urls` flag does not support URL directories. Single files only.
 
 ### Onboarding
