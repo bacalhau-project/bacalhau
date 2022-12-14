@@ -32,9 +32,9 @@ func SetupTest(
 	t.Cleanup(cm.Cleanup)
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:     nodes,
-		NumberOfBadActors: badActors,
-		LocalNetworkLotus: lotusNode,
+		NumberOfNodes:            nodes,
+		NumberOfBadComputeActors: badActors,
+		LocalNetworkLotus:        lotusNode,
 	}
 
 	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)

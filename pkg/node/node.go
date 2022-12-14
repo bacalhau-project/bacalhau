@@ -27,7 +27,6 @@ type NodeConfig struct {
 	HostID               string
 	APIPort              int
 	MetricsPort          int
-	IsBadActor           bool
 	ComputeConfig        ComputeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
 	LotusConfig          *filecoinlotus.PublisherConfig

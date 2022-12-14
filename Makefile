@@ -211,10 +211,6 @@ test-devstack:
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
-# .PHONY: test-badactors
-# test-badactors:
-# 	TEST=TestCatchBadActors make test-one
-
 # .PHONY: test-pythonwasm
 # test-pythonwasm:
 # # TestSimplestPythonWasmDashC
