@@ -16,7 +16,7 @@ import (
 )
 
 func TestScenarios(t *testing.T) {
-	stack, _ := testutils.SetupTest(context.Background(), t, 1, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
+	stack, _ := testutils.SetupTest(context.Background(), t, 3, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
 
 	os.Setenv("BACALHAU_ENVIRONMENT", "test")
 	t.Logf("BACALHAU_ENVIRONMENT: %s", os.Getenv("BACALHAU_ENVIRONMENT"))
