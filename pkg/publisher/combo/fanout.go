@@ -3,13 +3,12 @@ package combo
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+	"sync"
+	"time"
 )
 
 // TODO: Update docs
@@ -135,12 +134,15 @@ loop:
 				break loop
 			}
 
-			// start timeout for other results
-			go func() {
-				// TODO: Make timeout value configurable
-				time.Sleep(time.Second * 2)
-				timeoutChannel <- true
-			}()
+			// start timeout for other results when first result is returned
+			if len(results) == 1 {
+				go func() {
+					// TODO: Make timeout value configurable
+					time.Sleep(time.Second * 2)
+					timeoutChannel <- true
+				}()
+			}
+
 		case <-timeoutChannel:
 			break loop
 		case err := <-errorChannel:
