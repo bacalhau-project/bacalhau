@@ -140,7 +140,6 @@ func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobE
 
 	publicKeyBytes, err := t.privateKey.GetPublic().Raw()
 	if err != nil {
-		log.Debug().Msgf("XXX Error case 1 %s", err)
 		return err
 	}
 	event.SenderPublicKey = publicKeyBytes
@@ -150,19 +149,16 @@ func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobE
 		SentTime:  time.Now(),
 	})
 	if err != nil {
-		log.Debug().Msgf("XXX Error case 2 %s", err)
 		return err
 	}
 
 	if t.websocket == nil {
-		log.Debug().Msgf("XXX Error case 3")
 		return fmt.Errorf("websocket not connected")
 	}
 
 	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
 	err = t.websocket.WriteMessage(websocket.TextMessage, bs)
 	if err != nil {
-		log.Debug().Msgf("XXX Error case 4 %s", err)
 		return err
 	}
 	return nil
