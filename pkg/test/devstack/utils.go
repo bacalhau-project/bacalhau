@@ -37,9 +37,9 @@ func SetupTest(
 	cm := system.NewCleanupManager()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:     nodes,
-		NumberOfBadActors: badActors,
-		LocalNetworkLotus: lotusNode,
+		NumberOfNodes:            nodes,
+		NumberOfBadComputeActors: badActors,
+		LocalNetworkLotus:        lotusNode,
 	}
 
 	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)
@@ -88,8 +88,8 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	defer cm.Cleanup()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:     args.NodeCount,
-		NumberOfBadActors: args.BadActors,
+		NumberOfNodes:            args.NodeCount,
+		NumberOfBadComputeActors: args.BadActors,
 	}
 
 	storageProvidersFactory := devstack.NewNoopStorageProvidersFactoryWithConfig(noop_storage.StorageConfig{
@@ -111,12 +111,11 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	executorsFactory := node.ExecutorsFactoryFunc(func(
 		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 		return executor_util.NewNoopExecutors(noop_executor.ExecutorConfig{
-			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
 					runOutput := &model.RunCommandResult{}
 					runOutput.STDOUT = fmt.Sprintf("hello world %d", shard.Index)
-					if nodeConfig.IsBadActor {
+					if nodeConfig.ComputeConfig.SimulatorConfig.IsBadActor {
 						runOutput.STDOUT = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
 					}
 					err := os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd

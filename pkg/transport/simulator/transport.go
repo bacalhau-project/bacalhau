@@ -2,10 +2,6 @@ package simulator
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -114,48 +110,14 @@ func (t *SimulatorTransport) Subscribe(ctx context.Context, fn transport.Subscri
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
-func (t *SimulatorTransport) Encrypt(ctx context.Context, data, privateKeyBytes []byte) ([]byte, error) {
-	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	publicKeyBytes, err := unmarshalledPublicKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("could not cast public key to RSA")
-	}
-	return rsa.EncryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPublicKey,
-		data,
-		nil,
-	)
+func (t *SimulatorTransport) Encrypt(ctx context.Context, data, keyBytes []byte) ([]byte, error) {
+	// XXX Simulator doesn't implement encryption right now. In the future, to
+	// support more sophisticated bad actors, it will need to.
+	return data, nil
 }
 
 func (t *SimulatorTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	privateKeyBytes, err := t.privateKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	return rsa.DecryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPrivateKey,
-		data,
-		nil,
-	)
+	return data, nil
 }
 
 /*
@@ -195,7 +157,11 @@ func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobE
 	}
 
 	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
-	return t.websocket.WriteMessage(websocket.TextMessage, bs)
+	err = t.websocket.WriteMessage(websocket.TextMessage, bs)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *SimulatorTransport) readMessage(payload *jobEventEnvelope) {
