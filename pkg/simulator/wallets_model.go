@@ -193,7 +193,7 @@ func escrowID(client, server, jobID string) string {
 	return fmt.Sprintf("%s -> %s; jobID=%s", client, server, jobID)
 }
 
-func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount uint64) error {
+func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount int64) error {
 	wallets.moneyMutex.Lock()
 	defer wallets.moneyMutex.Unlock()
 	wallet, ok := wallets.jobOwners[jobID]
