@@ -3,8 +3,6 @@ from pathlib import Path
 from packaging import version
 from sys import argv
 
-import pickle
-
 import subprocess
 
 from jinja2 import Environment, FileSystemLoader
@@ -105,10 +103,7 @@ for schemaFile in SCHEMA_DIR.glob("jsonschema/v*.json"):
 jsonSchemas = sorted(jsonSchemas, key=lambda x: x["schemaVersion"], reverse=True)
 jsonSchemas.insert(0, {"schemaVersion": "LATEST", "file": f"v{maxSchema}.json"})
 
-tempPkl = Path(__file__).parent / "temp.pkl"
-# Pickel the jsonSchemas list so we can use it in the index.jinja file
-with open(tempPkl, "wb") as f:
-    pickle.dump(jsonSchemas, f)
+jsonSchemaIndexFile = SCHEMA_DIR / "index.md"
 
 jsonSchemaIndex = template.render(jsonSchemas=jsonSchemas)
 

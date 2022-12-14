@@ -4,10 +4,14 @@ layout: default
 
 # JSON Schema
 <ul>
-{% raw %} {% for k, v in jsonSchemas %} <li><a href="jsonschema/{{ v }}">{{ k }}</a></li> {% endfor %} {% endraw %}
+{% for j in jsonSchemas %}
+<li><a href="jsonschema/{{ j.file }}">{{ j.schemaVersion }}</a></li>
+{% endfor %}
 </ul>
 
 # Open API
 <ul>
-{% raw %} {% for k, v in openAPIs %} <li><a href="openapi/{{ v }}">{{ k }}</a></li> {% endfor %} {% endraw %}
+{% for o in openapis %}
+<li><a href="openapi/{{ o.file }}">{{ o.openapiVersion }}</a></li>
+{% endfor %}
 </ul>
