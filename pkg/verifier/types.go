@@ -10,10 +10,11 @@ type EncrypterFunction func(ctx context.Context, data []byte, publicKeyBytes []b
 type DecrypterFunction func(ctx context.Context, data []byte) ([]byte, error)
 
 type VerifierResult struct {
-	JobID      string
-	NodeID     string
-	ShardIndex int
-	Verified   bool
+	JobID       string
+	NodeID      string
+	ExecutionID string
+	ShardIndex  int
+	Verified    bool
 }
 
 // Returns a verifier that can be used to verify a job.

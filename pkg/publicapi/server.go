@@ -14,12 +14,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
@@ -48,7 +48,7 @@ type APIServerConfig struct {
 	RequestHandlerTimeoutByURI map[string]time.Duration
 }
 
-var DefaultAPIServerConfig = &APIServerConfig{
+var DefaultAPIServerConfig = APIServerConfig{
 	ReadHeaderTimeout:          10 * time.Second,
 	ReadTimeout:                20 * time.Second,
 	WriteTimeout:               20 * time.Second,
@@ -59,14 +59,14 @@ var DefaultAPIServerConfig = &APIServerConfig{
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	localdb            localdb.LocalDB
-	transport          transport.Transport
-	Requester          *requesternode.RequesterNode
+	libp2pHost         host.Host
+	Requester          requester.Endpoint
 	DebugInfoProviders []model.DebugInfoProvider
 	Publishers         publisher.PublisherProvider
 	StorageProviders   storage.StorageProvider
 	Host               string
 	Port               int
-	Config             *APIServerConfig
+	Config             APIServerConfig
 	// jobId or "" (for all events) -> connections for that subscription
 	Websockets      map[string][]*websocket.Conn
 	WebsocketsMutex sync.RWMutex
@@ -89,8 +89,8 @@ func NewServer(
 	host string,
 	port int,
 	localdb localdb.LocalDB,
-	transport transport.Transport,
-	requester *requesternode.RequesterNode,
+	transport host.Host,
+	requester requester.Endpoint,
 	debugInfoProviders []model.DebugInfoProvider,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
@@ -114,15 +114,15 @@ func NewServerWithConfig(
 	host string,
 	port int,
 	localdb localdb.LocalDB,
-	transport transport.Transport,
-	requester *requesternode.RequesterNode,
+	transport host.Host,
+	requester requester.Endpoint,
 	debugInfoProviders []model.DebugInfoProvider,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
-	config *APIServerConfig) *APIServer {
+	config APIServerConfig) *APIServer {
 	a := &APIServer{
 		localdb:            localdb,
-		transport:          transport,
+		libp2pHost:         transport,
 		Requester:          requester,
 		DebugInfoProviders: debugInfoProviders,
 		Publishers:         publishers,
@@ -154,8 +154,6 @@ func (apiServer *APIServer) GetURI() string {
 //
 //nolint:lll
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	hostID := apiServer.Requester.ID
-
 	// dynamically write the git tag to the Swagger docs
 	docs.SwaggerInfo.Version = version.Get().GitVersion
 
@@ -188,12 +186,12 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		ReadTimeout:       apiServer.Config.ReadTimeout,
 		WriteTimeout:      apiServer.Config.WriteTimeout,
 		BaseContext: func(_ net.Listener) context.Context {
-			return logger.ContextWithNodeIDLogger(context.Background(), apiServer.Requester.ID)
+			return logger.ContextWithNodeIDLogger(context.Background(), apiServer.libp2pHost.ID().String())
 		},
 	}
 
 	log.Debug().Msgf(
-		"API server listening for host %s on %s...", hostID, srv.Addr)
+		"API server listening for host %s on %s...", apiServer.Host, srv.Addr)
 
 	// Cleanup resources when system is done:
 	cm.RegisterCallback(func() error {
@@ -205,7 +203,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	err := srv.ListenAndServe()
 	if err == http.ErrServerClosed {
 		log.Ctx(ctx).Debug().Msgf(
-			"API server closed for host %s on %s.", hostID, srv.Addr)
+			"API server closed for host %s on %s.", apiServer.Host, srv.Addr)
 		return nil // expected error if the server is shut down
 	}
 
@@ -272,6 +270,7 @@ func (apiServer *APIServer) chainHandlers(uri string, handlerFunc http.HandlerFu
 	handler = http.MaxBytesHandler(handler, int64(MaxBytesToReadInBody))
 
 	// logging handler. Should be last in the chain.
-	handler = handlerwrapper.NewHTTPHandlerWrapper(apiServer.Requester.ID, handler, handlerwrapper.NewJSONLogHandler())
+	handler = handlerwrapper.NewHTTPHandlerWrapper(
+		apiServer.libp2pHost.ID().String(), handler, handlerwrapper.NewJSONLogHandler())
 	return uri, handler
 }

@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -16,6 +16,7 @@ import (
 	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	noop_verifier "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,15 +51,20 @@ func (s *ComputeSuite) SetupTest() {
 }
 
 func (s *ComputeSuite) setupNode() {
+	port, err := freeport.GetFreePort()
+	s.NoError(err)
+
+	host, err := libp2p.NewHost(port)
+	s.NoError(err)
 	s.node = node.NewComputeNode(
 		context.Background(),
-		s.T().Name(),
+		host,
 		s.config,
-		s.jobStore,
+		"",
+		nil,
 		noop_executor.NewNoopExecutorProvider(s.executor),
 		noop_verifier.NewNoopVerifierProvider(s.verifier),
 		noop_publisher.NewNoopPublisherProvider(s.publisher),
-		eventhandler.NewDefaultTracer(),
 	)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
 		ExecutionStore: s.node.ExecutionStore,
@@ -70,7 +76,7 @@ func TestComputeSuite(t *testing.T) {
 }
 
 func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
-	response, err := s.node.Frontend.AskForBid(ctx, frontend.AskForBidRequest{
+	response, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
 		Job:          job,
 		ShardIndexes: []int{0},
 	})
@@ -87,7 +93,7 @@ func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string 
 	executionID := s.prepareAndAskForBid(ctx, job)
 
 	// run the job
-	_, err := s.node.Frontend.BidAccepted(ctx, frontend.BidAcceptedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateWaitingVerification))
 	s.NoError(err)

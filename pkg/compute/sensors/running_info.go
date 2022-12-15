@@ -3,21 +3,21 @@ package sensors
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/backend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type RunningExecutionsInfoProviderParams struct {
 	Name          string
-	BackendBuffer *backend.ServiceBuffer
+	BackendBuffer *compute.ExecutorBuffer
 }
 
 // RunningExecutionsInfoProvider provides DebugInfo about the currently running executions.
 // The info can be used for logging, metric, or to handle /debug API implementation.
 type RunningExecutionsInfoProvider struct {
 	name          string
-	backendBuffer *backend.ServiceBuffer
+	backendBuffer *compute.ExecutorBuffer
 }
 
 func NewRunningExecutionsInfoProvider(params RunningExecutionsInfoProviderParams) *RunningExecutionsInfoProvider {

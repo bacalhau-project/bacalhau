@@ -20,7 +20,7 @@ Spec:
   Sharding:
     BatchSize: 1
     GlobPatternBasePath: /inputs
-Deal:
-  Concurrency: 1
-  Confidence: 0
-  MinBids: 0
+  Deal:
+    Concurrency: 1
+    Confidence: 0
+    MinBids: 0

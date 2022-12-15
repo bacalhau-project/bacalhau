@@ -44,5 +44,6 @@ output_dir
 experimental/*
 .idea/
 job-*
+!testdata/job-*
 coverage/
 coverage.out
