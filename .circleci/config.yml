@@ -561,40 +561,36 @@ jobs:
             python3 -m pip install -r requirements.txt
             python3 main.py
 
-      - when:
-          condition:
-            equal: ["main", << pipeline.git.branch >>]
-          steps:
-            - run:
-                name: Install gh
-                command: |
-                  wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
-                  sudo dpkg -i gh_2.14.7_linux_amd64.deb
-                  echo "$GITHUB_PR_PAT" | gh auth login --with-token
-                  rm gh_2.14.7_linux_amd64.deb
-            - run:
-                name: Install human-id generator
-                command: |
-                  pip3 install human-id
-            - run:
-                name: Git commit
-                command: |
-                  git config user.email "aronchick@gmail.com"
-                  git config user.name "aronchick"
-                  # Note: we delete this branch after the PR is merged
-                  GH_BRANCH_NAME=(ci-build-jsonschema_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
-                  git checkout -b $GH_BRANCH_NAME
-                  if test -n "$(git ls-files --modified)"; then
-                    git add --verbose -- ./docs
-                    COMMIT_MSG="Build jsonschema - this is an automatic commit"
-                    git commit -m "[circleci] $COMMIT_MSG [skip ci]"
-                    git push --set-upstream origin $GH_BRANCH_NAME
-                    # Note: if you close the PR below manually, you should delete the `ci-build-jsonschema_*` branch as well
-                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
-                    echo "Pull request: $PR_URL"
-                    sleep 3
-                    gh pr merge --auto --delete-branch -r $PR_URL
-                  fi
+      - run:
+          name: Install gh
+          command: |
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
+            echo "$GITHUB_PR_PAT" | gh auth login --with-token
+            rm gh_2.14.7_linux_amd64.deb
+      - run:
+          name: Install human-id generator
+          command: |
+            pip3 install human-id
+      - run:
+          name: Git commit
+          command: |
+            git config user.email "aronchick@gmail.com"
+            git config user.name "aronchick"
+            # Note: we delete this branch after the PR is merged
+            GH_BRANCH_NAME=(ci-build-jsonschema_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
+            git checkout -b $GH_BRANCH_NAME
+            if test -n "$(git ls-files --modified)"; then
+              git add --verbose -- ./docs
+              COMMIT_MSG="Build jsonschema - this is an automatic commit"
+              git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+              git push --set-upstream origin $GH_BRANCH_NAME
+              # Note: if you close the PR below manually, you should delete the `ci-build-jsonschema_*` branch as well
+              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+              echo "Pull request: $PR_URL"
+              sleep 3
+              gh pr merge --auto --delete-branch -r $PR_URL
+            fi
 
 orbs:
   heroku: circleci/heroku@1.2.6
