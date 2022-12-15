@@ -2,11 +2,6 @@ package libp2p
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -19,12 +14,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -32,7 +25,6 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
-const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
@@ -41,35 +33,13 @@ type LibP2PTransport struct {
 	subscribeFunctions   []transport.SubscribeFn
 	mutex                sync.RWMutex
 	host                 host.Host
-	peers                []multiaddr.Multiaddr
 	pubSub               *pubsub.PubSub
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
 	privateKey           crypto.PrivKey
-	shutdownChan         chan bool
 }
 
-func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []multiaddr.Multiaddr) (*LibP2PTransport, error) {
-	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
-	if err != nil {
-		return nil, err
-	}
-
-	// 0.0.0.0 will listen on any interface device.
-	sourceMultiAddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
-	if err != nil {
-		return nil, err
-	}
-
-	return NewTransportFromOptions(ctx, cm,
-		peers,
-		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(prvKey))
-}
-
-func NewTransportFromOptions(ctx context.Context,
-	cm *system.CleanupManager,
-	peers []multiaddr.Multiaddr, opts ...libp2p.Option) (*LibP2PTransport, error) {
+func NewTransport(ctx context.Context, cm *system.CleanupManager, h host.Host) (*LibP2PTransport, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.NewTransport")
 	defer span.End()
 
@@ -80,11 +50,6 @@ func NewTransportFromOptions(ctx context.Context,
 	})
 
 	tracer, err := pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
-	if err != nil {
-		return nil, err
-	}
-
-	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,12 +102,10 @@ func NewTransportFromOptions(ctx context.Context,
 		cm:                   cm,
 		subscribeFunctions:   []transport.SubscribeFn{},
 		host:                 h,
-		peers:                peers,
 		privateKey:           prvKey,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
-		shutdownChan:         make(chan bool),
 	}
 
 	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
@@ -191,30 +154,6 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		return t.Shutdown(ctx)
 	})
 
-	// reconnect to peers every 10 seconds, forever.
-	go func() {
-		err := t.connectToPeers(ctx)
-		if err != nil {
-			log.Ctx(ctx).Info().Msgf("Error initially connecting to peers: %s, retrying again in 10 seconds", err)
-		}
-		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				log.Ctx(ctx).Debug().Msgf("(Re-)connecting to peers on tick")
-				err := t.connectToPeers(ctx)
-				log.Ctx(ctx).Debug().Msgf("(Re-)connecting done")
-				if err != nil {
-					log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
-				}
-			case <-t.shutdownChan:
-				log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
-				return
-			}
-		}
-	}()
-
 	go t.listenForEvents(ctx)
 
 	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
@@ -223,22 +162,8 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 }
 
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
-
-	// stop ticker
-	log.Ctx(ctx).Debug().Msgf("Sending shutdown signal to reconnect loop")
-	t.shutdownChan <- true
-	log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
-
-	closeErr := t.host.Close()
-
-	if closeErr != nil {
-		log.Ctx(ctx).Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
-	} else {
-		log.Ctx(ctx).Debug().Msg("Libp2p transport has stopped")
-	}
-
 	return nil
 }
 
@@ -269,94 +194,6 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
-}
-
-func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
-	defer span.End()
-
-	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	publicKeyBytes, err := unmarshalledPublicKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("could not cast public key to RSA")
-	}
-	return rsa.EncryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPublicKey,
-		data,
-		nil,
-	)
-}
-
-func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
-	defer span.End()
-
-	privateKeyBytes, err := t.privateKey.Raw()
-	if err != nil {
-		return nil, err
-	}
-	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	return rsa.DecryptOAEP(
-		sha512.New(),
-		rand.Reader,
-		rsaPrivateKey,
-		data,
-		nil,
-	)
-}
-
-/*
-  libp2p
-*/
-
-func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
-	defer span.End()
-
-	if len(t.peers) == 0 {
-		return nil
-	}
-
-	errors := []error{}
-	for _, peerAddress := range t.peers {
-		// Extract the peer ID from the multiaddr.
-		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
-		if err != nil {
-			errors = append(errors, err)
-			log.Ctx(ctx).Warn().Msgf("Error parsing peer address: %s", err)
-			continue
-		}
-		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-		err = t.host.Connect(ctx, *info)
-		if err != nil {
-			errors = append(errors, err)
-			log.Ctx(ctx).Warn().Msgf("Error connecting to peer %s: %s, continuing...", info.ID, err)
-		} else {
-			log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
-		}
-	}
-	if len(errors) > 0 {
-		return fmt.Errorf("libp2p transport had errors connecting to peers: %s", errors)
-	}
-
-	return nil
 }
 
 /*

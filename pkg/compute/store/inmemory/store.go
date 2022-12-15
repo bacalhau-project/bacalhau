@@ -94,6 +94,9 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
 		return store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
 	}
+	if execution.State.IsTerminal() {
+		return store.NewErrExecutionAlreadyTerminal(request.ExecutionID, execution.State, request.NewState)
+	}
 	previousState := execution.State
 	execution.State = request.NewState
 	execution.Version += 1

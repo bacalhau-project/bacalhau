@@ -8,10 +8,10 @@
             "publisher": 2,
             "annotations": ["hello"],
             "resources": {
-                "cpu": 100,
+                "cpu": 1,
                 "disk": 1073741824,
                 "memory": 1073741824,
-                "gpu": 1
+                "gpu": 0
             },
             "timeout": 300E9,
             "dnt": false

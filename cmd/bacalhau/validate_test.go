@@ -4,30 +4,19 @@ package bacalhau
 
 import (
 	"fmt"
-	"net"
-	"net/url"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type ValidateSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 func TestValidateSuite(t *testing.T) {
 	suite.Run(t, new(ValidateSuite))
-}
-
-// before each test
-func (s *ValidateSuite) SetupTest() {
-	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 }
 
 func (s *ValidateSuite) TestValidate() {
@@ -36,23 +25,16 @@ func (s *ValidateSuite) TestValidate() {
 		testFile string
 		valid    bool
 	}{
-		"validJobFile":   {testFile: "../../testdata/job.yaml", valid: true},
-		"InvalidJobFile": {testFile: "../../testdata/job-invalid.yml", valid: false},
+		"validJobFile":   {testFile: "../../testdata/job-noop.yaml", valid: true},
+		"InvalidJobFile": {testFile: "../../testdata/job-noop-invalid.yml", valid: false},
 	}
 	for name, test := range tests {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-			defer cm.Cleanup()
-
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(s.T(), err)
-
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(s.T(), "validate",
-				"--api-host", host,
-				"--api-port", port,
+				"--api-host", s.host,
+				"--api-port", s.port,
 				test.testFile,
 			)
 
