@@ -17,6 +17,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -52,7 +53,7 @@ func TestDockerRunSuite(t *testing.T) {
 
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 	s.BaseSuite.SetupTest()
 }
 

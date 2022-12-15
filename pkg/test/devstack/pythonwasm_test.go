@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -39,7 +40,7 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting(s.T())

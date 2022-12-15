@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +32,7 @@ type GetSuite struct {
 
 // Before each test
 func (s *GetSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 	s.BaseSuite.SetupTest()
 }
 

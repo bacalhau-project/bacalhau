@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -34,7 +35,7 @@ func TestLotusNodeSuite(t *testing.T) {
 }
 
 func (s *lotusNodeSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
