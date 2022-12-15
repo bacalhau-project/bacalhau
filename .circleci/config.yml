@@ -721,6 +721,12 @@ workflows:
     jobs:
       - build:
           name: build-linux-amd64-<< pipeline.git.branch >>
+          matrix:
+            parameters:
+              target_os: ["linux"]
+              target_arch: ["amd64"]
+              run_tests: [false]
+              build_tags: [""]
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
