@@ -554,10 +554,12 @@ jobs:
       - run:
           name: Build JSONSchema
           command: |
-            curl -sSL https://install.python-poetry.org | python3 -
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt install python3.10 -y
+            python3 -m pip install --upgrade pip
             cd scripts/build_schema_files
-            /home/circleci/.local/bin/poetry install
-            /home/circleci/.local/bin/poetry run python main.py
+            python3 -m pip install -r requirements.txt
+            python3 main.py
 
       - when:
           condition:
