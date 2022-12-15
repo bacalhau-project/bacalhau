@@ -87,8 +87,6 @@ for jsonFile in jsonFileContents:
     with open(schemaFile, "w") as f:
         f.write(jsonFileContents[jsonFile])
 
-jsonSchemaIndexFile = SCHEMA_DIR / "jsonschema" / "index.md"
-
 # Render the template and write it to the index.md file
 jsonSchemas = []
 maxSchema = version.parse("0.0.0")
