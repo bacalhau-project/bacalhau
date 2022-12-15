@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -107,7 +108,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	testutils.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
