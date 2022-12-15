@@ -720,7 +720,7 @@ workflows:
   build_jsonschema: # Runs on new tags starting with 'v.'
     jobs:
       - build:
-          name: build-linux-amd64-<< matrix.build_tags >>
+          name: build-linux-amd64-<< pipeline.git.branch >>
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -729,7 +729,7 @@ workflows:
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
       - build_jsonschema_job:
-          name: run-jsonschema-gen-<< matrix.build_tags >>
+          name: run-jsonschema-gen-<< pipeline.git.branch >>
           requires:
             - build
           filters:
