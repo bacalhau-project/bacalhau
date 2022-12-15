@@ -36,18 +36,17 @@ func NewPrioritizedFanoutPublisher(publishers ...publisher.Publisher) publisher.
 	}
 }
 
+type fanoutResult[T any, P any] struct {
+	Value  T
+	Sender P
+}
+
 // fanout runs the passed method for all publishers in parallel. It immediately
 // returns two channels from which the results can be read. Return values are
 // written immediately to the value channel. A single error is written to the
 // error channel only when all publishers have returned.
-func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T, error)) (chan struct {
-	Sender P
-	Value  T
-}, chan error) {
-	valueChannel := make(chan struct {
-		Sender P
-		Value  T
-	}, len(publishers))
+func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T, error)) (chan fanoutResult[T, P], chan error) {
+	valueChannel := make(chan fanoutResult[T, P], len(publishers))
 	internalErrorChannel := make(chan error, len(publishers))
 	externalErrorChannel := make(chan error, 1)
 
@@ -68,10 +67,7 @@ func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T
 	runFunc := func(p P) {
 		value, err := method(p)
 		if err == nil {
-			valueChannel <- struct {
-				Sender P
-				Value  T
-			}{p, value}
+			valueChannel <- fanoutResult[T, P]{value, p}
 			log.Ctx(ctx).Debug().Str("Publisher", fmt.Sprintf("%T", p)).Interface("Value", value).Send()
 		} else {
 			internalErrorChannel <- err
