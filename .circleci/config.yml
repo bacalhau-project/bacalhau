@@ -235,12 +235,12 @@ jobs:
     executor: linux-amd64
     steps:
       - checkout
-      
+
       - run:
           name: Set canary dependency
           working_directory: ops/aws/canary/lambda
           command: make update
-          
+
       - run:
           name: Build
           working_directory: ops/aws/canary/lambda
@@ -257,7 +257,6 @@ jobs:
 
       - store_test_results:
           path: ops/aws/canary/lambda/unittests.xml
-
 
   coverage:
     executor: linux-amd64
@@ -417,6 +416,21 @@ jobs:
             echo "TAG = ${TAG}"
             find dist/
             gh release upload $TAG dist/*
+      - run:
+          name: Build Schema
+          command: |
+            curl -sSL https://install.python-poetry.org | python3 -
+            poetry install
+            poetry run scripts/build_schema_files/main.py
+            git add --verbose -- ./schema.bacalhau.org
+            COMMIT_MSG="Build JSONSchema file for << pipeline.git.tag >> - this is an automatic commit"
+            git commit -m "[circleci] $COMMIT_MSG [skip ci]"
+            git push --set-upstream origin $GH_BRANCH_NAME
+            # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
+            PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+            echo "Pull request: $PR_URL"
+            sleep 3
+            gh pr merge --auto --delete-branch -r $PR_URL
 
   update_ops:
     executor: linux-amd64
@@ -480,8 +494,7 @@ jobs:
             golangci-lint version
       - run:
           name: Install Swagger
-          command:
-            go install github.com/swaggo/swag/cmd/swag@v1.8.7
+          command: go install github.com/swaggo/swag/cmd/swag@v1.8.7
       - run:
           name: Install Pre-commit
           command: |
@@ -497,8 +510,7 @@ jobs:
             golangci-lint version
       - run:
           name: Build Swagger Docs
-          command:
-            make swagger-docs
+          command: make swagger-docs
 
       - when:
           condition:
@@ -555,7 +567,7 @@ workflows:
           name: Check canary build
           filters:
             tags:
-              ignore: /.*/ 
+              ignore: /.*/
 
   dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
@@ -649,7 +661,7 @@ workflows:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
-  
+
   build_swagger: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build_swagger:
@@ -692,7 +704,7 @@ workflows:
             - release-all-binaries
           filters:
             <<: *filters_tags_only
-  
+
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
