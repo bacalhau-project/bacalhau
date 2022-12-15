@@ -45,11 +45,6 @@ for longTag in tagList:
         print(f"Skipping {tag} because it is not a valid semver tag: {ve}")
         continue
 
-for tag in listOfTagsToBuild:
-    print(f"Building schema files for tag {tag}")
-    repo.git.checkout(tag)
-    subprocess.run(["python", "scripts/build_schema_files/main.py", "--rebuild-all"])
-
 if rebuild_all:
     for tag in listOfTagsToBuild[0:-1]:
         repo.git.checkout(f"v{tag}")
