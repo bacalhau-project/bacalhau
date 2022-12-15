@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
@@ -168,7 +169,7 @@ func (s *ExecutorBuffer) deque() {
 		if s.runningCapacity.AddIfHasCapacity(ctx, task.execution.ResourceUsage) {
 			delete(s.enqueued, executionID)
 			s.running[executionID] = task
-			go s.doRun(ctx, task)
+			go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 		} else {
 			remainingEnqueuedList = append(remainingEnqueuedList, executionID)
 		}
@@ -180,7 +181,7 @@ func (s *ExecutorBuffer) deque() {
 func (s *ExecutorBuffer) Publish(ctx context.Context, execution store.Execution) error {
 	// TODO: Enqueue publish tasks
 	go func() {
-		_ = s.delegateService.Publish(context.Background(), execution)
+		_ = s.delegateService.Publish(logger.ContextWithNodeIDLogger(context.Background(), s.ID), execution)
 	}()
 	return nil
 }
@@ -188,7 +189,7 @@ func (s *ExecutorBuffer) Publish(ctx context.Context, execution store.Execution)
 func (s *ExecutorBuffer) Cancel(ctx context.Context, execution store.Execution) error {
 	// TODO: Enqueue cancel tasks
 	go func() {
-		_ = s.delegateService.Cancel(context.Background(), execution)
+		_ = s.delegateService.Cancel(logger.ContextWithNodeIDLogger(context.Background(), s.ID), execution)
 	}()
 	return nil
 }

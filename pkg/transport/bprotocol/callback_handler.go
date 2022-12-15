@@ -61,6 +61,7 @@ func handleCallbackStream[Request any](
 	ctx context.Context,
 	stream network.Stream,
 	f func(ctx context.Context, r Request)) {
+	ctx = logger.ContextWithNodeIDLogger(ctx, stream.Conn().LocalPeer().String())
 	if err := stream.Scope().SetService(CallbackServiceName); err != nil {
 		log.Ctx(ctx).Debug().Msgf("error attaching stream to requester service: %s", err)
 		stream.Reset()

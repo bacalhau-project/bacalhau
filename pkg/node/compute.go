@@ -14,17 +14,18 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
 	// Visible for testing
-	Endpoint           compute.Endpoint
 	LocalEndpoint      compute.Endpoint
 	Capacity           capacity.Tracker
-	nodeID             string
+	host               host.Host
 	ExecutionStore     store.ExecutionStore
 	debugInfoProviders []model.DebugInfoProvider
 	computeCallback    *bprotocol.CallbackProxy
@@ -35,6 +36,8 @@ func NewComputeNode(
 	ctx context.Context,
 	host host.Host,
 	config ComputeConfig,
+	simulatorNodeID string,
+	simulatorRequestHandler *simulator.RequestHandler,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider) *Compute {
@@ -49,9 +52,27 @@ func NewComputeNode(
 		CapacityTracker: capacityTracker,
 	}))
 
-	computeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
+	// Callback to send compute events (i.e. requester endpoint)
+	var computeCallback compute.Callback
+	standardComputeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
 		Host: host,
 	})
+	if simulatorNodeID != "" {
+		simulatorProxy := simulator_protocol.NewCallbackProxy(simulator_protocol.CallbackProxyParams{
+			SimulatorNodeID: simulatorNodeID,
+			Host:            host,
+		})
+		if simulatorRequestHandler != nil {
+			// if this node is the simulator node, we need to register a local callback to allow self dialing
+			simulatorProxy.RegisterLocalComputeCallback(simulatorRequestHandler)
+			// set standard callback implementation so that the simulator can forward requests to the correct endpoints
+			// after it finishes its validation and processing of the request
+			simulatorRequestHandler.SetRequesterProxy(standardComputeCallback)
+		}
+		computeCallback = simulatorProxy
+	} else {
+		computeCallback = standardComputeCallback
+	}
 
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:              host.ID().String(),
@@ -139,28 +160,29 @@ func NewComputeNode(
 		Executor:        bufferRunner,
 	})
 
-	// register a handler for the bacalhau protocol handler that will forward requests to baseEndpoint
-	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
-		Host:            host,
-		ComputeEndpoint: baseEndpoint,
-	})
-
-	endpointProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
-		Host:          host,
-		LocalEndpoint: baseEndpoint,
-	})
+	// if this node is the simulator, then we set the simulator request handler as the stream handler
+	if simulatorRequestHandler != nil {
+		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+			Host:            host,
+			ComputeEndpoint: simulatorRequestHandler,
+		})
+	} else {
+		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+			Host:            host,
+			ComputeEndpoint: baseEndpoint,
+		})
+	}
 
 	return &Compute{
-		nodeID:             host.ID().String(),
-		Endpoint:           endpointProxy,
+		host:               host,
 		LocalEndpoint:      baseEndpoint,
 		Capacity:           capacityTracker,
 		ExecutionStore:     executionStore,
 		debugInfoProviders: debugInfoProviders,
-		computeCallback:    computeCallback,
+		computeCallback:    standardComputeCallback,
 	}
 }
 
 func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
-	c.computeCallback.RegisterLocalCallback(callback)
+	c.computeCallback.RegisterLocalComputeCallback(callback)
 }

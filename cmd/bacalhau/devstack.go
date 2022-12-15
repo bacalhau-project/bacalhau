@@ -36,7 +36,8 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		PublicIPFSMode:           false,
 		EstuaryAPIKey:            os.Getenv("ESTUARY_API_KEY"),
 		LocalNetworkLotus:        false,
-		SimulatorURL:             "",
+		SimulatorAddr:            "",
+		SimulatorMode:            false,
 	}
 }
 
@@ -80,8 +81,12 @@ func newDevStackCmd() *cobra.Command {
 		"Also start a Lotus FileCoin instance",
 	)
 	devstackCmd.PersistentFlags().StringVar(
-		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
-		`Use the simulator transport at the given URL`,
+		&ODs.SimulatorAddr, "simulator-addr", ODs.SimulatorAddr,
+		`Use the simulator transport at the given node multi addr`,
+	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.SimulatorMode, "simulator-mode", false,
+		`If set, one of the nodes will act as a simulator and will proxy all requests to the other nodes`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,

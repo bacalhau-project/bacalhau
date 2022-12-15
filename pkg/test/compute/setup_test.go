@@ -60,6 +60,8 @@ func (s *ComputeSuite) setupNode() {
 		context.Background(),
 		host,
 		s.config,
+		"",
+		nil,
 		noop_executor.NewNoopExecutorProvider(s.executor),
 		noop_verifier.NewNoopVerifierProvider(s.verifier),
 		noop_publisher.NewNoopPublisherProvider(s.publisher),

@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -89,12 +90,12 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 
 	// TODO: which context should we pass to fsm? We used to pass the request context, but that was wrong
 	//  as it the context would be canceled the request returns
-	s.shardStateManager.startShardsState(context.Background(), &req.Job, s)
+	s.shardStateManager.startShardsState(logger.ContextWithNodeIDLogger(context.Background(), s.id), &req.Job, s)
 	for _, node := range rankedNodes[:min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
 		// create a new space linked to request context, but call noitfyAskForBid with a new context
 		// as the request context will be canceled the request returns
 		_, span := s.newSpan(ctx, "askForBid", req.Job.Metadata.ID)
-		go s.notifyAskForBid(context.Background(), span, &req.Job, node.ID.String())
+		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), span, &req.Job, node.ID.String())
 	}
 
 	return nil
@@ -239,7 +240,7 @@ func (s *Scheduler) notifyShardError(ctx context.Context, shard model.JobShard, 
 
 func (s *Scheduler) notifyCancelSync(ctx context.Context, message string, nodeID, executionID string) {
 	var err error
-	log.Ctx(ctx).Debug().Msgf("Requester node %s cancelingution %s due to %s", s.id, executionID, message)
+	log.Ctx(ctx).Debug().Msgf("Requester node %s canceling%s due to %s", s.id, executionID, message)
 	request := compute.CancelExecutionRequest{
 		ExecutionID:   executionID,
 		Justification: message,

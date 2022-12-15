@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -30,6 +31,7 @@ type NodeConfig struct {
 	RequesterNodeConfig  RequesterConfig
 	APIServerConfig      publicapi.APIServerConfig
 	LotusConfig          *filecoinlotus.PublisherConfig
+	SimulatorNodeID      string
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -122,12 +124,20 @@ func NewNode(
 
 	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
+	var simulatorRequestHandler *simulator.RequestHandler
+	if config.SimulatorNodeID == config.Host.ID().String() {
+		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
+		simulatorRequestHandler = simulator.NewRequestHandler()
+	}
+
 	requesterNode, err := NewRequesterNode(
 		ctx,
 		config.CleanupManager,
 		config.Host,
 		config.RequesterNodeConfig,
 		config.LocalDB,
+		config.SimulatorNodeID,
+		simulatorRequestHandler,
 		verifiers,
 		storageProviders,
 		jobEventConsumer,
@@ -141,13 +151,15 @@ func NewNode(
 		ctx,
 		config.Host,
 		config.ComputeConfig,
+		config.SimulatorNodeID,
+		simulatorRequestHandler,
 		executors,
 		verifiers,
 		publishers,
 	)
 
 	// To enable nodes self-dialing themselves as libp2p doesn't support it.
-	computeNode.RegisterLocalComputeCallback(requesterNode.scheduler)
+	computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
 	requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
 
 	apiServer := publicapi.NewServerWithConfig(

@@ -34,7 +34,8 @@ type DevStackOptions struct {
 	LocalNetworkLotus          bool
 	FilecoinUnsealedPath       string
 	EstuaryAPIKey              string
-	SimulatorURL               string // if this is set, we will use the simulator transport
+	SimulatorAddr              string // if this is set, we will use the simulator transport
+	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -105,6 +106,19 @@ func NewDevStack(
 	nodes := []*node.Node{}
 	var lotus *LotusNode
 	var err error
+	var simulatorAddr multiaddr.Multiaddr
+	var simulatorNodeID string
+
+	if options.SimulatorAddr != "" {
+		simulatorAddr, err = multiaddr.NewMultiaddr(options.SimulatorAddr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse simulator address: %w", err)
+		}
+		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract p2p protocoll from simulator address: %w", err)
+		}
+	}
 
 	if options.LocalNetworkLotus {
 		lotus, err = newLotusNode(ctx) //nolint:govet
@@ -156,54 +170,46 @@ func NewDevStack(
 		var libp2pHost host.Host
 		var libp2pPort int
 		libp2pPeer := []multiaddr.Multiaddr{}
-		if options.SimulatorURL == "" {
-			//////////////////////////////////////
-			// libp2p
-			//////////////////////////////////////
-
-			libp2pPort, ports = ports[0], ports[1:]
-
-			if i == 0 {
-				if options.Peer != "" {
-					// connect 0'th node to external peer if specified
-					log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-					peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
-					if addrErr != nil {
-						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
-					}
-					libp2pPeer = []multiaddr.Multiaddr{peerAddr}
-				}
-			} else {
-				for _, addrs := range nodes[0].Host.Addrs() {
-					p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
-					if p2pAddrErr != nil {
-						return nil, p2pAddrErr
-					}
-					libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
-				}
-				if err != nil {
-					return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
-				}
-				log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
-			}
-
-			libp2pHost, err = libp2p.NewHost(libp2pPort)
-			if err != nil {
-				return nil, err
-			}
-			cm.RegisterCallback(func() error {
-				return libp2pHost.Close()
-			})
+		if simulatorAddr != nil {
+			libp2pPeer = append(libp2pPeer, simulatorAddr)
 		}
-		//TODO: implement simulator transport
-		//else {
-		//var simulatorTransport transport.Transport
-		//simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//useTransport = simulatorTransport
-		//}
+
+		//////////////////////////////////////
+		// libp2p
+		//////////////////////////////////////
+		libp2pPort, ports = ports[0], ports[1:]
+
+		if i == 0 {
+			if options.Peer != "" {
+				// connect 0'th node to external peer if specified
+				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+				if addrErr != nil {
+					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+				}
+				libp2pPeer = append(libp2pPeer, peerAddr)
+			}
+		} else {
+			for _, addrs := range nodes[0].Host.Addrs() {
+				p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
+				if p2pAddrErr != nil {
+					return nil, p2pAddrErr
+				}
+				libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+			}
+			log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
+		}
+
+		libp2pHost, err = libp2p.NewHost(libp2pPort)
+		if err != nil {
+			return nil, err
+		}
+		cm.RegisterCallback(func() error {
+			return libp2pHost.Close()
+		})
 
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
@@ -250,6 +256,16 @@ func NewDevStack(
 			requesterNodeConfig.SimulatorConfig.IsBadActor = isBadRequesterActor
 		}
 
+		// If we are running in a simulator mode, and didn't pass in a node ID, then the first node will be the simulator node
+		if options.SimulatorMode && simulatorAddr == nil {
+			p2pAddr, addrError := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
+			if err != nil {
+				return nil, addrError
+			}
+			simulatorAddr = libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
+			simulatorNodeID = libp2pHost.ID().String()
+		}
+
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
@@ -262,6 +278,7 @@ func NewDevStack(
 			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
+			SimulatorNodeID:      simulatorNodeID,
 		}
 
 		if lotus != nil {

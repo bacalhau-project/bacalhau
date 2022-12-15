@@ -1,4 +1,4 @@
-package bprotocol
+package simulator
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -14,8 +15,9 @@ import (
 )
 
 type CallbackProxyParams struct {
-	Host          host.Host
-	LocalCallback compute.Callback
+	SimulatorNodeID string
+	Host            host.Host
+	LocalCallback   compute.Callback
 }
 
 // CallbackProxy is a proxy for a compute.Callback that can be used to send compute callbacks to the requester node,
@@ -23,15 +25,18 @@ type CallbackProxyParams struct {
 // The proxy can forward callbacks to a remote requester node, or locally if the node is the requester and a
 // LocalCallback is provided.
 type CallbackProxy struct {
-	host          host.Host
-	localCallback compute.Callback
+	simulatorNodeID string
+	host            host.Host
+	localCallback   compute.Callback
 }
 
 func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 	proxy := &CallbackProxy{
-		host:          params.Host,
-		localCallback: params.LocalCallback,
+		simulatorNodeID: params.SimulatorNodeID,
+		host:            params.Host,
+		localCallback:   params.LocalCallback,
 	}
+	log.Info().Msgf("CallbackProxy created with simulator node %s", params.SimulatorNodeID)
 	return proxy
 }
 
@@ -40,25 +45,25 @@ func (p *CallbackProxy) RegisterLocalComputeCallback(callback compute.Callback) 
 }
 
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
-	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnRunComplete, result, func(ctx2 context.Context) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnRunComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnRunComplete(ctx2, result)
 	})
 }
 
 func (p *CallbackProxy) OnPublishComplete(ctx context.Context, result compute.PublishResult) {
-	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnPublishComplete, result, func(ctx2 context.Context) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnPublishComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnPublishComplete(ctx2, result)
 	})
 }
 
 func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result compute.CancelResult) {
-	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnCancelComplete, result, func(ctx2 context.Context) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnCancelComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnCancelComplete(ctx2, result)
 	})
 }
 
 func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result compute.ComputeError) {
-	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnComputeFailure, result, func(ctx2 context.Context) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnComputeFailure, result, func(ctx2 context.Context) {
 		p.localCallback.OnComputeFailure(ctx2, result)
 	})
 }
@@ -70,7 +75,7 @@ func proxyCallbackRequest(
 	protocolID protocol.ID,
 	request interface{},
 	selfDialFunc func(ctx2 context.Context)) {
-	if resultInfo.TargetPeerID == p.host.ID().String() {
+	if p.simulatorNodeID == p.host.ID().String() {
 		if p.localCallback == nil {
 			log.Ctx(ctx).Error().Msgf("unable to dial to self, unless a local compute callback is provided")
 		} else {
@@ -80,7 +85,8 @@ func proxyCallbackRequest(
 		}
 	} else {
 		// decode the destination peer ID string value
-		targetPeerID := resultInfo.TargetPeerID
+		targetPeerID := p.simulatorNodeID
+		log.Ctx(ctx).Info().Msgf("Forwarding callback %+v to %s", request, targetPeerID)
 		peerID, err := peer.Decode(targetPeerID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to decode peer ID %s", reflect.TypeOf(request), targetPeerID)

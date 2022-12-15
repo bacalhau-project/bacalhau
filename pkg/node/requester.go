@@ -7,9 +7,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -17,11 +19,11 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint     requester.Endpoint
-	nodeID       string
-	JobStore     localdb.LocalDB
-	computeProxy *bprotocol.ComputeProxy
-	scheduler    *requester.Scheduler
+	Endpoint      requester.Endpoint
+	host          host.Host
+	JobStore      localdb.LocalDB
+	computeProxy  *bprotocol.ComputeProxy
+	localCallback *requester.Scheduler
 }
 
 //nolint:funlen
@@ -31,12 +33,34 @@ func NewRequesterNode(
 	host host.Host,
 	config RequesterConfig,
 	jobStore localdb.LocalDB,
+	simulatorNodeID string,
+	simulatorRequestHandler *simulator.RequestHandler,
 	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
 	eventConsumer eventhandler.JobEventHandler) (*Requester, error) {
-	computeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
+
+	var computeProxy compute.Endpoint
+	standardComputeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
 		Host: host,
 	})
+	// if we are running in simulator mode, then we use the simulator proxy to forward all requests to th simulator node.
+	if simulatorNodeID != "" {
+		simulatorProxy := simulator_protocol.NewComputeProxy(simulator_protocol.ComputeProxyParams{
+			SimulatorNodeID: simulatorNodeID,
+			Host:            host,
+		})
+		if simulatorRequestHandler != nil {
+			// if this node is the simulator node, we need to register a local endpoint to allow self dialing
+			simulatorProxy.RegisterLocalComputeEndpoint(simulatorRequestHandler)
+			// set standard endpoint implementation so that the simulator can forward requests to the correct endpoints
+			// after it finishes its validation and processing of the request
+			simulatorRequestHandler.SetComputeProxy(standardComputeProxy)
+		}
+		computeProxy = simulatorProxy
+	} else {
+		computeProxy = standardComputeProxy
+	}
+
 	scheduler := requester.NewScheduler(ctx, cm, requester.SchedulerParams{
 		ID:       host.ID().String(),
 		JobStore: jobStore,
@@ -73,21 +97,29 @@ func NewRequesterNode(
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
 	})
 
-	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
-	bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
-		Host:     host,
-		Callback: scheduler,
-	})
+	// if this node is the simulator, then we pass incoming requests to the simulator before passing them to the endpoint
+	if simulatorRequestHandler != nil {
+		bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
+			Host:     host,
+			Callback: simulatorRequestHandler,
+		})
+	} else {
+		// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
+		bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
+			Host:     host,
+			Callback: scheduler,
+		})
+	}
 
 	return &Requester{
-		nodeID:       host.ID().String(),
-		Endpoint:     endpoint,
-		JobStore:     jobStore,
-		scheduler:    scheduler,
-		computeProxy: computeProxy,
+		host:          host,
+		Endpoint:      endpoint,
+		JobStore:      jobStore,
+		localCallback: scheduler,
+		computeProxy:  standardComputeProxy,
 	}, nil
 }
 
 func (r *Requester) RegisterLocalComputeEndpoint(endpoint compute.Endpoint) {
-	r.computeProxy.RegisterLocalEndpoint(endpoint)
+	r.computeProxy.RegisterLocalComputeEndpoint(endpoint)
 }

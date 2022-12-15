@@ -45,6 +45,7 @@ func (e EventEmitter) EmitBidReceived(
 	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
 	// we flip senders to mimic a bid was received instead of being asked
 	event.SourceNodeID = request.RoutingMetadata.TargetPeerID
+	event.TargetNodeID = "" // localdb don't assume a target node for events coming from compute nodes
 	e.EmitEventSilently(ctx, event)
 }
 
