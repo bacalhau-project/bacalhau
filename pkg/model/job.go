@@ -208,6 +208,9 @@ type Spec struct {
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
+	// The type of networking access that the job needs
+	Network NetworkConfig `json:"Network,omitempty"`
+
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
 	Timeout float64 `json:"Timeout,omitempty"`

@@ -16,7 +16,6 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
@@ -205,7 +204,7 @@ func (e *Executor) RunShard(
 		Env:             useEnv,
 		Entrypoint:      shard.Job.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(shard.Job),
-		NetworkDisabled: true,
+		NetworkDisabled: shard.Job.Spec.Network.Disabled(),
 		WorkingDir:      shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
@@ -225,6 +224,13 @@ func (e *Executor) RunShard(
 		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
 	}
 
+	// Create a network if the job requests it
+	networkMode := container.NetworkMode("none")
+	if !shard.Job.Spec.Network.Disabled() {
+		log.Ctx(ctx).Debug().Msg("Enabling network connections")
+		networkMode = container.NetworkMode("host")
+	}
+
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,
 		containerConfig,
@@ -235,8 +241,9 @@ func (e *Executor) RunShard(
 				NanoCPUs:       int64(resourceRequirements.CPU * NanoCPUCoefficient),
 				DeviceRequests: deviceRequests,
 			},
+			NetworkMode: networkMode,
 		},
-		&network.NetworkingConfig{},
+		nil,
 		nil,
 		e.jobContainerName(shard),
 	)
