@@ -67,7 +67,7 @@ The following is an example:
 # this CID points at the folder with 10,000 images all named image00001.jpg
 export IMAGE_FOLDER_CID=xxx
 bacalhau docker run \
-  # mount the inpuot folder
+  # mount the input folder
   -v $IMAGE_FOLDER_CID:/input_images \
   # name the output folder
   -o results:/output_images \
