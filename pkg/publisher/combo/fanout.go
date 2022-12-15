@@ -18,14 +18,21 @@ import (
 // publishers are also ignored. An error is only returned if all publishers fail
 // to produce a result.
 type fanoutPublisher struct {
-	preferred  publisher.Publisher
-	publishers []publisher.Publisher
+	publishers    []publisher.Publisher
+	isPrioritized bool
 }
 
 func NewFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
 	return &fanoutPublisher{
-		publishers[0],
 		publishers,
+		false,
+	}
+}
+
+func NewPrioritizedFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
+	return &fanoutPublisher{
+		publishers,
+		true,
 	}
 }
 
@@ -116,19 +123,26 @@ func (f *fanoutPublisher) PublishShardResult(
 		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
 	})
 
-	type result struct {
-		Sender publisher.Publisher
-		Value  model.StorageSpec
-	}
-
 	timeoutChannel := make(chan bool, 1)
-	results := make([]result, 0)
+	results := map[publisher.Publisher]model.StorageSpec{}
 
 loop:
 	for {
 		select {
 		case value := <-valueChannel:
-			results = append(results, value)
+			// if non-prioritized fanout publisher return immediately
+			if !f.isPrioritized {
+				return value.Value, nil
+			}
+
+			// if prioritized fanout publisher check if result is from publisher of the highest priority
+			// if that is true return immediately
+			if f.isPrioritized && value.Sender == f.publishers[0] {
+				return value.Value, nil
+			}
+
+			results[value.Sender] = value.Value
+
 			if len(results) == len(f.publishers) {
 				// break because everyone returned
 				break loop
@@ -150,15 +164,15 @@ loop:
 		}
 	}
 
-	// search for preferred result
-	for _, result := range results {
-		if result.Sender == f.preferred {
-			return result.Value, nil
+	// loop trough publishers by priority and return
+	for _, pub := range f.publishers {
+		result, resultExists := results[pub]
+		if resultExists {
+			return result, nil
 		}
 	}
 
-	// return first result if preferred not found
-	return results[0].Value, nil
+	return model.StorageSpec{}, nil
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)
