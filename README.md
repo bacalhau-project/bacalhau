@@ -66,6 +66,7 @@ To have these checks run locally when you make a new commit, you can use the pre
 
 ```bash
 make install-pre-commit
+chmod ug+x githooks/pre-commit
 ```
 
 If you want to run the linter manually:
