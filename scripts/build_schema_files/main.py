@@ -1,6 +1,7 @@
 import git
 from pathlib import Path
 from packaging import version
+import semver
 from sys import argv
 
 import subprocess
