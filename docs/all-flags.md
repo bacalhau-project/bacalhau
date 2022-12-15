@@ -84,14 +84,10 @@ Examples:
 An example job in YAML format:
 
 ```yaml
-JobAPIVersion: ""
-ID: 67a9dbdb-ba3d-40e1-b7db-3a2fc517f9f0
-RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-ClientID: dc13188e96c97a9c2e7cf8e86c7613155a73435036f30da1ecefc2ce79f9ea54
 Spec:
-    Engine: 2
-    Verifier: 1
-    Publisher: 4
+    Engine: Docker
+    Verifier: Noop
+    Publisher: IPFS
     Docker:
         Image: ubuntu
         Entrypoint:
@@ -99,41 +95,70 @@ Spec:
             - Hello
             - W0rLd
     outputs:
-        - Engine: 1
-          Name: outputs
+        - Name: outputs
           path: /outputs
-    Sharding:
-        BatchSize: 1
-        GlobPatternBasePath: /inputs
 Deal:
     Concurrency: 1
-CreatedAt: 2022-09-27T09:49:04.678710544Z
-JobState:
-    Nodes:
-        QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
-            Shards:
-                0:
-                    NodeId: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-                    ShardIndex: 0
-                    State: 7
-                    Status: 'Got results proposal of length: 0'
-                    VerificationProposal: []
-                    VerificationResult:
-                        Complete: true
-                        Result: true
-                    PublishedResults:
-                        Engine: 5
-                        Name: job-67a9dbdb-ba3d-40e1-b7db-3a2fc517f9f0-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-                        Cid: bafybeiadkpq2illntnnh2f3dgju4clafjiy4rilq6h4j4mpqgbqpo72psa
-                    RunOutput:
-                        Stdout: Hello W0rLd
-                        StdoutTruncated: false
-                        Stderr: ""
-                        StderrTruncated: false
-                        ExitCode: 0
-                        RunnerError: ""
 ```
 
+### UCAN Invocation format
+
+You can also specify a job to run using a [UCAN Invocation](https://github.com/ucan-wg/invocation) object in JSON format. For the fields supported by Bacalhau, see the [IPLD schema](https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/schemas/bacalhau.ipldsch). 
+
+There is no support for sharding, concurrency or minimum bidding for these jobs.
+
+#### Examples
+
+An example UCAN Invocation that runs the same job as the above example would look like:
+
+```json
+{
+    "with": "ubuntu",
+    "do": "docker/run",
+    "inputs": {
+        "entrypoint": ["echo", "hello", "world"],
+        "workdir": "/",
+        "mounts": {},
+        "outputs": {
+            "/outputs": ""
+        },
+    },
+    "meta": {
+        "bacalhau/config": {
+            "verifier": 1,
+            "publisher": 4,
+        }
+    }
+}
+```
+
+An example UCAN Invocation that runs a WebAssembly job might look like:
+
+```json
+{
+	"with": "ipfs://bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi",
+	"do": "wasm32-wasi/run",
+	"inputs": {
+		"entrypoint": "_start",
+		"parameters": ["/inputs/data.tar.gz"],
+		"mounts": {
+			"/inputs": "https://www.example.com/data.tar.gz"
+		},
+		"outputs": {
+			"/outputs": ""
+		},
+		"env": {
+			"HELLO": "world"
+		}
+	},
+	"meta": {
+    "bacalhau/config": {
+        "verifier": 2,
+        "publisher": 4,
+    }
+  }
+}
+```
 
 ## Describe
 
