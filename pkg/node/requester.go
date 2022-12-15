@@ -38,7 +38,6 @@ func NewRequesterNode(
 	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
 	eventConsumer eventhandler.JobEventHandler) (*Requester, error) {
-
 	var computeProxy compute.Endpoint
 	standardComputeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
 		Host: host,
