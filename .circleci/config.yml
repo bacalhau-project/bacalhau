@@ -586,7 +586,7 @@ jobs:
               git commit -m "[circleci] $COMMIT_MSG [skip ci]"
               git push --set-upstream origin $GH_BRANCH_NAME
               # Note: if you close the PR below manually, you should delete the `ci-build-jsonschema_*` branch as well
-              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo aronchick/bacalhau)
               echo "Pull request: $PR_URL"
               sleep 3
               gh pr merge --auto --delete-branch -r $PR_URL
