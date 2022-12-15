@@ -94,3 +94,19 @@ func NewErrInvalidExecutionVersion(id string, actual int, expected int) ErrInval
 func (e ErrInvalidExecutionVersion) Error() string {
 	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID, e.Actual, e.Expected)
 }
+
+// ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
+type ErrExecutionAlreadyTerminal struct {
+	ExecutionID string
+	Actual      ExecutionState
+	NewState    ExecutionState
+}
+
+func NewErrExecutionAlreadyTerminal(id string, actual ExecutionState, newState ExecutionState) ErrExecutionAlreadyTerminal {
+	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
+}
+
+func (e ErrExecutionAlreadyTerminal) Error() string {
+	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
+		e.ExecutionID, e.Actual.String(), e.NewState.String())
+}
