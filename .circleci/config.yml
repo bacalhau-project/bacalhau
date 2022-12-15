@@ -481,7 +481,12 @@ jobs:
       - run:
           name: Install Swagger
           command:
-            go install github.com/swaggo/swag/cmd/swag@v1.8.7
+            go install github.com/swaggo/swag/cmd/swag@v1.8.9-rc3
+      - run:
+          name: Install swagger-codegen
+          command: |
+            mkdir -p /opt/swagger-codegen-cli/
+            wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O /opt/swagger-codegen-cli/swagger-codegen-cli.jar
       - run:
           name: Install Pre-commit
           command: |
@@ -496,9 +501,9 @@ jobs:
             curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
             golangci-lint version
       - run:
-          name: Build Swagger Docs
+          name: Build Swagger Docs and Clients
           command:
-            make swagger-docs
+            make swagger-docs clients
 
       - when:
           condition:

@@ -32,19 +32,20 @@ python-config.json: config.json.template
 		sed -e "s/PACKAGE-NAME/${UNDERSCORE_PACKAGE_NAME}/g"> $@
 
 %/: %-config.json ${SWAGGER_JSON}
+	# TODO - remove this when https://github.com/swagger-api/swagger-codegen/issues/11993 is addressed
+	cat ${SWAGGER_JSON} | sed -e 's/model.//g;s/publicapi.//g;s/types.//g' | tee ./swagger-edited.json >> /dev/null
 	rm -rf $@ && ${SWAGGER} generate \
-		-i ${SWAGGER_JSON} \
+		-i ./swagger-edited.json \
 		-l $$(basename $@) \
 		-o $@ \
 		-c $$(basename $@)-config.json \
-		--api-package enrico \
 		--remove-operation-id-prefix \
-		-Dmodels -DmodelTests=false -DmodelDocs \
-		--model-name-prefix '' \
-		-Dapis -DapiTests=false \
-		-DapiDocs
+		-Dapis -DapiTests=false -DapiDocs=true \
+		-Dmodels -DmodelTests=false -DmodelDocs=true \
+		-DsupportingFiles=false
 
 .PHONY: clean
 clean: $(shell find . -type d -depth 1)
 	$(RM) -r $^
 	$(RM) *-config.json
+	$(RM) ./swagger-edited.json
