@@ -70,7 +70,7 @@ for tag in listOfTagsToBuild:
     repo.git.checkout(f"v{tag}")
     print(f"Building schema files for {tag}")
     subprocess.call(["go", "mod", "vendor"], cwd=rootPath)
-    subprocess.call(["make", "build"], cwd=rootPath)
+    subprocess.call(["make", "build-ci"], cwd=rootPath)
 
     GOOS = subprocess.check_output(["go", "env", "GOOS"], cwd=rootPath).decode("utf-8").strip()
     GOARCH = subprocess.check_output(["go", "env", "GOARCH"], cwd=rootPath).decode("utf-8").strip()

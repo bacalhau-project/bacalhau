@@ -556,8 +556,8 @@ jobs:
           command: |
             curl -sSL https://install.python-poetry.org | python3 -
             cd scripts/build_schema_files
-            poetry install
-            poetry main.py
+            /home/circleci/.local/bin/poetry install
+            /home/circleci/.local/bin/poetry run python main.py
 
       - when:
           condition:
