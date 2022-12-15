@@ -544,7 +544,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+            - "6f:c2:bb:03:2f:ee:bb:5c:4e:63:1e:c6:ad:0b:36:64"
       - run:
           name: Install Go
           command: |
