@@ -60,18 +60,14 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	shard model.JobShard,
 	shardResultPath string,
 ) ([]byte, error) {
-	j, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.Metadata.ID)
-	if err != nil {
-		return nil, err
-	}
-	if len(j.Status.Requester.RequesterPublicKey) == 0 {
+	if len(shard.Job.Status.Requester.RequesterPublicKey) == 0 {
 		return nil, fmt.Errorf("no RequesterPublicKey found in the job")
 	}
 	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
 	if err != nil {
 		return nil, err
 	}
-	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), j.Status.Requester.RequesterPublicKey)
+	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), shard.Job.Status.Requester.RequesterPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +127,11 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 			existingArray = []*verifier.VerifierResult{}
 		}
 		hashGroups[hash] = append(existingArray, &verifier.VerifierResult{
-			JobID:      shard.Job.Metadata.ID,
-			NodeID:     shardState.NodeID,
-			ShardIndex: shardState.ShardIndex,
-			Verified:   false,
+			JobID:       shard.Job.Metadata.ID,
+			NodeID:      shardState.NodeID,
+			ExecutionID: shardState.ExecutionID,
+			ShardIndex:  shardState.ShardIndex,
+			Verified:    false,
 		})
 	}
 

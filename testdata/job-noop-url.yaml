@@ -1,0 +1,20 @@
+APIVersion: v1beta1
+Spec:
+  Engine: Noop
+  Verifier: Noop
+  Publisher: Noop
+  inputs:
+    - StorageSource: URLDownload
+      URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
+      path: /app/foo_data_1.txt
+  outputs:
+    - StorageSource: IPFS
+      Name: output_custom
+      path: /output_custom
+  Sharding:
+    BatchSize: 1
+    GlobPatternBasePath: /inputs
+  Deal:
+    Concurrency: 1
+    Confidence: 0
+    MinBids: 0

@@ -265,8 +265,8 @@ github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/filecoin-project/bacalhau v0.3.15 h1:ou+7Dti9Yy2WZcRo0yVKFRIUwNjLtrvU3d2vH9ao/y0=
-github.com/filecoin-project/bacalhau v0.3.15/go.mod h1:qHfQ0wZsKaqohkFtQXXT2k9NE+WgA8SSH10FSg3i4BY=
+github.com/filecoin-project/bacalhau v0.3.16-0.20221214203635-19e15111bc08 h1:d9sLrsHVzhC5sjqhSuPmy+CaqKupgrYPDaIshs87P/8=
+github.com/filecoin-project/bacalhau v0.3.16-0.20221214203635-19e15111bc08/go.mod h1:qHfQ0wZsKaqohkFtQXXT2k9NE+WgA8SSH10FSg3i4BY=
 github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f/go.mod h1:+If3s2VxyjZn+KGGZIoRXBDSFQ9xL404JBJGf4WhEj0=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=

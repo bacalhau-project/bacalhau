@@ -29,6 +29,8 @@ type ComputeConfigParams struct {
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	SimulatorConfig model.SimulatorConfigCompute
 }
 
 type ComputeConfig struct {
@@ -130,6 +132,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
+		SimulatorConfig:              params.SimulatorConfig,
 	}
 
 	validateConfig(config, physicalResources)
