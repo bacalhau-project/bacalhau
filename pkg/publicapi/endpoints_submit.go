@@ -34,7 +34,7 @@ type submitResponse struct {
 }
 
 // submit godoc
-// @ID                   pkg/apiServer.submit
+// @ID                   submit
 // @Summary              Submits a new job to the network.
 // @Description.markdown endpoints_submit
 // @Tags                 Job

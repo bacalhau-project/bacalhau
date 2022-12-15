@@ -18,10 +18,10 @@ type versionResponse struct {
 }
 
 // version godoc
-// @ID          apiServer/version
+// @ID          version
 // @Summary     Returns the build version running on the server.
 // @Description See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.
-// @Tags        Misc
+// @Tags        Utils
 // @Accept      json
 // @Produce     json
 // @Param       versionRequest body     versionRequest true "Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."

@@ -10,10 +10,10 @@ import (
 )
 
 // peers godoc
-// @ID                   apiServer/peers
+// @ID                   peers
 // @Summary              Returns the peers connected to the host via the transport layer.
 // @Description.markdown endpoints_peers
-// @Tags                 Misc
+// @Tags                 Utils
 // @Produce              json
 // @Success              200 {object} map[string][]string{}
 // @Failure              500 {object} string

@@ -30,10 +30,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
                 "summary": "Returns debug information on what the current node is doing.",
-                "operationId": "apiServer/debug",
+                "operationId": "debug",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -63,7 +63,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/events",
+                "operationId": "events",
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
@@ -103,9 +103,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/healthz",
+                "operationId": "healthz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -122,10 +122,10 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the id of the host node.",
-                "operationId": "apiServer/id",
+                "operationId": "id",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -155,7 +155,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Simply lists jobs.",
-                "operationId": "pkg/publicapi.list",
+                "operationId": "list",
                 "parameters": [
                     {
                         "description": "Set ` + "`" + `return_all` + "`" + ` to ` + "`" + `true` + "`" + ` to return all jobs on the network (may degrade performance, use with care!).",
@@ -195,9 +195,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/livez",
+                "operationId": "livez",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -221,7 +221,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/localEvents",
+                "operationId": "localEvents",
                 "parameters": [
                     {
                         "description": " ",
@@ -261,9 +261,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/logz",
+                "operationId": "logz",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -281,10 +281,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the peers connected to the host via the transport layer.",
-                "operationId": "apiServer/peers",
+                "operationId": "peers",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -313,9 +313,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/readyz",
+                "operationId": "readyz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -339,7 +339,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the results of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/results",
+                "operationId": "results",
                 "parameters": [
                     {
                         "description": " ",
@@ -386,7 +386,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the state of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/states",
+                "operationId": "states",
                 "parameters": [
                     {
                         "description": " ",
@@ -433,7 +433,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Submits a new job to the network.",
-                "operationId": "pkg/apiServer.submit",
+                "operationId": "submit",
                 "parameters": [
                     {
                         "description": " ",
@@ -473,9 +473,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/varz",
+                "operationId": "varz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -499,10 +499,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the build version running on the server.",
-                "operationId": "apiServer/version",
+                "operationId": "version",
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",

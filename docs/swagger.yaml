@@ -662,7 +662,7 @@ info:
 paths:
   /debug:
     get:
-      operationId: apiServer/debug
+      operationId: debug
       produces:
       - application/json
       responses:
@@ -676,7 +676,7 @@ paths:
             type: string
       summary: Returns debug information on what the current node is doing.
       tags:
-      - Health
+      - Utils
   /events:
     post:
       consumes:
@@ -791,7 +791,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/events
+      operationId: events
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -823,7 +823,7 @@ paths:
       - Job
   /healthz:
     get:
-      operationId: apiServer/healthz
+      operationId: healthz
       produces:
       - application/json
       responses:
@@ -832,10 +832,10 @@ paths:
           schema:
             $ref: '#/definitions/types.HealthInfo'
       tags:
-      - Health
+      - Utils
   /id:
     get:
-      operationId: apiServer/id
+      operationId: id
       produces:
       - text/plain
       responses:
@@ -849,7 +849,7 @@ paths:
             type: string
       summary: Returns the id of the host node.
       tags:
-      - Misc
+      - Utils
   /list:
     post:
       consumes:
@@ -1046,7 +1046,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi.list
+      operationId: list
       parameters:
       - description: Set `return_all` to `true` to return all jobs on the network
           (may degrade performance, use with care!).
@@ -1075,7 +1075,7 @@ paths:
       - Job
   /livez:
     get:
-      operationId: apiServer/livez
+      operationId: livez
       produces:
       - text/plain
       responses:
@@ -1084,14 +1084,14 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /local_events:
     post:
       consumes:
       - application/json
       description: Local events (e.g. Selected, BidAccepted, Verified) are useful
         to track the progress of a job.
-      operationId: pkg/publicapi/localEvents
+      operationId: localEvents
       parameters:
       - description: ' '
         in: body
@@ -1120,7 +1120,7 @@ paths:
       - Job
   /logz:
     get:
-      operationId: apiServer/logz
+      operationId: logz
       produces:
       - text/plain
       responses:
@@ -1129,7 +1129,7 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /peers:
     get:
       description: |-
@@ -1147,7 +1147,7 @@ paths:
           ]
         }
         ```
-      operationId: apiServer/peers
+      operationId: peers
       produces:
       - application/json
       responses:
@@ -1165,10 +1165,10 @@ paths:
             type: string
       summary: Returns the peers connected to the host via the transport layer.
       tags:
-      - Misc
+      - Utils
   /readyz:
     get:
-      operationId: apiServer/readyz
+      operationId: readyz
       produces:
       - text/plain
       responses:
@@ -1177,7 +1177,7 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /results:
     post:
       consumes:
@@ -1199,7 +1199,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/results
+      operationId: results
       parameters:
       - description: ' '
         in: body
@@ -1286,7 +1286,7 @@ paths:
           }
         }
         ```
-      operationId: pkg/publicapi/states
+      operationId: states
       parameters:
       - description: ' '
         in: body
@@ -1323,7 +1323,7 @@ paths:
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
         `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
-      operationId: pkg/apiServer.submit
+      operationId: submit
       parameters:
       - description: ' '
         in: body
@@ -1351,7 +1351,7 @@ paths:
       - Job
   /varz:
     get:
-      operationId: apiServer/varz
+      operationId: varz
       produces:
       - application/json
       responses:
@@ -1362,14 +1362,14 @@ paths:
               type: integer
             type: array
       tags:
-      - Health
+      - Utils
   /version:
     post:
       consumes:
       - application/json
       description: See https://github.com/filecoin-project/bacalhau/releases for a
         complete list of `gitversion` tags.
-      operationId: apiServer/version
+      operationId: version
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -1397,7 +1397,7 @@ paths:
             type: string
       summary: Returns the build version running on the server.
       tags:
-      - Misc
+      - Utils
 schemes:
 - http
 swagger: "2.0"

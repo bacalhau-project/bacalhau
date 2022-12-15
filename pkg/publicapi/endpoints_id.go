@@ -10,9 +10,9 @@ import (
 )
 
 // id godoc
-// @ID      apiServer/id
+// @ID      id
 // @Summary Returns the id of the host node.
-// @Tags    Misc
+// @Tags    Utils
 // @Produce text/plain
 // @Success 200 {object} string
 // @Failure 500 {object} string

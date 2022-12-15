@@ -24,8 +24,8 @@ func GenerateHealthData() types.HealthInfo {
 }
 
 // livez godoc
-// @ID      apiServer/livez
-// @Tags    Health
+// @ID      livez
+// @Tags    Utils
 // @Produce text/plain
 // @Success 200 {object} string "TODO"
 // @Router  /livez [get]
@@ -41,8 +41,8 @@ func (apiServer *APIServer) livez(res http.ResponseWriter, req *http.Request) {
 }
 
 // logz godoc
-// @ID      apiServer/logz
-// @Tags    Health
+// @ID      logz
+// @Tags    Utils
 // @Produce text/plain
 // @Success 200 {object} string "TODO"
 // @Router  /logz [get]
@@ -67,8 +67,8 @@ func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 }
 
 // readyz godoc
-// @ID      apiServer/readyz
-// @Tags    Health
+// @ID      readyz
+// @Tags    Utils
 // @Produce text/plain
 // @Success 200 {object} string
 // @Router  /readyz [get]
@@ -89,8 +89,8 @@ func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 }
 
 // healthz godoc
-// @ID      apiServer/healthz
-// @Tags    Health
+// @ID      healthz
+// @Tags    Utils
 // @Produce json
 // @Success 200 {object} types.HealthInfo
 // @Router  /healthz [get]
@@ -113,8 +113,8 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 }
 
 // varz godoc
-// @ID      apiServer/varz
-// @Tags    Health
+// @ID      varz
+// @Tags    Utils
 // @Produce json
 // @Success 200 {object} json.RawMessage
 // @Router  /varz [get]

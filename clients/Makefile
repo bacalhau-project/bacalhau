@@ -15,7 +15,7 @@ endif
 
 .PHONY: all
 all: $(patsubst %,%/,$(shell cat supported_langs))
-
+	
 $(shell cat supported_langs | xargs mkdir -p)
 
 %-config.json: config.json.template
@@ -37,10 +37,14 @@ python-config.json: config.json.template
 		-l $$(basename $@) \
 		-o $@ \
 		-c $$(basename $@)-config.json \
-		-Dmodels=listRequest,listResponse \
-		-DapiDocs=false \
-		-Dapis -DapiTests
+		--api-package enrico \
+		--remove-operation-id-prefix \
+		-Dmodels -DmodelTests=false -DmodelDocs \
+		--model-name-prefix '' \
+		-Dapis -DapiTests=false \
+		-DapiDocs
 
-
+.PHONY: clean
 clean: $(shell find . -type d -depth 1)
 	$(RM) -r $^
+	$(RM) *-config.json

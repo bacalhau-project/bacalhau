@@ -18,7 +18,7 @@ type localEventsResponse struct {
 }
 
 // localEvents godoc
-// @ID          pkg/publicapi/localEvents
+// @ID          localEvents
 // @Summary     Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
 // @Description Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
 // @Tags        Job

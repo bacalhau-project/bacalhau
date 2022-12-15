@@ -10,9 +10,9 @@ import (
 )
 
 // debug godoc
-// @ID      apiServer/debug
+// @ID      debug
 // @Summary Returns debug information on what the current node is doing.
-// @Tags    Health
+// @Tags    Utils
 // @Produce json
 // @Success 200 {object} string
 // @Failure 500 {object} string
