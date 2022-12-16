@@ -103,7 +103,7 @@ func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.J
 
 	var err error
 	for k := range jobList {
-		jobList[k].State, err = apiServer.localdb.GetJobState(ctx, jobList[k].ID)
+		jobList[k].Status.State, err = apiServer.localdb.GetJobState(ctx, jobList[k].Metadata.ID)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
 			return err

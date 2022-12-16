@@ -119,7 +119,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 		} else if query.ClientID != "" {
 			log.Ctx(ctx).Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
 			for _, j := range d.jobs {
-				if j.ClientID == query.ClientID {
+				if j.Metadata.ClientID == query.ClientID {
 					result = append(result, j)
 				}
 			}
@@ -130,15 +130,15 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			case "id":
 				if query.SortReverse {
 					// what does it mean to sort by ID?
-					return result[i].ID > result[j].ID
+					return result[i].Metadata.ID > result[j].Metadata.ID
 				} else {
-					return result[i].ID < result[j].ID
+					return result[i].Metadata.ID < result[j].Metadata.ID
 				}
 			case "created_at":
 				if query.SortReverse {
-					return result[i].CreatedAt.UTC().Unix() > result[j].CreatedAt.UTC().Unix()
+					return result[i].Metadata.CreatedAt.UTC().Unix() > result[j].Metadata.CreatedAt.UTC().Unix()
 				} else {
-					return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+					return result[i].Metadata.CreatedAt.UTC().Unix() < result[j].Metadata.CreatedAt.UTC().Unix()
 				}
 			default:
 				return false
@@ -176,14 +176,14 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	existingJob, ok := d.jobs[j.ID]
+	existingJob, ok := d.jobs[j.Metadata.ID]
 	if ok {
-		if len(j.RequesterPublicKey) > 0 {
-			existingJob.RequesterPublicKey = j.RequesterPublicKey
+		if len(j.Status.Requester.RequesterPublicKey) > 0 {
+			existingJob.Status.Requester.RequesterPublicKey = j.Status.Requester.RequesterPublicKey
 		}
 		return nil
 	}
-	d.jobs[j.ID] = j
+	d.jobs[j.Metadata.ID] = j
 	return nil
 }
 
@@ -238,7 +238,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	if !ok {
 		return bacerrors.NewJobNotFound(jobID)
 	}
-	job.Deal = deal
+	job.Spec.Deal = deal
 	return nil
 }
 

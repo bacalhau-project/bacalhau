@@ -95,8 +95,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 		var err error
 		j := publicapi.MakeNoopJob()
 		j, err = c.Submit(ctx, j, nil)
-		jobIds = append(jobIds, shortID(false, j.ID))
-		jobLongIds = append(jobIds, j.ID)
+		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
+		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
 
@@ -146,7 +146,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), firstItem.ID, jobLongIds[0], "The filtered job id was not found in the response")
+	require.Contains(suite.T(), firstItem.Metadata.ID, jobLongIds[0], "The filtered job id was not found in the response")
 	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
 }
 
@@ -192,7 +192,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					j := publicapi.MakeNoopJob()
 					j, err = c.Submit(ctx, j, nil)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, shortID(false, j.ID))
+					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ

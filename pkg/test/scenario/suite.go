@@ -146,9 +146,9 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		j.Spec.Publisher = model.PublisherIpfs
 	}
 
-	j.Deal = scenario.Deal
-	if j.Deal.Concurrency < 1 {
-		j.Deal.Concurrency = 1
+	j.Spec.Deal = scenario.Deal
+	if j.Spec.Deal.Concurrency < 1 {
+		j.Spec.Deal.Concurrency = 1
 	}
 
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
@@ -159,11 +159,11 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	resolver := apiClient.GetJobStateResolver()
 	checkers := scenario.JobCheckers
 	shards := job.GetJobTotalExecutionCount(submittedJob)
-	err = resolver.Wait(s.Ctx, submittedJob.ID, shards, checkers...)
+	err = resolver.Wait(s.Ctx, submittedJob.Metadata.ID, shards, checkers...)
 	require.NoError(s.T(), err)
 
 	// Check outputs
-	results, err := apiClient.GetResults(s.Ctx, submittedJob.ID)
+	results, err := apiClient.GetResults(s.Ctx, submittedJob.Metadata.ID)
 	require.NoError(s.T(), err)
 
 	resultsDir = s.T().TempDir()
