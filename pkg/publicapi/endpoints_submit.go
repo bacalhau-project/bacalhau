@@ -20,19 +20,31 @@ import (
 
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	Data model.JobCreatePayload `json:"data"`
+	Data model.JobCreatePayload `json:"data" validate:"required"`
 
 	// A base64-encoded signature of the data, signed by the client:
-	ClientSignature string `json:"signature"`
+	ClientSignature string `json:"signature" validate:"required"`
 
 	// The base64-encoded public key of the client:
-	ClientPublicKey string `json:"client_public_key"`
+	ClientPublicKey string `json:"client_public_key" validate:"required"`
 }
 
 type submitResponse struct {
 	Job *model.Job `json:"job"`
 }
 
+// submit godoc
+// @ID                   pkg/apiServer.submit
+// @Summary              Submits a new job to the network.
+// @Description.markdown endpoints_submit
+// @Tags                 Job
+// @Accept               json
+// @Produce              json
+// @Param                submitRequest body     submitRequest true " "
+// @Success              200           {object} submitResponse
+// @Failure              400           {object} string
+// @Failure              500           {object} string
+// @Router               /submit [post]
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
 	defer span.End()
