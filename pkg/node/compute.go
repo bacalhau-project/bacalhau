@@ -117,6 +117,7 @@ func NewComputeNode(
 	})
 
 	biddingStrategy := bidstrategy.NewChainedBidStrategy(
+		bidstrategy.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
 		bidstrategy.NewMaxCapacityStrategy(bidstrategy.MaxCapacityStrategyParams{
 			MaxJobRequirements: config.JobResourceLimits,
 		}),
