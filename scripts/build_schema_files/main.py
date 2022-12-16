@@ -1,6 +1,7 @@
 import git
 from pathlib import Path
 from packaging import version
+import semver
 from sys import argv
 
 import subprocess
@@ -52,7 +53,6 @@ for longTag in tagList:
 
     try:
         semVerTag = version.parse(tag)
-        # print(semVerTag)
         if semVerTag > STARTING_SEMVER and not semVerTag.is_prerelease:
             listOfTagsToBuild.append(tag)
     except ValueError as ve:

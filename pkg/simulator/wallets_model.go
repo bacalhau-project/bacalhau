@@ -1,13 +1,11 @@
 package simulator
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
@@ -39,21 +37,17 @@ type walletsModel struct {
 	// mark in the smart contract that the client accepted it, instead
 	accepted map[string]bool
 
-	// the local DB instance we can use to query state
-	localDB localdb.LocalDB
-
 	// money mutex - hold this when adding/subtracting to/from balances and
 	// escrow channels
 	moneyMutex sync.Mutex
 }
 
-func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
+func newWalletsModel() *walletsModel {
 	w := &walletsModel{
 		jobOwners: map[string]string{},
 		balances:  map[string]int64{},
 		escrow:    map[string]int64{},
 		accepted:  map[string]bool{},
-		localDB:   localDB,
 	}
 	go w.logWallets()
 	return w
@@ -267,22 +261,9 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 		return err
 	}
 
-	ctx := context.Background()
 	walletAddress := wallets.jobOwners[event.JobID]
 	wallets.ensureWallet(walletAddress)
 	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
-
-	// here are examples of using the state resolver to query the localDB
-	_, err = wallets.localDB.GetJob(ctx, event.JobID)
-	if err != nil {
-		return err
-	}
-
-	_, err = wallets.localDB.GetJobState(ctx, event.JobID)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

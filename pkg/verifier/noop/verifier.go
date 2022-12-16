@@ -116,10 +116,11 @@ func (noopVerifier *NoopVerifier) VerifyShard(
 			continue
 		}
 		results = append(results, verifier.VerifierResult{
-			JobID:      shard.Job.Metadata.ID,
-			NodeID:     shardState.NodeID,
-			ShardIndex: shardState.ShardIndex,
-			Verified:   true,
+			JobID:       shard.Job.Metadata.ID,
+			NodeID:      shardState.NodeID,
+			ExecutionID: shardState.ExecutionID,
+			ShardIndex:  shardState.ShardIndex,
+			Verified:    true,
 		})
 	}
 	return results, nil

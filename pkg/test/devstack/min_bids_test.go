@@ -30,6 +30,7 @@ type minBidsTestCase struct {
 	concurrency    int
 	minBids        int
 	expectedResult map[model.JobStateType]int
+	submitChecker  scenario.CheckSubmitResponse
 	errorStates    []model.JobStateType
 }
 
@@ -58,6 +59,7 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 			job.WaitThrowErrors(testCase.errorStates),
 			job.WaitForJobStates(testCase.expectedResult),
 		},
+		SubmitChecker: testCase.submitChecker,
 	}
 
 	s.RunScenario(testScenario)
@@ -100,20 +102,11 @@ func (s *MinBidsSuite) TestMinBids_noBids() {
 	// test that no bids are made because there are not enough nodes on the network
 	// to satisfy the min bids
 	s.testMinBids(minBidsTestCase{
-		nodes:       3,
-		shards:      1,
-		concurrency: 3,
-		minBids:     5,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateBidding: 3,
-		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
-			model.JobStateWaiting,
-			model.JobStateRunning,
-			model.JobStateVerifying,
-			model.JobStateCompleted,
-		},
+		nodes:         3,
+		shards:        1,
+		concurrency:   3,
+		minBids:       5,
+		submitChecker: scenario.SubmitJobErrorContains("not enough"),
 	})
 
 }

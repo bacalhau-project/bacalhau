@@ -3,11 +3,10 @@ package devstack
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -25,12 +24,6 @@ func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 		VerifiersFactory:        NewNoopVerifiersFactory(),
 		PublishersFactory:       NewNoopPublishersFactory(),
 	}
-}
-
-func NewNoopNode(
-	ctx context.Context,
-	config node.NodeConfig) (*node.Node, error) {
-	return node.NewNode(ctx, config, NewNoopNodeDependencyInjector())
 }
 
 type NoopStorageProvidersFactory struct {
