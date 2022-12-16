@@ -65,11 +65,15 @@ require (
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.7
 <<<<<<< HEAD
+<<<<<<< HEAD
 	github.com/tetratelabs/wazero v1.0.0-pre.3
 	github.com/theckman/yacspin v0.13.12
 =======
 	github.com/tetratelabs/wazero v1.0.0-pre.4
 >>>>>>> 96993714 (deps: updates wazero to 1.0.0-pre.4)
+=======
+	github.com/tetratelabs/wazero v1.0.0-pre.4
+>>>>>>> main
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
@@ -140,7 +144,11 @@ require (
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.7 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+<<<<<<< HEAD
 	github.com/go-pkgz/expirable-cache v1.0.0 // indirect
+=======
+	github.com/go-pkgz/expirable-cache v0.1.0 // indirect
+>>>>>>> main
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

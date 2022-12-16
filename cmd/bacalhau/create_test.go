@@ -90,8 +90,6 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
-	*OC = *NewCreateOptions()
-
 	parsedBasedURI, err := url.Parse(c.BaseURI)
 	require.NoError(s.T(), err)
 
@@ -99,7 +97,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err)
 
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
 	)

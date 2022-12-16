@@ -278,6 +278,10 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 	return flags
 }
 
+func getCommandLineExecutable() string {
+	return os.Args[0]
+}
+
 //nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
@@ -331,7 +335,7 @@ func ExecuteJob(ctx context.Context,
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	err = WaitAndPrintResultsToUser(ctx, j, quiet)
+	err = WaitAndPrintResultsToUser(ctx, cmd, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal(cmd, "", 0)
@@ -400,7 +404,7 @@ func ExecuteJob(ctx context.Context,
 	if printDownload {
 		printOut += fmt.Sprintf(`
 To download the results, execute:
-%sbacalhau get %s
+%s%s get %s
 
 To get more details about the run, execute:
 %s%s describe %s
@@ -689,7 +693,7 @@ To get more information at any time, run:
 
 			if !quiet {
 				for i := range jobEvents {
-					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+					printingUpdateForEvent(cmd, printedEventsTracker, jobEvents[i].EventName)
 				}
 			}
 
@@ -734,7 +738,7 @@ To get more information at any time, run:
 	return printDownloadFlag, returnError
 }
 
-func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
+func printingUpdateForEvent(cmd *cobra.Command, pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
 	maxLength := 0
 	for _, v := range eventsWorthPrinting {
 		if len(v.Message) > maxLength {
@@ -751,16 +755,16 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 			firstLine = firstLine && !pe[v].printed
 		}
 		if !firstLine {
-			RootCmd.Println("done ✅")
+			cmd.Println("done ✅")
 		}
 
-		RootCmd.Printf("\t%s%s",
+		cmd.Printf("\t%s%s",
 			strings.Repeat(" ", maxLength-len(eventsWorthPrinting[jet].Message)+2),
 			eventsWorthPrinting[jet].Message)
 		if !eventsWorthPrinting[jet].IsTerminal {
-			RootCmd.Print(" ... ")
+			cmd.Print(" ... ")
 		} else {
-			RootCmd.Println()
+			cmd.Println()
 		}
 
 		currentLineMessage = formatMessage(eventsWorthPrinting[jet].Message)
