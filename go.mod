@@ -64,8 +64,12 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.7
+<<<<<<< HEAD
 	github.com/tetratelabs/wazero v1.0.0-pre.3
 	github.com/theckman/yacspin v0.13.12
+=======
+	github.com/tetratelabs/wazero v1.0.0-pre.4
+>>>>>>> 96993714 (deps: updates wazero to 1.0.0-pre.4)
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
