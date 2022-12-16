@@ -20,7 +20,7 @@ You can always use your own custom container, however there are some things to n
 
 * You must publish the container to a public container registry that is accessible from the Bacalhau network
 * Containers must have an `x86_64` CPU architecture
-* The `--inputs` and `--input-voumes` flags do not support CID subpaths only **directories** 
+* The `--inputs` and `--input-volumes` flags do not support CID subpaths only **directories** 
 * The `--input-urls` flag does not support URL directories only **single files** only
 
 :::tip
