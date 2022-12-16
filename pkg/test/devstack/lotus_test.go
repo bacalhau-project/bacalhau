@@ -50,7 +50,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	testCase := scenario.WasmHelloWorld
 	nodeCount := 1
 
-	stack, _ := SetupTest(ctx, s.T(), nodeCount, 0, true, computenode.NewDefaultComputeNodeConfig(), requesternode.NewDefaultRequesterNodeConfig())
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, computenode.NewDefaultComputeNodeConfig(), requesternode.NewDefaultRequesterNodeConfig())
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(s.T(), err)

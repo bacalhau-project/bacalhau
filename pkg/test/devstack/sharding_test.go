@@ -203,7 +203,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	const nodeCount = 1
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, cm := testutils.SetupTest(
 		ctx,
 		suite.T(),
 

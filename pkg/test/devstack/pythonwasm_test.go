@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -65,7 +66,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		computenode.NewDefaultComputeNodeConfig(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
@@ -165,7 +166,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		computenode.NewDefaultComputeNodeConfig(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
@@ -206,7 +207,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		computenode.NewDefaultComputeNodeConfig(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
