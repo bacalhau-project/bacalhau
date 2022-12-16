@@ -52,7 +52,7 @@ for longTag in tagList:
 
     try:
         semVerTag = version.parse(tag)
-        print(semVerTag)
+        # print(semVerTag)
         if semVerTag > STARTING_SEMVER and not semVerTag.is_prerelease:
             listOfTagsToBuild.append(tag)
     except ValueError as ve:
