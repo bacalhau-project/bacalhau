@@ -43,6 +43,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "nokogiri"
+version = "0.2.2"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "packaging"
 version = "22.0"
 description = "Core utilities for Python packages"
@@ -69,13 +77,14 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "7b06bce740a51811a417709725e95adb22a0864f05f624fa549d52e1db05b211"
+content-hash = "f6c92f663eef1c6ce8ff70c455a060f2900e87a50bafe985d96a1f9365ed3001"
 
 [metadata.files]
 gitdb = []
 gitpython = []
 jinja2 = []
 markupsafe = []
+nokogiri = []
 packaging = []
 semver = []
 smmap = []
