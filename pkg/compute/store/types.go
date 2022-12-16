@@ -9,25 +9,31 @@ import (
 )
 
 type Execution struct {
-	ID            string
-	Shard         model.JobShard
-	ResourceUsage model.ResourceUsageData
-	State         ExecutionState
-	Version       int
-	CreateTime    time.Time
-	UpdateTime    time.Time
-	LatestComment string
+	ID              string
+	Shard           model.JobShard
+	RequesterNodeID string
+	ResourceUsage   model.ResourceUsageData
+	State           ExecutionState
+	Version         int
+	CreateTime      time.Time
+	UpdateTime      time.Time
+	LatestComment   string
 }
 
-func NewExecution(id string, shard model.JobShard, resourceUsage model.ResourceUsageData) *Execution {
+func NewExecution(
+	id string,
+	shard model.JobShard,
+	requesterNodeID string,
+	resourceUsage model.ResourceUsageData) *Execution {
 	return &Execution{
-		ID:            id,
-		Shard:         shard,
-		ResourceUsage: resourceUsage,
-		State:         ExecutionStateCreated,
-		Version:       1,
-		CreateTime:    time.Now(),
-		UpdateTime:    time.Now(),
+		ID:              id,
+		Shard:           shard,
+		RequesterNodeID: requesterNodeID,
+		ResourceUsage:   resourceUsage,
+		State:           ExecutionStateCreated,
+		Version:         1,
+		CreateTime:      time.Now(),
+		UpdateTime:      time.Now(),
 	}
 }
 

@@ -70,3 +70,41 @@ func SkipIfArm(t *testing.T, issueURL string) {
 		t.Skip("Test does not pass natively on arm64", issueURL)
 	}
 }
+
+func MakeGenericJob() *model.Job {
+	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
+		"echo",
+		"$(date +%s)",
+	})
+}
+
+func MakeNoopJob() *model.Job {
+	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
+		"echo",
+		"$(date +%s)",
+	})
+}
+
+func MakeJob(
+	engineType model.Engine,
+	verifierType model.Verifier,
+	publisherType model.Publisher,
+	entrypointArray []string) *model.Job {
+	j := model.NewJob()
+
+	j.Spec = model.Spec{
+		Engine:    engineType,
+		Verifier:  verifierType,
+		Publisher: publisherType,
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu:latest",
+			Entrypoint: entrypointArray,
+		},
+	}
+
+	j.Spec.Deal = model.Deal{
+		Concurrency: 1,
+	}
+
+	return j
+}
