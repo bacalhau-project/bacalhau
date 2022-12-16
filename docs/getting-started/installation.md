@@ -26,6 +26,7 @@ Once your Bacalhau client is installed, it will show the client and server versi
 
 ```
 ❯ bacalhau version
+
 Client Version: v0.x.y
 Server Version: v0.x.y
 ```
@@ -46,7 +47,9 @@ The code snippet below submits a job that runs an `echo` program within an [Ubun
 
 ```zsh
 ❯ bacalhau docker run ubuntu echo Hello World
-3b39baee-5714-4f17-aa71-1f5824665ad6
+
+Job successfully submitted. Job ID: 3b39baee-5714-4f17-aa71-1f5824665ad6
+Checking job status...
 ```
 
 The job id above is shown in its full form. For convenience, you can use the shortened version, in this case: `3b39baee`. We will store that portion of the job id in an environment variable so that we can reuse it later on.
@@ -57,9 +60,16 @@ After the above command is run, a job is submitted to the public network, which 
 ❯ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
 
 ❯ bacalhau list --id-filter=${JOB_ID}
+
  CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
  07:20:32  3b39baee  Docker ubuntu echo H...  Published            /ipfs/bafybeidu4zm6w...
 ```
+
+:::info
+
+Replace with your own generated `JOB-ID`
+
+:::
 
 A `Published/Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.  
 
@@ -68,44 +78,38 @@ For a comprehensive list of flags you can pass to the list command check out [th
 
 ## Get results
 
-After the job has finished processing, its outputs are stored on IPFS. To download outputs locally, we can use the `get` verb.
+After the job has finished processing, its outputs are stored on IPFS. To download outputs locally.
 
-First, we'll create and move into a directory that will store our job outputs. Next, we use the `get` verb to download the job outputs into the current directory.
-
+First, we'll create a directory that will store our job outputs.
 
 ```
 ❯ mkdir -p /tmp/myfolder
 ❯ cd /tmp/myfolder
+```
 
+Next, we use the `get` verb to download the job outputs into the current directory.
+
+```
 ❯ bacalhau get ${JOB_ID}
+
 15:44:12.278 | INF bacalhau/get.go:67 > Fetching results of job '3b39baee'...
 15:44:18.463 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
 15:44:21.17 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/tmp/myfolder'
 ```
 
-:::note
+:::info
 
 This command prints out a number of verbose logs- these are meant for Bacalhau developers. You can safely ignore them, per [issue #614](https://github.com/filecoin-project/bacalhau/issues/614))
 
 :::
 
-At this point, the outputs have been downloaded locally and we are ready to inspect them. Each job creates 3 useful artifacts: the `stdout` and `stderr` files, as well as a `volumes/` directory. 
+At this point, the outputs have been downloaded locally and we are ready to inspect them. Each job creates 3 subfolders: the *combined_results*, *per_shard* files, and the *raw* directory. In each of these sub_folders, you'll find the *stdout* and *stderr* file.
 
-For the scope this of this guide, we will only look at the `stdout` file, but in a real world scenario, you should also look at output data stored within the `volumes/` directory. The `shards/` folder can be ignored.
-
-```
-❯ ls -l
-total 8
-drwxr-xr-x  3 enricorotundo  wheel  96 Sep 13 15:58 shards
--rw-r--r--  1 enricorotundo  wheel   0 Sep 13 15:58 stderr
--rw-r--r--  1 enricorotundo  wheel  12 Sep 13 15:58 stdout
-drwxr-xr-x  3 enricorotundo  wheel  96 Sep 13 15:58 volumes
-```
-
-We submitted a job to print a string message to a [standard output](https://en.wikipedia.org/wiki/Standard_streams), so we have enough to now inspect the content of the related file:
+For the scope this of this guide, we will only look at the **stdout** file. To inspect the content of the file, use the code below:
 
 ```
-❯ cat /tmp/myfolder/stdout
+❯ cat /tmp/myfolder/job-id/combined_results/stdout
+
 Hello World
 ```
 
@@ -119,6 +123,7 @@ Here are a few resources that provides a deeper dive into running jobs with Baca
 * [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)
 * [Check out the Bacalhau CLI Reference page](../all-flags.md)
 
-## Support
 
-For help with the Bacalhau client, installation, or other questions, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack).
+## Need Support?
+
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
