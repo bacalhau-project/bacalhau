@@ -11,28 +11,33 @@ import (
 	"time"
 )
 
-// TODO: Update docs
 // A fanoutPublisher is a publisher that will try multiple publishers in
-// parallel and return the result from the first one to succeed. Other
-// publishers will continue to run but their results and errors from the other
-// publishers are also ignored. An error is only returned if all publishers fail
-// to produce a result.
+// parallel. By default, publishers are not prioritized and fanoutPublisher will
+// return the result from the first one to succeed.
+// Other  publishers will continue to run but their results and errors from the
+// other publishers are also ignored. An error is only returned if all publishers fail to produce a result.
+// If isPrioritized flag is provided result from providers are prioritized in the order they are provided.
+// fanoutPublisher will wait for duration of the provided timeout for
+// prioritized publisher to return before moving on to the next one and returning their result.
 type fanoutPublisher struct {
 	publishers    []publisher.Publisher
 	isPrioritized bool
+	timeout       time.Duration
 }
 
 func NewFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
 	return &fanoutPublisher{
 		publishers,
 		false,
+		time.Duration(0),
 	}
 }
 
-func NewPrioritizedFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
+func NewPrioritizedFanoutPublisher(timeout time.Duration, publishers ...publisher.Publisher) publisher.Publisher {
 	return &fanoutPublisher{
 		publishers,
 		true,
+		timeout,
 	}
 }
 
@@ -147,8 +152,7 @@ loop:
 			// start timeout for other results when first result is returned
 			if len(results) == 1 {
 				go func() {
-					// TODO: Make timeout value configurable
-					time.Sleep(time.Second * 2)
+					time.Sleep(f.timeout)
 					timeoutChannel <- true
 				}()
 			}
