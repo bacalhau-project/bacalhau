@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "bacalhau_apiclient"
+version = "0.0.3"
+authors = [
+{ name="Enrico Rotundo", email="enrico.rotundo@gmail.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.6.2"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/filecoin-project/bacalhau/"
+"Bug Tracker" = "https://github.com/filecoin-project/bacalhau/issues"

@@ -1,4 +1,4 @@
-# bacalhau_client.JobApi
+# bacalhau_apiclient.JobApi
 
 All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
 
@@ -23,13 +23,13 @@ Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) 
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-events_request = bacalhau_client.EventsRequest() # EventsRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
+api_instance = bacalhau_apiclient.JobApi()
+events_request = bacalhau_apiclient.EventsRequest() # EventsRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
 
 try:
     # Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
@@ -71,13 +71,13 @@ Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passe
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-list_request = bacalhau_client.ListRequest() # ListRequest | Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!).
+api_instance = bacalhau_apiclient.JobApi()
+list_request = bacalhau_apiclient.ListRequest() # ListRequest | Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!).
 
 try:
     # Simply lists jobs.
@@ -119,13 +119,13 @@ Local events (e.g. Selected, BidAccepted, Verified) are useful to track the prog
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-local_events_request = bacalhau_client.LocalEventsRequest() # LocalEventsRequest |  
+api_instance = bacalhau_apiclient.JobApi()
+local_events_request = bacalhau_apiclient.LocalEventsRequest() # LocalEventsRequest |  
 
 try:
     # Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
@@ -167,13 +167,13 @@ Example response:  ```json {   \"results\": [     {       \"NodeID\": \"QmdZQ7Zb
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-state_request = bacalhau_client.StateRequest() # StateRequest |  
+api_instance = bacalhau_apiclient.JobApi()
+state_request = bacalhau_apiclient.StateRequest() # StateRequest |  
 
 try:
     # Returns the results of the job-id specified in the body payload.
@@ -215,13 +215,13 @@ Example response:  ```json {   \"state\": {     \"Nodes\": {       \"QmSyJ8VUd4Y
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-state_request = bacalhau_client.StateRequest() # StateRequest |  
+api_instance = bacalhau_apiclient.JobApi()
+state_request = bacalhau_apiclient.StateRequest() # StateRequest |  
 
 try:
     # Returns the state of the job-id specified in the body payload.
@@ -263,13 +263,13 @@ Description:  * `client_public_key`: The base64-encoded public key of the client
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.JobApi()
-submit_request = bacalhau_client.SubmitRequest() # SubmitRequest |  
+api_instance = bacalhau_apiclient.JobApi()
+submit_request = bacalhau_apiclient.SubmitRequest() # SubmitRequest |  
 
 try:
     # Submits a new job to the network.

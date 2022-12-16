@@ -120,7 +120,7 @@ swagger-docs:
 .PHONY: clients
 clients:
 	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
-		cd clients && ${MAKE} -j all) || true
+		cd clients && ) || true
 
 ################################################################################
 # Target: build

@@ -1,4 +1,4 @@
-# bacalhau_client.UtilsApi
+# bacalhau_apiclient.UtilsApi
 
 All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
 
@@ -24,12 +24,12 @@ Returns debug information on what the current node is doing.
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     # Returns debug information on what the current node is doing.
@@ -66,12 +66,12 @@ No authorization required
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     api_response = api_instance.healthz()
@@ -107,12 +107,12 @@ Returns the id of the host node.
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     # Returns the id of the host node.
@@ -149,12 +149,12 @@ No authorization required
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     api_response = api_instance.livez()
@@ -190,12 +190,12 @@ No authorization required
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     api_response = api_instance.logz()
@@ -233,12 +233,12 @@ As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     # Returns the peers connected to the host via the transport layer.
@@ -275,12 +275,12 @@ No authorization required
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     api_response = api_instance.readyz()
@@ -316,12 +316,12 @@ No authorization required
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
+api_instance = bacalhau_apiclient.UtilsApi()
 
 try:
     api_response = api_instance.varz()
@@ -359,13 +359,13 @@ See https://github.com/filecoin-project/bacalhau/releases for a complete list of
 ```python
 from __future__ import print_function
 import time
-import bacalhau_client
-from bacalhau_client.rest import ApiException
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
 from pprint import pprint
 
 # create an instance of the API class
-api_instance = bacalhau_client.UtilsApi()
-version_request = bacalhau_client.VersionRequest() # VersionRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
+api_instance = bacalhau_apiclient.UtilsApi()
+version_request = bacalhau_apiclient.VersionRequest() # VersionRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
 
 try:
     # Returns the build version running on the server.

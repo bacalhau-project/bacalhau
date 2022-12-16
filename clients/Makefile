@@ -1,4 +1,4 @@
-PACKAGE_NAME := bacalhau-client
+PACKAGE_NAME := bacalhau-apiclient
 SWAGGER_JSON := ../docs/swagger.json
 VERSION := $(shell git describe --tags --abbrev=0 | tr -d v)
 
@@ -16,7 +16,7 @@ endif
 .PHONY: all
 all: $(patsubst %,%/,$(shell cat supported_langs))
 	
-$(shell cat supported_langs | xargs mkdir -p)
+# $(shell cat supported_langs | xargs mkdir -p)
 
 %-config.json: config.json.template
 	cat $< | \
@@ -42,10 +42,24 @@ python-config.json: config.json.template
 		--remove-operation-id-prefix \
 		-Dapis -DapiTests=false -DapiDocs=true \
 		-Dmodels -DmodelTests=false -DmodelDocs=true \
-		-DsupportingFiles=false
+		-DsupportingFiles=true
+	rm ./swagger-edited.json
+	# mv python/docs python/${UNDERSCORE_PACKAGE_NAME}
+	# cp -rf python/${UNDERSCORE_PACKAGE_NAME} bacalhau_sdk/
+	# mv bacalhau_sdk/bacalhau_sdk/${UNDERSCORE_PACKAGE_NAME} bacalhau_sdk/bacalhau_sdk/
+
+	cp pyproject.toml $@/pyproject.toml
+	cp ../LICENSE $@/LICENSE
+
+pypi: python/
+	cd python && python3 -m pip install --upgrade build && python3 -m build
+
+pypi-upload: pypi
+	cd python && python3 -m pip install --upgrade twine && python3 -m twine upload dist/*
 
 .PHONY: clean
-clean: $(shell find . -type d -depth 1)
+clean: $(shell find . -type d -depth 1 -not -name bacalhau_sdk)
 	$(RM) -r $^
 	$(RM) *-config.json
 	$(RM) ./swagger-edited.json
+	# $(RM) -r bacalhau_sdk/bacalhau_sdk/${UNDERSCORE_PACKAGE_NAME}
