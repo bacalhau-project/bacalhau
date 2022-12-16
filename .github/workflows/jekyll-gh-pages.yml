@@ -2,8 +2,7 @@
 name: Deploy Jekyll with GitHub Pages dependencies preinstalled
 
 on:
-  pull_request:
-    types: [closed]
+  repository_dispatch:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -22,7 +21,6 @@ concurrency:
 jobs:
   # Build job
   build:
-    if: ${{ github.event.label.name == 'schema' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
