@@ -5,7 +5,9 @@ layout: default
 # JSON Schema
 <ul>
 
-<li><a href="jsonschema/v9.3.30.json">LATEST</a></li>
+<li><a href="jsonschema/v9.3.31.json">LATEST</a></li>
+
+<li><a href="jsonschema/v9.3.31.json">9.3.31</a></li>
 
 <li><a href="jsonschema/v9.3.30.json">9.3.30</a></li>
 
