@@ -50,6 +50,7 @@ type ServeOptions struct {
 	SwarmPort                       int           // The host port for libp2p network.
 	JobSelectionDataLocality        string        // The data locality to use for job selection.
 	JobSelectionDataRejectStateless bool          // Whether to reject jobs that don't specify any data.
+	JobSelectionDataAcceptNetworked bool          // Whether to accept jobs that require network access.
 	JobSelectionProbeHTTP           string        // The HTTP URL to use for job selection.
 	JobSelectionProbeExec           string        // The executable to use for job selection.
 	MetricsPort                     int           // The port to listen on for metrics.
@@ -76,6 +77,7 @@ func NewServeOptions() *ServeOptions {
 		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
+		JobSelectionDataAcceptNetworked: false,
 		JobSelectionProbeHTTP:           "",
 		JobSelectionProbeExec:           "",
 		LimitTotalCPU:                   "",
@@ -97,6 +99,10 @@ func setupJobSelectionCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().BoolVar(
 		&OS.JobSelectionDataRejectStateless, "job-selection-reject-stateless", OS.JobSelectionDataRejectStateless,
 		`Reject jobs that don't specify any data.`,
+	)
+	cmd.PersistentFlags().BoolVar(
+		&OS.JobSelectionDataAcceptNetworked, "job-selection-accept-networked", OS.JobSelectionDataAcceptNetworked,
+		`Accept jobs that require network access.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.JobSelectionProbeHTTP, "job-selection-probe-http", OS.JobSelectionProbeHTTP,
@@ -178,6 +184,7 @@ func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
 	jobSelectionPolicy := model.JobSelectionPolicy{
 		Locality:            typedJobSelectionDataLocality,
 		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
+		AcceptNetworkedJobs: OS.JobSelectionDataAcceptNetworked,
 		ProbeHTTP:           OS.JobSelectionProbeHTTP,
 		ProbeExec:           OS.JobSelectionProbeExec,
 	}

@@ -218,6 +218,15 @@ func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 	}
 }
 
+func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
+	return &ValueFlag[model.Network]{
+		value:    value,
+		parser:   model.ParseNetwork,
+		stringer: func(n *model.Network) string { return n.String() },
+		typeStr:  "network-type",
+	}
+}
+
 func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
 	return &MapValueFlag[string, string]{
 		value:    value,
