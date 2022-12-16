@@ -58,6 +58,7 @@ type DockerRunOptions struct {
 	CPU              string
 	Memory           string
 	GPU              string
+	Networking       model.Network
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
 
@@ -96,6 +97,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		CPU:                "",
 		Memory:             "",
 		GPU:                "",
+		Networking:         model.NetworkNone,
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
@@ -209,6 +211,10 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.GPU, "gpu", ODR.GPU,
 		`Job GPU requirement (e.g. 1, 2, 8).`,
+	)
+	dockerRunCmd.PersistentFlags().Var(
+		NetworkFlag(&ODR.Networking), "network",
+		`Networking capability required by the job`,
 	)
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.SkipSyntaxChecking, "skip-syntax-checking", ODR.SkipSyntaxChecking,
@@ -365,6 +371,7 @@ func CreateJob(ctx context.Context,
 		odr.CPU,
 		odr.Memory,
 		odr.GPU,
+		odr.Networking,
 		odr.InputUrls,
 		odr.InputVolumes,
 		odr.OutputVolumes,
