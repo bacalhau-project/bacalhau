@@ -119,8 +119,8 @@ func (s *UtilsSuite) TestVersionCheck() {
 
 func (s *UtilsSuite) TestImages() {
 	tc := map[string]struct {
-		image string
-		valid bool
+		Image string
+		Valid bool
 	}{
 		// TODO: #843 Unblock when we can figure out how to check the existence of the image
 		// "no image": {
@@ -132,24 +132,24 @@ func (s *UtilsSuite) TestImages() {
 		// 	valid: false,
 		// },
 		"image with tag (norepo)": {
-			image: "ubuntu:latest",
-			valid: true,
+			Image: "ubuntu:latest",
+			Valid: true,
 		},
 		"image with tag (repo)": {
-			image: "curlimages/curl:7.85.0",
-			valid: true,
+			Image: "curlimages/curl:7.85.0",
+			Valid: true,
 		},
 	}
 
 	for name, test := range tc {
 		s.Run(name, func() {
 			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
-			sampleJob.Spec.Docker.Image = test.image
+			sampleJob.Spec.Docker.Image = test.Image
 			err := job.VerifyJob(context.TODO(), sampleJob)
-			if test.valid {
-				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.image)
+			if test.Valid {
+				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)
 			} else {
-				require.Error(s.T(), err, "%s: expected invalid image %s to fail", name, test.image)
+				require.Error(s.T(), err, "%s: expected invalid image %s to fail", name, test.Image)
 			}
 		})
 	}
