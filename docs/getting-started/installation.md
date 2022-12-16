@@ -115,7 +115,7 @@ With that, you have just sucessfully run a job on the Bacalhau network! :fish:
 
 Here are a few resources that provides a deeper dive into running jobs with Bacalhau: 
 
-* [How to run an existing workload on Bacalhau](../getting-started/workload-onboarding.md)
+* [How to run an existing workload on Bacalhau](../getting-started/docker-workload-onboarding.md)
 * [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)
 * [Check out the Bacalhau CLI Reference page](../all-flags.md)
 
