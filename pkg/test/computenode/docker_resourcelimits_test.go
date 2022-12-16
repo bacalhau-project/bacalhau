@@ -44,7 +44,7 @@ func (suite *ComputeNodeDockerResourceLimitsSuite) TestDockerResourceLimitsCPU()
 				},
 			},
 		},
-		JobCheckers: scenario.WaitUntilComplete(1),
+		JobCheckers: scenario.WaitUntilSuccessful(1),
 	}
 
 	resultsDir := suite.RunScenario(testScenario)
@@ -86,7 +86,7 @@ func (suite *ComputeNodeDockerResourceLimitsSuite) TestDockerResourceLimitsMemor
 				},
 			},
 		},
-		JobCheckers: scenario.WaitUntilComplete(1),
+		JobCheckers: scenario.WaitUntilSuccessful(1),
 	}
 
 	resultsDir := suite.RunScenario(testScenario)

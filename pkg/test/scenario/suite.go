@@ -31,7 +31,10 @@ type ScenarioTestSuite interface {
 // the job to complete, and then make assertions against the results of the job.
 //
 // ScenarioRunner implements a number of testify/suite interfaces making it
-// appropriate as the basis for a test suite.
+// appropriate as the basis for a test suite. If a test suite composes itself
+// from the ScenarioRunner then default set up and tear down methods that
+// instrument and configure the test will be used. Test suites should not define
+// their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx  context.Context
@@ -53,7 +56,7 @@ func (s *ScenarioRunner) TearDownTest() {
 	s.Span.End()
 }
 
-func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage ISetupStorage) []model.StorageSpec {
+func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []model.StorageSpec {
 	if getStorage == nil {
 		return []model.StorageSpec{}
 	}

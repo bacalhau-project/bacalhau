@@ -34,7 +34,7 @@ func RunTestCase(
 	require.NoError(t, err)
 	require.True(t, isInstalled)
 
-	prepareStorage := func(getStorage scenario.ISetupStorage) []model.StorageSpec {
+	prepareStorage := func(getStorage scenario.SetupStorage) []model.StorageSpec {
 		if getStorage == nil {
 			return []model.StorageSpec{}
 		}
