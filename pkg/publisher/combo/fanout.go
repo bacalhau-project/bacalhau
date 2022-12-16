@@ -3,12 +3,13 @@ package combo
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
-	"sync"
-	"time"
 )
 
 // A fanoutPublisher is a publisher that will try multiple publishers in
