@@ -1,45 +1,16 @@
-package ipfs
+package downloader
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	cp "github.com/n-marshall/go-cp"
 	"github.com/rs/zerolog/log"
+	"io"
+	"os"
+	"path/filepath"
 )
-
-const (
-	DownloadVolumesFolderName = "combined_results"
-	DownloadShardsFolderName  = "per_shard"
-	DownloadCIDsFolderName    = "raw"
-	DownloadFilenameStdout    = "stdout"
-	DownloadFilenameStderr    = "stderr"
-	DownloadFilenameExitCode  = "exitCode"
-	DownloadFolderPerm        = 0755
-	DownloadFilePerm          = 0644
-)
-
-// SpecialFiles - i.e. aything that is not a volume
-// the boolean value is whether we should append to the global log
-var SpecialFiles = map[string]bool{
-	DownloadFilenameStdout:   true,
-	DownloadFilenameStderr:   true,
-	DownloadFilenameExitCode: false,
-}
-
-type IPFSDownloadSettings struct {
-	TimeoutSecs    int
-	OutputDir      string
-	IPFSSwarmAddrs string
-}
 
 type shardCIDContext struct {
 	result         model.PublishedResult
@@ -48,17 +19,6 @@ type shardCIDContext struct {
 	cidDownloadDir string
 	shardDir       string
 	volumeDir      string
-}
-
-const DefaultIPFSTimeout time.Duration = 5 * time.Minute
-
-func NewIPFSDownloadSettings() *IPFSDownloadSettings {
-	return &IPFSDownloadSettings{
-		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
-		// we leave this blank so the CLI will auto-create a job folder in pwd
-		OutputDir:      "",
-		IPFSSwarmAddrs: "",
-	}
 }
 
 // * make a temp dir
@@ -73,14 +33,13 @@ func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
-	cm *system.CleanupManager,
-	// these are the outputs named in the job spec
-	// we need them so we know which volumes exists
+// these are the outputs named in the job spec
+// we need them so we know which volumes exists
 	outputVolumes []model.StorageSpec,
-	// these are the published results we have loaded
-	// from the api
+// these are the published results we have loaded
+// from the api
 	publishedShardResults []model.PublishedResult,
-	settings IPFSDownloadSettings,
+	downloader Downloader,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
 	defer span.End()
@@ -90,39 +49,10 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return nil
 	}
 
-	switch system.GetEnvironment() {
-	case system.EnvironmentProd:
-		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
-	case system.EnvironmentTest:
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			log.Ctx(ctx).Warn().Msg("No action (don't use BACALHAU_IPFS_SWARM_ADDRESSES")
-		}
-	case system.EnvironmentDev:
-		// TODO: add more dev swarm addresses?
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			settings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
-		}
-	case system.EnvironmentStaging:
-		log.Ctx(ctx).Warn().Msg("Staging environment has no IPFS swarm addresses attached")
-	}
-
-	// NOTE: we have to spin up a temporary IPFS node as we don't
-	// generally have direct access to a remote node's API server.
-	n, err := spinUpIPFSNode(ctx, cm, settings.IPFSSwarmAddrs)
-	if err != nil {
-		return err
-	}
-
-	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
-	ipfsClient, err := n.Client()
-	if err != nil {
-		return err
-	}
-
 	// this is the full path to the top level folder we are writing our results
 	// we have already processed this in the case of a default
 	// (i.e. the folder named after the job has been created and assigned)
-	resultsOutputDir, err := filepath.Abs(settings.OutputDir)
+	resultsOutputDir, err := downloader.GetResultsOutputDir() // filepath.Abs(downloader.Settings.)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to get absolute path for output dir: %s", err)
 		return err
@@ -185,7 +115,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	for _, shardContext := range shardContexts {
 		_, ok := downloadedCids[shardContext.result.Data.CID]
 		if !ok {
-			err = fetchResult(ctx, ipfsClient, shardContext, settings.TimeoutSecs)
+			err = downloader.FetchResults(ctx, shardContext)
 			if err != nil {
 				return err
 			}
@@ -202,55 +132,6 @@ func DownloadJob( //nolint:funlen,gocyclo
 		}
 	}
 
-	return nil
-}
-
-func spinUpIPFSNode(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	ipfsSwarmAddrs string,
-) (*Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
-	defer span.End()
-
-	log.Ctx(ctx).Debug().Msg("Spinning up IPFS node...")
-	n, err := NewNode(ctx, cm, strings.Split(ipfsSwarmAddrs, ","))
-	if err != nil {
-		return nil, err
-	}
-	return n, nil
-}
-
-func fetchResult(
-	ctx context.Context,
-	cl *Client,
-	shardContext shardCIDContext,
-	timeoutSecs int,
-) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.fetchingResult")
-	defer span.End()
-
-	err := func() error {
-		log.Ctx(ctx).Debug().Msgf(
-			"Downloading result CID %s '%s' to '%s'...",
-			shardContext.result.Data.Name,
-			shardContext.result.Data.CID, shardContext.cidDownloadDir,
-		)
-
-		innerCtx, cancel := context.WithDeadline(ctx,
-			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
-		defer cancel()
-
-		return cl.Get(innerCtx, shardContext.result.Data.CID, shardContext.cidDownloadDir)
-	}()
-
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			log.Ctx(ctx).Error().Msg("Timed out while downloading result.")
-		}
-
-		return err
-	}
 	return nil
 }
 

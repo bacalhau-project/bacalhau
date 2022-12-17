@@ -3,9 +3,9 @@
 package devstack
 
 import (
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -41,7 +41,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 				},
 			},
 		},
-		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, stdoutText),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForJobStates(map[model.JobStateType]int{
 				model.JobStateCompleted: 1,

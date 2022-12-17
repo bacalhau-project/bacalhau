@@ -3,9 +3,9 @@ package bacalhau
 import (
 	"bytes"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
@@ -47,7 +47,7 @@ type LanguageRunOptions struct {
 	// WorkingDir string // Working directory for docker
 
 	RuntimeSettings  RunTimeSettings
-	DownloadSettings ipfs.IPFSDownloadSettings
+	DownloadSettings downloader.DownloadSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -71,7 +71,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		RequirementsPath: "",
 		ContextPath:      ".",
 		RuntimeSettings:  *NewRunTimeSettings(),
-		DownloadSettings: *ipfs.NewIPFSDownloadSettings(),
+		DownloadSettings: *downloader.NewIPFSDownloadSettings(),
 	}
 }
 

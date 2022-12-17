@@ -3,10 +3,10 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -71,7 +71,7 @@ type DockerRunOptions struct {
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
-	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
+	DownloadFlags downloader.DownloadSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -99,7 +99,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		DownloadFlags:      *downloader.NewIPFSDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
@@ -315,7 +315,7 @@ func CreateJob(ctx context.Context,
 		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
+	odr.DownloadFlags = downloader.DownloadSettings{
 		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,

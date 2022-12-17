@@ -4,12 +4,12 @@ package devstack
 
 import (
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -33,7 +33,7 @@ func TestComboDriverSuite(t *testing.T) {
 const exampleText = "hello world"
 
 var testcase scenario.Scenario = scenario.Scenario{
-	ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, exampleText),
+	ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, exampleText),
 	Contexts:       scenario.CatFileToStdout.Contexts,
 	Spec: model.Spec{
 		Engine:    model.EngineWasm,

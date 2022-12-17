@@ -4,13 +4,13 @@ package executor
 
 import (
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -115,9 +115,9 @@ func TestJobResult(t *testing.T) {
 	require.Equal(t, "", result.ErrorMsg)
 
 	for filename, expectedContents := range map[string]string{
-		ipfs.DownloadFilenameStdout:   "standard output",
-		ipfs.DownloadFilenameStderr:   "standard error",
-		ipfs.DownloadFilenameExitCode: "123",
+		downloader.DownloadFilenameStdout:   "standard output",
+		downloader.DownloadFilenameStderr:   "standard error",
+		downloader.DownloadFilenameExitCode: "123",
 	} {
 		actualContents, err := os.ReadFile(filepath.Join(tempDir, filename))
 		require.NoError(t, err)
