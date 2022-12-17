@@ -1,13 +1,14 @@
 ---
 sidebar_label: Simple Image Processing
 sidebar_position: 1
+description: "How to process images stored in IPFS with Bacalhau"
 ---
 # Simple Image Processing
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
 
-In this example, we will show you how to use Bacalhau to process images on a Landsat dataset.
+In this example, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/).
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
@@ -28,7 +29,7 @@ path=!echo $PATH
 %env PATH=./:{path[0]}
 ```
 
-    env: PATH=./:./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+    env: PATH=./:./:./:/home/gitpod/.pyenv/versions/3.8.13/bin:/home/gitpod/.pyenv/libexec:/home/gitpod/.pyenv/plugins/python-build/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/bin:/home/gitpod/.pyenv/plugins/pyenv-update/bin:/home/gitpod/.pyenv/plugins/pyenv-installer/bin:/home/gitpod/.pyenv/plugins/pyenv-doctor/bin:/home/gitpod/.pyenv/shims:/ide/bin/remote-cli:/home/gitpod/.nix-profile/bin:/home/gitpod/.local/bin:/home/gitpod/.sdkman/candidates/maven/current/bin:/home/gitpod/.sdkman/candidates/java/current/bin:/home/gitpod/.sdkman/candidates/gradle/current/bin:/workspace/.cargo/bin:/home/gitpod/.rvm/gems/ruby-3.1.2/bin:/home/gitpod/.rvm/gems/ruby-3.1.2@global/bin:/home/gitpod/.rvm/rubies/ruby-3.1.2/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/shims:/home/gitpod/.pyenv/shims:/workspace/go/bin:/home/gitpod/.nix-profile/bin:/ide/bin/remote-cli:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.nvm/versions/node/v16.18.1/bin:/home/gitpod/.yarn/bin:/home/gitpod/.pnpm:/home/gitpod/.pyenv/bin:/workspace/.rvm/bin:/home/gitpod/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin/:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gitpod/.nvm/versions/node/v16.18.1/bin:/home/gitpod/.rvm/bin
 
 
 
@@ -36,8 +37,8 @@ path=!echo $PATH
 bacalhau version
 ```
 
-    Client Version: v0.2.3
-    Server Version: v0.2.3
+    Client Version: v0.3.15
+    Server Version: v0.3.15
 
 
 ## Submit the workload
@@ -62,7 +63,7 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=deec77f2-e13c-4505-970f-842c7713a48a
+    env: JOB_ID=0e4119fd-12f9-42f5-8cd2-54a0d270541e
 
 
 The job has been submitted and Bacalhau has printed out the related job id.
@@ -74,7 +75,7 @@ bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
      CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     15:15:41  deec77f2  Docker dpokidov/imag...  Published            /ipfs/bafybeidtitnyf... 
+     13:17:34  0e4119fd  Docker dpokidov/imag...  Completed            /ipfs/QmQnern37ueHrs... 
 
 
 Since the job state is published/complete, the job is ready to be downloaded.
@@ -83,45 +84,45 @@ Since the job state is published/complete, the job is ready to be downloaded.
 
 First, let us create a new directory that will store our job outputs.
 Second, use the `get` verb to download the job outputs into the directory specified by the `--output-dir` argument.
-_Please ignore the `> /dev/null 2>&1` portion of the command, it is there only temporarily until we fix this [issue #614](https://github.com/filecoin-project/bacalhau/issues/614) and is meant to supress debug logs that are not useful for the user._
+
 
 
 ```bash
-mkdir -p ./results # Temporary directory to store the results
-bacalhau get --output-dir ./results ${JOB_ID} # Download the results
+rm -rf results && mkdir results
+bacalhau get ${JOB_ID} --output-dir results
 ```
 
-    [90m16:16:02.846 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'deec77f2-e13c-4505-970f-842c7713a48a'...
-    [90m16:16:05.539 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m16:16:12.377 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/image-processing/results'
+    Fetching results of job '0e4119fd-12f9-42f5-8cd2-54a0d270541e'...
+    Results for job '0e4119fd-12f9-42f5-8cd2-54a0d270541e' have been written to...
+    results
 
 
 The docker run command above used the `outputs` volume as a results folder so when we download them they will be stored in a  folder within `volumes/outputs`.
 
 
 ```bash
-ls -lah results/volumes/outputs
+ls -lah results/combined_results/outputs
 ```
 
-    total 192K
-    drwxr-xr-x 11 phil staff 352 Sep 16 16:16 .
-    drwxr-xr-x  3 phil staff  96 Sep 16 15:09 ..
-    -rw-r--r--  1 phil staff 15K Sep 16 16:16 cafires_vir_2021231_lrg.jpg
-    -rw-r--r--  1 phil staff 34K Sep 16 16:16 greatsaltlake_oli_2017210_lrg.jpg
-    -rw-r--r--  1 phil staff 13K Sep 16 16:16 greecefires_oli_2021222_lrg.jpg
-    -rw-r--r--  1 phil staff 17K Sep 16 16:16 haitiearthquake_oli_20212_lrg.jpg
-    -rw-r--r--  1 phil staff 42K Sep 16 16:16 iwojima_tmo_2021225_lrg.jpg
-    -rw-r--r--  1 phil staff 11K Sep 16 16:16 lakemead_etm_2000220_lrg.jpg
-    -rw-r--r--  1 phil staff 14K Sep 16 16:16 lapalma_oli_2021141_lrg.jpg
-    -rw-r--r--  1 phil staff 14K Sep 16 16:16 spainfire_oli_2021227_lrg.jpg
-    -rw-r--r--  1 phil staff 16K Sep 16 16:16 sulphursprings_oli_2019254_lrg.jpg
+    total 196K
+    drwxr-xr-x 2 gitpod gitpod 4.0K Dec 14 13:22 .
+    drwxr-xr-x 3 gitpod gitpod   49 Dec 14 13:22 ..
+    -rw-r--r-- 3 gitpod gitpod  15K Dec 14 13:22 cafires_vir_2021231_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  34K Dec 14 13:22 greatsaltlake_oli_2017210_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  13K Dec 14 13:22 greecefires_oli_2021222_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  17K Dec 14 13:22 haitiearthquake_oli_20212_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  42K Dec 14 13:22 iwojima_tmo_2021225_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  11K Dec 14 13:22 lakemead_etm_2000220_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  14K Dec 14 13:22 lapalma_oli_2021141_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  14K Dec 14 13:22 spainfire_oli_2021227_lrg.jpg
+    -rw-r--r-- 3 gitpod gitpod  16K Dec 14 13:22 sulphursprings_oli_2019254_lrg.jpg
 
 
 
 ```python
 import glob
 from IPython.display import Image, display
-for imageName in glob.glob('results/volumes/outputs/*.jpg'):
+for imageName in glob.glob('results/combined_results/outputs/*.jpg'):
     display(Image(filename=imageName))
 ```
 
