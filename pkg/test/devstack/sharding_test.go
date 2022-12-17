@@ -10,15 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
+	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -120,7 +119,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
-	testutils.MustHaveDocker(suite.T())
+	docker.MustHaveDocker(suite.T())
 
 	const totalFiles = 100
 	const batchSize = 10
@@ -211,7 +210,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		0,
 		false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 
 	t := system.GetTracer()
@@ -275,7 +274,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ExecutorConfig: &noop.ExecutorConfig{},
+			ExecutorConfig: noop.ExecutorConfig{},
 		},
 		Inputs:   scenario.StoredFile(dirPath, "/inputs"),
 		Contexts: scenario.WasmHelloWorld.Contexts,

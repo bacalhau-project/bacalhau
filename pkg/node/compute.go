@@ -4,46 +4,47 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/backend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
-	"github.com/filecoin-project/bacalhau/pkg/compute/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/compute/sensors"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/simulator"
+	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
 	// Visible for testing
-	Frontend           frontend.Service
-	nodeID             string
+	LocalEndpoint      compute.Endpoint
+	Capacity           capacity.Tracker
+	host               host.Host
 	ExecutionStore     store.ExecutionStore
-	frontendProxy      pubsub.FrontendEventProxy
 	debugInfoProviders []model.DebugInfoProvider
+	computeCallback    *bprotocol.CallbackProxy
 }
 
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
-	nodeID string,
+	host host.Host,
 	config ComputeConfig,
-	jobStore localdb.LocalDB,
+	simulatorNodeID string,
+	simulatorRequestHandler *simulator.RequestHandler,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
-	publishers publisher.PublisherProvider,
-	jobEventPublisher eventhandler.JobEventHandler) *Compute {
+	publishers publisher.PublisherProvider) *Compute {
 	debugInfoProviders := []model.DebugInfoProvider{}
 	executionStore := inmemory.NewStore()
 
-	// backend
+	// executor/backend
 	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
 	})
@@ -51,22 +52,31 @@ func NewComputeNode(
 		CapacityTracker: capacityTracker,
 	}))
 
-	backendCallback := backend.NewChainedCallback(backend.ChainedCallbackParams{
-		Callbacks: []backend.Callback{
-			backend.NewStateUpdateCallback(backend.StateUpdateCallbackParams{
-				ExecutionStore: executionStore,
-			}),
-			pubsub.NewBackendCallback(pubsub.BackendCallbackParams{
-				NodeID:            nodeID,
-				ExecutionStore:    executionStore,
-				JobEventPublisher: jobEventPublisher,
-			}),
-		},
+	// Callback to send compute events (i.e. requester endpoint)
+	var computeCallback compute.Callback
+	standardComputeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
+		Host: host,
 	})
+	if simulatorNodeID != "" {
+		simulatorProxy := simulator_protocol.NewCallbackProxy(simulator_protocol.CallbackProxyParams{
+			SimulatorNodeID: simulatorNodeID,
+			Host:            host,
+		})
+		if simulatorRequestHandler != nil {
+			// if this node is the simulator node, we need to register a local callback to allow self dialing
+			simulatorProxy.RegisterLocalComputeCallback(simulatorRequestHandler)
+			// set standard callback implementation so that the simulator can forward requests to the correct endpoints
+			// after it finishes its validation and processing of the request
+			simulatorRequestHandler.SetRequesterProxy(standardComputeCallback)
+		}
+		computeCallback = simulatorProxy
+	} else {
+		computeCallback = standardComputeCallback
+	}
 
-	baseRunner := backend.NewBaseService(backend.BaseServiceParams{
-		ID:              nodeID,
-		Callback:        backendCallback,
+	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
+		ID:              host.ID().String(),
+		Callback:        computeCallback,
 		Store:           executionStore,
 		Executors:       executors,
 		Verifiers:       verifiers,
@@ -74,9 +84,10 @@ func NewComputeNode(
 		SimulatorConfig: config.SimulatorConfig,
 	})
 
-	bufferRunner := backend.NewServiceBuffer(backend.ServiceBufferParams{
-		DelegateService:            baseRunner,
-		Callback:                   backendCallback,
+	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
+		ID:                         host.ID().String(),
+		DelegateExecutor:           baseExecutor,
+		Callback:                   computeCallback,
 		RunningCapacityTracker:     capacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
 		BackoffDuration:            50 * time.Millisecond,
@@ -93,7 +104,7 @@ func NewComputeNode(
 		go loggingSensor.Start(ctx)
 	}
 
-	// frontend
+	// endpoint/frontend
 	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
 			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
@@ -141,27 +152,37 @@ func NewComputeNode(
 		}),
 	)
 
-	frontendNode := frontend.NewBaseService(frontend.BaseServiceParams{
-		ID:              nodeID,
+	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
+		ID:              host.ID().String(),
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
 		BidStrategy:     biddingStrategy,
-		Backend:         bufferRunner,
+		Executor:        bufferRunner,
 	})
 
-	frontendProxy := *pubsub.NewFrontendEventProxy(pubsub.FrontendEventProxyParams{
-		NodeID:            nodeID,
-		Frontend:          frontendNode,
-		JobStore:          jobStore,
-		ExecutionStore:    executionStore,
-		JobEventPublisher: jobEventPublisher,
-	})
+	// if this node is the simulator, then we set the simulator request handler as the stream handler
+	if simulatorRequestHandler != nil {
+		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+			Host:            host,
+			ComputeEndpoint: simulatorRequestHandler,
+		})
+	} else {
+		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+			Host:            host,
+			ComputeEndpoint: baseEndpoint,
+		})
+	}
 
 	return &Compute{
-		nodeID:             nodeID,
-		Frontend:           frontendNode,
+		host:               host,
+		LocalEndpoint:      baseEndpoint,
+		Capacity:           capacityTracker,
 		ExecutionStore:     executionStore,
-		frontendProxy:      frontendProxy,
 		debugInfoProviders: debugInfoProviders,
+		computeCallback:    standardComputeCallback,
 	}
+}
+
+func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
+	c.computeCallback.RegisterLocalComputeCallback(callback)
 }

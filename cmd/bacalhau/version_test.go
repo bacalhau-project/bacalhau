@@ -16,13 +16,9 @@ limitations under the License.
 package bacalhau
 
 import (
-	"net"
-	"net/url"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,23 +30,13 @@ func TestVersionSuite(t *testing.T) {
 }
 
 type VersionSuite struct {
-	suite.Suite
-}
-
-// Before each test
-func (suite *VersionSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
+	BaseSuite
 }
 
 func (suite *VersionSuite) Test_Version() {
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-	defer cm.Cleanup()
-
-	parsedBasedURI, _ := url.Parse(c.BaseURI)
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", suite.host,
+		"--api-port", suite.port,
 	)
 	require.NoError(suite.T(), err)
 
@@ -59,14 +45,9 @@ func (suite *VersionSuite) Test_Version() {
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-	defer cm.Cleanup()
-
-	parsedBasedURI, _ := url.Parse(c.BaseURI)
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", suite.host,
+		"--api-port", suite.port,
 		"--output", JSONFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
@@ -77,8 +58,8 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 
 	_, out, err = ExecuteTestCobraCommand(suite.T(), "version",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", suite.host,
+		"--api-port", suite.port,
 		"--output", YAMLFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")

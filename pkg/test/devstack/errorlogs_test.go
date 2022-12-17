@@ -29,7 +29,7 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 var errorLogsTestCase = scenario.Scenario{
 	Stack: &scenario.StackConfig{
-		ExecutorConfig: &noop.ExecutorConfig{
+		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
