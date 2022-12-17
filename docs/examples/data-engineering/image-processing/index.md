@@ -181,9 +181,9 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 ## Where to go next?
 
-* [Take a look at other examples](../../index.md)
-* [How to run an existing workload on Bacalhau](../../../getting-started/docker-workload-onboarding.md)
-* [Check out the Bacalhau CLI Reference page](../../../all-flags.md)
+* [Take a look at other examples](https://docs.bacalhau.org/examples/)
+* [How to run an existing workload on Bacalhau](https://docs.bacalhau.org/getting-started/docker-workload-onboarding)
+* [Check out the Bacalhau CLI Reference page](https://docs.bacalhau.org/all-flags)
 
 ## Support
 
