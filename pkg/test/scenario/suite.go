@@ -2,12 +2,12 @@ package scenario
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -177,15 +177,19 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
 	require.NoError(s.T(), err)
 
-	err = ipfs.DownloadJob(s.Ctx, cm, spec.Outputs, results, ipfs.IPFSDownloadSettings{
+	downloaderSettings := &downloader.DownloadSettings{
 		TimeoutSecs:    5,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
-	})
+	}
+	ipfsDownloader, err := downloader.NewIPFSDownloader(s.Ctx, cm, downloaderSettings)
+	require.NoError(s.T(), err)
+
+	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, ipfsDownloader)
 	require.NoError(s.T(), err)
 
 	if scenario.ResultsChecker != nil {
-		err = scenario.ResultsChecker(filepath.Join(resultsDir, ipfs.DownloadVolumesFolderName))
+		err = scenario.ResultsChecker(filepath.Join(resultsDir, downloader.DownloadVolumesFolderName))
 		require.NoError(s.T(), err)
 	}
 

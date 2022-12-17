@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"io"
 	"os"
 	"os/signal"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -196,7 +196,7 @@ func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...str
 	return c, buf.String(), err
 }
 
-func NewIPFSDownloadFlags(settings *ipfs.IPFSDownloadSettings) *pflag.FlagSet {
+func NewIPFSDownloadFlags(settings *downloader.DownloadSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
 	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
@@ -226,7 +226,7 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 	return downloadDir, nil
 }
 
-func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (ipfs.IPFSDownloadSettings, error) {
+func processDownloadSettings(settings downloader.DownloadSettings, jobID string) (downloader.DownloadSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {
@@ -288,7 +288,7 @@ func ExecuteJob(ctx context.Context,
 	cmd *cobra.Command,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
-	downloadSettings ipfs.IPFSDownloadSettings,
+	downloadSettings downloader.DownloadSettings,
 	buildContext *bytes.Buffer,
 ) error {
 	var apiClient *publicapi.APIClient
@@ -442,7 +442,7 @@ func downloadResultsHandler(
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings ipfs.IPFSDownloadSettings,
+	downloadSettings downloader.DownloadSettings,
 ) error {
 	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
 	j, _, err := GetAPIClient().Get(ctx, jobID)
@@ -469,12 +469,14 @@ func downloadResultsHandler(
 		return err
 	}
 
-	err = ipfs.DownloadJob(
+	downloaderSettings := downloader.NewIPFSDownloadSettings()
+	ipfsDownloader, err := downloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
+
+	err = downloader.DownloadJob(
 		ctx,
-		cm,
 		j.Spec.Outputs,
 		results,
-		processedDownloadSettings,
+		ipfsDownloader,
 	)
 
 	if err != nil {

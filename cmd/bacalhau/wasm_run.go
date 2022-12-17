@@ -3,13 +3,13 @@ package bacalhau
 import (
 	"bytes"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
@@ -66,7 +66,7 @@ func newWasmCmd() *cobra.Command {
 func newRunWasmCmd() *cobra.Command {
 	wasmJob := defaultWasmJobSpec()
 	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := ipfs.NewIPFSDownloadSettings()
+	downloadSettings := downloader.NewIPFSDownloadSettings()
 
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
@@ -147,7 +147,7 @@ func runWasm(
 	args []string,
 	wasmJob *model.Job,
 	runtimeSettings *RunTimeSettings,
-	downloadSettings *ipfs.IPFSDownloadSettings,
+	downloadSettings *downloader.DownloadSettings,
 ) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()

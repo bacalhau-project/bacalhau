@@ -1,10 +1,11 @@
 //go:build unit || !integration
 
-package ipfs
+package downloader
 
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,9 +29,10 @@ func TestDownloaderSuite(t *testing.T) {
 type DownloaderSuite struct {
 	suite.Suite
 	cm               system.CleanupManager
-	client           *Client
+	client           *ipfs.Client
 	outputDir        string
-	downloadSettings IPFSDownloadSettings
+	downloadSettings DownloadSettings
+	downloader       Downloader
 }
 
 // Before each test
@@ -39,7 +41,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	logger.ConfigureTestLogging(ds.T())
 	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
 
-	node, err := NewLocalNode(context.Background(), &ds.cm, nil)
+	node, err := ipfs.NewLocalNode(context.Background(), &ds.cm, nil)
 	require.NoError(ds.T(), err)
 
 	client, err := node.Client()
@@ -52,10 +54,15 @@ func (ds *DownloaderSuite) SetupTest() {
 	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
 
-	ds.downloadSettings = IPFSDownloadSettings{
+	ds.downloadSettings = DownloadSettings{
 		TimeoutSecs:    int(DefaultIPFSTimeout.Seconds()),
 		OutputDir:      testOutputDir,
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
+	}
+
+	ds.downloader = &ipfsDownloader{
+		Settings: &ds.downloadSettings,
+		client:   client,
 	}
 }
 
@@ -136,10 +143,9 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 func (ds *DownloaderSuite) TestNoExpectedResults() {
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{},
 		[]model.PublishedResult{},
-		*NewIPFSDownloadSettings(),
+		ds.downloader,
 	)
 	require.NoError(ds.T(), err)
 }
@@ -156,7 +162,6 @@ func (ds *DownloaderSuite) TestFullOutput() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -175,7 +180,7 @@ func (ds *DownloaderSuite) TestFullOutput() {
 				},
 			},
 		},
-		ds.downloadSettings,
+		ds.downloader,
 	)
 	require.NoError(ds.T(), err)
 
@@ -195,7 +200,6 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -214,7 +218,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 				},
 			},
 		},
-		ds.downloadSettings,
+		ds.downloader,
 	)
 	require.NoError(ds.T(), err)
 
@@ -235,7 +239,6 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -263,7 +266,7 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 				},
 			},
 		},
-		ds.downloadSettings,
+		ds.downloader,
 	)
 	require.NoError(ds.T(), err)
 
@@ -282,7 +285,6 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -302,7 +304,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 				},
 			},
 		},
-		ds.downloadSettings,
+		ds.downloader,
 	)
 	require.NoError(ds.T(), err)
 

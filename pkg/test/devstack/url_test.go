@@ -4,6 +4,7 @@ package devstack
 
 import (
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -11,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -60,8 +60,8 @@ func runURLTest(
 		),
 		Contexts: scenario.CatFileToStdout.Contexts,
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(ipfs.DownloadFilenameStderr, ""),
-			scenario.FileEquals(ipfs.DownloadFilenameStdout, allContent),
+			scenario.FileEquals(downloader.DownloadFilenameStderr, ""),
+			scenario.FileEquals(downloader.DownloadFilenameStdout, allContent),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{
@@ -241,7 +241,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 				},
 			},
 		},
-		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, URLContent+IPFSContent),
+		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+IPFSContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 

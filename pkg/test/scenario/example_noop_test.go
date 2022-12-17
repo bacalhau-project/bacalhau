@@ -2,12 +2,12 @@ package scenario
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
@@ -28,7 +28,7 @@ var noopScenario Scenario = Scenario{
 			EntryPoint: "_start",
 		},
 	},
-	ResultsChecker: FileEquals(ipfs.DownloadFilenameStdout, "hello, world!\n"),
+	ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),
 }
 

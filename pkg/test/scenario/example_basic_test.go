@@ -1,9 +1,9 @@
 package scenario
 
 import (
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,7 +18,7 @@ var basicScenario Scenario = Scenario{
 			EntryPoint: "_start",
 		},
 	},
-	ResultsChecker: FileEquals(ipfs.DownloadFilenameStdout, "hello, world!\n"),
+	ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),
 }
 

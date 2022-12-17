@@ -2,13 +2,13 @@ package executor
 
 import (
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"go.ptx.dk/multierrgroup"
@@ -80,7 +80,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard output
 		{
 			stdout,
-			ipfs.DownloadFilenameStdout,
+			downloader.DownloadFilenameStdout,
 			system.MaxStdoutFileLength,
 			&result.STDOUT,
 			system.MaxStdoutReturnLength,
@@ -89,7 +89,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard error
 		{
 			stderr,
-			ipfs.DownloadFilenameStderr,
+			downloader.DownloadFilenameStderr,
 			system.MaxStderrFileLength,
 			&result.STDERR,
 			system.MaxStderrReturnLength,
@@ -98,7 +98,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Exit code
 		{
 			strings.NewReader(fmt.Sprint(exitcode)),
-			ipfs.DownloadFilenameExitCode,
+			downloader.DownloadFilenameExitCode,
 			4,
 			nil,
 			4,
