@@ -161,6 +161,21 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+
+################################################################################
+# Target: images
+################################################################################
+IMAGE_REGEX := 'Image ?(:|=)\s*"[^"]+"'
+FILES_WITH_IMAGES := $(shell grep -Erl ${IMAGE_REGEX} pkg cmd)
+
+docker/.images: ${FILES_WITH_IMAGES}
+	grep -Eroh ${IMAGE_REGEX} $^ | cut -d'"' -f2 | sort | uniq > $@
+
+.PHONY: images
+images: docker/.images
+	- cat $^ | xargs -n1 docker pull
+
+
 ################################################################################
 # Target: clean
 ################################################################################
@@ -169,6 +184,7 @@ clean:
 	${GO} clean
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
+	${RM} docker/.images
 
 
 ################################################################################
@@ -292,7 +308,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: images ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \

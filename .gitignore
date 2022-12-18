@@ -45,3 +45,4 @@ job-*
 !testdata/job-*
 coverage/
 coverage.out
+docker/.images
