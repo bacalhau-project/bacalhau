@@ -664,9 +664,11 @@ To get more information at any time, run:
 			case <-tickerDone:
 				return
 			case t := <-ticker.C:
-				fullLineMessage.TimerString = spinnerFmtDuration(t.Sub(j.Metadata.CreatedAt))
-				spin.Message(fmt.Sprintf("%s %s", spacerText, fullLineMessage.TimerString))
-				spin.StopMessage(fullLineMessage.PrintDone())
+				if !quiet {
+					fullLineMessage.TimerString = spinnerFmtDuration(t.Sub(j.Metadata.CreatedAt))
+					spin.Message(fmt.Sprintf("%s %s", spacerText, fullLineMessage.TimerString))
+					spin.StopMessage(fullLineMessage.PrintDone())
+				}
 			}
 		}
 	}()
@@ -697,10 +699,12 @@ To get more information at any time, run:
 	}()
 
 	for {
-		if spin.Status().String() != "running" {
-			err = spin.Start()
-			if err != nil {
-				return errors.Wrap(err, "Could not start spinner.")
+		if !quiet {
+			if spin.Status().String() != "running" {
+				err = spin.Start()
+				if err != nil {
+					return errors.Wrap(err, "Could not start spinner.")
+				}
 			}
 		}
 
