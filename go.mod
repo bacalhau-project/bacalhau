@@ -63,7 +63,7 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/http-swagger v1.3.3
-	github.com/swaggo/swag v1.8.7
+	github.com/swaggo/swag v1.8.9
 	github.com/tetratelabs/wazero v1.0.0-pre.4
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
