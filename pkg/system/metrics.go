@@ -3,9 +3,11 @@ package system
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 )
@@ -18,9 +20,23 @@ func ListenAndServeMetrics(ctx context.Context, cm *CleanupManager, port int) er
 	sm.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
-		Addr:              fmt.Sprintf(":%d", port),
 		Handler:           sm,
 		ReadHeaderTimeout: ServerReadHeaderTimeout,
+	}
+
+	addr := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	if port == 0 {
+		switch addr := listener.Addr().(type) {
+		case *net.TCPAddr:
+			port = addr.Port
+		default:
+			return fmt.Errorf("unknown address %v", addr)
+		}
 	}
 
 	cm.RegisterCallback(func() error {
@@ -30,11 +46,11 @@ func ListenAndServeMetrics(ctx context.Context, cm *CleanupManager, port int) er
 	})
 
 	log.Ctx(ctx).Debug().Msgf("Starting metrics server on port %d...", port)
-	if err := srv.ListenAndServe(); err != nil {
+	if err := srv.Serve(listener); err != nil {
 		if err == http.ErrServerClosed {
 			log.Ctx(ctx).Debug().Msg("Metrics server stopped.")
 		} else {
-			return fmt.Errorf("metrics server failed to ListenAndServe: %w", err)
+			return errors.Wrap(err, "metrics server failed to Serve")
 		}
 	}
 
