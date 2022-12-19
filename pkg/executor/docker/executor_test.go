@@ -174,7 +174,7 @@ func (suite *ExecutorTestSuite) TestDockerNetworkingNone() {
 		Network: model.NetworkConfig{Type: model.NetworkNone},
 		Docker:  suite.curlTask(),
 	})
-	require.Error(suite.T(), err)
+	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), result.STDOUT)
 	require.NotEmpty(suite.T(), result.STDERR)
 	require.NotZero(suite.T(), result.ExitCode)
