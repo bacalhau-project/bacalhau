@@ -188,6 +188,30 @@ clean:
 
 
 ################################################################################
+# Target: schema
+################################################################################
+SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
+SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
+
+.PHONY: schema
+schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
+
+${SCHEMA_DIR}/%.json: 
+	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
+	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
+
+################################################################################
+# Target: all_schemas
+################################################################################
+EARLIEST_TAG := v0.3.12
+ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
+ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
+
+.PHONY: all_schemas
+all_schemas: ${ALL_SCHEMAS}
+
+
+################################################################################
 # Target: test
 ################################################################################
 .PHONY: test
@@ -202,18 +226,18 @@ integration-test:
 
 .PHONY: grc-test
 grc-test:
-	grc go test ./... -v -p 4
+	grc go test ./... -v
 .PHONY: grc-test-short
 grc-test-short:
 	grc go test ./... -test.short -v
 
 .PHONY: test-debug
 test-debug:
-	LOG_LEVEL=debug go test ./... -v -p 4
+	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: grc-test-debug
 grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v -p 4
+	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:

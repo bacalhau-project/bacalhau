@@ -100,7 +100,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, shard model.JobShard, _ string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -284,7 +284,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ model.JobShard, _ string) (*model.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil

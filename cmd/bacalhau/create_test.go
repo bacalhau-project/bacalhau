@@ -63,7 +63,6 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		}
 	}
 }
-
 func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job-noop.yaml"
 
