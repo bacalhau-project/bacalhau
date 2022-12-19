@@ -177,7 +177,6 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 
 	srv := http.Server{
 		Handler:           sm,
-		Addr:              fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 		ReadHeaderTimeout: apiServer.Config.ReadHeaderTimeout,
 		ReadTimeout:       apiServer.Config.ReadTimeout,
 		WriteTimeout:      apiServer.Config.WriteTimeout,
@@ -186,8 +185,23 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		},
 	}
 
+	addr := fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	if apiServer.Port == 0 {
+		switch addr := listener.Addr().(type) {
+		case *net.TCPAddr:
+			apiServer.Port = addr.Port
+		default:
+			return fmt.Errorf("unknown address %v", addr)
+		}
+	}
+
 	log.Debug().Msgf(
-		"API server listening for host %s on %s...", apiServer.Host, srv.Addr)
+		"API server listening for host %s on %s...", apiServer.Host, listener.Addr().String())
 
 	// Cleanup resources when system is done:
 	cm.RegisterCallback(func() error {
@@ -196,7 +210,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		return srv.Shutdown(context.Background())
 	})
 
-	err := srv.ListenAndServe()
+	err = srv.Serve(listener)
 	if err == http.ErrServerClosed {
 		log.Ctx(ctx).Debug().Msgf(
 			"API server closed for host %s on %s.", apiServer.Host, srv.Addr)
