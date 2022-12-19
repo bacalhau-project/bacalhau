@@ -42,7 +42,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.3
 	github.com/joho/godotenv v1.4.0
 	github.com/libp2p/go-libp2p v0.23.4
-	github.com/libp2p/go-libp2p-pubsub v0.8.1
+	github.com/libp2p/go-libp2p-pubsub v0.8.2
 	github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/go-wordwrap v1.0.1
