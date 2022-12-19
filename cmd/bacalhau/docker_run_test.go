@@ -173,17 +173,13 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-				node.NewComputeConfigWithDefaults(),
-				node.NewRequesterConfigWithDefaults(),
-			)
 
-			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+			swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(ctx)
 			require.NoError(s.T(), err)
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
-				"--api-host", devstack.Nodes[0].APIServer.Host,
-				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
+				"--api-host", s.host,
+				"--api-port", s.port,
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
 				"--output-dir", s.T().TempDir(),
@@ -193,8 +189,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", devstack.Nodes[0].APIServer.Host, devstack.Nodes[0].APIServer.Port))
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 		})
 	}
 }
@@ -883,23 +878,14 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		},
 	}
 
-	ctx := context.TODO()
-
 	for name, tc := range tests {
 		s.Run(name, func() {
-			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-				node.NewComputeConfigWithDefaults(),
-				node.NewRequesterConfigWithDefaults(),
-			)
-
-			parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
 			args := []string{}
 
 			args = append(args, "docker", "run",
-				"--api-host", host,
-				"--api-port", port,
+				"--api-host", s.host,
+				"--api-port", s.port,
 			)
 			args = append(args, tc.imageName, "--", tc.executable)
 
