@@ -305,17 +305,12 @@ func (e *Executor) RunShard(
 		}
 	}()
 
-	var exitCodeErr error
-	if containerExitStatusCode != 0 {
-		exitCodeErr = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
-	}
-
 	return executor.WriteJobResults(
 		jobResultsDir,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),
-		multierr.Combine(containerError, startErr, stdoutErr, stderrErr, exitCodeErr),
+		multierr.Combine(containerError, startErr, stdoutErr, stderrErr),
 	)
 }
 
