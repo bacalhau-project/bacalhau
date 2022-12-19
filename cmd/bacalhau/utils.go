@@ -662,6 +662,8 @@ To get more information at any time, run:
 
 			select {
 			case <-tickerDone:
+				ticker.Stop()
+				log.Trace().Msgf("Ticker goreturn done")
 				return
 			case t := <-ticker.C:
 				if !quiet {
@@ -748,7 +750,7 @@ To get more information at any time, run:
 				} else {
 					_ = spin.StopFail()
 				}
-				ticker.Stop()
+				tickerDone <- true
 				signalChan <- syscall.SIGINT
 				return err
 			}
@@ -783,6 +785,7 @@ func printingUpdateForEvent(w io.Writer, pe *sync.Map,
 	spin *yacspin.Spinner) bool {
 	// We need to lock this because we're using a map
 	printedEventsLock.Lock()
+	defer printedEventsLock.Unlock()
 
 	// We control all events being loaded, if nothing loads, something is seriously wrong.
 	anyEvent, _ := pe.Load(jet)
@@ -819,8 +822,6 @@ func printingUpdateForEvent(w io.Writer, pe *sync.Map,
 		// start animating the spinner
 		_ = spin.Unpause()
 	}
-
-	printedEventsLock.Unlock()
 
 	return eventsWorthPrinting[jet].PrintDownload
 }
