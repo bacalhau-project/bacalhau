@@ -29,7 +29,7 @@ func newIDCmd() *cobra.Command {
 	return idCmd
 }
 
-func id(cmd *cobra.Command, OS *ServeOptions) error {
+func id(_ *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(system.CleanupTraceProvider)

@@ -26,7 +26,7 @@ func SubmitJobSuccess() CheckSubmitResponse {
 
 // SubmitJobFail returns a CheckSubmitResponse that asserts an error was returned when submitting a job.
 func SubmitJobFail() CheckSubmitResponse {
-	return func(job *model.Job, err error) error {
+	return func(_ *model.Job, err error) error {
 		if err == nil {
 			return fmt.Errorf("expected error, got nil")
 		}
