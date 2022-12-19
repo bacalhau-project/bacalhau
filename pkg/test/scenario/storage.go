@@ -71,7 +71,7 @@ func URLDownload(
 	urlPath string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(_ context.Context, _ model.StorageSourceType, _ ...*ipfs.Client) ([]model.StorageSpec, error) {
 		finalURL, err := url.JoinPath(server.URL, urlPath)
 		return []model.StorageSpec{
 			{
