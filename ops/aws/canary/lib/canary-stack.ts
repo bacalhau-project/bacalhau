@@ -8,24 +8,27 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import {Construct} from 'constructs';
 import {BuildConfig} from "./build-config";
 import {Size} from "aws-cdk-lib";
 
-export interface LambdaProps {
+export interface ScenarioProps {
     readonly action: string;
     readonly timeoutMinutes: number;
     readonly rateMinutes: number;
     readonly memorySize: number;
     readonly storageSize: number;
+    readonly evaluationPeriods: number;
+    readonly datapointsToAlarm: number;
 }
 
-const DEFAULT_LAMBDA_PROPS: LambdaProps = {
+const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
     action: '_',
     timeoutMinutes: 1,
     rateMinutes: 2,
     memorySize: 256,
     storageSize: 512,
+    evaluationPeriods: 5,
+    datapointsToAlarm: 3,
 }
 
 export class CanaryStack extends cdk.Stack {
@@ -45,13 +48,14 @@ export class CanaryStack extends cdk.Stack {
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
         this.createLambdaAlarmSlackHandlerFunc()
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "list"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submit"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndDescribe"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitWithConcurrency"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{
-            action: "submitDockerIPFSJobAndGet", timeoutMinutes: 10, memorySize: 2048, storageSize: 5012}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "list"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submit"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndDescribe"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
+            action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
+                datapointsToAlarm: 4, evaluationPeriods: 6}});
         this.createOperatorGroup(id)
     }
 
@@ -80,7 +84,7 @@ export class CanaryStack extends cdk.Stack {
     }
 
     // Create a lambda function that triggers test scenarios
-    private createLambdaScenarioFunc(props: LambdaProps) : lambda.Function {
+    private createLambdaScenarioFunc(props: ScenarioProps) : lambda.Function {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
@@ -108,7 +112,7 @@ export class CanaryStack extends cdk.Stack {
         }));
 
         this.addDashboardWidgets(actionTitle, func);
-        this.createAlarm(actionTitle, func)
+        this.createAlarm(props, func)
         return func;
     }
 
@@ -153,15 +157,16 @@ export class CanaryStack extends cdk.Stack {
         })
     }
 
-    private createAlarm(actionTitle: string, func: lambda.Function) {
+    private createAlarm(props: ScenarioProps, func: lambda.Function) {
+        const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const threshold = 95
         const availabilityMetric = this.getAvailabilityMetric(func)
         const alarm = availabilityMetric.createAlarm(this, actionTitle + "Alarm", {
             alarmDescription: actionTitle + ' ' + this.config.envTitle + ' Availability',
             threshold: threshold,
             comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-            evaluationPeriods: 5,
-            datapointsToAlarm: 3,
+            evaluationPeriods: props.evaluationPeriods,
+            datapointsToAlarm: props.datapointsToAlarm,
             treatMissingData: cloudwatch.TreatMissingData.BREACHING,
         });
 
