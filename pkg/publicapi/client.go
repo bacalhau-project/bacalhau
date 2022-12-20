@@ -23,6 +23,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// for some queries (like read events and read state)
+// we want to fail early (10 seconds should be ample time)
+// but retry a number of times - this is to avoid network
+// flakes failing the canary
+const APIRetryCount = 5
+const APIShortTimeoutSeconds = 10
+
 // APIClient is a utility for interacting with a node's API server.
 type APIClient struct {
 	BaseURI string
@@ -68,7 +75,16 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
+func (apiClient *APIClient) List(
+	ctx context.Context,
+	idFilter string,
+	includeTags []model.IncludedTag,
+	excludeTags []model.ExcludedTag,
+	maxJobs int,
+	returnAll bool,
+	sortBy string,
+	sortReverse bool,
+) (
 	[]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
@@ -77,6 +93,8 @@ func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs i
 		ClientID:    system.GetClientID(),
 		MaxJobs:     maxJobs,
 		JobID:       idFilter,
+		IncludeTags: includeTags,
+		ExcludeTags: excludeTags,
 		ReturnAll:   returnAll,
 		SortBy:      sortBy,
 		SortReverse: sortReverse,
@@ -100,7 +118,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	jobsList, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
+	jobsList, err := apiClient.List(ctx, jobID, model.IncludeAny, model.ExcludeNone, 1, false, "created_at", true)
 	if err != nil {
 		return &model.Job{}, false, err
 	}
@@ -126,11 +144,20 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (mode
 	}
 
 	var res stateResponse
-	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return model.JobState{}, err
-	}
+	var outerErr error
 
-	return res.State, nil
+	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
+		err := apiClient.post(shortTimeoutCtx, "states", req, &res)
+		if err == nil {
+			return res.State, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read state error")
+			outerErr = err
+		}
+	}
+	return model.JobState{}, outerErr
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
@@ -162,17 +189,23 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 
 	// Test if the context has been canceled before making the request.
 	var res eventsResponse
-	err = apiClient.post(ctx, "events", req, &res)
-	if err != nil {
-		if strings.Contains(err.Error(), "context canceled") {
-			return nil, bacerrors.NewContextCanceledError(ctx.Err().Error())
+	var outerErr error
+
+	for i := 0; i < APIRetryCount; i++ {
+		shortTimeoutCtx, cancelFn := context.WithTimeout(ctx, time.Second*APIShortTimeoutSeconds)
+		defer cancelFn()
+		err = apiClient.post(shortTimeoutCtx, "events", req, &res)
+		if err == nil {
+			return res.Events, nil
+		} else {
+			log.Debug().Err(err).Msg("apiclient read events error")
+			outerErr = err
+			if strings.Contains(err.Error(), "context canceled") {
+				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())
+			}
 		}
-
-		log.Debug().Err(err).Msg("request error")
-		return nil, err
 	}
-
-	return res.Events, nil
+	return nil, outerErr
 }
 
 func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
@@ -227,8 +260,9 @@ func (apiClient *APIClient) Submit(
 	defer span.End()
 
 	data := model.JobCreatePayload{
-		ClientID: system.GetClientID(),
-		Job:      j,
+		ClientID:   system.GetClientID(),
+		APIVersion: j.APIVersion,
+		Spec:       &j.Spec,
 	}
 
 	if buildContext != nil {
@@ -247,9 +281,9 @@ func (apiClient *APIClient) Submit(
 
 	var res submitResponse
 	req := submitRequest{
-		Data:            data,
-		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
+		JobCreatePayload: data,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
 	}
 
 	err = apiClient.post(ctx, "submit", req, &res)

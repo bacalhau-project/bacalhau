@@ -43,7 +43,7 @@ func (c *DiskUsageCalculator) Calculate(
 
 	// TODO: think about the fact that each shard might be different sizes
 	//  this is probably good enough for now
-	totalShards := job.ExecutionPlan.TotalShards
+	totalShards := job.Spec.ExecutionPlan.TotalShards
 	if totalShards == 0 {
 		totalShards = 1
 	}

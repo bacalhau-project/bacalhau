@@ -56,16 +56,20 @@ func RunTestCase(
 	spec.Inputs = prepareStorage(testCase.Inputs)
 	spec.Contexts = prepareStorage(testCase.Contexts)
 	spec.Outputs = testCase.Outputs
+	spec.Deal = model.Deal{Concurrency: testNodeCount}
 
 	job := &model.Job{
-		ID:              "test-job",
-		RequesterNodeID: "test-owner",
-		ClientID:        "test-client",
-		Spec:            spec,
-		Deal: model.Deal{
-			Concurrency: testNodeCount,
+		Metadata: model.Metadata{
+			ID:        "test-job",
+			ClientID:  "test-client",
+			CreatedAt: time.Now(),
 		},
-		CreatedAt: time.Now(),
+		Status: model.JobStatus{
+			Requester: model.JobRequester{
+				RequesterNodeID: "test-owner",
+			},
+		},
+		Spec: spec,
 	}
 
 	shard := model.JobShard{

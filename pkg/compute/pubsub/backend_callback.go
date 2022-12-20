@@ -97,7 +97,7 @@ func (p BackendCallback) constructEvent(ctx context.Context, executionID string,
 	}
 	return model.JobEvent{
 		SourceNodeID: p.nodeID,
-		JobID:        execution.Shard.Job.ID,
+		JobID:        execution.Shard.Job.Metadata.ID,
 		ShardIndex:   execution.Shard.Index,
 		EventName:    eventName,
 		EventTime:    time.Now(),

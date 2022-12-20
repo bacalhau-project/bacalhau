@@ -269,15 +269,15 @@ func (resolver *StateResolver) CheckShardStates(
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	jobState, err := resolver.stateLoader(ctx, shard.Job.ID)
+	jobState, err := resolver.stateLoader(ctx, shard.Job.Metadata.ID)
 	if err != nil {
 		return false, err
 	}
 
-	concurrency := int(math.Max(float64(shard.Job.Deal.Concurrency), 1))
+	concurrency := int(math.Max(float64(shard.Job.Spec.Deal.Concurrency), 1))
 	shardStates := GetStatesForShardIndex(jobState, shard.Index)
 	if len(shardStates) == 0 {
-		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
 	}
 
 	shardCheckResult, err := shardStateChecker(shardStates, concurrency)
@@ -368,7 +368,7 @@ func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.J
 		}
 	}
 
-	return acceptedBidsSeen >= j.Deal.Concurrency
+	return acceptedBidsSeen >= j.Spec.Deal.Concurrency
 }
 
 // group states by shard index so we can easily iterate over a whole set of them

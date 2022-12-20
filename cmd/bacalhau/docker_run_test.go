@@ -493,10 +493,10 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 
 			j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
-			require.LessOrEqual(s.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.LessOrEqual(s.T(), j.Metadata.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			require.GreaterOrEqual(s.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(s.T(), j.Metadata.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
@@ -768,7 +768,7 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 			return "", err
 		}
 		j := testutils.GetJobFromTestOutput(ctx, s.T(), apiClient, out)
-		return j.ID, nil
+		return j.Metadata.ID, nil
 	}
 
 	// test that we must have more than one node to run the job

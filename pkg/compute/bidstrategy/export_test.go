@@ -6,7 +6,9 @@ func getBidStrategyRequest() BidStrategyRequest {
 	return BidStrategyRequest{
 		NodeID: "node-id",
 		Job: model.Job{
-			ID: "job-id",
+			Metadata: model.Metadata{
+				ID: "job-id",
+			},
 			Spec: model.Spec{
 				Engine: model.EngineNoop,
 			},

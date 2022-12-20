@@ -70,7 +70,7 @@ func (p FrontendEventProxy) subscriptionEventCreated(ctx context.Context, event 
 	}
 
 	shardIndexes := []int{}
-	for i := 0; i < job.ExecutionPlan.TotalShards; i++ {
+	for i := 0; i < job.Spec.ExecutionPlan.TotalShards; i++ {
 		shardIndexes = append(shardIndexes, i)
 	}
 	request := frontend.AskForBidRequest{
@@ -159,14 +159,14 @@ func (p FrontendEventProxy) processBidJob(ctx context.Context, executionID strin
 		return fmt.Errorf("error getting execution with id %s: %w", executionID, err)
 	}
 
-	jobState, err := p.jobStore.GetJobState(ctx, execution.Shard.Job.ID)
+	jobState, err := p.jobStore.GetJobState(ctx, execution.Shard.Job.Metadata.ID)
 	if err != nil {
-		return fmt.Errorf("error getting job state for job %s: %w", execution.Shard.Job.ID, err)
+		return fmt.Errorf("error getting job state for job %s: %w", execution.Shard.Job.Metadata.ID, err)
 	}
 
-	j, err := p.jobStore.GetJob(ctx, execution.Shard.Job.ID)
+	j, err := p.jobStore.GetJob(ctx, execution.Shard.Job.Metadata.ID)
 	if err != nil {
-		return fmt.Errorf("error getting job with id %s: %w", execution.Shard.Job.ID, err)
+		return fmt.Errorf("error getting job with id %s: %w", execution.Shard.Job.Metadata.ID, err)
 	}
 
 	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, j, jobState, execution.Shard.Index)
@@ -186,7 +186,7 @@ func (p FrontendEventProxy) processBidJob(ctx context.Context, executionID strin
 func (p FrontendEventProxy) constructEvent(ctx context.Context, execution store.Execution, eventName model.JobEventType) model.JobEvent {
 	return model.JobEvent{
 		SourceNodeID: p.nodeID,
-		JobID:        execution.Shard.Job.ID,
+		JobID:        execution.Shard.Job.Metadata.ID,
 		ShardIndex:   execution.Shard.Index,
 		EventName:    eventName,
 		EventTime:    time.Now(),

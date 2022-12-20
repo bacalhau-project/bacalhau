@@ -10,7 +10,9 @@ import (
 
 func generateJob() model.Job {
 	return model.Job{
-		ID:         uuid.New().String(),
+		Metadata: model.Metadata{
+			ID: uuid.New().String(),
+		},
 		APIVersion: model.APIVersionLatest().String(),
 		Spec: model.Spec{
 			Engine:    model.EngineNoop,

@@ -21,31 +21,40 @@ var (
 		List jobs on the network.
 `))
 
-	//nolint:lll // Documentation
 	listExample = templates.Examples(i18n.T(`
 		# List jobs on the network
 		bacalhau list
 
 		# List jobs and output as json
 		bacalhau list --output json`))
+
+	// The tags that will be excluded by default, if the user does not pass any
+	// others to the list command.
+	defaultExcludedTags = []model.ExcludedTag{
+		"canary",
+	}
 )
 
 type ListOptions struct {
-	HideHeader   bool       // Hide the column headers
-	IDFilter     string     // Filter by Job List to IDs matching substring.
-	NoStyle      bool       // Remove all styling from table output.
-	MaxJobs      int        // Print the first NUM jobs instead of the first 10.
-	OutputFormat string     // The output format for the list of jobs (json or text)
-	SortReverse  bool       // Reverse order of table - for time sorting, this will be newest first.
-	SortBy       ColumnEnum // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
-	OutputWide   bool       // Print full values in the table results
-	ReturnAll    bool       // Return all jobs, not just those that belong to the user
+	HideHeader   bool                // Hide the column headers
+	IDFilter     string              // Filter by Job List to IDs matching substring.
+	IncludeTags  []model.IncludedTag // Only return jobs with these annotations
+	ExcludeTags  []model.ExcludedTag // Only return jobs without these annotations
+	NoStyle      bool                // Remove all styling from table output.
+	MaxJobs      int                 // Print the first NUM jobs instead of the first 10.
+	OutputFormat string              // The output format for the list of jobs (json or text)
+	SortReverse  bool                // Reverse order of table - for time sorting, this will be newest first.
+	SortBy       ColumnEnum          // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
+	OutputWide   bool                // Print full values in the table results
+	ReturnAll    bool                // Return all jobs, not just those that belong to the user
 }
 
 func NewListOptions() *ListOptions {
 	return &ListOptions{
 		HideHeader:   false,
 		IDFilter:     "",
+		IncludeTags:  model.IncludeAny,
+		ExcludeTags:  defaultExcludedTags,
 		NoStyle:      false,
 		MaxJobs:      10,
 		OutputFormat: "text",
@@ -73,6 +82,10 @@ func newListCmd() *cobra.Command {
 	listCmd.PersistentFlags().BoolVar(&OL.HideHeader, "hide-header", OL.HideHeader,
 		`do not print the column headers.`)
 	listCmd.PersistentFlags().StringVar(&OL.IDFilter, "id-filter", OL.IDFilter, `filter by Job List to IDs matching substring.`)
+	listCmd.PersistentFlags().Var(IncludedTagFlag(&OL.IncludeTags), "include-tag",
+		`Only return jobs that have the passed tag in their annotations`)
+	listCmd.PersistentFlags().Var(ExcludedTagFlag(&OL.ExcludeTags), "exclude-tag",
+		`Only return jobs that do not have the passed tag in their annotations`)
 	listCmd.PersistentFlags().BoolVar(&OL.NoStyle, "no-style", OL.NoStyle, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
 		&OL.MaxJobs, "number", "n", OL.MaxJobs,
@@ -153,7 +166,16 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
 	log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
-	jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
+	jobs, err := GetAPIClient().List(
+		ctx,
+		OL.IDFilter,
+		OL.IncludeTags,
+		OL.ExcludeTags,
+		OL.MaxJobs,
+		OL.ReturnAll,
+		OL.SortBy.String(),
+		OL.SortReverse,
+	)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error listing jobs: %s", err), 1)
 	}
@@ -242,8 +264,8 @@ func summarizeJob(ctx context.Context, j *model.Job, OL *ListOptions) (table.Row
 	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
-		shortenTime(OL.OutputWide, j.CreatedAt),
-		shortID(OL.OutputWide, j.ID),
+		shortenTime(OL.OutputWide, j.Metadata.CreatedAt),
+		shortID(OL.OutputWide, j.Metadata.ID),
 		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 		shortenString(OL.OutputWide, stateSummary),
 		shortenString(OL.OutputWide, verifiedSummary),

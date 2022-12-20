@@ -70,7 +70,7 @@ func ApplyGlobPattern(
 }
 
 func GetJobTotalShards(j *model.Job) int {
-	shardCount := j.ExecutionPlan.TotalShards
+	shardCount := j.Spec.ExecutionPlan.TotalShards
 	if shardCount == 0 {
 		shardCount = 1
 	}
@@ -78,7 +78,7 @@ func GetJobTotalShards(j *model.Job) int {
 }
 
 func GetJobConcurrency(j *model.Job) int {
-	concurrency := j.Deal.Concurrency
+	concurrency := j.Spec.Deal.Concurrency
 	if concurrency < 1 {
 		concurrency = 1
 	}

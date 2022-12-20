@@ -59,7 +59,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	apiClient := publicapi.NewAPIClient(apiUri)
 
 	j := &model.Job{}
-	j.Deal = model.Deal{Concurrency: 1}
+	j.Spec.Deal = model.Deal{Concurrency: 1}
 	_, missingSpecError := apiClient.Submit(ctx, j, nil)
 
 	require.Error(suite.T(), missingSpecError)

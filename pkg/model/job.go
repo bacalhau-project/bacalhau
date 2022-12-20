@@ -11,31 +11,34 @@ import (
 type Job struct {
 	APIVersion string `json:"APIVersion" example:"V1beta1"`
 
+	Metadata Metadata `json:"Metadata,omitempty"`
+
+	// The specification of this job.
+	Spec Spec `json:"Spec,omitempty"`
+
+	// The status of the job: where are the nodes at, what are the events
+	Status JobStatus `json:"Status,omitempty"`
+}
+
+type Metadata struct {
 	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"ID,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`
 
+	// Time the job was submitted to the bacalhau network.
+	CreatedAt time.Time `json:"CreatedAt,omitempty" example:"2022-11-17T13:29:01.871140291Z"`
+
+	// The ID of the client that created this job.
+	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+}
+type JobRequester struct {
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"RequesterNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
 
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
-
-	// The ID of the client that created this job.
-	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-
-	// The specification of this job.
-	Spec Spec `json:"Spec,omitempty"`
-
-	// The deal the client has made, such as which job bids they have accepted.
-	Deal Deal `json:"Deal,omitempty"`
-
-	// how will this job be executed by nodes on the network
-	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
-
-	// Time the job was submitted to the bacalhau network.
-	CreatedAt time.Time `json:"CreatedAt,omitempty" example:"2022-11-17T13:29:01.871140291Z"`
-
+}
+type JobStatus struct {
 	// The current state of the job
 	State JobState `json:"JobState,omitempty"`
 
@@ -44,10 +47,8 @@ type Job struct {
 
 	// All local events associated with the job
 	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty"`
-}
 
-func (job Job) String() string {
-	return job.ID
+	Requester JobRequester `json:"Requester,omitempty"`
 }
 
 // TODO: There's probably a better way we want to globally version APIs
@@ -65,11 +66,11 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 			Engine:    EngineDocker,
 			Verifier:  VerifierNoop,
 			Publisher: PublisherEstuary,
-		},
-		Deal: Deal{
-			Concurrency: 1,
-			Confidence:  0,
-			MinBids:     0, // 0 means no minimum before bidding
+			Deal: Deal{
+				Concurrency: 1,
+				Confidence:  0,
+				MinBids:     0, // 0 means no minimum before bidding
+			},
 		},
 	})
 	if err != nil {
@@ -95,7 +96,7 @@ type JobShard struct {
 }
 
 func (shard JobShard) ID() string {
-	return GetShardID(shard.Job.ID, shard.Index)
+	return GetShardID(shard.Job.Metadata.ID, shard.Index)
 }
 
 func (shard JobShard) String() string {
@@ -232,6 +233,12 @@ type Spec struct {
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty"`
+
+	// how will this job be executed by nodes on the network
+	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
+
+	// The deal the client has made, such as which job bids they have accepted.
+	Deal Deal `json:"Deal,omitempty"`
 }
 
 // Return timeout duration
@@ -348,8 +355,10 @@ type JobCreatePayload struct {
 	// the id of the client that is submitting the job
 	ClientID string `json:"ClientID,omitempty" validate:"required"`
 
-	// The job specification:
-	Job *Job `json:"Job,omitempty" validate:"required"`
+	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1" validate:"required"`
+
+	// The specification of this job.
+	Spec *Spec `json:"Spec,omitempty" validate:"required"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't

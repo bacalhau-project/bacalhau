@@ -31,13 +31,13 @@ var (
 
 func newDevStackOptions() *devstack.DevStackOptions {
 	return &devstack.DevStackOptions{
-		NumberOfNodes:     3,
-		NumberOfBadActors: 0,
-		Peer:              "",
-		PublicIPFSMode:    false,
-		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
-		LocalNetworkLotus: false,
-		SimulatorURL:      "",
+		NumberOfNodes:            3,
+		NumberOfBadComputeActors: 0,
+		Peer:                     "",
+		PublicIPFSMode:           false,
+		EstuaryAPIKey:            os.Getenv("ESTUARY_API_KEY"),
+		LocalNetworkLotus:        false,
+		SimulatorURL:             "",
 	}
 }
 
@@ -61,8 +61,12 @@ func newDevStackCmd() *cobra.Command {
 		`How many nodes should be started in the cluster`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadActors, "bad-actors", ODs.NumberOfBadActors,
-		`How many nodes should be bad actors`,
+		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
+		`How many compute nodes should be bad actors`,
+	)
+	devstackCmd.PersistentFlags().IntVar(
+		&ODs.NumberOfBadComputeActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
+		`How many requester nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&IsNoop, "noop", false,
@@ -79,6 +83,10 @@ func newDevStackCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
 		`Use the simulator transport at the given URL`,
+	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
+		`Connect devstack to public IPFS`,
 	)
 
 	setupJobSelectionCLIFlags(devstackCmd, OS)
@@ -99,9 +107,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 
 	config.DevstackSetShouldPrintInfo()
 
-	if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
-		Fatal(cmd, fmt.Sprintf("You cannot have more bad actors (%d) than there are nodes (%d).",
-			ODs.NumberOfBadActors, ODs.NumberOfNodes), 1)
+	if ODs.NumberOfBadComputeActors >= ODs.NumberOfNodes {
+		Fatal(cmd, fmt.Sprintf("You cannot have more bad compute actors (%d) than there are nodes (%d).",
+			ODs.NumberOfBadComputeActors, ODs.NumberOfNodes), 1)
 	}
 
 	// Context ensures main goroutine waits until killed with ctrl+c:

@@ -223,7 +223,9 @@ func (suite *ShardingSuite) TestNoShards() {
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	j := &model.Job{}
+	j := &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+	}
 	j.Spec = model.Spec{
 		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
@@ -243,7 +245,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	j.Deal = model.Deal{
+	j.Spec.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 

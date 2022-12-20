@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,33 +14,36 @@ import (
 )
 
 type BaseServiceParams struct {
-	ID         string
-	Callback   Callback
-	Store      store.ExecutionStore
-	Executors  executor.ExecutorProvider
-	Verifiers  verifier.VerifierProvider
-	Publishers publisher.PublisherProvider
+	ID              string
+	Callback        Callback
+	Store           store.ExecutionStore
+	Executors       executor.ExecutorProvider
+	Verifiers       verifier.VerifierProvider
+	Publishers      publisher.PublisherProvider
+	SimulatorConfig model.SimulatorConfigCompute
 }
 
 // BaseService is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseService struct {
-	ID         string
-	callback   Callback
-	store      store.ExecutionStore
-	executors  executor.ExecutorProvider
-	verifiers  verifier.VerifierProvider
-	publishers publisher.PublisherProvider
+	ID              string
+	callback        Callback
+	store           store.ExecutionStore
+	executors       executor.ExecutorProvider
+	verifiers       verifier.VerifierProvider
+	publishers      publisher.PublisherProvider
+	simulatorConfig model.SimulatorConfigCompute
 }
 
 func NewBaseService(params BaseServiceParams) *BaseService {
 	return &BaseService{
-		ID:         params.ID,
-		callback:   params.Callback,
-		store:      params.Store,
-		executors:  params.Executors,
-		verifiers:  params.Verifiers,
-		publishers: params.Publishers,
+		ID:              params.ID,
+		callback:        params.Callback,
+		store:           params.Store,
+		executors:       params.Executors,
+		verifiers:       params.Verifiers,
+		publishers:      params.Publishers,
+		simulatorConfig: params.SimulatorConfig,
 	}
 }
 
@@ -75,23 +79,28 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 	if err != nil {
 		return
 	}
-	runCommandResult, err := jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
-	if err != nil {
-		jobsFailed.With(prometheus.Labels{
-			"node_id":     s.ID,
-			"shard_index": strconv.Itoa(execution.Shard.Index),
-			"client_id":   execution.Shard.Job.ClientID,
-		}).Inc()
-	} else {
-		jobsCompleted.With(prometheus.Labels{
-			"node_id":     s.ID,
-			"shard_index": strconv.Itoa(execution.Shard.Index),
-			"client_id":   execution.Shard.Job.ClientID,
-		}).Inc()
-	}
 
-	if err != nil {
-		return
+	var runCommandResult *model.RunCommandResult
+
+	if !s.simulatorConfig.IsBadActor {
+		runCommandResult, err = jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
+		if err != nil {
+			jobsFailed.With(prometheus.Labels{
+				"node_id":     s.ID,
+				"shard_index": strconv.Itoa(execution.Shard.Index),
+				"client_id":   execution.Shard.Job.Metadata.ClientID,
+			}).Inc()
+		} else {
+			jobsCompleted.With(prometheus.Labels{
+				"node_id":     s.ID,
+				"shard_index": strconv.Itoa(execution.Shard.Index),
+				"client_id":   execution.Shard.Job.Metadata.ClientID,
+			}).Inc()
+		}
+
+		if err != nil {
+			return
+		}
 	}
 
 	shardProposal, err := jobVerifier.GetShardProposal(ctx, execution.Shard, resultFolder)
@@ -103,7 +112,7 @@ func (s BaseService) Run(ctx context.Context, execution store.Execution) (err er
 		ResultProposal:   shardProposal,
 		RunCommandResult: runCommandResult,
 	})
-	return err
+	return nil
 }
 
 // Publish the result of a shard execution after it has been verified.

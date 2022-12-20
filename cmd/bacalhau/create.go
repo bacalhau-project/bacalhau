@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -144,6 +145,32 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 			Fatal(cmd, userstrings.JobSpecBad, 1)
 			return err
 		}
+	} else if _, isTask := rawMap["with"]; isTask {
+		// Else it might be a IPVM Task in JSON format
+		var task *model.Task
+		task, taskErr := model.UnmarshalIPLD[model.Task](byteResult, json.Decode, model.UCANTaskSchema)
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
+		}
+
+		job, taskErr := model.NewJobWithSaneProductionDefaults()
+		if taskErr != nil {
+			panic(taskErr)
+		}
+
+		spec, taskErr := task.ToSpec()
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
+		}
+
+		job.Spec = *spec
+		byteResult, taskErr = model.YAMLMarshalWithMax(job)
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
+		}
 	}
 
 	if len(byteResult) == 0 {
@@ -167,41 +194,41 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	// Warn on fields with data that will be ignored
 	var unusedFieldList []string
-	if j.ClientID != "" {
+	if j.Metadata.ClientID != "" {
 		unusedFieldList = append(unusedFieldList, "ClientID")
-		j.ClientID = ""
+		j.Metadata.ClientID = ""
 	}
-	if !reflect.DeepEqual(j.CreatedAt, time.Time{}) {
+	if !reflect.DeepEqual(j.Metadata.CreatedAt, time.Time{}) {
 		unusedFieldList = append(unusedFieldList, "CreatedAt")
-		j.CreatedAt = time.Time{}
+		j.Metadata.CreatedAt = time.Time{}
 	}
-	if !reflect.DeepEqual(j.ExecutionPlan, model.JobExecutionPlan{}) {
+	if !reflect.DeepEqual(j.Spec.ExecutionPlan, model.JobExecutionPlan{}) {
 		unusedFieldList = append(unusedFieldList, "Verification")
-		j.ExecutionPlan = model.JobExecutionPlan{}
+		j.Spec.ExecutionPlan = model.JobExecutionPlan{}
 	}
-	if len(j.Events) != 0 {
+	if len(j.Status.Events) != 0 {
 		unusedFieldList = append(unusedFieldList, "Events")
-		j.Events = nil
+		j.Status.Events = nil
 	}
-	if j.ID != "" {
+	if j.Metadata.ID != "" {
 		unusedFieldList = append(unusedFieldList, "ID")
-		j.ID = ""
+		j.Metadata.ID = ""
 	}
-	if len(j.LocalEvents) != 0 {
+	if len(j.Status.LocalEvents) != 0 {
 		unusedFieldList = append(unusedFieldList, "LocalEvents")
-		j.LocalEvents = nil
+		j.Status.LocalEvents = nil
 	}
-	if j.RequesterNodeID != "" {
+	if j.Status.Requester.RequesterNodeID != "" {
 		unusedFieldList = append(unusedFieldList, "RequesterNodeID")
-		j.RequesterNodeID = ""
+		j.Status.Requester.RequesterNodeID = ""
 	}
-	if len(j.RequesterPublicKey) != 0 {
+	if len(j.Status.Requester.RequesterPublicKey) != 0 {
 		unusedFieldList = append(unusedFieldList, "RequesterPublicKey")
-		j.RequesterPublicKey = nil
+		j.Status.Requester.RequesterPublicKey = nil
 	}
-	if !reflect.DeepEqual(j.State, model.JobState{}) {
+	if !reflect.DeepEqual(j.Status.State, model.JobState{}) {
 		unusedFieldList = append(unusedFieldList, "State")
-		j.State = model.JobState{}
+		j.Status.State = model.JobState{}
 	}
 
 	// Warn on fields with data that will be ignored

@@ -71,7 +71,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	j, err := c.Submit(ctx, genericJob, nil)
 	require.NoError(s.T(), err)
 
-	url := "ws" + c.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.ID)
+	url := "ws" + c.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.Metadata.ID)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
 
