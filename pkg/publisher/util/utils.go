@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -21,6 +22,7 @@ func NewIPFSPublishers(
 	estuaryAPIKey string,
 	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
+	defaultPriorityPublisherTimeout := time.Second * 2
 	noopPublisher := noop.NewNoopPublisher()
 	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, ipfsMultiAddress)
 	if err != nil {
@@ -31,9 +33,10 @@ func NewIPFSPublishers(
 	// and so let's only add the
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher = combo.NewFanoutPublisher(
-			ipfsPublisher,
+		estuaryPublisher = combo.NewPrioritizedFanoutPublisher(
+			defaultPriorityPublisherTimeout,
 			estuary.NewEstuaryPublisher(estuary.EstuaryPublisherConfig{APIKey: estuaryAPIKey}),
+			ipfsPublisher,
 		)
 		if err != nil {
 			return nil, err

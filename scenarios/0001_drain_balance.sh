@@ -3,17 +3,15 @@ set -xeuo pipefail
 
 pkill -f bacalhau || true
 
-bacalhau simulator &
-
 sleep 1
 
 export PREDICTABLE_API_PORT=1
-rm -rf /tmp/bacalhau-devstack* ; bacalhau devstack --simulator-url ws://localhost:9075/websocket &
+rm -rf /tmp/bacalhau-devstack* ; bacalhau devstack --simulator-mode &
 
-sleep 1
+sleep 3
 
 export BACALHAU_API_HOST=localhost
-export BACALHAU_API_PORT=20002
+export BACALHAU_API_PORT=20000
 
 while true; do bacalhau docker run --concurrency 3 ubuntu echo hello; done
 

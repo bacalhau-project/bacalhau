@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -21,15 +22,28 @@ type DevstackErrorLogsSuite struct {
 	scenario.ScenarioRunner
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestDevstackErrorLogsSuite(t *testing.T) {
 	suite.Run(t, new(DevstackErrorLogsSuite))
 }
 
+var executorTestCases = []model.Spec{
+	{
+		Engine:    model.EngineNoop,
+		Publisher: model.PublisherIpfs,
+	},
+	{
+		Engine:    model.EngineDocker,
+		Publisher: model.PublisherIpfs,
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"},
+		},
+	},
+}
+
 var errorLogsTestCase = scenario.Scenario{
 	Stack: &scenario.StackConfig{
-		ExecutorConfig: &noop.ExecutorConfig{
+		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
@@ -49,13 +63,16 @@ var errorLogsTestCase = scenario.Scenario{
 			model.JobStateCompleted: 1,
 		}),
 	},
-	Spec: model.Spec{
-		Engine:    model.EngineNoop,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-	},
 }
 
-func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
-	suite.RunScenario(errorLogsTestCase)
+func (suite *DevstackErrorLogsSuite) TestCanGetResultsFromErroredJob() {
+	for _, testCase := range executorTestCases {
+		suite.Run(testCase.Engine.String(), func() {
+			docker.MaybeNeedDocker(suite.T(), testCase.Engine == model.EngineDocker)
+
+			scenario := errorLogsTestCase
+			scenario.Spec = testCase
+			suite.RunScenario(scenario)
+		})
+	}
 }

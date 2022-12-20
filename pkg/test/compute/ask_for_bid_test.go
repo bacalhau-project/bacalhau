@@ -3,7 +3,7 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
@@ -28,7 +28,7 @@ func (s *ComputeSuite) TestAskForBid_MultipleShards() {
 
 func (s *ComputeSuite) TestAskForBid_PopulateResourceUsage() {
 	ctx := context.Background()
-	verify := func(response frontend.AskForBidResponse, expected model.ResourceUsageData) {
+	verify := func(response compute.AskForBidResponse, expected model.ResourceUsageData) {
 		execution, err := s.node.ExecutionStore.GetExecution(ctx, response.ShardResponse[0].ExecutionID)
 		s.NoError(err)
 		s.Equal(expected, execution.ResourceUsage)
@@ -90,7 +90,7 @@ func (s *ComputeSuite) TestAskForBid_RejectStateless() {
 	})
 }
 
-func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) frontend.AskForBidResponse {
+func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) compute.AskForBidResponse {
 	ctx := context.Background()
 
 	// setup default values
@@ -109,11 +109,11 @@ func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) frontend.A
 	}
 
 	// issue the request
-	request := frontend.AskForBidRequest{
+	request := compute.AskForBidRequest{
 		Job:          job,
 		ShardIndexes: shardIndexes,
 	}
-	response, err := s.node.Frontend.AskForBid(ctx, request)
+	response, err := s.node.LocalEndpoint.AskForBid(ctx, request)
 	s.NoError(err)
 
 	// check the response

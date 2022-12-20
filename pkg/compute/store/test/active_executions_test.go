@@ -72,6 +72,7 @@ func newExecution() store.Execution {
 			},
 			Index: 1,
 		},
+		"nodeID-1",
 		model.ResourceUsageData{
 			CPU:    1,
 			Memory: 2,

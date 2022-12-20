@@ -33,7 +33,7 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, shardID string) (
 	return activeExecution, nil
 }
 
-func ValidateNewExecution(ctx context.Context, execution Execution) error {
+func ValidateNewExecution(_ context.Context, execution Execution) error {
 	if execution.State != ExecutionStateCreated {
 		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated)
 	}

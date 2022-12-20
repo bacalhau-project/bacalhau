@@ -5,7 +5,6 @@ import (
 
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
 )
 
 // An event handler that listens to both job and local events, and updates the LocalDB instance accordingly
@@ -44,7 +43,6 @@ func (h *LocalDBEventHandler) HandleJobEvent(ctx context.Context, event model.Jo
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("JobID = %s", event.JobID)
 
 	err = h.localDB.AddEvent(ctx, event.JobID, event)
 	if err != nil {
@@ -71,6 +69,7 @@ func (h *LocalDBEventHandler) HandleJobEvent(ctx context.Context, event model.Jo
 			model.JobShardState{
 				NodeID:               useNodeID,
 				ShardIndex:           event.ShardIndex,
+				ExecutionID:          event.ExecutionID,
 				State:                executionState,
 				Status:               event.Status,
 				VerificationProposal: event.VerificationProposal,
