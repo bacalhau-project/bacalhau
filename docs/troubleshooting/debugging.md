@@ -1,6 +1,7 @@
 ---
 sidebar_label: 'Debugging Jobs'
 sidebar_position: 1
+description: 'How to troubleshoot and debug failed Bacalhau jobs'
 ---
 
 # Debugging Failed Jobs
