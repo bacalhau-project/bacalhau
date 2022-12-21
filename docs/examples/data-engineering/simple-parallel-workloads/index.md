@@ -1,6 +1,7 @@
 ---
 sidebar_label: 'Simple Parallel Workloads'
 sidebar_position: 2
+description: "Parallel Video Resizing via File Sharding"
 ---
 # Parallel Video Resizing via File Sharding
 
@@ -10,6 +11,8 @@ sidebar_position: 2
 Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this notebook, we will use the [Sharding](https://docs.bacalhau.org/getting-started/parallel-workloads) functionality in Bacalhau to run a simple video filter on a large number of video files.
 
 > Although you would normally you would use your own container and script to make your workloads reproducible, in this example we will use a pre-built container and CLI arguments to allow you to make changes. You can find the container [on docker hub](https://hub.docker.com/r/linuxserver/ffmpeg).
+
+
 
 ## Prerequistes
 
@@ -22,23 +25,19 @@ path=!echo $PATH
 %env PATH=./:{path[0]}
 ```
 
-    Your system is darwin_arm64
-    
-    BACALHAU CLI is detected:
-    Client Version: v0.2.3
-    Server Version: v0.2.3
-    Reinstalling BACALHAU CLI - ./bacalhau...
+    Your system is linux_amd64
+    No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
-    Installing v0.2.3 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_darwin_arm64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_darwin_arm64.tar.gz.signature.sha256 ...
+    Installing v0.3.15 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.15/bacalhau_v0.3.15_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.15/bacalhau_v0.3.15_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
     bacalhau installed into . successfully.
-    Client Version: v0.2.3
-    Server Version: v0.2.3
-    env: PATH=./:/Users/phil/.pyenv/versions/3.8.11/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+    Client Version: v0.3.15
+    Server Version: v0.3.15
+    env: PATH=./:/home/gitpod/.pyenv/versions/3.8.13/bin:/home/gitpod/.pyenv/libexec:/home/gitpod/.pyenv/plugins/python-build/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/bin:/home/gitpod/.pyenv/plugins/pyenv-update/bin:/home/gitpod/.pyenv/plugins/pyenv-installer/bin:/home/gitpod/.pyenv/plugins/pyenv-doctor/bin:/home/gitpod/.pyenv/shims:/ide/bin/remote-cli:/home/gitpod/.nix-profile/bin:/home/gitpod/.local/bin:/home/gitpod/.sdkman/candidates/maven/current/bin:/home/gitpod/.sdkman/candidates/java/current/bin:/home/gitpod/.sdkman/candidates/gradle/current/bin:/workspace/.cargo/bin:/home/gitpod/.rvm/gems/ruby-3.1.2/bin:/home/gitpod/.rvm/gems/ruby-3.1.2@global/bin:/home/gitpod/.rvm/rubies/ruby-3.1.2/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/shims:/home/gitpod/.pyenv/shims:/workspace/go/bin:/home/gitpod/.nix-profile/bin:/ide/bin/remote-cli:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.nvm/versions/node/v16.19.0/bin:/home/gitpod/.yarn/bin:/home/gitpod/.pnpm:/home/gitpod/.pyenv/bin:/workspace/.rvm/bin:/home/gitpod/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin/:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gitpod/.nvm/versions/node/v16.19.0/bin:/home/gitpod/.rvm/bin
 
 
 
@@ -46,8 +45,8 @@ path=!echo $PATH
 bacalhau version
 ```
 
-    Client Version: v0.2.3
-    Server Version: v0.2.3
+    Client Version: v0.3.15
+    Server Version: v0.3.15
 
 
 ## Submit the workload
@@ -88,7 +87,7 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=7b2b3b0c-18cc-479f-9bff-48b7569b7389
+    env: JOB_ID=c1ebae42-32b7-4d33-9885-704c7e6253b5
 
 
 ## Get Results
@@ -101,17 +100,15 @@ mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
 
-    [90m09:34:30.583 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '7b2b3b0c-18cc-479f-9bff-48b7569b7389'...
-    [90m09:34:36.542 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 3 result shards, downloading to temporary folder.
-    [90m09:34:40.188 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
-    [90m09:34:41.745 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
-    [90m09:34:43.477 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
+    Fetching results of job 'c1ebae42-32b7-4d33-9885-704c7e6253b5'...
+    Results for job 'c1ebae42-32b7-4d33-9885-704c7e6253b5' have been written to...
+    ./results
 
 
 
 ```bash
 # Copy the files to the local directory, to allow the documentation scripts to copy them to the right place
-cp results/volumes/outputs/* ./ && rm -rf results/volumes/outputs/*
+cp results/combined_results/outputs/* ./ && rm -rf results/combined_results/outputs/*
 # Remove any spaces from the filenames
 for f in *\ *; do mv "$f" "${f// /_}"; done
 ```
