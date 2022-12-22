@@ -43,7 +43,7 @@ jobs:
         uses: actions/configure-pages@v2
       - name: Build with Jekyll
         # Outputs to the './_site' directory by default
-        working-directory: schema.bacalhau.org
+        working-directory: ./schema.bacalhau.org
         run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production
@@ -52,7 +52,7 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           # The path to the directory to upload
-          path: schema.bacalhau.org/_site
+          path: ./schema.bacalhau.org/_site
 
   # Deployment job
   deploy:
