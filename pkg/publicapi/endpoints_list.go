@@ -26,9 +26,11 @@ type listRequest struct {
 
 type ListRequest = listRequest
 
-type ListResponse struct {
+type listResponse struct {
 	Jobs []*model.Job `json:"jobs"`
 }
+
+type ListResponse = listResponse
 
 // list godoc
 // @ID                   pkg/publicapi.list
