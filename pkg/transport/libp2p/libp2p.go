@@ -32,21 +32,25 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
+const NodeEventChannel = "bacalhau-node-event"
 const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
 	cm *system.CleanupManager
 
-	subscribeFunctions   []transport.SubscribeFn
-	mutex                sync.RWMutex
-	host                 host.Host
-	peers                []multiaddr.Multiaddr
-	pubSub               *pubsub.PubSub
-	jobEventTopic        *pubsub.Topic
-	jobEventSubscription *pubsub.Subscription
-	privateKey           crypto.PrivKey
-	shutdownChan         chan bool
+	subscribeFunctions     []transport.SubscribeFn
+	nodeSubscribeFunctions []transport.SubscribeFnNode
+	mutex                  sync.RWMutex
+	host                   host.Host
+	peers                  []multiaddr.Multiaddr
+	pubSub                 *pubsub.PubSub
+	jobEventTopic          *pubsub.Topic
+	jobEventSubscription   *pubsub.Subscription
+	nodeEventTopic         *pubsub.Topic
+	nodeEventSubscription  *pubsub.Subscription
+	privateKey             crypto.PrivKey
+	shutdownChan           chan bool
 }
 
 func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []multiaddr.Multiaddr) (*LibP2PTransport, error) {
@@ -133,16 +137,28 @@ func NewTransportFromOptions(ctx context.Context,
 		return nil, err
 	}
 
+	nodeEventTopic, err := ps.Join(NodeEventChannel)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeEventSubscription, err := nodeEventTopic.Subscribe()
+	if err != nil {
+		return nil, err
+	}
+
 	libp2pTransport := &LibP2PTransport{
-		cm:                   cm,
-		subscribeFunctions:   []transport.SubscribeFn{},
-		host:                 h,
-		peers:                peers,
-		privateKey:           prvKey,
-		pubSub:               ps,
-		jobEventTopic:        jobEventTopic,
-		jobEventSubscription: jobEventSubscription,
-		shutdownChan:         make(chan bool),
+		cm:                    cm,
+		subscribeFunctions:    []transport.SubscribeFn{},
+		host:                  h,
+		peers:                 peers,
+		privateKey:            prvKey,
+		pubSub:                ps,
+		jobEventTopic:         jobEventTopic,
+		jobEventSubscription:  jobEventSubscription,
+		nodeEventTopic:        nodeEventTopic,
+		nodeEventSubscription: nodeEventSubscription,
+		shutdownChan:          make(chan bool),
 	}
 
 	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
@@ -216,6 +232,7 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 	}()
 
 	go t.listenForEvents(ctx)
+	go t.listenForEventsNode(ctx)
 
 	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
 
@@ -269,6 +286,28 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
+}
+
+func (t *LibP2PTransport) PublishNode(ctx context.Context, event model.NodeEvent) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.PublishNode")
+	defer span.End()
+
+	bs, err := model.JSONMarshalWithMax(event)
+	if err != nil {
+		return err
+	}
+
+	log.Ctx(ctx).Trace().Msgf("Sending event %s", string(bs))
+	return t.nodeEventTopic.Publish(ctx, bs)
+}
+
+func (t *LibP2PTransport) SubscribeNode(ctx context.Context, fn transport.SubscribeFnNode) {
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.SubscribeNode")
+	defer span.End()
+
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.nodeSubscribeFunctions = append(t.nodeSubscribeFunctions, fn)
 }
 
 func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
@@ -441,6 +480,36 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	wg.Wait()
 }
 
+func (t *LibP2PTransport) readMessageNode(msg *pubsub.Message) {
+	ctx := logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
+	ev := model.NodeEvent{}
+	err := model.JSONUnmarshalWithMax(msg.Data, &ev)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p node event: %v", err)
+		return
+	}
+
+	log.Ctx(ctx).Trace().Msgf("Received node event %s: %+v", ev.EventName.String(), ev)
+
+	var wg realsync.WaitGroup
+	func() {
+		t.mutex.RLock()
+		defer t.mutex.RUnlock()
+
+		for _, fn := range t.nodeSubscribeFunctions {
+			wg.Add(1)
+			go func(f transport.SubscribeFnNode) {
+				defer wg.Done()
+				err := f(ctx, ev)
+				if err != nil {
+					log.Ctx(ctx).Error().Msgf("error in handle event: %s\n%+v", err, ev)
+				}
+			}(fn)
+		}
+	}()
+	wg.Wait()
+}
+
 func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 	for {
 		msg, err := t.jobEventSubscription.Next(ctx)
@@ -454,6 +523,22 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 			return
 		}
 		go t.readMessage(msg)
+	}
+}
+
+func (t *LibP2PTransport) listenForEventsNode(ctx context.Context) {
+	for {
+		msg, err := t.nodeEventSubscription.Next(ctx)
+		if err != nil {
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				log.Ctx(ctx).Trace().Msgf("libp2p transport shutting down: %v", err)
+			} else {
+				log.Ctx(ctx).Error().Msgf(
+					"libp2p encountered an unexpected error, shutting down: %v", err)
+			}
+			return
+		}
+		go t.readMessageNode(msg)
 	}
 }
 

@@ -10,6 +10,9 @@ import (
 // SubscribeFn is provided by an in-process listener as an event callback.
 type SubscribeFn func(context.Context, model.JobEvent) error
 
+// Event callback for hearing node events
+type SubscribeFnNode func(context.Context, model.NodeEvent) error
+
 // Transport is an interface representing a communication channel between
 // nodes, through which they can submit, bid on and complete jobs.
 type Transport interface {
@@ -42,6 +45,10 @@ type Transport interface {
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
 	Subscribe(ctx context.Context, fn SubscribeFn)
+
+	// node event pub/sub
+	PublishNode(ctx context.Context, ev model.NodeEvent) error
+	SubscribeNode(ctx context.Context, fn SubscribeFnNode)
 
 	/////////////////////////////////////////////////////////////
 	/// Encrypt/Decrypt

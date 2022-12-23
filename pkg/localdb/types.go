@@ -12,6 +12,7 @@ type JobQuery struct {
 	IncludeTags []model.IncludedTag `json:"include_tags"`
 	ExcludeTags []model.ExcludedTag `json:"exclude_tags"`
 	Limit       int                 `json:"limit"`
+	Offset      int                 `json:"offset"`
 	ReturnAll   bool                `json:"return_all"`
 	SortBy      string              `json:"sort_by"`
 	SortReverse bool                `json:"sort_reverse"`
@@ -32,6 +33,7 @@ type LocalDB interface {
 	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]*model.Job, error)
+	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	HasLocalEvent(ctx context.Context, jobID string, eventFilter LocalEventFilter) (bool, error)
 	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
