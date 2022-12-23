@@ -70,3 +70,9 @@ func SkipIfArm(t *testing.T, issueURL string) {
 		t.Skip("Test does not pass natively on arm64", issueURL)
 	}
 }
+
+func SkipIfNotLinux(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Test does not pass natively on non linux")
+	}
+}

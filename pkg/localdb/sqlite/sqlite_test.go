@@ -4,6 +4,7 @@ package sqlite
 
 import (
 	"io/ioutil"
+	"runtime"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
@@ -15,6 +16,9 @@ import (
 func TestSQLiteSuite(t *testing.T) {
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
+		if runtime.GOOS != "linux" {
+			return nil
+		}
 		datafile, err := ioutil.TempFile("", "sqlite-test-*.db")
 		require.NoError(testingSuite.T(), err)
 		datastore, err := NewSQLiteDatastore(datafile.Name())

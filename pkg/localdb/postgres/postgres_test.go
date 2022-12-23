@@ -4,6 +4,7 @@ package postgres
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -29,6 +30,9 @@ func TestPostgresSuite(t *testing.T) {
 	var datastore *shared.GenericSQLDatastore
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
+		if runtime.GOOS != "linux" {
+			return nil
+		}
 		if datastore == nil {
 			system.Shellout(fmt.Sprintf("docker run -d --name postgres%d -p %d:5432 -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres", port, port))
 			for {
@@ -55,6 +59,9 @@ func TestPostgresSuite(t *testing.T) {
 		return datastore
 	}
 	testingSuite.TeardownHandler = func() {
+		if runtime.GOOS != "linux" {
+			return
+		}
 		system.Shellout(fmt.Sprintf("docker rm -f postgres%d || true", port))
 	}
 	suite.Run(t, testingSuite)
