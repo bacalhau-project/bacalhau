@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type ListRequest struct {
+type listRequest struct {
 	JobID       string              `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	ClientID    string              `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	IncludeTags []model.IncludedTag `json:"include_tags" example:"['any-tag']"`
@@ -23,6 +23,8 @@ type ListRequest struct {
 	SortBy      string              `json:"sort_by" example:"created_at"`
 	SortReverse bool                `json:"sort_reverse"`
 }
+
+type ListRequest = listRequest
 
 type ListResponse struct {
 	Jobs []*model.Job `json:"jobs"`
