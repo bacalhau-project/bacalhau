@@ -89,7 +89,7 @@ func (apiClient *APIClient) List(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
-	req := listRequest{
+	req := ListRequest{
 		ClientID:    system.GetClientID(),
 		MaxJobs:     maxJobs,
 		JobID:       idFilter,
@@ -100,7 +100,7 @@ func (apiClient *APIClient) List(
 		SortReverse: sortReverse,
 	}
 
-	var res listResponse
+	var res ListResponse
 	if err := apiClient.post(ctx, "list", req, &res); err != nil {
 		e := err
 		return nil, e
@@ -299,7 +299,7 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
 	defer span.End()
 
-	req := listRequest{
+	req := ListRequest{
 		ClientID: system.GetClientID(),
 	}
 

@@ -15,6 +15,8 @@ type Tracker interface {
 	IsWithinLimits(ctx context.Context, usage model.ResourceUsageData) bool
 	// AddIfHasCapacity atomically adds the given resource usage to the tracker if the compute node has capacity for it.
 	AddIfHasCapacity(ctx context.Context, usage model.ResourceUsageData) bool
+	// TotalCapacity returns the total usable capacity of the compute node.
+	TotalCapacity(ctx context.Context) model.ResourceUsageData
 	// AvailableCapacity returns the available capacity of the compute node.
 	AvailableCapacity(ctx context.Context) model.ResourceUsageData
 	// Remove removes the given resource usage from the tracker.

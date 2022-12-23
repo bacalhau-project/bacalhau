@@ -75,6 +75,8 @@ type DockerRunOptions struct {
 	ShardingGlobPattern string
 	ShardingBasePath    string
 	ShardingBatchSize   int
+
+	FilPlus bool // add a "filplus" label to the job to grab the attention of fil+ moderators
 }
 
 func NewDockerRunOptions() *DockerRunOptions {
@@ -103,6 +105,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 		ShardingGlobPattern: "",
 		ShardingBasePath:    "/inputs",
 		ShardingBatchSize:   1,
+
+		FilPlus: false,
 	}
 }
 
@@ -241,6 +245,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.FilPlus, "filplus", ODR.FilPlus,
+		`Mark the job as a candidate for moderation for FIL+ rewards.`,
+	)
+
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
 
@@ -342,6 +351,12 @@ func CreateJob(ctx context.Context,
 		}
 	}
 
+	labels := odr.Labels
+
+	if odr.FilPlus {
+		labels = append(labels, "filplus")
+	}
+
 	j, err := jobutils.ConstructDockerJob(
 		model.APIVersionLatest(),
 		engineType,
@@ -360,7 +375,7 @@ func CreateJob(ctx context.Context,
 		odr.Confidence,
 		odr.MinBids,
 		odr.Timeout,
-		odr.Labels,
+		labels,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,

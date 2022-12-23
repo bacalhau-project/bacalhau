@@ -14,13 +14,16 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 	if publicKey == nil {
 		publicKey = []byte{}
 	}
-
+	useCreatedAt := time.Now()
+	if !ev.EventTime.IsZero() {
+		useCreatedAt = ev.EventTime
+	}
 	j := &model.Job{
 		APIVersion: ev.APIVersion,
 		Metadata: model.Metadata{
 			ID:        ev.JobID,
 			ClientID:  ev.ClientID,
-			CreatedAt: time.Now(),
+			CreatedAt: useCreatedAt,
 		},
 		Status: model.JobStatus{
 			Requester: model.JobRequester{

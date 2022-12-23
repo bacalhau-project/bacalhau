@@ -104,10 +104,18 @@ func (t *SimulatorTransport) Publish(ctx context.Context, ev model.JobEvent) err
 	return t.writeJobEvent(ctx, ev)
 }
 
+func (t *SimulatorTransport) PublishNode(ctx context.Context, ev model.NodeEvent) error {
+	return nil
+}
+
 func (t *SimulatorTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 	t.subscriptionMutex.Lock()
 	defer t.subscriptionMutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
+}
+
+func (t *SimulatorTransport) SubscribeNode(ctx context.Context, fn transport.SubscribeFnNode) {
+
 }
 
 func (t *SimulatorTransport) Encrypt(ctx context.Context, data, keyBytes []byte) ([]byte, error) {
