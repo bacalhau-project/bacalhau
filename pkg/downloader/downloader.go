@@ -3,13 +3,14 @@ package downloader
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	cp "github.com/n-marshall/go-cp"
 	"github.com/rs/zerolog/log"
-	"io"
-	"os"
-	"path/filepath"
 )
 
 type shardCIDContext struct {
@@ -19,6 +20,15 @@ type shardCIDContext struct {
 	cidDownloadDir string
 	shardDir       string
 	volumeDir      string
+}
+
+func NewDownloadSettings() *DownloadSettings {
+	return &DownloadSettings{
+		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
+		// we leave this blank so the CLI will auto-create a job folder in pwd
+		OutputDir:      "",
+		IPFSSwarmAddrs: "",
+	}
 }
 
 // * make a temp dir
@@ -33,11 +43,11 @@ type shardCIDContext struct {
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
-// these are the outputs named in the job spec
-// we need them so we know which volumes exists
+	// these are the outputs named in the job spec
+	// we need them so we know which volumes exists
 	outputVolumes []model.StorageSpec,
-// these are the published results we have loaded
-// from the api
+	// these are the published results we have loaded
+	// from the api
 	publishedShardResults []model.PublishedResult,
 	downloader Downloader,
 ) error {

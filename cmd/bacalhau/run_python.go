@@ -3,8 +3,9 @@ package bacalhau
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -71,7 +72,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		RequirementsPath: "",
 		ContextPath:      ".",
 		RuntimeSettings:  *NewRunTimeSettings(),
-		DownloadSettings: *downloader.NewIPFSDownloadSettings(),
+		DownloadSettings: *downloader.NewDownloadSettings(),
 	}
 }
 

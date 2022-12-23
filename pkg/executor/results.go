@@ -2,11 +2,12 @@ package executor
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"

@@ -3,8 +3,9 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -99,7 +100,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *downloader.NewIPFSDownloadSettings(),
+		DownloadFlags:      *downloader.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",

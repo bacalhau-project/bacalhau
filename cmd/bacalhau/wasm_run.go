@@ -3,11 +3,12 @@ package bacalhau
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -66,7 +67,7 @@ func newWasmCmd() *cobra.Command {
 func newRunWasmCmd() *cobra.Command {
 	wasmJob := defaultWasmJobSpec()
 	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := downloader.NewIPFSDownloadSettings()
+	downloadSettings := downloader.NewDownloadSettings()
 
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",

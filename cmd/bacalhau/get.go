@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
