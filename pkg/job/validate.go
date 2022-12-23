@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
+// VerifyJobCreatePayload verifies the values in a job creation request are legal.
 func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
 	if jc.ClientID == "" {
 		return fmt.Errorf("ClientID is empty")
