@@ -269,15 +269,18 @@ func (apiClient *APIClient) Submit(
 		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
-	jsonData, err := model.JSONMarshalWithMax(data)
+	// jsonData, err := model.JSONMarshalWithMax(data)
+	jsonData, err := model.HashableValue(&data)
 	if err != nil {
 		return &model.Job{}, err
 	}
+	log.Debug().Msgf("jsonData: %s", string(jsonData))
 
 	signature, err := system.SignForClient(jsonData)
 	if err != nil {
 		return &model.Job{}, err
 	}
+	log.Debug().Msgf("signature: %s", signature)
 
 	var res submitResponse
 	req := submitRequest{

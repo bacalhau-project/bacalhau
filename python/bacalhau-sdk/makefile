@@ -12,7 +12,7 @@ lint:
 	mypy $(sources) tests
 
 unittest:
-	pytest
+	pytest --capture=no --log-cli-level=DEBUG
 
 coverage:
 	pytest --cov=$(sources) --cov-branch --cov-report=term-missing tests

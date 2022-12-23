@@ -147,6 +147,7 @@ func (apiServer *APIServer) GetURI() string {
 //	@host			bootstrap.production.bacalhau.org:1234
 //	@BasePath		/
 //	@schemes		http
+//
 // ListenAndServe listens for and serves HTTP requests against the API server.
 //
 //nolint:lll
@@ -229,11 +230,10 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the signature is valid:
-	jsonData, err := model.JSONMarshalWithMax(req.JobCreatePayload)
+	jsonData, err := model.HashableValue(&req.JobCreatePayload)
 	if err != nil {
 		return fmt.Errorf("error marshaling job data: %w", err)
 	}
-
 	err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
 	if err != nil {
 		return fmt.Errorf("client's signature is invalid: %w", err)
