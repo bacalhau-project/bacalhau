@@ -259,18 +259,21 @@ func (apiClient *APIClient) Submit(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
 	defer span.End()
 
+	
+	jsonSpec, _ := model.JSONMarshalWithMax(&j.Spec)
+	jsonRaw := json.RawMessage(jsonSpec)
 	data := model.JobCreatePayload{
 		ClientID:   system.GetClientID(),
 		APIVersion: j.APIVersion,
-		Spec:       &j.Spec,
+		Spec:       &jsonRaw,
 	}
 
 	if buildContext != nil {
 		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
-	// jsonData, err := model.JSONMarshalWithMax(data)
-	jsonData, err := model.HashableValue(&data)
+	jsonData, err := model.JSONMarshalWithMax(data)
+	// jsonData, err := model.HashableValue(&data)
 	if err != nil {
 		return &model.Job{}, err
 	}

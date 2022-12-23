@@ -96,15 +96,20 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 
 	ev := node.constructJobEvent(jobID, model.JobEventCreated)
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, *data.Spec, node.storageProviders)
+	unmarshalledSpec := model.Spec{}
+	err = model.JSONUnmarshalWithMax(*data.Spec, &unmarshalledSpec)
+	if err != nil {
+		return &model.Job{}, fmt.Errorf("error unmarshalling spec: %s", err)
+	}
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, unmarshalledSpec, node.storageProviders)
 	if err != nil {
 		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
 	ev.APIVersion = data.APIVersion
 	ev.ClientID = data.ClientID
-	ev.Spec = *data.Spec
-	ev.Deal = data.Spec.Deal
+	ev.Spec = unmarshalledSpec
+	ev.Deal = unmarshalledSpec.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	// set a default timeout value if one is not passed or below an acceptable value

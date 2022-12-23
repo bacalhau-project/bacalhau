@@ -665,11 +665,10 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Spec"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

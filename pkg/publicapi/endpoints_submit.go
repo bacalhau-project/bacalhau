@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -34,6 +34,7 @@ type submitResponse struct {
 }
 
 // submit godoc
+//
 //	@ID						submit
 //	@Summary				Submits a new job to the network.
 //	@Description.markdown	endpoints_submit
@@ -57,6 +58,10 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.JobCreatePayload.ClientID)
 
+	log.Debug().Msgf("====> submitReq: %+v", submitReq)
+	log.Debug().Msgf("====> submitReq.JobCreatePayload: %+v", submitReq.JobCreatePayload)
+	log.Debug().Msgf("====> submitReq.JobCreatePayload.Spec: %+v", submitReq.JobCreatePayload.Spec)
+
 	if err := verifySubmitRequest(&submitReq); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
@@ -64,12 +69,12 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJobCreatePayload(ctx, &submitReq.JobCreatePayload); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> VerifyJobCreate error: %s", err)
-		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusBadRequest)
-		return
-	}
+	// if err := job.VerifyJobCreatePayload(ctx, &submitReq.JobCreatePayload); err != nil {
+	// 	log.Ctx(ctx).Debug().Msgf("====> VerifyJobCreate error: %s", err)
+	// 	errorResponse := bacerrors.ErrorToErrorResponse(err)
+	// 	http.Error(res, errorResponse, http.StatusBadRequest)
+	// 	return
+	// }
 
 	// If we have a build context, pin it to IPFS and mount it in the job:
 	if submitReq.JobCreatePayload.Context != "" {
@@ -116,13 +121,14 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		fmt.Println(result)
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.JobCreatePayload.Spec.Contexts = append(submitReq.JobCreatePayload.Spec.Contexts, model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           result.CID,
-			Path:          "/job",
-		})
+		// submitReq.JobCreatePayload.Spec.Contexts = append(submitReq.JobCreatePayload.Spec.Contexts, model.StorageSpec{
+		// 	StorageSource: model.StorageSourceIPFS,
+		// 	CID:           result.CID,
+		// 	Path:          "/job",
+		// })
 	}
 
 	j, err := apiServer.Requester.SubmitJob(

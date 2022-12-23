@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -230,10 +231,20 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the signature is valid:
-	jsonData, err := model.HashableValue(&req.JobCreatePayload)
+	// jsonData, err := model.HashableValue(&req.JobCreatePayload)
+	// jsonData, err := model.JSONMarshalWithMax(req.JobCreatePayload)
+	// if err != nil {
+	// 	return fmt.Errorf("error marshaling job data: %w", err)
+	// }
+	// log.Debug().Msgf("jsonData: %s", jsonData)
+
+	jsonData, err := json.Marshal(&req.JobCreatePayload)
 	if err != nil {
 		return fmt.Errorf("error marshaling job data: %w", err)
 	}
+	log.Debug().Msgf("jsonData: %s", jsonData)
+
+	// err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
 	err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
 	if err != nil {
 		return fmt.Errorf("client's signature is invalid: %w", err)

@@ -9,20 +9,20 @@ import (
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.
-func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
-	if jc.ClientID == "" {
-		return fmt.Errorf("ClientID is empty")
-	}
+// func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
+// 	if jc.ClientID == "" {
+// 		return fmt.Errorf("ClientID is empty")
+// 	}
 
-	if jc.APIVersion == "" {
-		return fmt.Errorf("APIVersion is empty")
-	}
+// 	if jc.APIVersion == "" {
+// 		return fmt.Errorf("APIVersion is empty")
+// 	}
 
-	return VerifyJob(ctx, &model.Job{
-		APIVersion: jc.APIVersion,
-		Spec:       *jc.Spec,
-	})
-}
+// 	return VerifyJob(ctx, &model.Job{
+// 		APIVersion: jc.APIVersion,
+// 		Spec:       *model.JSONMarshalWithMax(jc.Spec),
+// 	})
+// }
 
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {

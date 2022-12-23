@@ -36,7 +36,7 @@ class JobCreatePayload(object):
         'api_version': 'str',
         'client_id': 'str',
         'context': 'str',
-        'spec': 'JobSpec'
+        'spec': 'list[int]'
     }
 
     attribute_map = {
@@ -139,9 +139,10 @@ class JobCreatePayload(object):
     def spec(self):
         """Gets the spec of this JobCreatePayload.  # noqa: E501
 
+        The specification of this job.  # noqa: E501
 
         :return: The spec of this JobCreatePayload.  # noqa: E501
-        :rtype: JobSpec
+        :rtype: list[int]
         """
         return self._spec
 
@@ -149,9 +150,10 @@ class JobCreatePayload(object):
     def spec(self, spec):
         """Sets the spec of this JobCreatePayload.
 
+        The specification of this job.  # noqa: E501
 
         :param spec: The spec of this JobCreatePayload.  # noqa: E501
-        :type: JobSpec
+        :type: list[int]
         """
         if self._configuration.client_side_validation and spec is None:
             raise ValueError("Invalid value for `spec`, must not be `None`")  # noqa: E501

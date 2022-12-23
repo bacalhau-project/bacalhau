@@ -102,9 +102,10 @@ definitions:
           flood the transport layer with it (potentially very large).
         type: string
       Spec:
-        allOf:
-        - $ref: '#/definitions/model.Spec'
         description: The specification of this job.
+        items:
+          type: integer
+        type: array
     required:
     - APIVersion
     - ClientID
