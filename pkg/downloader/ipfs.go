@@ -3,13 +3,14 @@ package downloader
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 const DefaultIPFSTimeout time.Duration = 5 * time.Minute
@@ -17,15 +18,6 @@ const DefaultIPFSTimeout time.Duration = 5 * time.Minute
 type ipfsDownloader struct {
 	Settings *DownloadSettings
 	client   *ipfs.Client
-}
-
-func NewIPFSDownloadSettings() *DownloadSettings {
-	return &DownloadSettings{
-		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
-		// we leave this blank so the CLI will auto-create a job folder in pwd
-		OutputDir:      "",
-		IPFSSwarmAddrs: "",
-	}
 }
 
 func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *DownloadSettings) (*ipfsDownloader, error) {
@@ -69,7 +61,7 @@ func (ipfsd *ipfsDownloader) GetResultsOutputDir() (string, error) {
 }
 
 func (ipfsd *ipfsDownloader) FetchResults(ctx context.Context, shardCIDContext shardCIDContext) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.fetchingResult")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.ipfs.FetchResults")
 	defer span.End()
 
 	err := func() error {

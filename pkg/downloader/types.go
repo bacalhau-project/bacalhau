@@ -16,11 +16,9 @@ type DownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
-type DownloadClient interface {
-	Get(ctx context.Context, cid string, downloadDir string) error
-}
-
 type Downloader interface {
+	// GetResultsOutputDir returns output dir given in DownloadSettings
 	GetResultsOutputDir() (string, error)
+	// FetchResults ...
 	FetchResults(ctx context.Context, shardCidContext shardCIDContext) error
 }

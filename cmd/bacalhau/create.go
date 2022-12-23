@@ -2,12 +2,13 @@ package bacalhau
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -50,7 +51,7 @@ func NewCreateOptions() *CreateOptions {
 		Filename:        "",
 		Concurrency:     1,
 		Confidence:      0,
-		DownloadFlags:   *downloader.NewIPFSDownloadSettings(),
+		DownloadFlags:   *downloader.NewDownloadSettings(),
 		RunTimeSettings: *NewRunTimeSettings(),
 	}
 }

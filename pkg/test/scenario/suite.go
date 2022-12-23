@@ -2,9 +2,10 @@ package scenario
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"path/filepath"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/docker"

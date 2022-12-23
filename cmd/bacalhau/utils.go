@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"io"
 	"os"
 	"os/signal"
@@ -16,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
@@ -469,14 +470,18 @@ func downloadResultsHandler(
 		return err
 	}
 
-	downloaderSettings := downloader.NewIPFSDownloadSettings()
-	ipfsDownloader, err := downloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
+	downloaderSettings := downloader.NewDownloadSettings()
+	//ipfsDownloader, err := downloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
+	estuaryDownloader, err := downloader.NewHTTPDownloader(ctx, cm, downloaderSettings)
+	if err != nil {
+		return err
+	}
 
 	err = downloader.DownloadJob(
 		ctx,
 		j.Spec.Outputs,
 		results,
-		ipfsDownloader,
+		estuaryDownloader,
 	)
 
 	if err != nil {
