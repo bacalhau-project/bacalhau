@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"path/filepath"
 	"strings"
 
@@ -183,7 +184,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}
-	ipfsDownloader, err := downloader.NewIPFSDownloader(s.Ctx, cm, downloaderSettings)
+	ipfsDownloader, err := ipfs.NewIPFSDownloader(s.Ctx, cm, downloaderSettings)
 	require.NoError(s.T(), err)
 
 	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, ipfsDownloader)

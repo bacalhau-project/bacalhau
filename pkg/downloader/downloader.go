@@ -13,15 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type shardCIDContext struct {
-	result         model.PublishedResult
-	outputVolumes  []model.StorageSpec
-	rootDir        string
-	cidDownloadDir string
-	shardDir       string
-	volumeDir      string
-}
-
 func NewDownloadSettings() *DownloadSettings {
 	return &DownloadSettings{
 		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
@@ -77,11 +68,11 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to: %s.", len(publishedShardResults), resultsOutputDir)
+	log.Ctx(ctx).Info().Msgf("Found %d Result shards, downloading to: %s.", len(publishedShardResults), resultsOutputDir)
 
 	// each shard context understands the various folder paths
 	// and other data it needs to download and resolve itself
-	shardContexts := []shardCIDContext{}
+	shardContexts := []ShardCIDContext{}
 	// keep track of which cids we have downloaded to avoid
 	// downloading the same cid multiple times
 	downloadedCids := map[string]bool{}
@@ -110,26 +101,26 @@ func DownloadJob( //nolint:funlen,gocyclo
 			DownloadShardsFolderName,
 			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
 		)
-		shardContexts = append(shardContexts, shardCIDContext{
-			result:         shardResult,
-			outputVolumes:  outputVolumes,
-			rootDir:        resultsOutputDir,
-			cidDownloadDir: cidDownloadDir,
-			shardDir:       shardDir,
-			volumeDir:      volumeDir,
+		shardContexts = append(shardContexts, ShardCIDContext{
+			Result:         shardResult,
+			OutputVolumes:  outputVolumes,
+			RootDir:        resultsOutputDir,
+			CIDDownloadDir: cidDownloadDir,
+			ShardDir:       shardDir,
+			VolumeDir:      volumeDir,
 		})
 	}
 
-	// loop over each result set and download it's CID
+	// loop over each Result set and download it's CID
 	// (if we have not already done so)
 	for _, shardContext := range shardContexts {
-		_, ok := downloadedCids[shardContext.result.Data.CID]
+		_, ok := downloadedCids[shardContext.Result.Data.CID]
 		if !ok {
-			err = downloader.FetchResults(ctx, shardContext)
+			err = downloader.FetchResult(ctx, shardContext)
 			if err != nil {
 				return err
 			}
-			downloadedCids[shardContext.result.Data.CID] = true
+			downloadedCids[shardContext.Result.Data.CID] = true
 		}
 	}
 
@@ -147,9 +138,9 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 func moveShardData(
 	ctx context.Context,
-	shardContext shardCIDContext,
+	shardContext ShardCIDContext,
 ) error {
-	err := os.MkdirAll(shardContext.shardDir, DownloadFolderPerm)
+	err := os.MkdirAll(shardContext.ShardDir, DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
@@ -163,7 +154,7 @@ func moveShardData(
 		}
 
 		// the relative path of the file/folder
-		basePath, err := filepath.Rel(shardContext.cidDownloadDir, path)
+		basePath, err := filepath.Rel(shardContext.CIDDownloadDir, path)
 		if err != nil {
 			return err
 		}
@@ -176,8 +167,8 @@ func moveShardData(
 		}
 
 		// the path to where we are saving this item in the shard and global folders
-		shardTargetPath := filepath.Join(shardContext.shardDir, basePath)
-		globalTargetPath := filepath.Join(shardContext.volumeDir, basePath)
+		shardTargetPath := filepath.Join(shardContext.ShardDir, basePath)
+		globalTargetPath := filepath.Join(shardContext.VolumeDir, basePath)
 
 		// are we dealing with a special case file?
 		shouldAppendLogs, isSpecialFile := SpecialFiles[basePath]
@@ -227,7 +218,7 @@ func moveShardData(
 		return nil
 	}
 
-	err = filepath.WalkDir(shardContext.cidDownloadDir, moveFunc)
+	err = filepath.WalkDir(shardContext.CIDDownloadDir, moveFunc)
 	if err != nil {
 		return err
 	}

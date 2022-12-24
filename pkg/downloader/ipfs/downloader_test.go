@@ -1,10 +1,11 @@
 //go:build unit || !integration
 
-package downloader
+package ipfs
 
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"os"
 	"path/filepath"
@@ -31,8 +32,8 @@ type DownloaderSuite struct {
 	cm               system.CleanupManager
 	client           *ipfs.Client
 	outputDir        string
-	downloadSettings DownloadSettings
-	downloader       Downloader
+	downloadSettings downloader.DownloadSettings
+	downloadClient   downloader.Downloader
 }
 
 // Before each test
@@ -54,15 +55,15 @@ func (ds *DownloaderSuite) SetupTest() {
 	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
 
-	ds.downloadSettings = DownloadSettings{
-		TimeoutSecs:    int(DefaultIPFSTimeout.Seconds()),
+	ds.downloadSettings = downloader.DownloadSettings{
+		TimeoutSecs:    int(downloader.DefaultIPFSTimeout.Seconds()),
 		OutputDir:      testOutputDir,
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
 
-	ds.downloader = &ipfsDownloader{
+	ds.downloadClient = &IPFSDownloader{
 		Settings: &ds.downloadSettings,
-		client:   client,
+		Client:   client,
 	}
 }
 
@@ -141,11 +142,11 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 }
 
 func (ds *DownloaderSuite) TestNoExpectedResults() {
-	err := DownloadJob(
+	err := downloader.DownloadJob(
 		context.Background(),
 		[]model.StorageSpec{},
 		[]model.PublishedResult{},
-		ds.downloader,
+		ds.downloadClient,
 	)
 	require.NoError(ds.T(), err)
 }
@@ -154,13 +155,13 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	var exitCode, stdout, stderr, hello, goodbye []byte
 	cid := mockShardOutput(ds, func(dir string) {
 		exitCode = mockFile(ds, dir, "exitCode")
-		stdout = mockFile(ds, dir, DownloadFilenameStdout)
+		stdout = mockFile(ds, dir, downloader.DownloadFilenameStdout)
 		stderr = mockFile(ds, dir, "stderr")
 		hello = mockFile(ds, dir, "outputs", "hello.txt")
 		goodbye = mockFile(ds, dir, "outputs", "goodbye.txt")
 	})
 
-	err := DownloadJob(
+	err := downloader.DownloadJob(
 		context.Background(),
 		[]model.StorageSpec{
 			{
@@ -180,17 +181,17 @@ func (ds *DownloaderSuite) TestFullOutput() {
 				},
 			},
 		},
-		ds.downloader,
+		ds.downloadClient,
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, DownloadVolumesFolderName, "stdout")
-	requireFile(ds, stderr, DownloadVolumesFolderName, "stderr")
-	requireFile(ds, exitCode, DownloadShardsFolderName, "0_node_testnode", "exitCode")
-	requireFile(ds, stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, stderr, DownloadShardsFolderName, "0_node_testnode", "stderr")
-	requireFile(ds, goodbye, DownloadVolumesFolderName, "outputs", "goodbye.txt")
-	requireFile(ds, hello, DownloadVolumesFolderName, "outputs", "hello.txt")
+	requireFile(ds, stdout, downloader.DownloadVolumesFolderName, "stdout")
+	requireFile(ds, stderr, downloader.DownloadVolumesFolderName, "stderr")
+	requireFile(ds, exitCode, downloader.DownloadShardsFolderName, "0_node_testnode", "exitCode")
+	requireFile(ds, stdout, downloader.DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, stderr, downloader.DownloadShardsFolderName, "0_node_testnode", "stderr")
+	requireFile(ds, goodbye, downloader.DownloadVolumesFolderName, "outputs", "goodbye.txt")
+	requireFile(ds, hello, downloader.DownloadVolumesFolderName, "outputs", "hello.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
@@ -198,7 +199,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 		mockFile(ds, dir, "outputs", "lonely.txt")
 	})
 
-	err := DownloadJob(
+	err := downloader.DownloadJob(
 		context.Background(),
 		[]model.StorageSpec{
 			{
@@ -218,26 +219,26 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 				},
 			},
 		},
-		ds.downloader,
+		ds.downloadClient,
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "lonely.txt")
+	requireFileExists(ds, downloader.DownloadVolumesFolderName, "outputs", "lonely.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 	var shard0stdout, shard1stdout []byte
 	cid0 := mockShardOutput(ds, func(s string) {
-		shard0stdout = mockFile(ds, s, DownloadFilenameStdout)
+		shard0stdout = mockFile(ds, s, downloader.DownloadFilenameStdout)
 		mockFile(ds, s, "outputs", "data0.csv")
 	})
 
 	cid1 := mockShardOutput(ds, func(s string) {
-		shard1stdout = mockFile(ds, s, DownloadFilenameStdout)
+		shard1stdout = mockFile(ds, s, downloader.DownloadFilenameStdout)
 		mockFile(ds, s, "outputs", "data1.csv")
 	})
 
-	err := DownloadJob(
+	err := downloader.DownloadJob(
 		context.Background(),
 		[]model.StorageSpec{
 			{
@@ -266,16 +267,16 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 				},
 			},
 		},
-		ds.downloader,
+		ds.downloadClient,
 	)
 	require.NoError(ds.T(), err)
 
 	fullStdout := append(shard0stdout, shard1stdout...)
-	requireFile(ds, fullStdout, DownloadVolumesFolderName, DownloadFilenameStdout)
-	requireFile(ds, shard0stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, shard1stdout, DownloadShardsFolderName, "1_node_testnode", "stdout")
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data0.csv")
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data1.csv")
+	requireFile(ds, fullStdout, downloader.DownloadVolumesFolderName, downloader.DownloadFilenameStdout)
+	requireFile(ds, shard0stdout, downloader.DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, shard1stdout, downloader.DownloadShardsFolderName, "1_node_testnode", "stdout")
+	requireFileExists(ds, downloader.DownloadVolumesFolderName, "outputs", "data0.csv")
+	requireFileExists(ds, downloader.DownloadVolumesFolderName, "outputs", "data1.csv")
 }
 
 func (ds *DownloaderSuite) TestCustomVolumeNames() {
@@ -283,7 +284,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 		mockFile(ds, s, "secrets", "private.pem")
 	})
 
-	err := DownloadJob(
+	err := downloader.DownloadJob(
 		context.Background(),
 		[]model.StorageSpec{
 			{
@@ -304,9 +305,9 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 				},
 			},
 		},
-		ds.downloader,
+		ds.downloadClient,
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, DownloadVolumesFolderName, "secrets", "private.pem")
+	requireFileExists(ds, downloader.DownloadVolumesFolderName, "secrets", "private.pem")
 }

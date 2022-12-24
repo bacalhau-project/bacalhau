@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	ipfsDownloader "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"io"
 	"os"
 	"os/signal"
@@ -471,8 +472,8 @@ func downloadResultsHandler(
 	}
 
 	downloaderSettings := downloader.NewDownloadSettings()
-	//ipfsDownloader, err := downloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
-	estuaryDownloader, err := downloader.NewHTTPDownloader(ctx, cm, downloaderSettings)
+	ipfsDownloadClient, err := ipfsDownloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
+	//estuaryDownloader, err := http.NewHTTPDownloader(downloaderSettings)
 	if err != nil {
 		return err
 	}
@@ -481,7 +482,7 @@ func downloadResultsHandler(
 		ctx,
 		j.Spec.Outputs,
 		results,
-		estuaryDownloader,
+		ipfsDownloadClient,
 	)
 
 	if err != nil {
