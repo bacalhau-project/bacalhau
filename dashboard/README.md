@@ -1,27 +1,54 @@
 ## dev
 
-You will need 3 terminal panes:
-
-Start devstack:
+Deploy VM:
 
 ```bash
-export PREDICTABLE_API_PORT=1
-make devstack
+cd bacalhau/dashboard/terraform
+terraform init
+terraform apply -var-file prod.tfvars
 ```
 
-Start the api:
+Build images:
 
 ```bash
-cd dashboard/api
-go run main.go 127.0.0.1 20000 20000 127.0.0.1 20001 20001 127.0.0.1 20001 20001
+cd bacalhau
+bash dashboard/scripts/deploy.sh build:api
+bash dashboard/scripts/deploy.sh build:frontend
+# copy the images
+gcloud compute ssh dashboard-vm-default-0
+cd /data/dashboard
+vi .env
+# paste the images and save
 ```
 
-Start the frontend:
+Start and stop stack:
 
 ```bash
-cd dashboard/frontend
-yarn install
-yarn dev
+gcloud compute ssh dashboard-vm-default-0
+cd /data/dashboard
+sudo docker-compose stop
+sudo docker-compose up -d
 ```
 
-Open the browser: http://127.0.0.1:8080
+Production postgres:
+
+```bash
+gcloud compute ssh dashboard-vm-default-0
+docker ps -a
+# copy the id of the postgres container
+docker exec -ti <id> psql --user postgres
+```
+
+Get TLS cert:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+```
+
+copy the `certbot/nginx.conf` file to the vm `/etc/nginx/sites-available/dashboard.bacalhau.org` and delete the default file
+
+```bash
+sudo systemctl stop nginx
+sudo systemctl start nginx
+sudo certbot --nginx -d dashboard.bacalhau.org
+```

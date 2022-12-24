@@ -4,7 +4,7 @@ services:
     image: binocarlos/noxy
     restart: always
     ports:
-      - 80:80
+      - 8080:80
     depends_on:
       - api
       - frontend
@@ -23,10 +23,10 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
   frontend:
-    image: $FRONTEND_IMAGE
+    image: ${IMAGE_FRONTEND}
     restart: always
   api:
-    image: $API_IMAGE
+    image: ${IMAGE_API}
     restart: always
     depends_on:
       - postgres

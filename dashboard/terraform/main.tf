@@ -132,6 +132,7 @@ resource "google_compute_firewall" "dashboard_firewall" {
     protocol = "tcp"
     ports = [
       "80",
+      "443"
     ]
   }
 
