@@ -1,8 +1,11 @@
 package downloader
 
-import "context"
+import (
+	"context"
+	"github.com/filecoin-project/bacalhau/pkg/model"
+)
 
-// SpecialFiles - i.e. aything that is not a volume
+// SpecialFiles - i.e. anything that is not a volume
 // the boolean value is whether we should append to the global log
 var SpecialFiles = map[string]bool{
 	DownloadFilenameStdout:   true,
@@ -16,9 +19,18 @@ type DownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
+type ShardCIDContext struct {
+	Result         model.PublishedResult
+	OutputVolumes  []model.StorageSpec
+	RootDir        string
+	CIDDownloadDir string
+	ShardDir       string
+	VolumeDir      string
+}
+
 type Downloader interface {
 	// GetResultsOutputDir returns output dir given in DownloadSettings
 	GetResultsOutputDir() (string, error)
-	// FetchResults ...
-	FetchResults(ctx context.Context, shardCidContext shardCIDContext) error
+	// FetchResult fetches result contained in ShardCIDContext
+	FetchResult(ctx context.Context, shardCidContext ShardCIDContext) error
 }

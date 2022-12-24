@@ -1,8 +1,9 @@
-package downloader
+package ipfs
 
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,14 +14,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const DefaultIPFSTimeout time.Duration = 5 * time.Minute
-
-type ipfsDownloader struct {
-	Settings *DownloadSettings
-	client   *ipfs.Client
+type IPFSDownloader struct {
+	Settings *downloader.DownloadSettings
+	Client   *ipfs.Client
 }
 
-func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *DownloadSettings) (*ipfsDownloader, error) {
+func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *downloader.DownloadSettings) (*IPFSDownloader, error) {
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
@@ -50,32 +49,32 @@ func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings 
 		return nil, err
 	}
 
-	return &ipfsDownloader{
+	return &IPFSDownloader{
 		Settings: settings,
-		client:   ipfsClient,
+		Client:   ipfsClient,
 	}, nil
 }
 
-func (ipfsd *ipfsDownloader) GetResultsOutputDir() (string, error) {
-	return filepath.Abs(ipfsd.Settings.OutputDir)
+func (ipfsDownloader *IPFSDownloader) GetResultsOutputDir() (string, error) {
+	return filepath.Abs(ipfsDownloader.Settings.OutputDir)
 }
 
-func (ipfsd *ipfsDownloader) FetchResults(ctx context.Context, shardCIDContext shardCIDContext) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.ipfs.FetchResults")
+func (ipfsDownloader *IPFSDownloader) FetchResult(ctx context.Context, shardCIDContext downloader.ShardCIDContext) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result CID %s '%s' to '%s'...",
-			shardCIDContext.result.Data.Name,
-			shardCIDContext.result.Data.CID, shardCIDContext.cidDownloadDir,
+			shardCIDContext.Result.Data.Name,
+			shardCIDContext.Result.Data.CID, shardCIDContext.CIDDownloadDir,
 		)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
-			time.Now().Add(time.Second*time.Duration(ipfsd.Settings.TimeoutSecs)))
+			time.Now().Add(time.Second*time.Duration(ipfsDownloader.Settings.TimeoutSecs)))
 		defer cancel()
 
-		return ipfsd.client.Get(innerCtx, shardCIDContext.result.Data.CID, shardCIDContext.cidDownloadDir)
+		return ipfsDownloader.Client.Get(innerCtx, shardCIDContext.Result.Data.CID, shardCIDContext.CIDDownloadDir)
 	}()
 
 	if err != nil {
