@@ -20,7 +20,7 @@ type JobQuery struct {
 type LocalEventFilter func(ev model.JobLocalEvent) bool
 
 // A LocalDB will persist jobs and their state to the underlying storage.
-// It also gives an efficiernt way to retrieve jobs using queries.
+// It also gives an efficient way to retrieve jobs using queries.
 // The LocalDB is the local view of the world and the transport
 // will get events to other nodes that will update their datastore.
 //
