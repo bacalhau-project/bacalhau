@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,8 +60,8 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 		"/" + downloader.DownloadVolumesFolderName + "/data/apples/file.txt",
 		"/" + downloader.DownloadVolumesFolderName + "/data/file.txt",
 		"/" + downloader.DownloadVolumesFolderName + "/outputs",
-		"/" + downloader.DownloadVolumesFolderName + "/" + downloader.DownloadFilenameStderr,
-		"/" + downloader.DownloadVolumesFolderName + "/" + downloader.DownloadFilenameStdout,
+		"/" + downloader.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
+		"/" + downloader.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
 		"/" + downloader.DownloadShardsFolderName,
 		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID,
 		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/data",

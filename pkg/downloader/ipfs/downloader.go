@@ -3,23 +3,23 @@ package ipfs
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
-type IPFSDownloader struct {
-	Settings *downloader.DownloadSettings
+type Downloader struct {
+	Settings *model.DownloaderSettings
 	Client   *ipfs.Client
 }
 
-func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *downloader.DownloadSettings) (*IPFSDownloader, error) {
+func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *model.DownloaderSettings) (*Downloader, error) {
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
@@ -49,17 +49,13 @@ func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings 
 		return nil, err
 	}
 
-	return &IPFSDownloader{
+	return &Downloader{
 		Settings: settings,
 		Client:   ipfsClient,
 	}, nil
 }
 
-func (ipfsDownloader *IPFSDownloader) GetResultsOutputDir() (string, error) {
-	return filepath.Abs(ipfsDownloader.Settings.OutputDir)
-}
-
-func (ipfsDownloader *IPFSDownloader) FetchResult(ctx context.Context, shardCIDContext downloader.ShardCIDContext) error {
+func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, shardCIDContext model.PublishedShardDownloadContext) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()
 

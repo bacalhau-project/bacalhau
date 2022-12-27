@@ -13,13 +13,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewDownloadSettings() *DownloadSettings {
-	return &DownloadSettings{
-		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
-		// we leave this blank so the CLI will auto-create a job folder in pwd
-		OutputDir:      "",
-		IPFSSwarmAddrs: "",
-	}
+// specialFiles - i.e. anything that is not a volume
+// the boolean value is whether we should append to the global log
+var specialFiles = map[string]bool{
+	model.DownloadFilenameStdout:   true,
+	model.DownloadFilenameStderr:   true,
+	model.DownloadFilenameExitCode: false,
 }
 
 // * make a temp dir
@@ -40,7 +39,8 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// these are the published results we have loaded
 	// from the api
 	publishedShardResults []model.PublishedResult,
-	downloader Downloader,
+	downloadProvider DownloaderProvider,
+	settings *model.DownloaderSettings,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
 	defer span.End()
@@ -53,7 +53,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// this is the full path to the top level folder we are writing our results
 	// we have already processed this in the case of a default
 	// (i.e. the folder named after the job has been created and assigned)
-	resultsOutputDir, err := downloader.GetResultsOutputDir() // filepath.Abs(downloader.Settings.)
+	resultsOutputDir, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to get absolute path for output dir: %s", err)
 		return err
@@ -72,7 +72,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 	// each shard context understands the various folder paths
 	// and other data it needs to download and resolve itself
-	shardContexts := []ShardCIDContext{}
+	shardContexts := []model.PublishedShardDownloadContext{}
 	// keep track of which cids we have downloaded to avoid
 	// downloading the same cid multiple times
 	downloadedCids := map[string]bool{}
@@ -101,7 +101,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 			DownloadShardsFolderName,
 			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
 		)
-		shardContexts = append(shardContexts, ShardCIDContext{
+		shardContexts = append(shardContexts, model.PublishedShardDownloadContext{
 			Result:         shardResult,
 			OutputVolumes:  outputVolumes,
 			RootDir:        resultsOutputDir,
@@ -114,6 +114,11 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// loop over each Result set and download it's CID
 	// (if we have not already done so)
 	for _, shardContext := range shardContexts {
+		downloader, err := downloadProvider.GetDownloader(shardContext.Result.Data.StorageSource) //nolint
+		if err != nil {
+			return err
+		}
+
 		_, ok := downloadedCids[shardContext.Result.Data.CID]
 		if !ok {
 			err = downloader.FetchResult(ctx, shardContext)
@@ -138,7 +143,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 func moveShardData(
 	ctx context.Context,
-	shardContext ShardCIDContext,
+	shardContext model.PublishedShardDownloadContext,
 ) error {
 	err := os.MkdirAll(shardContext.ShardDir, DownloadFolderPerm)
 	if err != nil {
@@ -171,7 +176,7 @@ func moveShardData(
 		globalTargetPath := filepath.Join(shardContext.VolumeDir, basePath)
 
 		// are we dealing with a special case file?
-		shouldAppendLogs, isSpecialFile := SpecialFiles[basePath]
+		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
 
 		if d.IsDir() {
 			err = os.MkdirAll(shardTargetPath, DownloadFolderPerm)

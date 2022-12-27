@@ -2,9 +2,10 @@ package scenario
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"path/filepath"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
@@ -179,15 +180,20 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
 	require.NoError(s.T(), err)
 
-	downloaderSettings := &downloader.DownloadSettings{
+	downloaderSettings := &model.DownloaderSettings{
 		TimeoutSecs:    5,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}
+
 	ipfsDownloader, err := ipfs.NewIPFSDownloader(s.Ctx, cm, downloaderSettings)
 	require.NoError(s.T(), err)
 
-	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, ipfsDownloader)
+	downloaderProvider := downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{
+		model.StorageSourceIPFS: ipfsDownloader,
+	})
+
+	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, downloaderProvider, downloaderSettings)
 	require.NoError(s.T(), err)
 
 	if scenario.ResultsChecker != nil {

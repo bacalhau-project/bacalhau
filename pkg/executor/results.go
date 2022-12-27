@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -81,7 +79,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard output
 		{
 			stdout,
-			downloader.DownloadFilenameStdout,
+			model.DownloadFilenameStdout,
 			system.MaxStdoutFileLength,
 			&result.STDOUT,
 			system.MaxStdoutReturnLength,
@@ -90,7 +88,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard error
 		{
 			stderr,
-			downloader.DownloadFilenameStderr,
+			model.DownloadFilenameStderr,
 			system.MaxStderrFileLength,
 			&result.STDERR,
 			system.MaxStderrReturnLength,
@@ -99,7 +97,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Exit code
 		{
 			strings.NewReader(fmt.Sprint(exitcode)),
-			downloader.DownloadFilenameExitCode,
+			model.DownloadFilenameExitCode,
 			4,
 			nil,
 			4,

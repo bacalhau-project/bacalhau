@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -18,7 +17,7 @@ var basicScenario Scenario = Scenario{
 			EntryPoint: "_start",
 		},
 	},
-	ResultsChecker: FileEquals(downloader.DownloadFilenameStdout, "hello, world!\n"),
+	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),
 }
 

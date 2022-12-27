@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -48,7 +49,7 @@ type LanguageRunOptions struct {
 	// WorkingDir string // Working directory for docker
 
 	RuntimeSettings  RunTimeSettings
-	DownloadSettings downloader.DownloadSettings
+	DownloadSettings model.DownloaderSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -72,7 +73,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		RequirementsPath: "",
 		ContextPath:      ".",
 		RuntimeSettings:  *NewRunTimeSettings(),
-		DownloadSettings: *downloader.NewDownloadSettings(),
+		DownloadSettings: *util.NewDownloadSettings(),
 	}
 }
 

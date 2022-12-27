@@ -4,7 +4,6 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"strings"
 	"testing"
 
@@ -52,8 +51,8 @@ var errorLogsTestCase = scenario.Scenario{
 		},
 	},
 	ResultsChecker: scenario.ManyChecks(
-		scenario.FileEquals(downloader.DownloadFilenameStdout, "apples"),
-		scenario.FileEquals(downloader.DownloadFilenameStderr, "oranges"),
+		scenario.FileEquals(model.DownloadFilenameStdout, "apples"),
+		scenario.FileEquals(model.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
 		job.WaitThrowErrors([]model.JobStateType{

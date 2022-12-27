@@ -3,7 +3,6 @@
 package devstack
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -32,7 +31,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	}
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(
-		downloader.DownloadFilenameStdout,
+		model.DownloadFilenameStdout,
 		"Hello, world!\nHello, world!\n",
 	)
 	testCase.JobCheckers = []job.CheckStatesFunction{

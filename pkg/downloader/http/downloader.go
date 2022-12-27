@@ -3,31 +3,27 @@ package http
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
-type HTTPDownloader struct {
-	Settings *downloader.DownloadSettings
+type Downloader struct {
+	Settings *model.DownloaderSettings
 }
 
-func NewHTTPDownloader(settings *downloader.DownloadSettings) (*HTTPDownloader, error) {
-	return &HTTPDownloader{
+func NewHTTPDownloader(settings *model.DownloaderSettings) (*Downloader, error) {
+	return &Downloader{
 		Settings: settings,
 	}, nil
 }
 
-func (httpDownloader *HTTPDownloader) GetResultsOutputDir() (string, error) {
-	return filepath.Abs(httpDownloader.Settings.OutputDir)
-}
-
-func (httpDownloader *HTTPDownloader) FetchResult(ctx context.Context, shardCIDContext downloader.ShardCIDContext) error {
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, shardCIDContext model.PublishedShardDownloadContext) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
 	defer span.End()
 
@@ -56,7 +52,7 @@ func (httpDownloader *HTTPDownloader) FetchResult(ctx context.Context, shardCIDC
 }
 
 func fetch(ctx context.Context, url string, filepath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.http.fetchHttp")
+	_, span := system.GetTracer().Start(ctx, "pkg/downloader.http.fetchHttp")
 	defer span.End()
 	// Create a new file at the specified filepath
 	out, err := os.Create(filepath)
@@ -66,7 +62,7 @@ func fetch(ctx context.Context, url string, filepath string) error {
 	defer out.Close()
 
 	// Make an HTTP GET request to the URL
-	response, err := http.Get(url)
+	response, err := http.Get(url) //nolint
 	if err != nil {
 		return err
 	}

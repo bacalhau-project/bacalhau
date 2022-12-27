@@ -3,7 +3,6 @@
 package devstack
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"path/filepath"
 	"testing"
 
@@ -50,7 +49,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			},
 		},
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(downloader.DownloadFilenameStdout, "file1\nfile2\n"),
+			scenario.FileEquals(model.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{

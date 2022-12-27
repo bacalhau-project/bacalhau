@@ -1,14 +1,13 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = downloader.DownloadFilenameStdout
+const stdoutString = model.DownloadFilenameStdout
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
 var CatFileToStdout = Scenario{
@@ -21,8 +20,8 @@ var CatFileToStdout = Scenario{
 		"/job",
 	),
 	ResultsChecker: ManyChecks(
-		FileEquals(downloader.DownloadFilenameStderr, ""),
-		FileEquals(downloader.DownloadFilenameStdout, helloWorld),
+		FileEquals(model.DownloadFilenameStderr, ""),
+		FileEquals(model.DownloadFilenameStdout, helloWorld),
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
