@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,7 +143,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			filename := filepath.Join("results", fmt.Sprintf("%d.txt", i))
 			checks = append(checks,
 				scenario.FileEquals(filename, content+"\n"),
-				scenario.FileContains(downloader.DownloadFilenameStdout, content, totalFiles*3+1),
+				scenario.FileContains(model.DownloadFilenameStdout, content, totalFiles*3+1),
 			)
 		}
 	}

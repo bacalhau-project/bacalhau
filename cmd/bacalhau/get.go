@@ -2,9 +2,9 @@ package bacalhau
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -29,13 +29,13 @@ var (
 )
 
 type GetOptions struct {
-	IPFSDownloadSettings downloader.DownloadSettings
+	IPFSDownloadSettings model.DownloaderSettings
 }
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		IPFSDownloadSettings: downloader.DownloadSettings{
-			TimeoutSecs:    int(ipfs.DefaultIPFSTimeout.Seconds()),
+		IPFSDownloadSettings: model.DownloaderSettings{
+			TimeoutSecs:    int(downloader.DefaultIPFSTimeout.Seconds()),
 			OutputDir:      "",
 			IPFSSwarmAddrs: "",
 		},

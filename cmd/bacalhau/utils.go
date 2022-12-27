@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	ipfsDownloader "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"io"
 	"os"
 	"os/signal"
@@ -16,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
@@ -198,7 +199,7 @@ func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...str
 	return c, buf.String(), err
 }
 
-func NewIPFSDownloadFlags(settings *downloader.DownloadSettings) *pflag.FlagSet {
+func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
 	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
@@ -228,7 +229,7 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 	return downloadDir, nil
 }
 
-func processDownloadSettings(settings downloader.DownloadSettings, jobID string) (downloader.DownloadSettings, error) {
+func processDownloadSettings(settings model.DownloaderSettings, jobID string) (model.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {
@@ -290,7 +291,7 @@ func ExecuteJob(ctx context.Context,
 	cmd *cobra.Command,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
-	downloadSettings downloader.DownloadSettings,
+	downloadSettings model.DownloaderSettings,
 	buildContext *bytes.Buffer,
 ) error {
 	var apiClient *publicapi.APIClient
@@ -444,7 +445,7 @@ func downloadResultsHandler(
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings downloader.DownloadSettings,
+	downloadSettings model.DownloaderSettings,
 ) error {
 	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
 	j, _, err := GetAPIClient().Get(ctx, jobID)
@@ -471,9 +472,8 @@ func downloadResultsHandler(
 		return err
 	}
 
-	downloaderSettings := downloader.NewDownloadSettings()
-	ipfsDownloadClient, err := ipfsDownloader.NewIPFSDownloader(ctx, cm, downloaderSettings)
-	//estuaryDownloader, err := http.NewHTTPDownloader(downloaderSettings)
+	downloaderSettings := util.NewDownloadSettings()
+	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloaderSettings)
 	if err != nil {
 		return err
 	}
@@ -482,7 +482,8 @@ func downloadResultsHandler(
 		ctx,
 		j.Spec.Outputs,
 		results,
-		ipfsDownloadClient,
+		downloaderProvider,
+		&downloadSettings,
 	)
 
 	if err != nil {

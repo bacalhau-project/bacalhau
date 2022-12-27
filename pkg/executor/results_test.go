@@ -4,7 +4,7 @@ package executor
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,9 +115,9 @@ func TestJobResult(t *testing.T) {
 	require.Equal(t, "", result.ErrorMsg)
 
 	for filename, expectedContents := range map[string]string{
-		downloader.DownloadFilenameStdout:   "standard output",
-		downloader.DownloadFilenameStderr:   "standard error",
-		downloader.DownloadFilenameExitCode: "123",
+		model.DownloadFilenameStdout:   "standard output",
+		model.DownloadFilenameStderr:   "standard error",
+		model.DownloadFilenameExitCode: "123",
 	} {
 		actualContents, err := os.ReadFile(filepath.Join(tempDir, filename))
 		require.NoError(t, err)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -72,7 +72,7 @@ type DockerRunOptions struct {
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
-	DownloadFlags downloader.DownloadSettings // Settings for running Download
+	DownloadFlags model.DownloaderSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -100,7 +100,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *downloader.NewDownloadSettings(),
+		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
@@ -316,7 +316,7 @@ func CreateJob(ctx context.Context,
 		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	odr.DownloadFlags = downloader.DownloadSettings{
+	odr.DownloadFlags = model.DownloaderSettings{
 		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,

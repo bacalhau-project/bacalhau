@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -38,11 +38,11 @@ var (
 )
 
 type CreateOptions struct {
-	Filename        string                      // Filename for job (can be .json or .yaml)
-	Concurrency     int                         // Number of concurrent jobs to run
-	Confidence      int                         // Minimum number of nodes that must agree on a verification result
-	RunTimeSettings RunTimeSettings             // Run time settings for execution (e.g. wait, get, etc after submission)
-	DownloadFlags   downloader.DownloadSettings // Settings for running Download
+	Filename        string                   // Filename for job (can be .json or .yaml)
+	Concurrency     int                      // Number of concurrent jobs to run
+	Confidence      int                      // Minimum number of nodes that must agree on a verification result
+	RunTimeSettings RunTimeSettings          // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadFlags   model.DownloaderSettings // Settings for running Download
 	DryRun          bool
 }
 
@@ -51,7 +51,7 @@ func NewCreateOptions() *CreateOptions {
 		Filename:        "",
 		Concurrency:     1,
 		Confidence:      0,
-		DownloadFlags:   *downloader.NewDownloadSettings(),
+		DownloadFlags:   *util.NewDownloadSettings(),
 		RunTimeSettings: *NewRunTimeSettings(),
 	}
 }
