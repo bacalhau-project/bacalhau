@@ -46,6 +46,7 @@ func ConstructDockerJob( //nolint:funlen
 	p model.Publisher,
 	cpu, memory, gpu string,
 	network model.Network,
+	domains []string,
 	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
@@ -126,6 +127,10 @@ func ConstructDockerJob( //nolint:funlen
 			Image:                image,
 			Entrypoint:           entrypoint,
 			EnvironmentVariables: env,
+		},
+		Network: model.NetworkConfig{
+			Type:    network,
+			Domains: domains,
 		},
 		Timeout:     timeout,
 		Resources:   jobResources,
