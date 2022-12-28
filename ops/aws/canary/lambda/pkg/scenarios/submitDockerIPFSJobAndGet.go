@@ -6,7 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -57,11 +58,15 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	downloadSettings.OutputDir = outputDir
 	downloadSettings.TimeoutSecs = 600
 
-	err = ipfs.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, *downloadSettings)
+	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloadSettings)
+	if err != nil {
+		return fmt.Errorf("getting downloader provider settings: %s", err)
+	}
+	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return fmt.Errorf("downloading job: %s", err)
 	}
-	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
+	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, downloader.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
 	if err != nil {
 		return fmt.Errorf("reading results directory: %s", err)
 	}
@@ -72,7 +77,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if len(files) != 3 {
 		return fmt.Errorf("expected 2 files in output dir, got %d", len(files))
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, downloader.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
 	if err != nil {
 		return err
 	}
@@ -86,7 +91,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("testing md5 of input: %s", err)
 	}
-	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
+	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, downloader.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
 	if err != nil {
 		return err
 	}

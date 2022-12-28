@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"time"
 
@@ -20,22 +19,6 @@ type Downloader struct {
 }
 
 func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *model.DownloaderSettings) (*Downloader, error) {
-	switch system.GetEnvironment() {
-	case system.EnvironmentProd:
-		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
-	case system.EnvironmentTest:
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			log.Ctx(ctx).Warn().Msg("No action (don't use BACALHAU_IPFS_SWARM_ADDRESSES")
-		}
-	case system.EnvironmentDev:
-		// TODO: add more dev swarm addresses?
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			settings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
-		}
-	case system.EnvironmentStaging:
-		log.Ctx(ctx).Warn().Msg("Staging environment has no IPFS swarm addresses attached")
-	}
-
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
 	n, err := spinUpIPFSNode(ctx, cm, settings.IPFSSwarmAddrs)
