@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -176,6 +177,16 @@ func configureIpfsLogging(l zerolog.Logger) {
 	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
 
 	ipfslog2.SetPrimaryCore(core)
+}
+
+func LogStream(ctx context.Context, r io.Reader) {
+	s := bufio.NewScanner(r)
+	for s.Scan() {
+		log.Ctx(ctx).Debug().Msg(s.Text())
+	}
+	if s.Err() != nil {
+		log.Ctx(ctx).Error().Err(s.Err()).Msg("error consuming log")
+	}
 }
 
 func findRepositoryRoot() string {

@@ -31,7 +31,7 @@ var (
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
-			
+
 		# Dry Run: Check the job specification before submitting it to the bacalhau network
 		bacalhau docker run --dry-run ubuntu echo hello
 
@@ -59,6 +59,7 @@ type DockerRunOptions struct {
 	Memory           string
 	GPU              string
 	Networking       model.Network
+	NetworkDomains   []string
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
 
@@ -98,6 +99,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Memory:             "",
 		GPU:                "",
 		Networking:         model.NetworkNone,
+		NetworkDomains:     []string{},
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
@@ -215,6 +217,10 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().Var(
 		NetworkFlag(&ODR.Networking), "network",
 		`Networking capability required by the job`,
+	)
+	dockerRunCmd.PersistentFlags().StringArrayVar(
+		&ODR.NetworkDomains, "domain", ODR.NetworkDomains,
+		`Domain(s) that the job needs to access (for HTTP networking)`,
 	)
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.SkipSyntaxChecking, "skip-syntax-checking", ODR.SkipSyntaxChecking,
@@ -372,6 +378,7 @@ func CreateJob(ctx context.Context,
 		odr.Memory,
 		odr.GPU,
 		odr.Networking,
+		odr.NetworkDomains,
 		odr.InputUrls,
 		odr.InputVolumes,
 		odr.OutputVolumes,
