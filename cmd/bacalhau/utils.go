@@ -472,8 +472,7 @@ func downloadResultsHandler(
 		return err
 	}
 
-	downloaderSettings := util.NewDownloadSettings()
-	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloaderSettings)
+	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, &processedDownloadSettings)
 	if err != nil {
 		return err
 	}
@@ -483,7 +482,7 @@ func downloadResultsHandler(
 		j.Spec.Outputs,
 		results,
 		downloaderProvider,
-		&downloadSettings,
+		&processedDownloadSettings,
 	)
 
 	if err != nil {

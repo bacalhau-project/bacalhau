@@ -3,7 +3,7 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -29,16 +29,12 @@ var (
 )
 
 type GetOptions struct {
-	IPFSDownloadSettings model.DownloaderSettings
+	IPFSDownloadSettings *model.DownloaderSettings
 }
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		IPFSDownloadSettings: model.DownloaderSettings{
-			TimeoutSecs:    int(downloader.DefaultIPFSTimeout.Seconds()),
-			OutputDir:      "",
-			IPFSSwarmAddrs: "",
-		},
+		IPFSDownloadSettings: util.NewDownloadSettings(),
 	}
 }
 
@@ -57,7 +53,7 @@ func newGetCmd() *cobra.Command {
 		},
 	}
 
-	getCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OG.IPFSDownloadSettings))
+	getCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(OG.IPFSDownloadSettings))
 
 	return getCmd
 }
@@ -89,7 +85,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 		cm,
 		cmd,
 		jobID,
-		OG.IPFSDownloadSettings,
+		*OG.IPFSDownloadSettings,
 	)
 
 	if err != nil {
