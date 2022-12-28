@@ -201,16 +201,17 @@ func (e *Executor) RunShard(
 	}
 	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
+	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables,
+		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
+	)
 
 	containerConfig := &container.Config{
-		Image:           shard.Job.Spec.Docker.Image,
-		Tty:             false,
-		Env:             useEnv,
-		Entrypoint:      shard.Job.Spec.Docker.Entrypoint,
-		Labels:          e.jobContainerLabels(&shard),
-		NetworkDisabled: shard.Job.Spec.Network.Disabled(),
-		WorkingDir:      shard.Job.Spec.Docker.WorkingDirectory,
+		Image:      shard.Job.Spec.Docker.Image,
+		Tty:        false,
+		Env:        useEnv,
+		Entrypoint: shard.Job.Spec.Docker.Entrypoint,
+		Labels:     e.jobContainerLabels(&shard),
+		WorkingDir: shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
@@ -229,25 +230,25 @@ func (e *Executor) RunShard(
 		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
 	}
 
+	hostConfig := &container.HostConfig{
+		Mounts: mounts,
+		Resources: container.Resources{
+			Memory:         int64(resourceRequirements.Memory),
+			NanoCPUs:       int64(resourceRequirements.CPU * NanoCPUCoefficient),
+			DeviceRequests: deviceRequests,
+		},
+	}
+
 	// Create a network if the job requests it
-	networkMode := container.NetworkMode("none")
-	if !shard.Job.Spec.Network.Disabled() {
-		log.Ctx(ctx).Debug().Msg("Enabling network connections")
-		networkMode = container.NetworkMode("host")
+	err = e.setupNetworkForJob(ctx, shard, containerConfig, hostConfig)
+	if err != nil {
+		return executor.FailResult(err)
 	}
 
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,
 		containerConfig,
-		&container.HostConfig{
-			Mounts: mounts,
-			Resources: container.Resources{
-				Memory:         int64(resourceRequirements.Memory),
-				NanoCPUs:       int64(resourceRequirements.CPU * NanoCPUCoefficient),
-				DeviceRequests: deviceRequests,
-			},
-			NetworkMode: networkMode,
-		},
+		hostConfig,
 		nil,
 		nil,
 		e.jobContainerName(shard),
@@ -255,6 +256,7 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
 	}
+
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
 	containerStartError := e.Client.ContainerStart(

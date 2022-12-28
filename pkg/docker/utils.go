@@ -1,17 +1,15 @@
 package docker
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -20,15 +18,12 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 )
-
-// ErrContainerMarkedForRemoval indicates that the docker daemon is about to
-// delete, or has already deleted, the given container.
-var ErrContainerMarkedForRemoval = fmt.Errorf("docker container marked for removal")
 
 func NewDockerClient() (*dockerclient.Client, error) {
 	return dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
@@ -66,6 +61,18 @@ func GetContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOr
 	}
 
 	return nil, nil
+}
+
+func HostGatewayIP(ctx context.Context, dockerClient *dockerclient.Client) (net.IP, error) {
+	response, err := dockerClient.NetworkInspect(ctx, "bridge", types.NetworkInspectOptions{})
+	if err != nil {
+		return net.IP{}, err
+	}
+	if configs := response.IPAM.Config; len(configs) < 1 {
+		return net.IP{}, fmt.Errorf("bridge network unattached???")
+	} else {
+		return net.ParseIP(configs[0].Gateway), nil
+	}
 }
 
 func RemoveContainers(
@@ -115,37 +122,51 @@ func RemoveObjectsWithLabel(ctx context.Context, dockerClient *dockerclient.Clie
 	return multierr.Combine(containerErr, networkErr)
 }
 
-func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
+func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr io.Reader, err error) {
 	container, err := GetContainer(ctx, dockerClient, nameOrID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get container: %w", err)
+		return nil, nil, errors.Wrap(err, "failed to get container")
 	}
 	if container == nil {
-		return "", "", fmt.Errorf("no container found: %s", nameOrID)
+		return nil, nil, fmt.Errorf("no container found: %s", nameOrID)
 	}
 
 	logsReader, err := dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
+		Follow:     true,
 	})
 	if err != nil {
-		// String checking is unfortunately the best we have, as errors are
-		// returned by the docker server as strings, and aren't strongly typed.
-		if strings.Contains(err.Error(), "can not get logs from container which is dead or marked for removal") {
-			return "", "", ErrContainerMarkedForRemoval
+		return nil, nil, errors.Wrap(err, "failed to get container logs")
+	}
+
+	stdoutReader, stdoutWriter := io.Pipe()
+	stderrReader, stderrWriter := io.Pipe()
+	go func() {
+		_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, logsReader)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("error reading container logs")
 		}
+		logsReader.Close()
+	}()
 
-		return "", "", fmt.Errorf("failed to get container logs: %w", err)
+	return stdoutReader, stderrReader, nil
+}
+
+func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
+	stdoutBuffer, stderrBuffer, err := FollowLogs(ctx, dockerClient, nameOrID)
+	if err == nil {
+		wg := multierrgroup.Group{}
+		readAll := func(dest *string, buf io.Reader) error {
+			b, berr := io.ReadAll(buf)
+			*dest = string(b)
+			return berr
+		}
+		wg.Go(func() error { return readAll(&stdout, stdoutBuffer) })
+		wg.Go(func() error { return readAll(&stderr, stderrBuffer) })
+		err = wg.Wait()
 	}
-
-	stdoutBuffer := bytes.NewBuffer([]byte{})
-	stderrBuffer := bytes.NewBuffer([]byte{})
-	_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
-	if err != nil {
-		return "", "", err
-	}
-
-	return stdoutBuffer.String(), stderrBuffer.String(), nil
+	return
 }
 
 func StopContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
