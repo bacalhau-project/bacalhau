@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -21,6 +22,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.ptx.dk/multierrgroup"
+	"go.uber.org/multierr"
 )
 
 // ErrContainerMarkedForRemoval indicates that the docker daemon is about to
@@ -65,29 +68,51 @@ func GetContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOr
 	return nil, nil
 }
 
-func GetContainersWithLabel(ctx context.Context,
+func RemoveContainers(
+	ctx context.Context,
 	dockerClient *dockerclient.Client,
-	labelName, labelValue string) ([]types.Container, error) {
-	results := []types.Container{}
-	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{
-		All: true,
-	})
-
+	filterz filters.Args,
+) error {
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filterz})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	//nolint:gocritic // will fix when we care
+
+	wg := multierrgroup.Group{}
 	for _, container := range containers {
-		value, ok := container.Labels[labelName]
-		if !ok {
-			continue
-		}
-		if value == labelValue {
-			results = append(results, container)
-		}
+		container := container
+		wg.Go(func() error {
+			return RemoveContainer(ctx, dockerClient, container.ID)
+		})
 	}
-	return results, nil
+	return wg.Wait()
+}
+
+func RemoveNetworks(ctx context.Context, dockerClient *dockerclient.Client, filterz filters.Args) error {
+	networks, err := dockerClient.NetworkList(ctx, types.NetworkListOptions{Filters: filterz})
+	if err != nil {
+		return err
+	}
+
+	wg := multierrgroup.Group{}
+	for _, network := range networks {
+		network := network
+		wg.Go(func() error {
+			log.Ctx(ctx).Debug().Str("Network", network.ID).Msg("Network Stop")
+			return dockerClient.NetworkRemove(ctx, network.ID)
+		})
+	}
+	return wg.Wait()
+}
+
+func RemoveObjectsWithLabel(ctx context.Context, dockerClient *dockerclient.Client, labelName, labelValue string) error {
+	filters := filters.NewArgs(
+		filters.Arg("label", fmt.Sprintf("%s=%s", labelName, labelValue)),
+	)
+
+	containerErr := RemoveContainers(ctx, dockerClient, filters)
+	networkErr := RemoveNetworks(ctx, dockerClient, filters)
+	return multierr.Combine(containerErr, networkErr)
 }
 
 func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
