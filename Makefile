@@ -108,7 +108,7 @@ endif
 swagger-docs:
 	@echo "Building swagger docs..."
 	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init --parseDependency --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag init --parseDependency --parseInternal --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
 
 ################################################################################
@@ -196,7 +196,7 @@ SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
-${SCHEMA_DIR}/%.json: 
+${SCHEMA_DIR}/%.json:
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
 	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
@@ -352,7 +352,7 @@ coverage-report: coverage/coverage.html
 coverage/coverage.out: $(wildcard coverage/*.coverage)
 	gocovmerge $^ > $@
 
-coverage/coverage.html: coverage/coverage.out coverage/ 
+coverage/coverage.html: coverage/coverage.out coverage/
 	go tool cover -html=$< -o $@
 
 coverage/:
