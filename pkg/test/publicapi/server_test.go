@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -66,6 +67,16 @@ func (s *ServerSuite) TestList() {
 	jobs, err = s.client.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
 	require.NoError(s.T(), err)
 	require.Len(s.T(), jobs, 1)
+}
+
+func (s *ServerSuite) TestSubmitRejectsJobWithSigilHeader() {
+	j := testutils.MakeNoopJob()
+	jobID, err := uuid.NewRandom()
+	require.NoError(s.T(), err)
+
+	s.client.DefaultHeaders["X-Bacalhau-Job-ID"] = jobID.String()
+	_, err = s.client.Submit(context.Background(), j, nil)
+	require.Error(s.T(), err)
 }
 
 func (s *ServerSuite) TestHealthz() {
