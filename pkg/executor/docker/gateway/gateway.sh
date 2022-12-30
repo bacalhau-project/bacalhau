@@ -24,6 +24,11 @@ for IFACE in $(ip --json address show | jq -rc '.[] | .ifname'); do
     tc qdisc add dev $IFACE root tbf rate 1mbit burst 32kbit latency 10sec
 done
 
+# Add Bacalhau job ID to outgoing requests. We can use this to detect jobs
+# trying to spawn other jobs.
+echo request_header_access X-Bacalhau-Job-ID deny all > /etc/squid/conf.d/bac-job.conf
+echo request_header_add X-Bacalhau-Job-ID "$BACALHAU_JOB_ID" all >> /etc/squid/conf.d/bac-job.conf
+
 # Now that everything is configured, run Squid.
 squid -d2
 sleep 1
