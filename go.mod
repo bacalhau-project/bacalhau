@@ -64,7 +64,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.9
-	github.com/tetratelabs/wazero v1.0.0-pre.4
+	github.com/tetratelabs/wazero v1.0.0-pre.6
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
