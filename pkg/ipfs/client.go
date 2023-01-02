@@ -27,24 +27,33 @@ type Client struct {
 	addr string
 }
 
-// NewClient creates an API client for the given ipfs node API multiaddress.
+// NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
 // NOTE: the API address is _not_ the same as the swarm address
-func NewClient(apiAddr string) (*Client, error) {
+func NewClientUsingRemoteHandler(apiAddr string) (Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
+		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
 	}
 
 	api, err := httpapi.NewApi(addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 
-	log.Debug().Msgf("Created IPFS client for node API address: %s", apiAddr)
-	return &Client{
+	log.Debug().Msgf("Created remote IPFS client for node API address: %s", apiAddr)
+	return Client{
 		API:  api,
 		addr: apiAddr,
 	}, nil
+}
+
+const MagicInternalIPFSAddress = "memory://in-memory-node/"
+
+func NewClient(api icore.CoreAPI) Client {
+	return Client{
+		API:  api,
+		addr: MagicInternalIPFSAddress,
+	}
 }
 
 // WaitUntilAvailable blocks the current goroutine until the client is able
@@ -54,7 +63,7 @@ func NewClient(apiAddr string) (*Client, error) {
 // NOTE: if you do not pass a context with a deadline/cancel in to this
 //
 //	function, it may attempt to call the api server forever.
-func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
+func (cl Client) WaitUntilAvailable(ctx context.Context) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -73,7 +82,7 @@ func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 }
 
 // ID returns the node's ipfs ID.
-func (cl *Client) ID(ctx context.Context) (string, error) {
+func (cl Client) ID(ctx context.Context) (string, error) {
 	key, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
@@ -83,12 +92,12 @@ func (cl *Client) ID(ctx context.Context) (string, error) {
 }
 
 // APIAddress returns Api address that was used to connect to the node.
-func (cl *Client) APIAddress() string {
+func (cl Client) APIAddress() string {
 	return cl.addr
 }
 
 // SwarmAddresses returns a list of swarm addresses the node has announced.
-func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
+func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmAddresses")
 	defer span.End()
 
@@ -111,7 +120,7 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 }
 
 // Get fetches a file or directory from the ipfs network.
-func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
+func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Get")
 	defer span.End()
 
@@ -138,7 +147,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 
 // Put uploads and pins a file or directory to the ipfs network. Timeouts and
 // cancellation should be handled by passing an appropriate context value.
-func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
+func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Put")
 	defer span.End()
 
@@ -179,7 +188,7 @@ type StatResult struct {
 }
 
 // Stat returns information about an IPLD CID on the ipfs network.
-func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
+func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 	ctx, span := system.GetTracer().Start(ctx, "kg/ipfs.Stat")
 	defer span.End()
 
@@ -198,7 +207,7 @@ func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 	}, nil
 }
 
-func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
+func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetCidSize")
 	defer span.End()
 
@@ -211,7 +220,7 @@ func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 }
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
-func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
+func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.NodesWithCID")
 	defer span.End()
 
@@ -229,7 +238,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 }
 
 // HasCID returns true if the node has the given CID locally, whether pinned or not.
-func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
+func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
 	defer span.End()
 
@@ -252,7 +261,7 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	return false, nil
 }
 
-func (cl *Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
+func (cl Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetTreeNode")
 	defer span.End()
 

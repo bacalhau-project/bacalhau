@@ -79,7 +79,7 @@ func (f *StandardStorageProvidersFactory) Get(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardStorageProviderOptions{
-			IPFSMultiaddress:     nodeConfig.IPFSClient.APIAddress(),
+			API:                  nodeConfig.IPFSClient,
 			FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
 		},
 	)
@@ -100,7 +100,7 @@ func (f *StandardExecutorsFactory) Get(
 		executor_util.StandardExecutorOptions{
 			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 			Storage: executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress:     nodeConfig.IPFSClient.APIAddress(),
+				API:                  nodeConfig.IPFSClient,
 				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
 			},
 		},
@@ -138,7 +138,7 @@ func (f *StandardPublishersFactory) Get(
 	return publisher_util.NewIPFSPublishers(
 		ctx,
 		nodeConfig.CleanupManager,
-		nodeConfig.IPFSClient.APIAddress(),
+		nodeConfig.IPFSClient,
 		nodeConfig.EstuaryAPIKey,
 		nodeConfig.LotusConfig,
 	)

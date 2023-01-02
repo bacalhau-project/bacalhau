@@ -37,10 +37,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 	}
 
 	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
-	ipfsClient, err := n.Client()
-	if err != nil {
-		return err
-	}
+	ipfsClient := n.Client()
 
 	err = func() error {
 		log.Ctx(ctx).Debug().Msgf(

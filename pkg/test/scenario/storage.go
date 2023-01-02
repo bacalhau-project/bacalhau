@@ -17,7 +17,7 @@ import (
 type SetupStorage func(
 	ctx context.Context,
 	driverName model.StorageSourceType,
-	ipfsClients ...*ipfs.Client,
+	ipfsClients ...ipfs.Client,
 ) ([]model.StorageSpec, error)
 
 // StoredText will store the passed string as a file on an IPFS node, and return
@@ -26,7 +26,7 @@ func StoredText(
 	fileContents string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType, clients ...ipfs.Client) ([]model.StorageSpec, error) {
 		fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), clients...)
 		if err != nil {
 			return nil, err
@@ -49,7 +49,7 @@ func StoredFile(
 	filePath string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType, clients ...ipfs.Client) ([]model.StorageSpec, error) {
 		fileCid, err := ipfs.AddFileToNodes(ctx, filePath, clients...)
 		if err != nil {
 			return nil, err
@@ -83,7 +83,7 @@ func URLDownload(
 	urlPath string,
 	mountPath string,
 ) SetupStorage {
-	return func(_ context.Context, _ model.StorageSourceType, _ ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(_ context.Context, _ model.StorageSourceType, _ ...ipfs.Client) ([]model.StorageSpec, error) {
 		finalURL, err := url.JoinPath(server.URL, urlPath)
 		return []model.StorageSpec{
 			{
@@ -99,7 +99,7 @@ func URLDownload(
 // So if there are 5 IPFS nodes configured and PartialAdd is defined with 2,
 // only the first two nodes will have data loaded.
 func PartialAdd(numberOfNodes int, store SetupStorage) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...ipfs.Client) ([]model.StorageSpec, error) {
 		return store(ctx, driverName, ipfsClients[:numberOfNodes]...)
 	}
 }
@@ -108,7 +108,7 @@ func PartialAdd(numberOfNodes int, store SetupStorage) SetupStorage {
 // associated with all of them. If any of them fail, the error from the first to
 // fail will be returned.
 func ManyStores(stores ...SetupStorage) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...ipfs.Client) ([]model.StorageSpec, error) {
 		specs := []model.StorageSpec{}
 		for _, store := range stores {
 			spec, err := store(ctx, driverName, ipfsClients...)

@@ -25,7 +25,7 @@ const NodeInfoTopic = "bacalhau-node-info"
 
 // Node configuration
 type NodeConfig struct {
-	IPFSClient           *ipfs.Client
+	IPFSClient           ipfs.Client
 	CleanupManager       *system.CleanupManager
 	LocalDB              localdb.LocalDB
 	Host                 host.Host
@@ -68,7 +68,7 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	IPFSClient     *ipfs.Client
+	IPFSClient     ipfs.Client
 	Host           host.Host
 	metricsPort    int
 }
