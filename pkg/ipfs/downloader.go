@@ -114,10 +114,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	}
 
 	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
-	ipfsClient, err := n.Client()
-	if err != nil {
-		return err
-	}
+	ipfsClient := n.Client()
 
 	// this is the full path to the top level folder we are writing our results
 	// we have already processed this in the case of a default
@@ -223,7 +220,7 @@ func spinUpIPFSNode(
 
 func fetchResult(
 	ctx context.Context,
-	cl *Client,
+	cl Client,
 	shardContext shardCIDContext,
 	timeoutSecs int,
 ) error {

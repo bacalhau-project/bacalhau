@@ -26,7 +26,7 @@ const JobEventsTopic = "bacalhau-job-events"
 
 // Node configuration
 type NodeConfig struct {
-	IPFSClient           *ipfs.Client
+	IPFSClient           ipfs.Client
 	CleanupManager       *system.CleanupManager
 	LocalDB              localdb.LocalDB
 	Host                 host.Host
@@ -68,7 +68,7 @@ type Node struct {
 	LocalDB        localdb.LocalDB
 	CleanupManager *system.CleanupManager
 	Executors      executor.ExecutorProvider
-	IPFSClient     *ipfs.Client
+	IPFSClient     ipfs.Client
 
 	Host        host.Host
 	metricsPort int

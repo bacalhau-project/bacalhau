@@ -140,7 +140,7 @@ func NewDevStack(
 		// IPFS
 		// -------------------------------------
 		var ipfsNode *ipfs.Node
-		var ipfsClient *ipfs.Client
+		var ipfsClient ipfs.Client
 
 		var ipfsSwarmAddrs []string
 		if i > 0 {
@@ -155,10 +155,7 @@ func NewDevStack(
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		ipfsClient, err = ipfsNode.Client()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
-		}
+		ipfsClient = ipfsNode.Client()
 
 		var libp2pHost host.Host
 		var libp2pPort int
@@ -441,8 +438,8 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
-func (stack *DevStack) IPFSClients() []*ipfs.Client {
-	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
+func (stack *DevStack) IPFSClients() []ipfs.Client {
+	clients := make([]ipfs.Client, 0, len(stack.Nodes))
 	for _, node := range stack.Nodes {
 		clients = append(clients, node.IPFSClient)
 	}

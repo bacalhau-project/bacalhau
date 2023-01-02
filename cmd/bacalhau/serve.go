@@ -302,7 +302,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
-	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+	ipfs, err := ipfs.NewClientUsingRemoteHandler(OS.IPFSConnect)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating IPFS client: %s", err), 1)
 	}
