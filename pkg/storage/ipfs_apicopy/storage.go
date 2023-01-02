@@ -22,15 +22,10 @@ import (
 
 type StorageProvider struct {
 	LocalDir   string
-	IPFSClient *ipfs.Client
+	IPFSClient ipfs.Client
 }
 
-func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvider, error) {
-	cl, err := ipfs.NewClient(ipfsAPIAddress)
-	if err != nil {
-		return nil, err
-	}
-
+func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
@@ -49,7 +44,7 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 		LocalDir:   dir,
 	}
 
-	log.Trace().Msgf("IPFS API Copy driver created with address: %s", ipfsAPIAddress)
+	log.Trace().Msgf("IPFS API Copy driver created with address: %s", cl.APIAddress())
 	return storageHandler, nil
 }
 

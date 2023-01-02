@@ -27,7 +27,7 @@ func TestDownloaderSuite(t *testing.T) {
 type DownloaderSuite struct {
 	suite.Suite
 	cm               *system.CleanupManager
-	client           *ipfs.Client
+	client           ipfs.Client
 	outputDir        string
 	downloadSettings *model.DownloaderSettings
 	downloadProvider DownloaderProvider
@@ -49,9 +49,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
 	require.NoError(ds.T(), err)
 
-	client, err := node.Client()
-	require.NoError(ds.T(), err)
-	ds.client = client
+	ds.client = node.Client()
 
 	swarm, err := node.SwarmAddresses()
 	require.NoError(ds.T(), err)

@@ -86,7 +86,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorage(cm, node.APIAddress())
+	ipfsProvider, err := apicopy.NewStorage(cm, node)
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{

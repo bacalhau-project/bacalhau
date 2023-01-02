@@ -286,16 +286,8 @@ func (n *Node) LogDetails() {
 }
 
 // Client returns an API client for interacting with the node.
-func (n *Node) Client() (*Client, error) {
-	addrs, err := n.APIAddresses()
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch api addresses: %w", err)
-	}
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("error creating client: node has no available api addresses")
-	}
-
-	return NewClient(addrs[0])
+func (n *Node) Client() Client {
+	return NewClient(n.api)
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
