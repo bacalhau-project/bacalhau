@@ -34,7 +34,7 @@ class SubmitRequest(object):
     """
     swagger_types = {
         'client_public_key': 'str',
-        'job_create_payload': 'SubmitRequestJobCreatePayload',
+        'job_create_payload': 'list[int]',
         'signature': 'str'
     }
 
@@ -88,9 +88,10 @@ class SubmitRequest(object):
     def job_create_payload(self):
         """Gets the job_create_payload of this SubmitRequest.  # noqa: E501
 
+        The data needed to submit and run a job on the network:  # noqa: E501
 
         :return: The job_create_payload of this SubmitRequest.  # noqa: E501
-        :rtype: SubmitRequestJobCreatePayload
+        :rtype: list[int]
         """
         return self._job_create_payload
 
@@ -98,9 +99,10 @@ class SubmitRequest(object):
     def job_create_payload(self, job_create_payload):
         """Sets the job_create_payload of this SubmitRequest.
 
+        The data needed to submit and run a job on the network:  # noqa: E501
 
         :param job_create_payload: The job_create_payload of this SubmitRequest.  # noqa: E501
-        :type: SubmitRequestJobCreatePayload
+        :type: list[int]
         """
         if self._configuration.client_side_validation and job_create_payload is None:
             raise ValueError("Invalid value for `job_create_payload`, must not be `None`")  # noqa: E501

@@ -46,7 +46,7 @@ mkdocs-autorefs = {version = "^0.2.1", optional = true}
 pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
-bacalhau-apiclient = "0.0.3"
+bacalhau-apiclient = "0.0.5"
 pem = "^21.2.0"
 pycryptodome = "^3.16.0"
 cryptography = "^38.0.4"

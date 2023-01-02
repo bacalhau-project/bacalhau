@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bacalhau_apiclient"
-version = "0.0.3"
+version = "0.0.5"
 authors = [
 { name="Enrico Rotundo", email="enrico.rotundo@gmail.com" },
 ]

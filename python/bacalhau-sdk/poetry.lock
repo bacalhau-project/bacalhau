@@ -31,14 +31,14 @@ tests-no-zope = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy 
 
 [[package]]
 name = "bacalhau-apiclient"
-version = "0.0.3"
+version = "0.0.5"
 description = "A small example package"
 category = "main"
 optional = false
 python-versions = ">=3.6.2"
 files = [
-    {file = "bacalhau_apiclient-0.0.3-py3-none-any.whl", hash = "sha256:d83d4f977e839c48c7d8377caead89634cbeaac4d0c0433cca50bb21ed1a6157"},
-    {file = "bacalhau_apiclient-0.0.3.tar.gz", hash = "sha256:9def15dc62602f1c7206d563b84f1e463c5825fb39e4f57a66f979f7640dfd6a"},
+    {file = "bacalhau_apiclient-0.0.5-py3-none-any.whl", hash = "sha256:638803f77151e6963339e86ad4825eae2856229786aede6d5e154d9d4ccb44d3"},
+    {file = "bacalhau_apiclient-0.0.5.tar.gz", hash = "sha256:1443c9e52b66608038f2c7605d3936667a59fb3368357a08650d5d0339381d47"},
 ]
 
 [[package]]
@@ -1715,4 +1715,4 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "5169719edc544a31d2b8c24d444a3f1b25d12579d5bdb6b08c2e8d963a7bdd5b"
+content-hash = "38bd2a886c39813c92ac143036977dd7aeea2f3e2ffb4ad1c9702f6014577f7d"

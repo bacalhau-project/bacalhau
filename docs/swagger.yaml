@@ -87,29 +87,6 @@ definitions:
         description: 'The status of the job: where are the nodes at, what are the
           events'
     type: object
-  model.JobCreatePayload:
-    properties:
-      APIVersion:
-        example: V1beta1
-        type: string
-      ClientID:
-        description: the id of the client that is submitting the job
-        type: string
-      Context:
-        description: |-
-          Optional base64-encoded tar file that will be pinned to IPFS and
-          mounted as storage for the job. Not part of the spec so we don't
-          flood the transport layer with it (potentially very large).
-        type: string
-      Spec:
-        allOf:
-        - $ref: '#/definitions/model.Spec'
-        description: The specification of this job.
-    required:
-    - APIVersion
-    - ClientID
-    - Spec
-    type: object
   model.JobEvent:
     properties:
       APIVersion:
@@ -781,9 +758,10 @@ definitions:
         description: 'The base64-encoded public key of the client:'
         type: string
       job_create_payload:
-        allOf:
-        - $ref: '#/definitions/model.JobCreatePayload'
         description: 'The data needed to submit and run a job on the network:'
+        items:
+          type: integer
+        type: array
       signature:
         description: 'A base64-encoded signature of the data, signed by the client:'
         type: string

@@ -44,10 +44,6 @@ python-config.json: config.json.template
 		-Dmodels -DmodelTests=false -DmodelDocs=true \
 		-DsupportingFiles=true
 	rm ./swagger-edited.json
-	# mv python/docs python/${UNDERSCORE_PACKAGE_NAME}
-	# cp -rf python/${UNDERSCORE_PACKAGE_NAME} bacalhau_sdk/
-	# mv bacalhau_sdk/bacalhau_sdk/${UNDERSCORE_PACKAGE_NAME} bacalhau_sdk/bacalhau_sdk/
-
 	cp pyproject.toml $@/pyproject.toml
 	cp ../LICENSE $@/LICENSE
 
@@ -62,4 +58,3 @@ clean: $(shell find . -type d -depth 1 -not -name bacalhau_sdk)
 	$(RM) -r $^
 	$(RM) *-config.json
 	$(RM) ./swagger-edited.json
-	# $(RM) -r bacalhau_sdk/bacalhau_sdk/${UNDERSCORE_PACKAGE_NAME}

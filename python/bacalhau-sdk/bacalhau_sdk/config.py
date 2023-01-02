@@ -3,15 +3,12 @@
 import base64
 import logging
 import os
-
-# import warnings
 from pathlib import Path
 from typing import Union
 
 import pem
 from bacalhau_apiclient import Configuration
 from bacalhau_apiclient.api import job_api
-from bacalhau_apiclient.models.job_create_payload import JobCreatePayload
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
@@ -139,18 +136,14 @@ def __load_client_id(key_path: Path) -> str:
     return __convert_to_client_id(key)
 
 
-def sign_for_client(msg: JobCreatePayload) -> str:
+def sign_for_client(msg: bytes) -> str:
     """sign_for_client signs a message with the user's private ID key.
 
     Must be called after init_config().
     """
-    client = job_api.ApiClient()
-    sanitized_payload = client.sanitize_for_serialization(msg)
-    hashable_payload = hashable_value(sanitized_payload)
-
     signer = pkcs1_15.new(get_user_id_key())
     hash_obj = SHA256.new()
-    hash_obj.update(hashable_payload)
+    hash_obj.update(msg)
 
     signed_payload = signer.sign(hash_obj)
     signature = base64.b64encode(signed_payload).decode()
@@ -179,12 +172,3 @@ def get_client_public_key() -> str:
     public_key = get_user_id_key().publickey()
     pem_public_key = public_key.export_key('PEM').decode()
     return __clean_pem_pub_key(pem_public_key)
-
-
-def hashable_value(payload) -> bytes:
-    """Return a hashable value for the payload."""
-    # TODO @enricorotundo https://github.com/filecoin-project/bacalhau/issues/1555
-    s = str()
-    s += payload['ClientID']
-    s += payload['APIVersion']
-    return s.encode()

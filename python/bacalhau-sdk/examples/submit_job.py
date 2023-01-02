@@ -13,10 +13,10 @@ BACALHAU_API_HOST=0.0.0.0 BACALHAU_API_PORT=20002 python examples/submit_job.py
 
 import logging
 import pprint
+import json
 
 from bacalhau_apiclient.api import job_api
 from bacalhau_apiclient.models.deal import Deal
-from bacalhau_apiclient.models.job_create_payload import JobCreatePayload
 from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
 from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
 from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
@@ -33,18 +33,19 @@ log.setLevel(logging.DEBUG)
 conf = init_config()
 
 client = job_api.ApiClient(conf)
+
 jobapi_instance = job_api.JobApi(client)
 
-job_create_payload = JobCreatePayload(
-    api_version='V1beta1',
-    client_id=get_client_id(),
-    spec=Spec(
+data = dict(
+    APIVersion='V1beta1',
+    ClientID=get_client_id(),
+    Spec=Spec(
         engine="Docker",
         verifier="Noop",
         publisher="Estuary",
         docker=JobSpecDocker(
             image="ubuntu",
-            entrypoint=["date"],
+            entrypoint=["echo", "123"],
         ),
         language=JobSpecLanguage(job_context=None),
         wasm=None,
@@ -68,12 +69,23 @@ job_create_payload = JobCreatePayload(
 )
 
 
-signature = sign_for_client(job_create_payload)
+sanitized_data = client.sanitize_for_serialization(data)
+json_data = json.dumps(sanitized_data, indent = None, separators=(', ', ': '))
+json_bytes = json_data.encode('utf-8')
+print(json_bytes)
+
+
+signature = sign_for_client(json_bytes)
+
+
 client_public_key = get_client_public_key()
 submit_req = SubmitRequest(
-    client_public_key=client_public_key, job_create_payload=job_create_payload, signature=signature
+    client_public_key=client_public_key,
+    job_create_payload=sanitized_data,
+    signature=signature
 )
-pprint.pprint(submit_req.to_dict())
+print(submit_req)
 print()
+
 
 print(jobapi_instance.submit(submit_req))

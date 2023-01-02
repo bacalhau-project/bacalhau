@@ -638,36 +638,6 @@
                 }
             }
         },
-        "model.JobCreatePayload": {
-            "type": "object",
-            "required": [
-                "APIVersion",
-                "ClientID",
-                "Spec"
-            ],
-            "properties": {
-                "APIVersion": {
-                    "type": "string",
-                    "example": "V1beta1"
-                },
-                "ClientID": {
-                    "description": "the id of the client that is submitting the job",
-                    "type": "string"
-                },
-                "Context": {
-                    "description": "Optional base64-encoded tar file that will be pinned to IPFS and\nmounted as storage for the job. Not part of the spec so we don't\nflood the transport layer with it (potentially very large).",
-                    "type": "string"
-                },
-                "Spec": {
-                    "description": "The specification of this job.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Spec"
-                        }
-                    ]
-                }
-            }
-        },
         "model.JobEvent": {
             "type": "object",
             "properties": {
@@ -1566,11 +1536,10 @@
                 },
                 "job_create_payload": {
                     "description": "The data needed to submit and run a job on the network:",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobCreatePayload"
-                        }
-                    ]
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",

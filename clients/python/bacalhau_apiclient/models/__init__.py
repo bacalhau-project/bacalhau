@@ -23,7 +23,6 @@ from bacalhau_apiclient.models.events_response import EventsResponse
 from bacalhau_apiclient.models.free_space import FreeSpace
 from bacalhau_apiclient.models.health_info import HealthInfo
 from bacalhau_apiclient.models.job import Job
-from bacalhau_apiclient.models.job_create_payload import JobCreatePayload
 from bacalhau_apiclient.models.job_event import JobEvent
 from bacalhau_apiclient.models.job_event_deal import JobEventDeal
 from bacalhau_apiclient.models.job_event_job_execution_plan import JobEventJobExecutionPlan
@@ -71,7 +70,6 @@ from bacalhau_apiclient.models.storage_source_type import StorageSourceType
 from bacalhau_apiclient.models.storage_spec import StorageSpec
 from bacalhau_apiclient.models.storage_spec_storage_source import StorageSpecStorageSource
 from bacalhau_apiclient.models.submit_request import SubmitRequest
-from bacalhau_apiclient.models.submit_request_job_create_payload import SubmitRequestJobCreatePayload
 from bacalhau_apiclient.models.submit_response import SubmitResponse
 from bacalhau_apiclient.models.verification_result import VerificationResult
 from bacalhau_apiclient.models.verifier import Verifier
