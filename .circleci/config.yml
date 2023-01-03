@@ -484,7 +484,9 @@ jobs:
       - run:
           name: Install swagger-codegen
           command: |
-            wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O /usr/local/bin/swagger-codegen-cli.jar
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar --output-document="/usr/local/bin/swagger-codegen-cli.jar"
+            chmod +x /usr/local/bin/swagger-codegen-cli.jar
             java -jar /usr/local/bin/swagger-codegen-cli.jar version
       - run:
           name: Install Pre-commit
@@ -759,13 +761,8 @@ workflows:
                 target_arch: "arm64"
                 run_tests: false
                 build_tags: ""
-          filters: &filters_tags_only
-            branches:
-              ignore: /.*/ # don't run on any branches - only tags
-            tags:
-              # only run on tags that look like release tags e.g. v0.1.2 or
-              # v0.1.3alpha19 (actually v0.1.3anything...)
-              only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+          filters:
+            <<: *filters_tags_only
       - release:
           name: release-all-binaries
           requires:
