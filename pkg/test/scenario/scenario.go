@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 )
 
 // A Scenario represents a repeatable test case of submitting a job against a
@@ -61,6 +60,10 @@ type Scenario struct {
 	// The job deal. If nil, concurrency will default to 1.
 	Deal model.Deal
 
+	// A function that will assert submitJob response is as expected.
+	// if nil, will use SubmitJobSuccess by default.
+	SubmitChecker CheckSubmitResponse
+
 	// A function that will decide whether or not the job was successful. If
 	// nil, no check will be performed on job outputs.
 	ResultsChecker CheckResults
@@ -75,6 +78,6 @@ type Scenario struct {
 type StackConfig struct {
 	*devstack.DevStackOptions
 	node.ComputeConfig
-	*requesternode.RequesterNodeConfig
-	*noop.ExecutorConfig
+	node.RequesterConfig
+	noop.ExecutorConfig
 }

@@ -7,18 +7,16 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/multiformats/go-multiaddr"
 
@@ -52,6 +50,7 @@ type ServeOptions struct {
 	SwarmPort                       int           // The host port for libp2p network.
 	JobSelectionDataLocality        string        // The data locality to use for job selection.
 	JobSelectionDataRejectStateless bool          // Whether to reject jobs that don't specify any data.
+	JobSelectionDataAcceptNetworked bool          // Whether to accept jobs that require network access.
 	JobSelectionProbeHTTP           string        // The HTTP URL to use for job selection.
 	JobSelectionProbeExec           string        // The executable to use for job selection.
 	MetricsPort                     int           // The port to listen on for metrics.
@@ -78,6 +77,7 @@ func NewServeOptions() *ServeOptions {
 		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
+		JobSelectionDataAcceptNetworked: false,
 		JobSelectionProbeHTTP:           "",
 		JobSelectionProbeExec:           "",
 		LimitTotalCPU:                   "",
@@ -99,6 +99,10 @@ func setupJobSelectionCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().BoolVar(
 		&OS.JobSelectionDataRejectStateless, "job-selection-reject-stateless", OS.JobSelectionDataRejectStateless,
 		`Reject jobs that don't specify any data.`,
+	)
+	cmd.PersistentFlags().BoolVar(
+		&OS.JobSelectionDataAcceptNetworked, "job-selection-accept-networked", OS.JobSelectionDataAcceptNetworked,
+		`Accept jobs that require network access.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.JobSelectionProbeHTTP, "job-selection-probe-http", OS.JobSelectionProbeHTTP,
@@ -180,6 +184,7 @@ func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
 	jobSelectionPolicy := model.JobSelectionPolicy{
 		Locality:            typedJobSelectionDataLocality,
 		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
+		AcceptNetworkedJobs: OS.JobSelectionDataAcceptNetworked,
 		ProbeHTTP:           OS.JobSelectionProbeHTTP,
 		ProbeExec:           OS.JobSelectionProbeExec,
 	}
@@ -285,13 +290,16 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	peers := getPeers(OS)
 	log.Debug().Msgf("libp2p connecting to: %s", peers)
 
-	transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
+		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
 	}
+	cm.RegisterCallback(func() error {
+		return libp2pHost.Close()
+	})
 
 	// add nodeID to logging context
-	ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
 	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
@@ -309,14 +317,14 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IPFSClient:           ipfs,
 		CleanupManager:       cm,
 		LocalDB:              datastore,
-		Transport:            transport,
+		Host:                 libp2pHost,
 		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
 		MetricsPort:          OS.MetricsPort,
 		ComputeConfig:        getComputeConfig(OS),
-		RequesterNodeConfig:  requesternode.NewDefaultRequesterNodeConfig(),
+		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
@@ -337,9 +345,9 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Start transport layer
-	err = transport.Start(ctx)
+	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error starting transport layer: %s", err), 1)
+		Fatal(cmd, err.Error(), 1)
 	}
 
 	// Start node

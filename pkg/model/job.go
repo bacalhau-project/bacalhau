@@ -152,6 +152,8 @@ type JobNodeState struct {
 type JobShardState struct {
 	// which node is running this shard
 	NodeID string `json:"NodeId,omitempty"`
+	// Compute node reference for this shard execution
+	ExecutionID string `json:"ExecutionId,omitempty"`
 	// what shard is this we are running
 	ShardIndex int `json:"ShardIndex,omitempty"`
 	// what is the state of the shard on this node
@@ -205,6 +207,9 @@ type Spec struct {
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
+
+	// The type of networking access that the job needs
+	Network NetworkConfig `json:"Network,omitempty"`
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
@@ -316,6 +321,8 @@ type JobEvent struct {
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
 	ShardIndex int `json:"ShardIndex,omitempty"`
+	// compute execution identifier
+	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event

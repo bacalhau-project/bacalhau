@@ -3,7 +3,7 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/frontend"
+	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/google/uuid"
@@ -13,7 +13,7 @@ func (s *ComputeSuite) TestBidAccepted() {
 	ctx := context.Background()
 	executionID := s.prepareAndAskForBid(ctx, generateJob())
 
-	_, err := s.node.Frontend.BidAccepted(ctx, frontend.BidAcceptedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateWaitingVerification))
 	s.NoError(err)
@@ -21,7 +21,7 @@ func (s *ComputeSuite) TestBidAccepted() {
 
 func (s *ComputeSuite) TestBidAccepted_DoesntExist() {
 	ctx := context.Background()
-	_, err := s.node.Frontend.BidAccepted(ctx, frontend.BidAcceptedRequest{ExecutionID: uuid.NewString()})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
@@ -42,7 +42,7 @@ func (s *ComputeSuite) TestBidAccepted_WrongState() {
 		})
 		s.NoError(err)
 
-		_, err = s.node.Frontend.BidAccepted(ctx, frontend.BidAcceptedRequest{ExecutionID: executionID})
+		_, err = s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 		s.Error(err)
 	}
 }

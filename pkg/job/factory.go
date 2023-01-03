@@ -45,6 +45,7 @@ func ConstructDockerJob( //nolint:funlen
 	v model.Verifier,
 	p model.Publisher,
 	cpu, memory, gpu string,
+	network model.Network,
 	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,

@@ -336,6 +336,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardState.VerificationResult = update.VerificationResult
 	}
 
+	if update.ExecutionID != "" {
+		shardState.ExecutionID = update.ExecutionID
+	}
+
 	if model.IsValidStorageSourceType(update.PublishedResult.StorageSource) {
 		shardState.PublishedResult = update.PublishedResult
 	}

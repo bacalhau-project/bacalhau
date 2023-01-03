@@ -73,11 +73,12 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					model.EngineNoop,
 					model.VerifierNoop,
 					model.PublisherNoop,
-					"1",        // cpu
-					"1",        // memory
-					"0",        // gpu
-					[]string{}, // input urls
-					[]string{}, // input volumes
+					"1",               // cpu
+					"1",               // memory
+					"0",               // gpu
+					model.NetworkNone, // networking
+					[]string{},        // input urls
+					[]string{},        // input volumes
 					outputVolumes,
 					[]string{}, // env
 					[]string{}, // entrypoint

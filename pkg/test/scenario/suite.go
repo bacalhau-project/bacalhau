@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -81,9 +81,8 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
 	}
 
-	if config.RequesterNodeConfig == nil {
-		conf := requesternode.NewDefaultRequesterNodeConfig()
-		config.RequesterNodeConfig = &conf
+	if config.RequesterConfig.DefaultJobExecutionTimeout == 0 {
+		config.RequesterConfig = node.NewRequesterConfigWithDefaults()
 	}
 
 	empty := model.ResourceUsageData{}
@@ -96,7 +95,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		s.T(),
 		*config.DevStackOptions,
 		config.ComputeConfig,
-		*config.RequesterNodeConfig,
+		config.RequesterConfig,
 		config.ExecutorConfig,
 	)
 
@@ -109,7 +108,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	testutils.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
@@ -120,7 +119,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 		isInstalled, err := executor.IsInstalled(s.Ctx)
 		require.NoError(s.T(), err)
-		require.True(s.T(), isInstalled, "Expected %v to be installed on node %s", spec.Engine, node.HostID)
+		require.True(s.T(), isInstalled, "Expected %v to be installed on node %s", spec.Engine, node.Host.ID().String())
 	}
 
 	// TODO: assert network connectivity
@@ -152,9 +151,17 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	}
 
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
-	submittedJob, err := apiClient.Submit(s.Ctx, j, nil)
+	submittedJob, submitError := apiClient.Submit(s.Ctx, j, nil)
+	if scenario.SubmitChecker == nil {
+		scenario.SubmitChecker = SubmitJobSuccess()
+	}
+	err = scenario.SubmitChecker(submittedJob, submitError)
 	require.NoError(s.T(), err)
 
+	// exit if the test expects submission to fail as no further assertions can be made
+	if submitError != nil {
+		return
+	}
 	// Wait for job to complete
 	resolver := apiClient.GetJobStateResolver()
 	checkers := scenario.JobCheckers

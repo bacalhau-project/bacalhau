@@ -4,11 +4,11 @@ Spec:
   Verifier: Noop
   Publisher: Estuary
   Docker:
-    Image: gromacs/gromacs
+    Image: ubuntu:latest
     Entrypoint:
       - /bin/bash
       - -c
-      - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
+      - echo 15
   outputs:
     - StorageSource: IPFS
       Name: output_custom
