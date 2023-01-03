@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 const (
 	DownloadFilenameStdout   = "stdout"
 	DownloadFilenameStderr   = "stderr"
@@ -7,7 +9,7 @@ const (
 )
 
 type DownloaderSettings struct {
-	TimeoutSecs    int
+	TimeoutSecs    time.Duration
 	OutputDir      string
 	IPFSSwarmAddrs string
 }

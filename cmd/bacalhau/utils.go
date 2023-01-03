@@ -201,7 +201,7 @@ func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...str
 
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
-	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
+	flags.DurationVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
 	flags.StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")

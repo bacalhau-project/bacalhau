@@ -29,9 +29,9 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, shardCIDConte
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
-			"Downloading result CID %s '%s' to '%s'...",
+			"Downloading result URL %s '%s' to '%s'...",
 			shardCIDContext.Result.Data.Name,
-			shardCIDContext.Result.Data.CID, shardCIDContext.CIDDownloadDir,
+			shardCIDContext.Result.Data.URL, shardCIDContext.CIDDownloadDir,
 		)
 
 		innerCtx, cancel := context.WithDeadline(ctx,

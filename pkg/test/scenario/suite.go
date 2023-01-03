@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 
@@ -181,7 +182,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	require.NoError(s.T(), err)
 
 	downloaderSettings := &model.DownloaderSettings{
-		TimeoutSecs:    5,
+		TimeoutSecs:    time.Second * 5,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -94,14 +95,14 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		downloadSettings = &model.DownloaderSettings{
-			TimeoutSecs:    60,
+			TimeoutSecs:    time.Second * 60,
 			OutputDir:      dir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 	case system.EnvironmentTest:
 		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
 			downloadSettings = &model.DownloaderSettings{
-				TimeoutSecs:    60,
+				TimeoutSecs:    time.Second * 60,
 				OutputDir:      dir,
 				IPFSSwarmAddrs: os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"),
 			}
