@@ -64,7 +64,7 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, downloader.DownloadVolumesFolderName, model.DownloadFilenameStdout))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, model.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}
