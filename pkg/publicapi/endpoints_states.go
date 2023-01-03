@@ -20,6 +20,7 @@ type stateResponse struct {
 }
 
 // states godoc
+//
 //	@ID						states
 //	@Summary				Returns the state of the job-id specified in the body payload.
 //	@Description.markdown	endpoints_states

@@ -20,6 +20,7 @@ type resultsResponse struct {
 }
 
 // results godoc
+//
 //	@ID						results
 //	@Summary				Returns the results of the job-id specified in the body payload.
 //	@Description.markdown	endpoints_results

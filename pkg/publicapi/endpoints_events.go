@@ -18,6 +18,7 @@ type eventsResponse struct {
 }
 
 // events godoc
+//
 //	@ID						events
 //	@Summary				Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
 //	@Description.markdown	endpoints_events

@@ -24,6 +24,7 @@ func GenerateHealthData() types.HealthInfo {
 }
 
 // livez godoc
+//
 //	@ID			livez
 //	@Tags		Utils
 //	@Produce	text/plain
@@ -41,6 +42,7 @@ func (apiServer *APIServer) livez(res http.ResponseWriter, req *http.Request) {
 }
 
 // logz godoc
+//
 //	@ID			logz
 //	@Tags		Utils
 //	@Produce	text/plain
@@ -67,6 +69,7 @@ func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 }
 
 // readyz godoc
+//
 //	@ID			readyz
 //	@Tags		Utils
 //	@Produce	text/plain
@@ -89,6 +92,7 @@ func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 }
 
 // healthz godoc
+//
 //	@ID			healthz
 //	@Tags		Utils
 //	@Produce	json
@@ -113,6 +117,7 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 }
 
 // varz godoc
+//
 //	@ID			varz
 //	@Tags		Utils
 //	@Produce	json

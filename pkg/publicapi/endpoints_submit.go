@@ -46,6 +46,8 @@ type submitResponse struct {
 //	@Failure				400				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/submit [post]
+//
+//nolint:funlen
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
 	defer span.End()

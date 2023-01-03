@@ -29,6 +29,7 @@ type listResponse struct {
 }
 
 // list godoc
+//
 //	@ID						list
 //	@Summary				Simply lists jobs.
 //	@Description.markdown	endpoints_list

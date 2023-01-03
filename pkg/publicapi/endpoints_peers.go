@@ -10,6 +10,7 @@ import (
 )
 
 // peers godoc
+//
 //	@ID						peers
 //	@Summary				Returns the peers connected to the host via the transport layer.
 //	@Description.markdown	endpoints_peers

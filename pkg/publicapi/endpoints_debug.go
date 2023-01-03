@@ -10,6 +10,7 @@ import (
 )
 
 // debug godoc
+//
 //	@ID			debug
 //	@Summary	Returns debug information on what the current node is doing.
 //	@Tags		Utils
