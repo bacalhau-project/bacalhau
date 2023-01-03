@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -141,7 +143,7 @@ func StopContainer(ctx context.Context, dockerClient *dockerclient.Client, nameO
 func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
 	container, err := GetContainer(ctx, dockerClient, nameOrID)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if container == nil {
 		return nil
@@ -150,14 +152,14 @@ func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nam
 	timeout := time.Millisecond * 100
 	err = dockerClient.ContainerStop(ctx, container.ID, &timeout)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	err = dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	return nil
 }
