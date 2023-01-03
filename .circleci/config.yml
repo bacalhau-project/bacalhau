@@ -485,21 +485,12 @@ jobs:
       - run:
           name: Install swagger-codegen
           command: |
-            mkdir -p /opt/swagger-codegen-cli/
-            wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O /opt/swagger-codegen-cli/swagger-codegen-cli.jar
+            wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O /usr/local/bin/swagger-codegen-cli.jar
+            java -jar /usr/local/bin/swagger-codegen-cli.jar version
       - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
-      - run:
-          name: Install golangci-lint
-          command: |
-            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-            # binary will be /usr/local/go/bin/bin/golangci-lint
-            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-            # This breaks normal pathing. So just installing in ./bin/
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-            golangci-lint version
       - run:
           name: Build Swagger Docs and Clients
           command:
