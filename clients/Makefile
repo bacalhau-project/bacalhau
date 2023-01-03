@@ -33,7 +33,7 @@ python-config.json: config.json.template
 
 %/: %-config.json ${SWAGGER_JSON}
 	# TODO - remove this when https://github.com/swagger-api/swagger-codegen/issues/11993 is addressed
-	cat ${SWAGGER_JSON} | sed -e 's/model.//g;s/publicapi.//g;s/types.//g' | tee ./swagger-edited.json >> /dev/null &&
+	cat ${SWAGGER_JSON} | sed -e 's/model.//g;s/publicapi.//g;s/types.//g' | tee ./swagger-edited.json >> /dev/null
 	rm -rf $@ && ${SWAGGER} generate \
 		-i ./swagger-edited.json \
 		-l $$(basename $@) \
@@ -43,8 +43,8 @@ python-config.json: config.json.template
 		-Dapis -DapiTests=false -DapiDocs=true \
 		-Dmodels -DmodelTests=false -DmodelDocs=true \
 		-DsupportingFiles=true
-	rm ./swagger-edited.json &&
-	cp pyproject.toml $@/pyproject.toml &&
+	rm ./swagger-edited.json
+	cp pyproject.toml $@/pyproject.toml
 	cp ../LICENSE $@/LICENSE
 
 pypi: python/
@@ -55,6 +55,6 @@ pypi-upload: pypi
 
 .PHONY: clean
 clean: $(shell find . -type d -depth 1 -not -name bacalhau_sdk)
-	$(RM) -r $^ &&
-	$(RM) *-config.json &&
+	$(RM) -r $^
+	$(RM) *-config.json
 	$(RM) ./swagger-edited.json
