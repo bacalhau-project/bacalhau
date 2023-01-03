@@ -6,18 +6,7 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import pytest
-from Crypto.PublicKey import RSA
-
 log = logging.getLogger(__name__)
-
-
-@pytest.fixture
-def response():
-    """Sample pytest fixture.
-
-    See more at: http://doc.pytest.org/en/latest/fixture.html
-    """
 
 
 def test_ensure_config_dir():
@@ -54,6 +43,8 @@ def test_ensure_user_id_key():
 
 def test_load_user_id_key():
     """Test load_user_id_key()."""
+    from Crypto.PublicKey import RSA
+
     from bacalhau_sdk.config import __load_user_id_key
 
     # test generated key
@@ -69,6 +60,8 @@ def test_load_user_id_key():
 
 def test_load_client_id():
     """Test load_client_id()."""
+    from Crypto.PublicKey import RSA
+
     from bacalhau_sdk.config import __load_client_id
 
     with TemporaryDirectory(prefix="bacalhau_sdk_test-") as tmpdirname:
@@ -102,10 +95,10 @@ def test_init_config():
 def test_sign_for_client():
     """Test sign_for_client()."""
     import base64
+    import json
 
     from bacalhau_apiclient.api import job_api
     from bacalhau_apiclient.models.deal import Deal
-    from bacalhau_apiclient.models.job_create_payload import JobCreatePayload
     from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
     from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
     from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
@@ -115,11 +108,11 @@ def test_sign_for_client():
     from Crypto.Hash import SHA256
     from Crypto.Signature import pkcs1_15
 
-    from bacalhau_sdk.config import get_client_id, get_user_id_key, hashable_value, init_config, sign_for_client
+    from bacalhau_sdk.config import get_client_id, get_user_id_key, init_config, sign_for_client
 
     _ = init_config()
 
-    test_payload = JobCreatePayload(
+    test_payload = dict(
         api_version='V1beta1',
         client_id=get_client_id(),
         spec=Spec(
@@ -151,26 +144,27 @@ def test_sign_for_client():
         ),
     )
 
-    signature = sign_for_client(test_payload)
+    client = job_api.ApiClient()
+    sanitized_data = client.sanitize_for_serialization(test_payload)
+    json_data = json.dumps(sanitized_data, indent=None, separators=(', ', ': '))
+    json_bytes = json_data.encode('utf-8')
+
+    signature = sign_for_client(json_bytes)
     assert signature is not None
     assert len(signature) == 344
     assert signature.endswith("==")
 
-    client = job_api.ApiClient()
-    sanitized_payload = client.sanitize_for_serialization(test_payload)
-    hashable_payload = hashable_value(sanitized_payload)
-
     # check returned signature and generated signature match
     signer = pkcs1_15.new(get_user_id_key())
     hash_obj = SHA256.new()
-    hash_obj.update(hashable_payload)
+    hash_obj.update(json_bytes)
     signed_payload = signer.sign(hash_obj)
     assert signature == base64.b64encode(signed_payload).decode()
 
     # verify signature has been generated with the public key
     verifier = pkcs1_15.new(get_user_id_key())
     hash_obj = SHA256.new()
-    hash_obj.update(hashable_payload)
+    hash_obj.update(json_bytes)
     verifier.verify(hash_obj, base64.b64decode(signature.encode()))
 
 
@@ -185,10 +179,3 @@ def test_get_client_public_key():
     assert "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A" not in pub_key
     assert "BEGIN PUBLIC KEY" not in pub_key
     assert "END PUBLIC KEY" not in pub_key
-
-
-def test_hashable_value():
-    """Test hashable_value()."""
-    # from bacalhau_sdk.config import hashable_value
-    # TODO @enricorotundo https://github.com/filecoin-project/bacalhau/issues/1555
-    pass

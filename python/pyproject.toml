@@ -50,6 +50,8 @@ bacalhau-apiclient = "0.0.5"
 pem = "^21.2.0"
 pycryptodome = "^3.16.0"
 cryptography = "^38.0.4"
+six = "^1.16.0"
+types-six = "^1.16.21.4"
 
 [tool.poetry.extras]
 test = [

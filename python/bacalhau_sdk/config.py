@@ -8,7 +8,6 @@ from typing import Union
 
 import pem
 from bacalhau_apiclient import Configuration
-from bacalhau_apiclient.api import job_api
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
