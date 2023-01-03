@@ -138,9 +138,9 @@ func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *m
 	}
 }
 
-///////////////////////////////
-// Shard fsm handlers 		 //
-///////////////////////////////
+//////////////////////////////
+//    Shard fsm handlers    //
+//////////////////////////////
 
 func (s *Scheduler) notifyBidAccepted(ctx context.Context, targetNodeID string, executionID string) {
 	go func() {

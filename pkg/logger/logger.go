@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/pkgerrors"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	ipfslog2 "github.com/ipfs/go-log/v2"
@@ -35,10 +38,35 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
+	oldCallerMarshaller := zerolog.CallerMarshalFunc
 	configureLogging(zerolog.ConsoleTestWriter(t))
+
+	// When run as a test, the `file` will be relative to the directory containing the tests, so will be like
+	// `../../compute/endpoint.go`. This could be changed to rebuild the full package from the relative one by
+	// converting the relative path into an absolute one and then working out what to trim off, but this will do for the
+	// moment. If https://github.com/golang/go/issues/33976 is fixed, then we could just rely on the `debug.BuildInfo`.
+	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
+		short := file
+
+		separatorCount := 2
+		countedSeparators := 0
+
+		for i := len(file) - 1; i > 0; i-- {
+			if file[i] == '/' {
+				countedSeparators += 1
+				if countedSeparators >= separatorCount {
+					short = file[i+1:]
+					break
+				}
+			}
+		}
+		file = short
+		return file + ":" + strconv.Itoa(line)
+	}
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
+		zerolog.CallerMarshalFunc = oldCallerMarshaller
 		configureIpfsLogging(log.Logger)
 	})
 }
@@ -95,23 +123,12 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 
 	textWriter := zerolog.NewConsoleWriter(loggingOptions...)
 
-	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
-		short := file
-
-		separatorCount := 2
-		countedSeparators := 0
-
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				countedSeparators += 1
-				if countedSeparators >= separatorCount {
-					short = file[i+1:]
-					break
-				}
-			}
+	info, ok := debug.ReadBuildInfo()
+	if ok && info.Main.Path != "" {
+		zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
+			file = strings.TrimPrefix(file, info.Main.Path+"/")
+			return file + ":" + strconv.Itoa(line)
 		}
-		file = short
-		return file + ":" + strconv.Itoa(line)
 	}
 
 	// we default to text output
@@ -128,10 +145,12 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 		useLogWriter = io.Discard
 	}
 
-	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
+	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Stack().Logger()
 	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
 	// Tests will use the DefaultContextLogger instead
 	zerolog.DefaultContextLogger = &log.Logger
+
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	configureIpfsLogging(log.Logger)
 }
