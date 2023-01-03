@@ -485,9 +485,8 @@ jobs:
           name: Install swagger-codegen
           command: |
             CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar --output-document="/usr/local/bin/swagger-codegen-cli.jar"
-            chmod u=rwX,go=rX /usr/local/bin/swagger-codegen-cli.jar
-            java -jar /usr/local/bin/swagger-codegen-cli.jar version
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            java -jar ${HOME}/bin/swagger-codegen-cli.jar version
       - run:
           name: Install Pre-commit
           command: |
