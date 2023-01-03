@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
@@ -332,8 +331,7 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 
 	err := docker.RemoveContainer(ctx, e.Client, e.jobContainerName(shard))
 	if err != nil {
-		log.Ctx(ctx).Error().Msgf("Docker remove container error: %s", err.Error())
-		debug.PrintStack()
+		log.Ctx(ctx).Err(err).Msg("Docker remove container error")
 	}
 }
 
