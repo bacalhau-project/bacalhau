@@ -23,22 +23,21 @@ func NewHTTPDownloader(settings *model.DownloaderSettings) (*Downloader, error) 
 	}, nil
 }
 
-func (httpDownloader *Downloader) FetchResult(ctx context.Context, shardCIDContext model.PublishedShardDownloadContext) error {
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
 	defer span.End()
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result URL %s '%s' to '%s'...",
-			shardCIDContext.Result.Data.Name,
-			shardCIDContext.Result.Data.URL, shardCIDContext.CIDDownloadDir,
+			result.Data.Name,
+			result.Data.URL, downloadDir,
 		)
 
-		innerCtx, cancel := context.WithDeadline(ctx,
-			time.Now().Add(time.Second*time.Duration(httpDownloader.Settings.TimeoutSecs)))
+		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, shardCIDContext.Result.Data.URL, shardCIDContext.CIDDownloadDir)
+		return fetch(innerCtx, result.Data.URL, downloadDir)
 	}()
 
 	if err != nil {

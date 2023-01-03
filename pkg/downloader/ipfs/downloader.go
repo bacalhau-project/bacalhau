@@ -38,22 +38,21 @@ func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings 
 	}, nil
 }
 
-func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, shardCIDContext model.PublishedShardDownloadContext) error {
+func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result CID %s '%s' to '%s'...",
-			shardCIDContext.Result.Data.Name,
-			shardCIDContext.Result.Data.CID, shardCIDContext.CIDDownloadDir,
+			result.Data.Name,
+			result.Data.CID, downloadDir,
 		)
 
-		innerCtx, cancel := context.WithDeadline(ctx,
-			time.Now().Add(time.Second*time.Duration(ipfsDownloader.Settings.TimeoutSecs)))
+		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(ipfsDownloader.Settings.Timeout))
 		defer cancel()
 
-		return ipfsDownloader.Client.Get(innerCtx, shardCIDContext.Result.Data.CID, shardCIDContext.CIDDownloadDir)
+		return ipfsDownloader.Client.Get(innerCtx, result.Data.CID, downloadDir)
 	}()
 
 	if err != nil {

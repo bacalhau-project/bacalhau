@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-const DefaultEstuaryDownloadGateway string = "https://api.estuary.tech/gw/ipfs"
+var DefaultEstuaryDownloadGateway = "https://api.estuary.tech/gw/ipfs"
 
 // Estuary downloader uses HTTP downloader to download result published to Estuary
 // by combining Estuary gateway URL and CID returned by Estuary publisher and passing it for download.
@@ -29,12 +29,12 @@ func NewEstuaryDownloader(settings *model.DownloaderSettings) (*Downloader, erro
 	}, nil
 }
 
-func (downloader *Downloader) FetchResult(ctx context.Context, shardCIDContext model.PublishedShardDownloadContext) error {
+func (downloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
-	url := fmt.Sprintf("%s/%s", DefaultEstuaryDownloadGateway, shardCIDContext.Result.Data.CID)
-	shardCIDContext.Result.Data.URL = url
+	url := fmt.Sprintf("%s/%s", DefaultEstuaryDownloadGateway, result.Data.CID)
+	result.Data.URL = url
 
-	return downloader.httpDownloader.FetchResult(ctx, shardCIDContext)
+	return downloader.httpDownloader.FetchResult(ctx, result, downloadDir)
 }

@@ -7,10 +7,19 @@ import (
 )
 
 type Downloader interface {
-	// FetchResult fetches result contained in PublishedShardDownloadContext
-	FetchResult(ctx context.Context, shardCidContext model.PublishedShardDownloadContext) error
+	// FetchResult fetches published result and saves it to downloadDir
+	FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error
 }
 
 type DownloaderProvider interface {
 	GetDownloader(storageType model.StorageSourceType) (Downloader, error)
+}
+
+type shardCIDContext struct {
+	Result         model.PublishedResult
+	OutputVolumes  []model.StorageSpec
+	RootDir        string
+	CIDDownloadDir string
+	ShardDir       string
+	VolumeDir      string
 }

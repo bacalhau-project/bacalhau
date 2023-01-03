@@ -317,7 +317,7 @@ func CreateJob(ctx context.Context,
 	}
 
 	odr.DownloadFlags = model.DownloaderSettings{
-		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+		Timeout:        odr.DownloadFlags.Timeout,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,
 	}

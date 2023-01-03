@@ -56,7 +56,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	ds.outputDir = testOutputDir
 
 	ds.downloadSettings = &model.DownloaderSettings{
-		TimeoutSecs:    DefaultIPFSTimeout,
+		Timeout:        DefaultIPFSTimeout,
 		OutputDir:      testOutputDir,
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}

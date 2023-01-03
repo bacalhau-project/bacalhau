@@ -9,16 +9,7 @@ const (
 )
 
 type DownloaderSettings struct {
-	TimeoutSecs    time.Duration
+	Timeout        time.Duration
 	OutputDir      string
 	IPFSSwarmAddrs string
-}
-
-type PublishedShardDownloadContext struct {
-	Result         PublishedResult
-	OutputVolumes  []StorageSpec
-	RootDir        string
-	CIDDownloadDir string
-	ShardDir       string
-	VolumeDir      string
 }

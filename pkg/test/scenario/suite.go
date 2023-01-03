@@ -182,7 +182,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	require.NoError(s.T(), err)
 
 	downloaderSettings := &model.DownloaderSettings{
-		TimeoutSecs:    time.Second * 5,
+		Timeout:        time.Second * 5,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}

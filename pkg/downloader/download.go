@@ -72,7 +72,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 	// each shard context understands the various folder paths
 	// and other data it needs to download and resolve itself
-	shardContexts := []model.PublishedShardDownloadContext{}
+	shardContexts := []shardCIDContext{}
 	// keep track of which cids we have downloaded to avoid
 	// downloading the same cid multiple times
 	downloadedCids := map[string]bool{}
@@ -101,7 +101,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 			DownloadShardsFolderName,
 			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
 		)
-		shardContexts = append(shardContexts, model.PublishedShardDownloadContext{
+		shardContexts = append(shardContexts, shardCIDContext{
 			Result:         shardResult,
 			OutputVolumes:  outputVolumes,
 			RootDir:        resultsOutputDir,
@@ -109,23 +109,17 @@ func DownloadJob( //nolint:funlen,gocyclo
 			ShardDir:       shardDir,
 			VolumeDir:      volumeDir,
 		})
-	}
 
-	// loop over each Result set and download it's CID
-	// (if we have not already done so)
-	for _, shardContext := range shardContexts {
-		downloader, err := downloadProvider.GetDownloader(shardContext.Result.Data.StorageSource) //nolint
-		if err != nil {
-			return err
-		}
-
-		_, ok := downloadedCids[shardContext.Result.Data.CID]
+		// get downloader for each shard and download it's CID
+		// (if we have not already done so)
+		downloader, err := downloadProvider.GetDownloader(shardResult.Data.StorageSource) //nolint
+		_, ok := downloadedCids[shardResult.Data.CID]
 		if !ok {
-			err = downloader.FetchResult(ctx, shardContext)
+			err = downloader.FetchResult(ctx, shardResult, cidDownloadDir)
 			if err != nil {
 				return err
 			}
-			downloadedCids[shardContext.Result.Data.CID] = true
+			downloadedCids[shardResult.Data.CID] = true
 		}
 	}
 
@@ -143,7 +137,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 func moveShardData(
 	ctx context.Context,
-	shardContext model.PublishedShardDownloadContext,
+	shardContext shardCIDContext,
 ) error {
 	err := os.MkdirAll(shardContext.ShardDir, DownloadFolderPerm)
 	if err != nil {

@@ -2,19 +2,20 @@ package util
 
 import (
 	"context"
+	"os"
+	"strings"
+
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/downloader/estuary"
 	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"os"
-	"strings"
 )
 
 func NewDownloadSettings() *model.DownloaderSettings {
 	settings := model.DownloaderSettings{
-		TimeoutSecs: downloader.DefaultIPFSTimeout,
+		Timeout: downloader.DefaultIPFSTimeout,
 		// we leave this blank so the CLI will auto-create a job folder in pwd
 		OutputDir:      "",
 		IPFSSwarmAddrs: "",
