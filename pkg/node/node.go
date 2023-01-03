@@ -9,9 +9,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"github.com/imdario/mergo"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,17 +21,17 @@ type NodeConfig struct {
 	IPFSClient           *ipfs.Client
 	CleanupManager       *system.CleanupManager
 	LocalDB              localdb.LocalDB
-	Transport            transport.Transport
+	Host                 host.Host
 	FilecoinUnsealedPath string
 	EstuaryAPIKey        string
 	HostAddress          string
-	HostID               string
 	APIPort              int
 	MetricsPort          int
-	IsBadActor           bool
 	ComputeConfig        ComputeConfig
-	RequesterNodeConfig  requesternode.RequesterNodeConfig
+	RequesterNodeConfig  RequesterConfig
+	APIServerConfig      publicapi.APIServerConfig
 	LotusConfig          *filecoinlotus.PublisherConfig
+	SimulatorNodeID      string
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -55,14 +56,13 @@ type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
 	ComputeNode    Compute
-	RequesterNode  *requesternode.RequesterNode
+	RequesterNode  Requester
 	LocalDB        localdb.LocalDB
-	Transport      transport.Transport
 	CleanupManager *system.CleanupManager
 	Executors      executor.ExecutorProvider
 	IPFSClient     *ipfs.Client
 
-	HostID      string
+	Host        host.Host
 	metricsPort int
 }
 
@@ -93,8 +93,9 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
-	if config.HostID == "" {
-		config.HostID = config.Transport.HostID()
+	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
+	if err != nil {
+		return nil, err
 	}
 
 	storageProviders, err := injector.StorageProvidersFactory.Get(ctx, config)
@@ -118,23 +119,28 @@ func NewNode(
 	}
 
 	// prepare event handlers
-	tracerContextProvider := system.NewTracerContextProvider(config.HostID)
+	tracerContextProvider := system.NewTracerContextProvider(config.Host.ID().String())
 	config.CleanupManager.RegisterCallback(tracerContextProvider.Shutdown)
 
-	localEventConsumer := eventhandler.NewChainedLocalEventHandler(system.NewNoopContextProvider())
 	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
-	jobEventPublisher := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
-	requesterNode, err := requesternode.NewRequesterNode(
+	var simulatorRequestHandler *simulator.RequestHandler
+	if config.SimulatorNodeID == config.Host.ID().String() {
+		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
+		simulatorRequestHandler = simulator.NewRequestHandler()
+	}
+
+	requesterNode, err := NewRequesterNode(
 		ctx,
 		config.CleanupManager,
-		config.HostID,
+		config.Host,
+		config.RequesterNodeConfig,
 		config.LocalDB,
-		localEventConsumer,
-		jobEventPublisher,
+		config.SimulatorNodeID,
+		simulatorRequestHandler,
 		verifiers,
 		storageProviders,
-		config.RequesterNodeConfig,
+		jobEventConsumer,
 	)
 	if err != nil {
 		return nil, err
@@ -143,25 +149,30 @@ func NewNode(
 	// setup compute node
 	computeNode := NewComputeNode(
 		ctx,
-		config.HostID,
+		config.Host,
 		config.ComputeConfig,
-		config.LocalDB,
+		config.SimulatorNodeID,
+		simulatorRequestHandler,
 		executors,
 		verifiers,
 		publishers,
-		jobEventPublisher,
 	)
 
-	apiServer := publicapi.NewServer(
+	// To enable nodes self-dialing themselves as libp2p doesn't support it.
+	computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
+	requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
+
+	apiServer := publicapi.NewServerWithConfig(
 		ctx,
 		config.HostAddress,
 		config.APIPort,
 		config.LocalDB,
-		config.Transport,
-		requesterNode,
+		config.Host,
+		requesterNode.Endpoint,
 		computeNode.debugInfoProviders,
 		publishers,
 		storageProviders,
+		config.APIServerConfig,
 	)
 
 	eventTracer, err := eventhandler.NewTracer()
@@ -171,7 +182,7 @@ func NewNode(
 	config.CleanupManager.RegisterCallback(eventTracer.Shutdown)
 
 	// Register event handlers
-	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.HostID)
+	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.Host.ID().String())
 	localDBEventHandler := localdb.NewLocalDBEventHandler(config.LocalDB)
 
 	// order of event handlers is important as triggering some handlers might depend on the state of others.
@@ -184,39 +195,19 @@ func NewNode(
 		eventTracer,
 		// update the job state in the local DB
 		localDBEventHandler,
-		// handles bid and result proposals
-		requesterNode,
-		// handles job execution
-		computeNode.frontendProxy,
 		// dispatches events to listening websockets
 		apiServer,
 	)
-	jobEventPublisher.AddHandlers(
-		// publish events to the network
-		eventhandler.JobEventHandlerFunc(config.Transport.Publish),
-		// record the event in a log
-		eventTracer,
-		// add tracing metadata to the context about the published event
-		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandlePublishedJobEvent),
-	)
-	localEventConsumer.AddHandlers(
-		// update the job node state in the local DB
-		localDBEventHandler,
-	)
-
-	// subscribe the job event handler to the transport
-	config.Transport.Subscribe(ctx, jobEventConsumer.HandleJobEvent)
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
 		IPFSClient:     config.IPFSClient,
 		LocalDB:        config.LocalDB,
-		Transport:      config.Transport,
 		ComputeNode:    *computeNode,
-		RequesterNode:  requesterNode,
+		RequesterNode:  *requesterNode,
 		Executors:      executors,
-		HostID:         config.HostID,
+		Host:           config.Host,
 		metricsPort:    config.MetricsPort,
 	}
 

@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
@@ -41,7 +40,7 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting(s.T())
@@ -68,7 +67,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
@@ -169,7 +168,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
@@ -213,7 +212,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")

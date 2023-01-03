@@ -5,18 +5,15 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,18 +22,13 @@ import (
 // functionality from testify - including a T() method which
 // returns the current testing context
 type ListSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
-}
-
-// Before each test
-func (suite *ListSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
 }
 
 type listResponse struct {
@@ -58,21 +50,17 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	for _, tc := range tests {
 		suite.Run(fmt.Sprintf("%d jobs %d output", tc.numberOfJobs, tc.numberOfJobsOutput), func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-			defer cm.Cleanup()
 
 			for i := 0; i < tc.numberOfJobs; i++ {
-				j := publicapi.MakeNoopJob()
-				_, err := c.Submit(ctx, j, nil)
+				j := testutils.MakeNoopJob()
+				_, err := suite.client.Submit(ctx, j, nil)
 				require.NoError(suite.T(), err)
 			}
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
 				"--hide-header",
-				"--api-host", host,
-				"--api-port", port,
+				"--api-host", suite.host,
+				"--api-port", suite.port,
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 				"--reverse", "false",
 			)
@@ -85,27 +73,22 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 func (suite *ListSuite) TestList_IdFilter() {
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-	defer cm.Cleanup()
 
 	// submit 10 jobs
 	jobIds := []string{}
 	jobLongIds := []string{}
 	for i := 0; i < 10; i++ {
 		var err error
-		j := publicapi.MakeNoopJob()
-		j, err = c.Submit(ctx, j, nil)
+		j := testutils.MakeNoopJob()
+		j, err = suite.client.Submit(ctx, j, nil)
 		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
-
-	parsedBasedURI, _ := url.Parse(c.BaseURI)
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
 		"--hide-header",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", suite.host,
+		"--api-port", suite.port,
 		"--id-filter", jobIds[0],
 	)
 	require.NoError(suite.T(), err)
@@ -127,8 +110,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
 	_, out, err = ExecuteTestCobraCommand(suite.T(), "list",
 		"--hide-header",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", suite.host,
+		"--api-port", suite.port,
 		"--id-filter", jobLongIds[0],
 		"--output", "json",
 	)
@@ -188,22 +171,20 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 	for _, tc := range testCases {
 		suite.Run(tc.Name, func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-			defer cm.Cleanup()
+			// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
+			suite.TearDownTest()
+			suite.SetupTest()
 
-			// create job with label
-			j := publicapi.MakeNoopJob()
+			j := testutils.MakeNoopJob()
 			j.Spec.Annotations = tc.JobLabels
-			j, err := c.Submit(ctx, j, nil)
+			j, err := suite.client.Submit(ctx, j, nil)
 			require.NoError(suite.T(), err)
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			checkList := func(shouldAppear bool, flags ...string) {
 				args := []string{"list",
 					"--hide-header",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", suite.host,
+					"--api-port", suite.port,
 					"--output", "json",
 				}
 				args = append(args, flags...)
@@ -277,16 +258,18 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 	for _, tc := range combinationOfJobSizes {
 		for _, sortFlags := range sortFlagsToTest {
-			suite.Run(fmt.Sprintf("%#v/%#v", tc, sortFlags), func() {
+			suite.Run(fmt.Sprintf("%+v/%+v", tc, sortFlags), func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-				defer cm.Cleanup()
+
+				// have to create a fresh node for each test case to avoid jobs of different runs to be mixed up
+				suite.TearDownTest()
+				suite.SetupTest()
 
 				var jobIDs []string
 				for i := 0; i < tc.numberOfJobs; i++ {
 					var err error
-					j := publicapi.MakeNoopJob()
-					j, err = c.Submit(ctx, j, nil)
+					j := testutils.MakeNoopJob()
+					j, err = suite.client.Submit(ctx, j, nil)
 					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))
 
@@ -299,11 +282,6 @@ func (suite *ListSuite) TestList_SortFlags() {
 						time.Sleep(1 * time.Millisecond)
 					}
 				}
-
-				parsedBasedURI, _ := url.Parse(c.BaseURI)
-				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
-				require.NoError(suite.T(), err)
-
 				reverseString := "--reverse=false"
 				if sortFlags.reverseFlag {
 					reverseString = "--reverse"
@@ -313,8 +291,8 @@ func (suite *ListSuite) TestList_SortFlags() {
 					"list",
 					"--hide-header",
 					"--no-style",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", suite.host,
+					"--api-port", suite.port,
 					"--sort-by", sortFlags.sortFlag,
 					"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 					reverseString,

@@ -5,11 +5,11 @@
         "Verifier": "noop",
         "Publisher": "ipfs",
         "Docker": {
-            "Image": "gromacs/gromacs",
+            "Image": "ubuntu:latest",
             "Entrypoint": [
                 "/bin/bash",
                 "-c",
-                "echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc"
+                "echo 15"
             ],
             "EnvironmentVariables": []
         },
@@ -20,12 +20,6 @@
             "Disk": ""
         },
         "Inputs": [
-            {
-                "StorageSource": "ipfs",
-                "Name": "",
-                "CID": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
-                "Path": "/input"
-            }
         ],
         "Outputs": [
             {

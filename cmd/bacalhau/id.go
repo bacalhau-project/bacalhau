@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/spf13/cobra"
 )
 
@@ -31,21 +29,21 @@ func newIDCmd() *cobra.Command {
 	return idCmd
 }
 
-func id(cmd *cobra.Command, OS *ServeOptions) error {
+func id(_ *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 	defer cm.Cleanup()
-	ctx := cmd.Context()
 
-	transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, []multiaddr.Multiaddr{})
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
 	if err != nil {
 		return err
 	}
 
 	info := IDInfo{
-		ID: transport.HostID(),
+		ID: libp2pHost.ID().String(),
 	}
+	_ = libp2pHost.Close()
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "    ")

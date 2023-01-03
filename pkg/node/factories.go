@@ -98,8 +98,7 @@ func (f *StandardExecutorsFactory) Get(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardExecutorOptions{
-			DockerID:   fmt.Sprintf("bacalhau-%s", nodeConfig.HostID),
-			IsBadActor: nodeConfig.IsBadActor,
+			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 			Storage: executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress:     nodeConfig.IPFSClient.APIAddress(),
 				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
@@ -117,12 +116,13 @@ type StandardVerifiersFactory struct{}
 func (f *StandardVerifiersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
+	encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
 	return verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
 		localdb.GetStateResolver(nodeConfig.LocalDB),
-		nodeConfig.Transport.Encrypt,
-		nodeConfig.Transport.Decrypt,
+		encrypter.Encrypt,
+		encrypter.Decrypt,
 	)
 }
 
