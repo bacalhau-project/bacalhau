@@ -56,8 +56,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
-	log.Debug().Msgf("====> submitReq: %+v", submitReq)
-	log.Debug().Msgf("====> submitReq.JobCreatePayload: %+v", submitReq.JobCreatePayload)
 
 	// first verify the signature on the raw bytes
 	if err := verifyRequestSignature(&submitReq); err != nil {
