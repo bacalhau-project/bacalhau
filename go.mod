@@ -82,7 +82,7 @@ require (
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.4.0
 	google.golang.org/grpc v1.51.0
-	k8s.io/kubectl v0.25.4
+	k8s.io/kubectl v0.26.0
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -250,7 +250,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
-	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
+	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -335,11 +335,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.3.0 // indirect
-	k8s.io/api v0.25.4 // indirect
-	k8s.io/apimachinery v0.25.4 // indirect
-	k8s.io/client-go v0.25.4 // indirect
-	k8s.io/klog/v2 v2.70.1 // indirect
-	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
+	k8s.io/api v0.26.0 // indirect
+	k8s.io/apimachinery v0.26.0 // indirect
+	k8s.io/client-go v0.26.0 // indirect
+	k8s.io/klog/v2 v2.80.1 // indirect
+	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
