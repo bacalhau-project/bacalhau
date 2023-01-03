@@ -189,12 +189,13 @@ clean:
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
+	cd python && make unittest
 
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
-
+	
 .PHONY: grc-test
 grc-test:
 	grc go test ./... -v -p 4
