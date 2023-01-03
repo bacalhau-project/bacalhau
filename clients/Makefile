@@ -7,7 +7,7 @@ VERSION := $(shell git describe --tags --abbrev=0 | tr -d v)
 #the java command is supported by the docker image swaggerapi/swagger-codegen-cli
 SWAGGER ?= swagger-codegen
 ifeq ($(shell which ${SWAGGER}),)
-SWAGGER := $(shell echo "java -jar ${HOME}/bin/swagger-codegen-cli.jar")
+SWAGGER := $(shell echo "${HOME}/bin/swagger-codegen-cli.jar")
 ifeq ($(shell ls -1 ${SWAGGER}),)
 $(info No swagger-codegen found?)
 endif
