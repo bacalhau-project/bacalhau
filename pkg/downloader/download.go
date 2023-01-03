@@ -63,7 +63,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return fmt.Errorf("output dir does not exist: %s", resultsOutputDir)
 	}
 
-	err = os.MkdirAll(filepath.Join(resultsOutputDir, DownloadCIDsFolderName), DownloadFolderPerm)
+	err = os.MkdirAll(filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName), model.DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
@@ -78,15 +78,15 @@ func DownloadJob( //nolint:funlen,gocyclo
 	downloadedCids := map[string]bool{}
 
 	// the base folder for globally merged volumes
-	volumeDir := filepath.Join(resultsOutputDir, DownloadVolumesFolderName)
-	err = os.Mkdir(volumeDir, DownloadFolderPerm)
+	volumeDir := filepath.Join(resultsOutputDir, model.DownloadVolumesFolderName)
+	err = os.Mkdir(volumeDir, model.DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
 
 	// ensure we have each of the top level merged volumes
 	for _, outputVolume := range outputVolumes {
-		err = os.MkdirAll(filepath.Join(volumeDir, outputVolume.Name), DownloadFolderPerm)
+		err = os.MkdirAll(filepath.Join(volumeDir, outputVolume.Name), model.DownloadFolderPerm)
 		if err != nil {
 			return err
 		}
@@ -95,10 +95,10 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// loop over shard results - create their cid and shard folders
 	// then add to an array of contexts
 	for _, shardResult := range publishedShardResults {
-		cidDownloadDir := filepath.Join(resultsOutputDir, DownloadCIDsFolderName, shardResult.Data.CID)
+		cidDownloadDir := filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName, shardResult.Data.CID)
 		shardDir := filepath.Join(
 			resultsOutputDir,
-			DownloadShardsFolderName,
+			model.DownloadShardsFolderName,
 			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
 		)
 		shardContexts = append(shardContexts, shardCIDContext{
@@ -139,7 +139,7 @@ func moveShardData(
 	ctx context.Context,
 	shardContext shardCIDContext,
 ) error {
-	err := os.MkdirAll(shardContext.ShardDir, DownloadFolderPerm)
+	err := os.MkdirAll(shardContext.ShardDir, model.DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
@@ -173,11 +173,11 @@ func moveShardData(
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
 
 		if d.IsDir() {
-			err = os.MkdirAll(shardTargetPath, DownloadFolderPerm)
+			err = os.MkdirAll(shardTargetPath, model.DownloadFolderPerm)
 			if err != nil {
 				return nil
 			}
-			err = os.MkdirAll(globalTargetPath, DownloadFolderPerm)
+			err = os.MkdirAll(globalTargetPath, model.DownloadFolderPerm)
 			if err != nil {
 				return nil
 			}
@@ -234,7 +234,7 @@ func appendFile(sourcePath, targetPath string) error {
 	}
 	defer source.Close()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, model.DownloadFilePerm)
 	if err != nil {
 		return err
 	}

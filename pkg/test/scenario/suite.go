@@ -198,7 +198,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	require.NoError(s.T(), err)
 
 	if scenario.ResultsChecker != nil {
-		err = scenario.ResultsChecker(filepath.Join(resultsDir, downloader.DownloadVolumesFolderName))
+		err = scenario.ResultsChecker(filepath.Join(resultsDir, model.DownloadVolumesFolderName))
 		require.NoError(s.T(), err)
 	}
 

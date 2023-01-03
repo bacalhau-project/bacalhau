@@ -54,7 +54,7 @@ func fetch(ctx context.Context, url string, filepath string) error {
 	_, span := system.GetTracer().Start(ctx, "pkg/downloader.http.fetchHttp")
 	defer span.End()
 	// Create a new file at the specified filepath
-	out, err := os.Create(filepath)
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
 	if err != nil {
 		return err
 	}

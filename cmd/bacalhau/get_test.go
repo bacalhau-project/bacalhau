@@ -5,7 +5,6 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
@@ -54,34 +53,34 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
 
 	expected := []string{
-		"/" + downloader.DownloadVolumesFolderName,
-		"/" + downloader.DownloadVolumesFolderName + "/data",
-		"/" + downloader.DownloadVolumesFolderName + "/data/apples",
-		"/" + downloader.DownloadVolumesFolderName + "/data/apples/file.txt",
-		"/" + downloader.DownloadVolumesFolderName + "/data/file.txt",
-		"/" + downloader.DownloadVolumesFolderName + "/outputs",
-		"/" + downloader.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
-		"/" + downloader.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
-		"/" + downloader.DownloadShardsFolderName,
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID,
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
-		"/" + downloader.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
-		"/" + downloader.DownloadCIDsFolderName,
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID,
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/data",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
-		"/" + downloader.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
+		"/" + model.DownloadVolumesFolderName,
+		"/" + model.DownloadVolumesFolderName + "/data",
+		"/" + model.DownloadVolumesFolderName + "/data/apples",
+		"/" + model.DownloadVolumesFolderName + "/data/apples/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/data/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/outputs",
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
+		"/" + model.DownloadShardsFolderName,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
+		"/" + model.DownloadCIDsFolderName,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")

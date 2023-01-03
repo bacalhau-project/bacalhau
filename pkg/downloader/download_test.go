@@ -56,7 +56,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	ds.outputDir = testOutputDir
 
 	ds.downloadSettings = &model.DownloaderSettings{
-		Timeout:        DefaultIPFSTimeout,
+		Timeout:        model.DefaultIPFSTimeout,
 		OutputDir:      testOutputDir,
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
@@ -191,13 +191,13 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, DownloadVolumesFolderName, "stdout")
-	requireFile(ds, stderr, DownloadVolumesFolderName, "stderr")
-	requireFile(ds, exitCode, DownloadShardsFolderName, "0_node_testnode", "exitCode")
-	requireFile(ds, stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, stderr, DownloadShardsFolderName, "0_node_testnode", "stderr")
-	requireFile(ds, goodbye, DownloadVolumesFolderName, "outputs", "goodbye.txt")
-	requireFile(ds, hello, DownloadVolumesFolderName, "outputs", "hello.txt")
+	requireFile(ds, stdout, model.DownloadVolumesFolderName, "stdout")
+	requireFile(ds, stderr, model.DownloadVolumesFolderName, "stderr")
+	requireFile(ds, exitCode, model.DownloadShardsFolderName, "0_node_testnode", "exitCode")
+	requireFile(ds, stdout, model.DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, stderr, model.DownloadShardsFolderName, "0_node_testnode", "stderr")
+	requireFile(ds, goodbye, model.DownloadVolumesFolderName, "outputs", "goodbye.txt")
+	requireFile(ds, hello, model.DownloadVolumesFolderName, "outputs", "hello.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
@@ -230,7 +230,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "lonely.txt")
+	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "lonely.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
@@ -280,11 +280,11 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 	require.NoError(ds.T(), err)
 
 	fullStdout := append(shard0stdout, shard1stdout...)
-	requireFile(ds, fullStdout, DownloadVolumesFolderName, model.DownloadFilenameStdout)
-	requireFile(ds, shard0stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, shard1stdout, DownloadShardsFolderName, "1_node_testnode", "stdout")
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data0.csv")
-	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data1.csv")
+	requireFile(ds, fullStdout, model.DownloadVolumesFolderName, model.DownloadFilenameStdout)
+	requireFile(ds, shard0stdout, model.DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, shard1stdout, model.DownloadShardsFolderName, "1_node_testnode", "stdout")
+	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "data0.csv")
+	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "data1.csv")
 }
 
 func (ds *DownloaderSuite) TestCustomVolumeNames() {
@@ -318,5 +318,5 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, DownloadVolumesFolderName, "secrets", "private.pem")
+	requireFileExists(ds, model.DownloadVolumesFolderName, "secrets", "private.pem")
 }
