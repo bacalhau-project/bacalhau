@@ -171,10 +171,12 @@ FILES_WITH_IMAGES := $(shell grep -Erl ${IMAGE_REGEX} pkg cmd)
 docker/.images: ${FILES_WITH_IMAGES}
 	grep -Eroh ${IMAGE_REGEX} $^ | cut -d'"' -f2 | sort | uniq > $@
 
-.PHONY: images
-images: docker/.images
+docker/.pulled: docker/.images
 	- cat $^ | xargs -n1 docker pull
+	touch $@
 
+.PHONY: images
+images: docker/.pulled
 
 ################################################################################
 # Target: clean
@@ -185,6 +187,7 @@ clean:
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
+	${RM} docker/.pulled
 
 
 ################################################################################
@@ -332,7 +335,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: images ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: docker/.pulled ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
