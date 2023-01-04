@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -38,35 +40,10 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	oldCallerMarshaller := zerolog.CallerMarshalFunc
 	configureLogging(zerolog.ConsoleTestWriter(t))
-
-	// When run as a test, the `file` will be relative to the directory containing the tests, so will be like
-	// `../../compute/endpoint.go`. This could be changed to rebuild the full package from the relative one by
-	// converting the relative path into an absolute one and then working out what to trim off, but this will do for the
-	// moment. If https://github.com/golang/go/issues/33976 is fixed, then we could just rely on the `debug.BuildInfo`.
-	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
-		short := file
-
-		separatorCount := 2
-		countedSeparators := 0
-
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				countedSeparators += 1
-				if countedSeparators >= separatorCount {
-					short = file[i+1:]
-					break
-				}
-			}
-		}
-		file = short
-		return file + ":" + strconv.Itoa(line)
-	}
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
-		zerolog.CallerMarshalFunc = oldCallerMarshaller
 		configureIpfsLogging(log.Logger)
 	})
 }
@@ -125,9 +102,14 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {
-		zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
-			file = strings.TrimPrefix(file, info.Main.Path+"/")
-			return file + ":" + strconv.Itoa(line)
+		// Branch that'll be used when the binary is run, as it is built as a Go module
+		zerolog.CallerMarshalFunc = marshalCaller(info.Main.Path)
+	} else {
+		// Branch typically used when running under test as build info isn't populated
+		// https://github.com/golang/go/issues/33976
+		dir := findRepositoryRoot()
+		if dir != "" {
+			zerolog.CallerMarshalFunc = marshalCaller(dir)
 		}
 	}
 
@@ -194,4 +176,32 @@ func configureIpfsLogging(l zerolog.Logger) {
 	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
 
 	ipfslog2.SetPrimaryCore(core)
+}
+
+func findRepositoryRoot() string {
+	dir, _ := os.Getwd()
+	for {
+		_, err := os.Stat(filepath.Join(dir, "go.mod"))
+		if os.IsNotExist(err) {
+			parentDir := filepath.Dir(dir)
+			if dir == parentDir {
+				return ""
+			}
+			dir = parentDir
+			continue
+		}
+
+		if runtime.GOOS == "windows" {
+			dir = strings.ReplaceAll(dir, "\\", "/")
+		}
+
+		return dir
+	}
+}
+
+func marshalCaller(prefix string) func(uintptr, string, int) string {
+	return func(_ uintptr, file string, line int) string {
+		file = strings.TrimPrefix(file, prefix+"/")
+		return file + ":" + strconv.Itoa(line)
+	}
 }
