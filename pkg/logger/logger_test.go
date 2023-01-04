@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package logger
 
 import (
@@ -27,11 +29,11 @@ func TestConfigureLogging(t *testing.T) {
 	subsubpackage.TestLog("testing error logging", "testing message")
 
 	actual := logging.String()
-	// Like 12:47:40.875 | ERR testpackage/subpackage/subsubpackage/testutil.go:10 > testing message error="testing error logging" [stack:[{"func":"TestLog","line":"10","source":"testutil.go"},{"func":"TestConfigureLogging","line":"27","source":"logger_test.go"},...]]
+	// Like 12:47:40.875 | ERR pkg/logger/testpackage/subpackage/subsubpackage/testutil.go:12 > testing message error="testing error logging" [stack:[{"func":"TestLog","line":"10","source":"testutil.go"},{"func":"TestConfigureLogging","line":"27","source":"logger_test.go"},...]]
 	t.Log(actual)
 
 	assert.Contains(t, actual, "testing message", "Log statement doesn't contain the log message")
 	assert.Contains(t, actual, `error="testing error logging"`, "Log statement doesn't contain the logged error")
-	assert.Contains(t, actual, subpackageName, "Log statement doesn't contain the full package path")
+	assert.Contains(t, actual, "pkg/logger/testpackage/subpackage/subsubpackage/testutil.go", "Log statement doesn't contain the full package path")
 	assert.Contains(t, actual, `stack:[{"func":"TestLog","line":`, "Log statement didn't automatically include the error's stacktrace")
 }
