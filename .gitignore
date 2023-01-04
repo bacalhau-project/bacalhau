@@ -49,3 +49,4 @@ job-*
 coverage/
 coverage.out
 docker/.images
+docker/.pulled
