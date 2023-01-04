@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect, useCallback } from 'react'
+import React, { FC, useState, useEffect, useCallback, useRef } from 'react'
 import prettyBytes from 'pretty-bytes'
 import Grid from '@mui/material/Grid'
 import Container from '@mui/material/Container'
@@ -27,6 +27,8 @@ import ForceGraph from '../components/network/ForceGraph'
 const Network: FC = () => {
   const [ mapData, setMapData ] = useState<ClusterMapResult>()
   const [ nodeData, setNodeData ] = useState<Record<string, NodeEvent>>({})
+  const [ graphSize, setGraphSize ] = useState(0)
+  const graphRef = useRef<HTMLDivElement>(null)
   const api = useApi()
   const loadingErrorHandler = useLoadingErrorHandler()
 
@@ -56,15 +58,24 @@ const Network: FC = () => {
     await handler()
   }, [])
 
+  const resizeGraph = useCallback(async () => {
+    if(!graphRef.current) return
+    setGraphSize(graphRef.current.clientWidth - 20)
+  }, [])
+
   useEffect(() => {
     loadMapData()
     loadNodeData()
   }, [])
 
+  useEffect(() => {
+    resizeGraph()
+  }, [])
+
   return (
     <Container maxWidth={ 'xl' } sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
-        <Grid item xs={6}>
+        <Grid item xs={12} md={6}>
           <Box sx={{
             display: 'inline-block',
           }}>
@@ -72,7 +83,7 @@ const Network: FC = () => {
               nodeData && Object.keys(nodeData).map((nodeId, i) => {
                 const node = nodeData[nodeId]
                 return (
-                  <Card sx={{ minWidth: 300, display: 'inline-block', m: 1 }} key={ i }>
+                  <Card sx={{ minWidth: 200, display: 'inline-block', m: 1 }} key={ i }>
                     <CardContent>
                       <Typography variant="h5" component="div">
                         { getShortId(node.NodeID) }
@@ -124,10 +135,13 @@ const Network: FC = () => {
             }
           </Box>
         </Grid>
-        <Grid item xs={6}>
+        <Grid item xs={12} md={6} ref={graphRef}>
           {
-            mapData && (
-              <ForceGraph data={ mapData } />
+            mapData && graphSize > 0 && (
+              <ForceGraph
+                data={ mapData }
+                size={ graphSize }
+              />
             )
           }
         </Grid>
