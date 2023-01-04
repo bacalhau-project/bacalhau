@@ -27,6 +27,8 @@ import DvrIcon from '@mui/icons-material/Dvr'
 import CategoryIcon from '@mui/icons-material/Category'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import MenuIcon from '@mui/icons-material/Menu'
+import LoginIcon from '@mui/icons-material/Login'
+import LogoutIcon from '@mui/icons-material/Logout'
 
 import { RouterContext } from '../contexts/router'
 import { UserContext } from '../contexts/user'
@@ -133,6 +135,7 @@ const Layout: FC = () => {
   ])
 
   const onLogout = useCallback(async () => {
+    setMobileOpen(false)
     await user.logout()
     snackbar.success('Logout successful')
   }, [])
@@ -161,6 +164,7 @@ const Layout: FC = () => {
           selected={route.id === 'home'}
           onClick={ () => {
             navigate('/')
+            setMobileOpen(false)
           }}
         >
           <ListItemButton>
@@ -175,6 +179,7 @@ const Layout: FC = () => {
           selected={route.id === 'network'}
           onClick={ () => {
             navigate('/network')
+            setMobileOpen(false)
           }}
         >
           <ListItemButton>
@@ -189,6 +194,7 @@ const Layout: FC = () => {
           selected={route.id.indexOf('jobs') === 0}
           onClick={ () => {
             navigate('/jobs')
+            setMobileOpen(false)
           }}
         >
           <ListItemButton>
@@ -198,6 +204,38 @@ const Layout: FC = () => {
             <ListItemText primary="Jobs" />
           </ListItemButton>
         </ListItem>
+        <Divider />
+        {
+          user.user ? (
+            <ListItem
+              disablePadding
+              onClick={ onLogout }
+            >
+              <ListItemButton>
+                <ListItemIcon>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText primary="Logout" />
+              </ListItemButton>
+            </ListItem>
+          ) : (
+            <ListItem
+              disablePadding
+              onClick={ () => {
+                setLoginOpen(true) 
+                setMobileOpen(false)
+              }}
+            >
+              <ListItemButton>
+                <ListItemIcon>
+                  <LoginIcon />
+                </ListItemIcon>
+                <ListItemText primary="Login" />
+              </ListItemButton>
+            </ListItem>
+          )
+        }
+        
       </List>
     </div>
   )
@@ -324,7 +362,7 @@ const Layout: FC = () => {
           }
         </Toolbar>
       </AppBar>
-      <Drawer
+      <MuiDrawer
         container={container}
         variant="temporary"
         open={mobileOpen}
@@ -333,12 +371,12 @@ const Layout: FC = () => {
           keepMounted: true, // Better open performance on mobile.
         }}
         sx={{
-          display: { xs: 'block', md: 'none' },
+          display: { sm: 'block', md: 'none' },
           '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
         }}
       >
         {drawer}
-      </Drawer>
+      </MuiDrawer>
       <Drawer
         variant="permanent"
         sx={{
