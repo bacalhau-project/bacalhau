@@ -39,13 +39,14 @@ python-config.json: config.json.template
 		-l $$(basename $@) \
 		-o $@ \
 		-c $$(basename $@)-config.json \
-		--remove-operation-id-prefix=true \
+		--remove-operation-id-prefix \
 		-Dapis -DapiTests=false -DapiDocs=true \
 		-Dmodels -DmodelTests=false -DmodelDocs=true \
 		-DsupportingFiles=true
 	rm ./swagger-edited.json
 	cp pyproject.toml $@/pyproject.toml
 	cp ../LICENSE $@/LICENSE
+	# cp -r ./python/bacalhau_apiclient ../python/
 
 pypi: python/
 	cd python && python3 -m pip install --upgrade build && python3 -m build

@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "bacalhau-sdk"
-version = "0.1.0"
+version = "0.1.1"
 homepage = "https://github.com/enricorotundo/bacalhau-sdk"
 description = "Skeleton project created by Cookiecutter PyPackage."
 authors = ["Enrico Rotundo <team@bacalhau.org>"]

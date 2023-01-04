@@ -1,6 +1,6 @@
-# Push new `bacalhau-apiclient` version
+```
+❯ swagger-codegen version
+2.4.29
+```
 
-1. Bump version in `pyproject.toml`
-1. `make swagger-docs clients` (from repo root)
-1. `cd clients && make pypi-upload` (requires Pypi.org credentials)
-1. Check the new version at https://pypi.org/project/bacalhau-apiclient/#history
+For some reason, swagger-codegen 3.0.36 does not generate models nor api files properly.
