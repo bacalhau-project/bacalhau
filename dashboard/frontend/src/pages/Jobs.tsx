@@ -43,6 +43,33 @@ const PAGE_SIZES = [10, 25, 50, 100]
 
 const columns: GridColDef[] = [
   {
+    field: 'actions',
+    headerName: 'Actions',
+    width: 50,
+    sortable: false,
+    filterable: false,
+    renderCell: (params: any) => {
+      return (
+        <Box
+          sx={{
+            display: 'flex',   
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            width: '100%',
+          }}
+          component="div"
+        >
+          <IconButton
+            component="label"
+            onClick={ () => navigate(`/jobs/${params.row.job.Metadata.ID}`) }
+          >
+            <InfoIcon color="primary" />
+          </IconButton>
+        </Box>
+      )
+    },
+  },
+  {
     field: 'id',
     headerName: 'ID',
     width: 100,
@@ -90,7 +117,8 @@ const columns: GridColDef[] = [
   {
     field: 'program',
     headerName: 'Program',
-    width: 500,
+    flex: 1,
+    minWidth: 200,
     sortable: false,
     filterable: false,
     renderCell: (params: any) => {
@@ -129,33 +157,6 @@ const columns: GridColDef[] = [
         <JobState
           job={ params.row.job }
         />
-      )
-    },
-  },
-  {
-    field: 'actions',
-    headerName: 'Actions',
-    flex: 1,
-    sortable: false,
-    filterable: false,
-    renderCell: (params: any) => {
-      return (
-        <Box
-          sx={{
-            display: 'flex',   
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            width: '100%',
-          }}
-          component="div"
-        >
-          <IconButton
-            component="label"
-            onClick={ () => navigate(`/jobs/${params.row.job.Metadata.ID}`) }
-          >
-            <InfoIcon color="primary" />
-          </IconButton>
-        </Box>
       )
     },
   },
