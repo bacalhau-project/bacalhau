@@ -182,12 +182,12 @@ jobs:
                   fi
                   # Credentials for project: bacalhau-cicd
                   # Account:
-                  echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+                  echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > /tmp/gcs-key.json
                   if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
                     mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
                   fi
                   mv unittests.xml "${TEST_RESULTS_FILENAME}"
-                  gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
+                  GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcs-key.json gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
       - run:
           name: Build tarball
@@ -390,8 +390,8 @@ jobs:
               export CIRCLE_TAG="v0.0.0-xxxxxxx"
             fi
             pip3 install gsutil
-            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
+            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > /tmp/gcs-key.json
+            GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcs-key.json gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${CIRCLE_BRANCH}-${CIRCLE_TAG}-${CIRCLE_SHA1}"
       - heroku/install
       - run:
           name: Update dashboard
