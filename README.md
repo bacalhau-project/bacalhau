@@ -14,7 +14,7 @@
 <br>
 
 <p align="center">
-    <a href="https://github.com/badges/shields/graphs/contributors" alt="Contributors">
+    <a href="https://github.com/filecoin-project/bacalhau/blob/dev/LICENSE" alt="Contributors">
         <img src="https://img.shields.io/badge/license-Apache-green" /></a>  
     <a href="https://github.com/filecoin-project/bacalhau/releases/" alt="Release">
         <img src="https://img.shields.io/github/v/release/filecoin-project/bacalhau?display_name=tag" /></a>
