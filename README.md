@@ -87,7 +87,7 @@ Learn more about our future plans in this [roadmap document](https://www.starmap
 - **Product report** - Get the latest [Bacalhau product report](https://bacalhau.substack.com/s/project-report).
 - **Community Event and Highlights** - Get the lastest [Bacalhau community event and highlight](https://bacalhau.substack.com/s/cod-summit-highlight).
 - **Email** - Subscribe to our [newsletter](https://bacalhau.substack.com/).
-- **Slack Community** - For usage questions or issues reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new issue here on github.
+- **Slack Community** - For usage questions or issues reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new [issue](https://github.com/filecoin-project/bacalhau/issues) here on github.
 - **Bacalhau Videos & Media** - Watch tutorials, community highlights and lots more on our [Youtube channel](https://www.youtube.com/@bacalhauproject).
 
 ## Ways to Contribute ❤️
