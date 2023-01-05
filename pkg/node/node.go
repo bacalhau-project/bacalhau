@@ -2,19 +2,27 @@ package node
 
 import (
 	"context"
+	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 )
+
+const JobEventsTopic = "bacalhau-job-events"
 
 // Node configuration
 type NodeConfig struct {
@@ -122,12 +130,24 @@ func NewNode(
 	tracerContextProvider := system.NewTracerContextProvider(config.Host.ID().String())
 	config.CleanupManager.RegisterCallback(tracerContextProvider.Shutdown)
 
-	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
 	var simulatorRequestHandler *simulator.RequestHandler
 	if config.SimulatorNodeID == config.Host.ID().String() {
 		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
 		simulatorRequestHandler = simulator.NewRequestHandler()
+	}
+
+	// A single gossipSub instance that will be used by all topics
+	gossipSub, err := newLibp2pPubSub(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	// PubSub to publish job events to the network
+	jobEventPubSub, err := newJobEventPubSub(ctx, config, gossipSub)
+	if err != nil {
+		return nil, err
 	}
 
 	requesterNode, err := NewRequesterNode(
@@ -140,7 +160,7 @@ func NewNode(
 		simulatorRequestHandler,
 		verifiers,
 		storageProviders,
-		jobEventConsumer,
+		localJobEventConsumer,
 	)
 	if err != nil {
 		return nil, err
@@ -149,6 +169,7 @@ func NewNode(
 	// setup compute node
 	computeNode := NewComputeNode(
 		ctx,
+		config.CleanupManager,
 		config.Host,
 		config.ComputeConfig,
 		config.SimulatorNodeID,
@@ -186,7 +207,7 @@ func NewNode(
 	localDBEventHandler := localdb.NewLocalDBEventHandler(config.LocalDB)
 
 	// order of event handlers is important as triggering some handlers might depend on the state of others.
-	jobEventConsumer.AddHandlers(
+	localJobEventConsumer.AddHandlers(
 		// add tracing metadata to the context about the read event
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
 		// ends the span for the job if received a terminal event
@@ -197,7 +218,17 @@ func NewNode(
 		localDBEventHandler,
 		// dispatches events to listening websockets
 		apiServer,
+		// dispatches events to the network
+		eventhandler.JobEventHandlerFunc(jobEventPubSub.Publish),
 	)
+
+	// register consumers of job events publishes over gossipSub
+	networkJobEventConsumer := eventhandler.NewChainedJobEventHandler(system.NewNoopContextProvider())
+	networkJobEventConsumer.AddHandlers(
+		// update the job state in the local DB
+		localDBEventHandler,
+	)
+	jobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[model.JobEvent](networkJobEventConsumer.HandleJobEvent))
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
@@ -212,4 +243,51 @@ func NewNode(
 	}
 
 	return node, nil
+}
+
+func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	nodeConfig.CleanupManager.RegisterCallback(func() error {
+		cancel()
+		return nil
+	})
+
+	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	if err != nil {
+		return nil, err
+	}
+
+	pgParams := libp2p_pubsub.NewPeerGaterParams(
+		0.33, //nolint:gomnd
+		libp2p_pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
+		libp2p_pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
+	)
+
+	return libp2p_pubsub.NewGossipSub(
+		ctx,
+		nodeConfig.Host,
+		libp2p_pubsub.WithPeerExchange(true),
+		libp2p_pubsub.WithPeerGater(pgParams),
+		libp2p_pubsub.WithEventTracer(tracer),
+	)
+}
+
+func newJobEventPubSub(ctx context.Context, nodeConfig NodeConfig, sub *libp2p_pubsub.PubSub) (pubsub.PubSub[model.JobEvent], error) {
+	libp2p2PubSub, err := libp2p.NewPubSub[pubsub.BufferingEnvelope](ctx, libp2p.PubSubParams{
+		Host:        nodeConfig.Host,
+		TopicName:   JobEventsTopic,
+		PubSub:      sub,
+		IgnoreLocal: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bufferingPubSub := pubsub.NewBufferingPubSub[model.JobEvent](nodeConfig.CleanupManager, pubsub.BufferingPubSubParams{
+		DelegatePubSub: libp2p2PubSub,
+		MaxBufferSize:  32 * 1024,       //nolint:gomnd
+		MaxBufferAge:   5 * time.Second, // increase this once we move to an external job storage
+	})
+
+	return bufferingPubSub, nil
 }
