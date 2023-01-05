@@ -91,7 +91,7 @@ Learn more about our future plans in this [roadmap document](https://www.starmap
 - **Bacalhau Videos & Media** - Watch tutorials, community highlights and lots more on our [Youtube channel](https://www.youtube.com/@bacalhauproject).
 
 ## Ways to Contribute ❤️
-Please see the [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). Join the [slack community](https://filecoin.io/slack/) `#bacalhau` channel to be part of community discussions about contributions, development, and more.
+Please see the [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions about contributions, development, and more.
 
 ## Developer Guide 🧭
 
