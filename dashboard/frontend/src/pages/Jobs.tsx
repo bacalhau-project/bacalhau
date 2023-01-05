@@ -348,69 +348,87 @@ const Jobs: FC = () => {
         <Box
           component="div"
           sx={{
-            flexGrow: 0,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          <Grid container spacing={3}>
-            <Grid item xs={2}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Find Job by ID"
-                value={ findJobID }
-                sx={{
-                  backgroundColor: 'white',
-                }}
-                onChange={ (e) => setFindJobID(e.target.value) }
-              />
-            </Grid>
-            <Grid item xs={1}>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={ findJob }
-              >
-                Find Job
-              </Button>
-            </Grid>
-            <Grid item xs={8} sx={{
-              color: '#666',
-              fontSize: '0.8em'
-            }}>
-              <FormControl component="fieldset">
-                <FormGroup aria-label="position" row>
-                  {
-                    annotations.map((annotation) => (
-                      <FormControlLabel
-                        key={ annotation.annotation }
-                        value="top"
-                        control={
-                          <Checkbox
-                            checked={ activeAnnotations.indexOf(annotation.annotation) >= 0 }
-                            onChange={ (event: React.ChangeEvent<HTMLInputElement>) => {
-                              updateAnnotation(annotation.annotation, event.target.checked)
-                            }}
-                          />
-                        }
-                        label={ `${annotation.annotation} (${annotation.count})` }
-                        labelPlacement="start"
+          <Box
+            component="div"
+            sx={{
+              flexGrow: 1,
+            }}
+          >
+            <TextField
+              fullWidth
+              size="small"
+              label="Find Job by ID"
+              value={ findJobID }
+              sx={{
+                backgroundColor: 'white',
+              }}
+              onChange={ (e) => setFindJobID(e.target.value) }
+            />
+          </Box>
+          <Box
+            component="div"
+            sx={{
+              flexGrow: 0,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{
+                height: '35px',
+                ml: 2,
+              }}
+              onClick={ findJob }
+            >
+              Find&nbsp;Job
+            </Button>
+
+            <Tooltip title="Refresh">
+              <IconButton aria-label="delete" color="primary" onClick={ reloadJobs }>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            
+          </Box>
+        </Box>
+        <Box
+          component="div"
+          sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <FormControl component="fieldset">
+            <FormGroup aria-label="position" row>
+              {
+                annotations.map((annotation) => (
+                  <FormControlLabel
+                    key={ annotation.annotation }
+                    value="top"
+                    control={
+                      <Checkbox
+                        checked={ activeAnnotations.indexOf(annotation.annotation) >= 0 }
+                        onChange={ (event: React.ChangeEvent<HTMLInputElement>) => {
+                          updateAnnotation(annotation.annotation, event.target.checked)
+                        }}
                       />
-                    ))
-                  }
-                </FormGroup>
-              </FormControl>
-            </Grid>
-            <Grid item xs={1} sx={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-            }}>
-              <Tooltip title="Refresh">
-                <IconButton aria-label="delete" color="primary" onClick={ reloadJobs }>
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
-            </Grid>
-          </Grid>
+                    }
+                    label={ `${annotation.annotation} (${annotation.count})` }
+                    labelPlacement="start"
+                  />
+                ))
+              }
+            </FormGroup>
+          </FormControl>
         </Box>
         <Box
           component="div"
