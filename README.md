@@ -55,26 +55,7 @@ To learn more about how Bacalhau works, explore the following resources:
 
 
 ## Current state of Bacalhau 📈
-Building never stops 🛠️.  **Bacalhau is a work in progress!**. In the meanwhile, we plan to deliver:
-
-- A simplified job dashboard that lets you see all your jobs in flight
-- A rich SDK for Python, Javascript, and Rust
-- Job execution pipelines fully compatible with Airflow
-- A job zoo that enables you to pick up existing pipelines from the community
-- Automatic wrapping with metadata/lineage and transformation for known file types (columnar, video, audio, etc.)
-- An on-premises deployment option for private and custom Hardware
-- Internode networking for multi-tier applications
-- A standard data store that automatically records data and lineage information of jobs
-
-In the long term, our goal is to deliver a complete system that achieves the following:
-
-- A fully distributed data processing system that can run on any device, anywhere
-- A declarative pipeline that can both run the data processing and also record the lineage of the data
-- Secure and verifiable results that can be used to confirm the integrity and reproducibility of the results forever
-
-But you tell us👂! Join the [slack community](https://filecoin.io/slack/) `#bacalhau` channel. We'd love to hear about new directions we may need to include. 
-
-Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151).
+Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
 
 ## Try out Bacalhau - Get started
 
