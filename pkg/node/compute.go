@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -34,6 +35,7 @@ type Compute struct {
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
+	cleanupManager *system.CleanupManager,
 	host host.Host,
 	config ComputeConfig,
 	simulatorNodeID string,
@@ -101,7 +103,12 @@ func NewComputeNode(
 			InfoProvider: runningInfoProvider,
 			Interval:     config.LogRunningExecutionsInterval,
 		})
-		go loggingSensor.Start(ctx)
+		loggingCtx, cancel := context.WithCancel(ctx)
+		cleanupManager.RegisterCallback(func() error {
+			cancel()
+			return nil
+		})
+		go loggingSensor.Start(loggingCtx)
 	}
 
 	// endpoint/frontend
