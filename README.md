@@ -31,11 +31,15 @@
 
 [Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish.
 
+## Features/Advantages of using Bacalhau
 Some benefits of using Bacalhau for your compute-over-data process include:
 
 - 🛠 **Process jobs fast**: jobs are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default
-- 💰 **Low cost:** it uses the compute that produced the data in the first place, reusing the existing hardware you already have. You also save on any ingress/egress fees you may have been charged.
+- 💰 **Low cost:** it uses the compute that produced the data in the first place, reusing the existing hardware you already have. You also save on any ingress/egress fees you may have been charged. The cost of computing is much cheaper than managed services.
 - 🔐 **More secure**: data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
+- 🔷 **Manage large-scale data**: You can manage your own containers that can scale to batch process petabytes (quadrillion bytes) files.
+- ⛺️ **Distributed inference**: Using its sharding feature, you carry out distributed inference very easily. Typically, distributed inference is carried out on large-scale datasets with millions of records.
+- 😌 **Easy computation**: If you have the data stored on IPFS you don’t need to move the data, you can compute where the data is located.
 
 ## Learn how Bacalhau works
 
