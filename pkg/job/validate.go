@@ -23,6 +23,7 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 	})
 }
 
+// VerifyJob verifies that job object passed is valid.
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")

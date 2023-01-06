@@ -25,18 +25,23 @@ var (
 
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
-		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container.
-		# All flags after the '--' are passed directly into the container for execution.
+		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container. All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 			
-		# Dry Run: Check the job specification before submitting it to the bacalhau network
+		# Dry Run: check the job specification before submitting it to the bacalhau network
 		bacalhau docker run --dry-run ubuntu echo hello
 
-		saving the job specification to a yaml file
+		# Save the job specification to a YAML file
 		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+
+		# Specify an image tag (default is 'latest' - using a specific tag other than 'latest' is recommended for reproducibility)
+		bacalhau docker run ubuntu:bionic echo hello
+
+		# Specify an image digest
+		bacalhau docker run ubuntu@sha256:35b4f89ec2ee42e7e12db3d107fe6a487137650a2af379bbd49165a1494246ea echo hello
 		`))
 )
 
@@ -124,7 +129,6 @@ func newDockerCmd() *cobra.Command {
 	}
 
 	dockerCmd.AddCommand(newDockerRunCmd())
-
 	return dockerCmd
 }
 
@@ -132,7 +136,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	ODR := NewDockerRunOptions()
 
 	dockerRunCmd := &cobra.Command{
-		Use:     "run",
+		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
 		Short:   "Run a docker job on the network",
 		Long:    dockerRunLong,
 		Example: dockerRunExample,
@@ -277,6 +281,15 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 			return nil
 		}
 	}
+
+	quiet := ODR.RunTimeSettings.PrintJobIDOnly
+	if !quiet {
+		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
+		if !containsTag {
+			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
+		}
+	}
+
 	if ODR.DryRun {
 		// Converting job to yaml
 		var yamlBytes []byte
@@ -299,6 +312,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
+// CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context,
 	cmdArgs []string,
 	odr *DockerRunOptions) (*model.Job, error) {
