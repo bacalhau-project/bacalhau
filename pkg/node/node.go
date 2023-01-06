@@ -297,20 +297,3 @@ func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub
 		libp2p_pubsub.WithEventTracer(tracer),
 	)
 }
-
-func newJobEventPubSub(ctx context.Context, nodeConfig NodeConfig, sub *libp2p_pubsub.PubSub) (pubsub.PubSub[model.JobEvent], error) {
-	libp2p2PubSub := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
-		Host:        nodeConfig.Host,
-		TopicName:   JobEventsTopic,
-		PubSub:      sub,
-		IgnoreLocal: true,
-	})
-
-	bufferingPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
-		DelegatePubSub: libp2p2PubSub,
-		MaxBufferSize:  32 * 1024,       //nolint:gomnd
-		MaxBufferAge:   5 * time.Second, // increase this once we move to an external job storage
-	})
-
-	return bufferingPubSub, nil
-}

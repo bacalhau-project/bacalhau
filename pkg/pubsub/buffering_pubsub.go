@@ -14,8 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const shutdownFlushTimeout = 5 * time.Second
-
 type BufferingEnvelope struct {
 	Offsets  []int64 `json:"offsets"`
 	Payloads []byte  `json:"payloads"`
