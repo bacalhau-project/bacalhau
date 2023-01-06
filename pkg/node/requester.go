@@ -29,7 +29,7 @@ type Requester struct {
 //nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cleanupManager *system.CleanupManager,
 	host host.Host,
 	config RequesterConfig,
 	jobStore localdb.LocalDB,
@@ -60,7 +60,7 @@ func NewRequesterNode(
 		computeProxy = standardComputeProxy
 	}
 
-	scheduler := requester.NewScheduler(ctx, cm, requester.SchedulerParams{
+	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
 		ID:       host.ID().String(),
 		JobStore: jobStore,
 		NodeDiscoverer: requester.NewIdentityNodeDiscoverer(requester.IdentityNodeDiscovererParams{

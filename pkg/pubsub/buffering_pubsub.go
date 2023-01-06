@@ -2,7 +2,9 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	realsync "sync"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
@@ -33,38 +35,35 @@ type BufferingPubSubParams struct {
 // BufferingPubSub is a PubSub implementation that buffers messages in memory and flushes them to the delegate PubSub
 // when the buffer is full or the buffer age is reached
 type BufferingPubSub[T any] struct {
-	SingletonPubSub[T]
-	delegatePubSub       PubSub[BufferingEnvelope]
-	flushMutex           sync.RWMutex
-	maxBufferSize        int64
-	maxBufferAge         time.Duration
-	currentBuffer        BufferingEnvelope
-	oldestMessageTime    time.Time
+	delegatePubSub PubSub[BufferingEnvelope]
+	maxBufferSize  int64
+	maxBufferAge   time.Duration
+
+	subscriber     Subscriber[T]
+	subscriberOnce realsync.Once
+	closeOnce      realsync.Once
+
+	currentBuffer     BufferingEnvelope
+	oldestMessageTime time.Time
+	flushMutex        sync.RWMutex
+
 	antiStarvationTicker *time.Ticker
+	antiStarvationStop   chan struct{}
 }
 
-func NewBufferingPubSub[T any](cm *system.CleanupManager, params BufferingPubSubParams) *BufferingPubSub[T] {
+func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T] {
 	newPubSub := &BufferingPubSub[T]{
-		delegatePubSub: params.DelegatePubSub,
-		maxBufferSize:  params.MaxBufferSize,
-		maxBufferAge:   params.MaxBufferAge,
+		delegatePubSub:     params.DelegatePubSub,
+		maxBufferSize:      params.MaxBufferSize,
+		maxBufferAge:       params.MaxBufferAge,
+		antiStarvationStop: make(chan struct{}),
 	}
 
-	newPubSub.resetBuffer()
-	newPubSub.delegatePubSub.Subscribe(context.Background(), newPubSub)
 	newPubSub.flushMutex.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
 		Id:        "BufferingPubSub.flushMutex",
 	})
 
-	// Start a background task to flush the buffer if it gets too old, and avoid situations where no more messages were published for a
-	// a long time and the buffer is never flushed
-	antiStarvationCtx, cancel := context.WithCancel(context.Background())
-	go newPubSub.antiStarvationTask(antiStarvationCtx)
-	cm.RegisterCallback(func() error {
-		cancel()
-		return nil
-	})
 	return newPubSub
 }
 
@@ -87,9 +86,30 @@ func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
 
 	if p.currentBuffer.Size() >= p.maxBufferSize || time.Since(p.oldestMessageTime) > p.maxBufferAge {
 		err = p.flushBuffer(ctx)
-		p.resetBuffer()
 	}
 
+	return err
+}
+
+func (p *BufferingPubSub[T]) Subscribe(ctx context.Context, subscriber Subscriber[T]) (err error) {
+	var firstSubscriber bool
+	p.subscriberOnce.Do(func() {
+		// register the subscriber
+		p.subscriber = subscriber
+
+		// subscribe to the delegate pubsub
+		err = p.delegatePubSub.Subscribe(ctx, p)
+
+		// start the anti-starvation background task
+		go p.antiStarvationTask()
+		firstSubscriber = true
+	})
+	if err != nil {
+		return err
+	}
+	if !firstSubscriber {
+		err = errors.New("only a single subscriber is allowed. Use ChainedSubscriber to chain multiple subscribers")
+	}
 	return err
 }
 
@@ -107,8 +127,8 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal message: %w", err)
 		}
-		if p.Subscriber != nil {
-			err := p.Subscriber.Handle(ctx, message)
+		if p.subscriber != nil {
+			err := p.subscriber.Handle(ctx, message)
 			if err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("failed to handle message. Continuing")
 			}
@@ -120,6 +140,21 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 	return nil
 }
 
+func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
+	p.closeOnce.Do(func() {
+		// stop the anti-starvation background task
+		p.antiStarvationStop <- struct{}{}
+
+		// flush the buffer before closing
+		if p.currentBuffer.Size() > 0 {
+			p.flushMutex.Lock()
+			defer p.flushMutex.Unlock()
+			err = p.flushBuffer(ctx)
+		}
+	})
+	return err
+}
+
 // flush the buffer to the delegate pubsub
 func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
@@ -127,43 +162,31 @@ func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context) error {
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",
 		time.Since(p.oldestMessageTime), len(p.currentBuffer.Offsets), p.currentBuffer.Size())
-	return p.delegatePubSub.Publish(ctx, p.currentBuffer)
+	err := p.delegatePubSub.Publish(ctx, p.currentBuffer)
+	p.currentBuffer = BufferingEnvelope{} // reset the buffer
+	return err
 }
 
-// reset the buffer
-func (p *BufferingPubSub[T]) resetBuffer() {
-	p.currentBuffer = BufferingEnvelope{}
-}
-
-func (p *BufferingPubSub[T]) antiStarvationTask(ctx context.Context) {
+func (p *BufferingPubSub[T]) antiStarvationTask() {
+	ctx := context.Background()
 	p.antiStarvationTicker = time.NewTicker(p.maxBufferAge)
-
-	flush := func(fCtx context.Context) {
-		p.flushMutex.Lock()
-		defer p.flushMutex.Unlock()
-		err := p.flushBuffer(fCtx)
-		p.resetBuffer()
-		if err != nil {
-			// use original context here for logging purposes
-			log.Ctx(ctx).Error().Err(err).Msg("failed to flush buffer")
-		}
-	}
 
 	for {
 		select {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
-				flush(ctx)
+				func() {
+					p.flushMutex.Lock()
+					defer p.flushMutex.Unlock()
+					err := p.flushBuffer(ctx)
+					if err != nil {
+						log.Ctx(ctx).Error().Err(err).Msg("failed to flush buffer")
+					}
+				}()
 			}
-		case <-ctx.Done():
-			// flush the buffer before exiting
-			// TODO: this still fails as libp2p ctx will also be closed by cleanup manager. We need a better way to sequence cleaning up
-			//  of resources and stopping the background tasks.
-			if p.currentBuffer.Size() > 0 {
-				timeoutCtx, cancel := context.WithTimeout(context.Background(), shutdownFlushTimeout)
-				flush(timeoutCtx)
-				cancel()
-			}
+		case <-p.antiStarvationStop:
+			// do nothing as Close() will flush the buffer
+			return
 		}
 	}
 }

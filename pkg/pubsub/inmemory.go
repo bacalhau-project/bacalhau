@@ -3,11 +3,13 @@ package pubsub
 import (
 	"context"
 	"errors"
+	"sync"
 )
 
 // InMemoryPubSub is a simple in-memory pubsub implementation used for testing
 type InMemoryPubSub[T any] struct {
-	SingletonPubSub[T]
+	subscriber     Subscriber[T]
+	subscriberOnce sync.Once
 }
 
 func NewInMemoryPubSub[T any]() *InMemoryPubSub[T] {
@@ -15,7 +17,23 @@ func NewInMemoryPubSub[T any]() *InMemoryPubSub[T] {
 }
 
 func (p *InMemoryPubSub[T]) Publish(ctx context.Context, message T) error {
-	return p.Subscriber.Handle(ctx, message)
+	return p.subscriber.Handle(ctx, message)
+}
+
+func (p *InMemoryPubSub[T]) Subscribe(ctx context.Context, subscriber Subscriber[T]) error {
+	var firstSubscriber bool
+	p.subscriberOnce.Do(func() {
+		p.subscriber = subscriber
+		firstSubscriber = true
+	})
+	if !firstSubscriber {
+		return errors.New("only a single subscriber is allowed. Use ChainedSubscriber to chain multiple subscribers")
+	}
+	return nil
+}
+
+func (p *InMemoryPubSub[T]) Close(ctx context.Context) error {
+	return nil
 }
 
 // InMemorySubscriber is a simple in-memory subscriber implementation used for testing

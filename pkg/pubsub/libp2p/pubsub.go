@@ -2,7 +2,9 @@ package libp2p
 
 import (
 	"context"
+	"errors"
 	"reflect"
+	realsync "sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -20,33 +22,28 @@ type PubSubParams struct {
 	IgnoreLocal bool
 }
 type PubSub[T any] struct {
-	pubsub.SingletonPubSub[T]
-	hostID       string
+	hostID      string
+	topicName   string
+	pubSub      *libp2p_pubsub.PubSub
+	ignoreLocal bool
+
 	topic        *libp2p_pubsub.Topic
 	subscription *libp2p_pubsub.Subscription
-	ignoreLocal  bool
+
+	subscriber     pubsub.Subscriber[T]
+	subscriberOnce realsync.Once
+	closeOnce      realsync.Once
 }
 
-func NewPubSub[T any](ctx context.Context, params PubSubParams) (*PubSub[T], error) {
-	topic, err := params.PubSub.Join(params.TopicName)
-	if err != nil {
-		return nil, err
-	}
-
-	subscription, err := topic.Subscribe()
-	if err != nil {
-		return nil, err
-	}
-
+func NewPubSub[T any](params PubSubParams) *PubSub[T] {
 	newPubSub := &PubSub[T]{
-		hostID:       params.Host.ID().String(),
-		topic:        topic,
-		subscription: subscription,
-		ignoreLocal:  params.IgnoreLocal,
+		hostID:      params.Host.ID().String(),
+		pubSub:      params.PubSub,
+		topicName:   params.TopicName,
+		ignoreLocal: params.IgnoreLocal,
 	}
 
-	go newPubSub.listenForEvents(ctx)
-	return newPubSub, nil
+	return newPubSub
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
@@ -62,11 +59,41 @@ func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
 	return p.topic.Publish(ctx, payload)
 }
 
-func (p *PubSub[T]) listenForEvents(ctx context.Context) {
+func (p *PubSub[T]) Subscribe(ctx context.Context, subscriber pubsub.Subscriber[T]) (err error) {
+	var firstSubscriber bool
+	p.subscriberOnce.Do(func() {
+		// register the subscriber
+		p.subscriber = subscriber
+
+		p.topic, err = p.pubSub.Join(p.topicName)
+		if err != nil {
+			return
+		}
+
+		p.subscription, err = p.topic.Subscribe()
+		if err != nil {
+			return
+		}
+
+		// start listening for events
+		go p.listenForEvents()
+		firstSubscriber = true
+	})
+	if err != nil {
+		return err
+	}
+	if !firstSubscriber {
+		err = errors.New("only a single subscriber is allowed. Use ChainedSubscriber to chain multiple subscribers")
+	}
+	return err
+}
+
+func (p *PubSub[T]) listenForEvents() {
+	ctx := logger.ContextWithNodeIDLogger(context.Background(), p.hostID)
 	for {
 		msg, err := p.subscription.Next(ctx)
 		if err != nil {
-			if err == context.Canceled || err == context.DeadlineExceeded {
+			if err == context.Canceled || err == context.DeadlineExceeded || err == libp2p_pubsub.ErrSubscriptionCancelled {
 				log.Ctx(ctx).Trace().Msgf("libp2p pubsub shutting down: %v", err)
 			} else {
 				log.Ctx(ctx).Error().Msgf(
@@ -84,7 +111,6 @@ func (p *PubSub[T]) listenForEvents(ctx context.Context) {
 func (p *PubSub[T]) readMessage(ctx context.Context, msg *libp2p_pubsub.Message) {
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
-	ctx = logger.ContextWithNodeIDLogger(ctx, p.hostID)
 	var payload T
 	err := model.JSONUnmarshalWithMax(msg.Data, &payload)
 	if err != nil {
@@ -92,10 +118,22 @@ func (p *PubSub[T]) readMessage(ctx context.Context, msg *libp2p_pubsub.Message)
 		return
 	}
 
-	err = p.Subscriber.Handle(ctx, payload)
+	err = p.subscriber.Handle(ctx, payload)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("error in handle message of type: %s", reflect.TypeOf(payload))
 	}
+}
+
+func (p *PubSub[T]) Close(ctx context.Context) (err error) {
+	p.closeOnce.Do(func() {
+		if p.subscription != nil {
+			p.subscription.Cancel()
+		}
+		if p.topic != nil {
+			err = p.topic.Close()
+		}
+	})
+	return err
 }
 
 // compile-time interface assertions

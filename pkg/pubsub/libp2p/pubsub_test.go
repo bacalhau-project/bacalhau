@@ -24,26 +24,24 @@ type PubSubSuite struct {
 	subscriber1 *pubsub.InMemorySubscriber[string]
 	subscriber2 *pubsub.InMemorySubscriber[string]
 	ignoreLocal bool
-	ctx         context.Context
-	cancel      context.CancelFunc
 }
 
 func (s *PubSubSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.subscriber1 = pubsub.NewInMemorySubscriber[string]()
 	s.subscriber2 = pubsub.NewInMemorySubscriber[string]()
 }
 
 func (s *PubSubSuite) TearDownTest() {
-	s.cancel()
+	s.NoError(s.node1.Close(context.Background()))
+	s.NoError(s.node2.Close(context.Background()))
 }
 
 func (s *PubSubSuite) setupHosts() {
 	n1, h1 := s.createPubSub()
 	s.node1 = n1
 	s.node2, _ = s.createPubSub(h1)
-	s.node1.Subscribe(s.ctx, s.subscriber1)
-	s.node2.Subscribe(s.ctx, s.subscriber2)
+	s.NoError(s.node1.Subscribe(context.Background(), s.subscriber1))
+	s.NoError(s.node2.Subscribe(context.Background(), s.subscriber2))
 
 }
 
@@ -63,13 +61,13 @@ func (s *PubSubSuite) createPubSub(peers ...host.Host) (*PubSub[string], host.Ho
 		}
 	}
 	if len(libp2pPeer) > 0 {
-		s.NoError(libp2p_host.ConnectToPeers(s.ctx, h, libp2pPeer))
+		s.NoError(libp2p_host.ConnectToPeers(context.Background(), h, libp2pPeer))
 	}
 
-	gossipSub, err := libp2p_pubsub.NewGossipSub(s.ctx, h)
+	gossipSub, err := libp2p_pubsub.NewGossipSub(context.Background(), h)
 	s.NoError(err)
 
-	pubSub, err := NewPubSub[string](s.ctx, PubSubParams{
+	pubSub := NewPubSub[string](PubSubParams{
 		Host:        h,
 		TopicName:   testTopic,
 		PubSub:      gossipSub,
@@ -91,7 +89,7 @@ func (s *PubSubSuite) TestPubSub() {
 	time.Sleep(1 * time.Second)
 
 	// wait for nodes to discover each other
-	s.NoError(s.node1.Publish(s.ctx, "hello"))
+	s.NoError(s.node1.Publish(context.Background(), "hello"))
 
 	// wait for message to be published to other nodes
 	time.Sleep(1 * time.Second)
@@ -107,7 +105,7 @@ func (s *PubSubSuite) TestPubSub_IgnoreLocal() {
 	time.Sleep(1 * time.Second)
 
 	// publish message
-	s.NoError(s.node1.Publish(s.ctx, "hello"))
+	s.NoError(s.node1.Publish(context.Background(), "hello"))
 
 	// wait for message to be published to other nodes
 	time.Sleep(1 * time.Second)

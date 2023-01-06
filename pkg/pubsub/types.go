@@ -7,7 +7,9 @@ type PubSub[T any] interface {
 	// Publish a message
 	Publish(ctx context.Context, message T) error
 	// Subscribe to messages
-	Subscribe(ctx context.Context, subscriber Subscriber[T])
+	Subscribe(ctx context.Context, subscriber Subscriber[T]) error
+	// Close the PubSub and release resources, if any
+	Close(ctx context.Context) error
 }
 
 // Subscriber handles messages publishes to PubSub

@@ -139,16 +139,45 @@ func NewNode(
 	}
 
 	// A single gossipSub instance that will be used by all topics
-	gossipSub, err := newLibp2pPubSub(ctx, config)
+	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
+	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
 	if err != nil {
+		gossipSubCancel()
 		return nil, err
 	}
-
 	// PubSub to publish job events to the network
-	jobEventPubSub, err := newJobEventPubSub(ctx, config, gossipSub)
-	if err != nil {
-		return nil, err
-	}
+	libp2p2JobEventPubSub := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
+		Host:        config.Host,
+		TopicName:   JobEventsTopic,
+		PubSub:      gossipSub,
+		IgnoreLocal: true,
+	})
+
+	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
+		DelegatePubSub: libp2p2JobEventPubSub,
+		MaxBufferSize:  32 * 1024,       //nolint:gomnd
+		MaxBufferAge:   5 * time.Second, // increase this once we move to an external job storage
+	})
+
+	// cleanup libp2p resources in the desired order
+	config.CleanupManager.RegisterCallback(func() error {
+		cleanupContext := context.Background()
+		cleanupErr := bufferedJobEventPubSub.Close(cleanupContext)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")
+		}
+		cleanupErr = libp2p2JobEventPubSub.Close(cleanupContext)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
+		}
+		gossipSubCancel()
+
+		cleanupErr = config.Host.Close()
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close host")
+		}
+		return cleanupErr
+	})
 
 	requesterNode, err := NewRequesterNode(
 		ctx,
@@ -219,7 +248,7 @@ func NewNode(
 		// dispatches events to listening websockets
 		apiServer,
 		// dispatches events to the network
-		eventhandler.JobEventHandlerFunc(jobEventPubSub.Publish),
+		eventhandler.JobEventHandlerFunc(bufferedJobEventPubSub.Publish),
 	)
 
 	// register consumers of job events publishes over gossipSub
@@ -228,7 +257,10 @@ func NewNode(
 		// update the job state in the local DB
 		localDBEventHandler,
 	)
-	jobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[model.JobEvent](networkJobEventConsumer.HandleJobEvent))
+	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[model.JobEvent](networkJobEventConsumer.HandleJobEvent))
+	if err != nil {
+		return nil, err
+	}
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
@@ -246,12 +278,6 @@ func NewNode(
 }
 
 func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	nodeConfig.CleanupManager.RegisterCallback(func() error {
-		cancel()
-		return nil
-	})
-
 	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
@@ -273,17 +299,14 @@ func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub
 }
 
 func newJobEventPubSub(ctx context.Context, nodeConfig NodeConfig, sub *libp2p_pubsub.PubSub) (pubsub.PubSub[model.JobEvent], error) {
-	libp2p2PubSub, err := libp2p.NewPubSub[pubsub.BufferingEnvelope](ctx, libp2p.PubSubParams{
+	libp2p2PubSub := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
 		Host:        nodeConfig.Host,
 		TopicName:   JobEventsTopic,
 		PubSub:      sub,
 		IgnoreLocal: true,
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	bufferingPubSub := pubsub.NewBufferingPubSub[model.JobEvent](nodeConfig.CleanupManager, pubsub.BufferingPubSubParams{
+	bufferingPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
 		DelegatePubSub: libp2p2PubSub,
 		MaxBufferSize:  32 * 1024,       //nolint:gomnd
 		MaxBufferAge:   5 * time.Second, // increase this once we move to an external job storage

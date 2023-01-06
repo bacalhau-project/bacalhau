@@ -5,35 +5,31 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/suite"
 )
 
 type BufferingPubSubSuite struct {
 	suite.Suite
-	pusSub         *BufferingPubSub[string]
-	subscriber     *InMemorySubscriber[string]
-	cleanupManager *system.CleanupManager
-	maxBufferSize  int64
-	maxBufferAge   time.Duration
+	pusSub        *BufferingPubSub[string]
+	subscriber    *InMemorySubscriber[string]
+	maxBufferSize int64
+	maxBufferAge  time.Duration
 }
 
 func (s *BufferingPubSubSuite) SetupTest() {
 	s.maxBufferSize = 10
 	s.maxBufferAge = 1 * time.Minute
-	s.cleanupManager = system.NewCleanupManager()
 	s.setupBuffer()
-
 }
 
 func (s *BufferingPubSubSuite) setupBuffer() {
-	s.pusSub = NewBufferingPubSub[string](s.cleanupManager, BufferingPubSubParams{
+	s.pusSub = NewBufferingPubSub[string](BufferingPubSubParams{
 		DelegatePubSub: NewInMemoryPubSub[BufferingEnvelope](),
 		MaxBufferAge:   s.maxBufferAge,
 		MaxBufferSize:  s.maxBufferSize,
 	})
 	s.subscriber = NewInMemorySubscriber[string]()
-	s.pusSub.Subscribe(context.Background(), s.subscriber)
+	s.NoError(s.pusSub.Subscribe(context.Background(), s.subscriber))
 }
 
 func TestBufferingPubSubSuite(t *testing.T) {
@@ -100,4 +96,31 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub_MaxBufferAge_Empty() {
 
 	time.Sleep(s.maxBufferAge * 2)
 	s.Empty(s.subscriber.Events())
+}
+
+func (s *BufferingPubSubSuite) TestBufferingPubSub_Close() {
+	ctx := context.Background()
+
+	s.NoError(s.pusSub.Publish(ctx, "a"))
+	s.Empty(s.subscriber.Events())
+
+	s.NoError(s.pusSub.Close(ctx))
+	s.Equal([]string{"a"}, s.subscriber.Events())
+
+	s.NoError(s.pusSub.Close(ctx))
+	s.Equal([]string{}, s.subscriber.Events())
+}
+
+func (s *BufferingPubSubSuite) TestBufferingPubSub_CloseMulti() {
+	// test no issues if we close multiple times
+	ctx := context.Background()
+	for i := 0; i < 10; i++ {
+		s.NoError(s.pusSub.Close(ctx))
+	}
+}
+
+func (s *BufferingPubSubSuite) TestBufferingPubSub_SubscribeMulti() {
+	// error if we subscribe multiple times
+	s.Error(s.pusSub.Subscribe(context.Background(), NewInMemorySubscriber[string]()))
+
 }
