@@ -11,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
-
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,29 +23,32 @@ type PubSubSuite struct {
 	node2       *PubSub[string]
 	subscriber1 *pubsub.InMemorySubscriber[string]
 	subscriber2 *pubsub.InMemorySubscriber[string]
-	ignoreLocal bool
 }
 
-func (s *PubSubSuite) SetupTest() {
+func (s *PubSubSuite) SetupSuite() {
+	n1, h1 := s.createPubSub(false)
+	s.node1 = n1
+	s.node2, _ = s.createPubSub(true, h1)
+
 	s.subscriber1 = pubsub.NewInMemorySubscriber[string]()
 	s.subscriber2 = pubsub.NewInMemorySubscriber[string]()
+	s.NoError(s.node1.Subscribe(context.Background(), s.subscriber1))
+	s.NoError(s.node2.Subscribe(context.Background(), s.subscriber2))
+
+	// wait for nodes to discover each other
+	time.Sleep(2 * time.Second)
+	msg := "setting up suite"
+	s.NoError(s.node1.Publish(context.Background(), msg))
+	s.waitForMessage(msg, true, true)
+	log.Debug().Msg("libp2p pubsub suite is ready")
 }
 
-func (s *PubSubSuite) TearDownTest() {
+func (s *PubSubSuite) TearDownSuite() {
 	s.NoError(s.node1.Close(context.Background()))
 	s.NoError(s.node2.Close(context.Background()))
 }
 
-func (s *PubSubSuite) setupHosts() {
-	n1, h1 := s.createPubSub()
-	s.node1 = n1
-	s.node2, _ = s.createPubSub(h1)
-	s.NoError(s.node1.Subscribe(context.Background(), s.subscriber1))
-	s.NoError(s.node2.Subscribe(context.Background(), s.subscriber2))
-
-}
-
-func (s *PubSubSuite) createPubSub(peers ...host.Host) (*PubSub[string], host.Host) {
+func (s *PubSubSuite) createPubSub(ignoreLocal bool, peers ...host.Host) (*PubSub[string], host.Host) {
 	port, err := freeport.GetFreePort()
 	s.NoError(err)
 
@@ -71,7 +74,7 @@ func (s *PubSubSuite) createPubSub(peers ...host.Host) (*PubSub[string], host.Ho
 		Host:        h,
 		TopicName:   testTopic,
 		PubSub:      gossipSub,
-		IgnoreLocal: s.ignoreLocal,
+		IgnoreLocal: ignoreLocal,
 	})
 	s.NoError(err)
 
@@ -83,32 +86,44 @@ func TestPubSubSuite(t *testing.T) {
 }
 
 func (s *PubSubSuite) TestPubSub() {
-	s.setupHosts()
-
-	// wait for nodes to discover each other
-	time.Sleep(1 * time.Second)
-
-	// wait for nodes to discover each other
-	s.NoError(s.node1.Publish(context.Background(), "hello"))
-
-	// wait for message to be published to other nodes
-	time.Sleep(1 * time.Second)
-	s.Equal([]string{"hello"}, s.subscriber1.Events())
-	s.Equal([]string{"hello"}, s.subscriber2.Events())
+	msg := "TestPubSub"
+	s.NoError(s.node1.Publish(context.Background(), msg))
+	s.waitForMessage(msg, true, true)
 }
 
 func (s *PubSubSuite) TestPubSub_IgnoreLocal() {
-	s.ignoreLocal = true
-	s.setupHosts()
+	// node2 is ignoring local messages, so it should not receive the message
+	msg := "TestPubSub_IgnoreLocal"
+	s.NoError(s.node2.Publish(context.Background(), msg))
+	s.waitForMessage(msg, true, false)
+	s.Empty(s.subscriber2.Events())
+}
 
-	// wait for nodes to discover each other
-	time.Sleep(1 * time.Second)
+func (s *PubSubSuite) waitForMessage(msg string, checkSubscriber1, checkSubscriber2 bool) {
+	waitUntil := time.Now().Add(10 * time.Second)
+	checkSubscriber := func(subscriber *pubsub.InMemorySubscriber[string]) bool {
+		events := subscriber.Events()
+		if len(events) == 0 {
+			return false
+		}
+		s.Equal([]string{msg}, events)
+		return true
+	}
 
-	// publish message
-	s.NoError(s.node1.Publish(context.Background(), "hello"))
+	for time.Now().Before(waitUntil) && (checkSubscriber1 || checkSubscriber2) {
+		time.Sleep(100 * time.Millisecond)
+		if checkSubscriber1 && checkSubscriber(s.subscriber1) {
+			checkSubscriber1 = false
+		}
+		if checkSubscriber2 && checkSubscriber(s.subscriber2) {
+			checkSubscriber2 = false
+		}
+	}
 
-	// wait for message to be published to other nodes
-	time.Sleep(1 * time.Second)
-	s.Equal([]string{}, s.subscriber1.Events())
-	s.Equal([]string{"hello"}, s.subscriber2.Events())
+	if checkSubscriber1 {
+		s.FailNow("subscriber1 did not receive the message")
+	}
+	if checkSubscriber2 {
+		s.FailNow("subscriber2 did not receive the message")
+	}
 }
