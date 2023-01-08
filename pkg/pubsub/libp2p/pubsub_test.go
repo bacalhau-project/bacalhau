@@ -34,7 +34,7 @@ func (s *PubSubSuite) SetupSuite() {
 	s.NoError(s.node2.Subscribe(context.Background(), s.subscriber2))
 
 	// wait for nodes to discover each other
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 	msg := "setting up suite"
 	s.NoError(s.node1.Publish(context.Background(), msg))
 	s.waitForMessage(msg, true, true)
