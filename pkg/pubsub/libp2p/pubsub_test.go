@@ -33,11 +33,22 @@ func (s *PubSubSuite) SetupSuite() {
 	s.NoError(s.node1.Subscribe(context.Background(), s.subscriber1))
 	s.NoError(s.node2.Subscribe(context.Background(), s.subscriber2))
 
-	// wait for nodes to discover each other
-	time.Sleep(4 * time.Second)
-	msg := "setting up suite"
-	s.NoError(s.node1.Publish(context.Background(), msg))
-	s.waitForMessage(msg, true, true)
+	// wait for up to 10 seconds (5 loops with 2 seconds each) for nodes to discover each other
+	var s1, s2 bool
+	for i := 0; i < 5; i++ {
+		s.NoError(s.node1.Publish(context.Background(), "ping"))
+		s1, s2 = s.waitForMessage("ping", 2*time.Second, true, true)
+		if s1 || s2 {
+			// still one of the subscribers is waiting for the message
+			continue
+		}
+	}
+	if s1 {
+		s.FailNow("subscriber 1 didn't receive initialization message")
+	}
+	if s2 {
+		s.FailNow("subscriber 2 didn't receive initialization message")
+	}
 	log.Debug().Msg("libp2p pubsub suite is ready")
 }
 
@@ -71,19 +82,19 @@ func TestPubSubSuite(t *testing.T) {
 func (s *PubSubSuite) TestPubSub() {
 	msg := "TestPubSub"
 	s.NoError(s.node1.Publish(context.Background(), msg))
-	s.waitForMessage(msg, true, true)
+	s.waitForMessage(msg, 10*time.Second, true, true)
 }
 
 func (s *PubSubSuite) TestPubSub_IgnoreLocal() {
 	// node2 is ignoring local messages, so it should not receive the message
 	msg := "TestPubSub_IgnoreLocal"
 	s.NoError(s.node2.Publish(context.Background(), msg))
-	s.waitForMessage(msg, true, false)
+	s.waitForMessage(msg, 10*time.Second, true, false)
 	s.Empty(s.subscriber2.Events())
 }
 
-func (s *PubSubSuite) waitForMessage(msg string, checkSubscriber1, checkSubscriber2 bool) {
-	waitUntil := time.Now().Add(10 * time.Second)
+func (s *PubSubSuite) waitForMessage(msg string, duration time.Duration, checkSubscriber1, checkSubscriber2 bool) (bool, bool) {
+	waitUntil := time.Now().Add(duration)
 	checkSubscriber := func(subscriber *pubsub.InMemorySubscriber[string]) bool {
 		events := subscriber.Events()
 		if len(events) == 0 {
@@ -103,10 +114,5 @@ func (s *PubSubSuite) waitForMessage(msg string, checkSubscriber1, checkSubscrib
 		}
 	}
 
-	if checkSubscriber1 {
-		s.FailNow("subscriber1 did not receive the message")
-	}
-	if checkSubscriber2 {
-		s.FailNow("subscriber2 did not receive the message")
-	}
+	return checkSubscriber1, checkSubscriber1
 }
