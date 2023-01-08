@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 )
@@ -49,23 +47,8 @@ func (s *PubSubSuite) TearDownSuite() {
 }
 
 func (s *PubSubSuite) createPubSub(ignoreLocal bool, peers ...host.Host) (*PubSub[string], host.Host) {
-	port, err := freeport.GetFreePort()
+	h, err := libp2p_host.NewHostForTest(context.Background(), peers...)
 	s.NoError(err)
-
-	h, err := libp2p_host.NewHost(port)
-	s.NoError(err)
-
-	libp2pPeer := []multiaddr.Multiaddr{}
-	for _, peer := range peers {
-		for _, addrs := range peer.Addrs() {
-			p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + peer.ID().String())
-			s.NoError(p2pAddrErr)
-			libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
-		}
-	}
-	if len(libp2pPeer) > 0 {
-		s.NoError(libp2p_host.ConnectToPeers(context.Background(), h, libp2pPeer))
-	}
 
 	gossipSub, err := libp2p_pubsub.NewGossipSub(context.Background(), h)
 	s.NoError(err)

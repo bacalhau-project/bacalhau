@@ -30,6 +30,9 @@ type ComputeConfigParams struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
+	// interval to publish node info to pubsub network
+	NodeInfoPublisherInterval time.Duration
+
 	SimulatorConfig model.SimulatorConfigCompute
 }
 
@@ -58,6 +61,9 @@ type ComputeConfig struct {
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	// interval to publish node info to pubsub network
+	NodeInfoPublisherInterval time.Duration
 
 	SimulatorConfig model.SimulatorConfigCompute
 }
@@ -89,13 +95,16 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
 	}
+	if params.NodeInfoPublisherInterval == 0 {
+		params.NodeInfoPublisherInterval = DefaultComputeConfig.NodeInfoPublisherInterval
+	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
 	if physicalResourcesProvider == nil {
 		physicalResourcesProvider = DefaultComputeConfig.PhysicalResourcesProvider
 	}
-	physicalResources, err := physicalResourcesProvider.AvailableCapacity(context.Background())
+	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.Background())
 	if err != nil {
 		return
 	}
@@ -132,6 +141,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
+		NodeInfoPublisherInterval:    params.NodeInfoPublisherInterval,
 		SimulatorConfig:              params.SimulatorConfig,
 	}
 

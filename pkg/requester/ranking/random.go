@@ -1,4 +1,4 @@
-package requester
+package ranking
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -25,14 +26,14 @@ func NewRandomNodeRanker(params RandomNodeRankerParams) *RandomNodeRanker {
 	}
 }
 
-func (s *RandomNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []peer.ID) ([]NodeRank, error) {
-	ranks := make([]NodeRank, len(nodes))
+func (s *RandomNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []peer.ID) ([]requester.NodeRank, error) {
+	ranks := make([]requester.NodeRank, len(nodes))
 	for i, node := range nodes {
 		rank, err := s.getRandomRank()
 		if err != nil {
 			return nil, err
 		}
-		ranks[i] = NodeRank{
+		ranks[i] = requester.NodeRank{
 			ID:   node,
 			Rank: rank,
 		}
