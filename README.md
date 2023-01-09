@@ -31,13 +31,18 @@
 ## About
 [Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish. 
 
-Table of Contents
+## Table of Contents
 - [Features](#features)
 - [Getting started](#getting-started)
-- [Learn More)(#learn-more)
-- [Running Bacalhau locally)(#running-bacalhau-locally)
-- [Release a new version)(#release-a-new-version)
+  - [Learn more](#learn-more)
+- [Documentation](#documentation)
+- [Developers guide](#developers-guide)
+- [Running Bacalhau locally](#running-bacalhau-locally)
+- [Releasing a new version](#releasing-a-new-version)
 - [Notes for Dev contributors](#notes-for-dev-contributors)
+- [Contributing](#contributing)
+- [Current state of Bacalhau](current-state-of-bacalhau)
+- [License](#license)
 
 ## Features
 - **Process jobs fast**: Jobs in Bacalhau are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default.
@@ -48,21 +53,26 @@ Table of Contents
 ## Getting started
 To hit the ground running, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation) on how to install and run a job with the Bacalhau client.
 
-## Learn More
+### Learn more
 - Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
 - Get an overview of the [different usecases](https://www.youtube.com/watch?v=gAHaMsTknZM) that you can use with Bacalhau.
+- To see Bacalhau in action, check out the [Bacalhau Examples](https://docs.bacalhau.org/examples/)
+- You can check out this featured example video tutorial [Text to image- Stable Diffusion GPU](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz). You can watch more tutorials [here](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz)
 
-- To see Bacalhau in action, check out the [Bacalhau Examples Repo.
-- See the troubleshooting guide for debugging your functions and Fission installation.
-- Checkout the our coding videos tutorials [Build with Bacalhau](https://www.youtube.com/watch?v=53uY48e1lis)
+## Documentation
+📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
+
+The Bacalhau docs is the best starting point to learn about what Bacalhau. 
+
+## Developers guide
 
 ### Running Bacalhau locally
 
 Developers can spin up bacalhau and run a local demo using the `devstack` command. 
-Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
-Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
 
-### Release a new version
+Please see [docs/running_locally.md](docs/running_locally.md) for instructions. Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
+
+### Releasing a new version
 
 To ship a new version of the CLI & Bacalhau network please follow the instuctions at [docs/create_release.md](docs/create_release.md).
 
@@ -83,15 +93,6 @@ make lint
 ```
 The config lives in `.golangci.yml`
 
-## Documentation
-📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
-
-The Bacalhau docs is the best starting point to learn about what Bacalhau. It is pre-loaded with exciting [examples](https://docs.bacalhau.org/examples/) to showcase Bacalhau abilities and help get you started  
-
-### Videos 🎥
-- Watch this [introductory video](https://youtu.be/WnTlwXHhbcI), for an overview of the Project Bacalhau.
-- Watch this [video](https://www.youtube.com/watch?v=gAHaMsTknZM)to get an overview of the different usecases that you can use with Bacalhau
-- Checkout the our coding videos tutorials [Build with Bacalhau](https://www.youtube.com/watch?v=53uY48e1lis)
 
 ## Contributing 
 **Contributions are more than welcome!**
@@ -103,6 +104,6 @@ If you have any questions (specific or general), do not hesitate to reach out th
 ## Current state of Bacalhau 📈
 Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
 
-## Licence
+## License
 
 [Apache-2.0](./LICENSE)
