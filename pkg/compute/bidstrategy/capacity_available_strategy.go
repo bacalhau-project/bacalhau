@@ -32,7 +32,7 @@ func (s *AvailableCapacityStrategy) ShouldBid(
 func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
-	availableCapacity := s.capacityTracker.AvailableCapacity(ctx).Multi(s.commitFactor)
+	availableCapacity := s.capacityTracker.GetAvailableCapacity(ctx).Multi(s.commitFactor)
 	if !usage.LessThanEq(availableCapacity) {
 		return BidStrategyResponse{
 			ShouldBid: false,

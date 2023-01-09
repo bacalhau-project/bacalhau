@@ -133,7 +133,11 @@ func (p *PubSub[T]) Close(ctx context.Context) (err error) {
 			err = p.topic.Close()
 		}
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	log.Ctx(ctx).Info().Msgf("done closing libp2p pubsub for topic %s", p.topicName)
+	return nil
 }
 
 // compile-time interface assertions
