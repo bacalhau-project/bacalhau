@@ -30,10 +30,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
                 "summary": "Returns debug information on what the current node is doing.",
-                "operationId": "apiServer/debug",
+                "operationId": "debug",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -63,7 +63,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/events",
+                "operationId": "events",
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
@@ -103,9 +103,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/healthz",
+                "operationId": "healthz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -122,10 +122,10 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the id of the host node.",
-                "operationId": "apiServer/id",
+                "operationId": "id",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -155,7 +155,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Simply lists jobs.",
-                "operationId": "pkg/publicapi.list",
+                "operationId": "list",
                 "parameters": [
                     {
                         "description": "Set ` + "`" + `return_all` + "`" + ` to ` + "`" + `true` + "`" + ` to return all jobs on the network (may degrade performance, use with care!).",
@@ -195,9 +195,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/livez",
+                "operationId": "livez",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -221,7 +221,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/localEvents",
+                "operationId": "localEvents",
                 "parameters": [
                     {
                         "description": " ",
@@ -261,9 +261,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/logz",
+                "operationId": "logz",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -281,10 +281,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the peers connected to the host via the transport layer.",
-                "operationId": "apiServer/peers",
+                "operationId": "peers",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -313,9 +313,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/readyz",
+                "operationId": "readyz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -339,7 +339,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the results of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/results",
+                "operationId": "results",
                 "parameters": [
                     {
                         "description": " ",
@@ -386,7 +386,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the state of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/states",
+                "operationId": "states",
                 "parameters": [
                     {
                         "description": " ",
@@ -433,7 +433,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Submits a new job to the network.",
-                "operationId": "pkg/apiServer.submit",
+                "operationId": "submit",
                 "parameters": [
                     {
                         "description": " ",
@@ -473,9 +473,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/varz",
+                "operationId": "varz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -499,10 +499,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the build version running on the server.",
-                "operationId": "apiServer/version",
+                "operationId": "version",
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
@@ -588,6 +588,33 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Engine": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "EngineLanguage": "wraps python_wasm",
+                "EnginePythonWasm": "wraps docker",
+                "engineDone": "must be last",
+                "engineUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "engineUnknown",
+                "EngineNoop",
+                "EngineDocker",
+                "EngineWasm",
+                "EngineLanguage",
+                "EnginePythonWasm",
+                "engineDone"
+            ]
+        },
         "model.Job": {
             "type": "object",
             "properties": {
@@ -600,37 +627,19 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "The status of the job: where are the nodes at, what are the events",
-                    "$ref": "#/definitions/model.JobStatus"
-                }
-            }
-        },
-        "model.JobCreatePayload": {
-            "type": "object",
-            "required": [
-                "APIVersion",
-                "ClientID",
-                "Spec"
-            ],
-            "properties": {
-                "APIVersion": {
-                    "type": "string",
-                    "example": "V1beta1"
-                },
-                "ClientID": {
-                    "description": "the id of the client that is submitting the job",
-                    "type": "string"
-                },
-                "Context": {
-                    "description": "Optional base64-encoded tar file that will be pinned to IPFS and\nmounted as storage for the job. Not part of the spec so we don't\nflood the transport layer with it (potentially very large).",
-                    "type": "string"
-                },
-                "Spec": {
-                    "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -649,10 +658,14 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "this is only defined in \"update_deal\" events",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobEventType"
                 },
                 "EventTime": {
                     "type": "string",
@@ -660,7 +673,11 @@ const docTemplate = `{
                 },
                 "JobExecutionPlan": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "JobID": {
                     "type": "string",
@@ -671,7 +688,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "SenderPublicKey": {
                     "type": "array",
@@ -690,7 +711,11 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "type": "string",
@@ -712,6 +737,51 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+            ],
+            "x-enum-comments": {
+                "jobEventDone": "must be last",
+                "jobEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobEventUnknown",
+                "JobEventInitialSubmission",
+                "JobEventCreated",
+                "JobEventDealUpdated",
+                "JobEventBid",
+                "JobEventBidAccepted",
+                "JobEventBidRejected",
+                "JobEventBidCancelled",
+                "JobEventRunning",
+                "JobEventComputeError",
+                "JobEventResultsProposed",
+                "JobEventResultsAccepted",
+                "JobEventResultsRejected",
+                "JobEventResultsPublished",
+                "JobEventError",
+                "JobEventInvalidRequest",
+                "jobEventDone"
+            ]
+        },
         "model.JobExecutionPlan": {
             "type": "object",
             "properties": {
@@ -725,7 +795,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobLocalEventType"
                 },
                 "JobID": {
                     "type": "string"
@@ -737,6 +807,31 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.JobLocalEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "jobLocalEventDone": "must be last",
+                "jobLocalEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobLocalEventUnknown",
+                "JobLocalEventSelected",
+                "JobLocalEventBid",
+                "JobLocalEventBidAccepted",
+                "JobLocalEventBidRejected",
+                "JobLocalEventVerified",
+                "jobLocalEventDone"
+            ]
         },
         "model.JobNodeState": {
             "type": "object",
@@ -778,7 +873,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "ShardIndex": {
                     "description": "what shard is this we are running",
@@ -786,7 +885,11 @@ const docTemplate = `{
                 },
                 "State": {
                     "description": "what is the state of the shard on this node",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStateType"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "an arbitrary status message",
@@ -861,7 +964,11 @@ const docTemplate = `{
                 },
                 "JobContext": {
                     "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "Language": {
                     "description": "e.g. python",
@@ -922,6 +1029,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+            ],
+            "x-enum-comments": {
+                "jobStateDone": "must be last",
+                "jobStateUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobStateUnknown",
+                "JobStateBidding",
+                "JobStateWaiting",
+                "JobStateRunning",
+                "JobStateVerifying",
+                "JobStateCancelled",
+                "JobStateError",
+                "JobStateCompleted",
+                "jobStateDone"
+            ]
+        },
         "model.JobStatus": {
             "type": "object",
             "properties": {
@@ -934,7 +1070,11 @@ const docTemplate = `{
                 },
                 "JobState": {
                     "description": "The current state of the job",
-                    "$ref": "#/definitions/model.JobState"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobState"
+                        }
+                    ]
                 },
                 "LocalJobEvents": {
                     "description": "All local events associated with the job",
@@ -981,6 +1121,29 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "model.Publisher": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+            ],
+            "x-enum-comments": {
+                "publisherDone": "must be last",
+                "publisherUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "publisherUnknown",
+                "PublisherNoop",
+                "PublisherIpfs",
+                "PublisherFilecoin",
+                "PublisherEstuary",
+                "publisherDone"
+            ]
         },
         "model.ResourceUsageConfig": {
             "type": "object",
@@ -1050,7 +1213,11 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "The deal the client has made, such as which job bids they have accepted.",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "DoNotTrack": {
                     "description": "Do not track specified by the client",
@@ -1058,37 +1225,61 @@ const docTemplate = `{
                 },
                 "Docker": {
                     "description": "executor specific data",
-                    "$ref": "#/definitions/model.JobSpecDocker"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecDocker"
+                        }
+                    ]
                 },
                 "Engine": {
                     "description": "e.g. docker or language",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Engine"
+                        }
+                    ]
                 },
                 "ExecutionPlan": {
                     "description": "how will this job be executed by nodes on the network",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Publisher"
+                        }
+                    ]
                 },
                 "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",
-                    "$ref": "#/definitions/model.ResourceUsageConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ResourceUsageConfig"
+                        }
+                    ]
                 },
                 "Sharding": {
                     "description": "the sharding config for this job\ndescribes how the job might be split up into parallel shards",
-                    "$ref": "#/definitions/model.JobShardingConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobShardingConfig"
+                        }
+                    ]
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
                 "Verifier": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Verifier"
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
@@ -1108,6 +1299,31 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "model.StorageSourceType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "storageSourceDone": "must be last",
+                "storageSourceUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "storageSourceUnknown",
+                "StorageSourceIPFS",
+                "StorageSourceURLDownload",
+                "StorageSourceFilecoinUnsealed",
+                "StorageSourceFilecoin",
+                "StorageSourceEstuary",
+                "storageSourceDone"
+            ]
         },
         "model.StorageSpec": {
             "type": "object",
@@ -1131,7 +1347,11 @@ const docTemplate = `{
                 },
                 "StorageSource": {
                     "description": "StorageSource is the abstract source of the data. E.g. a storage source\nmight be a URL download, but doesn't specify how the execution engine\ndoes the download or what it will do with the downloaded data.",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSourceType"
+                        }
+                    ]
                 },
                 "URL": {
                     "description": "Source URL of the data",
@@ -1153,6 +1373,25 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "model.Verifier": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "verifierDone": "must be last",
+                "verifierUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "verifierUnknown",
+                "VerifierNoop",
+                "VerifierDeterministic",
+                "verifierDone"
+            ]
         },
         "publicapi.eventsRequest": {
             "type": "object",
@@ -1302,7 +1541,10 @@ const docTemplate = `{
                 },
                 "job_create_payload": {
                     "description": "The data needed to submit and run a job on the network:",
-                    "$ref": "#/definitions/model.JobCreatePayload"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",

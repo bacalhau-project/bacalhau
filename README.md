@@ -65,7 +65,10 @@ Bacalhau's CI pipeline performs a variety of linting and formatting checks on ne
 To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
 
 ```bash
-git config core.hooksPath ./githooks
+make install-pre-commit
+
+# check if pre-commit works
+make precommit
 ```
 
 If you want to run the linter manually:

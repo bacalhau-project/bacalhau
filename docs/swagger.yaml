@@ -47,6 +47,29 @@ definitions:
           is some large proportion of the size of the network).
         type: integer
     type: object
+  model.Engine:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    type: integer
+    x-enum-comments:
+      EngineLanguage: wraps python_wasm
+      EnginePythonWasm: wraps docker
+      engineDone: must be last
+      engineUnknown: must be first
+    x-enum-varnames:
+    - engineUnknown
+    - EngineNoop
+    - EngineDocker
+    - EngineWasm
+    - EngineLanguage
+    - EnginePythonWasm
+    - engineDone
   model.Job:
     properties:
       APIVersion:
@@ -55,34 +78,14 @@ definitions:
       Metadata:
         $ref: '#/definitions/model.Metadata'
       Spec:
-        $ref: '#/definitions/model.Spec'
+        allOf:
+        - $ref: '#/definitions/model.Spec'
         description: The specification of this job.
       Status:
-        $ref: '#/definitions/model.JobStatus'
+        allOf:
+        - $ref: '#/definitions/model.JobStatus'
         description: 'The status of the job: where are the nodes at, what are the
           events'
-    type: object
-  model.JobCreatePayload:
-    properties:
-      APIVersion:
-        example: V1beta1
-        type: string
-      ClientID:
-        description: the id of the client that is submitting the job
-        type: string
-      Context:
-        description: |-
-          Optional base64-encoded tar file that will be pinned to IPFS and
-          mounted as storage for the job. Not part of the spec so we don't
-          flood the transport layer with it (potentially very large).
-        type: string
-      Spec:
-        $ref: '#/definitions/model.Spec'
-        description: The specification of this job.
-    required:
-    - APIVersion
-    - ClientID
-    - Spec
     type: object
   model.JobEvent:
     properties:
@@ -96,15 +99,17 @@ definitions:
         example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
         type: string
       Deal:
-        $ref: '#/definitions/model.Deal'
+        allOf:
+        - $ref: '#/definitions/model.Deal'
         description: this is only defined in "update_deal" events
       EventName:
-        type: integer
+        $ref: '#/definitions/model.JobEventType'
       EventTime:
         example: "2022-11-17T13:32:55.756658941Z"
         type: string
       JobExecutionPlan:
-        $ref: '#/definitions/model.JobExecutionPlan'
+        allOf:
+        - $ref: '#/definitions/model.JobExecutionPlan'
         description: this is only defined in "create" events
       JobID:
         example: 9304c616-291f-41ad-b862-54e133c0149e
@@ -112,7 +117,8 @@ definitions:
       PublishedResult:
         $ref: '#/definitions/model.StorageSpec'
       RunOutput:
-        $ref: '#/definitions/model.RunCommandResult'
+        allOf:
+        - $ref: '#/definitions/model.RunCommandResult'
         description: RunOutput of the job
       SenderPublicKey:
         items:
@@ -126,7 +132,8 @@ definitions:
         example: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
         type: string
       Spec:
-        $ref: '#/definitions/model.Spec'
+        allOf:
+        - $ref: '#/definitions/model.Spec'
         description: this is only defined in "create" events
       Status:
         example: 'Got results proposal of length: 0'
@@ -144,6 +151,47 @@ definitions:
       VerificationResult:
         $ref: '#/definitions/model.VerificationResult'
     type: object
+  model.JobEventType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    type: integer
+    x-enum-comments:
+      jobEventDone: must be last
+      jobEventUnknown: must be first
+    x-enum-varnames:
+    - jobEventUnknown
+    - JobEventInitialSubmission
+    - JobEventCreated
+    - JobEventDealUpdated
+    - JobEventBid
+    - JobEventBidAccepted
+    - JobEventBidRejected
+    - JobEventBidCancelled
+    - JobEventRunning
+    - JobEventComputeError
+    - JobEventResultsProposed
+    - JobEventResultsAccepted
+    - JobEventResultsRejected
+    - JobEventResultsPublished
+    - JobEventError
+    - JobEventInvalidRequest
+    - jobEventDone
   model.JobExecutionPlan:
     properties:
       ShardsTotal:
@@ -156,7 +204,7 @@ definitions:
   model.JobLocalEvent:
     properties:
       EventName:
-        type: integer
+        $ref: '#/definitions/model.JobLocalEventType'
       JobID:
         type: string
       ShardIndex:
@@ -164,6 +212,27 @@ definitions:
       TargetNodeID:
         type: string
     type: object
+  model.JobLocalEventType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    type: integer
+    x-enum-comments:
+      jobLocalEventDone: must be last
+      jobLocalEventUnknown: must be first
+    x-enum-varnames:
+    - jobLocalEventUnknown
+    - JobLocalEventSelected
+    - JobLocalEventBid
+    - JobLocalEventBidAccepted
+    - JobLocalEventBidRejected
+    - JobLocalEventVerified
+    - jobLocalEventDone
   model.JobNodeState:
     properties:
       Shards:
@@ -193,14 +262,16 @@ definitions:
       PublishedResults:
         $ref: '#/definitions/model.StorageSpec'
       RunOutput:
-        $ref: '#/definitions/model.RunCommandResult'
+        allOf:
+        - $ref: '#/definitions/model.RunCommandResult'
         description: RunOutput of the job
       ShardIndex:
         description: what shard is this we are running
         type: integer
       State:
+        allOf:
+        - $ref: '#/definitions/model.JobStateType'
         description: what is the state of the shard on this node
-        type: integer
       Status:
         description: an arbitrary status message
         type: string
@@ -262,7 +333,8 @@ definitions:
         description: must this job be run in a deterministic context?
         type: boolean
       JobContext:
-        $ref: '#/definitions/model.StorageSpec'
+        allOf:
+        - $ref: '#/definitions/model.StorageSpec'
         description: context is a tar file stored in ipfs, containing e.g. source
           code and requirements
       Language:
@@ -314,6 +386,31 @@ definitions:
           $ref: '#/definitions/model.JobNodeState'
         type: object
     type: object
+  model.JobStateType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    type: integer
+    x-enum-comments:
+      jobStateDone: must be last
+      jobStateUnknown: must be first
+    x-enum-varnames:
+    - jobStateUnknown
+    - JobStateBidding
+    - JobStateWaiting
+    - JobStateRunning
+    - JobStateVerifying
+    - JobStateCancelled
+    - JobStateError
+    - JobStateCompleted
+    - jobStateDone
   model.JobStatus:
     properties:
       JobEvents:
@@ -322,7 +419,8 @@ definitions:
           $ref: '#/definitions/model.JobEvent'
         type: array
       JobState:
-        $ref: '#/definitions/model.JobState'
+        allOf:
+        - $ref: '#/definitions/model.JobState'
         description: The current state of the job
       LocalJobEvents:
         description: All local events associated with the job
@@ -356,6 +454,25 @@ definitions:
       ShardIndex:
         type: integer
     type: object
+  model.Publisher:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    type: integer
+    x-enum-comments:
+      publisherDone: must be last
+      publisherUnknown: must be first
+    x-enum-varnames:
+    - publisherUnknown
+    - PublisherNoop
+    - PublisherIpfs
+    - PublisherFilecoin
+    - PublisherEstuary
+    - publisherDone
   model.ResourceUsageConfig:
     properties:
       CPU:
@@ -407,31 +524,38 @@ definitions:
           $ref: '#/definitions/model.StorageSpec'
         type: array
       Deal:
-        $ref: '#/definitions/model.Deal'
+        allOf:
+        - $ref: '#/definitions/model.Deal'
         description: The deal the client has made, such as which job bids they have
           accepted.
       DoNotTrack:
         description: Do not track specified by the client
         type: boolean
       Docker:
-        $ref: '#/definitions/model.JobSpecDocker'
+        allOf:
+        - $ref: '#/definitions/model.JobSpecDocker'
         description: executor specific data
       Engine:
+        allOf:
+        - $ref: '#/definitions/model.Engine'
         description: e.g. docker or language
-        type: integer
       ExecutionPlan:
-        $ref: '#/definitions/model.JobExecutionPlan'
+        allOf:
+        - $ref: '#/definitions/model.JobExecutionPlan'
         description: how will this job be executed by nodes on the network
       Language:
         $ref: '#/definitions/model.JobSpecLanguage'
       Publisher:
+        allOf:
+        - $ref: '#/definitions/model.Publisher'
         description: there can be multiple publishers for the job
-        type: integer
       Resources:
-        $ref: '#/definitions/model.ResourceUsageConfig'
+        allOf:
+        - $ref: '#/definitions/model.ResourceUsageConfig'
         description: the compute (cpu, ram) resources this job requires
       Sharding:
-        $ref: '#/definitions/model.JobShardingConfig'
+        allOf:
+        - $ref: '#/definitions/model.JobShardingConfig'
         description: |-
           the sharding config for this job
           describes how the job might be split up into parallel shards
@@ -441,7 +565,7 @@ definitions:
           This includes the time required to run, verify and publish results
         type: number
       Verifier:
-        type: integer
+        $ref: '#/definitions/model.Verifier'
       Wasm:
         $ref: '#/definitions/model.JobSpecWasm'
       inputs:
@@ -460,6 +584,27 @@ definitions:
           $ref: '#/definitions/model.StorageSpec'
         type: array
     type: object
+  model.StorageSourceType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    type: integer
+    x-enum-comments:
+      storageSourceDone: must be last
+      storageSourceUnknown: must be first
+    x-enum-varnames:
+    - storageSourceUnknown
+    - StorageSourceIPFS
+    - StorageSourceURLDownload
+    - StorageSourceFilecoinUnsealed
+    - StorageSourceFilecoin
+    - StorageSourceEstuary
+    - storageSourceDone
   model.StorageSpec:
     properties:
       CID:
@@ -479,11 +624,12 @@ definitions:
         example: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
         type: string
       StorageSource:
+        allOf:
+        - $ref: '#/definitions/model.StorageSourceType'
         description: |-
           StorageSource is the abstract source of the data. E.g. a storage source
           might be a URL download, but doesn't specify how the execution engine
           does the download or what it will do with the downloaded data.
-        type: integer
       URL:
         description: Source URL of the data
         type: string
@@ -502,6 +648,21 @@ definitions:
       Result:
         type: boolean
     type: object
+  model.Verifier:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-comments:
+      verifierDone: must be last
+      verifierUnknown: must be first
+    x-enum-varnames:
+    - verifierUnknown
+    - VerifierNoop
+    - VerifierDeterministic
+    - verifierDone
   publicapi.eventsRequest:
     properties:
       client_id:
@@ -597,8 +758,10 @@ definitions:
         description: 'The base64-encoded public key of the client:'
         type: string
       job_create_payload:
-        $ref: '#/definitions/model.JobCreatePayload'
         description: 'The data needed to submit and run a job on the network:'
+        items:
+          type: integer
+        type: array
       signature:
         description: 'A base64-encoded signature of the data, signed by the client:'
         type: string
@@ -662,7 +825,7 @@ info:
 paths:
   /debug:
     get:
-      operationId: apiServer/debug
+      operationId: debug
       produces:
       - application/json
       responses:
@@ -676,7 +839,7 @@ paths:
             type: string
       summary: Returns debug information on what the current node is doing.
       tags:
-      - Health
+      - Utils
   /events:
     post:
       consumes:
@@ -791,7 +954,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/events
+      operationId: events
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -823,7 +986,7 @@ paths:
       - Job
   /healthz:
     get:
-      operationId: apiServer/healthz
+      operationId: healthz
       produces:
       - application/json
       responses:
@@ -832,10 +995,10 @@ paths:
           schema:
             $ref: '#/definitions/types.HealthInfo'
       tags:
-      - Health
+      - Utils
   /id:
     get:
-      operationId: apiServer/id
+      operationId: id
       produces:
       - text/plain
       responses:
@@ -849,7 +1012,7 @@ paths:
             type: string
       summary: Returns the id of the host node.
       tags:
-      - Misc
+      - Utils
   /list:
     post:
       consumes:
@@ -1046,7 +1209,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi.list
+      operationId: list
       parameters:
       - description: Set `return_all` to `true` to return all jobs on the network
           (may degrade performance, use with care!).
@@ -1075,7 +1238,7 @@ paths:
       - Job
   /livez:
     get:
-      operationId: apiServer/livez
+      operationId: livez
       produces:
       - text/plain
       responses:
@@ -1084,14 +1247,14 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /local_events:
     post:
       consumes:
       - application/json
       description: Local events (e.g. Selected, BidAccepted, Verified) are useful
         to track the progress of a job.
-      operationId: pkg/publicapi/localEvents
+      operationId: localEvents
       parameters:
       - description: ' '
         in: body
@@ -1120,7 +1283,7 @@ paths:
       - Job
   /logz:
     get:
-      operationId: apiServer/logz
+      operationId: logz
       produces:
       - text/plain
       responses:
@@ -1129,7 +1292,7 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /peers:
     get:
       description: |-
@@ -1147,7 +1310,7 @@ paths:
           ]
         }
         ```
-      operationId: apiServer/peers
+      operationId: peers
       produces:
       - application/json
       responses:
@@ -1165,10 +1328,10 @@ paths:
             type: string
       summary: Returns the peers connected to the host via the transport layer.
       tags:
-      - Misc
+      - Utils
   /readyz:
     get:
-      operationId: apiServer/readyz
+      operationId: readyz
       produces:
       - text/plain
       responses:
@@ -1177,7 +1340,7 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /results:
     post:
       consumes:
@@ -1199,7 +1362,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/results
+      operationId: results
       parameters:
       - description: ' '
         in: body
@@ -1286,7 +1449,7 @@ paths:
           }
         }
         ```
-      operationId: pkg/publicapi/states
+      operationId: states
       parameters:
       - description: ' '
         in: body
@@ -1323,7 +1486,7 @@ paths:
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
         `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
-      operationId: pkg/apiServer.submit
+      operationId: submit
       parameters:
       - description: ' '
         in: body
@@ -1351,7 +1514,7 @@ paths:
       - Job
   /varz:
     get:
-      operationId: apiServer/varz
+      operationId: varz
       produces:
       - application/json
       responses:
@@ -1362,14 +1525,14 @@ paths:
               type: integer
             type: array
       tags:
-      - Health
+      - Utils
   /version:
     post:
       consumes:
       - application/json
       description: See https://github.com/filecoin-project/bacalhau/releases for a
         complete list of `gitversion` tags.
-      operationId: apiServer/version
+      operationId: version
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -1397,7 +1560,7 @@ paths:
             type: string
       summary: Returns the build version running on the server.
       tags:
-      - Misc
+      - Utils
 schemes:
 - http
 swagger: "2.0"

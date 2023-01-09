@@ -29,17 +29,18 @@ type listResponse struct {
 }
 
 // list godoc
-// @ID                   pkg/publicapi.list
-// @Summary              Simply lists jobs.
-// @Description.markdown endpoints_list
-// @Tags                 Job
-// @Accept               json
-// @Produce              json
-// @Param                listRequest body     listRequest true "Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
-// @Success              200         {object} listResponse
-// @Failure              400         {object} string
-// @Failure              500         {object} string
-// @Router               /list [post]
+//
+//	@ID						list
+//	@Summary				Simply lists jobs.
+//	@Description.markdown	endpoints_list
+//	@Tags					Job
+//	@Accept					json
+//	@Produce				json
+//	@Param					listRequest	body		listRequest	true	"Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
+//	@Success				200			{object}	listResponse
+//	@Failure				400			{object}	string
+//	@Failure				500			{object}	string
+//	@Router					/list [post]
 //
 //nolint:lll
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {

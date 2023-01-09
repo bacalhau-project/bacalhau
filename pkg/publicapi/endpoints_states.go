@@ -20,17 +20,18 @@ type stateResponse struct {
 }
 
 // states godoc
-// @ID                   pkg/publicapi/states
-// @Summary              Returns the state of the job-id specified in the body payload.
-// @Description.markdown endpoints_states
-// @Tags                 Job
-// @Accept               json
-// @Produce              json
-// @Param                stateRequest body     stateRequest true " "
-// @Success              200          {object} stateResponse
-// @Failure              400          {object} string
-// @Failure              500          {object} string
-// @Router               /states [post]
+//
+//	@ID						states
+//	@Summary				Returns the state of the job-id specified in the body payload.
+//	@Description.markdown	endpoints_states
+//	@Tags					Job
+//	@Accept					json
+//	@Produce				json
+//	@Param					stateRequest	body		stateRequest	true	" "
+//	@Success				200				{object}	stateResponse
+//	@Failure				400				{object}	string
+//	@Failure				500				{object}	string
+//	@Router					/states [post]
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/states")
 	defer span.End()

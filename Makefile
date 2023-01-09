@@ -112,6 +112,17 @@ swagger-docs:
 	@echo "Swagger docs built."
 
 ################################################################################
+# Target: clients
+################################################################################
+# Generate Bacalhau API clients but only if the swagger.json has actually been
+# updated because the clients include random numbers and timestamps and hence
+# will generate a lot of noisy diffs if regenerated all of the time
+.PHONY: clients
+clients:
+	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
+		cd clients && ${MAKE} -j all) || true
+
+################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
@@ -221,12 +232,13 @@ all_schemas: ${ALL_SCHEMAS}
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
+	cd python && make unittest
 
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
-
+	
 .PHONY: grc-test
 grc-test:
 	grc go test ./... -v

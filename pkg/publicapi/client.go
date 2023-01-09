@@ -273,15 +273,20 @@ func (apiClient *APIClient) Submit(
 	if err != nil {
 		return &model.Job{}, err
 	}
+	jsonRaw := json.RawMessage(jsonData)
+	log.Debug().Msgf("jsonRaw str: %s", string(jsonRaw))
+	log.Debug().Msgf("jsonRaw bytes: %v", jsonRaw)
 
-	signature, err := system.SignForClient(jsonData)
+	// sign the raw bytes representation of model.JobCreatePayload
+	signature, err := system.SignForClient(jsonRaw)
 	if err != nil {
 		return &model.Job{}, err
 	}
+	log.Debug().Msgf("signature: %s", signature)
 
 	var res submitResponse
 	req := submitRequest{
-		JobCreatePayload: data,
+		JobCreatePayload: &jsonRaw,
 		ClientSignature:  signature,
 		ClientPublicKey:  system.GetClientPublicKey(),
 	}

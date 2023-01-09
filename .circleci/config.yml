@@ -479,23 +479,23 @@ jobs:
             golangci-lint version
       - run:
           name: Install Swagger
-          command: go install github.com/swaggo/swag/cmd/swag@v1.8.7
+          command:
+            go install github.com/swaggo/swag/cmd/swag@v1.8.9-rc3
+      - run:
+          name: Install swagger-codegen
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
       - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
       - run:
-          name: Install golangci-lint
-          command: |
-            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-            # binary will be /usr/local/go/bin/bin/golangci-lint
-            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-            # This breaks normal pathing. So just installing in ./bin/
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-            golangci-lint version
-      - run:
-          name: Build Swagger Docs
-          command: make swagger-docs
+          name: Build Swagger Docs and Clients
+          command:
+            make swagger-docs clients
 
       - when:
           condition:
@@ -761,13 +761,8 @@ workflows:
                 target_arch: "arm64"
                 run_tests: false
                 build_tags: ""
-          filters: &filters_tags_only
-            branches:
-              ignore: /.*/ # don't run on any branches - only tags
-            tags:
-              # only run on tags that look like release tags e.g. v0.1.2 or
-              # v0.1.3alpha19 (actually v0.1.3anything...)
-              only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+          filters:
+            <<: *filters_tags_only
       - release:
           name: release-all-binaries
           requires:
