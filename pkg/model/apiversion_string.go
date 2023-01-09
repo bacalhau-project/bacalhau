@@ -8,15 +8,15 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[unknown-0]
+	_ = x[apiVersionUnknown-0]
 	_ = x[V1alpha1-1]
 	_ = x[V1beta1-2]
-	_ = x[done-3]
+	_ = x[apiVersionDone-3]
 }
 
-const _APIVersion_name = "unknownV1alpha1V1beta1done"
+const _APIVersion_name = "apiVersionUnknownV1alpha1V1beta1apiVersionDone"
 
-var _APIVersion_index = [...]uint8{0, 7, 15, 22, 26}
+var _APIVersion_index = [...]uint8{0, 17, 25, 32, 46}
 
 func (i APIVersion) String() string {
 	if i < 0 || i >= APIVersion(len(_APIVersion_index)-1) {

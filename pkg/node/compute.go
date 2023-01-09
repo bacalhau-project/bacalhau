@@ -28,6 +28,7 @@ type Compute struct {
 	ExecutionStore     store.ExecutionStore
 	frontendProxy      pubsub.FrontendEventProxy
 	debugInfoProviders []model.DebugInfoProvider
+	capacityTracker    capacity.Tracker
 }
 
 //nolint:funlen
@@ -48,6 +49,7 @@ func NewComputeNode(
 		MaxCapacity: config.TotalResourceLimits,
 	})
 	debugInfoProviders = append(debugInfoProviders, sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
+		Name:            "available_capacity",
 		CapacityTracker: capacityTracker,
 	}))
 
@@ -65,12 +67,13 @@ func NewComputeNode(
 	})
 
 	baseRunner := backend.NewBaseService(backend.BaseServiceParams{
-		ID:         nodeID,
-		Callback:   backendCallback,
-		Store:      executionStore,
-		Executors:  executors,
-		Verifiers:  verifiers,
-		Publishers: publishers,
+		ID:              nodeID,
+		Callback:        backendCallback,
+		Store:           executionStore,
+		Executors:       executors,
+		Verifiers:       verifiers,
+		Publishers:      publishers,
+		SimulatorConfig: config.SimulatorConfig,
 	})
 
 	bufferRunner := backend.NewServiceBuffer(backend.ServiceBufferParams{
@@ -81,6 +84,7 @@ func NewComputeNode(
 		BackoffDuration:            50 * time.Millisecond,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
+		Name:          "running_jobs",
 		BackendBuffer: bufferRunner,
 	})
 	debugInfoProviders = append(debugInfoProviders, runningInfoProvider)
@@ -162,5 +166,6 @@ func NewComputeNode(
 		ExecutionStore:     executionStore,
 		frontendProxy:      frontendProxy,
 		debugInfoProviders: debugInfoProviders,
+		capacityTracker:    capacityTracker,
 	}
 }

@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -15,6 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const NodeAnnounceInterval = 10 * time.Second
+
 // Node configuration
 type NodeConfig struct {
 	IPFSClient           *ipfs.Client
@@ -27,7 +30,6 @@ type NodeConfig struct {
 	HostID               string
 	APIPort              int
 	MetricsPort          int
-	IsBadActor           bool
 	ComputeConfig        ComputeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
 	LotusConfig          *filecoinlotus.PublisherConfig
@@ -124,6 +126,8 @@ func NewNode(
 	localEventConsumer := eventhandler.NewChainedLocalEventHandler(system.NewNoopContextProvider())
 	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 	jobEventPublisher := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+	nodeEventConsumer := eventhandler.NewChainedNodeEventHandler(tracerContextProvider)
+	nodeEventPublisher := eventhandler.NewChainedNodeEventHandler(tracerContextProvider)
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
@@ -203,9 +207,17 @@ func NewNode(
 		// update the job node state in the local DB
 		localDBEventHandler,
 	)
+	nodeEventConsumer.AddHandlers(
+		// dispatches events to listening websockets
+		apiServer,
+	)
+	nodeEventPublisher.AddHandlers(
+		eventhandler.NodeEventHandlerFunc(config.Transport.PublishNode),
+	)
 
 	// subscribe the job event handler to the transport
 	config.Transport.Subscribe(ctx, jobEventConsumer.HandleJobEvent)
+	config.Transport.SubscribeNode(ctx, nodeEventConsumer.HandleNodeEvent)
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
@@ -219,6 +231,15 @@ func NewNode(
 		HostID:         config.HostID,
 		metricsPort:    config.MetricsPort,
 	}
+
+	nodeEventProducer(
+		ctx,
+		config.Transport,
+		computeNode.capacityTracker,
+		computeNode.debugInfoProviders,
+		nodeEventPublisher,
+		NodeAnnounceInterval,
+	)
 
 	return node, nil
 }

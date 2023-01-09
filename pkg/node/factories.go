@@ -98,8 +98,7 @@ func (f *StandardExecutorsFactory) Get(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardExecutorOptions{
-			DockerID:   fmt.Sprintf("bacalhau-%s", nodeConfig.HostID),
-			IsBadActor: nodeConfig.IsBadActor,
+			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.HostID),
 			Storage: executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress:     nodeConfig.IPFSClient.APIAddress(),
 				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,

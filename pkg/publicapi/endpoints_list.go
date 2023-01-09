@@ -24,9 +24,13 @@ type listRequest struct {
 	SortReverse bool                `json:"sort_reverse"`
 }
 
+type ListRequest = listRequest
+
 type listResponse struct {
 	Jobs []*model.Job `json:"jobs"`
 }
+
+type ListResponse = listResponse
 
 // list godoc
 // @ID                   pkg/publicapi.list
@@ -46,7 +50,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()
 
-	var listReq listRequest
+	var listReq ListRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -72,7 +76,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(listResponse{
+	err = json.NewEncoder(res).Encode(ListResponse{
 		Jobs: jobList,
 	})
 	if err != nil {
@@ -81,7 +85,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest) ([]*model.Job, error) {
+func (apiServer *APIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 

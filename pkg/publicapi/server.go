@@ -70,6 +70,9 @@ type APIServer struct {
 	// jobId or "" (for all events) -> connections for that subscription
 	Websockets      map[string][]*websocket.Conn
 	WebsocketsMutex sync.RWMutex
+
+	NodeWebsockets      []*websocket.Conn
+	NodeWebsocketsMutex sync.RWMutex
 }
 
 func init() { //nolint:gochecknoinits
@@ -174,6 +177,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
 	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
 	sm.HandleFunc("/websocket", apiServer.websocket)
+	sm.HandleFunc("/node/websocket", apiServer.websocketNode)
 	sm.Handle("/metrics", promhttp.Handler())
 	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 

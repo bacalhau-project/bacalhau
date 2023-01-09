@@ -29,14 +29,15 @@ import (
 )
 
 type DevStackOptions struct {
-	NumberOfNodes        int    // Number of nodes to start in the cluster
-	NumberOfBadActors    int    // Number of nodes to be bad actors
-	Peer                 string // Connect node 0 to another network node
-	PublicIPFSMode       bool   // Use public IPFS nodes
-	LocalNetworkLotus    bool
-	FilecoinUnsealedPath string
-	EstuaryAPIKey        string
-	SimulatorURL         string // if this is set, we will use the simulator transport
+	NumberOfNodes              int    // Number of nodes to start in the cluster
+	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
+	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
+	Peer                       string // Connect node 0 to another network node
+	PublicIPFSMode             bool   // Use public IPFS nodes
+	LocalNetworkLotus          bool
+	FilecoinUnsealedPath       string
+	EstuaryAPIKey              string
+	SimulatorURL               string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -230,7 +231,19 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Create and Run Node
 		//////////////////////////////////////
-		isBadActor := (options.NumberOfBadActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadActors)
+
+		// here is where we can parse string based CLI options
+		// into more meaningful model.SimulatorConfig values
+		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadComputeActors)
+		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadRequesterActors)
+
+		if isBadComputeActor {
+			computeConfig.SimulatorConfig.IsBadActor = isBadComputeActor
+		}
+
+		if isBadRequesterActor {
+			requesterNodeConfig.SimulatorConfig.IsBadActor = isBadRequesterActor
+		}
 
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
@@ -245,7 +258,6 @@ func NewDevStack(
 			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
-			IsBadActor:           isBadActor,
 		}
 
 		if lotus != nil {

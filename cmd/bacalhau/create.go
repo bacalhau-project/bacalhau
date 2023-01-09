@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -143,6 +144,32 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		if err != nil {
 			Fatal(cmd, userstrings.JobSpecBad, 1)
 			return err
+		}
+	} else if _, isTask := rawMap["with"]; isTask {
+		// Else it might be a IPVM Task in JSON format
+		var task *model.Task
+		task, taskErr := model.UnmarshalIPLD[model.Task](byteResult, json.Decode, model.UCANTaskSchema)
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
+		}
+
+		job, taskErr := model.NewJobWithSaneProductionDefaults()
+		if taskErr != nil {
+			panic(taskErr)
+		}
+
+		spec, taskErr := task.ToSpec()
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
+		}
+
+		job.Spec = *spec
+		byteResult, taskErr = model.YAMLMarshalWithMax(job)
+		if taskErr != nil {
+			Fatal(cmd, userstrings.JobSpecBad, 1)
+			return taskErr
 		}
 	}
 

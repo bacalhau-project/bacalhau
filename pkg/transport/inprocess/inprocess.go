@@ -92,10 +92,18 @@ func (t *InProcessTransport) Publish(ctx context.Context, ev model.JobEvent) err
 	}
 }
 
+func (t *InProcessTransport) PublishNode(ctx context.Context, ev model.NodeEvent) error {
+	return nil
+}
+
 func (t *InProcessTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
+}
+
+func (t *InProcessTransport) SubscribeNode(ctx context.Context, fn transport.SubscribeFnNode) {
+
 }
 
 /*

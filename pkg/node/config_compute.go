@@ -56,6 +56,8 @@ type ComputeConfig struct {
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	SimulatorConfig model.SimulatorConfigCompute
 }
 
 func NewComputeConfigWithDefaults() ComputeConfig {

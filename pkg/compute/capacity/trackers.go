@@ -40,6 +40,10 @@ func (t *LocalTracker) AddIfHasCapacity(ctx context.Context, usage model.Resourc
 	return false
 }
 
+func (t *LocalTracker) TotalCapacity(ctx context.Context) model.ResourceUsageData {
+	return t.maxCapacity
+}
+
 func (t *LocalTracker) AvailableCapacity(ctx context.Context) model.ResourceUsageData {
 	t.mu.Lock()
 	defer t.mu.Unlock()
