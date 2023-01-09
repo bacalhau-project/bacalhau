@@ -37,10 +37,10 @@
   - [Learn more](#learn-more)
 - [Documentation](#documentation)
 - [Developers guide](#developers-guide)
-- [Running Bacalhau locally](#running-bacalhau-locally)
-- [Releasing a new version](#releasing-a-new-version)
-- [Notes for Dev contributors](#notes-for-dev-contributors)
-- [Contributing](#contributing)
+  - [Running Bacalhau locally](#running-bacalhau-locally)
+  - [Releasing a new version](#releasing-a-new-version)
+  - [Notes for Dev contributors](#notes-for-dev-contributors)
+- [Ways to contribute ](#ways-to-contribute)
 - [Current state of Bacalhau](current-state-of-bacalhau)
 - [License](#license)
 
@@ -94,8 +94,8 @@ make lint
 The config lives in `.golangci.yml`
 
 
-## Contributing 
-**Contributions are more than welcome!**
+## Ways to contribute 
+** All manner of contributions are more than welcome!**
 
 We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions about contributions, development, and more. 
 
