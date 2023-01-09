@@ -24,7 +24,7 @@ func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
 	return &PhysicalCapacityProvider{}
 }
 
-func (p *PhysicalCapacityProvider) AvailableCapacity(ctx context.Context) (model.ResourceUsageData, error) {
+func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (model.ResourceUsageData, error) {
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return model.ResourceUsageData{}, err
