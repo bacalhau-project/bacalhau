@@ -37,6 +37,7 @@ Tested on: Ubuntu 22.04 LTS (x86/64) running on a GCP e2-standard-4 (4 vCPU, 16 
 * Docker Engine - to take on Docker workloads
 * Connection to IPFS - for storing job's results
 * Firewall - to ensure your node can communicate with the rest of the network
+* Physical hardware, Virtual Machine or cloud based host. A Bacalhau compute node is not intended to be ran from within a Docker container.
 
 #### Install docker
 
