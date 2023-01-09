@@ -28,57 +28,17 @@
         <img src="https://img.shields.io/twitter/follow/BacalhauProject?style=social&logo=twitter" alt="follow on Twitter"></a>
 </p>
 
+## About
+[Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish. 
 
-[Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish.
+## Features
+- **Process jobs fast**: Jobs in Bacalhau are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default.
+- **Low cost:** Bacalhau uses the compute that produced the data in the first place and reuses the existing hardware you already have. You also save on any ingress/egress fees you may have been charged. The cost of computing is much cheaper than managed services.
+- **Secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
+- **Large-scale data**: With Bacalhau, you can manage your own containers that can scale to batch process petabytes (quadrillion bytes) files.
 
-## Features/Advantages of using Bacalhau
-Some benefits of using Bacalhau for your compute-over-data process include:
-
-- 🛠 **Process jobs fast**: Jobs are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default
-- 💰 **Low cost:** It uses the compute that produced the data in the first place, reusing the existing hardware you already have. You also save on any ingress/egress fees you may have been charged. The cost of computing is much cheaper than managed services.
-- 🔐 **More secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
-- 🔷 **Manage large-scale data**: You can manage your own containers that can scale to batch process petabytes (quadrillion bytes) files.
-- ⛺️ **Distributed inference**: Using its sharding feature, you carry out distributed inference very easily. Typically, distributed inference is carried out on large-scale datasets with millions of records.
-- 😌 **Easy computation**: If you have the data stored on IPFS you don’t need to move the data, you can compute where the data is located.
-
-## Learn how Bacalhau works
-
-To learn more about how Bacalhau works, explore the following resources:
-- [Bacalhau Docs: Architecture](https://docs.bacalhau.org/about-bacalhau/architecture)
-- [Bacalhau Case Studies](https://www.bacalhau.org/casestudies/)
-
-#### Demo and Overview of Project
-- [Bacalhau State of the Union](https://www.youtube.com/watch?v=gAHaMsTknZM)
-- [Revolutionizing the Big Data Age With Compute over Data](https://www.youtube.com/watch?v=RZopDyTJ1pk)
-- [Bacalhau Demo July 1st](https://www.youtube.com/watch?v=4YHkmL4Ld74)
-
-#### Build with Bacalhau
-- [Build with Bacalhau: Stable diffusion on a GPU](https://www.youtube.com/watch?v=53uY48e1lis)
-- [Build with Bacalhau: Analysing Ethereum Data with Bacalhau](https://www.youtube.com/watch?v=3b0kY13ugBo)
-- [Build with Bacalhau: Bacalhau Examples](https://docs.bacalhau.org/examples/)
-
-
-## Current state of Bacalhau 📈
-Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
-
-## Try out Bacalhau - Get started
-
-- [Getting Started](https://docs.bacalhau.org/getting-started/installation) ⚡
-- [Documentation](https://docs.bacalhau.org/) :closed_book:
-- [Code Examples Repository](https://github.com/bacalhau-project/examples)
-
-## Get the latest Bacalhau updates 
-- **Twitter** - Follow [Bacalhau](https://twitter.com/BacalhauProject).
-- **Product report** - Get the latest [Bacalhau product report](https://bacalhau.substack.com/s/project-report).
-- **Community Event and Highlights** - Get the lastest [Bacalhau community event and highlight](https://bacalhau.substack.com/s/cod-summit-highlight).
-- **Email** - Subscribe to our [newsletter](https://bacalhau.substack.com/).
-- **Slack Community** - For usage questions or issues reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new [issue](https://github.com/filecoin-project/bacalhau/issues) here on github.
-- **Bacalhau Videos & Media** - Watch tutorials, community highlights and lots more on our [Youtube channel](https://www.youtube.com/@bacalhauproject).
-
-## Ways to Contribute ❤️
-There are different ways one can contribute to the Bacalhau project, you can be part of community discussions about contributions, development, and more.  We have highted them [here](https://docs.bacalhau.org/community/ways-to-contribute).  If you have any questions (specific or general), do not hesitate to reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new [issue](https://github.com/filecoin-project/bacalhau/issues) here on github.
-
-## Developer Guide 🧭
+## Getting started
+To hit the ground running, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation) on how to install and run a job with the Bacalhau client.
 
 ### Running Bacalhau locally
 
@@ -106,6 +66,26 @@ golangci-lint --version
 make lint
 ```
 The config lives in `.golangci.yml`
+
+## Documentation
+📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
+
+The Bacalhau docs is the best starting point to learn about what Bacalhau. It is pre-loaded with exciting [examples](https://docs.bacalhau.org/examples/) to showcase Bacalhau abilities and help get you started  
+
+### Videos 🎥
+- Watch this [introductory video](https://youtu.be/WnTlwXHhbcI), for an overview of the Project Bacalhau.
+- Watch this [video](https://www.youtube.com/watch?v=gAHaMsTknZM)to get an overview of the different usecases that you can use with Bacalhau
+- Checkout the our coding videos tutorials [Build with Bacalhau](https://www.youtube.com/watch?v=53uY48e1lis)
+
+## Contributing 
+**Contributions are more than welcome!**
+
+We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions about contributions, development, and more. 
+
+If you have any questions (specific or general), do not hesitate to reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new [issue](https://github.com/filecoin-project/bacalhau/issues) here on github.
+
+## Current state of Bacalhau 📈
+Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
 
 ## Licence
 
