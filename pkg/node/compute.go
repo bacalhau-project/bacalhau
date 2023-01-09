@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
@@ -30,6 +31,7 @@ type Compute struct {
 	ExecutionStore     store.ExecutionStore
 	debugInfoProviders []model.DebugInfoProvider
 	computeCallback    *bprotocol.CallbackProxy
+	nodeInfoPublisher  *compute.NodeInfoPublisher
 }
 
 //nolint:funlen
@@ -42,7 +44,8 @@ func NewComputeNode(
 	simulatorRequestHandler *simulator.RequestHandler,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
-	publishers publisher.PublisherProvider) *Compute {
+	publishers publisher.PublisherProvider,
+	nodeInfoPubSub pubsub.PubSub[model.NodeInfo]) *Compute {
 	debugInfoProviders := []model.DebugInfoProvider{}
 	executionStore := inmemory.NewStore()
 
@@ -160,6 +163,16 @@ func NewComputeNode(
 		}),
 	)
 
+	// node info publisher
+	nodeInfoPublisher := compute.NewNodeInfoPublisher(compute.NodeInfoPublisherParams{
+		PubSub:             nodeInfoPubSub,
+		Host:               host,
+		Executors:          executors,
+		CapacityTracker:    capacityTracker,
+		MaxJobRequirements: config.JobResourceLimits,
+		Interval:           config.NodeInfoPublisherInterval,
+	})
+
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              host.ID().String(),
 		ExecutionStore:  executionStore,
@@ -188,6 +201,7 @@ func NewComputeNode(
 		ExecutionStore:     executionStore,
 		debugInfoProviders: debugInfoProviders,
 		computeCallback:    standardComputeCallback,
+		nodeInfoPublisher:  nodeInfoPublisher,
 	}
 }
 

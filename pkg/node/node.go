@@ -23,6 +23,7 @@ import (
 )
 
 const JobEventsTopic = "bacalhau-job-events"
+const NodeInfoTopic = "bacalhau-node-info"
 
 // Node configuration
 type NodeConfig struct {
@@ -159,24 +160,11 @@ func NewNode(
 		MaxBufferAge:   5 * time.Second, // increase this once we move to an external job storage
 	})
 
-	// cleanup libp2p resources in the desired order
-	config.CleanupManager.RegisterCallback(func() error {
-		cleanupContext := context.Background()
-		cleanupErr := bufferedJobEventPubSub.Close(cleanupContext)
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")
-		}
-		cleanupErr = libp2p2JobEventPubSub.Close(cleanupContext)
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
-		}
-		gossipSubCancel()
-
-		cleanupErr = config.Host.Close()
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close host")
-		}
-		return cleanupErr
+	// PubSub to publish node info to the network
+	libp2pNodeInfoPubSub := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
+		Host:      config.Host,
+		TopicName: NodeInfoTopic,
+		PubSub:    gossipSub,
 	})
 
 	requesterNode, err := NewRequesterNode(
@@ -192,6 +180,7 @@ func NewNode(
 		localJobEventConsumer,
 	)
 	if err != nil {
+		gossipSubCancel()
 		return nil, err
 	}
 
@@ -206,7 +195,34 @@ func NewNode(
 		executors,
 		verifiers,
 		publishers,
+		libp2pNodeInfoPubSub,
 	)
+
+	// cleanup libp2p resources in the desired order
+	config.CleanupManager.RegisterCallback(func() error {
+		cleanupContext := context.Background()
+		cleanupErr := bufferedJobEventPubSub.Close(cleanupContext)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")
+		}
+		cleanupErr = libp2p2JobEventPubSub.Close(cleanupContext)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
+		}
+
+		computeNode.nodeInfoPublisher.Stop()
+		cleanupErr = libp2pNodeInfoPubSub.Close(cleanupContext)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
+		}
+		gossipSubCancel()
+
+		cleanupErr = config.Host.Close()
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close host")
+		}
+		return cleanupErr
+	})
 
 	// To enable nodes self-dialing themselves as libp2p doesn't support it.
 	computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
@@ -262,6 +278,14 @@ func NewNode(
 		return nil, err
 	}
 
+	// register consumers of node info published over gossipSub
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](requesterNode.nodeInfoStore.Add))
+	err = libp2pNodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
+	if err != nil {
+		return nil, err
+	}
+
 	node := &Node{
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
@@ -274,6 +298,11 @@ func NewNode(
 		metricsPort:    config.MetricsPort,
 	}
 
+	// eagerly publish node info to the network
+	err = node.ComputeNode.nodeInfoPublisher.Publish(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
