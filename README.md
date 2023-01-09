@@ -73,7 +73,7 @@ To hit the ground running, check out our [getting started tutorial](https://docs
 ## Documentation
 📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
 
-The Bacalhau docs is the best starting point to learn about what Bacalhau. 
+The Bacalhau docs is the best starting point as it contains all the information to ensure that everyone who uses Bacalhau is doing so efficiently.
 
 ## Developers guide
 
