@@ -31,6 +31,14 @@
 ## About
 [Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish. 
 
+Table of Contents
+- [Features](#features)
+- [Getting started](#getting-started)
+- [Learn More)(#learn-more)
+- [Running Bacalhau locally)(#running-bacalhau-locally)
+- [Release a new version)(#release-a-new-version)
+- [Notes for Dev contributors](#notes-for-dev-contributors)
+
 ## Features
 - **Process jobs fast**: Jobs in Bacalhau are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default.
 - **Low cost:** Bacalhau uses the compute that produced the data in the first place and reuses the existing hardware you already have. You also save on any ingress/egress fees you may have been charged. The cost of computing is much cheaper than managed services.
@@ -39,6 +47,14 @@
 
 ## Getting started
 To hit the ground running, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation) on how to install and run a job with the Bacalhau client.
+
+## Learn More
+- Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
+- Get an overview of the [different usecases](https://www.youtube.com/watch?v=gAHaMsTknZM) that you can use with Bacalhau.
+
+- To see Bacalhau in action, check out the [Bacalhau Examples Repo.
+- See the troubleshooting guide for debugging your functions and Fission installation.
+- Checkout the our coding videos tutorials [Build with Bacalhau](https://www.youtube.com/watch?v=53uY48e1lis)
 
 ### Running Bacalhau locally
 
@@ -50,7 +66,7 @@ Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful
 
 To ship a new version of the CLI & Bacalhau network please follow the instuctions at [docs/create_release.md](docs/create_release.md).
 
-### Notes for Contributors
+### Notes for Dev contributors
 
 Bacalhau's CI pipeline performs a variety of linting and formatting checks on new pull requests. 
 To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
