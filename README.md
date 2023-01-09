@@ -95,7 +95,7 @@ The config lives in `.golangci.yml`
 
 
 ## Ways to contribute 
-** All manner of contributions are more than welcome!**
+**All manner of contributions are more than welcome!**
 
 We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions about contributions, development, and more. 
 
