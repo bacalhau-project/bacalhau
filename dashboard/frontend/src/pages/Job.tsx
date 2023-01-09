@@ -188,7 +188,7 @@ const JobPage: FC<{
   return (
     <Container maxWidth={ 'xl' } sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
-        <Grid item xs={4}>
+        <Grid item md={12} lg={4}>
           <Paper
             sx={{
               p: 2,
@@ -406,7 +406,7 @@ const JobPage: FC<{
             </Grid>
           </Paper>
         </Grid>
-        <Grid item xs={4}>
+        <Grid item md={12} lg={4}>
           <Paper
             sx={{
               p: 2,
@@ -513,7 +513,7 @@ const JobPage: FC<{
             })
           }
         </Grid>
-        <Grid item xs={4}>
+        <Grid item md={12} lg={4}>
           <Paper
             sx={{
               p: 2,

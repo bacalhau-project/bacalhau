@@ -1,7 +1,8 @@
 import React, { FC, useState, useContext, useEffect, useMemo, useCallback } from 'react'
 import bluebird from 'bluebird'
 import { navigate } from 'hookrouter'
-import { styled } from '@mui/material/styles'
+import { styled, useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import CssBaseline from '@mui/material/CssBaseline'
 import MuiDrawer from '@mui/material/Drawer'
 import Grid from '@mui/material/Grid'
@@ -20,10 +21,14 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Link from '@mui/material/Link'
+import IconButton from '@mui/material/IconButton'
 
 import DvrIcon from '@mui/icons-material/Dvr'
 import CategoryIcon from '@mui/icons-material/Category'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import MenuIcon from '@mui/icons-material/Menu'
+import LoginIcon from '@mui/icons-material/Login'
+import LogoutIcon from '@mui/icons-material/Logout'
 
 import { RouterContext } from '../contexts/router'
 import { UserContext } from '../contexts/user'
@@ -107,6 +112,14 @@ const Layout: FC = () => {
   const [ username, setUsername ] = useState('')
   const [ password, setPassword ] = useState('')
   const [ loginOpen, setLoginOpen ] = useState(false)
+  const [ mobileOpen, setMobileOpen ] = useState(false)
+
+  const theme = useTheme()
+  const bigScreen = useMediaQuery(theme.breakpoints.up('md'))
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen)
+  };
 
   const onLogin = useCallback(async () => {
     const result = await user.login(username, password)
@@ -122,9 +135,112 @@ const Layout: FC = () => {
   ])
 
   const onLogout = useCallback(async () => {
+    setMobileOpen(false)
     await user.logout()
     snackbar.success('Logout successful')
   }, [])
+
+  const drawer = (
+    <div>
+      <Toolbar
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          px: [1],
+        }}
+      >
+        <Logo
+          src="/img/logo.png"
+        />
+        <Typography variant="h6">
+          Bacalhau
+        </Typography>
+      </Toolbar>
+      <Divider />
+      <List>
+        <ListItem
+          disablePadding
+          selected={route.id === 'home'}
+          onClick={ () => {
+            navigate('/')
+            setMobileOpen(false)
+          }}
+        >
+          <ListItemButton>
+            <ListItemIcon>
+              <DvrIcon />
+            </ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem
+          disablePadding
+          selected={route.id === 'network'}
+          onClick={ () => {
+            navigate('/network')
+            setMobileOpen(false)
+          }}
+        >
+          <ListItemButton>
+            <ListItemIcon>
+              <AccountTreeIcon />
+            </ListItemIcon>
+            <ListItemText primary="Network" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem
+          disablePadding
+          selected={route.id.indexOf('jobs') === 0}
+          onClick={ () => {
+            navigate('/jobs')
+            setMobileOpen(false)
+          }}
+        >
+          <ListItemButton>
+            <ListItemIcon>
+              <CategoryIcon />
+            </ListItemIcon>
+            <ListItemText primary="Jobs" />
+          </ListItemButton>
+        </ListItem>
+        <Divider />
+        {
+          user.user ? (
+            <ListItem
+              disablePadding
+              onClick={ onLogout }
+            >
+              <ListItemButton>
+                <ListItemIcon>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText primary="Logout" />
+              </ListItemButton>
+            </ListItem>
+          ) : (
+            <ListItem
+              disablePadding
+              onClick={ () => {
+                setLoginOpen(true) 
+                setMobileOpen(false)
+              }}
+            >
+              <ListItemButton>
+                <ListItemIcon>
+                  <LoginIcon />
+                </ListItemIcon>
+                <ListItemText primary="Login" />
+              </ListItemButton>
+            </ListItem>
+          )
+        }
+        
+      </List>
+    </div>
+  )
+
+  const container = window !== undefined ? () => document.body : undefined
 
   useEffect(() => {
     user.initialise()
@@ -133,13 +249,66 @@ const Layout: FC = () => {
   return (
     <Box sx={{ display: 'flex' }} component="div">
       <CssBaseline />
-      <AppBar elevation={ 1 } position="absolute" open color="default">
+      <AppBar
+        elevation={ 1 }
+        position="fixed"
+        open
+        color="default"
+        sx={{
+          width: { xs: '100%', sm: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          ml: { xs: '0px', sm: '0px', md: `${drawerWidth}px` },
+        }}
+      >
         <Toolbar
           sx={{
             pr: '24px', // keep right padding when drawer closed
             backgroundColor: '#fff'
           }}
         >
+          {
+            !bigScreen && (
+              <>
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  edge="start"
+                  onClick={ handleDrawerToggle }
+                  sx={{
+                    mr: 1,
+                    ml: 1,
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Logo
+                  src="/img/logo.png"
+                  sx={{
+                    mr: 1,
+                    ml: 1,
+                  }}
+                />
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mr: 1,
+                    ml: 1,
+                  }}
+                >
+                  Bacalhau
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mr: 1,
+                    ml: 1,
+                  }}
+                >
+                  :
+                </Typography>
+              </>
+              
+            )
+          }
           <Typography
             component="h1"
             variant="h6"
@@ -147,108 +316,76 @@ const Layout: FC = () => {
             noWrap
             sx={{
               flexGrow: 1,
-              marginLeft: '16px',
+              ml: 1,
               color: 'text.primary',
             }}
           >
             {route.title || 'Page'}
           </Typography>
           {
-            user.user ? (
-              <Stack
-                direction="row"
-                spacing={2}
-                justifyContent="center"
-                alignItems="center"
-              >
-                <Typography variant="body1">
-                  {
-                    user.user.username
-                  }
-                </Typography>
-                <Button
-                  color="primary"
-                  variant="outlined"
-                  onClick={ onLogout }
-                >
-                  Logout
-                </Button>
-              </Stack>
-              
-            ) : (
-              <Button
-                color="primary"
-                variant="outlined"
-                onClick={ () => setLoginOpen(true) }
-              >
-                Login
-              </Button>
+            bigScreen && (
+              <>
+                {
+                  user.user ? (
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Typography variant="body1">
+                        {
+                          user.user.username
+                        }
+                      </Typography>
+                      <Button
+                        color="primary"
+                        variant="outlined"
+                        onClick={ onLogout }
+                      >
+                        Logout
+                      </Button>
+                    </Stack>
+                    
+                  ) : (
+                    <Button
+                      color="primary"
+                      variant="outlined"
+                      onClick={ () => setLoginOpen(true) }
+                    >
+                      Login
+                    </Button>
+                  )
+                }
+              </>
             )
           }
-          
         </Toolbar>
       </AppBar>
-      <Drawer variant="permanent" open>
-        <Toolbar
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            px: [1],
-          }}
-        >
-          <Logo
-            src="/img/logo.png"
-          />
-          <Typography variant="h6">
-            Bacalhau
-          </Typography>
-        </Toolbar>
-        <Divider />
-        <List>
-          <ListItem
-            disablePadding
-            selected={route.id === 'home'}
-            onClick={ () => {
-              navigate('/')
-            }}
-          >
-            <ListItemButton>
-              <ListItemIcon>
-                <DvrIcon />
-              </ListItemIcon>
-              <ListItemText primary="Dashboard" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem
-            disablePadding
-            selected={route.id === 'network'}
-            onClick={ () => {
-              navigate('/network')
-            }}
-          >
-            <ListItemButton>
-              <ListItemIcon>
-                <AccountTreeIcon />
-              </ListItemIcon>
-              <ListItemText primary="Network" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem
-            disablePadding
-            selected={route.id.indexOf('jobs') === 0}
-            onClick={ () => {
-              navigate('/jobs')
-            }}
-          >
-            <ListItemButton>
-              <ListItemIcon>
-                <CategoryIcon />
-              </ListItemIcon>
-              <ListItemText primary="Jobs" />
-            </ListItemButton>
-          </ListItem>
-        </List>
+      <MuiDrawer
+        container={container}
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
+        sx={{
+          display: { sm: 'block', md: 'none' },
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+        }}
+      >
+        {drawer}
+      </MuiDrawer>
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+        }}
+        open
+      >
+        {drawer}
       </Drawer>
       <Box
         component="main"

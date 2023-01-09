@@ -97,7 +97,7 @@ const Dashboard: FC = () => {
   return (
     <Container maxWidth={ 'xl' } sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
-        <Grid item xs={3}>
+        <Grid item xs={12} md={3}>
           <NumberHighlight
             headline={ `${data.totalJobs.count}` }
             subline="Total Jobs"
@@ -113,7 +113,7 @@ const Dashboard: FC = () => {
             />
           </NumberHighlight>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={12} md={3}>
           <NumberHighlight
             headline={ `${data.totalEvents.count}` }
             subline="Total Events"
@@ -129,7 +129,7 @@ const Dashboard: FC = () => {
             />
           </NumberHighlight>
         </Grid>
-        <Grid item xs={3}>
+        <Grid item xs={12} md={3}>
           <NumberHighlight
             headline={ `${data.totalUsers.count}` }
             subline="Unique Users"
@@ -147,7 +147,7 @@ const Dashboard: FC = () => {
         </Grid>
 
         
-        <Grid item xs={3}>
+        <Grid item xs={12} md={3}>
           <NumberHighlight
             headline={ `${data.totalExecutors.count}` }
             subline="Executors"
@@ -164,7 +164,7 @@ const Dashboard: FC = () => {
           </NumberHighlight>
         </Grid>
 
-        <Grid item xs={8}>
+        <Grid item xs={12} md={8}>
           <Box
             component="div"
             sx={{
@@ -196,7 +196,7 @@ const Dashboard: FC = () => {
           </Box>
         </Grid>
 
-        <Grid item xs={4}>
+        <Grid item xs={12} md={4}>
           <Box
             component="div"
             sx={{
