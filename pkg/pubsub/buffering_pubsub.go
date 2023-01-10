@@ -150,7 +150,11 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 			err = p.flushBuffer(ctx)
 		}
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	log.Ctx(ctx).Info().Msg("done closing BufferingPubSub")
+	return nil
 }
 
 // flush the buffer to the delegate pubsub

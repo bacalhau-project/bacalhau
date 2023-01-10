@@ -184,10 +184,6 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	return rootFs, nil
 }
 
-func failResult(err error) (*model.RunCommandResult, error) {
-	return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-}
-
 //nolint:funlen  // Will be made shorter when we do more module linking
 func (e *Executor) RunShard(
 	ctx context.Context,
@@ -200,25 +196,25 @@ func (e *Executor) RunShard(
 	// Go and get the actual WASM we are going to run.
 	if len(shard.Job.Spec.Contexts) < 1 {
 		err := fmt.Errorf("WASM job expects one context containing code to run")
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	wasmSpec := shard.Job.Spec.Wasm
 	contextStorageSpec := shard.Job.Spec.Contexts[0]
 	module, err := e.loadRemoteModule(ctx, contextStorageSpec)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 	defer module.Close(ctx)
 
 	shardStorageSpec, err := job.GetShardStorageSpec(ctx, shard, e.StorageProvider)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	fs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	// Configure the modules. We will write STDOUT and STDERR to a buffer so
@@ -250,42 +246,42 @@ func (e *Executor) RunShard(
 		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.Metadata.ID)
 		importedWasi, importErr := e.loadRemoteModule(ctx, wasmSpec)
 		if importErr != nil {
-			return failResult(importErr)
+			return executor.FailResult(importErr)
 		}
 		importedModules = append(importedModules, importedWasi)
 
 		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.Metadata.ID)
 		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
-			return failResult(instantiateErr)
+			return executor.FailResult(instantiateErr)
 		}
 	}
 
 	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.Metadata.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 	defer wasi.Close(ctx)
 
 	log.Ctx(ctx).Debug().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.Metadata.ID)
 	_, err = namespace.InstantiateModule(ctx, wasi, config)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
 	log.Ctx(ctx).Debug().Msgf("Instantiation of module for job '%s'", shard.Job.Metadata.ID)
 	instance, err := namespace.InstantiateModule(ctx, module, config)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	// Check that all WASI modules conform to our requirements.
 	importedModules = append(importedModules, wasi)
 	err = ValidateModuleAgainstJob(module, shard.Job.Spec, importedModules...)
 	if err != nil {
-		return failResult(err)
+		return executor.FailResult(err)
 	}
 
 	// The function should exit which results in a sys.ExitError. So we capture

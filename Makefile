@@ -1,8 +1,5 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
 ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
 endif
@@ -139,14 +136,24 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 .PHONY: build-ipfs-sidecar-image
 build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
+HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
+HTTP_GATEWAY_TAG ?= ${TAG}
+.PHONY: build-http-gateway-image
+build-http-gateway-image:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
+		pkg/executor/docker/gateway
 
 .PHONY: build-docker-images
-build-docker-images:
-	@echo docker images built
+build-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -199,7 +206,7 @@ SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
-${SCHEMA_DIR}/%.json: 
+${SCHEMA_DIR}/%.json:
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
 	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
@@ -355,7 +362,7 @@ coverage-report: coverage/coverage.html
 coverage/coverage.out: $(wildcard coverage/*.coverage)
 	gocovmerge $^ > $@
 
-coverage/coverage.html: coverage/coverage.out coverage/ 
+coverage/coverage.html: coverage/coverage.out coverage/
 	go tool cover -html=$< -o $@
 
 coverage/:

@@ -49,13 +49,18 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 
 // Run the execution of a shard after it has been accepted, and propose a result to the requester to be verified.
 func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
+	ctx = log.Ctx(ctx).With().
+		Str("Shard", execution.Shard.ID()).
+		Str("ExecutionID", execution.ID).
+		Logger().WithContext(ctx)
+
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Running")
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Msgf("Running execution %s", execution.ID)
+	log.Ctx(ctx).Debug().Msg("Running execution")
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateBidAccepted,
@@ -99,6 +104,7 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 		}
 
 		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to run shard")
 			return
 		}
 	}
