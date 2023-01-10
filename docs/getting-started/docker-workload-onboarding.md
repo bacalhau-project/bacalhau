@@ -210,10 +210,10 @@ We have video tutorial examples on how to onboarded workload to Bacalhau:
 If you run into this compute error while running your docker image 
 
 ```bash
-              Creating job for submission ... done ✅
-               Finding node(s) for the job ... done ✅
-                     Node accepted the job ... done ✅
-           Error while executing the job.
+Creating job for submission ... done ✅
+Finding node(s) for the job ... done ✅
+Node accepted the job ... done ✅
+Error while executing the job.
 ```
 
 This can often be resolved by re-tagging your docker image
