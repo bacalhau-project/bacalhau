@@ -18,7 +18,9 @@ You can check out this example tutorial on [how to work with custom containers i
 ## What Containers to Use
 You can always use your own custom container, however there are some things to note:
 
+Here are some few things to note before getting started
 * You must publish the container to a public container registry that is accessible from the Bacalhau network
+* Supports only `amd64` images. Does not support `arm64` images
 * Containers must have an `x86_64` CPU architecture
 * The `--inputs` and `--input-volumes` flags do not support CID subpaths only **directories** 
 * The `--input-urls` flag does not support URL directories only **single files** only
