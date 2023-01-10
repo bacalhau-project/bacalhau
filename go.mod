@@ -67,6 +67,7 @@ require (
 	github.com/tetratelabs/wazero v1.0.0-pre.4
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
+	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
 	go.opentelemetry.io/otel v1.11.2
