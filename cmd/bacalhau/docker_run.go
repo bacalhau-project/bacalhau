@@ -310,7 +310,6 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 		j,
 		ODR.RunTimeSettings,
 		ODR.DownloadFlags,
-		nil,
 	)
 }
 

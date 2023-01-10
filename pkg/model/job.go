@@ -251,6 +251,26 @@ func (s *Spec) GetTimeout() time.Duration {
 	return time.Duration(s.Timeout * float64(time.Second))
 }
 
+// Return pointers to all the storage specs in the spec.
+func (s *Spec) AllStorageSpecs() []*StorageSpec {
+	storages := []*StorageSpec{
+		&s.Language.Context,
+		&s.Wasm.EntryModule,
+	}
+
+	for _, collection := range [][]StorageSpec{
+		s.Contexts,
+		s.Inputs,
+		s.Outputs,
+	} {
+		for index := range collection {
+			storages = append(storages, &collection[index])
+		}
+	}
+
+	return storages
+}
+
 // for VM style executors
 type JobSpecDocker struct {
 	// this should be pullable by docker
@@ -281,8 +301,8 @@ type JobSpecLanguage struct {
 
 // Describes a raw WASM job
 type JobSpecWasm struct {
-	// TODO #915: The module that contains the WASM code to start running.
-	// EntryModule StorageSpec `json:"EntryModule,omitempty"`
+	// The module that contains the WASM code to start running.
+	EntryModule StorageSpec `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
@@ -366,9 +386,4 @@ type JobCreatePayload struct {
 
 	// The specification of this job.
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty" validate:"optional"`
 }
