@@ -1,22 +1,15 @@
 package publicapi
 
 import (
-	"bytes"
-	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -81,20 +74,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// If we have a build context, pin it to IPFS and mount it in the job:
-	if submitReq.JobCreatePayload.Context != "" {
-		spec, err := apiServer.saveInlineTarball(ctx, submitReq.JobCreatePayload.Context)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("error saving build context")
-			http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusInternalServerError)
-			return
-		}
-		submitReq.JobCreatePayload.Spec.Contexts = append(
-			submitReq.JobCreatePayload.Spec.Contexts,
-			spec,
-		)
-	}
-
 	j, err := apiServer.Requester.SubmitJob(
 		ctx,
 		submitReq.JobCreatePayload,
@@ -115,44 +94,4 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusInternalServerError)
 		return
 	}
-}
-
-func (apiServer *APIServer) saveInlineTarball(ctx context.Context, base64tar string) (model.StorageSpec, error) {
-	// TODO: gc pinned contexts
-	decoded, err := base64.StdEncoding.DecodeString(base64tar)
-	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error base64 decoding context")
-	}
-
-	tmpDir, err := os.MkdirTemp("", "bacalhau-pin-context-")
-	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error creating temp dir")
-	}
-
-	tarReader := bytes.NewReader(decoded)
-	err = targzip.Decompress(tarReader, filepath.Join(tmpDir, "context"))
-	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error decompressing context")
-	}
-
-	// write the "context" for a job to storage
-	// this is used to upload code files
-	// we presently just fix on ipfs to do this
-	ipfsStorage, err := apiServer.StorageProviders.GetStorage(ctx, model.StorageSourceIPFS)
-	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error getting storage provider")
-	}
-
-	result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
-	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error uploading context to IPFS")
-	}
-
-	// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
-	//               --cid ipfs:abc --cid filecoin:efg
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           result.CID,
-		Path:          "/job",
-	}, nil
 }

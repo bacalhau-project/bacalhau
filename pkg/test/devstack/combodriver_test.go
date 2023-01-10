@@ -34,13 +34,13 @@ const exampleText = "hello world"
 
 var testcase scenario.Scenario = scenario.Scenario{
 	ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, exampleText),
-	Contexts:       scenario.CatFileToStdout.Contexts,
 	Spec: model.Spec{
 		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
+			EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
+			EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
 			Parameters: []string{
 				`/inputs/file.txt`,
 			},

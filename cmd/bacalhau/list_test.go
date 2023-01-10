@@ -53,7 +53,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				j := testutils.MakeNoopJob()
-				_, err := suite.client.Submit(ctx, j, nil)
+				_, err := suite.client.Submit(ctx, j)
 				require.NoError(suite.T(), err)
 			}
 
@@ -80,7 +80,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for i := 0; i < 10; i++ {
 		var err error
 		j := testutils.MakeNoopJob()
-		j, err = suite.client.Submit(ctx, j, nil)
+		j, err = suite.client.Submit(ctx, j)
 		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
@@ -177,7 +177,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 
 			j := testutils.MakeNoopJob()
 			j.Spec.Annotations = tc.JobLabels
-			j, err := suite.client.Submit(ctx, j, nil)
+			j, err := suite.client.Submit(ctx, j)
 			require.NoError(suite.T(), err)
 
 			checkList := func(shouldAppear bool, flags ...string) {
@@ -269,7 +269,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				for i := 0; i < tc.numberOfJobs; i++ {
 					var err error
 					j := testutils.MakeNoopJob()
-					j, err = suite.client.Submit(ctx, j, nil)
+					j, err = suite.client.Submit(ctx, j)
 					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))
 
@@ -339,7 +339,7 @@ Out:
 Seen Ids:
 %s
 
-Compare Ids:    
+Compare Ids:
 %s
 
 			    		`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))

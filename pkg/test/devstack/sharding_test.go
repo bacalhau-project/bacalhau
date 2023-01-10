@@ -250,7 +250,7 @@ func (suite *ShardingSuite) TestNoShards() {
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, j, nil)
+	_, err = apiClient.Submit(ctx, j)
 	require.Error(suite.T(), err)
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
 }

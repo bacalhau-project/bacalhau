@@ -74,7 +74,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 }
 
 func (e *Executor) getVolume(ctx context.Context, spec model.StorageSpec) (*storage.StorageVolume, error) {
-	log.Ctx(ctx).Debug().Msgf("Getting object %v", spec)
+	log.Ctx(ctx).Debug().Stringer("StorageSource", spec.StorageSource).Msg("Getting object")
 
 	storage, err := e.StorageProvider.GetStorage(ctx, spec.StorageSource)
 	if err != nil {
@@ -193,14 +193,8 @@ func (e *Executor) RunShard(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
 	defer span.End()
 
-	// Go and get the actual WASM we are going to run.
-	if len(shard.Job.Spec.Contexts) < 1 {
-		err := fmt.Errorf("WASM job expects one context containing code to run")
-		return executor.FailResult(err)
-	}
-
 	wasmSpec := shard.Job.Spec.Wasm
-	contextStorageSpec := shard.Job.Spec.Contexts[0]
+	contextStorageSpec := shard.Job.Spec.Wasm.EntryModule
 	module, err := e.loadRemoteModule(ctx, contextStorageSpec)
 	if err != nil {
 		return executor.FailResult(err)
