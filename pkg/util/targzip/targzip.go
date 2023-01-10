@@ -13,6 +13,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -83,6 +84,7 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 		if err != nil {
 			return err
 		}
+		defer closer.CloseWithLogOnError(fi.Name(), data)
 		if _, err = io.Copy(tw, data); err != nil {
 			return err
 		}
@@ -122,6 +124,7 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
 					return err
 				}
+				closer.CloseWithLogOnError(fi.Name(), data)
 			}
 			return nil
 		})

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -54,15 +53,11 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(s.T(), err)
 
-	contextStorageList, err := testCase.Contexts(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
-	require.NoError(s.T(), err)
-
 	j := &model.Job{}
 	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
 	j.Spec.Publisher = model.PublisherFilecoin
-	j.Spec.Contexts = contextStorageList
 	j.Spec.Outputs = testCase.Outputs
 	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
@@ -70,7 +65,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, j, nil)
+	submittedJob, err := apiClient.Submit(ctx, j)
 	require.NoError(s.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()

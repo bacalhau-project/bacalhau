@@ -49,8 +49,7 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 			prepareFolderWithFiles(s.T(), testCase.shards),
 			"/input",
 		),
-		Contexts: scenario.WasmHelloWorld.Contexts,
-		Spec:     spec,
+		Spec: spec,
 		Deal: model.Deal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,
