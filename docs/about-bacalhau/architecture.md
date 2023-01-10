@@ -154,7 +154,7 @@ Jobs should only require dependencies that are baked into their Docker images an
 
 ### Input / Output Volumes
 
-A job includes the concept of input and output volumes, and the Docker executor implements support for these. This means you can specific ipfs CIDs and input paths and also write results to an output volume. This can be seen by the following example:
+A job includes the concept of input and output volumes, and the Docker executor implements support for these. This means you can specify ipfs CIDs and input paths and also write results to an output volume. This can be seen by the following example:
 
 ```
 cid=$(ipfs add file.txt)
