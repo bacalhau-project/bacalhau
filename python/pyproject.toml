@@ -69,9 +69,7 @@ pytest = "^7.2.0"
 
 [tool.poetry.group.doc.dependencies]
 mkdocs = "^1.4.2"
-mkdocs-include-markdown-plugin = "^4.0.3"
-mkdocs-material = "^9.0.3"
-mkdocstrings = "^0.19.1"
+
 
 [tool.black]
 line-length = 120
