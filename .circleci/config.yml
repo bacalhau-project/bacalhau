@@ -165,7 +165,7 @@ jobs:
                 command: |
                   sudo apt install python3.10 -y
                   curl -sSL https://install.python-poetry.org | python3 -
-                  poetry install --no-cache --no-root --no-interaction --with test
+                  cd python && poetry install --no-cache --no-root --no-interaction --with test
                   make test-python
 
       - when:
