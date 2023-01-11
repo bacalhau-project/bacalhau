@@ -169,7 +169,7 @@ jobs:
                   sudo add-apt-repository ppa:deadsnakes/ppa -y
                   sudo apt install python3.9 -y
                   # Install poetry
-                  curl -sSL https://install.python-poetry.org | python3 -
+                  curl -sSL https://install.python-poetry.org | python3.9 -
                   cd python && poetry lock && poetry install --no-cache --no-root --no-interaction --with test
                   # Install Bacalhau client (for generating pem key)
                   curl -sL https://get.bacalhau.org/install.sh | bash
