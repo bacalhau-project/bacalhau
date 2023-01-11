@@ -70,6 +70,7 @@ install-pre-commit:
 .PHONY: precommit
 precommit: buildenvcorrect
 	${PRECOMMIT} run --all
+	cd python && make pre-commit
 
 .PHONY: buildenvcorrect
 buildenvcorrect:
@@ -207,7 +208,7 @@ SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
-${SCHEMA_DIR}/%.json: 
+${SCHEMA_DIR}/%.json:
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
 	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
@@ -229,17 +230,16 @@ all_schemas: ${ALL_SCHEMAS}
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
-	cd python && make unittest
 
 .PHONY: test-python
 test-python:
 	cd python && make unittest
-	
+
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
-	
+
 .PHONY: grc-test
 grc-test:
 	grc go test ./... -v
@@ -368,7 +368,7 @@ coverage-report: coverage/coverage.html
 coverage/coverage.out: $(wildcard coverage/*.coverage)
 	gocovmerge $^ > $@
 
-coverage/coverage.html: coverage/coverage.out coverage/ 
+coverage/coverage.html: coverage/coverage.out coverage/
 	go tool cover -html=$< -o $@
 
 coverage/:

@@ -164,10 +164,8 @@ jobs:
                 name: Test Python
                 command: |
                   sudo apt install python3.10 -y
-                  python3 -m pip install --upgrade pip
-                  pip3 install pytest==6.2.5
                   curl -sSL https://install.python-poetry.org | python3 -
-                  poetry install
+                  poetry install --no-cache --no-root --no-interaction --with test
                   make test-python
 
       - when:
