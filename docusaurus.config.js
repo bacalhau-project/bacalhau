@@ -10,7 +10,7 @@ const simplePlantUML = require("@akebifiky/remark-simple-plantuml");
 const config = {
   title: "Bacalhau Docs",
   tagline: "Docs for Bacalhau",
-  url: "https://docs.bacalhau.org",
+  url: "https://docs.bacalhau.org/",
   baseUrl: "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
@@ -58,6 +58,11 @@ const config = {
             position: "right",
           },
         ],
+      },
+      algolia :{
+        appId: 'VLYBZRSZSU',
+        apiKey: '833f6b97e76869f94a4a564c4c67f7d9',
+        indexName: 'dev_bac'
       },
       footer: {
         style: "dark",
