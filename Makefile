@@ -1,5 +1,8 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
 endif
@@ -109,6 +112,17 @@ swagger-docs:
 	@echo "Swagger docs built."
 
 ################################################################################
+# Target: clients
+################################################################################
+# Generate Bacalhau API clients but only if the swagger.json has actually been
+# updated because the clients include random numbers and timestamps and hence
+# will generate a lot of noisy diffs if regenerated all of the time
+.PHONY: clients
+clients:
+	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
+		cd clients && ${MAKE} -j all) || true
+
+################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
@@ -136,24 +150,14 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
 .PHONY: build-ipfs-sidecar-image
 build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
-HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
-HTTP_GATEWAY_TAG ?= ${TAG}
-.PHONY: build-http-gateway-image
-build-http-gateway-image:
-	docker buildx build \
-		--platform linux/amd64,linux/arm64 \
-		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
-		pkg/executor/docker/gateway
 
 .PHONY: build-docker-images
-build-docker-images: build-http-gateway-image
+build-docker-images:
+	@echo docker images built
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -206,7 +210,7 @@ SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
-${SCHEMA_DIR}/%.json:
+${SCHEMA_DIR}/%.json: 
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
 	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
@@ -229,11 +233,15 @@ test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
 
+.PHONY: test-python
+test-python:
+	cd python && make unittest
+
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)
 	go test ./... -v --tags=integration -p 1
-
+	
 .PHONY: grc-test
 grc-test:
 	grc go test ./... -v
@@ -334,7 +342,7 @@ check-diff:
 
 # Run the unittests and output results for recording
 ################################################################################
-# Target: test-test-and-report
+# Target: test-and-report
 ################################################################################
 COMMA = ,
 COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverage
@@ -362,7 +370,7 @@ coverage-report: coverage/coverage.html
 coverage/coverage.out: $(wildcard coverage/*.coverage)
 	gocovmerge $^ > $@
 
-coverage/coverage.html: coverage/coverage.out coverage/
+coverage/coverage.html: coverage/coverage.out coverage/ 
 	go tool cover -html=$< -o $@
 
 coverage/:
