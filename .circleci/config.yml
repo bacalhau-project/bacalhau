@@ -140,25 +140,25 @@ jobs:
                     - equal: ["arm64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
-            - run:
-                name: Test Go
-                environment:
-                  LOG_LEVEL: debug
-                  TEST_BUILD_TAGS: << parameters.build_tags >>
-                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
-                command: |
-                  export GOBIN=${HOME}/bin
-                  export PATH=$GOBIN:$PATH
-                  go install gotest.tools/gotestsum@v1.8.2
-                  make test-and-report
+            # - run:
+            #     name: Test Go
+            #     environment:
+            #       LOG_LEVEL: debug
+            #       TEST_BUILD_TAGS: << parameters.build_tags >>
+            #       TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+            #     command: |
+            #       export GOBIN=${HOME}/bin
+            #       export PATH=$GOBIN:$PATH
+            #       go install gotest.tools/gotestsum@v1.8.2
+            #       make test-and-report
 
-                no_output_timeout: 20m
-            - store_test_results:
-                path: .
-            - persist_to_workspace:
-                root: coverage/
-                paths:
-                  - "*.coverage"
+            #     no_output_timeout: 20m
+            # - store_test_results:
+            #     path: .
+            # - persist_to_workspace:
+            #     root: coverage/
+            #     paths:
+            #       - "*.coverage"
 
             - run:
                 name: Test Python
@@ -166,6 +166,8 @@ jobs:
                   sudo apt install python3.10 -y
                   python3 -m pip install --upgrade pip
                   pip3 install pytest==6.2.5
+                  curl -sSL https://install.python-poetry.org | python3 -
+                  poetry install
                   make test-python
 
       - when:

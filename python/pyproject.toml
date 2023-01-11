@@ -2,8 +2,8 @@
 [tool.poetry]
 name = "bacalhau-sdk"
 version = "0.1.1"
-homepage = "https://github.com/enricorotundo/bacalhau-sdk"
-description = "Skeleton project created by Cookiecutter PyPackage."
+homepage = "https://github.com/filecoin-project/bacalhau/"
+description = "Compute over Data framework for public, transparent, and optionally verifiable computation using IPFS & Filecoin."
 authors = ["Enrico Rotundo <team@bacalhau.org>"]
 readme = "README.md"
 license =  "Apache-2.0"
