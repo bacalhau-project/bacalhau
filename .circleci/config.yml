@@ -163,9 +163,18 @@ jobs:
             - run:
                 name: Test Python
                 command: |
+                  # Install python 3.9
+                  sudo apt update
+                  sudo apt install software-properties-common -y
+                  sudo add-apt-repository ppa:deadsnakes/ppa -y
                   sudo apt install python3.9 -y
+                  # Install poetry
                   curl -sSL https://install.python-poetry.org | python3 -
-                  cd python && poetry install --no-cache --no-root --no-interaction --with test
+                  cd python && poetry lock && poetry install --no-cache --no-root --no-interaction --with test
+                  # Install Bacalhau client (for generating pem key)
+                  curl -sL https://get.bacalhau.org/install.sh | bash
+                  /usr/local/bin/bacalhau list
+                  # Run tests
                   make test-python
 
       - when:
