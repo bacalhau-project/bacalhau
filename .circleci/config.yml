@@ -141,7 +141,7 @@ jobs:
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
-                name: Test
+                name: Test Go
                 environment:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
@@ -151,7 +151,7 @@ jobs:
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@v1.8.2
                   make test-and-report
-                  make test-python
+
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
@@ -159,6 +159,14 @@ jobs:
                 root: coverage/
                 paths:
                   - "*.coverage"
+
+            - run:
+                name: Test Python
+                command: |
+                  sudo apt install python3.10 -y
+                  python3 -m pip install --upgrade pip
+                  pip3 install pytest==6.2.5
+                  make test-python
 
       - when:
           condition:
