@@ -231,6 +231,10 @@ test:
 	go test ./... -v --tags=unit
 	cd python && make unittest
 
+.PHONY: test-python
+test-python:
+	cd python && make unittest
+	
 .PHONY: integration-test
 integration-test:
 # integration tests parallelize less well (hence -p 1)

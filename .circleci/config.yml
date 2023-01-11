@@ -151,6 +151,7 @@ jobs:
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@v1.8.2
                   make test-and-report
+                  make test-python
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
