@@ -170,7 +170,7 @@ jobs:
                   sudo apt install python3.10 -y
                   # Install poetry
                   curl -sSL https://install.python-poetry.org | python3 -
-                  cd python && /home/circleci/.local/bin/poetry install --no-cache --no-root --no-interaction --with test
+                  cd python && /home/circleci/.local/bin/poetry install --no-cache --no-root --no-interaction --with test -vv
                   # Install Bacalhau client (for generating pem key)
                   curl -sL https://get.bacalhau.org/install.sh | bash
                   /usr/local/bin/bacalhau list
