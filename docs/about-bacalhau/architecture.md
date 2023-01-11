@@ -11,7 +11,7 @@ Bacalhau provides a platform for public, transparent, and optionally verifiable 
 
 ![image](../../static/img/architecture/architecture-purpose.jpeg)
 
-Bacalhau operates as a peer-to-peer network of nodes where each node has both a requestor and compute component.  To interact with the cluster, Bacalhau CLI requests are sent to a node in the cluster (via JSON over HTTP), which then broadcasts messages over the transport layer to other nodes in the cluster.  All other nodes in the network are connected to the transport layer and as such have a shared view of the world.
+Bacalhau operates as a peer-to-peer network of nodes where each node has both a requestor and compute component.  To interact with the Bacalhau network, Bacalhau CLI requests are sent to a node in the network (via JSON over HTTP), which then broadcasts messages over the transport layer to other nodes in the network.  All other nodes in the network are connected to the transport layer and as such have a shared view of the world.
 
 ## System Components
 
@@ -87,14 +87,11 @@ Once verification has been complete, the publisher will handle uploading the raw
 The publisher interface is responsible for uploading the local folder of results to somewhere that can be read by the rest of the world. The default publisher is either Estuary (if an API key has been provided) or IPFS.  In both cases, the published results of a job will end up on IPFS with a cid that can be used to read them.  If Estuary is used as the publisher, then the results will also end up on Filecoin.
 
 
-
-
-
 ## Job Lifecycle
 
 ### Job Submission
 
-Jobs submitted via the Bacalhau CLI are forwarded to a Bacalhau cluster node at `bootstrap.production.bacalhau.org` via port 1234 by default. This Bacalhau node will act as the requestor node for the duration of the job lifecycle.
+Jobs submitted via the Bacalhau CLI are forwarded to a Bacalhau network node at `bootstrap.production.bacalhau.org` via port 1234 by default. This Bacalhau node will act as the requestor node for the duration of the job lifecycle. Jobs can also be submitted to any requestor node on any other Bacalhau network.
 
 When jobs are submitted to the requestor node, all compute nodes hear of this new job and can choose to `bid` on it. The job deal will have a `concurrency` setting, which refers to how many different nodes you may want to run this job. It will also have `confidence` and `min-bids` properties.  Confidence is how many verification proposals must agree for the job to be deemed successful. `Min-bids` is how many bids must have been made before we will choose to accept any.
 
