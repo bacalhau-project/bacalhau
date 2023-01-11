@@ -72,7 +72,6 @@ mkdocs = "^1.4.2"
 mkdocs-include-markdown-plugin = "^4.0.3"
 mkdocs-material = "^9.0.3"
 mkdocstrings = "^0.19.1"
-mkdocs-autorefs = "^0.4.1"
 
 [tool.black]
 line-length = 120
