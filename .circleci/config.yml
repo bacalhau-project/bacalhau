@@ -172,7 +172,7 @@ jobs:
                   curl -sSL https://install.python-poetry.org | python3 -
                   cd python
                   /home/circleci/.local/bin/poetry lock --no-cache --no-interaction
-                  /home/circleci/.local/bin/poetry install --no-root --no-interaction --with test -vvv
+                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --with test -vvv
                   # Install Bacalhau client (for generating pem key)
                   curl -sL https://get.bacalhau.org/install.sh | bash
                   /usr/local/bin/bacalhau list
