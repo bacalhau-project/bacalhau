@@ -94,6 +94,7 @@ func (e *estuaryPublisher) PublishShardResult(
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceEstuary,
 		CID:           addCarResponse.Cid,
+		URL:           addCarResponse.EstuaryRetrievalUrl,
 	}, nil
 }
 
