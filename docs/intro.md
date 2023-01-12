@@ -16,7 +16,7 @@ Bacalhau is a platform for public, transparent, and optionally verifiable distri
 ## Why Bacalhau?
 
 - ⚡️ **Process jobs fast**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
-- 💸 **Low cost:** You get to save on ingress/egress fees you encounter whenver you move data around since jobs are processed where the data is created.
+- 💸 **Low cost:** You get to save on ingress/egress fees you encounter whenever you move data around since jobs are processed where the data is created.
 - 🔐 **Secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
 - 📚 **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau you can batch process petabytes (quadrillion bytes) of data.
 

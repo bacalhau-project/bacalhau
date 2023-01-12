@@ -31,7 +31,7 @@ Client Version: v0.x.y
 Server Version: v0.x.y
 ```
 
-If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](../about-bacalhau/introduction) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
+If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](https://docs.bacalhau.org/#our-vision) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
 
 Going further, we will look at some commands to run a simple job. For a complete overview of the `bacalhau` commands, take a look at the [CLI Reference page](../all-flags).
 
