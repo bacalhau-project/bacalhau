@@ -34,8 +34,8 @@ Initially, the Bacalhau project will focus on serving data processing and analyt
 
 Bacalhau has a very friendly community and we are always happy to help you get started:
 
-- [Join the Slack Community](https://filecoin.io/slack) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
 - [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions) – ask anything about the project, give feedback or answer questions that will help other users.
+- [Join the Slack Community](https://filecoin.io/slack) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
 - [Contributing](https://docs.bacalhau.org/community/ways-to-contribute) – learn how to contribute to the Bacalhau project.
 
 ## Next Steps
