@@ -76,7 +76,7 @@ const config = {
               },
               {
                 label: "About Bacalhau",
-                to: "/about-bacalhau/introduction",
+                to: "/",
               },
             ],
           },
