@@ -56,10 +56,10 @@
 - [License](#license)
 
 ## Features
-- **Process jobs fast**: Jobs in Bacalhau are processed where the data was created (meaning no ingress/egress) and all jobs are parallel by default.
-- **Low cost:** Bacalhau uses the compute that produced the data in the first place and reuses the existing hardware you already have. You also save on any ingress/egress fees you may have been charged. The cost of computing is much cheaper than managed services.
+- **Process jobs fast**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
+- **Low cost:** You get to save on ingress/egress fees you encounter whenever you move data around since jobs are processed where the data is created.
 - **Secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
-- **Large-scale data**: With Bacalhau, you can manage your own containers that can scale to batch process petabytes (quadrillion bytes) files.
+- **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau, you can batch process petabytes (quadrillion bytes) of data.
 
 ## Getting started
 To hit the ground running, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation) on how to install and run a job with the Bacalhau client.
