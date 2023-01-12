@@ -170,17 +170,14 @@ jobs:
             - run:
                 name: Test Python
                 command: |
-                  # Install python 3.9
-                  # sudo apt update
-                  # sudo apt install software-properties-common -y
-                  # sudo add-apt-repository ppa:deadsnakes/ppa -y
                   sudo apt install python3.10 -y
-                  # Install and run poetry
                   curl -sSL https://install.python-poetry.org | python3 -
                   cd python
+                  # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
+                  # uUsing '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
-                  # Install Bacalhau client (for generating pem key)
+                  # The python sdk doesn't generate a pem key, so we use the go-cli to generate one
                   curl -sL https://get.bacalhau.org/install.sh | bash
                   /usr/local/bin/bacalhau list
                   # Run tests
