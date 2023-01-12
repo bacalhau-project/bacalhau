@@ -107,6 +107,10 @@ definitions:
       EventTime:
         example: "2022-11-17T13:32:55.756658941Z"
         type: string
+      ExecutionID:
+        description: compute execution identifier
+        example: 9304c616-291f-41ad-b862-54e133c0149e
+        type: string
       JobExecutionPlan:
         allOf:
         - $ref: '#/definitions/model.JobExecutionPlan'
@@ -256,6 +260,9 @@ definitions:
     type: object
   model.JobShardState:
     properties:
+      ExecutionId:
+        description: Compute node reference for this shard execution
+        type: string
       NodeId:
         description: which node is running this shard
         type: string
@@ -445,6 +452,19 @@ definitions:
         example: 92d5d4ee-3765-4f78-8353-623f5f26df08
         type: string
     type: object
+  model.Network:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-varnames:
+    - NetworkNone
+    - NetworkFull
+  model.NetworkConfig:
+    properties:
+      Type:
+        $ref: '#/definitions/model.Network'
+    type: object
   model.PublishedResult:
     properties:
       Data:
@@ -545,6 +565,10 @@ definitions:
         description: how will this job be executed by nodes on the network
       Language:
         $ref: '#/definitions/model.JobSpecLanguage'
+      Network:
+        allOf:
+        - $ref: '#/definitions/model.NetworkConfig'
+        description: The type of networking access that the job needs
       Publisher:
         allOf:
         - $ref: '#/definitions/model.Publisher'

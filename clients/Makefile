@@ -46,7 +46,6 @@ python-config.json: config.json.template
 	rm ./swagger-edited.json
 	cp pyproject.toml $@/pyproject.toml
 	cp ../LICENSE $@/LICENSE
-	# cp -r ./python/bacalhau_apiclient ../python/
 
 pypi: python/
 	cd python && python3 -m pip install --upgrade build && python3 -m build

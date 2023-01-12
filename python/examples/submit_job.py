@@ -1,15 +1,4 @@
-"""Example of submitting a docker job to the API.
-
-For production network:
-```
-python examples/submit_job.py
-```
-
-For devstack:
-```
-BACALHAU_API_HOST=0.0.0.0 BACALHAU_API_PORT=20002 python examples/submit_job.py
-```
-"""
+"""Example of submitting a docker job to the API."""
 
 from bacalhau_sdk.api import submit
 from bacalhau_sdk.config import get_client_id

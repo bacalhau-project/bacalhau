@@ -671,6 +671,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2022-11-17T13:32:55.756658941Z"
                 },
+                "ExecutionID": {
+                    "description": "compute execution identifier",
+                    "type": "string",
+                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                },
                 "JobExecutionPlan": {
                     "description": "this is only defined in \"create\" events",
                     "allOf": [
@@ -864,6 +869,10 @@ const docTemplate = `{
         "model.JobShardState": {
             "type": "object",
             "properties": {
+                "ExecutionId": {
+                    "description": "Compute node reference for this shard execution",
+                    "type": "string"
+                },
                 "NodeId": {
                     "description": "which node is running this shard",
                     "type": "string"
@@ -1108,6 +1117,25 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Network": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "NetworkNone",
+                "NetworkFull"
+            ]
+        },
+        "model.NetworkConfig": {
+            "type": "object",
+            "properties": {
+                "Type": {
+                    "$ref": "#/definitions/model.Network"
+                }
+            }
+        },
         "model.PublishedResult": {
             "type": "object",
             "properties": {
@@ -1249,6 +1277,14 @@ const docTemplate = `{
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
+                },
+                "Network": {
+                    "description": "The type of networking access that the job needs",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.NetworkConfig"
+                        }
+                    ]
                 },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",

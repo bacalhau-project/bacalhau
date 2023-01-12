@@ -12,7 +12,6 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 
-# from cryptography import x509
 
 __client_id = None
 __user_id_key = None
