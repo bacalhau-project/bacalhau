@@ -38,6 +38,7 @@ class JobEvent(object):
         'deal': 'JobEventDeal',
         'event_name': 'JobEventType',
         'event_time': 'str',
+        'execution_id': 'str',
         'job_execution_plan': 'JobEventJobExecutionPlan',
         'job_id': 'str',
         'published_result': 'StorageSpec',
@@ -58,6 +59,7 @@ class JobEvent(object):
         'deal': 'Deal',
         'event_name': 'EventName',
         'event_time': 'EventTime',
+        'execution_id': 'ExecutionID',
         'job_execution_plan': 'JobExecutionPlan',
         'job_id': 'JobID',
         'published_result': 'PublishedResult',
@@ -72,7 +74,7 @@ class JobEvent(object):
         'verification_result': 'VerificationResult'
     }
 
-    def __init__(self, api_version=None, client_id=None, deal=None, event_name=None, event_time=None, job_execution_plan=None, job_id=None, published_result=None, run_output=None, sender_public_key=None, shard_index=None, source_node_id=None, spec=None, status=None, target_node_id=None, verification_proposal=None, verification_result=None, _configuration=None):  # noqa: E501
+    def __init__(self, api_version=None, client_id=None, deal=None, event_name=None, event_time=None, execution_id=None, job_execution_plan=None, job_id=None, published_result=None, run_output=None, sender_public_key=None, shard_index=None, source_node_id=None, spec=None, status=None, target_node_id=None, verification_proposal=None, verification_result=None, _configuration=None):  # noqa: E501
         """JobEvent - a model defined in Swagger"""  # noqa: E501
         if _configuration is None:
             _configuration = Configuration()
@@ -83,6 +85,7 @@ class JobEvent(object):
         self._deal = None
         self._event_name = None
         self._event_time = None
+        self._execution_id = None
         self._job_execution_plan = None
         self._job_id = None
         self._published_result = None
@@ -107,6 +110,8 @@ class JobEvent(object):
             self.event_name = event_name
         if event_time is not None:
             self.event_time = event_time
+        if execution_id is not None:
+            self.execution_id = execution_id
         if job_execution_plan is not None:
             self.job_execution_plan = job_execution_plan
         if job_id is not None:
@@ -240,6 +245,29 @@ class JobEvent(object):
         """
 
         self._event_time = event_time
+
+    @property
+    def execution_id(self):
+        """Gets the execution_id of this JobEvent.  # noqa: E501
+
+        compute execution identifier  # noqa: E501
+
+        :return: The execution_id of this JobEvent.  # noqa: E501
+        :rtype: str
+        """
+        return self._execution_id
+
+    @execution_id.setter
+    def execution_id(self, execution_id):
+        """Sets the execution_id of this JobEvent.
+
+        compute execution identifier  # noqa: E501
+
+        :param execution_id: The execution_id of this JobEvent.  # noqa: E501
+        :type: str
+        """
+
+        self._execution_id = execution_id
 
     @property
     def job_execution_plan(self):

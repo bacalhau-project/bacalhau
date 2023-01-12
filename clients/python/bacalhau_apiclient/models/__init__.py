@@ -41,6 +41,7 @@ from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
 from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
 from bacalhau_apiclient.models.job_spec_language_job_context import JobSpecLanguageJobContext
 from bacalhau_apiclient.models.job_spec_wasm import JobSpecWasm
+from bacalhau_apiclient.models.job_spec_wasm_entry_module import JobSpecWasmEntryModule
 from bacalhau_apiclient.models.job_state import JobState
 from bacalhau_apiclient.models.job_state_type import JobStateType
 from bacalhau_apiclient.models.job_status import JobStatus
@@ -51,6 +52,8 @@ from bacalhau_apiclient.models.local_events_request import LocalEventsRequest
 from bacalhau_apiclient.models.local_events_response import LocalEventsResponse
 from bacalhau_apiclient.models.metadata import Metadata
 from bacalhau_apiclient.models.mount_status import MountStatus
+from bacalhau_apiclient.models.network import Network
+from bacalhau_apiclient.models.network_config import NetworkConfig
 from bacalhau_apiclient.models.published_result import PublishedResult
 from bacalhau_apiclient.models.publisher import Publisher
 from bacalhau_apiclient.models.resource_usage_config import ResourceUsageConfig
@@ -61,6 +64,7 @@ from bacalhau_apiclient.models.spec_deal import SpecDeal
 from bacalhau_apiclient.models.spec_docker import SpecDocker
 from bacalhau_apiclient.models.spec_engine import SpecEngine
 from bacalhau_apiclient.models.spec_execution_plan import SpecExecutionPlan
+from bacalhau_apiclient.models.spec_network import SpecNetwork
 from bacalhau_apiclient.models.spec_publisher import SpecPublisher
 from bacalhau_apiclient.models.spec_resources import SpecResources
 from bacalhau_apiclient.models.spec_sharding import SpecSharding

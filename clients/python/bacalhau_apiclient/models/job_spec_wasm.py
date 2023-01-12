@@ -33,6 +33,7 @@ class JobSpecWasm(object):
                             and the value is json key in definition.
     """
     swagger_types = {
+        'entry_module': 'JobSpecWasmEntryModule',
         'entry_point': 'str',
         'environment_variables': 'dict(str, str)',
         'import_modules': 'list[StorageSpec]',
@@ -40,24 +41,28 @@ class JobSpecWasm(object):
     }
 
     attribute_map = {
+        'entry_module': 'EntryModule',
         'entry_point': 'EntryPoint',
         'environment_variables': 'EnvironmentVariables',
         'import_modules': 'ImportModules',
         'parameters': 'Parameters'
     }
 
-    def __init__(self, entry_point=None, environment_variables=None, import_modules=None, parameters=None, _configuration=None):  # noqa: E501
+    def __init__(self, entry_module=None, entry_point=None, environment_variables=None, import_modules=None, parameters=None, _configuration=None):  # noqa: E501
         """JobSpecWasm - a model defined in Swagger"""  # noqa: E501
         if _configuration is None:
             _configuration = Configuration()
         self._configuration = _configuration
 
+        self._entry_module = None
         self._entry_point = None
         self._environment_variables = None
         self._import_modules = None
         self._parameters = None
         self.discriminator = None
 
+        if entry_module is not None:
+            self.entry_module = entry_module
         if entry_point is not None:
             self.entry_point = entry_point
         if environment_variables is not None:
@@ -66,6 +71,27 @@ class JobSpecWasm(object):
             self.import_modules = import_modules
         if parameters is not None:
             self.parameters = parameters
+
+    @property
+    def entry_module(self):
+        """Gets the entry_module of this JobSpecWasm.  # noqa: E501
+
+
+        :return: The entry_module of this JobSpecWasm.  # noqa: E501
+        :rtype: JobSpecWasmEntryModule
+        """
+        return self._entry_module
+
+    @entry_module.setter
+    def entry_module(self, entry_module):
+        """Sets the entry_module of this JobSpecWasm.
+
+
+        :param entry_module: The entry_module of this JobSpecWasm.  # noqa: E501
+        :type: JobSpecWasmEntryModule
+        """
+
+        self._entry_module = entry_module
 
     @property
     def entry_point(self):

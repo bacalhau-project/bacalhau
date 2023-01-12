@@ -41,6 +41,7 @@ class Spec(object):
         'engine': 'SpecEngine',
         'execution_plan': 'SpecExecutionPlan',
         'language': 'JobSpecLanguage',
+        'network': 'SpecNetwork',
         'publisher': 'SpecPublisher',
         'resources': 'SpecResources',
         'sharding': 'SpecSharding',
@@ -60,6 +61,7 @@ class Spec(object):
         'engine': 'Engine',
         'execution_plan': 'ExecutionPlan',
         'language': 'Language',
+        'network': 'Network',
         'publisher': 'Publisher',
         'resources': 'Resources',
         'sharding': 'Sharding',
@@ -70,7 +72,7 @@ class Spec(object):
         'outputs': 'outputs'
     }
 
-    def __init__(self, annotations=None, contexts=None, deal=None, do_not_track=None, docker=None, engine=None, execution_plan=None, language=None, publisher=None, resources=None, sharding=None, timeout=None, verifier=None, wasm=None, inputs=None, outputs=None, _configuration=None):  # noqa: E501
+    def __init__(self, annotations=None, contexts=None, deal=None, do_not_track=None, docker=None, engine=None, execution_plan=None, language=None, network=None, publisher=None, resources=None, sharding=None, timeout=None, verifier=None, wasm=None, inputs=None, outputs=None, _configuration=None):  # noqa: E501
         """Spec - a model defined in Swagger"""  # noqa: E501
         if _configuration is None:
             _configuration = Configuration()
@@ -84,6 +86,7 @@ class Spec(object):
         self._engine = None
         self._execution_plan = None
         self._language = None
+        self._network = None
         self._publisher = None
         self._resources = None
         self._sharding = None
@@ -110,6 +113,8 @@ class Spec(object):
             self.execution_plan = execution_plan
         if language is not None:
             self.language = language
+        if network is not None:
+            self.network = network
         if publisher is not None:
             self.publisher = publisher
         if resources is not None:
@@ -300,6 +305,27 @@ class Spec(object):
         """
 
         self._language = language
+
+    @property
+    def network(self):
+        """Gets the network of this Spec.  # noqa: E501
+
+
+        :return: The network of this Spec.  # noqa: E501
+        :rtype: SpecNetwork
+        """
+        return self._network
+
+    @network.setter
+    def network(self, network):
+        """Sets the network of this Spec.
+
+
+        :param network: The network of this Spec.  # noqa: E501
+        :type: SpecNetwork
+        """
+
+        self._network = network
 
     @property
     def publisher(self):

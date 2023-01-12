@@ -8,6 +8,7 @@ Name | Type | Description | Notes
 **deal** | [**JobEventDeal**](JobEventDeal.md) |  | [optional] 
 **event_name** | [**JobEventType**](JobEventType.md) |  | [optional] 
 **event_time** | **str** |  | [optional] 
+**execution_id** | **str** | compute execution identifier | [optional] 
 **job_execution_plan** | [**JobEventJobExecutionPlan**](JobEventJobExecutionPlan.md) |  | [optional] 
 **job_id** | **str** |  | [optional] 
 **published_result** | [**StorageSpec**](StorageSpec.md) |  | [optional] 

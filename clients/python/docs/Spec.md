@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **engine** | [**SpecEngine**](SpecEngine.md) |  | [optional] 
 **execution_plan** | [**SpecExecutionPlan**](SpecExecutionPlan.md) |  | [optional] 
 **language** | [**JobSpecLanguage**](JobSpecLanguage.md) |  | [optional] 
+**network** | [**SpecNetwork**](SpecNetwork.md) |  | [optional] 
 **publisher** | [**SpecPublisher**](SpecPublisher.md) |  | [optional] 
 **resources** | [**SpecResources**](SpecResources.md) |  | [optional] 
 **sharding** | [**SpecSharding**](SpecSharding.md) |  | [optional] 

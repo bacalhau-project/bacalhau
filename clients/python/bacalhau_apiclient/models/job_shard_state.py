@@ -33,6 +33,7 @@ class JobShardState(object):
                             and the value is json key in definition.
     """
     swagger_types = {
+        'execution_id': 'str',
         'node_id': 'str',
         'published_results': 'StorageSpec',
         'run_output': 'JobEventRunOutput',
@@ -44,6 +45,7 @@ class JobShardState(object):
     }
 
     attribute_map = {
+        'execution_id': 'ExecutionId',
         'node_id': 'NodeId',
         'published_results': 'PublishedResults',
         'run_output': 'RunOutput',
@@ -54,12 +56,13 @@ class JobShardState(object):
         'verification_result': 'VerificationResult'
     }
 
-    def __init__(self, node_id=None, published_results=None, run_output=None, shard_index=None, state=None, status=None, verification_proposal=None, verification_result=None, _configuration=None):  # noqa: E501
+    def __init__(self, execution_id=None, node_id=None, published_results=None, run_output=None, shard_index=None, state=None, status=None, verification_proposal=None, verification_result=None, _configuration=None):  # noqa: E501
         """JobShardState - a model defined in Swagger"""  # noqa: E501
         if _configuration is None:
             _configuration = Configuration()
         self._configuration = _configuration
 
+        self._execution_id = None
         self._node_id = None
         self._published_results = None
         self._run_output = None
@@ -70,6 +73,8 @@ class JobShardState(object):
         self._verification_result = None
         self.discriminator = None
 
+        if execution_id is not None:
+            self.execution_id = execution_id
         if node_id is not None:
             self.node_id = node_id
         if published_results is not None:
@@ -86,6 +91,29 @@ class JobShardState(object):
             self.verification_proposal = verification_proposal
         if verification_result is not None:
             self.verification_result = verification_result
+
+    @property
+    def execution_id(self):
+        """Gets the execution_id of this JobShardState.  # noqa: E501
+
+        Compute node reference for this shard execution  # noqa: E501
+
+        :return: The execution_id of this JobShardState.  # noqa: E501
+        :rtype: str
+        """
+        return self._execution_id
+
+    @execution_id.setter
+    def execution_id(self, execution_id):
+        """Sets the execution_id of this JobShardState.
+
+        Compute node reference for this shard execution  # noqa: E501
+
+        :param execution_id: The execution_id of this JobShardState.  # noqa: E501
+        :type: str
+        """
+
+        self._execution_id = execution_id
 
     @property
     def node_id(self):

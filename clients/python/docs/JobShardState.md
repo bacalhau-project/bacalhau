@@ -3,6 +3,7 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**execution_id** | **str** | Compute node reference for this shard execution | [optional] 
 **node_id** | **str** | which node is running this shard | [optional] 
 **published_results** | [**StorageSpec**](StorageSpec.md) |  | [optional] 
 **run_output** | [**JobEventRunOutput**](JobEventRunOutput.md) |  | [optional] 
