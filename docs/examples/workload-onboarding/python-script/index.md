@@ -164,11 +164,11 @@ def parseJobStatus(result: str) -> str:
         return ""
     r = json.loads(result)
     if len(r) > 0:
-        for _, v in r[0]["JobState"]["Nodes"].items():
+        for _, v in r[0]["Status"]["JobState"]["Nodes"].items():
             state = v["Shards"]["0"]["State"]
             if state == "Completed":
                 return state
-        for _, v in r[0]["JobState"]["Nodes"].items():
+        for _, v in r[0]["Status"]["JobState"]["Nodes"].items():
             state = v["Shards"]["0"]["State"]
             if state != "Cancelled":
                 return state
@@ -234,71 +234,71 @@ python bacalhau.py
 ```
 
     submitting 10 jobs
-    job submitted: 239f89b9-c9c2-4b24-b314-030f20d2ed86
-    job submitted: 5ce48688-fe02-4514-a9d0-a16f43634e8a
-    job submitted: 1ab7f06c-4c50-4617-8994-1904aa3bb1de
-    job submitted: 04201261-467b-4985-9b25-dacd59a2b6ab
-    job submitted: c2d181fd-ec3a-4320-abe2-01dd66784b5f
-    job submitted: 99a1d838-4ecc-45aa-ba02-67afcf4eaa4c
-    job submitted: 8d1bfc74-d623-45af-866d-d8d3100889e0
-    job submitted: ff777c33-04c5-43ca-a291-397c6e11e297
-    job submitted: 8cbfffa4-aef7-4413-9042-6776d5eddc33
-    job submitted: 50f0a7f1-6619-4b7b-ad53-65858389a8cd
+    job submitted: dead536c-286a-4632-9105-d4fdf81b9863
+    job submitted: 42dabff1-4116-46df-9be7-5b2fc015a3fe
+    job submitted: 82f1f934-8acd-4e56-919f-f09928323b19
+    job submitted: 3cbc3334-d3a2-4980-8bad-4e4347814040
+    job submitted: 2d2c3b70-2739-49b0-b8af-05236a836630
+    job submitted: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
+    job submitted: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
+    job submitted: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
+    job submitted: e8d83d77-ea16-41fb-8c20-7e2e809a187b
+    job submitted: b6b49a8b-6145-4728-a16b-f3e657464e67
     waiting for jobs to complete...
-    job not completed: 8d1bfc74-d623-45af-866d-d8d3100889e0 - Waiting
-    job not completed: 1ab7f06c-4c50-4617-8994-1904aa3bb1de - Waiting
-    job not completed: 5ce48688-fe02-4514-a9d0-a16f43634e8a - Waiting
-    job not completed: 04201261-467b-4985-9b25-dacd59a2b6ab - Waiting
-    job not completed: ff777c33-04c5-43ca-a291-397c6e11e297 - Waiting
-    job not completed: 99a1d838-4ecc-45aa-ba02-67afcf4eaa4c - Waiting
-    job not completed: c2d181fd-ec3a-4320-abe2-01dd66784b5f - Waiting
-    job not completed: 239f89b9-c9c2-4b24-b314-030f20d2ed86 - Waiting
-    job not completed: 50f0a7f1-6619-4b7b-ad53-65858389a8cd - Waiting
-    job not completed: 8cbfffa4-aef7-4413-9042-6776d5eddc33 - Waiting
+    job not completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe - Waiting
+    job not completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4 - Waiting
+    job not completed: 82f1f934-8acd-4e56-919f-f09928323b19 - Waiting
+    job not completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3 - Waiting
+    job not completed: dead536c-286a-4632-9105-d4fdf81b9863 - Waiting
+    job not completed: 2d2c3b70-2739-49b0-b8af-05236a836630 - Waiting
+    job not completed: 3cbc3334-d3a2-4980-8bad-4e4347814040 - Waiting
+    job not completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02 - Waiting
+    job not completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b - Waiting
+    job not completed: b6b49a8b-6145-4728-a16b-f3e657464e67 - Waiting
     0/10 jobs completed
-    job not completed: ff777c33-04c5-43ca-a291-397c6e11e297 - Waiting
-    job not completed: 04201261-467b-4985-9b25-dacd59a2b6ab - Waiting
-    job completed: 239f89b9-c9c2-4b24-b314-030f20d2ed86
-    job not completed: 1ab7f06c-4c50-4617-8994-1904aa3bb1de - Waiting
-    job not completed: c2d181fd-ec3a-4320-abe2-01dd66784b5f - Waiting
-    job not completed: 8d1bfc74-d623-45af-866d-d8d3100889e0 - Waiting
-    job completed: 99a1d838-4ecc-45aa-ba02-67afcf4eaa4c
-    job completed: 5ce48688-fe02-4514-a9d0-a16f43634e8a
-    job not completed: 50f0a7f1-6619-4b7b-ad53-65858389a8cd - Waiting
-    job not completed: 8cbfffa4-aef7-4413-9042-6776d5eddc33 - Waiting
-    3/10 jobs completed
-    job completed: 5ce48688-fe02-4514-a9d0-a16f43634e8a
-    job completed: c2d181fd-ec3a-4320-abe2-01dd66784b5f
-    job completed: 04201261-467b-4985-9b25-dacd59a2b6ab
-    job completed: 8d1bfc74-d623-45af-866d-d8d3100889e0
-    job completed: ff777c33-04c5-43ca-a291-397c6e11e297
-    job completed: 239f89b9-c9c2-4b24-b314-030f20d2ed86
-    job completed: 99a1d838-4ecc-45aa-ba02-67afcf4eaa4c
-    job completed: 1ab7f06c-4c50-4617-8994-1904aa3bb1de
-    job completed: 8cbfffa4-aef7-4413-9042-6776d5eddc33
-    job completed: 50f0a7f1-6619-4b7b-ad53-65858389a8cd
+    job not completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3 - Waiting
+    job not completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02 - Waiting
+    job not completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4 - Waiting
+    job not completed: 2d2c3b70-2739-49b0-b8af-05236a836630 - Waiting
+    job not completed: 82f1f934-8acd-4e56-919f-f09928323b19 - Waiting
+    job not completed: dead536c-286a-4632-9105-d4fdf81b9863 - Waiting
+    job not completed: 3cbc3334-d3a2-4980-8bad-4e4347814040 - Waiting
+    job completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe
+    job not completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b - Waiting
+    job not completed: b6b49a8b-6145-4728-a16b-f3e657464e67 - Waiting
+    1/10 jobs completed
+    job completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe
+    job completed: dead536c-286a-4632-9105-d4fdf81b9863
+    job completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
+    job completed: 3cbc3334-d3a2-4980-8bad-4e4347814040
+    job completed: 82f1f934-8acd-4e56-919f-f09928323b19
+    job completed: 2d2c3b70-2739-49b0-b8af-05236a836630
+    job completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
+    job completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
+    job completed: b6b49a8b-6145-4728-a16b-f3e657464e67
+    job completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b
     all jobs completed, saving results...
-    getting results for job: c2d181fd-ec3a-4320-abe2-01dd66784b5f
-    getting results for job: 239f89b9-c9c2-4b24-b314-030f20d2ed86
-    getting results for job: 99a1d838-4ecc-45aa-ba02-67afcf4eaa4c
-    getting results for job: ff777c33-04c5-43ca-a291-397c6e11e297
-    getting results for job: 5ce48688-fe02-4514-a9d0-a16f43634e8a
-    getting results for job: 04201261-467b-4985-9b25-dacd59a2b6ab
-    getting results for job: 8d1bfc74-d623-45af-866d-d8d3100889e0
-    getting results for job: 1ab7f06c-4c50-4617-8994-1904aa3bb1de
-    getting results for job: 50f0a7f1-6619-4b7b-ad53-65858389a8cd
-    getting results for job: 8cbfffa4-aef7-4413-9042-6776d5eddc33
+    getting results for job: dead536c-286a-4632-9105-d4fdf81b9863
+    getting results for job: 82f1f934-8acd-4e56-919f-f09928323b19
+    getting results for job: 2d2c3b70-2739-49b0-b8af-05236a836630
+    getting results for job: 3cbc3334-d3a2-4980-8bad-4e4347814040
+    getting results for job: 42dabff1-4116-46df-9be7-5b2fc015a3fe
+    getting results for job: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
+    getting results for job: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
+    getting results for job: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
+    getting results for job: e8d83d77-ea16-41fb-8c20-7e2e809a187b
+    getting results for job: b6b49a8b-6145-4728-a16b-f3e657464e67
     finished saving results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpui2gdnta/combined_results/outputs/transactions_00000000_00049999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmphktn81xx/combined_results/outputs/transactions_00050000_00099999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp15x2meyr/combined_results/outputs/transactions_00100000_00149999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp7md5a9yc/combined_results/outputs/transactions_00150000_00199999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpf_3mxm23/combined_results/outputs/transactions_00200000_00249999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpgybx5jqy/combined_results/outputs/transactions_00250000_00299999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpsvdyyig7/combined_results/outputs/transactions_00300000_00349999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpsjyrsujx/combined_results/outputs/transactions_00350000_00399999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpo76qn5fi/combined_results/outputs/transactions_00400000_00449999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp3xoyumpj/combined_results/outputs/transactions_00450000_00499999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpacgvy7wu/combined_results/outputs/transactions_00000000_00049999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp05iwhtpp/combined_results/outputs/transactions_00050000_00099999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp6t87xlzc/combined_results/outputs/transactions_00100000_00149999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp75fer_gp/combined_results/outputs/transactions_00150000_00199999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmphpikbnbj/combined_results/outputs/transactions_00200000_00249999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp8951a72p/combined_results/outputs/transactions_00250000_00299999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp9baglzje/combined_results/outputs/transactions_00300000_00349999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpa13amd3g/combined_results/outputs/transactions_00350000_00399999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp4v6lqc80/combined_results/outputs/transactions_00400000_00449999.csv to results
+    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpqgm5ka1s/combined_results/outputs/transactions_00450000_00499999.csv to results
 
 
 Hopefully the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see csv files:
@@ -309,16 +309,16 @@ ls -l results
 ```
 
     total 40
-    -rw-r--r-- 3 phil staff  55 Nov 29 11:16 transactions_00000000_00049999.csv
-    -rw-r--r-- 3 phil staff 387 Nov 29 11:17 transactions_00050000_00099999.csv
-    -rw-r--r-- 3 phil staff 388 Nov 29 11:17 transactions_00100000_00149999.csv
-    -rw-r--r-- 3 phil staff 426 Nov 29 11:16 transactions_00150000_00199999.csv
-    -rw-r--r-- 3 phil staff 393 Nov 29 11:17 transactions_00200000_00249999.csv
-    -rw-r--r-- 3 phil staff 384 Nov 29 11:16 transactions_00250000_00299999.csv
-    -rw-r--r-- 3 phil staff 421 Nov 29 11:16 transactions_00300000_00349999.csv
-    -rw-r--r-- 3 phil staff 390 Nov 29 11:17 transactions_00350000_00399999.csv
-    -rw-r--r-- 3 phil staff 347 Nov 29 11:17 transactions_00400000_00449999.csv
-    -rw-r--r-- 3 phil staff 386 Nov 29 11:18 transactions_00450000_00499999.csv
+    -rw-r--r-- 3 phil staff  55 Jan 12 13:48 transactions_00000000_00049999.csv
+    -rw-r--r-- 3 phil staff 387 Jan 12 13:49 transactions_00050000_00099999.csv
+    -rw-r--r-- 3 phil staff 388 Jan 12 13:50 transactions_00100000_00149999.csv
+    -rw-r--r-- 3 phil staff 426 Jan 12 13:48 transactions_00150000_00199999.csv
+    -rw-r--r-- 3 phil staff 393 Jan 12 13:49 transactions_00200000_00249999.csv
+    -rw-r--r-- 3 phil staff 384 Jan 12 13:48 transactions_00250000_00299999.csv
+    -rw-r--r-- 3 phil staff 421 Jan 12 13:48 transactions_00300000_00349999.csv
+    -rw-r--r-- 3 phil staff 390 Jan 12 13:48 transactions_00350000_00399999.csv
+    -rw-r--r-- 3 phil staff 347 Jan 12 13:48 transactions_00400000_00449999.csv
+    -rw-r--r-- 3 phil staff 386 Jan 12 13:48 transactions_00450000_00499999.csv
 
 
 Success! We've now executed a bunch of jobs in parallel using Python. This is a great way to execute lots of jobs in a repeatable manner. You can alter the file above for your purposes.
