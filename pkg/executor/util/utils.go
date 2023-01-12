@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
 	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
+	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
@@ -49,6 +50,8 @@ func NewStandardStorageProvider(
 	if err != nil {
 		return nil, err
 	}
+
+	inlineStorage := inline.NewStorage()
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
@@ -91,6 +94,7 @@ func NewStandardStorageProvider(
 		model.StorageSourceIPFS:             useIPFSDriver,
 		model.StorageSourceURLDownload:      urlDownloadStorage,
 		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
+		model.StorageSourceInline:           inlineStorage,
 	}), nil
 }
 

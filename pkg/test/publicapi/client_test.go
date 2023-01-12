@@ -27,7 +27,7 @@ func TestGet(t *testing.T) {
 	var j *model.Job
 	for i := 0; i < 5; i++ {
 		genericJob := testutils.MakeGenericJob()
-		j, err = c.Submit(ctx, genericJob, nil)
+		j, err = c.Submit(ctx, genericJob)
 		require.NoError(t, err)
 	}
 

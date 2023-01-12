@@ -58,7 +58,6 @@ func runURLTest(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
 		),
-		Contexts: scenario.CatFileToStdout.Contexts,
 		ResultsChecker: scenario.ManyChecks(
 			scenario.FileEquals(ipfs.DownloadFilenameStderr, ""),
 			scenario.FileEquals(ipfs.DownloadFilenameStdout, allContent),
@@ -76,7 +75,8 @@ func runURLTest(
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
 			Wasm: model.JobSpecWasm{
-				EntryPoint: "_start",
+				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
+				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
 				Parameters: []string{
 					testCase.mount1,
 					testCase.mount2,
@@ -228,13 +228,13 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
-		Contexts: scenario.CatFileToStdout.Contexts,
 		Spec: model.Spec{
 			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
 			Wasm: model.JobSpecWasm{
-				EntryPoint: "_start",
+				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
+				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
 				Parameters: []string{
 					urlmount,
 					path.Join(ipfsmount, ipfsfile),

@@ -1,14 +1,13 @@
 package bacalhau
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -219,8 +218,6 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		return err
 	}
 
-	var buf bytes.Buffer
-
 	if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
 		cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
 		OLR.ContextPath = ""
@@ -229,15 +226,19 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 	if OLR.ContextPath != "" {
 		// construct a tar file from the contextPath directory
 		// tar + gzip
-		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
+		cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
 		time.Sleep(1 * time.Second)
-		err = targzip.Compress(ctx, OLR.ContextPath, &buf)
-		if err != nil {
-			return err
+		inlineStorage := inline.NewStorage()
+		context, cerr := inlineStorage.Upload(ctx, OLR.ContextPath)
+		if cerr != nil {
+			Fatal(cmd, cerr.Error(), 1)
+			return nil
 		}
+		context.Path = "/job"
+		j.Spec.Contexts = append(j.Spec.Contexts, context)
 	}
 
-	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
+	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error executing job: %s", err), 1)
 		return nil

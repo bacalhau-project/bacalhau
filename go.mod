@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/antihax/optional v1.0.0
 	github.com/application-research/estuary-clients/go v0.0.0-20221118012408-a190dcdb467c
-	github.com/bmatcuk/doublestar/v4 v4.4.0
+	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/didip/tollbooth/v7 v7.0.1
@@ -33,7 +33,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.8.1
 	github.com/ipfs/go-unixfs v0.4.1
-	github.com/ipfs/go-unixfsnode v1.5.0
+	github.com/ipfs/go-unixfsnode v1.5.1
 	github.com/ipfs/interface-go-ipfs-core v0.8.1
 	github.com/ipfs/kubo v0.17.0
 	github.com/ipld/go-car/v2 v2.5.1
@@ -67,6 +67,7 @@ require (
 	github.com/tetratelabs/wazero v1.0.0-pre.4
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
+	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
 	go.opentelemetry.io/otel v1.11.2
@@ -80,8 +81,8 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
 	golang.org/x/mod v0.7.0
-	golang.org/x/net v0.4.0
-	google.golang.org/grpc v1.51.0
+	golang.org/x/net v0.5.0
+	google.golang.org/grpc v1.52.0
 	k8s.io/kubectl v0.26.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -319,14 +320,14 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e // indirect
+	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

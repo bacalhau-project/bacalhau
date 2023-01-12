@@ -125,3 +125,24 @@ func TestDecompressionSizeLimiting(t *testing.T) {
 		}
 	}
 }
+
+func TestUncompressedSize(t *testing.T) {
+	for _, mode := range []string{testModeFile, testModeDir} {
+		for size := range testSizes {
+			t.Run(mode+"/"+size.String(), func(t *testing.T) {
+				tgzFile, tgzInput := setup(t, size, mode)
+				defer tgzFile.Close()
+
+				err := compress(context.Background(), tgzInput, tgzFile, size*2)
+				require.NoError(t, err)
+
+				_, err = tgzFile.Seek(0, 0)
+				require.NoError(t, err)
+
+				outsize, err := UncompressedSize(tgzFile)
+				require.NoError(t, err)
+				require.Equal(t, size, outsize)
+			})
+		}
+	}
+}
