@@ -23,7 +23,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		j.Spec.Inputs[0].CID = os.Getenv("BACALHAU_CANARY_TEST_CID")
 	}
 
-	submittedJob, err := client.Submit(ctx, j, nil)
+	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err
 	}

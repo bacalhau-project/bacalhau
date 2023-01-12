@@ -77,6 +77,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					"1",               // memory
 					"0",               // gpu
 					model.NetworkNone, // networking
+					[]string{},        // domains
 					[]string{},        // input urls
 					[]string{},        // input volumes
 					outputVolumes,

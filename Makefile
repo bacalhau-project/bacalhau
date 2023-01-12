@@ -1,8 +1,5 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
 ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
 endif
@@ -151,14 +148,24 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 .PHONY: build-ipfs-sidecar-image
 build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
+HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
+HTTP_GATEWAY_TAG ?= ${TAG}
+.PHONY: build-http-gateway-image
+build-http-gateway-image:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
+		pkg/executor/docker/gateway
 
 .PHONY: build-docker-images
-build-docker-images:
-	@echo docker images built
+build-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -183,10 +190,12 @@ FILES_WITH_IMAGES := $(shell grep -Erl ${IMAGE_REGEX} pkg cmd)
 docker/.images: ${FILES_WITH_IMAGES}
 	grep -Eroh ${IMAGE_REGEX} $^ | cut -d'"' -f2 | sort | uniq > $@
 
-.PHONY: images
-images: docker/.images
+docker/.pulled: docker/.images
 	- cat $^ | xargs -n1 docker pull
+	touch $@
 
+.PHONY: images
+images: docker/.pulled
 
 ################################################################################
 # Target: clean
@@ -197,6 +206,7 @@ clean:
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
 	${RM} docker/.images
+	${RM} docker/.pulled
 
 
 ################################################################################
@@ -348,7 +358,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: images ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: docker/.pulled ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \

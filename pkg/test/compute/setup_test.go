@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	noop_verifier "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 	"github.com/phayes/freeport"
@@ -25,6 +26,7 @@ type ComputeSuite struct {
 	node          *node.Compute
 	config        node.ComputeConfig
 	jobStore      localdb.LocalDB
+	cm            *system.CleanupManager
 	executor      *noop_executor.NoopExecutor
 	verifier      *noop_verifier.NoopVerifier
 	publisher     *noop_publisher.NoopPublisher
@@ -33,7 +35,7 @@ type ComputeSuite struct {
 
 func (s *ComputeSuite) SetupTest() {
 	ctx := context.Background()
-	cm := system.NewCleanupManager()
+	s.cm = system.NewCleanupManager()
 	jobStore, err := inmemory.NewInMemoryDatastore()
 	s.NoError(err)
 
@@ -45,7 +47,7 @@ func (s *ComputeSuite) SetupTest() {
 		OverCommitResourcesFactor: 1.5,
 	})
 	s.executor = noop_executor.NewNoopExecutor()
-	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, cm, localdb.GetStateResolver(s.jobStore))
+	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm, localdb.GetStateResolver(s.jobStore))
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.setupNode()
 }
@@ -58,6 +60,7 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 	s.node = node.NewComputeNode(
 		context.Background(),
+		s.cm,
 		host,
 		s.config,
 		"",
@@ -65,6 +68,7 @@ func (s *ComputeSuite) setupNode() {
 		noop_executor.NewNoopExecutorProvider(s.executor),
 		noop_verifier.NewNoopVerifierProvider(s.verifier),
 		noop_publisher.NewNoopPublisherProvider(s.publisher),
+		pubsub.NewInMemoryPubSub[model.NodeInfo](),
 	)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
 		ExecutionStore: s.node.ExecutionStore,

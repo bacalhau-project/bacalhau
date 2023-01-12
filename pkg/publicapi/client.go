@@ -3,7 +3,6 @@ package publicapi
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +31,8 @@ const APIShortTimeoutSeconds = 10
 
 // APIClient is a utility for interacting with a node's API server.
 type APIClient struct {
-	BaseURI string
+	BaseURI        string
+	DefaultHeaders map[string]string
 
 	client *http.Client
 }
@@ -40,7 +40,8 @@ type APIClient struct {
 // NewAPIClient returns a new client for a node's API server.
 func NewAPIClient(baseURI string) *APIClient {
 	return &APIClient{
-		BaseURI: baseURI,
+		BaseURI:        baseURI,
+		DefaultHeaders: map[string]string{},
 
 		client: &http.Client{
 			Timeout: 300 * time.Second,
@@ -254,7 +255,6 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 func (apiClient *APIClient) Submit(
 	ctx context.Context,
 	j *model.Job,
-	buildContext *bytes.Buffer,
 ) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
 	defer span.End()
@@ -263,10 +263,6 @@ func (apiClient *APIClient) Submit(
 		ClientID:   system.GetClientID(),
 		APIVersion: j.APIVersion,
 		Spec:       &j.Spec,
-	}
-
-	if buildContext != nil {
-		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
 	jsonData, err := model.JSONMarshalWithMax(data)
@@ -332,6 +328,9 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating post request: %v", err))
 	}
 	req.Header.Set("Content-type", "application/json")
+	for header, value := range apiClient.DefaultHeaders {
+		req.Header.Set(header, value)
+	}
 	req.Close = true // don't keep connections lying around
 
 	var res *http.Response

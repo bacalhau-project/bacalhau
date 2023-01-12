@@ -61,7 +61,7 @@ func NewNoopStorage(ctx context.Context, cm *system.CleanupManager, config Stora
 	return storageHandler, nil
 }
 
-func NewNoopStorageProviderWithConfig(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorageWithConfig(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}

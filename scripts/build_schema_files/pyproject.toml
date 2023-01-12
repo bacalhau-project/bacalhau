@@ -6,7 +6,7 @@ authors = ["David Aronchick <aronchick@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-GitPython = "^3.1.29"
+GitPython = "^3.1.30"
 semver = "^2.13.0"
 Jinja2 = "^3.1.2"
 packaging = "^22.0"

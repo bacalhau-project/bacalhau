@@ -1,9 +1,10 @@
-package requester
+package discovery
 
 import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -25,7 +26,7 @@ func NewIdentityNodeDiscoverer(params IdentityNodeDiscovererParams) *IdentityNod
 }
 
 func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, error) {
-	peers := []peer.ID{}
+	var peers []peer.ID
 
 	// check local protocols in case the current node is also a compute node
 	// peerstore doesn't seem to hold protocols of the current node
@@ -52,4 +53,4 @@ func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) (
 }
 
 // compile time check that IdentityNodeDiscoverer implements NodeDiscoverer
-var _ NodeDiscoverer = (*IdentityNodeDiscoverer)(nil)
+var _ requester.NodeDiscoverer = (*IdentityNodeDiscoverer)(nil)

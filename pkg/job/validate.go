@@ -53,6 +53,10 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("invalid publisher type: %s", j.Spec.Publisher.String())
 	}
 
+	if err := j.Spec.Network.IsValid(); err != nil {
+		return err
+	}
+
 	if j.Spec.Deal.Confidence > j.Spec.Deal.Concurrency {
 		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
 	}

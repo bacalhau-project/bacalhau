@@ -7,6 +7,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/requester/discovery"
+	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
+	"github.com/filecoin-project/bacalhau/pkg/requester/ranking"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -22,6 +25,7 @@ type Requester struct {
 	Endpoint      requester.Endpoint
 	host          host.Host
 	JobStore      localdb.LocalDB
+	nodeInfoStore requester.NodeInfoStore
 	computeProxy  *bprotocol.ComputeProxy
 	localCallback *requester.Scheduler
 }
@@ -29,7 +33,7 @@ type Requester struct {
 //nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cleanupManager *system.CleanupManager,
 	host host.Host,
 	config RequesterConfig,
 	jobStore localdb.LocalDB,
@@ -60,13 +64,27 @@ func NewRequesterNode(
 		computeProxy = standardComputeProxy
 	}
 
-	scheduler := requester.NewScheduler(ctx, cm, requester.SchedulerParams{
-		ID:       host.ID().String(),
-		JobStore: jobStore,
-		NodeDiscoverer: requester.NewIdentityNodeDiscoverer(requester.IdentityNodeDiscovererParams{
+	// compute node discoverer
+	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+		TTL: config.NodeInfoStoreTTL,
+	})
+	nodeDiscoverer := discovery.NewChained(true)
+	nodeDiscoverer.Add(
+		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
+			Host:         host,
+			Store:        nodeInfoStore,
+			PeerStoreTTL: config.DiscoveredPeerStoreTTL,
+		}),
+		discovery.NewIdentityNodeDiscoverer(discovery.IdentityNodeDiscovererParams{
 			Host: host,
 		}),
-		NodeRanker: requester.NewRandomNodeRanker(requester.RandomNodeRankerParams{
+	)
+
+	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
+		ID:             host.ID().String(),
+		JobStore:       jobStore,
+		NodeDiscoverer: nodeDiscoverer,
+		NodeRanker: ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: config.NodeRankRandomnessRange,
 		}),
 		ComputeEndpoint:  computeProxy,
@@ -114,6 +132,7 @@ func NewRequesterNode(
 		host:          host,
 		Endpoint:      endpoint,
 		JobStore:      jobStore,
+		nodeInfoStore: nodeInfoStore,
 		localCallback: scheduler,
 		computeProxy:  standardComputeProxy,
 	}, nil
