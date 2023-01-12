@@ -42,31 +42,30 @@ bacalhau docker run \
     ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
-    env: JOB_ID=29994c8b-6b45-481c-b85b-2dd6aef29d91
+    env: JOB_ID=418f5335-8023-42ca-b65f-7844614151f0
 
 
 Just to be safe, double check that the job succeeded by running the describe command (and some `jq` to parse it).
 
 
 ```bash
-bacalhau list $JOB_ID --output=json | jq '.[0].JobState.Nodes[] | .Shards."0" | select(.RunOutput)'
+bacalhau list $JOB_ID --output=json | jq '.[0].Status.JobState.Nodes[] | .Shards."0" | select(.RunOutput)'
 ```
 
     {
-      "NodeId": "QmXMzb3GQRMyUyVvUB53nfkZ1sURTVxuR8BPowey7a3WKk",
+      "NodeId": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
       "State": "Completed",
-      "Status": "Got results proposal of length: 0",
       "VerificationResult": {
         "Complete": true,
         "Result": true
       },
       "PublishedResults": {
         "StorageSource": "IPFS",
-        "Name": "job-29994c8b-6b45-481c-b85b-2dd6aef29d91-shard-0-host-QmXMzb3GQRMyUyVvUB53nfkZ1sURTVxuR8BPowey7a3WKk",
-        "CID": "Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw"
+        "Name": "job-418f5335-8023-42ca-b65f-7844614151f0-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+        "CID": "QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H"
       },
       "RunOutput": {
-        "stdout": "3:22PM INF Copying files InputPath=/inputs OutputPath=/outputs\n3:22PM INF Copying object dst=/outputs/README.md src=/inputs/README.md\n3:22PM INF Done copying all objects files=[\"/outputs\",\"/outputs/README.md\"]\n",
+        "stdout": "1:45PM INF Copying files InputPath=/inputs OutputPath=/outputs\n1:45PM INF Copying object dst=/outputs/README.md src=/inputs/README.md\n1:45PM INF Done copying all objects files=[\"/outputs\",\"/outputs/README.md\"]\n",
         "stdouttruncated": false,
         "stderr": "",
         "stderrtruncated": false,
@@ -82,15 +81,15 @@ The job will upload the CID to the Filecoin network via Estuary. Let's get the C
 
 
 ```bash
-bacalhau list $JOB_ID --output=json | jq -r '.[0].JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
+bacalhau list $JOB_ID --output=json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
 ```
 
-    env: CID=Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
+    env: CID=QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H
 
 
 
-Your CID is <b>Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
-.</b><br/><br/><a href="https://ipfs.io/ipfs/Qma3NFsQfCvggPmyxLAozEq76sv3p4vWtuoeSKZ5anrwMw
+Your CID is <b>QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H
+.</b><br/><br/><a href="https://ipfs.io/ipfs/QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H
 "><button>View files on ipfs.io</button></a>
 
 
@@ -110,7 +109,7 @@ bacalhau docker run \
     bash -c "set -x; ls -l /inputs; ls -l /inputs/outputs; cat /inputs/outputs/README.md"
 ```
 
-    env: JOB_ID=47edd7e7-9103-46e0-9e9d-b5865f7565bd
+    env: JOB_ID=37e3c424-072a-4ea5-bc3a-76909dce17ee
 
 
 
@@ -119,9 +118,12 @@ rm -rf results && mkdir ./results
 bacalhau get --output-dir ./results $JOB_ID 
 ```
 
-    Fetching results of job '47edd7e7-9103-46e0-9e9d-b5865f7565bd'...
-    Results for job '47edd7e7-9103-46e0-9e9d-b5865f7565bd' have been written to...
+    Fetching results of job '37e3c424-072a-4ea5-bc3a-76909dce17ee'...
+    Results for job '37e3c424-072a-4ea5-bc3a-76909dce17ee' have been written to...
     ./results
+
+
+    2023/01/12 13:45:45 CleanupManager.fnsMutex violation CRITICAL section took 22.714ms 22714000 (threshold 10ms)
 
 
 
@@ -129,14 +131,13 @@ bacalhau get --output-dir ./results $JOB_ID
 %cat ./results/combined_results/stdout
 ```
 
-    /Users/phil/.zshenv:.:1: no such file or directory: /Users/phil/.cargo/env
     total 12
-    -rw-rw-r-- 1 1000 1000    1 Dec  8 15:22 exitCode
-    drwxrwxr-x 2 1000 1000 4096 Dec  8 15:22 outputs
-    -rw-rw-r-- 1 1000 1000    0 Dec  8 15:22 stderr
-    -rw-rw-r-- 1 1000 1000  210 Dec  8 15:22 stdout
+    -rw-r--r-- 1 root root    1 Jan 12 13:45 exitCode
+    drwxr-xr-x 2 root root 4096 Jan 12 13:45 outputs
+    -rw-r--r-- 1 root root    0 Jan 12 13:45 stderr
+    -rw-r--r-- 1 root root  210 Jan 12 13:45 stdout
     total 4
-    -rw-rw-r-- 1 1000 1000 3802 Dec  8 15:22 README.md
+    -rw-r--r-- 1 root root 3802 Jan 12 13:45 README.md
     <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
     -->
     # The Filecoin Distributed Computation Framework  
