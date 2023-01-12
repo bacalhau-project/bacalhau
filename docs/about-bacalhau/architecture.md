@@ -5,13 +5,11 @@ sidebar_position: 2
 
 # Architecture
 
-## Why Bacalhau?
-
-Bacalhau provides a platform for public, transparent, and optionally verifiable computation. It enables users to run arbitrary Docker containers and WebAssembly (wasm) images as tasks against data stored in the InterPlanetary File System (IPFS). This architecture is also referred to as Compute Over Data (or CoD).
+Bacalhau operates as a peer-to-peer network of nodes where each node has both a requestor and compute component.  To interact with the Bacalhau network, Bacalhau CLI requests are sent to a node in the network (via JSON over HTTP), which then broadcasts messages over the transport layer to other nodes in the network.  All other nodes in the network are connected to the transport layer and as such have a shared view of the world.
 
 ![image](../../static/img/architecture/architecture-purpose.jpeg)
 
-Bacalhau operates as a peer-to-peer network of nodes where each node has both a requestor and compute component.  To interact with the Bacalhau network, Bacalhau CLI requests are sent to a node in the network (via JSON over HTTP), which then broadcasts messages over the transport layer to other nodes in the network.  All other nodes in the network are connected to the transport layer and as such have a shared view of the world.
+
 
 ## System Components
 
