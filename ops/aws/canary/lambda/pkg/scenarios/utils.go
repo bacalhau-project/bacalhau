@@ -123,9 +123,6 @@ func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submit
 		ctx,
 		submittedJob.Metadata.ID,
 		totalShards,
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
 			model.JobStateCompleted: totalShards,
 		}),
