@@ -281,6 +281,7 @@ func newServeCmd() *cobra.Command {
 	return serveCmd
 }
 
+//nolint:funlen
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()

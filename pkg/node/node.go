@@ -93,7 +93,7 @@ func NewStandardNode(
 	return NewNode(ctx, config, NewStandardNodeDependencyInjector())
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
 	config NodeConfig,
