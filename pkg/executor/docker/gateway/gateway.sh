@@ -3,8 +3,8 @@ set -eux
 
 # Write out our supplied config to disk.
 mkdir -p /etc/bacalhau
-echo $BACALHAU_HTTP_CLIENTS > /etc/bacalhau/allowed-clients.txt
-echo $BACALHAU_HTTP_DOMAINS > /etc/bacalhau/allowed-domains.txt
+echo $BACALHAU_HTTP_CLIENTS | jq -r '.[]' > /etc/bacalhau/allowed-clients.txt
+echo $BACALHAU_HTTP_DOMAINS | jq -r '.[]' > /etc/bacalhau/allowed-domains.txt
 
 # Don't forward any packets... otherwise our proxy can be bypassed.
 iptables -P FORWARD DROP
