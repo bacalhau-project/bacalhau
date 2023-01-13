@@ -27,7 +27,7 @@ func SetupTest(
 	t.Cleanup(cm.Cleanup)
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:            nodes,
+		NumberOfHybridNodes:      nodes,
 		NumberOfBadComputeActors: badActors,
 		LocalNetworkLotus:        lotusNode,
 	}

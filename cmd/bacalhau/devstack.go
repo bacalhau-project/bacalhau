@@ -23,21 +23,28 @@ var (
 
 	//nolint:lll // Documentation
 	devstackExample = templates.Examples(i18n.T(`
-		# Create a devstack cluster.
-		bacalhau devstack
+		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
+		bacalhau devstack 
+
+		# Create a devstack cluster with a two requester nodes and 10 compute nodes
+		bacalhau devstack  --requester-nodes 2 --compute-nodes 10
+
+		# Create a devstack cluster with a single hybrid (requester and compute) nodes
+		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1 
 `))
 )
 
 func newDevStackOptions() *devstack.DevStackOptions {
 	return &devstack.DevStackOptions{
-		NumberOfNodes:            3,
-		NumberOfBadComputeActors: 0,
-		Peer:                     "",
-		PublicIPFSMode:           false,
-		EstuaryAPIKey:            os.Getenv("ESTUARY_API_KEY"),
-		LocalNetworkLotus:        false,
-		SimulatorAddr:            "",
-		SimulatorMode:            false,
+		NumberOfRequesterOnlyNodes: 1,
+		NumberOfComputeOnlyNodes:   3,
+		NumberOfBadComputeActors:   0,
+		Peer:                       "",
+		PublicIPFSMode:             false,
+		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
+		LocalNetworkLotus:          false,
+		SimulatorAddr:              "",
+		SimulatorMode:              false,
 	}
 }
 
@@ -57,15 +64,23 @@ func newDevStackCmd() *cobra.Command {
 	}
 
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfNodes, "nodes", ODs.NumberOfNodes,
-		`How many nodes should be started in the cluster`,
+		&ODs.NumberOfHybridNodes, "hybrid-nodes", ODs.NumberOfHybridNodes,
+		`How many hybrid (requester and compute) nodes should be started in the cluster`,
+	)
+	devstackCmd.PersistentFlags().IntVar(
+		&ODs.NumberOfRequesterOnlyNodes, "requester-nodes", ODs.NumberOfRequesterOnlyNodes,
+		`How many requester only nodes should be started in the cluster`,
+	)
+	devstackCmd.PersistentFlags().IntVar(
+		&ODs.NumberOfComputeOnlyNodes, "compute-nodes", ODs.NumberOfComputeOnlyNodes,
+		`How many compute only nodes should be started in the cluster`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
 		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
 		`How many compute nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadComputeActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
+		&ODs.NumberOfBadRequesterActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
 		`How many requester nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
@@ -111,9 +126,15 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 
 	config.DevstackSetShouldPrintInfo()
 
-	if ODs.NumberOfBadComputeActors >= ODs.NumberOfNodes {
+	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
+	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
+	if ODs.NumberOfBadComputeActors > totalComputeNodes {
 		Fatal(cmd, fmt.Sprintf("You cannot have more bad compute actors (%d) than there are nodes (%d).",
-			ODs.NumberOfBadComputeActors, ODs.NumberOfNodes), 1)
+			ODs.NumberOfBadComputeActors, totalComputeNodes), 1)
+	}
+	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
+		Fatal(cmd, fmt.Sprintf("You cannot have more bad requester actors (%d) than there are nodes (%d).",
+			ODs.NumberOfBadRequesterActors, totalRequesterNodes), 1)
 	}
 
 	// Context ensures main goroutine waits until killed with ctrl+c:

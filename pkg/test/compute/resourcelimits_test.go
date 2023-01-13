@@ -125,9 +125,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		stack := testutils.SetupTestWithNoopExecutor(
 			ctx,
 			suite.T(),
-			devstack.DevStackOptions{NumberOfNodes: 1},
+			devstack.DevStackOptions{NumberOfHybridNodes: 1},
 			node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits: capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				TotalResourceLimits:          capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 			}),
 			node.NewRequesterConfigWithDefaults(),
 			noop_executor.ExecutorConfig{
@@ -165,7 +166,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 1000,
+			MaxAttempts: 30,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)
@@ -292,7 +293,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	stack := testutils.SetupTestWithNoopExecutor(
 		ctx,
 		suite.T(),
-		devstack.DevStackOptions{NumberOfNodes: nodeCount},
+		devstack.DevStackOptions{NumberOfHybridNodes: nodeCount},
 		node.NewComputeConfigWith(node.ComputeConfigParams{
 			TotalResourceLimits: model.ResourceUsageData{
 				CPU:    1,
@@ -326,10 +327,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (*model.Job, error) {
-			return stack.Nodes[0].LocalDB.GetJob(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
-			return stack.Nodes[0].LocalDB.GetJobState(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJobState(ctx, id)
 		},
 	)
 

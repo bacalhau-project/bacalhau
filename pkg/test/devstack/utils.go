@@ -15,7 +15,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -35,7 +35,7 @@ func SetupTest(
 	cm := system.NewCleanupManager()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:            nodes,
+		NumberOfHybridNodes:      nodes,
 		NumberOfBadComputeActors: badActors,
 		LocalNetworkLotus:        lotusNode,
 	}
@@ -77,7 +77,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	ctx context.Context,
 	t *testing.T,
 	submitJob func(
-		apiClient *publicapi.APIClient,
+		apiClient *publicapi.RequesterAPIClient,
 		args DeterministicVerifierTestArgs,
 	) (string, error),
 	args DeterministicVerifierTestArgs,
@@ -86,7 +86,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	defer cm.Cleanup()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:            args.NodeCount,
+		NumberOfHybridNodes:      args.NodeCount,
 		NumberOfBadComputeActors: args.BadActors,
 	}
 
@@ -145,7 +145,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	// wait for other nodes to catch up
 	time.Sleep(time.Second * 1)
 	apiURI := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiURI)
+	apiClient := publicapi.NewRequesterAPIClient(apiURI)
 
 	jobID, err := submitJob(apiClient, args)
 	require.NoError(t, err)

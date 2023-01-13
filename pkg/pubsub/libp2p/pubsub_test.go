@@ -64,7 +64,7 @@ func (s *PubSubSuite) createPubSub(ignoreLocal bool, peers ...host.Host) (*PubSu
 	gossipSub, err := libp2p_pubsub.NewGossipSub(context.Background(), h)
 	s.NoError(err)
 
-	pubSub := NewPubSub[string](PubSubParams{
+	pubSub, err := NewPubSub[string](PubSubParams{
 		Host:        h,
 		TopicName:   testTopic,
 		PubSub:      gossipSub,
