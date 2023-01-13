@@ -21,7 +21,7 @@ done
 # Apply rate limits to the outbound connections. We just do this for all
 # interfaces rather than working out which is our Internet connection.
 for IFACE in $(ip --json address show | jq -rc '.[] | .ifname'); do
-    tc qdisc add dev $IFACE root tbf rate 1mbit burst 32kbit latency 10sec
+    tc qdisc add dev $IFACE root tbf rate 10mbit burst 32kbit latency 10sec
 done
 
 # Add Bacalhau job ID to outgoing requests. We can use this to detect jobs

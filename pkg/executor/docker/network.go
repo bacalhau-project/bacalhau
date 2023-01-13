@@ -27,7 +27,7 @@ const (
 	// pkg/executor/docker/gateway/Dockerfile for design notes. We specify this
 	// using a fully-versioned tag so that the interface between code and image
 	// stay in sync.
-	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-47-g70f95a3d"
+	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-50-g9955b03d"
 
 	// The hostname used by Mac OS X and Windows hosts to refer to the Docker
 	// host in a network context. Linux hosts can use this hostname if they
