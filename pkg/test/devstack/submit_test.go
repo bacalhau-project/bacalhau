@@ -59,12 +59,12 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}
-	_, missingSpecError := apiClient.Submit(ctx, j, nil)
+	_, missingSpecError := apiClient.Submit(ctx, j)
 
 	require.Error(suite.T(), missingSpecError)
 
 	j = &model.Job{}
 	j.Spec = model.Spec{Engine: model.EngineDocker}
-	_, missingDealError := apiClient.Submit(ctx, j, nil)
+	_, missingDealError := apiClient.Submit(ctx, j)
 	require.Error(suite.T(), missingDealError)
 }

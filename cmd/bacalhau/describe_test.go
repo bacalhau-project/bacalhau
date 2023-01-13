@@ -50,7 +50,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					for k := 0; k < n.numOfJobs; k++ {
 						j := testutils.MakeNoopJob()
 						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-						s, err := suite.client.Submit(ctx, j, nil)
+						s, err := suite.client.Submit(ctx, j)
 						require.NoError(suite.T(), err)
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
@@ -132,7 +132,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 			ctx := context.Background()
 
 			j := testutils.MakeNoopJob()
-			s, err := suite.client.Submit(ctx, j, nil)
+			s, err := suite.client.Submit(ctx, j)
 			require.NoError(suite.T(), err)
 			submittedJob = s // Default to the last job submitted, should be fine?
 
@@ -190,7 +190,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				for i := 0; i < n.numOfJobs; i++ {
 					j := testutils.MakeNoopJob()
 					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-					jj, err := s.client.Submit(ctx, j, nil)
+					jj, err := s.client.Submit(ctx, j)
 					require.Nil(s.T(), err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}

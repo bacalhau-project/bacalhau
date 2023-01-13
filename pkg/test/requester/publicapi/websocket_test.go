@@ -64,7 +64,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 	}()
 
 	genericJob := testutils.MakeGenericJob()
-	_, err = s.client.Submit(ctx, genericJob, nil)
+	_, err = s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
 	event := <-eventChan
@@ -78,7 +78,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	ctx := context.Background()
 
 	genericJob := testutils.MakeGenericJob()
-	j, err := s.client.Submit(ctx, genericJob, nil)
+	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
 	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.Metadata.ID)

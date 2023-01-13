@@ -19,6 +19,7 @@ const (
 	StorageSourceFilecoinUnsealed
 	StorageSourceFilecoin
 	StorageSourceEstuary
+	StorageSourceInline
 	storageSourceDone // must be last
 )
 

@@ -289,7 +289,6 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
-	buildContext *bytes.Buffer,
 ) error {
 	var apiClient *publicapi.RequesterAPIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -313,7 +312,7 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	j, err = submitJob(ctx, apiClient, j, buildContext)
+	j, err = submitJob(ctx, apiClient, j)
 	if err != nil {
 		return err
 	}
@@ -490,12 +489,11 @@ func downloadResultsHandler(
 func submitJob(ctx context.Context,
 	apiClient *publicapi.RequesterAPIClient,
 	j *model.Job,
-	buildContext *bytes.Buffer,
 ) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
 	defer span.End()
 
-	j, err := apiClient.Submit(ctx, j, buildContext)
+	j, err := apiClient.Submit(ctx, j)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}

@@ -55,7 +55,7 @@ func (s *ServerSuite) TestList() {
 	// Submit a random job to the node:
 	j := testutils.MakeNoopJob()
 
-	_, err = s.client.Submit(ctx, j, nil)
+	_, err = s.client.Submit(ctx, j)
 	require.NoError(s.T(), err)
 
 	// Should now have one job:
@@ -70,6 +70,6 @@ func (s *ServerSuite) TestSubmitRejectsJobWithSigilHeader() {
 	require.NoError(s.T(), err)
 
 	s.client.DefaultHeaders["X-Bacalhau-Job-ID"] = jobID.String()
-	_, err = s.client.Submit(context.Background(), j, nil)
+	_, err = s.client.Submit(context.Background(), j)
 	require.Error(s.T(), err)
 }

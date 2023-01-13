@@ -1,9 +1,7 @@
 package publicapi
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -220,7 +218,6 @@ func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID strin
 func (apiClient *RequesterAPIClient) Submit(
 	ctx context.Context,
 	j *model.Job,
-	buildContext *bytes.Buffer,
 ) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
 	defer span.End()
@@ -229,10 +226,6 @@ func (apiClient *RequesterAPIClient) Submit(
 		ClientID:   system.GetClientID(),
 		APIVersion: j.APIVersion,
 		Spec:       &j.Spec,
-	}
-
-	if buildContext != nil {
-		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
 	jsonData, err := model.JSONMarshalWithMax(data)

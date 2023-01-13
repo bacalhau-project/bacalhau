@@ -151,7 +151,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	}
 
 	apiClient := publicapi.NewRequesterAPIClient(stack.Nodes[0].APIServer.GetURI())
-	submittedJob, submitError := apiClient.Submit(s.Ctx, j, nil)
+	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()
 	}

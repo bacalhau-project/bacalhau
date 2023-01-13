@@ -13,7 +13,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -27,6 +27,24 @@ func Compress(ctx context.Context, src string, buf io.Writer) error {
 
 func Decompress(src io.Reader, dst string) error {
 	return decompress(src, dst, MaximumContextSize)
+}
+
+func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
+	var size datasize.ByteSize
+	zr, err := gzip.NewReader(src)
+	if err != nil {
+		return 0, err
+	}
+	tr := tar.NewReader(zr)
+
+	var header *tar.Header
+	for header, err = tr.Next(); err == nil; header, err = tr.Next() {
+		size += datasize.ByteSize(header.Size)
+	}
+	if err == io.EOF {
+		err = nil
+	}
+	return size, err
 }
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
@@ -66,6 +84,7 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 		if err != nil {
 			return err
 		}
+		defer closer.CloseWithLogOnError(fi.Name(), data)
 		if _, err = io.Copy(tw, data); err != nil {
 			return err
 		}
@@ -105,6 +124,7 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
 					return err
 				}
+				closer.CloseWithLogOnError(fi.Name(), data)
 			}
 			return nil
 		})
@@ -186,7 +206,6 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 			}
 			// copy over contents (max 10MB per file!)
 			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil { //nolint:gomnd
-				log.Debug().Msgf("CopyN err is %s", err)
 				// io.EOF is expected
 				if err != io.EOF {
 					return err
