@@ -131,6 +131,7 @@ func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID
 		return nil, nil, fmt.Errorf("no container found: %s", nameOrID)
 	}
 
+	ctx = log.Ctx(ctx).With().Str("ContainerID", container.ID).Str("Image", container.Image).Logger().WithContext(ctx)
 	logsReader, err := dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -144,7 +145,7 @@ func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID
 	stderrReader, stderrWriter := io.Pipe()
 	go func() {
 		_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, logsReader)
-		if err != nil {
+		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Ctx(ctx).Error().Err(err).Msg("error reading container logs")
 		}
 		logsReader.Close()
