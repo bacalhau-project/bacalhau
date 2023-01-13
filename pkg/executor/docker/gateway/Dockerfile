@@ -20,10 +20,10 @@
 #
 # In particular, the image expects some environment variables to be supplied:
 #
-# - BACALHAU_HTTP_CLIENTS which is a one-per-line list of subnets allowed to
+# - BACALHAU_HTTP_CLIENTS which is a JSON array of strings of subnets allowed to
 #   access the gateway
-# - BACALHAU_HTTP_DOMAINS which is a one-per-line list of domains that clients
-#   are allowed to access
+# - BACALHAU_HTTP_DOMAINS which is a JSON array of strings of domains that
+#   clients are allowed to access
 # - BACALHAU_JOB_ID which contains the ID of the Bacalhau job being run
 #
 # The container needs to be started with --cap-add=NET_ADMIN so that it can
