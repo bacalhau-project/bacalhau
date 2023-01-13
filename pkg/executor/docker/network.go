@@ -2,9 +2,9 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 )
 
 const (
@@ -26,7 +27,7 @@ const (
 	// pkg/executor/docker/gateway/Dockerfile for design notes. We specify this
 	// using a fully-versioned tag so that the interface between code and image
 	// stay in sync.
-	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.16"
+	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-50-g9955b03d"
 
 	// The hostname used by Mac OS X and Windows hosts to refer to the Docker
 	// host in a network context. Linux hosts can use this hostname if they
@@ -109,11 +110,16 @@ func (e *Executor) createHTTPGateway(
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
 	// Create the gateway container initially attached to the *host* network
-	domainList := strings.Join(shard.Job.Spec.Network.Domains, "\n")
+	domainList, derr := json.Marshal(shard.Job.Spec.Network.Domains)
+	clientList, cerr := json.Marshal([]string{subnet})
+	if derr != nil || cerr != nil {
+		return nil, nil, errors.Wrap(multierr.Combine(derr, cerr), "error preparing gateway config")
+	}
+
 	gatewayContainer, err := e.Client.ContainerCreate(ctx, &container.Config{
 		Image: httpGatewayImage,
 		Env: []string{
-			fmt.Sprintf("BACALHAU_HTTP_CLIENTS=%s", subnet),
+			fmt.Sprintf("BACALHAU_HTTP_CLIENTS=%s", clientList),
 			fmt.Sprintf("BACALHAU_HTTP_DOMAINS=%s", domainList),
 			fmt.Sprintf("BACALHAU_JOB_ID=%s", shard.Job.Metadata.ID),
 		},
