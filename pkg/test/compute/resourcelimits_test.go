@@ -127,7 +127,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			suite.T(),
 			devstack.DevStackOptions{NumberOfHybridNodes: 1},
 			node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits: capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				TotalResourceLimits:          capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 			}),
 			node.NewRequesterConfigWithDefaults(),
 			noop_executor.ExecutorConfig{
@@ -165,7 +166,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 1000,
+			MaxAttempts: 30,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)

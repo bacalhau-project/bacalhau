@@ -129,7 +129,7 @@ func NewComputeNode(
 		bidstrategy.NewMaxCapacityStrategy(bidstrategy.MaxCapacityStrategyParams{
 			MaxJobRequirements: config.JobResourceLimits,
 		}),
-		bidstrategy.NewAvailableCapacityStrategy(bidstrategy.AvailableCapacityStrategyParams{
+		bidstrategy.NewAvailableCapacityStrategy(ctx, bidstrategy.AvailableCapacityStrategyParams{
 			CapacityTracker: capacityTracker,
 			CommitFactor:    config.OverCommitResourcesFactor,
 		}),
