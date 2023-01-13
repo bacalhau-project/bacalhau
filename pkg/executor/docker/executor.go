@@ -326,7 +326,7 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 		return
 	}
 
-	err := docker.RemoveObjectsWithLabel(ctx, e.Client, labelJobName, shard.ID())
+	err := docker.RemoveObjectsWithLabel(ctx, e.Client, labelJobName, e.ID+shard.ID())
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
