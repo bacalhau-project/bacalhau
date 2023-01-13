@@ -40,4 +40,4 @@ First, you'll need to check that the bacalhau server is up and running on the sa
 
 ### Can I run Bacalhau in a containerized setup (nested containers)?
 
-We don't support this as it will result in the classic Dind(Docker In Docker) Problem. 
+We don't support this as it will result in the classic Dind(Docker In Docker) problem. 
