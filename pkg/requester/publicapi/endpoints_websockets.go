@@ -15,7 +15,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // TODO: Godoc
-func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) websocket(res http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(res, req, nil)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -30,20 +30,20 @@ func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request
 	jobID := req.URL.Query().Get("job_id")
 
 	func() {
-		apiServer.WebsocketsMutex.Lock()
-		defer apiServer.WebsocketsMutex.Unlock()
+		s.websocketsMutex.Lock()
+		defer s.websocketsMutex.Unlock()
 
-		sockets, ok := apiServer.Websockets[jobID]
+		sockets, ok := s.websockets[jobID]
 		if !ok {
 			sockets = []*websocket.Conn{}
-			apiServer.Websockets[jobID] = sockets
+			s.websockets[jobID] = sockets
 		}
-		apiServer.Websockets[jobID] = append(sockets, conn)
+		s.websockets[jobID] = append(sockets, conn)
 	}()
 
 	if jobID != "" {
 		// list events for job out of localDB and send them to the client
-		events, err := apiServer.localdb.GetJobEvents(context.Background(), jobID)
+		events, err := s.localDB.GetJobEvents(context.Background(), jobID)
 		if err != nil {
 			log.Error().Msgf("error listing job events: %s\n", err.Error())
 			return
@@ -66,12 +66,12 @@ func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request
 	}
 }
 
-func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
-	apiServer.WebsocketsMutex.Lock()
-	defer apiServer.WebsocketsMutex.Unlock()
+func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
+	s.websocketsMutex.RLock()
+	defer s.websocketsMutex.RUnlock()
 
 	dispatchAndCleanup := func(jobId string) {
-		connections, ok := apiServer.Websockets[jobId]
+		connections, ok := s.websockets[jobId]
 		if !ok {
 			return
 		}
@@ -79,6 +79,7 @@ func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobE
 		for idx, connection := range connections {
 			// TODO: dispatch to subscribers in parallel, to avoid one slow
 			// reader slowing all the others down.
+			log.Trace().Msgf("sending %+v to %s/%d", event, jobId, idx)
 			err := connection.WriteJSON(event)
 			if err != nil {
 				log.Error().Msgf(
@@ -101,7 +102,7 @@ func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobE
 		for _, idx := range errIdxs {
 			connections = append(connections[:idx], connections[idx+1:]...)
 		}
-		apiServer.Websockets[jobId] = connections
+		s.websockets[jobId] = connections
 	}
 	dispatchAndCleanup("")
 	dispatchAndCleanup(event.JobID)

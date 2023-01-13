@@ -24,15 +24,11 @@ type listRequest struct {
 	SortReverse bool                `json:"sort_reverse"`
 }
 
-type ListRequest = listRequest
-
 type listResponse struct {
 	Jobs []*model.Job `json:"jobs"`
 }
 
-type ListResponse = listResponse
-
-// list godoc
+// List godoc
 // @ID                   pkg/publicapi.list
 // @Summary              Simply lists jobs.
 // @Description.markdown endpoints_list
@@ -46,11 +42,11 @@ type ListResponse = listResponse
 // @Router               /list [post]
 //
 //nolint:lll
-func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) List(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()
 
-	var listReq ListRequest
+	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -58,7 +54,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, listReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, listReq.JobID)
 
-	jobList, err := apiServer.getJobsList(ctx, listReq)
+	jobList, err := s.getJobsList(ctx, listReq)
 	if err != nil {
 		_, ok := err.(*bacerrors.JobNotFound)
 		if ok {
@@ -68,7 +64,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 	if len(jobList) > 0 {
 		// get JobStates
-		err = apiServer.getJobStates(ctx, jobList)
+		err = s.getJobStates(ctx, jobList)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -76,7 +72,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(ListResponse{
+	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: jobList,
 	})
 	if err != nil {
@@ -85,11 +81,11 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]*model.Job, error) {
+func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq listRequest) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 
-	list, err := apiServer.localdb.GetJobs(ctx, localdb.JobQuery{
+	list, err := s.localDB.GetJobs(ctx, localdb.JobQuery{
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
@@ -105,13 +101,13 @@ func (apiServer *APIServer) getJobsList(ctx context.Context, listReq ListRequest
 	return list, nil
 }
 
-func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.Job) error {
+func (s *RequesterAPIServer) getJobStates(ctx context.Context, jobList []*model.Job) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.getJobStates")
 	defer span.End()
 
 	var err error
 	for k := range jobList {
-		jobList[k].Status.State, err = apiServer.localdb.GetJobState(ctx, jobList[k].Metadata.ID)
+		jobList[k].Status.State, err = s.localDB.GetJobState(ctx, jobList[k].Metadata.ID)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
 			return err

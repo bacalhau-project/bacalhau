@@ -26,10 +26,9 @@ func NewCapacityDebugInfoProvider(params CapacityDebugInfoProviderParams) *Capac
 }
 
 func (r CapacityDebugInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
-	availableCapacity := r.capacityTracker.GetAvailableCapacity(context.Background())
 	return model.DebugInfo{
 		Component: r.name,
-		Info:      availableCapacity.String(),
+		Info:      r.capacityTracker.GetAvailableCapacity(context.Background()),
 	}, nil
 }
 

@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -64,7 +64,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, j)
 	require.NoError(s.T(), err)
 
