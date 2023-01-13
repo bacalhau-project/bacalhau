@@ -8,11 +8,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
+	compute_publicapi "github.com/filecoin-project/bacalhau/pkg/compute/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/compute/sensors"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
@@ -25,13 +27,12 @@ import (
 
 type Compute struct {
 	// Visible for testing
-	LocalEndpoint      compute.Endpoint
-	Capacity           capacity.Tracker
-	host               host.Host
-	ExecutionStore     store.ExecutionStore
-	debugInfoProviders []model.DebugInfoProvider
-	computeCallback    *bprotocol.CallbackProxy
-	nodeInfoPublisher  *compute.NodeInfoPublisher
+	LocalEndpoint   compute.Endpoint
+	Capacity        capacity.Tracker
+	ExecutionStore  store.ExecutionStore
+	Executors       executor.ExecutorProvider
+	computeCallback *bprotocol.CallbackProxy
+	cleanupFunc     func(ctx context.Context)
 }
 
 //nolint:funlen
@@ -39,23 +40,20 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
+	apiServer *publicapi.APIServer,
 	config ComputeConfig,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider,
-	nodeInfoPubSub pubsub.PubSub[model.NodeInfo]) *Compute {
-	debugInfoProviders := []model.DebugInfoProvider{}
+	nodeInfoPubSub pubsub.PubSub[model.NodeInfo]) (*Compute, error) {
 	executionStore := inmemory.NewStore()
 
 	// executor/backend
 	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
 	})
-	debugInfoProviders = append(debugInfoProviders, sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
-		CapacityTracker: capacityTracker,
-	}))
 
 	// Callback to send compute events (i.e. requester endpoint)
 	var computeCallback compute.Callback
@@ -98,9 +96,9 @@ func NewComputeNode(
 		BackoffDuration:            50 * time.Millisecond,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
+		Name:          "ActiveJobs",
 		BackendBuffer: bufferRunner,
 	})
-	debugInfoProviders = append(debugInfoProviders, runningInfoProvider)
 	if config.LogRunningExecutionsInterval > 0 {
 		loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
 			InfoProvider: runningInfoProvider,
@@ -131,7 +129,7 @@ func NewComputeNode(
 		bidstrategy.NewMaxCapacityStrategy(bidstrategy.MaxCapacityStrategyParams{
 			MaxJobRequirements: config.JobResourceLimits,
 		}),
-		bidstrategy.NewAvailableCapacityStrategy(bidstrategy.AvailableCapacityStrategyParams{
+		bidstrategy.NewAvailableCapacityStrategy(ctx, bidstrategy.AvailableCapacityStrategyParams{
 			CapacityTracker: capacityTracker,
 			CommitFactor:    config.OverCommitResourcesFactor,
 		}),
@@ -194,17 +192,50 @@ func NewComputeNode(
 		})
 	}
 
-	return &Compute{
-		host:               host,
-		LocalEndpoint:      baseEndpoint,
-		Capacity:           capacityTracker,
-		ExecutionStore:     executionStore,
-		debugInfoProviders: debugInfoProviders,
-		computeCallback:    standardComputeCallback,
-		nodeInfoPublisher:  nodeInfoPublisher,
+	// register debug info providers for the /debug endpoint
+	debugInfoProviders := []model.DebugInfoProvider{
+		sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
+			Name:            "AvailableCapacity",
+			CapacityTracker: capacityTracker,
+		}),
+		runningInfoProvider,
 	}
+
+	// register compute public http apis
+	computeAPIServer := compute_publicapi.NewComputeAPIServer(compute_publicapi.ComputeAPIServerParams{
+		APIServer:          apiServer,
+		DebugInfoProviders: debugInfoProviders,
+	})
+	err := computeAPIServer.RegisterAllHandlers()
+	if err != nil {
+		return nil, err
+	}
+
+	// A single cleanup function to make sure the order of closing dependencies is correct
+	cleanupFunc := func(ctx context.Context) {
+		nodeInfoPublisher.Stop()
+	}
+
+	// eagerly publish node info to the network
+	err = nodeInfoPublisher.Publish(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Compute{
+		LocalEndpoint:   baseEndpoint,
+		Capacity:        capacityTracker,
+		ExecutionStore:  executionStore,
+		Executors:       executors,
+		computeCallback: standardComputeCallback,
+		cleanupFunc:     cleanupFunc,
+	}, nil
 }
 
 func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
+}
+
+func (c *Compute) cleanup(ctx context.Context) {
+	c.cleanupFunc(ctx)
 }

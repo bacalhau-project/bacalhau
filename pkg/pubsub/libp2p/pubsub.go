@@ -35,15 +35,19 @@ type PubSub[T any] struct {
 	closeOnce      realsync.Once
 }
 
-func NewPubSub[T any](params PubSubParams) *PubSub[T] {
+func NewPubSub[T any](params PubSubParams) (*PubSub[T], error) {
+	topic, err := params.PubSub.Join(params.TopicName)
+	if err != nil {
+		return nil, err
+	}
 	newPubSub := &PubSub[T]{
 		hostID:      params.Host.ID().String(),
 		pubSub:      params.PubSub,
+		topic:       topic,
 		topicName:   params.TopicName,
 		ignoreLocal: params.IgnoreLocal,
 	}
-
-	return newPubSub
+	return newPubSub, nil
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
@@ -64,11 +68,6 @@ func (p *PubSub[T]) Subscribe(ctx context.Context, subscriber pubsub.Subscriber[
 	p.subscriberOnce.Do(func() {
 		// register the subscriber
 		p.subscriber = subscriber
-
-		p.topic, err = p.pubSub.Join(p.topicName)
-		if err != nil {
-			return
-		}
 
 		p.subscription, err = p.topic.Subscribe()
 		if err != nil {

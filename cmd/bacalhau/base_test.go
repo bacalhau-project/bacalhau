@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -18,7 +18,7 @@ import (
 type BaseSuite struct {
 	suite.Suite
 	node   *node.Node
-	client *publicapi.APIClient
+	client *publicapi.RequesterAPIClient
 	host   string
 	port   string
 }
@@ -39,7 +39,7 @@ func (s *BaseSuite) SetupTest() {
 		}),
 	)
 	s.node = stack.Nodes[0]
-	s.client = publicapi.NewAPIClient(s.node.APIServer.GetURI())
+	s.client = publicapi.NewRequesterAPIClient(s.node.APIServer.GetURI())
 	parsedBasedURI, err := url.Parse(s.client.BaseURI)
 	require.NoError(s.T(), err)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)

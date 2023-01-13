@@ -36,7 +36,7 @@ func (apiServer *APIServer) livez(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	_, err := res.Write([]byte("OK"))
 	if err != nil {
-		log.Warn().Msg("Error writing body for OK request.")
+		log.Warn().Err(err).Msg("Error writing body for OK request.")
 	}
 }
 

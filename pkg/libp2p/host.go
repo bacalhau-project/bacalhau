@@ -50,6 +50,7 @@ func NewHost(port int) (host.Host, error) {
 		return nil, err
 	}
 
+	log.Info().Msgf("started libp2p host %s listening on: %s", h.ID().String(), h.Addrs())
 	return h, err
 }
 

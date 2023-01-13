@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ import (
 type WebsocketSuite struct {
 	suite.Suite
 	node   *node.Node
-	client *publicapi.APIClient
+	client *publicapi.RequesterAPIClient
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -48,7 +48,7 @@ func (s *WebsocketSuite) TearDownTest() {
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
 	// string.Replace http with ws in c.BaseURI
-	url := "ws" + s.client.BaseURI[4:] + "/websocket"
+	url := "ws" + s.client.BaseURI[4:] + "/requester/websocket"
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)

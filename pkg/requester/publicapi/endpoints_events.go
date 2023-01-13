@@ -17,7 +17,7 @@ type eventsResponse struct {
 	Events []model.JobEvent `json:"events"`
 }
 
-// events godoc
+// Events godoc
 // @ID                   pkg/publicapi/events
 // @Summary              Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
 // @Description.markdown endpoints_events
@@ -32,7 +32,7 @@ type eventsResponse struct {
 //
 //nolint:lll
 //nolint:dupl
-func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) Events(res http.ResponseWriter, req *http.Request) {
 	var eventsReq eventsRequest
 	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -42,7 +42,7 @@ func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
 	ctx := req.Context()
-	events, err := apiServer.localdb.GetJobEvents(ctx, eventsReq.JobID)
+	events, err := s.localDB.GetJobEvents(ctx, eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
