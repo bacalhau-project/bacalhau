@@ -18,7 +18,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -150,7 +150,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: nodeCount},
+			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: nodeCount},
 		},
 		Inputs: scenario.StoredFile(
 			prepareFolderWithFiles(suite.T(), totalFiles),
@@ -249,7 +249,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	_, err = apiClient.Submit(ctx, j, nil)
 	require.Error(suite.T(), err)
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))

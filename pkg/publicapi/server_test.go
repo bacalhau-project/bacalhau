@@ -12,11 +12,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -26,8 +23,8 @@ import (
 // returns the current testing context
 type ServerSuite struct {
 	suite.Suite
-	node   *node.Node
-	client *publicapi.APIClient
+	cleanupManager *system.CleanupManager
+	client         *APIClient
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -39,44 +36,13 @@ func TestServerSuite(t *testing.T) {
 // Before each test
 func (s *ServerSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	n, client := setupNodeForTest(s.T())
-	s.node = n
-	s.client = client
+	s.cleanupManager = system.NewCleanupManager()
+	s.client = setupNodeForTest(s.T(), s.cleanupManager)
 }
 
 // After each test
 func (s *ServerSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
-}
-
-func (s *ServerSuite) TestList() {
-	ctx := context.Background()
-
-	// Should have no jobs initially:
-	jobs, err := s.client.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
-	require.NoError(s.T(), err)
-	require.Empty(s.T(), jobs)
-
-	// Submit a random job to the node:
-	j := testutils.MakeNoopJob()
-
-	_, err = s.client.Submit(ctx, j, nil)
-	require.NoError(s.T(), err)
-
-	// Should now have one job:
-	jobs, err = s.client.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
-	require.NoError(s.T(), err)
-	require.Len(s.T(), jobs, 1)
-}
-
-func (s *ServerSuite) TestSubmitRejectsJobWithSigilHeader() {
-	j := testutils.MakeNoopJob()
-	jobID, err := uuid.NewRandom()
-	require.NoError(s.T(), err)
-
-	s.client.DefaultHeaders["X-Bacalhau-Job-ID"] = jobID.String()
-	_, err = s.client.Submit(context.Background(), j, nil)
-	require.Error(s.T(), err)
+	s.cleanupManager.Cleanup()
 }
 
 func (s *ServerSuite) TestHealthz() {
@@ -116,14 +82,12 @@ func (s *ServerSuite) TestVarz() {
 }
 
 func (s *ServerSuite) TestTimeout() {
-	config := publicapi.APIServerConfig{
+	config := APIServerConfig{
 		RequestHandlerTimeoutByURI: map[string]time.Duration{
 			"/logz": 10 * time.Nanosecond,
 		},
 	}
-	n, client := setupNodeForTestWithConfig(s.T(), config)
-	s.node = n
-	s.client = client
+	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
 	endpoint := "/logz"
 	res, err := http.Get(s.client.BaseURI + endpoint)
@@ -138,37 +102,46 @@ func (s *ServerSuite) TestTimeout() {
 	defer res.Body.Close()
 }
 func (s *ServerSuite) TestMaxBodyReader() {
-	prev := publicapi.MaxBytesToReadInBody
-	publicapi.MaxBytesToReadInBody = 500
-	defer func() {
-		publicapi.MaxBytesToReadInBody = prev
-	}()
+	config := APIServerConfig{
+		MaxBytesToReadInBody: 500,
+	}
+	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
-	// Due to the rest of the List payload we need MaxBytes minus
+	// Due to the rest of the Version payload we need MaxBytes minus
 	// an amount that accounts for the other data we send
-	maxSizeOfString := int(publicapi.MaxBytesToReadInBody) - 207
+	payloadSize := int(500) - 16
 	testCases := []struct {
 		name        string
 		size        int
 		expectError bool
 	}{
-		{name: "Max - 1", size: maxSizeOfString - 1, expectError: false},
-		{name: "Max", size: maxSizeOfString, expectError: false},
-		{name: "Max + 1", size: maxSizeOfString + 1, expectError: true},
+		{name: "Max - 1", size: payloadSize - 1, expectError: false},
+		{name: "Max", size: payloadSize, expectError: false},
+		{name: "Max + 1", size: payloadSize + 1, expectError: true},
 	}
 
 	_ = testCases
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			_, _, err := s.client.Get(context.TODO(), strings.Repeat("a", tc.size))
-			if !strings.Contains(err.Error(), "Job not found") {
-				if tc.expectError {
-					require.Error(s.T(), err, "expected error")
-					require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
-				} else {
-					require.NoError(s.T(), err, "expected no error")
+			request := VersionRequest{
+				ClientID: strings.Repeat("a", tc.size),
+			}
+
+			var res VersionResponse
+			err := s.client.Post(context.Background(), "version", request, &res)
+			if tc.expectError {
+				require.Error(s.T(), err)
+				if !strings.Contains(err.Error(), "Job not found") {
+					if tc.expectError {
+						require.Error(s.T(), err, "expected error")
+						require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
+					} else {
+						require.NoError(s.T(), err, "expected no error")
+					}
 				}
+			} else {
+				s.NoError(err)
 			}
 		})
 	}

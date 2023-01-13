@@ -19,12 +19,8 @@ import (
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 	_, span := system.GetSpanFromRequest(req, "apiServer/peers")
 	defer span.End()
-
-	peers := apiServer.libp2pHost.Peerstore().Peers()
-
-	// write response to res
 	res.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(res).Encode(peers)
+	err := json.NewEncoder(res).Encode(apiServer.host.Peerstore().Peers())
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

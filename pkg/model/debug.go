@@ -5,6 +5,6 @@ type DebugInfoProvider interface {
 }
 
 type DebugInfo struct {
-	Component string `json:"component"`
-	Info      string `json:"info"`
+	Component string      `json:"component"`
+	Info      interface{} `json:"info"`
 }

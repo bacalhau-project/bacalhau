@@ -81,7 +81,7 @@ func (suite *ComboDriverSuite) TestComboDriverUnsealed() {
 
 	testcase.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
-			NumberOfNodes:        1,
+			NumberOfHybridNodes:  1,
 			PublicIPFSMode:       true,
 			FilecoinUnsealedPath: fmt.Sprintf("%s/{{.CID}}", basePath),
 		},

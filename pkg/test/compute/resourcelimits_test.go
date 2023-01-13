@@ -125,7 +125,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		stack := testutils.SetupTestWithNoopExecutor(
 			ctx,
 			suite.T(),
-			devstack.DevStackOptions{NumberOfNodes: 1},
+			devstack.DevStackOptions{NumberOfHybridNodes: 1},
 			node.NewComputeConfigWith(node.ComputeConfigParams{
 				TotalResourceLimits: capacity.ParseResourceUsageConfig(testCase.totalLimits),
 			}),
@@ -292,7 +292,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	stack := testutils.SetupTestWithNoopExecutor(
 		ctx,
 		suite.T(),
-		devstack.DevStackOptions{NumberOfNodes: nodeCount},
+		devstack.DevStackOptions{NumberOfHybridNodes: nodeCount},
 		node.NewComputeConfigWith(node.ComputeConfigParams{
 			TotalResourceLimits: model.ResourceUsageData{
 				CPU:    1,
@@ -326,10 +326,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (*model.Job, error) {
-			return stack.Nodes[0].LocalDB.GetJob(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
-			return stack.Nodes[0].LocalDB.GetJobState(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJobState(ctx, id)
 		},
 	)
 

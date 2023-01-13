@@ -48,7 +48,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	runTest := func(testCase TestCase) {
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
 				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
 					JobNegotiationTimeout:  testCase.computeJobNegotiationTimeout,
 					MinJobExecutionTimeout: testCase.computeMinJobExecutionTimeout,

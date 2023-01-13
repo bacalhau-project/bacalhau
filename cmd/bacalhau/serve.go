@@ -34,14 +34,27 @@ var DefaultSwarmPort = 1235
 
 var (
 	serveLong = templates.LongDesc(i18n.T(`
-		Start the bacalhau campute node.
+		Start a bacalhau node.
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		TBD`))
+		# Start a bacalhau compute node
+		bacalhau serve
+		# or
+		bacalhau serve --node-type compute
+
+		# Start a bacalhau requester node
+		bacalhau serve --node-type requester
+
+		# Start a bacalhau hybrid node that acts as both compute and requester
+		bacalhau serve --node-type compute --node-type requester
+		# or
+		bacalhau serve --node-type compute,requester
+`))
 )
 
 type ServeOptions struct {
+	NodeType                        []string      // "compute", "requester" node or both
 	PeerConnect                     string        // The libp2p multiaddress to connect to.
 	IPFSConnect                     string        // The IPFS multiaddress to connect to.
 	FilecoinUnsealedPath            string        // The go template that can turn a filecoin CID into a local filepath with the unsealed data.
@@ -68,6 +81,7 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
+		NodeType:                        []string{"compute"},
 		PeerConnect:                     "",
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
@@ -222,6 +236,11 @@ func newServeCmd() *cobra.Command {
 		},
 	}
 
+	serveCmd.PersistentFlags().StringSliceVar(
+		&OS.NodeType, "node-type", OS.NodeType,
+		`Whether the node is a compute, requester or both.`,
+	)
+
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to.`,
@@ -278,6 +297,17 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
+	isComputeNode, isRequesterNode := false, false
+	for _, nodeType := range OS.NodeType {
+		if nodeType == "compute" {
+			isComputeNode = true
+		} else if nodeType == "requester" {
+			isRequesterNode = true
+		} else {
+			return fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
+		}
+	}
+
 	if OS.IPFSConnect == "" {
 		Fatal(cmd, "You must specify --ipfs-connect.", 1)
 	}
@@ -325,6 +355,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		MetricsPort:          OS.MetricsPort,
 		ComputeConfig:        getComputeConfig(OS),
 		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
+		IsComputeNode:        isComputeNode,
+		IsRequesterNode:      isRequesterNode,
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&

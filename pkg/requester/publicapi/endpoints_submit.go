@@ -36,7 +36,7 @@ type submitResponse struct {
 	Job *model.Job `json:"job"`
 }
 
-// submit godoc
+// Submit godoc
 // @ID                   pkg/apiServer.submit
 // @Summary              Submits a new job to the network.
 // @Description.markdown endpoints_submit
@@ -48,7 +48,7 @@ type submitResponse struct {
 // @Failure              400           {object} string
 // @Failure              500           {object} string
 // @Router               /submit [post]
-func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) Submit(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
 	defer span.End()
 
@@ -83,7 +83,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	// If we have a build context, pin it to IPFS and mount it in the job:
 	if submitReq.JobCreatePayload.Context != "" {
-		spec, err := apiServer.saveInlineTarball(ctx, submitReq.JobCreatePayload.Context)
+		spec, err := s.saveInlineTarball(ctx, submitReq.JobCreatePayload.Context)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error saving build context")
 			http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusInternalServerError)
@@ -95,7 +95,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		)
 	}
 
-	j, err := apiServer.Requester.SubmitJob(
+	j, err := s.requester.SubmitJob(
 		ctx,
 		submitReq.JobCreatePayload,
 	)
@@ -117,7 +117,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) saveInlineTarball(ctx context.Context, base64tar string) (model.StorageSpec, error) {
+func (s *RequesterAPIServer) saveInlineTarball(ctx context.Context, base64tar string) (model.StorageSpec, error) {
 	// TODO: gc pinned contexts
 	decoded, err := base64.StdEncoding.DecodeString(base64tar)
 	if err != nil {
@@ -138,7 +138,7 @@ func (apiServer *APIServer) saveInlineTarball(ctx context.Context, base64tar str
 	// write the "context" for a job to storage
 	// this is used to upload code files
 	// we presently just fix on ipfs to do this
-	ipfsStorage, err := apiServer.StorageProviders.GetStorage(ctx, model.StorageSourceIPFS)
+	ipfsStorage, err := s.storageProviders.GetStorage(ctx, model.StorageSourceIPFS)
 	if err != nil {
 		return model.StorageSpec{}, errors.Wrap(err, "error getting storage provider")
 	}
