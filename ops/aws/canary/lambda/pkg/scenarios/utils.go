@@ -95,7 +95,7 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		downloadSettings = &ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    60,
+			TimeoutSecs:    300,
 			OutputDir:      dir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
