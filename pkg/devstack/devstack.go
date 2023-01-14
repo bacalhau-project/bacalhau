@@ -26,7 +26,9 @@ import (
 )
 
 type DevStackOptions struct {
-	NumberOfNodes              int    // Number of nodes to start in the cluster
+	NumberOfHybridNodes        int    // Number of nodes to start in the cluster
+	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
+	NumberOfComputeOnlyNodes   int    // Number of nodes to start in the cluster
 	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
@@ -50,8 +52,8 @@ func NewDevStackForRunLocal(
 	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	options := DevStackOptions{
-		NumberOfNodes:  count,
-		PublicIPFSMode: true,
+		NumberOfHybridNodes: count,
+		PublicIPFSMode:      true,
 	}
 
 	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -133,8 +135,17 @@ func NewDevStack(
 		}
 	}
 
-	for i := 0; i < options.NumberOfNodes; i++ {
-		log.Debug().Msgf(`Creating Node #%d`, i)
+	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
+	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
+	computeNodeCount := options.NumberOfHybridNodes + options.NumberOfComputeOnlyNodes
+
+	if requesterNodeCount == 0 {
+		return nil, fmt.Errorf("at least one requester node is required")
+	}
+	for i := 0; i < totalNodeCount; i++ {
+		isRequesterNode := i < requesterNodeCount
+		isComputeNode := (totalNodeCount - i) <= computeNodeCount
+		log.Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
 		// -------------------------------------
 		// IPFS
@@ -217,13 +228,20 @@ func NewDevStack(
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			apiPort = 20000 + i
 		} else {
-			apiPort = 0
+			apiPort, err = freeport.GetFreePort()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
-		metricsPort := 0
+		var metricsPort int
+		metricsPort, err = freeport.GetFreePort()
+		if err != nil {
+			return nil, err
+		}
 
 		//////////////////////////////////////
 		// in-memory datastore
@@ -240,8 +258,8 @@ func NewDevStack(
 
 		// here is where we can parse string based CLI options
 		// into more meaningful model.SimulatorConfig values
-		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadComputeActors)
-		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadRequesterActors)
+		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
+		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
 
 		if isBadComputeActor {
 			computeConfig.SimulatorConfig.IsBadActor = isBadComputeActor
@@ -274,6 +292,8 @@ func NewDevStack(
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			SimulatorNodeID:      simulatorNodeID,
+			IsComputeNode:        isComputeNode,
+			IsRequesterNode:      isRequesterNode,
 		}
 
 		if lotus != nil {
@@ -358,14 +378,18 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	}
 
 	logString := ""
-	devStackAPIPort := ""
-	devStackAPIHost := "0.0.0.0"
+	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
+	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
 
 	logString += `
 -----------------------------------------
 -----------------------------------------
 `
+
+	requesterOnlyNodes := 0
+	computeOnlyNodes := 0
+	hybridNodes := 0
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
@@ -385,16 +409,18 @@ export BACALHAU_API_PORT_%d=%d`,
 			nodeIndex,
 			swarmAddrrs,
 			nodeIndex,
-			stack.Nodes[nodeIndex].APIServer.Host,
+			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Port,
 		)
 
+		requesterOnlyNodes += boolToInt(node.IsRequesterNode() && !node.IsComputeNode())
+		computeOnlyNodes += boolToInt(node.IsComputeNode() && !node.IsRequesterNode())
+		hybridNodes += boolToInt(node.IsRequesterNode() && node.IsComputeNode())
+
 		// Just setting this to the last one, really doesn't matter
 		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(ctx)
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
-		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
-		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
 	}
 
 	// Just convenience below - print out the last of the nodes information as the global variable
@@ -427,7 +453,14 @@ ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 
 	returnString := fmt.Sprintf(`
 Devstack is ready!
-To use the devstack, run the following commands in your shell: %s`, summaryShellVariablesString)
+No. of requester only nodes: %d
+No. of compute only nodes: %d
+No. of hybrid nodes: %d
+To use the devstack, run the following commands in your shell: %s`,
+		requesterOnlyNodes,
+		computeOnlyNodes,
+		hybridNodes,
+		summaryShellVariablesString)
 	return returnString, nil
 }
 
@@ -455,4 +488,11 @@ func (stack *DevStack) GetNodeIds() ([]string, error) {
 		ids = append(ids, node.Host.ID().String())
 	}
 	return ids, nil
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

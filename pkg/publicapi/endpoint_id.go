@@ -20,7 +20,7 @@ func (apiServer *APIServer) id(res http.ResponseWriter, req *http.Request) {
 	defer span.End()
 
 	res.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(res).Encode(apiServer.libp2pHost.ID().String())
+	err := json.NewEncoder(res).Encode(apiServer.host.ID().String())
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

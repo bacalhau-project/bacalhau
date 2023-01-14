@@ -52,7 +52,7 @@ const (
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	for typ := NetworkNone; typ < NetworkFull; typ++ {
+	for typ := NetworkNone; typ <= NetworkHTTP; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil
 		}

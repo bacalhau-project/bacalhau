@@ -29,7 +29,7 @@ type submitResponse struct {
 	Job *model.Job `json:"job"`
 }
 
-// submit godoc
+// Submit godoc
 // @ID                   pkg/apiServer.submit
 // @Summary              Submits a new job to the network.
 // @Description.markdown endpoints_submit
@@ -41,7 +41,7 @@ type submitResponse struct {
 // @Failure              400           {object} string
 // @Failure              500           {object} string
 // @Router               /submit [post]
-func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) Submit(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
 	defer span.End()
 
@@ -74,7 +74,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	j, err := apiServer.Requester.SubmitJob(
+	j, err := s.requester.SubmitJob(
 		ctx,
 		submitReq.JobCreatePayload,
 	)
