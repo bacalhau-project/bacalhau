@@ -35,7 +35,7 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 			result.Data.URL, downloadDir,
 		)
 
-		filepath := fmt.Sprintf("%s/%s", downloadDir, result.Data.CID)
+		filepath := fmt.Sprintf("%s/%s", downloadDir, result.Data.Name)
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
