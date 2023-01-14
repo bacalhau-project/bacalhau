@@ -7,7 +7,7 @@ require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/antihax/optional v1.0.0
-	github.com/application-research/estuary-clients/go v0.0.0-20230104125712-27a3f6e26b6c
+	github.com/application-research/estuary-clients/go v0.0.0-20221129102826-8a9f3452ad5a
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1

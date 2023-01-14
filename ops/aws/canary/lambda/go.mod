@@ -24,7 +24,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/antihax/optional v1.0.0 // indirect
-	github.com/application-research/estuary-clients/go v0.0.0-20221118012408-a190dcdb467c // indirect
+	github.com/application-research/estuary-clients/go v0.0.0-20221129102826-8a9f3452ad5a // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect

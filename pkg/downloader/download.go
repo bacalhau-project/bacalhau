@@ -101,6 +101,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 			model.DownloadShardsFolderName,
 			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
 		)
+
 		shardContexts = append(shardContexts, shardCIDContext{
 			Result:         shardResult,
 			OutputVolumes:  outputVolumes,

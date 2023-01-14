@@ -2,6 +2,7 @@ package estuary
 
 import (
 	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/downloader/http"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"

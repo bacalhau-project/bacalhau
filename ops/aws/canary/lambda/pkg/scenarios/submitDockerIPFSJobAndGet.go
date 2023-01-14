@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
@@ -57,7 +58,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = 600
+	downloadSettings.Timeout = time.Second * 600
 
 	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloadSettings)
 	if err != nil {

@@ -33,6 +33,7 @@ func TestFetchResult(t *testing.T) {
 	result := model.PublishedResult{
 		Data: model.StorageSpec{
 			StorageSource: model.StorageSourceEstuary,
+			Name:          testCID,
 			CID:           testCID,
 			URL:           "https://api.estuary.tech/gw/ipfs/bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe",
 		},

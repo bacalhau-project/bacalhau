@@ -9,12 +9,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+
 	"github.com/antihax/optional"
 	estuary_client "github.com/application-research/estuary-clients/go"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -47,7 +49,7 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 func (e *estuaryPublisher) PublishShardResult(
 	ctx context.Context,
 	shard model.JobShard,
-	_ string,
+	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
@@ -91,12 +93,10 @@ func (e *estuaryPublisher) PublishShardResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceEstuary,
-		Name:          shard.String(),
-		CID:           addCarResponse.Cid,
-		URL:           addCarResponse.EstuaryRetrievalUrl,
-	}, nil
+	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceEstuary, hostID, addCarResponse.Cid)
+	spec.URL = addCarResponse.EstuaryRetrievalUrl
+
+	return spec, nil
 }
 
 var _ publisher.Publisher = (*estuaryPublisher)(nil)
