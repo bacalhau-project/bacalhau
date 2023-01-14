@@ -184,7 +184,10 @@ func (apiServer *DashboardAPIServer) totalexecutors(res http.ResponseWriter, req
 }
 
 func (apiServer *DashboardAPIServer) nodes(res http.ResponseWriter, req *http.Request) {
-	err := json.NewEncoder(res).Encode(apiServer.API.GetNodes(context.Background()))
+	nodes, err := apiServer.API.GetNodes(context.Background())
+	if err == nil {
+		err = json.NewEncoder(res).Encode(nodes)
+	}
 	if err != nil {
 		log.Error().Msgf("error for nodes route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)

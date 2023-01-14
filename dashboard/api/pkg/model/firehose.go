@@ -11,7 +11,7 @@ import (
 )
 
 type firehoseEvent interface {
-	model.JobEvent | model.NodeEvent
+	model.JobEvent | model.NodeInfo
 }
 
 type EventFirehose[T firehoseEvent] struct {

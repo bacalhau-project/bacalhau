@@ -5,21 +5,23 @@ import (
 	"fmt"
 
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/rs/zerolog/log"
 )
 
 type nodeEventHandler struct {
-	eventChan chan bacalhau_model.NodeEvent
-	firehose  *EventFirehose[bacalhau_model.NodeEvent]
-	nodeDB    *nodeDB
+	eventChan chan bacalhau_model.NodeInfo
+	firehose  *EventFirehose[bacalhau_model.NodeInfo]
+	nodeDB    requester.NodeInfoStore
 }
 
 func newNodeEventHandler(
 	host string,
 	port int,
-	nodeDB *nodeDB,
+	nodeDB requester.NodeInfoStore,
 ) (*nodeEventHandler, error) {
-	eventChan := make(chan bacalhau_model.NodeEvent)
-	url := fmt.Sprintf("ws://%s:%d/node/websocket", host, port)
+	eventChan := make(chan bacalhau_model.NodeInfo)
+	url := fmt.Sprintf("ws://%s:%d/requester/node/websocket", host, port)
 	firehose := NewEventFirehose(url, eventChan)
 	eventHandler := &nodeEventHandler{
 		eventChan: eventChan,
@@ -30,7 +32,6 @@ func newNodeEventHandler(
 }
 
 func (handler *nodeEventHandler) start(ctx context.Context) {
-	go handler.nodeDB.cleanupLoop(ctx)
 	go handler.firehose.Start(ctx)
 	go func() {
 		for {
@@ -38,7 +39,10 @@ func (handler *nodeEventHandler) start(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case ev := <-handler.eventChan:
-				handler.nodeDB.addEvent(ev)
+				err := handler.nodeDB.Add(ctx, ev)
+				if err != nil {
+					log.Info().Err(err).Msgf("failed to add node info to store: %+v", ev)
+				}
 			}
 		}
 	}()
