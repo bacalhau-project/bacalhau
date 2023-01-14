@@ -7,12 +7,12 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime/debug"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/rs/zerolog/log"
@@ -280,9 +280,7 @@ func AddAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, nam
 	if m.Value() != "" {
 		span.SetAttributes(attribute.String(name, m.Value()))
 	} else {
-		log.Trace().Msgf("no value found for baggage key %s", name)
-		if log.Trace().Enabled() {
-			debug.PrintStack()
-		}
+		log.Trace().Err(errors.WithStack(errors.New("missing value"))).
+			Str("baggage_key", name).Msg("No value found for baggage key")
 	}
 }

@@ -265,7 +265,6 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		j,
 		OC.RunTimeSettings,
 		OC.DownloadFlags,
-		nil,
 	)
 
 	if err != nil {

@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/filecoin-project/bacalhau v0.3.16-0.20221214203635-19e15111bc08
+	github.com/filecoin-project/bacalhau v0.3.16-0.20230113041634-9ec7309c6133
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5
@@ -28,7 +28,7 @@ require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.4.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
@@ -142,9 +142,9 @@ require (
 	github.com/ipfs/go-peertaskqueue v0.7.1 // indirect
 	github.com/ipfs/go-pinning-service-http-client v0.1.2 // indirect
 	github.com/ipfs/go-unixfs v0.4.1 // indirect
-	github.com/ipfs/go-unixfsnode v1.5.0 // indirect
+	github.com/ipfs/go-unixfsnode v1.5.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
-	github.com/ipfs/interface-go-ipfs-core v0.7.0 // indirect
+	github.com/ipfs/interface-go-ipfs-core v0.8.1 // indirect
 	github.com/ipfs/kubo v0.17.0 // indirect
 	github.com/ipfs/tar-utils v0.0.2 // indirect
 	github.com/ipld/edelweiss v0.2.0 // indirect
@@ -195,7 +195,7 @@ require (
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/marten-seemann/webtransport-go v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -207,7 +207,7 @@ require (
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
+	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
@@ -259,6 +259,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tetratelabs/wazero v1.0.0-pre.4 // indirect
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
+	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c // indirect
@@ -275,7 +276,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.11.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.11.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.7.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.11.1 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.11.2 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.7.0 // indirect
 	go.opentelemetry.io/otel/metric v0.34.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.11.2 // indirect
@@ -291,16 +292,16 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e // indirect
-	google.golang.org/grpc v1.51.0 // indirect
+	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
+	google.golang.org/grpc v1.52.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect

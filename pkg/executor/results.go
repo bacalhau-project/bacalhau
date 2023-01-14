@@ -121,3 +121,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 	result.ExitCode = exitcode
 	return result, err
 }
+
+func FailResult(err error) (*model.RunCommandResult, error) {
+	return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+}

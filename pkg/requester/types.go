@@ -27,6 +27,19 @@ type NodeRanker interface {
 	RankNodes(ctx context.Context, job model.Job, nodes []peer.ID) ([]NodeRank, error)
 }
 
+type NodeInfoStore interface {
+	// Add adds a node info to the repo.
+	Add(ctx context.Context, nodeInfo model.NodeInfo) error
+	// Get returns the node info for the given peer ID.
+	Get(ctx context.Context, peerID peer.ID) (model.NodeInfo, error)
+	// List returns a list of nodes
+	List(ctx context.Context) ([]model.NodeInfo, error)
+	// ListForEngine returns a list of nodes that support the given engine.
+	ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error)
+	// Delete deletes a node info from the repo.
+	Delete(ctx context.Context, peerID peer.ID) error
+}
+
 // NodeRank represents a node and its rank. The higher the rank, the more preferable a node is to execute the job.
 // A negative rank means the node is not suitable to execute the job.
 type NodeRank struct {

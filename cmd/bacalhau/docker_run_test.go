@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -653,7 +653,7 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	ctx := context.Background()
 
 	apiSubmitJob := func(
-		apiClient *publicapi.APIClient,
+		apiClient *publicapi.RequesterAPIClient,
 		args devstack_tests.DeterministicVerifierTestArgs,
 	) (string, error) {
 

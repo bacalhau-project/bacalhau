@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -82,7 +82,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	}
 
 	if config.DevStackOptions == nil {
-		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
+		config.DevStackOptions = &devstack.DevStackOptions{NumberOfHybridNodes: 1}
 	}
 
 	if config.RequesterConfig.DefaultJobExecutionTimeout == 0 {
@@ -118,7 +118,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	// Check that the stack has the appropriate executor installed
 	for _, node := range stack.Nodes {
-		executor, err := node.Executors.GetExecutor(s.Ctx, spec.Engine)
+		executor, err := node.ComputeNode.Executors.GetExecutor(s.Ctx, spec.Engine)
 		require.NoError(s.T(), err)
 
 		isInstalled, err := executor.IsInstalled(s.Ctx)
@@ -154,8 +154,8 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		j.Spec.Deal.Concurrency = 1
 	}
 
-	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
-	submittedJob, submitError := apiClient.Submit(s.Ctx, j, nil)
+	apiClient := publicapi.NewRequesterAPIClient(stack.Nodes[0].APIServer.GetURI())
+	submittedJob, submitError := apiClient.Submit(s.Ctx, j)
 	if scenario.SubmitChecker == nil {
 		scenario.SubmitChecker = SubmitJobSuccess()
 	}

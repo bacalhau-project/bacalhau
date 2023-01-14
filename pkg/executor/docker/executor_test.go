@@ -5,10 +5,9 @@ package docker
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
-	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -26,7 +25,7 @@ import (
 type ExecutorTestSuite struct {
 	suite.Suite
 	executor *Executor
-	server   *httptest.Server
+	server   *http.Server
 	cm       *system.CleanupManager
 }
 
@@ -53,28 +52,47 @@ func (suite *ExecutorTestSuite) SetupTest() {
 		w.Write([]byte(r.URL.Path))
 	}
 
-	suite.server = httptest.NewServer(http.HandlerFunc(handler))
-	suite.T().Cleanup(suite.server.Close)
+	// We have to manually discover the correct IP address for the server to
+	// listen on because on Linux hosts simply using 127.0.0.1 will get caught
+	// in the loopback interface of the gateway container. We have to listen on
+	// whatever "host.docker.internal" resolves to, which is the IP address of
+	// the "docker0" interface.
+	var gateway net.IP
+	if runtime.GOOS == "linux" {
+		gateway, err = docker.HostGatewayIP(context.Background(), suite.executor.Client)
+		require.NoError(suite.T(), err)
+	} else {
+		gateway = net.ParseIP("127.0.0.1")
+	}
+
+	serverAddr := net.TCPAddr{IP: gateway, Port: 0}
+	listener, err := net.Listen("tcp", serverAddr.String())
+	require.NoError(suite.T(), err)
+	// Don't need to close the listener as it'll be closed by the server.
+
+	suite.server = &http.Server{
+		Addr:    listener.Addr().String(),
+		Handler: http.HandlerFunc(handler),
+	}
+	suite.cm.RegisterCallback(suite.server.Close)
+	go suite.server.Serve(listener)
 }
 
-func (suite *ExecutorTestSuite) containerHttpURL() string {
-	url, err := url.Parse(suite.server.URL)
+func (suite *ExecutorTestSuite) containerHttpURL() *url.URL {
+	url, err := url.Parse("http://" + suite.server.Addr)
 	require.NoError(suite.T(), err)
 
 	// On Mac/Windows, we are within a VM and hence we need to route to the
 	// host. On Linux we are not, so localhost should work.
 	// See e.g. https://stackoverflow.com/a/24326540
-	host := "host.docker.internal"
-	if runtime.GOOS == "linux" {
-		host = "localhost"
-	}
-	return fmt.Sprintf("http://%s:%s", host, url.Port())
+	url.Host = fmt.Sprintf("%s:%s", dockerHostHostname, url.Port())
+	return url
 }
 
 func (suite *ExecutorTestSuite) curlTask() model.JobSpecDocker {
 	return model.JobSpecDocker{
 		Image:      "curlimages/curl",
-		Entrypoint: []string{"curl", path.Join(suite.containerHttpURL(), "hello.txt")},
+		Entrypoint: []string{"curl", "--fail-with-body", suite.containerHttpURL().JoinPath("hello.txt").String()},
 	}
 }
 
@@ -165,6 +183,7 @@ func (suite *ExecutorTestSuite) TestDockerNetworkingFull() {
 		Docker:  suite.curlTask(),
 	})
 	require.NoError(suite.T(), err, result.STDERR)
+	require.Zero(suite.T(), result.ExitCode, result.STDERR)
 	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
 }
 
@@ -178,4 +197,84 @@ func (suite *ExecutorTestSuite) TestDockerNetworkingNone() {
 	require.Empty(suite.T(), result.STDOUT)
 	require.NotEmpty(suite.T(), result.STDERR)
 	require.NotZero(suite.T(), result.ExitCode)
+}
+
+func (suite *ExecutorTestSuite) TestDockerNetworkingHTTP() {
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{suite.containerHttpURL().Hostname()},
+		},
+		Docker: suite.curlTask(),
+	})
+	require.NoError(suite.T(), err, result.STDERR)
+	require.Zero(suite.T(), result.ExitCode, result.STDERR)
+	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+}
+
+func (suite *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type: model.NetworkHTTP,
+			Domains: []string{
+				suite.containerHttpURL().Hostname(),
+				"bacalhau.org",
+			},
+		},
+		Docker: suite.curlTask(),
+	})
+	require.NoError(suite.T(), err, result.STDERR)
+	require.Zero(suite.T(), result.ExitCode, result.STDERR)
+	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+}
+
+func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{"bacalhau.org"},
+		},
+		Docker: suite.curlTask(),
+	})
+	// The curl will succeed but should return a non-zero exit code and error page.
+	require.NoError(suite.T(), err)
+	require.NotZero(suite.T(), result.ExitCode)
+	require.Contains(suite.T(), result.STDOUT, "ERROR: The requested URL could not be retrieved")
+}
+
+func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{suite.containerHttpURL().Hostname()},
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "curlimages/curl",
+			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
+		},
+	})
+	// The curl will succeed but should return a non-zero exit code and error page.
+	require.NoError(suite.T(), err)
+	require.NotZero(suite.T(), result.ExitCode)
+	require.Empty(suite.T(), result.STDOUT)
+}
+
+func (suite *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
+	suite.server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(r.Header.Get("X-Bacalhau-Job-ID")))
+	})
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{suite.containerHttpURL().Hostname()},
+		},
+		Docker: suite.curlTask(),
+	})
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), "test", result.STDOUT, result.STDOUT)
 }

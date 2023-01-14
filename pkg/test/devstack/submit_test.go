@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -55,16 +55,16 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}
-	_, missingSpecError := apiClient.Submit(ctx, j, nil)
+	_, missingSpecError := apiClient.Submit(ctx, j)
 
 	require.Error(suite.T(), missingSpecError)
 
 	j = &model.Job{}
 	j.Spec = model.Spec{Engine: model.EngineDocker}
-	_, missingDealError := apiClient.Submit(ctx, j, nil)
+	_, missingDealError := apiClient.Submit(ctx, j)
 	require.Error(suite.T(), missingDealError)
 }

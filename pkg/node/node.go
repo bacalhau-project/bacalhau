@@ -2,19 +2,25 @@ package node
 
 import (
 	"context"
+	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 )
+
+const JobEventsTopic = "bacalhau-job-events"
+const NodeInfoTopic = "bacalhau-node-info"
 
 // Node configuration
 type NodeConfig struct {
@@ -32,6 +38,8 @@ type NodeConfig struct {
 	APIServerConfig      publicapi.APIServerConfig
 	LotusConfig          *filecoinlotus.PublisherConfig
 	SimulatorNodeID      string
+	IsRequesterNode      bool
+	IsComputeNode        bool
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -55,15 +63,12 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
-	ComputeNode    Compute
-	RequesterNode  Requester
-	LocalDB        localdb.LocalDB
+	ComputeNode    *Compute
+	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	Executors      executor.ExecutorProvider
 	IPFSClient     *ipfs.Client
-
-	Host        host.Host
-	metricsPort int
+	Host           host.Host
+	metricsPort    int
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -88,7 +93,7 @@ func NewStandardNode(
 	return NewNode(ctx, config, NewStandardNodeDependencyInjector())
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
 	config NodeConfig,
@@ -118,98 +123,156 @@ func NewNode(
 		return nil, err
 	}
 
-	// prepare event handlers
-	tracerContextProvider := system.NewTracerContextProvider(config.Host.ID().String())
-	config.CleanupManager.RegisterCallback(tracerContextProvider.Shutdown)
-
-	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
-
 	var simulatorRequestHandler *simulator.RequestHandler
 	if config.SimulatorNodeID == config.Host.ID().String() {
 		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
 		simulatorRequestHandler = simulator.NewRequestHandler()
 	}
 
-	requesterNode, err := NewRequesterNode(
-		ctx,
-		config.CleanupManager,
-		config.Host,
-		config.RequesterNodeConfig,
-		config.LocalDB,
-		config.SimulatorNodeID,
-		simulatorRequestHandler,
-		verifiers,
-		storageProviders,
-		jobEventConsumer,
-	)
+	// public http api server
+	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
+		Address: config.HostAddress,
+		Port:    config.APIPort,
+		Host:    config.Host,
+		Config:  config.APIServerConfig,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	// setup compute node
-	computeNode := NewComputeNode(
-		ctx,
-		config.Host,
-		config.ComputeConfig,
-		config.SimulatorNodeID,
-		simulatorRequestHandler,
-		executors,
-		verifiers,
-		publishers,
-	)
-
-	// To enable nodes self-dialing themselves as libp2p doesn't support it.
-	computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
-	requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
-
-	apiServer := publicapi.NewServerWithConfig(
-		ctx,
-		config.HostAddress,
-		config.APIPort,
-		config.LocalDB,
-		config.Host,
-		requesterNode.Endpoint,
-		computeNode.debugInfoProviders,
-		publishers,
-		storageProviders,
-		config.APIServerConfig,
-	)
-
-	eventTracer, err := eventhandler.NewTracer()
+	// A single gossipSub instance that will be used by all topics
+	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
+	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
 	if err != nil {
+		gossipSubCancel()
 		return nil, err
 	}
-	config.CleanupManager.RegisterCallback(eventTracer.Shutdown)
 
-	// Register event handlers
-	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.Host.ID().String())
-	localDBEventHandler := localdb.NewLocalDBEventHandler(config.LocalDB)
+	// PubSub to publish node info to the network
+	nodeInfoPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
+		Host:      config.Host,
+		TopicName: NodeInfoTopic,
+		PubSub:    gossipSub,
+	})
+	if err != nil {
+		gossipSubCancel()
+		return nil, err
+	}
 
-	// order of event handlers is important as triggering some handlers might depend on the state of others.
-	jobEventConsumer.AddHandlers(
-		// add tracing metadata to the context about the read event
-		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
-		// ends the span for the job if received a terminal event
-		tracerContextProvider,
-		// record the event in a log
-		eventTracer,
-		// update the job state in the local DB
-		localDBEventHandler,
-		// dispatches events to listening websockets
-		apiServer,
-	)
+	var requesterNode *Requester
+	var computeNode *Compute
+
+	// setup requester node
+	if config.IsRequesterNode {
+		requesterNode, err = NewRequesterNode(
+			ctx,
+			config.CleanupManager,
+			config.Host,
+			apiServer,
+			config.RequesterNodeConfig,
+			config.LocalDB,
+			config.SimulatorNodeID,
+			simulatorRequestHandler,
+			verifiers,
+			storageProviders,
+			nodeInfoPubSub,
+			gossipSub,
+		)
+		if err != nil {
+			gossipSubCancel()
+			return nil, err
+		}
+	}
+
+	if config.IsComputeNode {
+		// setup compute node
+		computeNode, err = NewComputeNode(
+			ctx,
+			config.CleanupManager,
+			config.Host,
+			apiServer,
+			config.ComputeConfig,
+			config.SimulatorNodeID,
+			simulatorRequestHandler,
+			executors,
+			verifiers,
+			publishers,
+			nodeInfoPubSub,
+		)
+		if err != nil {
+			gossipSubCancel()
+			return nil, err
+		}
+	}
+
+	// cleanup libp2p resources in the desired order
+	config.CleanupManager.RegisterCallback(func() error {
+		cleanupCtx := context.Background()
+		if computeNode != nil {
+			computeNode.cleanup(cleanupCtx)
+		}
+		if requesterNode != nil {
+			requesterNode.cleanup(cleanupCtx)
+		}
+		cleanupErr := nodeInfoPubSub.Close(cleanupCtx)
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
+		}
+		gossipSubCancel()
+
+		cleanupErr = config.Host.Close()
+		if cleanupErr != nil {
+			log.Error().Err(cleanupErr).Msg("failed to close host")
+		}
+		return cleanupErr
+	})
+
+	if requesterNode != nil && computeNode != nil {
+		// To enable nodes self-dialing themselves as libp2p doesn't support it.
+		computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
+		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
+	}
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
 		IPFSClient:     config.IPFSClient,
-		LocalDB:        config.LocalDB,
-		ComputeNode:    *computeNode,
-		RequesterNode:  *requesterNode,
-		Executors:      executors,
+		ComputeNode:    computeNode,
+		RequesterNode:  requesterNode,
 		Host:           config.Host,
 		metricsPort:    config.MetricsPort,
 	}
 
 	return node, nil
+}
+
+// IsRequesterNode returns true if the node is a requester node
+func (n *Node) IsRequesterNode() bool {
+	return n.RequesterNode != nil
+}
+
+// IsComputeNode returns true if the node is a compute node
+func (n *Node) IsComputeNode() bool {
+	return n.ComputeNode != nil
+}
+
+func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
+	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	if err != nil {
+		return nil, err
+	}
+
+	pgParams := libp2p_pubsub.NewPeerGaterParams(
+		0.33, //nolint:gomnd
+		libp2p_pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
+		libp2p_pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
+	)
+
+	return libp2p_pubsub.NewGossipSub(
+		ctx,
+		nodeConfig.Host,
+		libp2p_pubsub.WithPeerExchange(true),
+		libp2p_pubsub.WithPeerGater(pgParams),
+		libp2p_pubsub.WithEventTracer(tracer),
+	)
 }

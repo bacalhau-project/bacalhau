@@ -39,7 +39,8 @@ var testcase scenario.Scenario = scenario.Scenario{
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
+			EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
+			EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
 			Parameters: []string{
 				`/inputs/file.txt`,
 			},
@@ -80,7 +81,7 @@ func (suite *ComboDriverSuite) TestComboDriverUnsealed() {
 
 	testcase.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
-			NumberOfNodes:        1,
+			NumberOfHybridNodes:  1,
 			PublicIPFSMode:       true,
 			FilecoinUnsealedPath: fmt.Sprintf("%s/{{.CID}}", basePath),
 		},

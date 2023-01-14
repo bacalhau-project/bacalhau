@@ -27,16 +27,13 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 
 	nodeCount := 3
 	s := scenario.Scenario{
-		Contexts: scenario.StoredFile(
-			"../../../testdata/wasm/noop/main.wasm",
-			"/job",
-		),
 		JobCheckers: scenario.WaitUntilSuccessful(3),
 		Spec: model.Spec{
 			Engine: model.EngineWasm,
 			Wasm: model.JobSpecWasm{
-				EntryPoint: "_start",
-				Parameters: []string{},
+				EntryPoint:  scenario.WasmHelloWorld.Spec.Wasm.EntryPoint,
+				EntryModule: scenario.WasmHelloWorld.Spec.Wasm.EntryModule,
+				Parameters:  []string{},
 			},
 		},
 		Deal: model.Deal{
@@ -46,8 +43,8 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 
 	s.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
-			NumberOfNodes: nodeCount,
-			SimulatorMode: true,
+			NumberOfHybridNodes: nodeCount,
+			SimulatorMode:       true,
 		},
 	}
 

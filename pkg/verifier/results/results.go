@@ -31,7 +31,13 @@ func (results *Results) GetShardResultsDir(jobID string, shardIndex int) string 
 func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (string, error) {
 	dir := results.GetShardResultsDir(jobID, shardIndex)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
-	info, _ := os.Stat(dir)
+	if err != nil {
+		return "", fmt.Errorf("error creating results dir %s: %w", dir, err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return "", fmt.Errorf("error getting results dir %s info: %w", dir, err)
+	}
 	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
 	return dir, err
 }

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -29,26 +29,26 @@ type BaseEndpointParams struct {
 
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
-	id                         string
-	publicKey                  []byte
-	jobStore                   localdb.LocalDB
-	scheduler                  *Scheduler
-	verifiers                  verifier.VerifierProvider
-	storageProviders           storage.StorageProvider
-	minJobExecutionTimeout     time.Duration
-	defaultJobExecutionTimeout time.Duration
+	id         string
+	publicKey  []byte
+	jobStore   localdb.LocalDB
+	scheduler  *Scheduler
+	transforms []jobtransform.Transformer
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
+	transforms := []jobtransform.Transformer{
+		jobtransform.NewInlineStoragePinner(params.StorageProviders),
+		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
+		jobtransform.NewExecutionPlanner(params.StorageProviders),
+	}
+
 	return &BaseEndpoint{
-		id:                         params.ID,
-		publicKey:                  params.PublicKey,
-		jobStore:                   params.JobStore,
-		scheduler:                  params.Scheduler,
-		verifiers:                  params.Verifiers,
-		storageProviders:           params.StorageProviders,
-		minJobExecutionTimeout:     params.MinJobExecutionTimeout,
-		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
+		id:         params.ID,
+		publicKey:  params.PublicKey,
+		jobStore:   params.JobStore,
+		scheduler:  params.Scheduler,
+		transforms: transforms,
 	}
 }
 
@@ -70,11 +70,6 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/controller.SubmitJob")
 	// defer span.End()
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, *data.Spec, node.storageProviders)
-	if err != nil {
-		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
-	}
-
 	job := &model.Job{
 		APIVersion: data.APIVersion,
 		Metadata: model.Metadata{
@@ -90,12 +85,12 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 		},
 		Spec: *data.Spec,
 	}
-	job.Spec.Deal = data.Spec.Deal
-	job.Spec.ExecutionPlan = executionPlan
 
-	// set a default timeout value if one is not passed or below an acceptable value
-	if job.Spec.GetTimeout() <= node.minJobExecutionTimeout {
-		job.Spec.Timeout = node.defaultJobExecutionTimeout.Seconds()
+	for _, transform := range node.transforms {
+		_, err = transform(ctx, job)
+		if err != nil {
+			return job, err
+		}
 	}
 
 	err = node.scheduler.StartJob(jobCtx, StartJobRequest{

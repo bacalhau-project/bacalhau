@@ -43,7 +43,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
 				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
 					JobSelectionPolicy: testCase.policy,
 				}),

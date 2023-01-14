@@ -194,7 +194,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", s.node.APIServer.Host,
+		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
@@ -225,7 +225,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", s.node.APIServer.Host,
+		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
