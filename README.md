@@ -5,7 +5,7 @@
 -->
 <p align="center">
   <a href="https://github.com/filecoin-project/bacalhau">
-    <img src="https://github.com/filecoin-project/bacalhau/blob/dev/docs/images/bacalhau-fish.jpg" alt="Bacalhau logo" width="300"/>
+    <img src="https://github.com/filecoin-project/bacalhau/blob/readme/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
 
   </a>
   </p>
@@ -49,7 +49,6 @@
 - [Documentation](#documentation)
 - [Developers guide](#developers-guide)
   - [Running Bacalhau locally](#running-bacalhau-locally)
-  - [Releasing a new version](#releasing-a-new-version)
   - [Notes for Dev contributors](#notes-for-dev-contributors)
 - [Ways to contribute ](#ways-to-contribute)
 - [Current state of Bacalhau](current-state-of-bacalhau)
@@ -83,9 +82,10 @@ Download your result
 ```bash
 bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run comman
 ```
-[![asciicast](https://asciinema.org/a/uvJaidZfb925GrVyitMOWR7X2.svg)](https://asciinema.org/a/uvJaidZfb925GrVyitMOWR7X2)
 
-For a more detailed tutorial, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation).
+![](https://github.com/filecoin-project/bacalhau/blob/readme/docs/images/screengif.gif)
+
+For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
 
 ### Learn more
 - Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
@@ -105,10 +105,6 @@ The Bacalhau docs is the best starting point as it contains all the information 
 Developers can spin up bacalhau and run a local demo using the `devstack` command. 
 
 Please see [docs/running_locally.md](docs/running_locally.md) for instructions. Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
-
-### Releasing a new version
-
-To ship a new version of the CLI & Bacalhau network please follow the instuctions at [docs/create_release.md](docs/create_release.md).
 
 ### Notes for Dev contributors
 
