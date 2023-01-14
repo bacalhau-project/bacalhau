@@ -92,8 +92,6 @@ github.com/antihax/optional v1.0.0 h1:xK2lYat7ZLaVVcIuj82J8kIro4V6kDe0AUDFboUCwc
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
-github.com/application-research/estuary-clients/go v0.0.0-20221118012408-a190dcdb467c h1:npFlpljwWtV4nI9exGjKdyzIPASJUgikDIXH1QPTQwk=
-github.com/application-research/estuary-clients/go v0.0.0-20221118012408-a190dcdb467c/go.mod h1:h1iDaFai+u1siFiWDgTBZz4Az1qHUe7p1pPd9sQbCrY=
 github.com/application-research/estuary-clients/go v0.0.0-20230104125712-27a3f6e26b6c h1:8OYofi4/tTC8FtneiPtDYYMQjv5sA3GNo9i6OLmjLHM=
 github.com/application-research/estuary-clients/go v0.0.0-20230104125712-27a3f6e26b6c/go.mod h1:h1iDaFai+u1siFiWDgTBZz4Az1qHUe7p1pPd9sQbCrY=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
