@@ -4,23 +4,16 @@ Spec:
   Verifier: Noop
   Publisher: Estuary
   Docker:
-    Image: gromacs/gromacs
+    Image: ubuntu
     Entrypoint:
       - /bin/bash
       - -c
-      - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
-  inputs:
-    - StorageSource: URLDownload
-      URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
-      path: /app/foo_data_1.txt
+      - echo 15
   outputs:
     - StorageSource: IPFS
       Name: output_custom
       path: /output_custom
-  Sharding:
-    BatchSize: 1
-    GlobPatternBasePath: /inputs
-Deal:
-  Concurrency: 1
-  Confidence: 0
-  MinBids: 0
+  Deal:
+    Concurrency: 1
+    Confidence: 0
+    MinBids: 0

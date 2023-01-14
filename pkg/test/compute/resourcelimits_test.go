@@ -18,11 +18,8 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -103,7 +100,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, shard model.JobShard, _ string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -128,12 +125,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		stack := testutils.SetupTestWithNoopExecutor(
 			ctx,
 			suite.T(),
-			devstack.DevStackOptions{NumberOfNodes: 1},
+			devstack.DevStackOptions{NumberOfHybridNodes: 1},
 			node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits: capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				TotalResourceLimits:          capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 			}),
-			requesternode.NewDefaultRequesterNodeConfig(),
-			&noop_executor.ExecutorConfig{
+			node.NewRequesterConfigWithDefaults(),
+			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
@@ -143,7 +141,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := publicapi.MakeNoopJob()
+			j := testutils.MakeNoopJob()
 			j.Spec.Resources = jobResources
 			j.Spec.Inputs = []model.StorageSpec{
 				{
@@ -153,7 +151,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				},
 			}
 
-			_, err := stack.Nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
+			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID:   "123",
 				APIVersion: j.APIVersion,
 				Spec:       &j.Spec,
@@ -168,7 +166,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 1000,
+			MaxAttempts: 30,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)
@@ -287,16 +285,15 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ model.JobShard, _ string) (*model.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil
 	}
-
-	nodes, _ := testutils.NewNoopStackMultinode(
+	stack := testutils.SetupTestWithNoopExecutor(
 		ctx,
 		suite.T(),
-		nodeCount,
+		devstack.DevStackOptions{NumberOfHybridNodes: nodeCount},
 		node.NewComputeConfigWith(node.ComputeConfigParams{
 			TotalResourceLimits: model.ResourceUsageData{
 				CPU:    1,
@@ -306,20 +303,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			},
 			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 		}),
+		node.NewRequesterConfigWithDefaults(),
 		noop_executor.ExecutorConfig{
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: jobHandler,
-			},
-		},
-		inprocess.InProcessTransportClusterConfig{
-			GetMessageDelay: func(fromIndex, toIndex int) time.Duration {
-				if fromIndex == toIndex {
-					// a node speaking to itself is quick
-					return time.Millisecond * 10
-				} else {
-					// otherwise there is a delay
-					return time.Millisecond * 100
-				}
 			},
 		},
 	)
@@ -340,15 +327,15 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (*model.Job, error) {
-			return nodes[0].LocalDB.GetJob(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
-			return nodes[0].LocalDB.GetJobState(ctx, id)
+			return stack.Nodes[0].RequesterNode.JobStore.GetJobState(ctx, id)
 		},
 	)
 
 	for i := 0; i < nodeCount; i++ {
-		submittedJob, err := nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
+		submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 			ClientID:   "123",
 			APIVersion: jobConfig.APIVersion,
 			Spec:       &jobConfig.Spec,
@@ -379,11 +366,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	// test that each node has 1 job allocated to it
-	node1Count, ok := allocationMap[nodes[0].Transport.HostID()]
+	node1Count, ok := allocationMap[stack.Nodes[0].Host.ID().String()]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), 1, node1Count)
 
-	node2Count, ok := allocationMap[nodes[1].Transport.HostID()]
+	node2Count, ok := allocationMap[stack.Nodes[1].Host.ID().String()]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), 1, node2Count)
 }

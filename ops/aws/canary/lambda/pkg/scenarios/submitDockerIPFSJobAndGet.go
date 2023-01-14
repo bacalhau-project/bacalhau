@@ -23,7 +23,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		j.Spec.Inputs[0].CID = os.Getenv("BACALHAU_CANARY_TEST_CID")
 	}
 
-	submittedJob, err := client.Submit(ctx, j, nil)
+	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("downloading job: %s", err)
 	}
-	files, err := osReadDir(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
+	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
 	if err != nil {
 		return fmt.Errorf("reading results directory: %s", err)
 	}

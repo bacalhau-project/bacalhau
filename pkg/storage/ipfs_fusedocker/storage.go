@@ -36,7 +36,7 @@ import (
 // host folders e.g. -v /tmp/ipfs_mnt/123:/file.txt
 
 // TODO: this should come from a CI build
-const BacalhauIPFSFuseImage string = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
+const BacalhauIPFSFuseImage = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
 const BacalhauIPFSFuseMount = "/ipfs_mount"
 const MaxAttemptsForDocker = 5
 

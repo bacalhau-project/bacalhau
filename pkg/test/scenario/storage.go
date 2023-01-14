@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
+	"github.com/vincent-petithory/dataurl"
 )
 
 // A SetupStorage is a function that return a model.StorageSpec representing
@@ -64,6 +65,17 @@ func StoredFile(
 	}
 }
 
+// InlineFile will store the file directly inline in the storage spec. Unlike
+// the other storage set-ups, this function loads the file immediately. This
+// makes it possible to store things deeper into the Spec object without the
+// test system needing to know how to prepare them.
+func InlineData(data []byte) model.StorageSpec {
+	return model.StorageSpec{
+		StorageSource: model.StorageSourceInline,
+		URL:           dataurl.EncodeBytes(data),
+	}
+}
+
 // URLDownload will return a model.StorageSpec referencing a file on the passed
 // HTTP test server.
 func URLDownload(
@@ -71,7 +83,7 @@ func URLDownload(
 	urlPath string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+	return func(_ context.Context, _ model.StorageSourceType, _ ...*ipfs.Client) ([]model.StorageSpec, error) {
 		finalURL, err := url.JoinPath(server.URL, urlPath)
 		return []model.StorageSpec{
 			{

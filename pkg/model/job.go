@@ -152,6 +152,8 @@ type JobNodeState struct {
 type JobShardState struct {
 	// which node is running this shard
 	NodeID string `json:"NodeId,omitempty"`
+	// Compute node reference for this shard execution
+	ExecutionID string `json:"ExecutionId,omitempty"`
 	// what shard is this we are running
 	ShardIndex int `json:"ShardIndex,omitempty"`
 	// what is the state of the shard on this node
@@ -206,6 +208,9 @@ type Spec struct {
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
+	// The type of networking access that the job needs
+	Network NetworkConfig `json:"Network,omitempty"`
+
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
 	Timeout float64 `json:"Timeout,omitempty"`
@@ -246,6 +251,26 @@ func (s *Spec) GetTimeout() time.Duration {
 	return time.Duration(s.Timeout * float64(time.Second))
 }
 
+// Return pointers to all the storage specs in the spec.
+func (s *Spec) AllStorageSpecs() []*StorageSpec {
+	storages := []*StorageSpec{
+		&s.Language.Context,
+		&s.Wasm.EntryModule,
+	}
+
+	for _, collection := range [][]StorageSpec{
+		s.Contexts,
+		s.Inputs,
+		s.Outputs,
+	} {
+		for index := range collection {
+			storages = append(storages, &collection[index])
+		}
+	}
+
+	return storages
+}
+
 // for VM style executors
 type JobSpecDocker struct {
 	// this should be pullable by docker
@@ -276,8 +301,8 @@ type JobSpecLanguage struct {
 
 // Describes a raw WASM job
 type JobSpecWasm struct {
-	// TODO #915: The module that contains the WASM code to start running.
-	// EntryModule StorageSpec `json:"EntryModule,omitempty"`
+	// The module that contains the WASM code to start running.
+	EntryModule StorageSpec `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
@@ -316,6 +341,8 @@ type JobEvent struct {
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
 	ShardIndex int `json:"ShardIndex,omitempty"`
+	// compute execution identifier
+	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event
@@ -359,9 +386,4 @@ type JobCreatePayload struct {
 
 	// The specification of this job.
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty" validate:"optional"`
 }

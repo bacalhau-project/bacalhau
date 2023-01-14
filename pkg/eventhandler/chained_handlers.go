@@ -76,33 +76,6 @@ func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model
 	return nil
 }
 
-type ChainedNodeEventHandler struct {
-	eventHandlers   []NodeEventHandler
-	contextProvider system.ContextProvider
-}
-
-func NewChainedNodeEventHandler(contextProvider system.ContextProvider) *ChainedNodeEventHandler {
-	return &ChainedNodeEventHandler{contextProvider: contextProvider}
-}
-
-func (r *ChainedNodeEventHandler) AddHandlers(handlers ...NodeEventHandler) {
-	r.eventHandlers = append(r.eventHandlers, handlers...)
-}
-
-func (r *ChainedNodeEventHandler) HandleNodeEvent(ctx context.Context, event model.NodeEvent) error {
-	if r.eventHandlers == nil {
-		return fmt.Errorf("no node event handlers registered")
-	}
-
-	// All handlers are called, unless one of them returns an error.
-	for _, handler := range r.eventHandlers {
-		if err := handler.HandleNodeEvent(ctx, event); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) func(*error) {
 	return func(handlerError *error) {
 		var logMsg *zerolog.Event

@@ -11,17 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 
@@ -41,7 +40,7 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
-	testutils.MustHaveDocker(s.T())
+	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting(s.T())
@@ -68,7 +67,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
@@ -119,7 +118,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobID)
@@ -169,7 +168,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
@@ -196,7 +195,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
@@ -213,7 +212,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	ctx := context.Background()
 	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig())
+		node.NewRequesterConfigWithDefaults())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
@@ -252,7 +251,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	time.Sleep(time.Second * 5)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)

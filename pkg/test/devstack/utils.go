@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -17,7 +15,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -30,19 +28,19 @@ func SetupTest(
 	lotusNode bool,
 	//nolint:gocritic
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterConfig node.RequesterConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	require.NoError(t, system.InitConfigForTesting(t))
 
 	cm := system.NewCleanupManager()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:            nodes,
+		NumberOfHybridNodes:      nodes,
 		NumberOfBadComputeActors: badActors,
 		LocalNetworkLotus:        lotusNode,
 	}
 
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterConfig)
 	require.NoError(t, err)
 
 	t.Cleanup(cm.Cleanup)
@@ -79,7 +77,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	ctx context.Context,
 	t *testing.T,
 	submitJob func(
-		apiClient *publicapi.APIClient,
+		apiClient *publicapi.RequesterAPIClient,
 		args DeterministicVerifierTestArgs,
 	) (string, error),
 	args DeterministicVerifierTestArgs,
@@ -88,7 +86,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	defer cm.Cleanup()
 
 	options := devstack.DevStackOptions{
-		NumberOfNodes:            args.NodeCount,
+		NumberOfHybridNodes:      args.NodeCount,
 		NumberOfBadComputeActors: args.BadActors,
 	}
 
@@ -139,7 +137,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		cm,
 		options,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 		injector,
 	)
 	require.NoError(t, err)
@@ -147,7 +145,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	// wait for other nodes to catch up
 	time.Sleep(time.Second * 1)
 	apiURI := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiURI)
+	apiClient := publicapi.NewRequesterAPIClient(apiURI)
 
 	jobID, err := submitJob(apiClient, args)
 	require.NoError(t, err)

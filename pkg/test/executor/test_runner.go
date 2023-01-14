@@ -8,7 +8,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -25,9 +24,9 @@ func RunTestCase(
 
 	stack, _ := testutils.SetupTest(ctx, t, testNodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
-	executor, err := stack.Nodes[0].Executors.GetExecutor(ctx, spec.Engine)
+	executor, err := stack.Nodes[0].ComputeNode.Executors.GetExecutor(ctx, spec.Engine)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
