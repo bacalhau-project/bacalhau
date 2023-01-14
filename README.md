@@ -44,7 +44,7 @@
 
 ## Table of Contents
 - [Features](#features)
-- [Getting started](#getting-started)
+- [Getting started](#getting-started---bacalhau-in-1-minute)
   - [Learn more](#learn-more)
 - [Documentation](#documentation)
 - [Developers guide](#developers-guide)
@@ -61,8 +61,31 @@
 - **Secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
 - **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau, you can batch process petabytes (quadrillion bytes) of data.
 
-## Getting started
-To hit the ground running, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation) on how to install and run a job with the Bacalhau client.
+
+## Getting started - Bacalhau in 1 minute 
+
+Go to the folder directory that you want to store your job results
+
+Install the bacalhau client
+
+```bash
+curl -sL https://get.bacalhau.org/install.sh | bash
+```
+
+Submit a "Hello World" job
+
+```bash
+bacalhau docker run ubuntu echo Hello World
+``` 
+ 
+Download your result
+
+```bash
+bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run comman
+```
+[![asciicast](https://asciinema.org/a/uvJaidZfb925GrVyitMOWR7X2.svg)](https://asciinema.org/a/uvJaidZfb925GrVyitMOWR7X2)
+
+For a more detailed tutorial, check out our [getting started tutorial](https://docs.bacalhau.org/getting-started/installation).
 
 ### Learn more
 - Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
@@ -104,13 +127,17 @@ make lint
 ```
 The config lives in `.golangci.yml`
 
+## Issues, feature requests, and questions
+
+We are excited to hear your feedback! 
+* For issues and feature requests, please [open a GitHub issue](https://github.com/filecoin-project/bacalhau/issues).
+* For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions).
+* To engage with other members in the community, join us in our [slack community](https://filecoin.io/slack/) `#bacalhau` channel :raising_hand: 
 
 ## Ways to contribute 
 **All manner of contributions are more than welcome!**
 
 We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions, development, and more. 
-
-If you have any questions (specific or general), do not hesitate to reach out the Bacalhau team either in the  [slack community](https://filecoin.io/slack/). Join the `#bacalhau` channel :raising_hand: or open a new [issue](https://github.com/filecoin-project/bacalhau/issues) here on github.
 
 ## Current state of Bacalhau 📈
 Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
