@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -34,10 +35,11 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 			result.Data.URL, downloadDir,
 		)
 
+		filepath := fmt.Sprintf("%s/%s", downloadDir, result.Data.CID)
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, result.Data.URL, downloadDir)
+		return fetch(innerCtx, result.Data.URL, filepath)
 	}()
 
 	if err != nil {
