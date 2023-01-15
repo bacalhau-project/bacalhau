@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -46,7 +47,7 @@ func (s *ServerSuite) TearDownTest() {
 }
 
 func (s *ServerSuite) TestHealthz() {
-	rawHealthData := s.testEndpoint(s.T(), "/healthz", "FreeSpace")
+	rawHealthData := s.testEndpoint(s.T(), "/healthz", "freeSpace")
 
 	var healthData types.HealthInfo
 	err := model.JSONUnmarshalWithMax(rawHealthData, &healthData)
@@ -102,14 +103,17 @@ func (s *ServerSuite) TestTimeout() {
 	defer res.Body.Close()
 }
 func (s *ServerSuite) TestMaxBodyReader() {
+	maxBytesToReadInBody := 500
+
 	config := APIServerConfig{
-		MaxBytesToReadInBody: 500,
+		MaxBytesToReadInBody: datasize.ByteSize(maxBytesToReadInBody),
 	}
 	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
 	// Due to the rest of the Version payload we need MaxBytes minus
 	// an amount that accounts for the other data we send
-	payloadSize := int(500) - 16
+
+	payloadSize := int(500) - 15 // This is annoying constant. THEORETICALLY, we could calculate it.
 	testCases := []struct {
 		name        string
 		size        int

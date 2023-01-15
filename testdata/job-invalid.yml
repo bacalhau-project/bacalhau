@@ -1,23 +1,23 @@
 # Missing API Version
 # APIVersion: v1beta1
-Spec:
-  Engine: Docker
-  Verifier: Noop
-  Publisher: Estuary
-  Docker:
-    Image: gromacs/gromacs
-    Entrypoint:
+spec:
+  engine: Docker
+  verifier: Noop
+  publisher: Estuary
+  docker:
+    image: gromacs/gromacs
+    entrypoint:
       - /bin/bash
       - -c
       - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
   outputs:
-    - StorageSource: IPFS
-      Name: output_custom
+    - storageSource: IPFS
+      name: output_custom
       path: /output_custom
-  Sharding:
-    BatchSize: 1
-    GlobPatternBasePath: /inputs
-  Deal:
-    Concurrency: 1
-    Confidence: 0
-    MinBids: 0
+  sharding:
+    batchSize: 1
+    globPatternBasePath: /inputs
+  deal:
+    concurrency: 1
+    confidence: 0
+    minBids: 0
