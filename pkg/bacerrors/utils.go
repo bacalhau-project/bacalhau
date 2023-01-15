@@ -8,10 +8,10 @@ import (
 const UnknownError = "error-unknown"
 
 type ErrorResponse struct {
-	Code    string                 `json:"Code"`
-	Message string                 `json:"Message"`
-	Details map[string]interface{} `json:"Details"`
-	Err     string                 `json:"Err"`
+	Code    string                 `json:"code"`
+	Message string                 `json:"message"`
+	Details map[string]interface{} `json:"details"`
+	Err     string                 `json:"err"`
 }
 
 func NewResponseUnknownError(err error) *ErrorResponse {

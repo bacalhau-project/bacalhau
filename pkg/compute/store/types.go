@@ -53,10 +53,10 @@ type ExecutionHistory struct {
 
 // Summary of an execution that is used in logging and debugging.
 type ExecutionSummary struct {
-	ExecutionID   string                  `json:"ExecutionID"`
-	ShardID       string                  `json:"ShardID"`
-	State         string                  `json:"State"`
-	ResourceUsage model.ResourceUsageData `json:"ResourceUsage"`
+	ExecutionID   string                  `json:"executionID"`
+	ShardID       string                  `json:"shardID"`
+	State         string                  `json:"state"`
+	ResourceUsage model.ResourceUsageData `json:"resourceUsage"`
 }
 
 // NewExecutionSummary generate a summary from an execution

@@ -12,10 +12,10 @@ type ResourceUsageConfig struct {
 	// https://github.com/BTBurke/k8sresource string
 	CPU string `json:"CPU,omitempty"`
 	// github.com/c2h5oh/datasize string
-	Memory string `json:"Memory,omitempty"`
+	Memory string `json:"memory,omitempty"`
 	// github.com/c2h5oh/datasize string
 
-	Disk string `json:"Disk,omitempty"`
+	Disk string `json:"disk,omitempty"`
 	GPU  string `json:"GPU"` // unsigned integer string
 
 }
@@ -25,9 +25,9 @@ type ResourceUsageData struct {
 	// cpu units
 	CPU float64 `json:"CPU,omitempty" example:"9.600000000000001"`
 	// bytes
-	Memory uint64 `json:"Memory,omitempty" example:"27487790694"`
+	Memory uint64 `json:"memory,omitempty" example:"27487790694"`
 	// bytes
-	Disk uint64 `json:"Disk,omitempty" example:"212663867801"`
+	Disk uint64 `json:"disk,omitempty" example:"212663867801"`
 	GPU  uint64 `json:"GPU,omitempty" example:"1"` //nolint:lll // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
 }
 
@@ -130,9 +130,9 @@ func (r ResourceUsageData) String() string {
 
 type ResourceUsageProfile struct {
 	// how many resources does the job want to consume
-	Job ResourceUsageData `json:"Job,omitempty"`
+	Job ResourceUsageData `json:"job,omitempty"`
 	// how many resources is the system currently using
-	SystemUsing ResourceUsageData `json:"SystemUsing,omitempty"`
+	SystemUsing ResourceUsageData `json:"systemUsing,omitempty"`
 	// what is the total amount of resources available to the system
-	SystemTotal ResourceUsageData `json:"SystemTotal,omitempty"`
+	SystemTotal ResourceUsageData `json:"systemTotal,omitempty"`
 }

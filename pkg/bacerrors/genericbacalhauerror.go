@@ -1,10 +1,10 @@
 package bacerrors
 
 type GenericError struct {
-	Code    string                 `json:"Code"` //nolint:unused
-	Message string                 `json:"Message"`
-	Details map[string]interface{} `json:"Details"`
-	Err     error                  `json:"Error"`
+	Code    string                 `json:"code"` //nolint:unused
+	Message string                 `json:"message"`
+	Details map[string]interface{} `json:"details"`
+	Err     error                  `json:"error"`
 }
 
 func NewGenericError(err error) *GenericError {

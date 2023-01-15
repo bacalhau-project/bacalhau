@@ -5,13 +5,13 @@ type RunCommandResult struct {
 	STDOUT string `json:"stdout"`
 
 	// bool describing if stdout was truncated
-	StdoutTruncated bool `json:"stdouttruncated"`
+	StdoutTruncated bool `json:"stdoutTruncated"`
 
 	// stderr of the run.
 	STDERR string `json:"stderr"`
 
 	// bool describing if stderr was truncated
-	StderrTruncated bool `json:"stderrtruncated"`
+	StderrTruncated bool `json:"stderrTruncated"`
 
 	// exit code of the run.
 	ExitCode int `json:"exitCode"`

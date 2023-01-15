@@ -6,10 +6,10 @@ import (
 
 // A job that is holding compute capacity, which can be in bidding or running state.
 type ScheduledJob struct {
-	ShardID             string `json:"ShardID"`
-	State               string `json:"State"`
-	BiddingNodesCount   int    `json:"BiddingNodesCount"`
-	CompletedNodesCount int    `json:"CompletedNodesCount"`
+	ShardID             string `json:"shardID"`
+	State               string `json:"state"`
+	BiddingNodesCount   int    `json:"biddingNodesCount"`
+	CompletedNodesCount int    `json:"completedNodesCount"`
 }
 
 type ScheduledJobsInfoProviderParams struct {

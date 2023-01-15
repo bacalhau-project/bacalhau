@@ -16,14 +16,14 @@ type JobSelectionPolicy struct {
 	Locality JobSelectionDataLocality `json:"locality"`
 	// should we reject jobs that don't specify any data
 	// the default is "accept"
-	RejectStatelessJobs bool `json:"reject_stateless_jobs"`
+	RejectStatelessJobs bool `json:"rejectStatelessJobs"`
 	// should we accept jobs that specify networking
 	// the default is "reject"
-	AcceptNetworkedJobs bool `json:"accept_networked_jobs"`
+	AcceptNetworkedJobs bool `json:"acceptNetworkedJobs"`
 	// external hooks that decide if we should take on the job or not
 	// if either of these are given they will override the data locality settings
-	ProbeHTTP string `json:"probe_http,omitempty"`
-	ProbeExec string `json:"probe_exec,omitempty"`
+	ProbeHTTP string `json:"probeHTTP,omitempty"`
+	ProbeExec string `json:"probeExec,omitempty"`
 }
 
 // generate a default empty job selection policy

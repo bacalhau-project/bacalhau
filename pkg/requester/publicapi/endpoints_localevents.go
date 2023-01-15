@@ -9,8 +9,8 @@ import (
 )
 
 type localEventsRequest struct {
-	ClientID string `json:"client_id"`
-	JobID    string `json:"job_id"`
+	ClientID string `json:"clientID"`
+	JobID    string `json:"jobID"`
 }
 
 type localEventsResponse struct {

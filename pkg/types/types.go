@@ -10,7 +10,7 @@ type ResultsList struct {
 
 // Struct to report from the healthz endpoint
 type HealthInfo struct {
-	DiskFreeSpace FreeSpace `json:"FreeSpace"`
+	DiskFreeSpace FreeSpace `json:"freeSpace"`
 }
 
 type FreeSpace struct {
@@ -21,9 +21,9 @@ type FreeSpace struct {
 
 // Creating structure for DiskStatus
 type MountStatus struct {
-	All  uint64 `json:"All"`
-	Used uint64 `json:"Used"`
-	Free uint64 `json:"Free"`
+	All  uint64 `json:"all"`
+	Used uint64 `json:"used"`
+	Free uint64 `json:"free"`
 }
 
 // Struct to report for VarZ

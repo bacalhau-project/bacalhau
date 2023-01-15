@@ -9,12 +9,12 @@ import (
 type JobQuery struct {
 	ID          string              `json:"id"`
 	ClientID    string              `json:"clientID"`
-	IncludeTags []model.IncludedTag `json:"include_tags"`
-	ExcludeTags []model.ExcludedTag `json:"exclude_tags"`
+	IncludeTags []model.IncludedTag `json:"includeTags"`
+	ExcludeTags []model.ExcludedTag `json:"excludeTags"`
 	Limit       int                 `json:"limit"`
-	ReturnAll   bool                `json:"return_all"`
-	SortBy      string              `json:"sort_by"`
-	SortReverse bool                `json:"sort_reverse"`
+	ReturnAll   bool                `json:"returnAll"`
+	SortBy      string              `json:"sortBy"`
+	SortReverse bool                `json:"sortReverse"`
 }
 
 type LocalEventFilter func(ev model.JobLocalEvent) bool

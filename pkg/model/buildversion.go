@@ -12,9 +12,9 @@ type BuildVersionInfo struct {
 
 	Major      string    `json:"major,omitempty" example:"0"`
 	Minor      string    `json:"minor,omitempty" example:"3"`
-	GitVersion string    `json:"gitversion" example:"v0.3.12"`
-	GitCommit  string    `json:"gitcommit" example:"d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"`
-	BuildDate  time.Time `json:"builddate" example:"2022-11-16T14:03:31Z"`
+	GitVersion string    `json:"gitVersion" example:"v0.3.12"`
+	GitCommit  string    `json:"gitCommit" example:"d612b63108f2b5ce1ab2b9e02444eb1dac1d922d"`
+	BuildDate  time.Time `json:"buildDate" example:"2022-11-16T14:03:31Z"`
 	GOOS       string    `json:"goos" example:"linux"`
 	GOARCH     string    `json:"goarch" example:"amd64"`
 }
