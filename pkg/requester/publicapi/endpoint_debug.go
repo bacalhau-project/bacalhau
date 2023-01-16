@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 // debug godoc
@@ -17,12 +16,12 @@ import (
 // @Success 200 {object} string
 // @Failure 500 {object} string
 // @Router  /debug [get]
-func (apiServer *APIServer) debug(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) debug(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/debug")
 	defer span.End()
 
 	debugInfoMap := make(map[string]interface{})
-	for _, provider := range apiServer.DebugInfoProviders {
+	for _, provider := range s.debugInfoProviders {
 		debugInfo, err := provider.GetDebugInfo()
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("could not get debug info from some providers: %s", err)

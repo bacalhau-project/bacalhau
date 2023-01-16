@@ -17,7 +17,7 @@ type localEventsResponse struct {
 	LocalEvents []model.JobLocalEvent `json:"localEvents"`
 }
 
-// localEvents godoc
+// LocalEvents godoc
 // @ID          pkg/publicapi/localEvents
 // @Summary     Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
 // @Description Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
@@ -31,7 +31,7 @@ type localEventsResponse struct {
 // @Router      /local_events [post]
 //
 //nolint:dupl
-func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) LocalEvents(res http.ResponseWriter, req *http.Request) {
 	var eventsReq localEventsRequest
 	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -40,7 +40,7 @@ func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Reque
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, eventsReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
-	events, err := apiServer.localdb.GetJobLocalEvents(req.Context(), eventsReq.JobID)
+	events, err := s.localDB.GetJobLocalEvents(req.Context(), eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

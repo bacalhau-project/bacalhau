@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -116,7 +116,7 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	return downloadSettings, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(
@@ -142,7 +142,7 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.APIClient {
+func getClient() *publicapi.RequesterAPIClient {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
@@ -151,6 +151,6 @@ func getClient() *publicapi.APIClient {
 	if apiPort == "" {
 		apiPort = fmt.Sprint(system.Envs[system.Production].APIPort)
 	}
-	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
+	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
 	return client
 }
