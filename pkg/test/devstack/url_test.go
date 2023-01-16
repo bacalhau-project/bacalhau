@@ -73,7 +73,7 @@ func runURLTest(
 		Spec: model.Spec{
 			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Publisher: model.PublisherIPFS,
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
@@ -231,7 +231,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 		Spec: model.Spec{
 			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Publisher: model.PublisherIPFS,
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,

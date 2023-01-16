@@ -37,7 +37,7 @@ Example response:
             "PublishedResults": {
               "StorageSource": "IPFS",
               "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-              "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+              "cid": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
             },
             "RunOutput": {
               "stdout": "Thu Nov 17 13:32:55 UTC 2022\n",

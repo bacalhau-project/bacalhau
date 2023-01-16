@@ -8,7 +8,7 @@ import (
 
 type JobQuery struct {
 	ID          string              `json:"id"`
-	ClientID    string              `json:"clientID"`
+	ClientID    string              `json:"clientId"`
 	IncludeTags []model.IncludedTag `json:"includeTags"`
 	ExcludeTags []model.ExcludedTag `json:"excludeTags"`
 	Limit       int                 `json:"limit"`

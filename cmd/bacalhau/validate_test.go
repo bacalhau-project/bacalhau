@@ -47,7 +47,7 @@ func (s *ValidateSuite) TestValidate() {
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
 				require.NoError(s.T(), err)
 				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(s.T(), fatalError.Message, "apiVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
 

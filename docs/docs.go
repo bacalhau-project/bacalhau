@@ -985,14 +985,14 @@ const docTemplate = `{
         "model.ResourceUsageConfig": {
             "type": "object",
             "properties": {
-                "CPU": {
+                "cpu": {
                     "description": "https://github.com/BTBurke/k8sresource string",
                     "type": "string"
                 },
                 "Disk": {
                     "type": "string"
                 },
-                "GPU": {
+                "gpu": {
                     "description": "unsigned integer string",
                     "type": "string"
                 },
@@ -1112,7 +1112,7 @@ const docTemplate = `{
         "model.StorageSpec": {
             "type": "object",
             "properties": {
-                "CID": {
+                "cid": {
                     "description": "The unique ID of the data, where it makes sense (for example, in an\nIPFS storage spec this will be the data's CID).\nNOTE: The below is capitalized to match IPFS \u0026 IPLD (even though it's out of golang fmt)",
                     "type": "string",
                     "example": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"

@@ -1,16 +1,16 @@
-APIVersion: v1beta1
-Spec:
-  Engine: Noop
-  Verifier: Noop
-  Publisher: Noop
+apiVersion: v1beta1
+spec:
+  engine: Noop
+  verifier: Noop
+  publisher: Noop
   outputs:
-    - StorageSource: IPFS
-      Name: output_custom
+    - storageSource: IPFS
+      name: output_custom
       path: /output_custom
-  Sharding:
-    BatchSize: 1
-    GlobPatternBasePath: /inputs
-  Deal:
-    Concurrency: 1
-    Confidence: 0
-    MinBids: 0
+  sharding:
+    batchSize: 1
+    globPatternBasePath: /inputs
+  deal:
+    concurrency: 1
+    confidence: 0
+    minBids: 0

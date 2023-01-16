@@ -10,7 +10,7 @@ import (
 )
 
 type IDInfo struct {
-	ID string `json:"ID"`
+	ID string `json:"id"`
 }
 
 func newIDCmd() *cobra.Command {

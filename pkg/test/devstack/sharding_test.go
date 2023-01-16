@@ -166,7 +166,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		Spec: model.Spec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Publisher: model.PublisherIPFS,
 			Docker: model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{

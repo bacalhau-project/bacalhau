@@ -10,25 +10,25 @@ import (
 
 type ResourceUsageConfig struct {
 	// https://github.com/BTBurke/k8sresource string
-	CPU string `json:"CPU,omitempty"`
+	CPU string `json:"cpu,omitempty"`
 	// github.com/c2h5oh/datasize string
 	Memory string `json:"memory,omitempty"`
 	// github.com/c2h5oh/datasize string
 
 	Disk string `json:"disk,omitempty"`
-	GPU  string `json:"GPU"` // unsigned integer string
+	GPU  string `json:"gpu"` // unsigned integer string
 
 }
 
 // these are the numeric values in bytes for ResourceUsageConfig
 type ResourceUsageData struct {
 	// cpu units
-	CPU float64 `json:"CPU,omitempty" example:"9.600000000000001"`
+	CPU float64 `json:"cpu,omitempty" example:"9.600"`
 	// bytes
-	Memory uint64 `json:"memory,omitempty" example:"27487790694"`
+	Memory uint64 `json:"memory,omitempty" example:"4"`
 	// bytes
-	Disk uint64 `json:"disk,omitempty" example:"212663867801"`
-	GPU  uint64 `json:"GPU,omitempty" example:"1"` //nolint:lll // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
+	Disk uint64 `json:"disk,omitempty" example:"10"`
+	GPU  uint64 `json:"gpu,omitempty" example:"1"` //nolint:lll // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
 }
 
 func (r ResourceUsageData) Add(other ResourceUsageData) ResourceUsageData {

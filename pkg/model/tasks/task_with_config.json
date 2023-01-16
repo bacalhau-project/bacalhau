@@ -6,7 +6,9 @@
         "bacalhau/config": {
             "verifier": 1,
             "publisher": 2,
-            "annotations": ["hello"],
+            "annotations": [
+                "hello"
+            ],
             "resources": {
                 "cpu": 1,
                 "disk": 1073741824,

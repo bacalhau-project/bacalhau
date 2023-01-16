@@ -22,7 +22,7 @@ type JobSelectionPolicy struct {
 	AcceptNetworkedJobs bool `json:"acceptNetworkedJobs"`
 	// external hooks that decide if we should take on the job or not
 	// if either of these are given they will override the data locality settings
-	ProbeHTTP string `json:"probeHTTP,omitempty"`
+	ProbeHTTP string `json:"probeHttp,omitempty"`
 	ProbeExec string `json:"probeExec,omitempty"`
 }
 

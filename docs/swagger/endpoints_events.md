@@ -25,7 +25,7 @@ Example response (truncated):
         },
         "Wasm": {},
         "Resources": {
-          "GPU": ""
+          "gpu": ""
         },
         "Timeout": 1800,
         "outputs": [
@@ -64,7 +64,7 @@ Example response (truncated):
         },
         "Wasm": {},
         "Resources": {
-          "GPU": ""
+          "gpu": ""
         },
         "Sharding": {}
       },
@@ -89,7 +89,7 @@ Example response (truncated):
         },
         "Wasm": {},
         "Resources": {
-          "GPU": ""
+          "gpu": ""
         },
         "Sharding": {}
       },
@@ -99,7 +99,7 @@ Example response (truncated):
       "PublishedResult": {
         "StorageSource": "IPFS",
         "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-        "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+        "cid": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
       },
       "EventTime": "2022-11-17T13:32:55.756658941Z",
       "SenderPublicKey": "..."

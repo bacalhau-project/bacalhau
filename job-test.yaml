@@ -1,5 +1,5 @@
 # jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
-APIVersion: v1beta1
+apiVersion: v1beta1
 Engine: Docker
 Verifier: Noop
 Publisher: Estuary
@@ -20,7 +20,7 @@ outputs:
     # default output volume is outputs
     Name: outputs
     CID: ""
-    URL: ""
+    url: ""
     path: /outputs
 # Not required
 Sharding:

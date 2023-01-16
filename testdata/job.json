@@ -1,34 +1,33 @@
 {
-    "APIVersion": "v1beta1",
-    "Spec": {
-        "Engine": "docker",
-        "Verifier": "noop",
-        "Publisher": "ipfs",
-        "Docker": {
-            "Image": "ubuntu:latest",
-            "Entrypoint": [
+    "apiVersion": "v1beta1",
+    "spec": {
+        "engine": "Docker",
+        "verifier": "Noop",
+        "publisher": "IPFS",
+        "docker": {
+            "image": "ubuntu:latest",
+            "entrypoint": [
                 "/bin/bash",
                 "-c",
                 "echo 15"
             ],
-            "EnvironmentVariables": []
+            "environmentVariables": []
         },
-        "Resources": {
-            "CPU": "",
-            "GPU": "",
-            "Memory": "",
-            "Disk": ""
+        "resources": {
+            "cpu": "",
+            "gpu": "",
+            "memory": "",
+            "disk": ""
         },
-        "Inputs": [
-        ],
-        "Outputs": [
+        "inputs": [],
+        "outputs": [
             {
-                "StorageSource": "ipfs",
-                "Name": "output_custom",
-                "CID": "",
-                "Path": "/output_custom"
+                "storageSource": "IPFS",
+                "name": "output_custom",
+                "cid": "",
+                "path": "/output_custom"
             }
         ],
-        "Annotations": []
+        "annotations": []
     }
 }

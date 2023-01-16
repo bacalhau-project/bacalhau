@@ -30,8 +30,8 @@ type BidStrategy interface {
 // the JSON data we send to http or exec probes
 // TODO: can we just use the BidStrategyRequest struct?
 type JobSelectionPolicyProbeData struct {
-	NodeID        string                 `json:"nodeID"`
-	JobID         string                 `json:"jobID"`
+	NodeID        string                 `json:"nodeId"`
+	JobID         string                 `json:"jobId"`
 	Spec          model.Spec             `json:"spec"`
 	ExecutionPlan model.JobExecutionPlan `json:"executionPlan"`
 }

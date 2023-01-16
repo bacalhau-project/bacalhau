@@ -10,13 +10,13 @@ func _() {
 	var x [1]struct{}
 	_ = x[publisherUnknown-0]
 	_ = x[PublisherNoop-1]
-	_ = x[PublisherIpfs-2]
+	_ = x[PublisherIPFS-2]
 	_ = x[PublisherFilecoin-3]
 	_ = x[PublisherEstuary-4]
 	_ = x[publisherDone-5]
 }
 
-const _Publisher_name = "publisherUnknownNoopIpfsFilecoinEstuarypublisherDone"
+const _Publisher_name = "publisherUnknownNoopIPFSFilecoinEstuarypublisherDone"
 
 var _Publisher_index = [...]uint8{0, 16, 20, 24, 32, 39, 52}
 

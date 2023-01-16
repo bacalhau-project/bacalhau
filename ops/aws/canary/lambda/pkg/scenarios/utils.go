@@ -26,7 +26,7 @@ func getSampleDockerJob() *model.Job {
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
+		Publisher: model.PublisherIPFS,
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
@@ -50,7 +50,7 @@ func getSampleDockerIPFSJob() *model.Job {
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
+		Publisher: model.PublisherIPFS,
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{

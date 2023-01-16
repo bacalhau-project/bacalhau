@@ -15,7 +15,7 @@ import (
 
 type listRequest struct {
 	JobID       string              `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	ClientID    string              `json:"clientID" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	ClientID    string              `json:"clientId" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	IncludeTags []model.IncludedTag `json:"includeTags" example:"['any-tag']"`
 	ExcludeTags []model.ExcludedTag `json:"excludeTags" example:"['any-tag']"`
 	MaxJobs     int                 `json:"maxJobs" example:"10"`

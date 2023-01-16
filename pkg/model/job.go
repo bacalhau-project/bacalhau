@@ -9,7 +9,7 @@ import (
 
 // Job contains data about a job request in the bacalhau network.
 type Job struct {
-	APIVersion string `json:"APIVersion" example:"V1beta1"`
+	APIVersion string `json:"apiVersion" example:"V1beta1"`
 
 	Metadata Metadata `json:"metadata,omitempty"`
 
@@ -22,17 +22,17 @@ type Job struct {
 
 type Metadata struct {
 	// The unique global ID of this job in the bacalhau network.
-	ID string `json:"ID,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`
+	ID string `json:"id,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`
 
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"createdAt,omitempty" example:"2022-11-17T13:29:01.871140291Z"`
 
 	// The ID of the client that created this job.
-	ClientID string `json:"clientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	ClientID string `json:"clientId,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 }
 type JobRequester struct {
 	// The ID of the requester node that owns this job.
-	RequesterNodeID string `json:"requesterNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
+	RequesterNodeID string `json:"requesterNodeId,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
 
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
@@ -151,9 +151,9 @@ type JobNodeState struct {
 
 type JobShardState struct {
 	// which node is running this shard
-	NodeID string `json:"nodeID,omitempty"`
+	NodeID string `json:"nodeId,omitempty"`
 	// Compute node reference for this shard execution
-	ExecutionID string `json:"executionID,omitempty"`
+	ExecutionID string `json:"executionId,omitempty"`
 	// what shard is this we are running
 	ShardIndex int `json:"shardIndex,omitempty"`
 	// what is the state of the shard on this node
@@ -327,29 +327,29 @@ type JobSpecWasm struct {
 // to the rest of the network
 type JobLocalEvent struct {
 	EventName    JobLocalEventType `json:"eventName,omitempty"`
-	JobID        string            `json:"jobID,omitempty"`
+	JobID        string            `json:"jobId,omitempty"`
 	ShardIndex   int               `json:"shardIndex,omitempty"`
-	TargetNodeID string            `json:"targetNodeID,omitempty"`
+	TargetNodeID string            `json:"targetNodeId,omitempty"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
 	// APIVersion of the Job
-	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
+	APIVersion string `json:"apiVersion,omitempty" example:"V1beta1"`
 
-	JobID string `json:"jobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	JobID string `json:"jobId,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
 	ShardIndex int `json:"shardIndex,omitempty"`
 	// compute execution identifier
-	ExecutionID string `json:"executionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ExecutionID string `json:"executionId,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"clientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	ClientID string `json:"clientId,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event
-	SourceNodeID string `json:"sourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
+	SourceNodeID string `json:"sourceNodeId,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
-	TargetNodeID string       `json:"targetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
+	TargetNodeID string       `json:"targetNodeId,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
 	EventName    JobEventType `json:"eventName,omitempty"`
 	// this is only defined in "create" events
 	Spec Spec `json:"spec,omitempty"`
@@ -380,9 +380,9 @@ type VerificationResult struct {
 
 type JobCreatePayload struct {
 	// the id of the client that is submitting the job
-	ClientID string `json:"clientID,omitempty" validate:"required"`
+	ClientID string `json:"clientId,omitempty" validate:"required"`
 
-	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1" validate:"required"`
+	APIVersion string `json:"apiVersion,omitempty" example:"V1beta1" validate:"required"`
 
 	// The specification of this job.
 	Spec *Spec `json:"spec,omitempty" validate:"required"`

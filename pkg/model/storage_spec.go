@@ -15,10 +15,10 @@ type StorageSpec struct {
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
 	// NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
-	CID string `json:"CID,omitempty" example:"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"`
+	CID string `json:"cid,omitempty" example:"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"`
 
 	// Source URL of the data
-	URL string `json:"URL,omitempty"`
+	URL string `json:"url,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
@@ -34,7 +34,7 @@ type StorageSpec struct {
 // by a compute provider - it keeps info about the host, job and shard that
 // lead to the given storage spec being published
 type PublishedResult struct {
-	NodeID     string      `json:"nodeID,omitempty"`
+	NodeID     string      `json:"nodeId,omitempty"`
 	ShardIndex int         `json:"shardIndex,omitempty"`
 	Data       StorageSpec `json:"data,omitempty"`
 }

@@ -180,17 +180,17 @@ func GenerateJobJSONSchema() ([]byte, error) {
 		Path  string
 		Enums []string
 	}{
-		{Name: "Engine",
-			Path:  "$defs.Spec.properties.Engine",
+		{Name: "engine",
+			Path:  "$defs.Spec.properties.engine",
 			Enums: model.EngineNames()},
-		{Name: "Verifier",
-			Path:  "$defs.Spec.properties.Verifier",
+		{Name: "verifier",
+			Path:  "$defs.Spec.properties.verifier",
 			Enums: model.VerifierNames()},
-		{Name: "Publisher",
-			Path:  "$defs.Spec.properties.Publisher",
+		{Name: "publisher",
+			Path:  "$defs.Spec.properties.publisher",
 			Enums: model.PublisherNames()},
-		{Name: "StorageSource",
-			Path:  "$defs.StorageSpec.properties.StorageSource",
+		{Name: "storageSource",
+			Path:  "$defs.StorageSpec.properties.storageSource",
 			Enums: model.StorageSourceNames()},
 	}
 	for _, enumType := range enumTypes {

@@ -10,7 +10,7 @@ type Publisher int
 const (
 	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
-	PublisherIpfs
+	PublisherIPFS
 	PublisherFilecoin
 	PublisherEstuary
 	publisherDone // must be last

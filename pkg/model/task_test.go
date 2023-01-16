@@ -41,7 +41,7 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, VerifierNoop, spec.Verifier)
-	require.Equal(t, PublisherIpfs, spec.Publisher)
+	require.Equal(t, PublisherIPFS, spec.Publisher)
 	require.Equal(t, []string{"hello"}, spec.Annotations)
 	require.Equal(t, "1m", spec.Resources.CPU)
 	require.Equal(t, "1GB", spec.Resources.Disk)

@@ -142,7 +142,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		j.Spec.Verifier = model.VerifierNoop
 	}
 	if !model.IsValidPublisher(j.Spec.Publisher) {
-		j.Spec.Publisher = model.PublisherIpfs
+		j.Spec.Publisher = model.PublisherIPFS
 	}
 
 	j.Spec.Deal = scenario.Deal

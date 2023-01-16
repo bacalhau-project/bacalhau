@@ -28,7 +28,7 @@ Example response:
         },
         "Wasm": {},
         "Resources": {
-          "GPU": ""
+          "gpu": ""
         },
         "Timeout": 1800,
         "outputs": [
@@ -85,7 +85,7 @@ Example response:
                 "PublishedResults": {
                   "StorageSource": "IPFS",
                   "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-                  "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+                  "cid": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
                 },
                 "RunOutput": {
                   "stdout": "Thu Nov 17 13:32:55 UTC 2022\n",
@@ -123,7 +123,7 @@ Example response:
         },
         "Wasm": {},
         "Resources": {
-          "GPU": ""
+          "gpu": ""
         },
         "Timeout": 1800,
         "outputs": [
@@ -170,7 +170,7 @@ Example response:
                 "PublishedResults": {
                   "StorageSource": "IPFS",
                   "Name": "job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-                  "CID": "QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG"
+                  "cid": "QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG"
                 },
                 "RunOutput": {
                   "stdout": "",

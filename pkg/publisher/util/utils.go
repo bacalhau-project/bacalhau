@@ -53,7 +53,7 @@ func NewIPFSPublishers(
 
 	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop:     noopPublisher,
-		model.PublisherIpfs:     ipfsPublisher,
+		model.PublisherIPFS:     ipfsPublisher,
 		model.PublisherEstuary:  estuaryPublisher,
 		model.PublisherFilecoin: combo.NewPiggybackedPublisher(ipfsPublisher, lotus),
 	}), nil

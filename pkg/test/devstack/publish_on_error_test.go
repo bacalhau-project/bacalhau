@@ -31,7 +31,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		Spec: model.Spec{
 			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Publisher: model.PublisherIPFS,
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
