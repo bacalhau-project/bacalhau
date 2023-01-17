@@ -41,6 +41,7 @@ sudo mkdir -p /terraform_node
 ##############################
 
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
+export TERRAFORM_WORKSPACE="${terraform.workspace}"
 export TERRAFORM_NODE_INDEX="${count.index}"
 export TERRAFORM_NODE0_IP="${var.internal_ip_addresses[0]}"
 export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.internal_ip_addresses[1] : ""}"
