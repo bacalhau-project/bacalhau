@@ -146,6 +146,11 @@ variable "grafana_cloud_loki_endpoint" {
   default = ""
 }
 
+variable "loki_version" {
+  type    = string
+  default = ""
+}
+
 variable "estuary_api_key" {
   type      = string
   default   = ""
