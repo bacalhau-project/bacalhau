@@ -1,5 +1,9 @@
 package model
 
+import (
+	"math/big"
+)
+
 // StorageSpec represents some data on a storage engine. Storage engines are
 // specific to particular execution engines, as different execution engines
 // will mount data in different ways.
@@ -23,6 +27,8 @@ type StorageSpec struct {
 	// The path of the host data if we are using local directory paths
 	SourcePath string `json:"SourcePath,omitempty"`
 
+	BlockRange *BlockRange
+
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
@@ -31,6 +37,23 @@ type StorageSpec struct {
 
 	// Additional properties specific to each driver
 	Metadata map[string]string `json:"Metadata,omitempty"`
+}
+
+// [start, end)
+type BlockRange struct {
+	Start *big.Int
+	End   *big.Int
+}
+
+func (br *BlockRange) Copy() *BlockRange {
+	return &BlockRange{
+		Start: new(big.Int).Set(br.Start),
+		End: new(big.Int).Set(br.End),
+	}
+}
+
+func (br BlockRange) Equal(other *BlockRange) bool {
+	return br.Start.Cmp(other.Start) == 0 && br.End.Cmp(other.End) == 0
 }
 
 // PublishedStorageSpec is a wrapper for a StorageSpec that has been published
