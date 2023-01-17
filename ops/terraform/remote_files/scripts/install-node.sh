@@ -139,6 +139,7 @@ scrape_configs:
       labels:
         job: systemd-journal
         host: ${HOSTNAME}
+        label_project: bacalhau
     relabel_configs:
       - action: keep
         source_labels: [__journal__systemd_unit]
@@ -221,9 +222,9 @@ function init-bacalhau() {
 
 function start-services() {
   sudo systemctl daemon-reload
-  sudo systemctl enable ipfs-daemon.service
-  sudo systemctl enable bacalhau-daemon.service
-  sudo systemctl enable prometheus-daemon.service
+  sudo systemctl enable ipfs-daemon
+  sudo systemctl enable bacalhau-daemon
+  sudo systemctl enable prometheus-daemon
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
   sudo systemctl start prometheus-daemon
