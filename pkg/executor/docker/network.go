@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -27,7 +28,7 @@ const (
 	// pkg/executor/docker/gateway/Dockerfile for design notes. We specify this
 	// using a fully-versioned tag so that the interface between code and image
 	// stay in sync.
-	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-50-g9955b03d"
+	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-58-g438e22e3"
 
 	// The hostname used by Mac OS X and Windows hosts to refer to the Docker
 	// host in a network context. Linux hosts can use this hostname if they
@@ -42,9 +43,12 @@ const (
 	// command that will ensure the host is visible on the network from within
 	// the container, even on a Linux host where localhost is sufficient.
 	dockerHostAddCommand = dockerHostHostname + ":" + dockerHostIPAddressMagicWord
-)
 
-const (
+	// This time should match the --interval= option specified on the container
+	// HEALTHCHECK (as the health status only updates this frequently so more
+	// frequent calls are useless)
+	httpGatewayHealthcheckInterval = time.Second
+
 	// The port used by the proxy server within the HTTP gateway container. This
 	// is also specified in squid.conf and gateway.sh.
 	httpProxyPort = 8080
@@ -155,10 +159,25 @@ func (e *Executor) createHTTPGateway(
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stderr").Logger().WithContext(ctx), stderr)
 
 	// Look up the IP address of the gateway container and attach it to the spec
-	containerDetails, err := e.Client.ContainerInspect(ctx, gatewayContainer.ID)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting gateway container details")
+	var containerDetails types.ContainerJSON
+	for {
+		containerDetails, err = e.Client.ContainerInspect(ctx, gatewayContainer.ID)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "error getting gateway container details")
+		}
+		switch containerDetails.State.Health.Status {
+		case types.NoHealthcheck:
+			return nil, nil, errors.New("expecting gateway image to have healthcheck defined")
+		case types.Unhealthy:
+			return nil, nil, errors.New("gateway container failed to start")
+		case types.Starting:
+			time.Sleep(httpGatewayHealthcheckInterval)
+			continue
+		}
+
+		break
 	}
+
 	networkAttachment, ok := containerDetails.NetworkSettings.Networks[internalNetwork.Name]
 	if !ok || networkAttachment.IPAddress == "" {
 		return nil, nil, fmt.Errorf("gateway does not appear to be attached to internal network")

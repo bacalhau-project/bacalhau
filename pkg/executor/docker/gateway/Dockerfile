@@ -36,3 +36,4 @@ ADD squid.conf /etc/squid/conf.d/
 ADD gateway.sh /bin
 
 CMD ["sh", "/bin/gateway.sh"]
+HEALTHCHECK --interval=1s --start-period=5s CMD ["bash", "-c", ": &>/dev/null </dev/tcp/127.0.0.1/8080"]
