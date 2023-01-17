@@ -225,6 +225,7 @@ function start-services() {
   sudo systemctl enable ipfs-daemon
   sudo systemctl enable bacalhau-daemon
   sudo systemctl enable prometheus-daemon
+  sudo systemctl enable promtail
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
   sudo systemctl start prometheus-daemon
