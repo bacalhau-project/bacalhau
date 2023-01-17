@@ -109,6 +109,48 @@ EOF
   fi
 }
 
+function install-promtail() {
+  if [[ -z "${LOKI_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_USER}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_ENDPOINT}" ]]; then
+    echo 'Any of LOKI_VERSION, GRAFANA_CLOUD_API_KEY, GRAFANA_CLOUD_LOKI_USER, GRAFANA_CLOUD_LOKI_ENDPOINT env variables is undefined. Skipping Promtail/Loki installation.'
+  else
+    cd ~
+    curl -O -L "https://github.com/grafana/loki/releases/download/v${LOKI_VERSION}/promtail-linux-amd64.zip"
+    tar xvf promtail-linux-amd64.zip
+    sudo chmod a+x "promtail-linux-amd64"
+    sudo mv promtail-linux-amd64 /usr/local/bin/
+    
+    # config file
+    HOSTNAME=$(hostname)
+    sudo tee /terraform_node/promtail.yml > /dev/null <<EOF
+server:
+  http_listen_port: 0
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: https://${GRAFANA_CLOUD_LOKI_USER}:${SECRETS_GRAFANA_CLOUD_API_KEY}@${GRAFANA_CLOUD_LOKI_ENDPOINT}/loki/api/v1/push
+
+scrape_configs:
+  - job_name: journal
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: ${HOSTNAME}
+    relabel_configs:
+      - action: keep
+        source_labels: [__journal__systemd_unit]
+        regex: '^bacalhau-daemon\.service$'
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'systemd_unit'
+EOF
+    sudo mkdir -p /etc/promtail
+    sudo cp /terraform_node/promtail.yml /etc/promtail/config.yml
+  fi
+}
+
 function mount-disk() { 
   # wait for /dev/sdb to exist
   while [[ ! -e /dev/sdb ]]; do
@@ -185,6 +227,7 @@ function start-services() {
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
   sudo systemctl start prometheus-daemon
+  sudo systemctl start promtail
   sudo service openresty reload
 }
 
@@ -199,6 +242,7 @@ function install() {
   init-bacalhau
   install-secrets
   install-prometheus
+  install-promtail
   start-services
 }
 
