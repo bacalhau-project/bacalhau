@@ -94,6 +94,12 @@ func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	shard model.JobShard,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
+	// Get the gateway image if we don't have it already
+	err := docker.PullImage(ctx, e.Client, httpGatewayImage)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error pulling gateway image")
+	}
+
 	// Create an internal only bridge network to join our gateway and job container
 	networkResp, err := e.Client.NetworkCreate(ctx, e.dockerObjectName(shard, "network"), types.NetworkCreate{
 		Driver:     "bridge",
