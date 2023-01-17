@@ -5,7 +5,7 @@
 -->
 <p align="center">
   <a href="https://github.com/filecoin-project/bacalhau">
-    <img src="https://github.com/filecoin-project/bacalhau/blob/dev/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
+    <img src="https://github.com/filecoin-project/bacalhau/blob/590a1c84dbde3636a54c371c40c73ed6ea86bf48/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
 
   </a>
   </p>
