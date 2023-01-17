@@ -1,65 +1,112 @@
 <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
 -->
-# The Filecoin Distributed Computation Framework  
+
+<!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
+-->
 <p align="center">
-  <img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
-</p>
-<p align=center>
-  Compute Over Data == CoD
-  <br>
-  Bacalhau == "Salted CoD Fish" (Portuguese)
-</p>
-  
+  <a href="https://github.com/filecoin-project/bacalhau">
+    <img src="https://github.com/filecoin-project/bacalhau/blob/readme/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
+
+  </a>
+  </p>
+
+<h1 align="center">The Filecoin Distributed Computation Framework⚡️ <br>Compute Over Data(CoD)</h1>
 <br>
 
-The purpose of Bacalhau is to provide a platform for public, transparent, and optionally verifiable computation. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is also referred to as Compute Over Data (or CoD). The Portuguese word for salted Cod fish is "Bacalhau" which is the origin of the project's name.
-
-Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time Bacalhau will expand to other compute workloads, learn more about it future plans in the [roadmap document](ROADMAP.md).
-
-* [Getting Started](https://docs.bacalhau.org/getting-started/installation) ⚡
-* [Documentation](https://docs.bacalhau.org/) :closed_book:
-* [Slack Community](https://filecoin.io/slack) is open to anyone! Join the `#bacalhau` channel :raising_hand:
-* [Code Examples Repository](https://github.com/bacalhau-project/examples) :mag:
-
-Watch a 90 seconds demo of Bacalhau in action:
-
-<p align=center>
-  <a href="https://www.youtube.com/watch?v=4YHkmL4Ld74" target="_blank">
-    <img src="https://github.com/filecoin-project/bacalhau/raw/a49f4e9c89acce2890aa444fdbb5aa47674ede68/docs/images/thumb-bacalhau-demo-1st-july.jpg" alt="Watch the video" width="580" border="10" />
+<p align="center">
+    <a href="https://github.com/filecoin-project/bacalhau/blob/dev/LICENSE" alt="Contributors">
+        <img src="https://img.shields.io/badge/license-Apache-green" />
+        </a>  
+    <a href="https://github.com/filecoin-project/bacalhau/releases/" alt="Release">
+        <img src="https://img.shields.io/github/v/release/filecoin-project/bacalhau?display_name=tag" />
+        </a>
+    <a href="https://github.com/filecoin-project/bacalhau/pulse" alt="Activity">
+        <img src="https://img.shields.io/github/commit-activity/m/filecoin-project/bacalhau" />
+        </a>
+    <a href="https://img.shields.io/github/downloads/filecoin-project/bacalhau/total">
+        <img src="https://img.shields.io/github/downloads/filecoin-project/bacalhau/total" alt="total download">
+        </a>
+     <a href="https://github.com/filecoin-project/bacalhau/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/filecoin-project/bacalhau" alt="Bacalhau contributors" >
+    </a>
+    <a href="https://www.bacalhau.org/">
+    <img alt="Bacalhau website" src="https://img.shields.io/badge/website-bacalhau.org-red">
   </a>
+      <a href="https://filecoinproject.slack.com/" alt="Slack">
+        <img src="https://img.shields.io/badge/slack-join_community-red.svg?color=0052FF&labelColor=090422&logo=slack" />
+        </a>
+    <a href="https://twitter.com/intent/follow?screen_name=BacalhauProject">
+        <img src="https://img.shields.io/twitter/follow/BacalhauProject?style=social&logo=twitter" alt="follow on Twitter">
+        </a>
 </p>
 
+[Bacalhau](https://www.bacalhau.org/) is a platform for public, transparent, and optionally verifiable distributed computation that helps you manage your parallel processing jobs. Bacalhau enables users to run arbitrary docker containers and wasm images as tasks against data stored in IPFS. This architecture is referred to as Compute Over Data (CoD). Bacalhau was coined from the Portuguese word for salted Cod fish. 
 
-Learn more about the project from our [Website](https://www.bacalhau.org/), [Twitter](https://twitter.com/BacalhauProject) & [YouTube Channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNCUn4vi0A).
+## Table of Contents
+- [Features](#features)
+- [Getting started](#getting-started---bacalhau-in-1-minute)
+  - [Learn more](#learn-more)
+- [Documentation](#documentation)
+- [Developers guide](#developers-guide)
+  - [Running Bacalhau locally](#running-bacalhau-locally)
+  - [Notes for Dev contributors](#notes-for-dev-contributors)
+- [Ways to contribute ](#ways-to-contribute)
+- [Current state of Bacalhau](current-state-of-bacalhau)
+- [License](#license)
 
-## Latest Updates
+## Features
+- **Process jobs fast**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
+- **Low cost:** You get to save on ingress/egress fees you encounter whenever you move data around since jobs are processed where the data is created.
+- **Secure**: Data is not collected in a central location before processing, meaning all scrubbing and security can be applied at the point of collection.
+- **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau, you can batch process petabytes (quadrillion bytes) of data.
 
-* [Weekly Bacalhau Project Reports](https://github.com/filecoin-project/bacalhau/wiki)
-* [Bacalhau Overview at DeSci Berlin June 2022](https://www.youtube.com/watch?v=HA8ijt4dzAY)
 
+## Getting started - Bacalhau in 1 minute 
 
-## Getting Started
+Go to the folder directory that you want to store your job results
 
-Please see the instructions here to get started running a hello example: [Getting Started with Bacalhau](https://docs.bacalhau.org/getting-started/installation).
-For a more data intensive demo, check out the [Image Processing tutorial](https://docs.bacalhau.org/examples/data-engineering/image-processing/).
+Install the bacalhau client
 
-## Getting Help
+```bash
+curl -sL https://get.bacalhau.org/install.sh | bash
+```
 
-For usage questions or issues reach out the Bacalhau team either in the [Slack channel](https://filecoinproject.slack.com/archives/C02RLM3JHUY) or open a new issue here on github.
+Submit a "Hello World" job
 
-## Developer Guide
+```bash
+bacalhau docker run ubuntu echo Hello World
+``` 
+ 
+Download your result
+
+```bash
+bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run comman
+```
+
+![](docs/images/screengif.gif)
+
+For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
+
+### Learn more
+- Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
+- Get an overview of the [different usecases](https://www.youtube.com/watch?v=gAHaMsTknZM) that you can use with Bacalhau.
+- To see Bacalhau in action, check out the [Bacalhau Examples](https://docs.bacalhau.org/examples/)
+- You can check out this featured example video tutorial [Text to image- Stable Diffusion GPU](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz). You can watch more tutorials [here](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz)
+
+## Documentation
+📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
+
+The Bacalhau docs is the best starting point as it contains all the information to ensure that everyone who uses Bacalhau is doing so efficiently.
+
+## Developers guide
 
 ### Running Bacalhau locally
 
 Developers can spin up bacalhau and run a local demo using the `devstack` command. 
-Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
-Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
 
-### Release a new version
+Please see [docs/running_locally.md](docs/running_locally.md) for instructions. Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
 
-To ship a new version of the CLI & Bacalhau network please follow the instuctions at [docs/create_release.md](docs/create_release.md).
-
-### Notes for Contributors
+### Notes for Dev contributors
 
 Bacalhau's CI pipeline performs a variety of linting and formatting checks on new pull requests. 
 To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
@@ -67,7 +114,6 @@ To have these checks run locally when you make a new commit, you can use the pre
 ```bash
 git config core.hooksPath ./githooks
 ```
-
 If you want to run the linter manually:
 
 ```bash
@@ -75,9 +121,23 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 golangci-lint --version
 make lint
 ```
-
 The config lives in `.golangci.yml`
 
-## Licence
+## Issues, feature requests, and questions
+
+We are excited to hear your feedback! 
+* For issues and feature requests, please [open a GitHub issue](https://github.com/filecoin-project/bacalhau/issues).
+* For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions).
+* To engage with other members in the community, join us in our [slack community](https://filecoin.io/slack/) `#bacalhau` channel :raising_hand: 
+
+## Ways to contribute 
+**All manner of contributions are more than welcome!**
+
+We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions, development, and more. 
+
+## Current state of Bacalhau 📈
+Building never stops 🛠️.  **Bacalhau is a work in progress!**. Learn more about our future plans in this [roadmap document](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/1151)
+
+## License
 
 [Apache-2.0](./LICENSE)
