@@ -1,8 +1,6 @@
 package sensors
 
 import (
-	"fmt"
-
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -33,14 +31,10 @@ func (r RunningExecutionsInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
 	for _, execution := range executions {
 		summaries = append(summaries, store.NewExecutionSummary(execution))
 	}
-	bytes, err := model.JSONMarshalWithMax(summaries)
-	if err != nil {
-		return model.DebugInfo{}, fmt.Errorf("failed to marshal execution summaries: %w", err)
-	}
 
 	return model.DebugInfo{
 		Component: r.name,
-		Info:      string(bytes),
+		Info:      summaries,
 	}, nil
 }
 

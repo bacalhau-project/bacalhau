@@ -43,14 +43,13 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
+			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodes},
 		},
 		Inputs: scenario.StoredFile(
 			prepareFolderWithFiles(s.T(), testCase.shards),
 			"/input",
 		),
-		Contexts: scenario.WasmHelloWorld.Contexts,
-		Spec:     spec,
+		Spec: spec,
 		Deal: model.Deal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,

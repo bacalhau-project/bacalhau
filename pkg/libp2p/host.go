@@ -50,6 +50,7 @@ func NewHost(port int) (host.Host, error) {
 		return nil, err
 	}
 
+	log.Info().Msgf("started libp2p host %s listening on: %s", h.ID().String(), h.Addrs())
 	return h, err
 }
 
@@ -64,9 +65,9 @@ func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, 
 		cancelFunction()
 		return nil
 	})
-	defer ticker.Stop()
 	log.Ctx(ctx).Debug().Msgf("Starting peer reconnection loop every %d seconds", ContinuouslyConnectPeersLoopDelaySeconds)
 	go func() {
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:

@@ -11,21 +11,31 @@ import (
 type TimeoutStrategyParams struct {
 	MaxJobExecutionTimeout time.Duration
 	MinJobExecutionTimeout time.Duration
+
+	JobExecutionTimeoutClientIDBypassList []string
 }
 
 type TimeoutStrategy struct {
-	maxJobExecutionTimeout time.Duration
-	minJobExecutionTimeout time.Duration
+	maxJobExecutionTimeout                time.Duration
+	minJobExecutionTimeout                time.Duration
+	jobExecutionTimeoutClientIDBypassList []string
 }
 
 func NewTimeoutStrategy(params TimeoutStrategyParams) *TimeoutStrategy {
 	return &TimeoutStrategy{
-		maxJobExecutionTimeout: params.MaxJobExecutionTimeout,
-		minJobExecutionTimeout: params.MinJobExecutionTimeout,
+		maxJobExecutionTimeout:                params.MaxJobExecutionTimeout,
+		minJobExecutionTimeout:                params.MinJobExecutionTimeout,
+		jobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 	}
 }
 
-func (s *TimeoutStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+func (s *TimeoutStrategy) ShouldBid(_ context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
+		if request.Job.Metadata.ClientID == clientID {
+			return newShouldBidResponse(), nil
+		}
+	}
+
 	if request.Job.Spec.Timeout <= 0 {
 		return newShouldBidResponse(), nil
 	}

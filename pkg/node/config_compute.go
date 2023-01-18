@@ -24,11 +24,16 @@ type ComputeConfigParams struct {
 	MaxJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
 
+	JobExecutionTimeoutClientIDBypassList []string
+
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	// interval to publish node info to pubsub network
+	NodeInfoPublisherInterval time.Duration
 
 	SimulatorConfig model.SimulatorConfigCompute
 }
@@ -53,11 +58,18 @@ type ComputeConfig struct {
 	// no timeout requirement defined.
 	DefaultJobExecutionTimeout time.Duration
 
+	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
+	// check.
+	JobExecutionTimeoutClientIDBypassList []string
+
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
 
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
+
+	// interval to publish node info to pubsub network
+	NodeInfoPublisherInterval time.Duration
 
 	SimulatorConfig model.SimulatorConfigCompute
 }
@@ -89,13 +101,16 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
 	}
+	if params.NodeInfoPublisherInterval == 0 {
+		params.NodeInfoPublisherInterval = DefaultComputeConfig.NodeInfoPublisherInterval
+	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
 	if physicalResourcesProvider == nil {
 		physicalResourcesProvider = DefaultComputeConfig.PhysicalResourcesProvider
 	}
-	physicalResources, err := physicalResourcesProvider.AvailableCapacity(context.Background())
+	physicalResources, err := physicalResourcesProvider.GetAvailableCapacity(context.Background())
 	if err != nil {
 		return
 	}
@@ -129,9 +144,12 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
 		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
 
+		JobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
+
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
+		NodeInfoPublisherInterval:    params.NodeInfoPublisherInterval,
 		SimulatorConfig:              params.SimulatorConfig,
 	}
 

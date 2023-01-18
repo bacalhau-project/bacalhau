@@ -54,6 +54,7 @@ if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
 fi
 
 bacalhau serve \
+  --node-type requester,compute \
   --job-selection-data-locality anywhere \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --swarm-port "${BACALHAU_PORT}" \

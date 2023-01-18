@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/rs/zerolog/log"
 )
 
 type AvailableCapacityStrategyParams struct {
@@ -17,11 +18,14 @@ type AvailableCapacityStrategy struct {
 	commitFactor    float64
 }
 
-func NewAvailableCapacityStrategy(params AvailableCapacityStrategyParams) *AvailableCapacityStrategy {
-	return &AvailableCapacityStrategy{
+func NewAvailableCapacityStrategy(ctx context.Context, params AvailableCapacityStrategyParams) *AvailableCapacityStrategy {
+	s := &AvailableCapacityStrategy{
 		capacityTracker: params.CapacityTracker,
 		commitFactor:    params.CommitFactor,
 	}
+	log.Info().Msgf("Compute node configured with total capacity of %s, and over commit factor of %f",
+		s.capacityTracker.GetMaxCapacity(ctx), s.commitFactor)
+	return s
 }
 
 func (s *AvailableCapacityStrategy) ShouldBid(
@@ -32,7 +36,7 @@ func (s *AvailableCapacityStrategy) ShouldBid(
 func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
-	availableCapacity := s.capacityTracker.AvailableCapacity(ctx).Multi(s.commitFactor)
+	availableCapacity := s.capacityTracker.GetAvailableCapacity(ctx).Multi(s.commitFactor)
 	if !usage.LessThanEq(availableCapacity) {
 		return BidStrategyResponse{
 			ShouldBid: false,

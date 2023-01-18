@@ -15,6 +15,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,6 +35,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		minBids                             int
 		concurrency                         int
 		computeJobNegotiationTimeout        time.Duration
+		computeJobExecutionBypassList       []string
 		computeMinJobExecutionTimeout       time.Duration
 		computeMaxJobExecutionTimeout       time.Duration
 		requesterJobNegotiationTimeout      time.Duration
@@ -48,11 +50,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	runTest := func(testCase TestCase) {
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodeCount},
 				ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-					JobNegotiationTimeout:  testCase.computeJobNegotiationTimeout,
-					MinJobExecutionTimeout: testCase.computeMinJobExecutionTimeout,
-					MaxJobExecutionTimeout: testCase.computeMaxJobExecutionTimeout,
+					JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
+					MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
+					MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
+					JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
 				}),
 				RequesterConfig: node.NewRequesterConfigWith(node.RequesterConfigParams{
 					JobNegotiationTimeout:              testCase.requesterJobNegotiationTimeout,
@@ -150,7 +153,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			errorCount:                          1,
 		},
 		{
-			// no bid will be submitted, so the requester node should timeout
+			// no bid will be submitted, so the requester node should time out
 			name:                                "job_timeout_longer_than_max_running_timeout",
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
@@ -166,7 +169,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			errorCount:                          1,
 		},
 		{
-			// no bid will be submitted, so the requester node should timeout
+			// no bid will be submitted, so the requester node should time out
 			name:                                "job_timeout_less_than_min_running_timeout",
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       5 * time.Minute,
@@ -180,6 +183,37 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			sleepTime:                           20 * time.Second,
 			jobTimeout:                          2 * time.Minute,
 			errorCount:                          1,
+		},
+		{
+			name:                                "job_timeout_greater_than_max",
+			computeJobNegotiationTimeout:        10 * time.Second,
+			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+			computeMaxJobExecutionTimeout:       1 * time.Minute,
+			requesterJobNegotiationTimeout:      10 * time.Second,
+			requesterDefaultJobExecutionTimeout: 40 * time.Second,
+			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
+			nodeCount:                           1,
+			minBids:                             1,
+			concurrency:                         1,
+			sleepTime:                           1 * time.Second,
+			jobTimeout:                          2 * time.Minute,
+			errorCount:                          1,
+		},
+		{
+			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
+			computeJobExecutionBypassList:       []string{system.GetClientID()},
+			computeJobNegotiationTimeout:        10 * time.Second,
+			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
+			computeMaxJobExecutionTimeout:       1 * time.Minute,
+			requesterJobNegotiationTimeout:      10 * time.Second,
+			requesterDefaultJobExecutionTimeout: 40 * time.Second,
+			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
+			nodeCount:                           1,
+			minBids:                             1,
+			concurrency:                         1,
+			sleepTime:                           1 * time.Second,
+			jobTimeout:                          2 * time.Minute,
+			completedCount:                      1,
 		},
 	} {
 		suite.Run(testCase.name, func() {

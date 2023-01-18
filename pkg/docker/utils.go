@@ -1,31 +1,30 @@
 package docker
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.ptx.dk/multierrgroup"
+	"go.uber.org/multierr"
 )
-
-// ErrContainerMarkedForRemoval indicates that the docker daemon is about to
-// delete, or has already deleted, the given container.
-var ErrContainerMarkedForRemoval = fmt.Errorf("docker container marked for removal")
 
 func NewDockerClient() (*dockerclient.Client, error) {
 	return dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
@@ -65,62 +64,117 @@ func GetContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOr
 	return nil, nil
 }
 
-func GetContainersWithLabel(ctx context.Context,
-	dockerClient *dockerclient.Client,
-	labelName, labelValue string) ([]types.Container, error) {
-	results := []types.Container{}
-	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{
-		All: true,
-	})
-
+func HostGatewayIP(ctx context.Context, dockerClient *dockerclient.Client) (net.IP, error) {
+	response, err := dockerClient.NetworkInspect(ctx, "bridge", types.NetworkInspectOptions{})
 	if err != nil {
-		return nil, err
+		return net.IP{}, err
 	}
-	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	//nolint:gocritic // will fix when we care
-	for _, container := range containers {
-		value, ok := container.Labels[labelName]
-		if !ok {
-			continue
-		}
-		if value == labelValue {
-			results = append(results, container)
-		}
+	if configs := response.IPAM.Config; len(configs) < 1 {
+		return net.IP{}, fmt.Errorf("bridge network unattached???")
+	} else {
+		return net.ParseIP(configs[0].Gateway), nil
 	}
-	return results, nil
 }
 
-func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
-	container, err := GetContainer(ctx, dockerClient, nameOrID)
+func RemoveContainers(
+	ctx context.Context,
+	dockerClient *dockerclient.Client,
+	filterz filters.Args,
+) error {
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filterz})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get container: %w", err)
-	}
-	if container == nil {
-		return "", "", fmt.Errorf("no container found: %s", nameOrID)
+		return err
 	}
 
+	wg := multierrgroup.Group{}
+	for _, container := range containers {
+		container := container
+		wg.Go(func() error {
+			return RemoveContainer(ctx, dockerClient, container.ID)
+		})
+	}
+	return wg.Wait()
+}
+
+func RemoveNetworks(ctx context.Context, dockerClient *dockerclient.Client, filterz filters.Args) error {
+	networks, err := dockerClient.NetworkList(ctx, types.NetworkListOptions{Filters: filterz})
+	if err != nil {
+		return err
+	}
+
+	wg := multierrgroup.Group{}
+	for _, network := range networks {
+		network := network
+		wg.Go(func() error {
+			log.Ctx(ctx).Debug().Str("Network", network.ID).Msg("Network Stop")
+			return dockerClient.NetworkRemove(ctx, network.ID)
+		})
+	}
+	return wg.Wait()
+}
+
+func RemoveObjectsWithLabel(ctx context.Context, dockerClient *dockerclient.Client, labelName, labelValue string) error {
+	filters := filters.NewArgs(
+		filters.Arg("label", fmt.Sprintf("%s=%s", labelName, labelValue)),
+	)
+
+	containerErr := RemoveContainers(ctx, dockerClient, filters)
+	networkErr := RemoveNetworks(ctx, dockerClient, filters)
+	return multierr.Combine(containerErr, networkErr)
+}
+
+func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr io.Reader, err error) {
+	container, err := GetContainer(ctx, dockerClient, nameOrID)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to get container")
+	}
+	if container == nil {
+		return nil, nil, fmt.Errorf("no container found: %s", nameOrID)
+	}
+
+	ctx = log.Ctx(ctx).With().Str("ContainerID", container.ID).Str("Image", container.Image).Logger().WithContext(ctx)
 	logsReader, err := dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
+		Follow:     true,
 	})
 	if err != nil {
-		// String checking is unfortunately the best we have, as errors are
-		// returned by the docker server as strings, and aren't strongly typed.
-		if strings.Contains(err.Error(), "can not get logs from container which is dead or marked for removal") {
-			return "", "", ErrContainerMarkedForRemoval
+		return nil, nil, errors.Wrap(err, "failed to get container logs")
+	}
+
+	stdoutReader, stdoutWriter := io.Pipe()
+	stderrReader, stderrWriter := io.Pipe()
+	go func() {
+		stdoutBuffer := bufio.NewWriter(stdoutWriter)
+		stderrBuffer := bufio.NewWriter(stderrWriter)
+		_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			log.Ctx(ctx).Error().Err(err).Msg("error reading container logs")
 		}
+		logsReader.Close()
+		stdoutBuffer.Flush()
+		stderrBuffer.Flush()
+		stdoutWriter.Close()
+		stderrWriter.Close()
+	}()
 
-		return "", "", fmt.Errorf("failed to get container logs: %w", err)
+	return stdoutReader, stderrReader, nil
+}
+
+func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
+	stdoutBuffer, stderrBuffer, err := FollowLogs(ctx, dockerClient, nameOrID)
+	if err == nil {
+		wg := multierrgroup.Group{}
+		readAll := func(dest *string, buf io.Reader) error {
+			b, berr := io.ReadAll(buf)
+			*dest = string(b)
+			return berr
+		}
+		wg.Go(func() error { return readAll(&stdout, stdoutBuffer) })
+		wg.Go(func() error { return readAll(&stderr, stderrBuffer) })
+		err = wg.Wait()
 	}
-
-	stdoutBuffer := bytes.NewBuffer([]byte{})
-	stderrBuffer := bytes.NewBuffer([]byte{})
-	_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
-	if err != nil {
-		return "", "", err
-	}
-
-	return stdoutBuffer.String(), stderrBuffer.String(), nil
+	return
 }
 
 func StopContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
