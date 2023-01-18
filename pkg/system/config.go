@@ -76,18 +76,19 @@ func InitConfig() error {
 
 type testingT interface {
 	TempDir() string
+	Setenv(key string, value string)
 }
 
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
-// NOTE: this will overwrite the global config cache if called twice.
 func InitConfigForTesting(t testingT) error {
-	configDir := t.TempDir()
-	err := os.Setenv("BACALHAU_DIR", configDir)
-	if err != nil {
-		return err
+	if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
+		return nil
 	}
-	err = InitConfig()
+	t.Setenv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__", "set")
+	configDir := t.TempDir()
+	t.Setenv("BACALHAU_DIR", configDir)
+	err := InitConfig()
 	if err != nil {
 		return err
 	}
@@ -265,7 +266,7 @@ func ensureUserIDKey(configDir string) (string, error) {
 			if err = file.Close(); err != nil {
 				return "", fmt.Errorf("failed to close key file: %w", err)
 			}
-			if err = os.Chmod(keyFile, util.OS_USER_RWX); err != nil {
+			if err = os.Chmod(keyFile, util.OS_USER_RW); err != nil {
 				return "", fmt.Errorf("failed to set permission on key file: %w", err)
 			}
 		} else {

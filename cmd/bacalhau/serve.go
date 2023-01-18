@@ -54,29 +54,30 @@ var (
 )
 
 type ServeOptions struct {
-	NodeType                        []string      // "compute", "requester" node or both
-	PeerConnect                     string        // The libp2p multiaddress to connect to.
-	IPFSConnect                     string        // The IPFS multiaddress to connect to.
-	FilecoinUnsealedPath            string        // The go template that can turn a filecoin CID into a local filepath with the unsealed data.
-	EstuaryAPIKey                   string        // The API key used when using the estuary API.
-	HostAddress                     string        // The host address to listen on.
-	SwarmPort                       int           // The host port for libp2p network.
-	JobSelectionDataLocality        string        // The data locality to use for job selection.
-	JobSelectionDataRejectStateless bool          // Whether to reject jobs that don't specify any data.
-	JobSelectionDataAcceptNetworked bool          // Whether to accept jobs that require network access.
-	JobSelectionProbeHTTP           string        // The HTTP URL to use for job selection.
-	JobSelectionProbeExec           string        // The executable to use for job selection.
-	MetricsPort                     int           // The port to listen on for metrics.
-	LimitTotalCPU                   string        // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                string        // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                   string        // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                     string        // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                  string        // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                     string        // The amount of GPU the system can be using at one time for a single job.
-	LotusFilecoinStorageDuration    time.Duration // How long deals should be for the Lotus Filecoin publisher
-	LotusFilecoinPathDirectory      string        // The location of the Lotus configuration directory which contains config.toml, etc
-	LotusFilecoinUploadDirectory    string        // Directory to put files when uploading to Lotus (optional)
-	LotusFilecoinMaximumPing        time.Duration // The maximum ping allowed when selecting a Filecoin miner
+	NodeType                              []string      // "compute", "requester" node or both
+	PeerConnect                           string        // The libp2p multiaddress to connect to.
+	IPFSConnect                           string        // The IPFS multiaddress to connect to.
+	FilecoinUnsealedPath                  string        // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                         string        // The API key used when using the estuary API.
+	HostAddress                           string        // The host address to listen on.
+	SwarmPort                             int           // The host port for libp2p network.
+	JobSelectionDataLocality              string        // The data locality to use for job selection.
+	JobSelectionDataRejectStateless       bool          // Whether to reject jobs that don't specify any data.
+	JobSelectionDataAcceptNetworked       bool          // Whether to accept jobs that require network access.
+	JobSelectionProbeHTTP                 string        // The HTTP URL to use for job selection.
+	JobSelectionProbeExec                 string        // The executable to use for job selection.
+	MetricsPort                           int           // The port to listen on for metrics.
+	LimitTotalCPU                         string        // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                      string        // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                         string        // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                           string        // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                        string        // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                           string        // The amount of GPU the system can be using at one time for a single job.
+	LotusFilecoinStorageDuration          time.Duration // How long deals should be for the Lotus Filecoin publisher
+	LotusFilecoinPathDirectory            string        // The location of the Lotus configuration directory which contains config.toml, etc
+	LotusFilecoinUploadDirectory          string        // Directory to put files when uploading to Lotus (optional)
+	LotusFilecoinMaximumPing              time.Duration // The maximum ping allowed when selecting a Filecoin miner
+	JobExecutionTimeoutClientIDBypassList []string      // IDs of clients that can submit jobs more than the configured job execution timeout
 }
 
 func NewServeOptions() *ServeOptions {
@@ -153,6 +154,10 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 		&OS.LimitJobGPU, "limit-job-gpu", OS.LimitJobGPU,
 		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
 	)
+	cmd.PersistentFlags().StringSliceVar(
+		&OS.JobExecutionTimeoutClientIDBypassList, "job-execution-timeout-bypass-client-id", OS.JobExecutionTimeoutClientIDBypassList,
+		`List of IDs of clients that are allowed to bypass the job execution timeout check`,
+	)
 }
 
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
@@ -219,7 +224,8 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 			Memory: OS.LimitJobMemory,
 			GPU:    OS.LimitJobGPU,
 		}),
-		IgnorePhysicalResourceLimits: os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
+		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
+		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
 	})
 }
 
