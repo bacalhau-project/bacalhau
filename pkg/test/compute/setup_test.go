@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -53,15 +54,28 @@ func (s *ComputeSuite) SetupTest() {
 }
 
 func (s *ComputeSuite) setupNode() {
-	port, err := freeport.GetFreePort()
+	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
-	host, err := libp2p.NewHost(port)
+	host, err := libp2p.NewHost(libp2pPort)
 	s.NoError(err)
-	s.node = node.NewComputeNode(
+
+	apiPort, err := freeport.GetFreePort()
+	s.NoError(err)
+
+	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
+		Address: "0.0.0.0",
+		Port:    apiPort,
+		Host:    host,
+		Config:  publicapi.DefaultAPIServerConfig,
+	})
+	s.NoError(err)
+
+	s.node, err = node.NewComputeNode(
 		context.Background(),
 		s.cm,
 		host,
+		apiServer,
 		s.config,
 		"",
 		nil,
@@ -70,6 +84,7 @@ func (s *ComputeSuite) setupNode() {
 		noop_publisher.NewNoopPublisherProvider(s.publisher),
 		pubsub.NewInMemoryPubSub[model.NodeInfo](),
 	)
+	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
 		ExecutionStore: s.node.ExecutionStore,
 	})

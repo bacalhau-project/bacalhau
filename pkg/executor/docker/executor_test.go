@@ -213,6 +213,23 @@ func (suite *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
 }
 
+func (suite *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
+	result, err := suite.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type: model.NetworkHTTP,
+			Domains: []string{
+				suite.containerHttpURL().Hostname(),
+				"bacalhau.org",
+			},
+		},
+		Docker: suite.curlTask(),
+	})
+	require.NoError(suite.T(), err, result.STDERR)
+	require.Zero(suite.T(), result.ExitCode, result.STDERR)
+	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+}
+
 func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 	result, err := suite.runJob(model.Spec{
 		Engine: model.EngineDocker,

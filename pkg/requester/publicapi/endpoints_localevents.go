@@ -17,22 +17,21 @@ type localEventsResponse struct {
 	LocalEvents []model.JobLocalEvent `json:"localEvents"`
 }
 
-// localEvents godoc
-//
-//	@ID				localEvents
-//	@Summary		Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
-//	@Description	Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
-//	@Tags			Job
-//	@Accept			json
-//	@Produce		json
-//	@Param			localEventsRequest	body		localEventsRequest	true	" "
-//	@Success		200					{object}	localEventsResponse
-//	@Failure		400					{object}	string
-//	@Failure		500					{object}	string
-//	@Router			/local_events [post]
+// LocalEvents godoc
+// @ID          pkg/publicapi/localEvents
+// @Summary     Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
+// @Description Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
+// @Tags        Job
+// @Accept      json
+// @Produce     json
+// @Param       localEventsRequest body     localEventsRequest true " "
+// @Success     200                {object} localEventsResponse
+// @Failure     400                {object} string
+// @Failure     500                {object} string
+// @Router      /local_events [post]
 //
 //nolint:dupl
-func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) LocalEvents(res http.ResponseWriter, req *http.Request) {
 	var eventsReq localEventsRequest
 	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -41,7 +40,7 @@ func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Reque
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, eventsReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
-	events, err := apiServer.localdb.GetJobLocalEvents(req.Context(), eventsReq.JobID)
+	events, err := s.localDB.GetJobLocalEvents(req.Context(), eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

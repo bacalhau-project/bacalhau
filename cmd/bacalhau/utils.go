@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -120,8 +120,8 @@ func shortID(outputWide bool, id string) string {
 	return id[:model.ShortIDLength]
 }
 
-func GetAPIClient() *publicapi.APIClient {
-	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+func GetAPIClient() *publicapi.RequesterAPIClient {
+	return publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
@@ -290,7 +290,7 @@ func ExecuteJob(ctx context.Context,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
-	var apiClient *publicapi.APIClient
+	var apiClient *publicapi.RequesterAPIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
 	defer span.End()
 
@@ -301,7 +301,7 @@ func ExecuteJob(ctx context.Context,
 		}
 
 		apiURI := stack.Nodes[0].APIServer.GetURI()
-		apiClient = publicapi.NewAPIClient(apiURI)
+		apiClient = publicapi.NewRequesterAPIClient(apiURI)
 	} else {
 		apiClient = GetAPIClient()
 	}
@@ -487,7 +487,7 @@ func downloadResultsHandler(
 }
 
 func submitJob(ctx context.Context,
-	apiClient *publicapi.APIClient,
+	apiClient *publicapi.RequesterAPIClient,
 	j *model.Job,
 ) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")

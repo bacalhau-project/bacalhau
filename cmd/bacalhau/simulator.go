@@ -60,6 +60,8 @@ func runSimulator(cmd *cobra.Command) error {
 		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: node.NewRequesterConfigWithDefaults(),
 		SimulatorNodeID:     libp2pHost.ID().String(),
+		IsComputeNode:       true,
+		IsRequesterNode:     true,
 	}
 	node, err := node.NewNode(ctx, nodeConfig, devstack.NewNoopNodeDependencyInjector())
 	if err != nil {

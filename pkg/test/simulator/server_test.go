@@ -43,8 +43,8 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 
 	s.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
-			NumberOfNodes: nodeCount,
-			SimulatorMode: true,
+			NumberOfHybridNodes: nodeCount,
+			SimulatorMode:       true,
 		},
 	}
 

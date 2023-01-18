@@ -20,7 +20,7 @@ import (
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 
@@ -118,7 +118,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobID)
@@ -195,7 +195,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
@@ -251,7 +251,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	time.Sleep(time.Second * 5)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)

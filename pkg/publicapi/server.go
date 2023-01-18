@@ -2,28 +2,20 @@ package publicapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/docs"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/version"
-	"github.com/gorilla/websocket"
-	"github.com/libp2p/go-libp2p/core/host"
-
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
 	"github.com/didip/tollbooth/v7/limiter"
+	"github.com/filecoin-project/bacalhau/docs"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/libp2p/go-libp2p/core/host"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -31,9 +23,21 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
-// It's a variable to make this to make overrideble during testing.
-var MaxBytesToReadInBody = 10 * datasize.MB
+var DefaultAPIServerConfig = APIServerConfig{
+	ReadHeaderTimeout:          10 * time.Second,
+	ReadTimeout:                20 * time.Second,
+	WriteTimeout:               20 * time.Second,
+	RequestHandlerTimeout:      30 * time.Second,
+	RequestHandlerTimeoutByURI: map[string]time.Duration{},
+	MaxBytesToReadInBody:       10 * datasize.MB,
+}
+
+type HandlerConfig struct {
+	URI                   string
+	Handler               http.Handler
+	RequestHandlerTimeout time.Duration
+	Raw                   bool // don't wrap the handler with middleware
+}
 
 type APIServerConfig struct {
 	// These are TCP connection deadlines and not HTTP timeouts. They don't control the time it takes for our handlers
@@ -46,95 +50,70 @@ type APIServerConfig struct {
 	// This represents maximum duration for handlers to complete, or else fail the request with 503 error code.
 	RequestHandlerTimeout      time.Duration
 	RequestHandlerTimeoutByURI map[string]time.Duration
+
+	// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
+	MaxBytesToReadInBody datasize.ByteSize
 }
 
-var DefaultAPIServerConfig = APIServerConfig{
-	ReadHeaderTimeout:          10 * time.Second,
-	ReadTimeout:                20 * time.Second,
-	WriteTimeout:               20 * time.Second,
-	RequestHandlerTimeout:      30 * time.Second,
-	RequestHandlerTimeoutByURI: map[string]time.Duration{},
+type APIServerParams struct {
+	Address string
+	Port    int
+	Host    host.Host
+	Config  APIServerConfig
 }
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	localdb            localdb.LocalDB
-	libp2pHost         host.Host
-	Requester          requester.Endpoint
-	DebugInfoProviders []model.DebugInfoProvider
-	Publishers         publisher.PublisherProvider
-	StorageProviders   storage.StorageProvider
-	Host               string
-	Port               int
-	Config             APIServerConfig
-	// jobId or "" (for all events) -> connections for that subscription
-	Websockets      map[string][]*websocket.Conn
-	WebsocketsMutex sync.RWMutex
+	Address    string
+	Port       int
+	host       host.Host
+	config     APIServerConfig
+	handlers   map[string]http.Handler
+	handlersMu sync.Mutex
+	started    bool
 }
 
-func init() { //nolint:gochecknoinits
-	sync.SetGlobalOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Enabled:   true,
-		Id:        "<UNKNOWN>",
-	})
-}
-
-// NewServer returns a new API server for a requester node.
-func NewServer(
-	ctx context.Context,
-	host string,
-	port int,
-	localdb localdb.LocalDB,
-	transport host.Host,
-	requester requester.Endpoint,
-	debugInfoProviders []model.DebugInfoProvider,
-	publishers publisher.PublisherProvider,
-	storageProviders storage.StorageProvider,
-) *APIServer {
-	return NewServerWithConfig(
-		ctx,
-		host,
-		port,
-		localdb,
-		transport,
-		requester,
-		debugInfoProviders,
-		publishers,
-		storageProviders,
-		DefaultAPIServerConfig,
-	)
-}
-
-func NewServerWithConfig(
-	_ context.Context,
-	host string,
-	port int,
-	localdb localdb.LocalDB,
-	transport host.Host,
-	requester requester.Endpoint,
-	debugInfoProviders []model.DebugInfoProvider,
-	publishers publisher.PublisherProvider,
-	storageProviders storage.StorageProvider,
-	config APIServerConfig) *APIServer {
-	a := &APIServer{
-		localdb:            localdb,
-		libp2pHost:         transport,
-		Requester:          requester,
-		DebugInfoProviders: debugInfoProviders,
-		Publishers:         publishers,
-		StorageProviders:   storageProviders,
-		Host:               host,
-		Port:               port,
-		Config:             config,
-		Websockets:         make(map[string][]*websocket.Conn),
+func NewAPIServer(params APIServerParams) (*APIServer, error) {
+	server := &APIServer{
+		Address:  params.Address,
+		Port:     params.Port,
+		host:     params.Host,
+		config:   params.Config,
+		handlers: make(map[string]http.Handler),
 	}
-	return a
+
+	server.handlersMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "APIServer.handlersMu",
+	})
+
+	// dynamically write the git tag to the Swagger docs
+	docs.SwaggerInfo.Version = version.Get().GitVersion
+
+	// Register default handlers
+	handlerConfigs := []HandlerConfig{
+		{URI: "/id", Handler: http.HandlerFunc(server.id)},
+		{URI: "/peers", Handler: http.HandlerFunc(server.peers)},
+		{URI: "/version", Handler: http.HandlerFunc(server.version)},
+		{URI: "/healthz", Handler: http.HandlerFunc(server.healthz)},
+		{URI: "/logz", Handler: http.HandlerFunc(server.logz)},
+		{URI: "/varz", Handler: http.HandlerFunc(server.varz)},
+		{URI: "/livez", Handler: http.HandlerFunc(server.livez)},
+		{URI: "/readyz", Handler: http.HandlerFunc(server.readyz)},
+		{URI: "/metrics", Handler: promhttp.Handler(), Raw: true},
+		{URI: "/swagger/", Handler: httpSwagger.WrapHandler, Raw: true},
+	}
+	err := server.RegisterHandlers(handlerConfigs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
 }
 
 // GetURI returns the HTTP URI that the server is listening on.
 func (apiServer *APIServer) GetURI() string {
-	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
+	return fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port)
 }
 
 //	@title			Bacalhau API
@@ -152,41 +131,30 @@ func (apiServer *APIServer) GetURI() string {
 //
 //nolint:lll
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	// dynamically write the git tag to the Swagger docs
-	docs.SwaggerInfo.Version = version.Get().GitVersion
+	apiServer.handlersMu.Lock()
+	if apiServer.started {
+		apiServer.handlersMu.Unlock()
+		return fmt.Errorf("api server already started")
+	}
 
 	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server
 	sm := http.NewServeMux()
-	sm.Handle(apiServer.chainHandlers("/list", apiServer.list))
-	sm.Handle(apiServer.chainHandlers("/states", apiServer.states))
-	sm.Handle(apiServer.chainHandlers("/results", apiServer.results))
-	sm.Handle(apiServer.chainHandlers("/events", apiServer.events))
-	sm.Handle(apiServer.chainHandlers("/local_events", apiServer.localEvents))
-	sm.Handle(apiServer.chainHandlers("/id", apiServer.id))
-	sm.Handle(apiServer.chainHandlers("/peers", apiServer.peers))
-	sm.Handle(apiServer.chainHandlers("/submit", apiServer.submit))
-	sm.Handle(apiServer.chainHandlers("/version", apiServer.version))
-	sm.Handle(apiServer.chainHandlers("/healthz", apiServer.healthz))
-	sm.Handle(apiServer.chainHandlers("/logz", apiServer.logz))
-	sm.Handle(apiServer.chainHandlers("/varz", apiServer.varz))
-	sm.Handle(apiServer.chainHandlers("/livez", apiServer.livez))
-	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
-	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
-	sm.HandleFunc("/websocket", apiServer.websocket)
-	sm.Handle("/metrics", promhttp.Handler())
-	sm.Handle("/swagger/", httpSwagger.WrapHandler)
+	for uri, handler := range apiServer.handlers {
+		sm.Handle(uri, handler)
+	}
+	apiServer.handlersMu.Unlock()
 
 	srv := http.Server{
 		Handler:           sm,
-		ReadHeaderTimeout: apiServer.Config.ReadHeaderTimeout,
-		ReadTimeout:       apiServer.Config.ReadTimeout,
-		WriteTimeout:      apiServer.Config.WriteTimeout,
+		ReadHeaderTimeout: apiServer.config.ReadHeaderTimeout,
+		ReadTimeout:       apiServer.config.ReadTimeout,
+		WriteTimeout:      apiServer.config.WriteTimeout,
 		BaseContext: func(_ net.Listener) context.Context {
-			return logger.ContextWithNodeIDLogger(context.Background(), apiServer.libp2pHost.ID().String())
+			return logger.ContextWithNodeIDLogger(context.Background(), apiServer.host.ID().String())
 		},
 	}
 
-	addr := fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port)
+	addr := fmt.Sprintf("%s:%d", apiServer.Address, apiServer.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -202,7 +170,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 
 	log.Debug().Msgf(
-		"API server listening for host %s on %s...", apiServer.Host, listener.Addr().String())
+		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
 
 	// Cleanup resources when system is done:
 	cm.RegisterCallback(func() error {
@@ -214,73 +182,61 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	err = srv.Serve(listener)
 	if err == http.ErrServerClosed {
 		log.Ctx(ctx).Debug().Msgf(
-			"API server closed for host %s on %s.", apiServer.Host, srv.Addr)
+			"API server closed for host %s on %s.", apiServer.Address, srv.Addr)
 		return nil // expected error if the server is shut down
 	}
 
 	return err
 }
 
-func verifyRequestSignature(req *submitRequest) error {
-	// Check that the signature is valid:
-	err := system.Verify(*req.JobCreatePayload, req.ClientSignature, req.ClientPublicKey)
-	if err != nil {
-		return fmt.Errorf("client's signature is invalid: %w", err)
-	}
-
-	return nil
-}
-
-func verifySubmitRequest(req *submitRequest, payload *model.JobCreatePayload) error {
-	if payload.ClientID == "" {
-		return errors.New("job create payload must contain a client ID")
-	}
-	if req.ClientSignature == "" {
-		return errors.New("client's signature is required")
-	}
-	if req.ClientPublicKey == "" {
-		return errors.New("client's public key is required")
-	}
-
-	// Check that the client's public key matches the client ID:
-	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, payload.ClientID)
-	if err != nil {
-		return fmt.Errorf("error verifying client ID: %w", err)
-	}
-	if !ok {
-		return errors.New("client's public key does not match client ID")
-	}
-
-	return nil
-}
-
-func (apiServer *APIServer) chainHandlers(uri string, handlerFunc http.HandlerFunc) (string, http.Handler) {
-	// otel handler
-	handler := otelhttp.NewHandler(handlerFunc, fmt.Sprintf("pkg/publicapi%s", uri))
-
-	// throttling handler
-	handler = tollbooth.LimitHandler(
-		tollbooth.NewLimiter(
-			1000, //nolint:gomnd
-			&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}),
-		handler)
-
-	// timeout handler. Find timeout for this endpoint, or use the fallback value
-	handlerTimeout, ok := apiServer.Config.RequestHandlerTimeoutByURI[uri]
-	if !ok {
-		if apiServer.Config.RequestHandlerTimeout != 0 {
-			handlerTimeout = apiServer.Config.RequestHandlerTimeout
-		} else {
-			// if no fallback timeout is defined, then use the default value
-			handlerTimeout = DefaultAPIServerConfig.RequestHandlerTimeout
+func (apiServer *APIServer) RegisterHandlers(config ...HandlerConfig) error {
+	apiServer.handlersMu.Lock()
+	defer apiServer.handlersMu.Unlock()
+	for _, c := range config {
+		if err := apiServer.registerHandler(c); err != nil {
+			return err
 		}
 	}
-	handler = http.TimeoutHandler(handler, handlerTimeout, "Server Timeout!")
+	return nil
+}
 
-	handler = http.MaxBytesHandler(handler, int64(MaxBytesToReadInBody))
+func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
+	if _, ok := apiServer.handlers[config.URI]; ok {
+		return fmt.Errorf("handler already registered for %s", config.URI)
+	}
+	if apiServer.started {
+		return fmt.Errorf("cannot register new handlers after starting the api server")
+	}
 
-	// logging handler. Should be last in the chain.
-	handler = handlerwrapper.NewHTTPHandlerWrapper(
-		apiServer.libp2pHost.ID().String(), handler, handlerwrapper.NewJSONLogHandler())
-	return uri, handler
+	handler := config.Handler
+	if !config.Raw {
+		// otel handler
+		handler = otelhttp.NewHandler(config.Handler, fmt.Sprintf("pkg/publicapi%s", config.URI))
+
+		// throttling handler
+		handler = tollbooth.LimitHandler(
+			tollbooth.NewLimiter(
+				1000, //nolint:gomnd
+				&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}),
+			handler)
+
+		// timeout handler. Find timeout for this endpoint, or use the fallback value
+		handlerTimeout := config.RequestHandlerTimeout
+		if handlerTimeout == 0 {
+			handlerTimeout = apiServer.config.RequestHandlerTimeoutByURI[config.URI]
+		}
+		if handlerTimeout == 0 {
+			handlerTimeout = apiServer.config.RequestHandlerTimeout
+		}
+		if handlerTimeout == 0 {
+			handlerTimeout = DefaultAPIServerConfig.RequestHandlerTimeout
+		}
+		handler = http.TimeoutHandler(handler, handlerTimeout, "Server Timeout!")
+		handler = http.MaxBytesHandler(handler, int64(apiServer.config.MaxBytesToReadInBody))
+
+		// logging handler. Should be last in the chain.
+		handler = handlerwrapper.NewHTTPHandlerWrapper(apiServer.host.ID().String(), handler, handlerwrapper.NewJSONLogHandler())
+	}
+	apiServer.handlers[config.URI] = handler
+	return nil
 }

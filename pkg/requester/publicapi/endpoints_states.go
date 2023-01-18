@@ -19,20 +19,19 @@ type stateResponse struct {
 	State model.JobState `json:"state"`
 }
 
-// states godoc
-//
-//	@ID						states
-//	@Summary				Returns the state of the job-id specified in the body payload.
-//	@Description.markdown	endpoints_states
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					stateRequest	body		stateRequest	true	" "
-//	@Success				200				{object}	stateResponse
-//	@Failure				400				{object}	string
-//	@Failure				500				{object}	string
-//	@Router					/states [post]
-func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
+// States godoc
+// @ID                   pkg/publicapi/states
+// @Summary              Returns the state of the job-id specified in the body payload.
+// @Description.markdown endpoints_states
+// @Tags                 Job
+// @Accept               json
+// @Produce              json
+// @Param                stateRequest body     stateRequest true " "
+// @Success              200          {object} stateResponse
+// @Failure              400          {object} string
+// @Failure              500          {object} string
+// @Router               /states [post]
+func (s *RequesterAPIServer) States(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/states")
 	defer span.End()
 
@@ -45,7 +44,7 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
-	js, err := getJobStateFromRequest(ctx, apiServer, stateReq)
+	js, err := getJobStateFromRequest(ctx, s, stateReq)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -61,9 +60,9 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func getJobStateFromRequest(ctx context.Context, apiServer *APIServer, stateReq stateRequest) (model.JobState, error) {
+func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (model.JobState, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getJobStateFromRequest")
 	defer span.End()
 
-	return apiServer.localdb.GetJobState(ctx, stateReq.JobID)
+	return apiServer.localDB.GetJobState(ctx, stateReq.JobID)
 }

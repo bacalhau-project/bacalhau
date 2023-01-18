@@ -292,19 +292,19 @@ devstack:
 
 .PHONY: devstack-one
 devstack-one:
-	IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --nodes 1
+	IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 
 .PHONY: devstack-100
 devstack-100:
-	go run . devstack --nodes 100
+	go run . devstack --compute-nodes 100
 
 .PHONY: devstack-250
 devstack-250:
-	go run . devstack --nodes 250
+	go run . devstack --compute-nodes 250
 
 .PHONY: devstack-20
 devstack-20:
-	go run . devstack --nodes 20
+	go run . devstack --compute-nodes 20
 
 .PHONY: devstack-noop
 devstack-noop:
@@ -312,7 +312,7 @@ devstack-noop:
 
 .PHONY: devstack-noop-100
 devstack-noop-100:
-	go run . devstack --noop --nodes 100
+	go run . devstack --noop --compute-nodes 100
 
 .PHONY: devstack-race
 devstack-race:
@@ -320,7 +320,7 @@ devstack-race:
 
 .PHONY: devstack-badactor
 devstack-badactor:
-	go run . devstack --bad-actors 1
+	go run . devstack --bad-compute-actors 1
 
 ################################################################################
 # Target: lint

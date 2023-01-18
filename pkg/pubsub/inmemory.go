@@ -17,7 +17,10 @@ func NewInMemoryPubSub[T any]() *InMemoryPubSub[T] {
 }
 
 func (p *InMemoryPubSub[T]) Publish(ctx context.Context, message T) error {
-	return p.subscriber.Handle(ctx, message)
+	if p.subscriber != nil {
+		return p.subscriber.Handle(ctx, message)
+	}
+	return nil
 }
 
 func (p *InMemoryPubSub[T]) Subscribe(ctx context.Context, subscriber Subscriber[T]) error {
