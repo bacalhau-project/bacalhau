@@ -145,11 +145,11 @@ scrape_configs:
     pipeline_stages:
       - json:
           expressions:
-          level:
-          msg:
+            level:
+            msg:
       - drop:
           source: "level"
-          value:  "(debug|trace)"
+          expression:  "(debug|trace)"
     journal:
       max_age: 12h
       labels:
