@@ -1,4 +1,4 @@
-bacalhau_version           = "v0.3.15"
+bacalhau_version           = "v0.3.16"
 bacalhau_port              = "1235"
 bacalhau_node_id_0         = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
 bacalhau_node_id_1         = "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
@@ -11,8 +11,8 @@ grafana_cloud_api_endpoint = "https://prometheus-us-central1.grafana.net/api/pro
 instance_count             = 5
 region                     = "us-east4"
 zone                       = "us-east4-c"
-volume_size_gb             = 500
-boot_disk_size_gb          = 500
+volume_size_gb             = 1000
+boot_disk_size_gb          = 1000
 machine_type               = "e2-standard-16"
 protect_resources          = true
 auto_subnets               = true
