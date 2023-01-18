@@ -292,7 +292,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	if !quiet {
 		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
 		if !containsTag {
-			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
+			cmd.Printf("Using default tag: latest. It's recommended to avoid using the 'latest' tag. Specify a versioned tag (e.g. v2.1.0) or a digest instead.\n")
 		}
 	}
 
