@@ -6,6 +6,7 @@ IFS=$'\n\t'
 source /terraform_node/variables
 
 function install-docker() {
+  echo "Installing Docker"
   sudo apt-get install -y \
       ca-certificates \
       curl \
@@ -21,6 +22,7 @@ function install-docker() {
 }
 
 function install-gpu() {
+  echo "Installing GPU drivers"
   if [[ "${GPU_NODE}" = "true" ]]; then
     echo "Installing GPU drivers"
     distribution=$(. /etc/os-release;echo "${ID}${VERSION_ID}" | sed -e 's/\.//g') \
@@ -45,6 +47,7 @@ function install-gpu() {
 
 # Lay down a very basic web server to report when the node is healthy
 function install-healthcheck() {
+  echo "Installing healthcheck"
   sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
   wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
   echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
@@ -55,6 +58,7 @@ function install-healthcheck() {
 }
 
 function install-ipfs() {
+  echo "Installing IPFS"
   wget "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   # TODO should reset PWD to home dir after each function call
@@ -64,12 +68,14 @@ function install-ipfs() {
 }
 
 function install-bacalhau() {
+  echo "Installing Bacalhau"
   wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }
 
 function install-prometheus() {
+  echo "Installing Prometheus"
   if [[ -z "${PROMETHEUS_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_ENDPOINT}" ]] || [[ -z "${GRAFANA_CLOUD_API_USER}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]]; then
     echo 'PROMETHEUS_VERSION or any of the GRAFANA_CLOUD_API_* env variables are undefined. Skipping Prometheus installation.'
   else
@@ -109,7 +115,62 @@ EOF
   fi
 }
 
+function install-promtail() {
+  echo "Installing Promtail/Loki"
+  if [[ -z "${LOKI_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_USER}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_ENDPOINT}" ]]; then
+    echo 'Any of LOKI_VERSION, GRAFANA_CLOUD_API_KEY, GRAFANA_CLOUD_LOKI_USER, GRAFANA_CLOUD_LOKI_ENDPOINT env variables is undefined. Skipping Promtail/Loki installation.'
+  else
+    cd ~
+    curl -O -L "https://github.com/grafana/loki/releases/download/v${LOKI_VERSION}/promtail-linux-amd64.zip"
+    gunzip -S ".zip" promtail-linux-amd64.zip
+    sudo chmod a+x "promtail-linux-amd64"
+    sudo mv promtail-linux-amd64 /usr/local/bin/
+    
+    # config file
+    HOSTNAME=$(hostname)
+    
+    sudo tee /terraform_node/promtail.yml > /dev/null <<EOF
+server:
+  http_listen_port: 0
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: https://${GRAFANA_CLOUD_LOKI_USER}:${GRAFANA_CLOUD_API_KEY}@${GRAFANA_CLOUD_LOKI_ENDPOINT}/loki/api/v1/push
+
+scrape_configs:
+  - job_name: journal
+    pipeline_stages:
+      - json:
+          expressions:
+           level:
+           msg:
+      - drop:
+          source: "level"
+          expression:  "(debug|trace)"
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: ${HOSTNAME}
+        label_project: bacalhau
+        environment: ${TERRAFORM_WORKSPACE}
+    relabel_configs:
+      - action: keep
+        source_labels: [__journal__systemd_unit]
+        regex: '^bacalhau-daemon\.service$'
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'systemd_unit'
+EOF
+    sudo mkdir -p /etc/promtail
+    sudo cp /terraform_node/promtail.yml /etc/promtail/config.yml
+  fi
+}
+
 function mount-disk() { 
+  echo "Mounting disk"
   # wait for /dev/sdb to exist
   while [[ ! -e /dev/sdb ]]; do
     sleep 1
@@ -122,6 +183,7 @@ function mount-disk() {
 
 # make sure that "ipfs init" has been run
 function init-ipfs() {
+  echo "Initializing IPFS"
   sudo mkdir -p /data/ipfs
   export IPFS_PATH=/data/ipfs
 
@@ -132,6 +194,7 @@ function init-ipfs() {
 
 # install any secrets provided as terraform vars
 function install-secrets() {
+  echo "Installing secrets"
   # set defaults
   export HONEYCOMB_KEY=""
   export HONEYCOMB_DATASET="bacalhau_production"
@@ -168,6 +231,7 @@ EOG
 # then let's copy the unsafe private key so we have a deterministic id
 # that other nodes will connect to
 function init-bacalhau() {
+  echo "Initializing Bacalhau"
   export BACALHAU_NODE_PRIVATE_KEY_PATH="/data/.bacalhau/private_key.${BACALHAU_PORT}"
   sudo mkdir -p /data/.bacalhau
   if [[ "${TERRAFORM_NODE_INDEX}" == "0" ]] && [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]] && [[ ! -f "${BACALHAU_NODE_PRIVATE_KEY_PATH}" ]]; then
@@ -179,12 +243,14 @@ function init-bacalhau() {
 
 function start-services() {
   sudo systemctl daemon-reload
-  sudo systemctl enable ipfs-daemon.service
-  sudo systemctl enable bacalhau-daemon.service
-  sudo systemctl enable prometheus-daemon.service
+  sudo systemctl enable ipfs-daemon
+  sudo systemctl enable bacalhau-daemon
+  sudo systemctl enable prometheus-daemon
+  sudo systemctl enable promtail
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
   sudo systemctl start prometheus-daemon
+  sudo systemctl start promtail
   sudo service openresty reload
 }
 
@@ -199,6 +265,7 @@ function install() {
   init-bacalhau
   install-secrets
   install-prometheus
+  install-promtail
   start-services
 }
 
