@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -54,12 +52,7 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloadSettings)
-	if err != nil {
-		return err
-	}
-
-	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, downloadSettings)
 	if err != nil {
 		return err
 	}

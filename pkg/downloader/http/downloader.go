@@ -18,10 +18,10 @@ type Downloader struct {
 	Settings *model.DownloaderSettings
 }
 
-func NewHTTPDownloader(settings *model.DownloaderSettings) (*Downloader, error) {
+func NewHTTPDownloader(settings *model.DownloaderSettings) *Downloader {
 	return &Downloader{
 		Settings: settings,
-	}, nil
+	}
 }
 
 func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
