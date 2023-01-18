@@ -51,6 +51,7 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 	subrouter.HandleFunc("/nodes", apiServer.nodes).Methods("GET")
 	subrouter.HandleFunc("/nodes/map", apiServer.nodeMap).Methods("GET")
+	subrouter.HandleFunc("/stablediffusion", apiServer.stablediffusion).Methods("POST")
 	subrouter.HandleFunc("/jobs", apiServer.jobs).Methods("POST")
 	subrouter.HandleFunc("/jobs/count", apiServer.jobsCount).Methods("POST")
 	subrouter.HandleFunc("/job/{id}", apiServer.job).Methods("GET")
@@ -76,6 +77,14 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 		Handler:           router,
 	}
 	return srv.ListenAndServe()
+}
+
+func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, req *http.Request) {
+	// any crazy mofo on the planet can build this into their web apps
+	res.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// TODO: put client code in here, hoisted directly from CLI
+
 }
 
 func (apiServer *DashboardAPIServer) annotations(res http.ResponseWriter, req *http.Request) {
