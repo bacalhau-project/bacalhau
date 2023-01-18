@@ -67,8 +67,8 @@ func (s *RequesterAPIServer) websocket(res http.ResponseWriter, req *http.Reques
 }
 
 func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
-	s.websocketsMutex.RLock()
-	defer s.websocketsMutex.RUnlock()
+	s.websocketsMutex.Lock()
+	defer s.websocketsMutex.Unlock()
 
 	dispatchAndCleanup := func(jobId string) {
 		connections, ok := s.websockets[jobId]
@@ -79,7 +79,6 @@ func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event model.Job
 		for idx, connection := range connections {
 			// TODO: dispatch to subscribers in parallel, to avoid one slow
 			// reader slowing all the others down.
-			log.Trace().Msgf("sending %+v to %s/%d", event, jobId, idx)
 			err := connection.WriteJSON(event)
 			if err != nil {
 				log.Error().Msgf(

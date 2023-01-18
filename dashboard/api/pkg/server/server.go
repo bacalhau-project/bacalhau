@@ -50,7 +50,6 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	router := mux.NewRouter()
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 	subrouter.HandleFunc("/nodes", apiServer.nodes).Methods("GET")
-	subrouter.HandleFunc("/nodes/map", apiServer.nodeMap).Methods("GET")
 	subrouter.HandleFunc("/jobs", apiServer.jobs).Methods("POST")
 	subrouter.HandleFunc("/jobs/count", apiServer.jobsCount).Methods("POST")
 	subrouter.HandleFunc("/job/{id}", apiServer.job).Methods("GET")
@@ -184,18 +183,12 @@ func (apiServer *DashboardAPIServer) totalexecutors(res http.ResponseWriter, req
 }
 
 func (apiServer *DashboardAPIServer) nodes(res http.ResponseWriter, req *http.Request) {
-	err := json.NewEncoder(res).Encode(apiServer.API.GetNodes(context.Background()))
+	nodes, err := apiServer.API.GetNodes(context.Background())
+	if err == nil {
+		err = json.NewEncoder(res).Encode(nodes)
+	}
 	if err != nil {
 		log.Error().Msgf("error for nodes route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) nodeMap(res http.ResponseWriter, req *http.Request) {
-	err := json.NewEncoder(res).Encode(apiServer.API.GetClusterMap(context.Background()))
-	if err != nil {
-		log.Error().Msgf("error for nodeMap route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
