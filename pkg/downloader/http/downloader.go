@@ -3,10 +3,10 @@ package http
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -35,11 +35,11 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 			result.Data.URL, downloadDir,
 		)
 
-		filepath := fmt.Sprintf("%s/%s", downloadDir, result.Data.Name)
+		fp := filepath.Join(downloadDir, result.Data.Name)
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, result.Data.URL, filepath)
+		return fetch(innerCtx, result.Data.URL, fp)
 	}()
 
 	if err != nil {
