@@ -285,7 +285,7 @@ func ExecuteJob(ctx context.Context,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
 	buildContext *bytes.Buffer,
-) error {
+) (string, error) {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
 	defer span.End()
@@ -293,7 +293,7 @@ func ExecuteJob(ctx context.Context,
 	if runtimeSettings.IsLocal {
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
 		if errLocalDevStack != nil {
-			return errLocalDevStack
+			return "", errLocalDevStack
 		}
 
 		apiURI := stack.Nodes[0].APIServer.GetURI()
@@ -305,12 +305,12 @@ func ExecuteJob(ctx context.Context,
 	err := job.VerifyJob(ctx, j)
 	if err != nil {
 		log.Err(err).Msg("Job failed to validate.")
-		return err
+		return "", err
 	}
 
 	j, err = submitJob(ctx, apiClient, j, buildContext)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// if we are in --wait=false - print the id then exit
@@ -318,7 +318,7 @@ func ExecuteJob(ctx context.Context,
 	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
 	if !runtimeSettings.WaitForJobToFinish {
 		cmd.Print(j.Metadata.ID + "\n")
-		return nil
+		return "", nil
 	}
 
 	// if we are in --id-only mode - print the id
@@ -423,10 +423,10 @@ To get more details about the run, execute:
 			downloadSettings,
 		)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	return resultsCID, nil
 }
 
 func downloadResultsHandler(

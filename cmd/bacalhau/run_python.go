@@ -237,7 +237,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		}
 	}
 
-	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
+	_, err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error executing job: %s", err), 1)
 		return nil

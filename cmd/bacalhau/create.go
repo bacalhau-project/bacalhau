@@ -258,7 +258,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return nil
 	}
 
-	err = ExecuteJob(ctx,
+	_, err = ExecuteJob(ctx,
 		cm,
 		cmd,
 		j,

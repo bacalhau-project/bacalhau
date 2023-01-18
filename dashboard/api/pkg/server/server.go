@@ -83,8 +83,16 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 	// any crazy mofo on the planet can build this into their web apps
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// TODO: put client code in here, hoisted directly from CLI
+	// TODO: read "prompt" key of POST'ed JSON, or error
+	prompt := "fish fingers"
 
+	// TODO: put client code in here, hoisted directly from CLI
+	cid, err := runStableDiffusion(prompt)
+	if err != nil {
+		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, err.Error())))
+	} else {
+		res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, cid)))
+	}
 }
 
 func (apiServer *DashboardAPIServer) annotations(res http.ResponseWriter, req *http.Request) {
