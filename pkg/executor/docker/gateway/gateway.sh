@@ -31,5 +31,4 @@ echo request_header_add X-Bacalhau-Job-ID "$BACALHAU_JOB_ID" all >> /etc/squid/c
 
 # Now that everything is configured, run Squid.
 squid -d2
-sleep 1
-tail -f /var/log/squid/access.log
+tail -F /var/log/squid/access.log

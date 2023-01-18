@@ -65,9 +65,9 @@ func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, 
 		cancelFunction()
 		return nil
 	})
-	defer ticker.Stop()
 	log.Ctx(ctx).Debug().Msgf("Starting peer reconnection loop every %d seconds", ContinuouslyConnectPeersLoopDelaySeconds)
 	go func() {
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
