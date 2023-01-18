@@ -311,5 +311,3 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/filecoin-project/bacalhau => ../../../../
