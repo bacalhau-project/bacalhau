@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	"go.ptx.dk/multierrgroup"
 )
 
@@ -15,7 +16,7 @@ func ParallelPrepareStorage(
 	provider StorageProvider,
 	specs []model.StorageSpec,
 ) (map[*model.StorageSpec]StorageVolume, error) {
-	volumes := genericSyncMap[*model.StorageSpec, StorageVolume]{}
+	volumes := generic.SyncMap[*model.StorageSpec, StorageVolume]{}
 	waitgroup := multierrgroup.Group{}
 
 	for _, inputStorageSpec := range specs {
