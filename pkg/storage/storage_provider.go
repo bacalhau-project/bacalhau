@@ -3,21 +3,21 @@ package storage
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 )
 
 // MappedStorageProvider is a simple storage repo that selects a storage based on the job's storage type.
 type MappedStorageProvider struct {
-	storages               *genericSyncMap[model.StorageSourceType, Storage]
-	storagesInstalledCache *genericSyncMap[model.StorageSourceType, bool]
+	storages               *generic.SyncMap[model.StorageSourceType, Storage]
+	storagesInstalledCache *generic.SyncMap[model.StorageSourceType, bool]
 }
 
 func NewMappedStorageProvider(storages map[model.StorageSourceType]Storage) *MappedStorageProvider {
 	return &MappedStorageProvider{
-		storages:               genericMapFromMap(storages),
-		storagesInstalledCache: genericMapFromMap(map[model.StorageSourceType]bool{}),
+		storages:               generic.SyncMapFromMap(storages),
+		storagesInstalledCache: generic.SyncMapFromMap(map[model.StorageSourceType]bool{}),
 	}
 }
 
@@ -44,38 +44,4 @@ func (p *MappedStorageProvider) GetStorage(ctx context.Context, storageType mode
 	}
 
 	return storage, nil
-}
-
-func genericMapFromMap[K comparable, V any](m map[K]V) *genericSyncMap[K, V] {
-	ret := &genericSyncMap[K, V]{}
-	for k, v := range m {
-		ret.Put(k, v)
-	}
-
-	return ret
-}
-
-type genericSyncMap[K comparable, V any] struct {
-	sync.Map
-}
-
-func (m *genericSyncMap[K, V]) Get(key K) (V, bool) {
-	value, ok := m.Load(key)
-	if !ok {
-		var empty V
-		return empty, false
-	}
-	return value.(V), true
-}
-
-func (m *genericSyncMap[K, V]) Put(key K, value V) {
-	m.Store(key, value)
-}
-
-func (m *genericSyncMap[K, V]) Iter(ranger func(key K, value V) bool) {
-	m.Range(func(key, value any) bool {
-		k := key.(K)
-		v := value.(V)
-		return ranger(k, v)
-	})
 }
