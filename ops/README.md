@@ -57,7 +57,7 @@ bash scripts/connect_workspace.sh production
 terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 ```
 
-# Deploying Bacalhau mainnet!
+# Deploying Bacalhau mainnet
 
 The normal operation is to edit `production.tfvars`, make sure the `bacalhau_version` variable points to the version you'd like to deploy.
 Optionally, ensure you have appropriate values in `production-secrets.tfvars` (see `secrets.tfvars.example` for a guide) and then:
@@ -223,10 +223,7 @@ bash scripts/upload_cid.sh production ~/path/to/local/content
 
 # Troubleshoot production
 
-You need to ssh into the hosts in the [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production) project.
+To inspect the aggregated logs in Grafana Cloud access [this dashboard](https://protocollabs.grafana.net/goto/lKmGkWT4z?orgId=1) (requires credentials!).
 
-Inspect the logs with:
 
-```
-journalctl -u bacalhau-daemon -f
-```
+Alternatively, you need to ssh into the hosts in the [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production) project. Inspect the logs with `journalctl -u bacalhau-daemon -f`.

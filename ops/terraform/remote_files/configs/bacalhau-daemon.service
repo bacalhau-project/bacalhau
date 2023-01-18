@@ -5,6 +5,7 @@ Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.ser
 
 [Service]
 Environment="LOG_LEVEL=debug"
+Environment="LOG_TYPE=json"
 Environment="BACALHAU_PATH=/data"
 Environment="BACALHAU_DIR=/data"
 Restart=always
