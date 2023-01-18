@@ -159,8 +159,9 @@ func NewComputeNode(
 			RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
 		}),
 		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
-			MaxJobExecutionTimeout: config.MaxJobExecutionTimeout,
-			MinJobExecutionTimeout: config.MinJobExecutionTimeout,
+			MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
+			MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
+			JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
 		}),
 	)
 

@@ -20,65 +20,63 @@ func TestSystemConfigSuite(t *testing.T) {
 	suite.Run(t, new(SystemConfigSuite))
 }
 
-// Before each test
-func (suite *SystemConfigSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
+func (s *SystemConfigSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 }
 
-func (suite *SystemConfigSuite) TestMessageSigning() {
+func (s *SystemConfigSuite) TestMessageSigning() {
 	defer func() {
 		if r := recover(); r != nil {
-			suite.T().Errorf("unexpected panic: %v", r)
+			s.T().Errorf("unexpected panic: %v", r)
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
+	require.NoError(s.T(), InitConfigForTesting(s.T()))
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	ok, err := VerifyForClient(msg, sig)
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), ok)
+	require.NoError(s.T(), err)
+	require.True(s.T(), ok)
 
 	publicKey := GetClientPublicKey()
 	err = Verify(msg, sig, publicKey)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 }
 
-func (suite *SystemConfigSuite) TestGetClientID() {
+func (s *SystemConfigSuite) TestGetClientID() {
 	defer func() {
 		if r := recover(); r != nil {
-			suite.T().Errorf("unexpected panic: %v", r)
+			s.T().Errorf("unexpected panic: %v", r)
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
-	id := GetClientID()
-	require.NotEmpty(suite.T(), id)
+	var firstId string
+	s.Run("first", func() {
+		s.Require().NoError(InitConfigForTesting(s.T()))
+		firstId = GetClientID()
+		s.Require().NotEmpty(firstId)
+	})
 
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
-	id2 := GetClientID()
-	require.NotEmpty(suite.T(), id2)
+	var secondId string
+	s.Run("second", func() {
+		s.Require().NoError(InitConfigForTesting(s.T()))
+		secondId = GetClientID()
+		s.Require().NotEmpty(secondId)
 
-	// Two different clients should have different IDs.
-	require.NotEqual(suite.T(), id, id2)
+		// Two different clients should have different IDs.
+		s.Assert().NotEqual(firstId, secondId)
+	})
 }
 
-func (suite *SystemConfigSuite) TestPublicKeyMatchesID() {
-	defer func() {
-		if r := recover(); r != nil {
-			suite.T().Errorf("unexpected panic: %v", r)
-		}
-	}()
-
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
+func (s *SystemConfigSuite) TestPublicKeyMatchesID() {
+	require.NoError(s.T(), InitConfigForTesting(s.T()))
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()
 	ok, err := PublicKeyMatchesID(publicKey, id)
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), ok)
+	require.NoError(s.T(), err)
+	require.True(s.T(), ok)
 }

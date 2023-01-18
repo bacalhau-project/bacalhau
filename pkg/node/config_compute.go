@@ -26,6 +26,8 @@ type ComputeConfigParams struct {
 	MaxJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
 
+	JobExecutionTimeoutClientIDBypassList []string
+
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
 
@@ -60,6 +62,10 @@ type ComputeConfig struct {
 	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
 	// no timeout requirement defined.
 	DefaultJobExecutionTimeout time.Duration
+
+	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
+	// check.
+	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
@@ -148,6 +154,8 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
 		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
 		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
+
+		JobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
