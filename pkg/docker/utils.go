@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -144,11 +145,17 @@ func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID
 	stdoutReader, stdoutWriter := io.Pipe()
 	stderrReader, stderrWriter := io.Pipe()
 	go func() {
-		_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, logsReader)
+		stdoutBuffer := bufio.NewWriter(stdoutWriter)
+		stderrBuffer := bufio.NewWriter(stderrWriter)
+		_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			log.Ctx(ctx).Error().Err(err).Msg("error reading container logs")
 		}
 		logsReader.Close()
+		stdoutBuffer.Flush()
+		stderrBuffer.Flush()
+		stdoutWriter.Close()
+		stderrWriter.Close()
 	}()
 
 	return stdoutReader, stderrReader, nil
