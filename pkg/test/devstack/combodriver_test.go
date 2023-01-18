@@ -33,7 +33,6 @@ const exampleText = "hello world"
 
 var testcase scenario.Scenario = scenario.Scenario{
 	ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
-	Contexts:       scenario.CatFileToStdout.Contexts,
 	Spec: model.Spec{
 		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
