@@ -33,7 +33,7 @@ func newJobEventHandler(
 	localDB localdb.LocalDB,
 ) (*jobEventHandler, error) {
 	eventChan := make(chan bacalhau_model.JobEvent)
-	url := fmt.Sprintf("ws://%s:%d/websocket", host, port)
+	url := fmt.Sprintf("ws://%s:%d/requester/websocket", host, port)
 	firehose := NewEventFirehose(url, eventChan)
 	eventHandler := &jobEventHandler{
 		eventChan:    eventChan,

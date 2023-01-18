@@ -33,7 +33,7 @@ func (firehose *EventFirehose[T]) connectLoop() {
 	for {
 		err := firehose.connect()
 		if err != nil {
-			log.Debug().Msgf("Websocket connection error %s", err.Error())
+			log.Warn().Err(err).Msgf("Websocket connection error %s", firehose.url)
 		}
 		time.Sleep(time.Second * 1)
 		if !firehose.active {

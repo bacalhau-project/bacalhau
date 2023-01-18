@@ -167,6 +167,7 @@ func NewComputeNode(
 		Host:               host,
 		Executors:          executors,
 		CapacityTracker:    capacityTracker,
+		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,
 		Interval:           config.NodeInfoPublisherInterval,
 	})

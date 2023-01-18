@@ -131,13 +131,11 @@ func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.No
 	}
 	nodesMap := make(map[string]bacalhau_model.NodeInfo, len(nodesList))
 	for _, node := range nodesList {
-		nodesMap[node.PeerInfo.ID.String()] = node
+		if node.NodeType == bacalhau_model.NodeTypeCompute {
+			nodesMap[node.PeerInfo.ID.String()] = node
+		}
 	}
 	return nodesMap, nil
-}
-
-func (api *ModelAPI) GetClusterMap(ctx context.Context) ClusterMapResult {
-	return ClusterMapResult{}
 }
 
 func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model.Job, error) {
