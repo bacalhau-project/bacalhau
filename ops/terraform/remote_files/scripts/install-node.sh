@@ -145,8 +145,8 @@ scrape_configs:
     pipeline_stages:
       - json:
           expressions:
-            level:
-            msg:
+           level:
+           msg:
       - drop:
           source: "level"
           expression:  "(debug|trace)"
