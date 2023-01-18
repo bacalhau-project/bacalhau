@@ -1,0 +1,110 @@
+# This is the domain allowlist used for HTTP networking for "the Bacalhau team
+# provided compute nodes" (as opposed to "all compute nodes on the Bacalhau
+# network").
+#
+# This list is very much about *our* perception of risk, what things *we* are
+# comfortable with, and ensuring that *our* nodes are not performing
+# illegal/questionable behaviour (as opposed to trying to define an allowlist
+# for all compute providers to use, which would be much harder).
+#
+# Why do we have network restrictions?
+# ====================================
+# Broadly, to stop certain behaviours on our nodes that we don't want to
+# support.
+#
+# 1. Illegal behaviour on our nodes is our problem and we are liable for it (or
+#    will have to put in effort to contest we are liable). Example: using a job
+#    to download copyright files from one place and upload them to another.
+# 2. Behaviour that our hosting provider(s) deem against their ToS might result
+#    in the shut down of our compute nodes.
+# 3. Behaviour that circumvents the Bacalhau network operation (e.g. for paid
+#    jobs, using network connections to publish results before they've been paid
+#    for, and then denying payment)
+# 4. Behaviour that degrades the ability of our nodes to serve legitimate
+#    requests and/or encourages flood use of our nodes (e.g. for unpaid jobs,
+#    using our nodes as bitcoin miners, constantly, in a loop, meaning that our
+#    ability to serve legitimate volunteer/example requests is reduced)
+# 5. Behaviour that allows a job to be compromised by a malicious actor to
+#    achieve one of the above behaviours (e.g. for paid jobs, allowing a
+#    compromised package to download and run a bitcoin miner, sucking up all of
+#    the user's money).
+#
+# What use cases should we use networking to meet?
+# ================================================
+# Well we have a sensible idea of what not to use it for:
+#
+# * As a summary of above: nothing illegal, nothing against Google TOS, nothing
+#   to circumvent our network principles, nothing that allows repeated use of
+#   the network to the point of degradation for other users
+# * Bacalhau alerady has data input and output using storage and publishers, so
+#   we shouldn't use networking to meet any use cases where it is already
+#   possible using a suitably formatted job spec.
+#
+# And as a suggestion, we could start with the following list that we have
+# observed people asking for:
+#
+# * Jobs where a tool expects a certain HTTP API for proper operation (e.g.
+#   build tools, like go, cargo, gem, pip etc) and hence where bringing data in
+#   via IPFS/URL download is not feasible/practical
+# * Jobs whose sole role is to provide some [IPFS] consolidation of Internet
+#   endpoints (e.g. a job that downloads data/scrapes web pages from a set of
+#   domains, and archives the results on IPFS/Filecoin)
+# * Jobs that enable our own use cases or those of our partners whom we have a
+#   trusted relationship with (e.g. Project Frog, or people we give grants to)
+#   and hence have more trust that the privilege will not be abused
+#
+# We should also treat jobs that will only make safe HTTP requests more
+# leniently than those that do not (i.e. a job just downloading data is
+# generally safer to approve than one that is POSTing results to different
+# places). So domains that are predominantly read-only are normally fine,
+# whereas those with writeable APIs need more care.
+#
+# How do I know what domains to approve?
+# ======================================
+# You need to assure yourself that approving access to the domain meets ALL of
+# the requirements in the first list of the above section and ONE OF the
+# requirements in the second list of the above section.
+#
+# Start by checking out the domain on the web: what is it used for? Does it have
+# good documentation of what can be done on it? Is it mainly for read-only data
+# access or does it also include writable endpoints? Is the organisation
+# operating it easy to find?
+#
+# Are the operators of the domain likely to have a content policy and
+# moderation? So that it is not likely that the domain currently is being used
+# for nefarious purposes, and anything that our user does that tries to use it
+# for that will be shutdown/removed. Generally bigger players that display data
+# publicly (e.g. Github) will have this.
+#
+# Remember that we should operate a "default deny" policy – if we can't be
+# reasonably confident the domain access will be used appropriately, we just say
+# no.
+#
+# We also need to think about what a domain "could" be used for outside of what
+# the requestor is asking to use it for. E.g. if they are saying they only want
+# to use it download some static files, but access to the domain could also
+# enable some bitcoin-mining workflow, we should probably be saying no to that
+# request.
+#
+# (We may find that domain-based allow-listing is not enough, and we need to go
+# to the next level – job-based allow-listing, e.g. you can only access these
+# domains if you want to run certain jobs we have approved.)
+#
+# Who updates this file and how?
+# ==============================
+# Anyone who has access to update Bacalhau compute nodes in production also has
+# the ability to approve or deny allowlist changes. They should think through
+# the above rationale and come to a decision.
+#
+# Community members who want to use new domains can either make the request on
+# Slack or submit a Github PR against the allowlist that includes the domains
+# they want to use.
+
+# example domains
+example.com
+
+# golang dependencies
+proxy.golang.org
+sum.golang.org
+index.golang.org
+storage.googleapis.com
