@@ -219,6 +219,7 @@ func NewRequesterNode(
 	// register consumers of node info published over gossipSub
 	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
 	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](requesterAPIServer.PushNodeInfoToWebsocket))
 	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
 		return nil, err

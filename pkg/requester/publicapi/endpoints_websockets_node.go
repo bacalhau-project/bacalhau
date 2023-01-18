@@ -9,7 +9,7 @@ import (
 )
 
 // TODO: Godoc
-func (apiServer *APIServer) websocketNode(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) websocketNode(res http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(res, req, nil)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -19,9 +19,9 @@ func (apiServer *APIServer) websocketNode(res http.ResponseWriter, req *http.Req
 	defer conn.Close()
 
 	func() {
-		apiServer.NodeWebsocketsMutex.Lock()
-		defer apiServer.NodeWebsocketsMutex.Unlock()
-		apiServer.NodeWebsockets = append(apiServer.NodeWebsockets, conn)
+		s.nodeWebsocketsMutex.Lock()
+		defer s.nodeWebsocketsMutex.Unlock()
+		s.nodeWebsockets = append(s.nodeWebsockets, conn)
 	}()
 
 	for {
@@ -34,15 +34,15 @@ func (apiServer *APIServer) websocketNode(res http.ResponseWriter, req *http.Req
 	}
 }
 
-func (apiServer *APIServer) HandleNodeEvent(ctx context.Context, event model.NodeEvent) (err error) {
-	apiServer.NodeWebsocketsMutex.Lock()
-	defer apiServer.NodeWebsocketsMutex.Unlock()
+func (s *RequesterAPIServer) PushNodeInfoToWebsocket(ctx context.Context, nodeInfo model.NodeInfo) (err error) {
+	s.nodeWebsocketsMutex.Lock()
+	defer s.nodeWebsocketsMutex.Unlock()
 
 	errIdxs := []int{}
-	for idx, connection := range apiServer.NodeWebsockets {
+	for idx, connection := range s.nodeWebsockets {
 		// TODO: dispatch to subscribers in parallel, to avoid one slow
 		// reader slowing all the others down.
-		err := connection.WriteJSON(event)
+		err := connection.WriteJSON(nodeInfo)
 		if err != nil {
 			log.Error().Msgf(
 				"error writing event to subscriber %d: %s, closing ws\n",
@@ -62,7 +62,7 @@ func (apiServer *APIServer) HandleNodeEvent(ctx context.Context, event model.Nod
 		errIdxs[i], errIdxs[opp] = errIdxs[opp], errIdxs[i]
 	}
 	for _, idx := range errIdxs {
-		apiServer.NodeWebsockets = append(apiServer.NodeWebsockets[:idx], apiServer.NodeWebsockets[idx+1:]...)
+		s.nodeWebsockets = append(s.nodeWebsockets[:idx], s.nodeWebsockets[idx+1:]...)
 	}
 
 	return nil

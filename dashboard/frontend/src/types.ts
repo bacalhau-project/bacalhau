@@ -181,11 +181,6 @@ export interface JobEvent {
   RunOutput?: RunCommandResult,
 }
 
-export interface NodeEvent {
-  EventTime: string,
-
-}
-
 export interface VerificationResult {
   Complete?: boolean,
   Result?: boolean,
@@ -205,22 +200,6 @@ export interface JobInfo {
   moderation: JobModerationSummary,
 }
 
-
-export interface ClusterMapNode {
-  id: string,
-  group: number,
-}
-
-export interface ClusterMapLink {
-  source: string,
-  target: string,
-}
-
-export interface ClusterMapResult {
-  nodes: ClusterMapNode[],
-  links: ClusterMapLink[],
-}
-
 export interface ResourceUsageData {
   CPU?: number,
   Memory?: number,
@@ -228,27 +207,24 @@ export interface ResourceUsageData {
   GPU?: number,
 }
 
-export interface ExecutionSummary {
-  ExecutionID: string,
-  ShardID: string,
-  State: string,
-  ResourceUsage: ResourceUsageData,
+export interface PeerInfo {
+  ID: string,
+  Addrs: string[],
 }
 
-export interface DebugInfo {
-  component: string,
-  info: string,
-}
-
-export interface NodeEvent {
-  EventTime: string,
-  NodeID: string,
-  EventName: string,
-  TotalCapacity: ResourceUsageData,
+export interface ComputeNodeInfo {
+  ExecutionEngines: string[],
+  MaxCapacity: ResourceUsageData,
   AvailableCapacity: ResourceUsageData,
-  Peers: Record<string, string[]>
-  DebugInfo: DebugInfo[],
-  RunningJobs: ExecutionSummary[],
+  MaxJobRequirements: ResourceUsageData,
+  RunningExecutions: number,
+  EnqueuedExecutions: number,
+}
+
+export interface NodeInfo {
+  PeerInfo: PeerInfo,
+  NodeType: string,
+  ComputeNodeInfo: ComputeNodeInfo,
 }
 
 export interface Counter {

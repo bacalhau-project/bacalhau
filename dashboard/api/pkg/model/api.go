@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
@@ -11,6 +12,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,7 +30,7 @@ type ModelOptions struct {
 type ModelAPI struct {
 	options          ModelOptions
 	localDB          localdb.LocalDB
-	nodeDB           *nodeDB
+	nodeDB           requester.NodeInfoStore
 	store            *store.PostgresStore
 	stateResolver    *jobutils.StateResolver
 	jobEventHandler  *jobEventHandler
@@ -79,10 +82,10 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 		return nil, err
 	}
 
-	nodeDB, err := newNodeDB()
-	if err != nil {
-		return nil, err
-	}
+	nodeDB := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+		// compute nodes publish every 30 seconds. We give a graceful period of 2 minutes for them to be considered offline
+		TTL: 2 * time.Minute,
+	})
 
 	jobEventHandler, err := newJobEventHandler(
 		options.UpstreamHost,
@@ -121,12 +124,18 @@ func (api *ModelAPI) Start(ctx context.Context) {
 	api.nodeEventHandler.start(ctx)
 }
 
-func (api *ModelAPI) GetNodes(ctx context.Context) map[string]bacalhau_model.NodeEvent {
-	return api.nodeDB.getNodes()
-}
-
-func (api *ModelAPI) GetClusterMap(ctx context.Context) ClusterMapResult {
-	return api.nodeDB.getClusterMap()
+func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.NodeInfo, error) {
+	nodesList, err := api.nodeDB.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nodesMap := make(map[string]bacalhau_model.NodeInfo, len(nodesList))
+	for _, node := range nodesList {
+		if node.NodeType == bacalhau_model.NodeTypeCompute {
+			nodesMap[node.PeerInfo.ID.String()] = node
+		}
+	}
+	return nodesMap, nil
 }
 
 func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model.Job, error) {
