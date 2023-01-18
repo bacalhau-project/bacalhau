@@ -28,6 +28,7 @@ type ExecutorBufferParams struct {
 	DelegateExecutor           Executor
 	Callback                   Callback
 	RunningCapacityTracker     capacity.Tracker
+	EnqueuedCapacityTracker    capacity.Tracker
 	DefaultJobExecutionTimeout time.Duration
 	BackoffDuration            time.Duration
 }
@@ -41,6 +42,7 @@ type ExecutorBufferParams struct {
 type ExecutorBuffer struct {
 	ID                         string
 	runningCapacity            capacity.Tracker
+	enqueuedCapacity           capacity.Tracker
 	delegateService            Executor
 	callback                   Callback
 	running                    map[string]*bufferTask
@@ -56,6 +58,7 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 	r := &ExecutorBuffer{
 		ID:                         params.ID,
 		runningCapacity:            params.RunningCapacityTracker,
+		enqueuedCapacity:           params.EnqueuedCapacityTracker,
 		delegateService:            params.DelegateExecutor,
 		callback:                   params.Callback,
 		running:                    make(map[string]*bufferTask),
@@ -103,6 +106,10 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 	}
 	if _, ok := s.running[execution.ID]; ok {
 		err = fmt.Errorf("execution %s already running", execution.ID)
+		return
+	}
+	if !s.enqueuedCapacity.AddIfHasCapacity(ctx, execution.ResourceUsage) {
+		err = fmt.Errorf("not enough capacity to enqueue job")
 		return
 	}
 
@@ -167,6 +174,7 @@ func (s *ExecutorBuffer) deque() {
 		task := s.enqueued[executionID]
 
 		if s.runningCapacity.AddIfHasCapacity(ctx, task.execution.ResourceUsage) {
+			s.enqueuedCapacity.Remove(ctx, task.execution.ResourceUsage)
 			delete(s.enqueued, executionID)
 			s.running[executionID] = task
 			go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
