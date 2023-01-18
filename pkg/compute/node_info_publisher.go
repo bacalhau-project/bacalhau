@@ -19,6 +19,7 @@ type NodeInfoPublisherParams struct {
 	Host               host.Host
 	Executors          executor.ExecutorProvider
 	CapacityTracker    capacity.Tracker
+	ExecutorBuffer     *ExecutorBuffer
 	MaxJobRequirements model.ResourceUsageData
 	Interval           time.Duration
 }
@@ -28,6 +29,7 @@ type NodeInfoPublisher struct {
 	h                  host.Host
 	executors          executor.ExecutorProvider
 	capacityTracker    capacity.Tracker
+	executorBuffer     *ExecutorBuffer
 	maxJobRequirements model.ResourceUsageData
 	interval           time.Duration
 
@@ -41,6 +43,7 @@ func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 		h:                  params.Host,
 		executors:          params.Executors,
 		capacityTracker:    params.CapacityTracker,
+		executorBuffer:     params.ExecutorBuffer,
 		maxJobRequirements: params.MaxJobRequirements,
 		interval:           params.Interval,
 		stopChannel:        make(chan struct{}),
@@ -70,6 +73,8 @@ func (n *NodeInfoPublisher) Publish(ctx context.Context) error {
 			MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 			AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 			MaxJobRequirements: n.maxJobRequirements,
+			RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
+			EnqueuedExecutions: len(n.executorBuffer.EnqueuedExecutions()),
 		},
 	}
 

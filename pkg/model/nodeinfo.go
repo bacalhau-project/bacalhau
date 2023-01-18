@@ -12,9 +12,9 @@ const (
 )
 
 type NodeInfo struct {
-	PeerInfo        peer.AddrInfo   `json:"peerInfo"`
-	NodeType        NodeType        `json:"nodeType"`
-	ComputeNodeInfo ComputeNodeInfo `json:"computeNodeInfo"`
+	PeerInfo        peer.AddrInfo   `json:"PeerInfo"`
+	NodeType        NodeType        `json:"NodeType"`
+	ComputeNodeInfo ComputeNodeInfo `json:"ComputeNodeInfo"`
 }
 
 // IsComputeNode returns true if the node is a compute node
@@ -23,8 +23,10 @@ func (n NodeInfo) IsComputeNode() bool {
 }
 
 type ComputeNodeInfo struct {
-	ExecutionEngines   []Engine          `json:"executionEngines"`
-	MaxCapacity        ResourceUsageData `json:"maxCapacity"`
-	AvailableCapacity  ResourceUsageData `json:"availableCapacity"`
-	MaxJobRequirements ResourceUsageData `json:"maxJobRequirements"`
+	ExecutionEngines   []Engine          `json:"ExecutionEngines"`
+	MaxCapacity        ResourceUsageData `json:"MaxCapacity"`
+	AvailableCapacity  ResourceUsageData `json:"AvailableCapacity"`
+	MaxJobRequirements ResourceUsageData `json:"MaxJobRequirements"`
+	RunningExecutions  int               `json:"RunningExecutions"`
+	EnqueuedExecutions int               `json:"EnqueuedExecutions"`
 }
