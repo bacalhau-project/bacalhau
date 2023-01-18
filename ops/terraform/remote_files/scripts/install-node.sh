@@ -142,6 +142,14 @@ clients:
 
 scrape_configs:
   - job_name: journal
+    pipeline_stages:
+      - json:
+          expressions:
+          level:
+          msg:
+      - drop:
+          source: "level"
+          value:  "(debug|trace)"
     journal:
       max_age: 12h
       labels:
