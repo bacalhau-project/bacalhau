@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
@@ -51,8 +50,11 @@ func NewComputeNode(
 	executionStore := inmemory.NewStore()
 
 	// executor/backend
-	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
+	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
 		MaxCapacity: config.TotalResourceLimits,
+	})
+	enqueuedCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
+		MaxCapacity: config.QueueResourceLimits,
 	})
 
 	// Callback to send compute events (i.e. requester endpoint)
@@ -91,9 +93,10 @@ func NewComputeNode(
 		ID:                         host.ID().String(),
 		DelegateExecutor:           baseExecutor,
 		Callback:                   computeCallback,
-		RunningCapacityTracker:     capacityTracker,
+		RunningCapacityTracker:     runningCapacityTracker,
+		EnqueuedCapacityTracker:    enqueuedCapacityTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
-		BackoffDuration:            50 * time.Millisecond,
+		BackoffDuration:            config.ExecutorBufferBackoffDuration,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
@@ -130,8 +133,8 @@ func NewComputeNode(
 			MaxJobRequirements: config.JobResourceLimits,
 		}),
 		bidstrategy.NewAvailableCapacityStrategy(ctx, bidstrategy.AvailableCapacityStrategyParams{
-			CapacityTracker: capacityTracker,
-			CommitFactor:    config.OverCommitResourcesFactor,
+			RunningCapacityTracker:  runningCapacityTracker,
+			EnqueuedCapacityTracker: enqueuedCapacityTracker,
 		}),
 		// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 		//  libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
@@ -167,7 +170,7 @@ func NewComputeNode(
 		PubSub:             nodeInfoPubSub,
 		Host:               host,
 		Executors:          executors,
-		CapacityTracker:    capacityTracker,
+		CapacityTracker:    runningCapacityTracker,
 		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,
 		Interval:           config.NodeInfoPublisherInterval,
@@ -198,7 +201,7 @@ func NewComputeNode(
 	debugInfoProviders := []model.DebugInfoProvider{
 		sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
 			Name:            "AvailableCapacity",
-			CapacityTracker: capacityTracker,
+			CapacityTracker: runningCapacityTracker,
 		}),
 		runningInfoProvider,
 	}
@@ -226,7 +229,7 @@ func NewComputeNode(
 
 	return &Compute{
 		LocalEndpoint:   baseEndpoint,
-		Capacity:        capacityTracker,
+		Capacity:        runningCapacityTracker,
 		ExecutionStore:  executionStore,
 		Executors:       executors,
 		computeCallback: standardComputeCallback,
