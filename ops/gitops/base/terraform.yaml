@@ -1,0 +1,50 @@
+apiVersion: infra.contrib.fluxcd.io/v1alpha1
+kind: Terraform
+metadata:
+  name: tf-manifest
+spec:
+  alwaysCleanupRunnerPod: true
+  backendConfig:
+    customConfiguration: |
+      backend "gcs" {
+        bucket = "bacalhau-global-storage"
+        prefix = "terraform/state"
+      }
+  destroyResourcesOnDeletion: false
+  disableDriftDetection: false
+  fileMappings:
+  - location: workspace
+    path: ./terraform.tfvars
+    secretRef:
+      key: terraform.tfvars
+      name: override-vars
+  force: false
+  interval: 1m
+  path: ./ops/terraform
+  refreshBeforeApply: false
+  runnerPodTemplate:
+    spec:
+      env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/google-auth/key.json
+      volumeMounts:
+      - mountPath: /etc/google-auth
+        name: google-auth
+        readOnly: true
+      volumes:
+      - name: google-auth
+        secret:
+          optional: false
+          secretName: google-auth
+  runnerTerminationGracePeriodSeconds: 30
+  serviceAccountName: tf-runner
+  sourceRef:
+    kind: GitRepository
+    name: bacalhau
+    namespace: flux-system
+  storeReadablePlan: human
+  workspace: default
+  writeOutputsToSecret:
+    name: public-ip-address
+    outputs:
+    - public_ip_address 

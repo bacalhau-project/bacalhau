@@ -1,0 +1,18 @@
+## The kustomize secretsGenerator and configMapGenerator appends a hash
+## to the end of the secret/configMaps that it manages.  
+## These mappings let kustomize know to consider these paths too.
+nameReference:
+- kind: ConfigMap
+  version: v1
+  fieldSpecs:
+  - path: spec/varsFrom/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
+- kind: Secret
+  version: v1
+  fieldSpecs:
+  - path: spec/fileMappings/secretRef/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
