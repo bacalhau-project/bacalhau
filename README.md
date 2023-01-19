@@ -83,7 +83,7 @@ Download your result
 bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
 ```
 
-![](docs/images/screengif.gif)
+![](docs/images/terminal.gif)
 
 For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
 
