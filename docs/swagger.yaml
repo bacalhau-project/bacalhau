@@ -70,12 +70,6 @@ definitions:
       ClientID:
         description: the id of the client that is submitting the job
         type: string
-      Context:
-        description: |-
-          Optional base64-encoded tar file that will be pinned to IPFS and
-          mounted as storage for the job. Not part of the spec so we don't
-          flood the transport layer with it (potentially very large).
-        type: string
       Spec:
         $ref: '#/definitions/model.Spec'
         description: The specification of this job.
@@ -102,6 +96,10 @@ definitions:
         type: integer
       EventTime:
         example: "2022-11-17T13:32:55.756658941Z"
+        type: string
+      ExecutionID:
+        description: compute execution identifier
+        example: 9304c616-291f-41ad-b862-54e133c0149e
         type: string
       JobExecutionPlan:
         $ref: '#/definitions/model.JobExecutionPlan'
@@ -187,6 +185,9 @@ definitions:
     type: object
   model.JobShardState:
     properties:
+      ExecutionId:
+        description: Compute node reference for this shard execution
+        type: string
       NodeId:
         description: which node is running this shard
         type: string
@@ -282,6 +283,9 @@ definitions:
     type: object
   model.JobSpecWasm:
     properties:
+      EntryModule:
+        $ref: '#/definitions/model.StorageSpec'
+        description: The module that contains the WASM code to start running.
       EntryPoint:
         description: |-
           The name of the function in the EntryModule to call to run the job. For
@@ -346,6 +350,15 @@ definitions:
         description: The unique global ID of this job in the bacalhau network.
         example: 92d5d4ee-3765-4f78-8353-623f5f26df08
         type: string
+    type: object
+  model.NetworkConfig:
+    properties:
+      Domains:
+        items:
+          type: string
+        type: array
+      Type:
+        type: integer
     type: object
   model.PublishedResult:
     properties:
@@ -424,6 +437,9 @@ definitions:
         description: how will this job be executed by nodes on the network
       Language:
         $ref: '#/definitions/model.JobSpecLanguage'
+      Network:
+        $ref: '#/definitions/model.NetworkConfig'
+        description: The type of networking access that the job needs
       Publisher:
         description: there can be multiple publishers for the job
         type: integer
@@ -501,6 +517,17 @@ definitions:
         type: boolean
       Result:
         type: boolean
+    type: object
+  publicapi.VersionRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+    type: object
+  publicapi.VersionResponse:
+    properties:
+      build_version_info:
+        $ref: '#/definitions/model.BuildVersionInfo'
     type: object
   publicapi.eventsRequest:
     properties:
@@ -611,17 +638,6 @@ definitions:
     properties:
       job:
         $ref: '#/definitions/model.Job'
-    type: object
-  publicapi.versionRequest:
-    properties:
-      client_id:
-        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
-        type: string
-    type: object
-  publicapi.versionResponse:
-    properties:
-      build_version_info:
-        $ref: '#/definitions/model.BuildVersionInfo'
     type: object
   types.FreeSpace:
     properties:
@@ -1163,7 +1179,7 @@ paths:
           description: Internal Server Error
           schema:
             type: string
-      summary: Returns the peers connected to the host via the transport layer.
+      summary: Returns the peers connected to the host via the libp2pHost layer.
       tags:
       - Misc
   /readyz:
@@ -1376,17 +1392,17 @@ paths:
           you created before), (2) run `bacalhau describe <job-id>` and fetch the
           `ClientID` field.'
         in: body
-        name: versionRequest
+        name: VersionRequest
         required: true
         schema:
-          $ref: '#/definitions/publicapi.versionRequest'
+          $ref: '#/definitions/publicapi.VersionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/publicapi.versionResponse'
+            $ref: '#/definitions/publicapi.VersionResponse'
         "400":
           description: Bad Request
           schema:
