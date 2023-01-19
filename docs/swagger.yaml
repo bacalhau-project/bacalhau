@@ -811,17 +811,6 @@ definitions:
       job:
         $ref: '#/definitions/model.Job'
     type: object
-  publicapi.versionRequest:
-    properties:
-      client_id:
-        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
-        type: string
-    type: object
-  publicapi.versionResponse:
-    properties:
-      build_version_info:
-        $ref: '#/definitions/model.BuildVersionInfo'
-    type: object
   types.FreeSpace:
     properties:
       IPFSMount:
@@ -1067,7 +1056,7 @@ paths:
           description: Internal Server Error
           schema:
             type: string
-      summary: Returns the peers connected to the host via the transport layer.
+      summary: Returns the peers connected to the host via the libp2pHost layer.
       tags:
       - Utils
   /readyz:
@@ -1280,17 +1269,17 @@ paths:
           you created before), (2) run `bacalhau describe <job-id>` and fetch the
           `ClientID` field.'
         in: body
-        name: versionRequest
+        name: VersionRequest
         required: true
         schema:
-          $ref: '#/definitions/publicapi.versionRequest'
+          $ref: '#/definitions/publicapi.VersionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/publicapi.versionResponse'
+            $ref: '#/definitions/publicapi.VersionResponse'
         "400":
           description: Bad Request
           schema:

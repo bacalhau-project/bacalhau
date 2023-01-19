@@ -3,6 +3,9 @@
 
 <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
 -->
+
+<!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
+-->
 <p align="center">
   <a href="https://github.com/filecoin-project/bacalhau">
     <img src="https://github.com/filecoin-project/bacalhau/blob/590a1c84dbde3636a54c371c40c73ed6ea86bf48/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
@@ -83,7 +86,7 @@ Download your result
 bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
 ```
 
-![](docs/images/screengif.gif)
+![](docs/images/terminal.gif)
 
 For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
 

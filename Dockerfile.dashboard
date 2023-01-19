@@ -1,0 +1,16 @@
+FROM golang:1.18 as build
+ENV GO111MODULE=on
+WORKDIR /app
+COPY ./go.mod .
+COPY ./go.sum .
+RUN go mod download
+COPY . .
+WORKDIR /app/dashboard/api
+RUN CGO_ENABLED=0 go build -o dashboard-api
+
+FROM alpine:latest as server
+WORKDIR /app
+COPY --from=build /app/dashboard/api/dashboard-api /app/dashboard-api
+RUN chmod a+x /app/dashboard-api
+ENTRYPOINT [ "/app/dashboard-api" ]
+CMD [ "serve" ]

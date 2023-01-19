@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -62,5 +61,10 @@ func (s *IdentityNodeDiscovererSuite) TestFindNodes() {
 	})
 	peerIDs, err := discoverer.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]peer.ID{s.node1.ID(), s.node2.ID()}, peerIDs)
+
+	peerIDStrings := make([]string, len(peerIDs))
+	for i, p := range peerIDs {
+		peerIDStrings[i] = p.String()
+	}
+	s.ElementsMatch([]string{s.node1.ID().String(), s.node2.ID().String()}, peerIDStrings)
 }

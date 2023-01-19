@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
@@ -115,7 +115,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	}
 
 	for _, j := range maps.Values(d.jobs) {
-		if len(result) == query.Limit {
+		if query.Limit > 0 && len(result) == query.Limit {
 			break
 		}
 
@@ -166,6 +166,17 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	}
 	sort.Slice(result, listSorter)
 	return result, nil
+}
+
+func (d *InMemoryDatastore) GetJobsCount(ctx context.Context, query localdb.JobQuery) (int, error) {
+	useQuery := query
+	useQuery.Limit = 0
+	useQuery.Offset = 0
+	jobs, err := d.GetJobs(ctx, useQuery)
+	if err != nil {
+		return 0, err
+	}
+	return len(jobs), nil
 }
 
 func (d *InMemoryDatastore) HasLocalEvent(ctx context.Context, jobID string, eventFilter localdb.LocalEventFilter) (bool, error) {
@@ -299,53 +310,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 			Nodes: map[string]model.JobNodeState{},
 		}
 	}
-
-	nodeState, ok := jobState.Nodes[nodeID]
-	if !ok {
-		nodeState = model.JobNodeState{
-			Shards: map[int]model.JobShardState{},
-		}
+	err := shared.UpdateShardState(nodeID, shardIndex, jobState, update)
+	if err != nil {
+		return err
 	}
-	shardState, ok := nodeState.Shards[shardIndex]
-	if !ok {
-		shardState = model.JobShardState{
-			NodeID:     nodeID,
-			ShardIndex: shardIndex,
-		}
-	}
-
-	if update.State < shardState.State {
-		return fmt.Errorf("cannot update shard state to %s as current state is %s. [NodeID: %s, ShardID: %s_%d]",
-			update.State, shardState.State, nodeID, jobID, shardIndex)
-	}
-
-	shardState.State = update.State
-	if update.Status != "" {
-		shardState.Status = update.Status
-	}
-
-	if update.RunOutput != nil {
-		shardState.RunOutput = update.RunOutput
-	}
-
-	if len(update.VerificationProposal) != 0 {
-		shardState.VerificationProposal = update.VerificationProposal
-	}
-
-	if update.VerificationResult.Complete {
-		shardState.VerificationResult = update.VerificationResult
-	}
-
-	if update.ExecutionID != "" {
-		shardState.ExecutionID = update.ExecutionID
-	}
-
-	if model.IsValidStorageSourceType(update.PublishedResult.StorageSource) {
-		shardState.PublishedResult = update.PublishedResult
-	}
-
-	nodeState.Shards[shardIndex] = shardState
-	jobState.Nodes[nodeID] = nodeState
 	d.states[jobID] = jobState
 	return nil
 }

@@ -506,11 +506,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
-                        "name": "versionRequest",
+                        "name": "VersionRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.versionRequest"
+                            "$ref": "#/definitions/publicapi.VersionRequest"
                         }
                     }
                 ],
@@ -518,7 +518,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.versionResponse"
+                            "$ref": "#/definitions/publicapi.VersionResponse"
                         }
                     },
                     "400": {
@@ -1611,23 +1611,6 @@ const docTemplate = `{
             "properties": {
                 "job": {
                     "$ref": "#/definitions/model.Job"
-                }
-            }
-        },
-        "publicapi.versionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "publicapi.versionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/model.BuildVersionInfo"
                 }
             }
         },

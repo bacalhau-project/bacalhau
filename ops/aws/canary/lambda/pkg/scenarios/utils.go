@@ -95,14 +95,14 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		downloadSettings = &ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    60,
+			TimeoutSecs:    300,
 			OutputDir:      dir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 	case system.EnvironmentTest:
 		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
 			downloadSettings = &ipfs.IPFSDownloadSettings{
-				TimeoutSecs:    60,
+				TimeoutSecs:    300,
 				OutputDir:      dir,
 				IPFSSwarmAddrs: os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"),
 			}
@@ -123,9 +123,6 @@ func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClien
 		ctx,
 		submittedJob.Metadata.ID,
 		totalShards,
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
 			model.JobStateCompleted: totalShards,
 		}),
@@ -143,6 +140,8 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *publicapi.RequesterAPIClient {
+
+func getClient() *publicapi.APIClient {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
