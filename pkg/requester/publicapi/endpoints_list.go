@@ -32,8 +32,8 @@ type listResponse struct {
 
 type ListResponse = listResponse
 
-// List godoc
-// @ID                   pkg/publicapi.list
+// list godoc
+// @ID                   pkg/requester/publicapi/list
 // @Summary              Simply lists jobs.
 // @Description.markdown endpoints_list
 // @Tags                 Job
@@ -43,10 +43,10 @@ type ListResponse = listResponse
 // @Success              200         {object} listResponse
 // @Failure              400         {object} string
 // @Failure              500         {object} string
-// @Router               /list [post]
+// @Router               /requester/list [post]
 //
 //nolint:lll
-func (s *RequesterAPIServer) List(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()
 

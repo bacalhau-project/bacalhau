@@ -49,12 +49,12 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 
 func (s *RequesterAPIServer) RegisterAllHandlers() error {
 	handlerConfigs := []publicapi.HandlerConfig{
-		{URI: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.List)},
-		{URI: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.States)},
-		{URI: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.Results)},
-		{URI: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.Events)},
-		{URI: "/" + APIPrefix + "local_events", Handler: http.HandlerFunc(s.LocalEvents)},
-		{URI: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.Submit)},
+		{URI: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.list)},
+		{URI: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.states)},
+		{URI: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
+		{URI: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
+		{URI: "/" + APIPrefix + "local_events", Handler: http.HandlerFunc(s.localEvents)},
+		{URI: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
 		{URI: "/" + APIPrefix + "websocket", Handler: http.HandlerFunc(s.websocket), Raw: true},
 		{URI: "/" + APIPrefix + "node/websocket", Handler: http.HandlerFunc(s.websocketNode), Raw: true},
 		{URI: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
