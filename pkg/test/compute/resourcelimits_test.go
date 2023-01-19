@@ -127,8 +127,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			suite.T(),
 			devstack.DevStackOptions{NumberOfHybridNodes: 1},
 			node.NewComputeConfigWith(node.ComputeConfigParams{
-				TotalResourceLimits:          capacity.ParseResourceUsageConfig(testCase.totalLimits),
-				IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
+				TotalResourceLimits:           capacity.ParseResourceUsageConfig(testCase.totalLimits),
+				IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
+				ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
 			}),
 			node.NewRequesterConfigWithDefaults(),
 			noop_executor.ExecutorConfig{
@@ -278,6 +279,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 // this is a check of the bidding & capacity manager system
 func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeCount := 2
+	jobsPerNode := 2
 	seenJobs := 0
 	jobIds := []string{}
 
@@ -335,16 +337,20 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	)
 
 	for i := 0; i < nodeCount; i++ {
-		submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-			ClientID:   "123",
-			APIVersion: jobConfig.APIVersion,
-			Spec:       &jobConfig.Spec,
-		})
-		require.NoError(suite.T(), err)
-		jobIds = append(jobIds, submittedJob.Metadata.ID)
-		// this needs to be less than the time the job lasts
-		// so we are running jobs in parallel
-		time.Sleep(time.Millisecond * 500)
+		for j := 0; j < jobsPerNode; j++ {
+			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
+				ClientID:   "123",
+				APIVersion: jobConfig.APIVersion,
+				Spec:       &jobConfig.Spec,
+			})
+			require.NoError(suite.T(), err)
+			jobIds = append(jobIds, submittedJob.Metadata.ID)
+
+			// sleep a bit here to simulate jobs being sumbmitted over time
+			// this needs to be less than the time the job lasts
+			// so we are running jobs in parallel
+			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
+		}
 	}
 
 	for _, jobId := range jobIds {
@@ -352,12 +358,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		require.NoError(suite.T(), err)
 	}
 
-	require.Equal(suite.T(), nodeCount, seenJobs)
+	require.Equal(suite.T(), nodeCount*jobsPerNode, seenJobs)
 
 	allocationMap := map[string]int{}
 
-	for i := 0; i < nodeCount; i++ {
-		jobState, err := resolver.GetJobState(ctx, jobIds[i])
+	for _, jobId := range jobIds {
+		jobState, err := resolver.GetJobState(ctx, jobId)
 		require.NoError(suite.T(), err)
 		completedShards := job.GetCompletedShardStates(jobState)
 		require.Equal(suite.T(), 1, len(completedShards))
@@ -365,12 +371,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		allocationMap[completedShards[0].NodeID]++
 	}
 
-	// test that each node has 1 job allocated to it
+	// test that each node has 2 job allocated to it
 	node1Count, ok := allocationMap[stack.Nodes[0].Host.ID().String()]
 	require.True(suite.T(), ok)
-	require.Equal(suite.T(), 1, node1Count)
+	require.Equal(suite.T(), jobsPerNode, node1Count)
 
 	node2Count, ok := allocationMap[stack.Nodes[1].Host.ID().String()]
 	require.True(suite.T(), ok)
-	require.Equal(suite.T(), 1, node2Count)
+	require.Equal(suite.T(), jobsPerNode, node2Count)
 }

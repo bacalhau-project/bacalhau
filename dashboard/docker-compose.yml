@@ -1,0 +1,43 @@
+version: '3.4'
+services:
+  router:
+    image: binocarlos/noxy
+    restart: always
+    ports:
+      - 8080:80
+    depends_on:
+      - api
+      - frontend
+    environment:
+      - NOXY_DEFAULT_HOST=frontend
+      - NOXY_DEFAULT_PORT=80
+      - NOXY_API_FRONT=/api/v1
+      - NOXY_API_HOST=api
+  postgres:
+    image: postgres:12.13-alpine
+    restart: always
+    volumes:
+      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  frontend:
+    image: ${IMAGE_FRONTEND}
+    restart: always
+  api:
+    image: ${IMAGE_API}
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      - BACALHAU_DASHBOARD_POSTGRES_HOST=postgres
+      - BACALHAU_DASHBOARD_POSTGRES_PORT=5432
+      - BACALHAU_DASHBOARD_POSTGRES_DATABASE=postgres
+      - BACALHAU_DASHBOARD_POSTGRES_USER=postgres
+      - BACALHAU_DASHBOARD_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - BACALHAU_DASHBOARD_JWT_SECRET=${JWT_SECRET}
+      - BACALHAU_DASHBOARD_UPSTREAM_HOST=${UPSTREAM_HOST}
+      - BACALHAU_DASHBOARD_UPSTREAM_PORT=20000
+  
+    

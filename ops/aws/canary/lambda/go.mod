@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/filecoin-project/bacalhau v0.3.16-0.20230113041634-9ec7309c6133
+	github.com/filecoin-project/bacalhau v0.3.16-0.20221214203635-19e15111bc08
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5
@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
+	bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
@@ -24,7 +24,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/antihax/optional v1.0.0 // indirect
-	github.com/application-research/estuary-clients/go v0.0.0-20221129102826-8a9f3452ad5a // indirect
+	github.com/application-research/estuary-clients/go v0.0.0-20221118012408-a190dcdb467c // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
@@ -259,7 +259,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tetratelabs/wazero v1.0.0-pre.4 // indirect
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
-	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c // indirect
@@ -289,7 +288,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/crypto v0.4.0 // indirect
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.5.0 // indirect

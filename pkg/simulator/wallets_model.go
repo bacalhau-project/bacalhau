@@ -7,6 +7,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,7 +23,7 @@ type walletsModel struct {
 	// keep track of which wallet address "owns" which job
 	// the "ClientID" is only submitted for the create event
 	// so we "remember" the ClientID for the job id
-	jobOwners map[string]string
+	jobOwners generic.SyncMap[string, string]
 
 	// keep track of wallet balances - STUB (for Luke to fill in)
 	balances map[string]int64
@@ -35,7 +36,7 @@ type walletsModel struct {
 
 	// don't trust the server publishing the result to mean the client accepted it
 	// mark in the smart contract that the client accepted it, instead
-	accepted map[string]bool
+	accepted generic.SyncMap[string, bool]
 
 	// money mutex - hold this when adding/subtracting to/from balances and
 	// escrow channels
@@ -44,10 +45,10 @@ type walletsModel struct {
 
 func newWalletsModel() *walletsModel {
 	w := &walletsModel{
-		jobOwners: map[string]string{},
+		jobOwners: generic.SyncMap[string, string]{},
 		balances:  map[string]int64{},
 		escrow:    map[string]int64{},
-		accepted:  map[string]bool{},
+		accepted:  generic.SyncMap[string, bool]{},
 	}
 	go w.logWallets()
 	return w
@@ -108,7 +109,7 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	case model.JobEventBidAccepted:
 		// C->S: Escrow & BidAccepted
 		event = fromClient(event)
-		client := wallets.jobOwners[event.JobID]
+		client, _ := wallets.jobOwners.Get(event.JobID)
 		server := event.TargetNodeID
 		// TODO: price in job spec! verify price per hour!
 		// TODO: the client itself should escrow the funds, not the smart contract?
@@ -124,14 +125,14 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	case model.JobEventResultsAccepted:
 		// C->S: ResultsAccepted
 		event = fromClient(event)
-		client := wallets.jobOwners[event.JobID]
+		client, _ := wallets.jobOwners.Get(event.JobID)
 		server := event.TargetNodeID
 		escrowID := escrowID(client, server, event.JobID)
-		wallets.accepted[escrowID] = true
+		wallets.accepted.Put(escrowID, true)
 		return wallets.resultsAccepted(event)
 	case model.JobEventResultsRejected:
 		event = fromClient(event)
-		client := wallets.jobOwners[event.JobID]
+		client, _ := wallets.jobOwners.Get(event.JobID)
 		server := event.TargetNodeID
 		err := wallets.refundAndSlash(client, server, event.JobID)
 		if err != nil {
@@ -140,10 +141,10 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	case model.JobEventResultsPublished:
 		// S->C: ResultsPublished
 		event = fromServer(event)
-		client := wallets.jobOwners[event.JobID]
+		client, _ := wallets.jobOwners.Get(event.JobID)
 		server := event.SourceNodeID
 		escrowID := escrowID(client, server, event.JobID)
-		if !wallets.accepted[escrowID] {
+		if accepted, _ := wallets.accepted.Get(escrowID); !accepted {
 			return fmt.Errorf(
 				"tried to release escrow on job %s that was not accepted! "+
 					"(on message from %s). naughty server",
@@ -164,7 +165,7 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 	log.Info().Msgf("SIM: received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	// wallets.jobOwners[event.JobID] = event.ClientID
 	// if we want to use the requester node as the wallet address then it's this
-	wallets.jobOwners[event.JobID] = event.SourceNodeID
+	wallets.jobOwners.Put(event.JobID, event.SourceNodeID)
 	return nil
 }
 
@@ -191,7 +192,7 @@ func escrowID(client, server, jobID string) string {
 func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount int64) error {
 	wallets.moneyMutex.Lock()
 	defer wallets.moneyMutex.Unlock()
-	wallet, ok := wallets.jobOwners[jobID]
+	wallet, ok := wallets.jobOwners.Get(jobID)
 	if !ok {
 		return fmt.Errorf("job %s not found", jobID)
 	}
@@ -261,7 +262,7 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 		return err
 	}
 
-	walletAddress := wallets.jobOwners[event.JobID]
+	walletAddress, _ := wallets.jobOwners.Get(event.JobID)
 	wallets.ensureWallet(walletAddress)
 	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
 	return nil

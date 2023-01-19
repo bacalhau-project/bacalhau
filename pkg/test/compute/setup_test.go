@@ -45,7 +45,6 @@ func (s *ComputeSuite) SetupTest() {
 		TotalResourceLimits: model.ResourceUsageData{
 			CPU: 2,
 		},
-		OverCommitResourcesFactor: 1.5,
 	})
 	s.executor = noop_executor.NewNoopExecutor()
 	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm, localdb.GetStateResolver(s.jobStore))
