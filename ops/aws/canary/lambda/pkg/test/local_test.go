@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package test
 
 import (
@@ -15,12 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScenarios(t *testing.T) {
+func TestScenariosAgainstDevstack(t *testing.T) {
 	stack, _ := testutils.SetupTest(context.Background(), t, 3, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
-
-	os.Setenv("BACALHAU_ENVIRONMENT", "test")
-	t.Logf("BACALHAU_ENVIRONMENT: %s", os.Getenv("BACALHAU_ENVIRONMENT"))
-
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(t, err)
 	// Need to set the swarm addresses for getIPFSDownloadSettings() to work in test
