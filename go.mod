@@ -89,7 +89,7 @@ require (
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
 	google.golang.org/grpc v1.51.0
-	k8s.io/kubectl v0.25.4
+	k8s.io/kubectl v0.26.0
 	modernc.org/sqlite v1.19.4
 	sigs.k8s.io/yaml v1.3.0
 )
