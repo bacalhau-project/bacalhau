@@ -147,15 +147,16 @@ func FollowLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID
 	go func() {
 		stdoutBuffer := bufio.NewWriter(stdoutWriter)
 		stderrBuffer := bufio.NewWriter(stderrWriter)
+		defer closer.CloseWithLogOnError("stderrWriter", stderrWriter)
+		defer closer.CloseWithLogOnError("stdoutWriter", stdoutWriter)
+		defer stderrBuffer.Flush()
+		defer stdoutBuffer.Flush()
+		defer closer.CloseWithLogOnError("logsReader", logsReader)
+
 		_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.Ctx(ctx).Error().Err(err).Msg("error reading container logs")
+			log.Ctx(ctx).Err(err).Msg("error reading container logs")
 		}
-		logsReader.Close()
-		stdoutBuffer.Flush()
-		stderrBuffer.Flush()
-		stdoutWriter.Close()
-		stderrWriter.Close()
 	}()
 
 	return stdoutReader, stderrReader, nil
@@ -175,23 +176,6 @@ func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID st
 		err = wg.Wait()
 	}
 	return
-}
-
-func StopContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
-	container, err := GetContainer(ctx, dockerClient, nameOrID)
-	if err != nil {
-		return err
-	}
-	if container == nil {
-		return nil
-	}
-	log.Ctx(ctx).Debug().Msgf("Container requested to stop: %s", container.ID)
-	timeout := time.Millisecond * 100
-	err = dockerClient.ContainerStop(ctx, container.ID, &timeout)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
