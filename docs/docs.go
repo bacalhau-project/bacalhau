@@ -283,7 +283,7 @@ const docTemplate = `{
                 "tags": [
                     "Misc"
                 ],
-                "summary": "Returns the peers connected to the host via the transport layer.",
+                "summary": "Returns the peers connected to the host via the libp2pHost layer.",
                 "operationId": "apiServer/peers",
                 "responses": {
                     "200": {
@@ -506,11 +506,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
-                        "name": "versionRequest",
+                        "name": "VersionRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.versionRequest"
+                            "$ref": "#/definitions/publicapi.VersionRequest"
                         }
                     }
                 ],
@@ -518,7 +518,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.versionResponse"
+                            "$ref": "#/definitions/publicapi.VersionResponse"
                         }
                     },
                     "400": {
@@ -624,10 +624,6 @@ const docTemplate = `{
                     "description": "the id of the client that is submitting the job",
                     "type": "string"
                 },
-                "Context": {
-                    "description": "Optional base64-encoded tar file that will be pinned to IPFS and\nmounted as storage for the job. Not part of the spec so we don't\nflood the transport layer with it (potentially very large).",
-                    "type": "string"
-                },
                 "Spec": {
                     "description": "The specification of this job.",
                     "$ref": "#/definitions/model.Spec"
@@ -657,6 +653,11 @@ const docTemplate = `{
                 "EventTime": {
                     "type": "string",
                     "example": "2022-11-17T13:32:55.756658941Z"
+                },
+                "ExecutionID": {
+                    "description": "compute execution identifier",
+                    "type": "string",
+                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
                 },
                 "JobExecutionPlan": {
                     "description": "this is only defined in \"create\" events",
@@ -769,6 +770,10 @@ const docTemplate = `{
         "model.JobShardState": {
             "type": "object",
             "properties": {
+                "ExecutionId": {
+                    "description": "Compute node reference for this shard execution",
+                    "type": "string"
+                },
                 "NodeId": {
                     "description": "which node is running this shard",
                     "type": "string"
@@ -884,6 +889,10 @@ const docTemplate = `{
         "model.JobSpecWasm": {
             "type": "object",
             "properties": {
+                "EntryModule": {
+                    "description": "The module that contains the WASM code to start running.",
+                    "$ref": "#/definitions/model.StorageSpec"
+                },
                 "EntryPoint": {
                     "description": "The name of the function in the EntryModule to call to run the job. For\nWASI jobs, this will always be ` + "`" + `_start` + "`" + `, but jobs can choose to call\nother WASM functions instead. The EntryPoint must be a zero-parameter\nzero-result function.",
                     "type": "string"
@@ -965,6 +974,20 @@ const docTemplate = `{
                     "description": "The unique global ID of this job in the bacalhau network.",
                     "type": "string",
                     "example": "92d5d4ee-3765-4f78-8353-623f5f26df08"
+                }
+            }
+        },
+        "model.NetworkConfig": {
+            "type": "object",
+            "properties": {
+                "Domains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Type": {
+                    "type": "integer"
                 }
             }
         },
@@ -1071,6 +1094,10 @@ const docTemplate = `{
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
+                "Network": {
+                    "description": "The type of networking access that the job needs",
+                    "$ref": "#/definitions/model.NetworkConfig"
+                },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",
                     "type": "integer"
@@ -1151,6 +1178,23 @@ const docTemplate = `{
                 },
                 "Result": {
                     "type": "boolean"
+                }
+            }
+        },
+        "publicapi.VersionRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string",
+                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                }
+            }
+        },
+        "publicapi.VersionResponse": {
+            "type": "object",
+            "properties": {
+                "build_version_info": {
+                    "$ref": "#/definitions/model.BuildVersionInfo"
                 }
             }
         },
@@ -1315,23 +1359,6 @@ const docTemplate = `{
             "properties": {
                 "job": {
                     "$ref": "#/definitions/model.Job"
-                }
-            }
-        },
-        "publicapi.versionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "publicapi.versionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/model.BuildVersionInfo"
                 }
             }
         },
