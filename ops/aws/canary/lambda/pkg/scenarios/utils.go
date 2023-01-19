@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -133,29 +132,16 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 		return nil, err
 	}
 
-	var downloadSettings *model.DownloaderSettings
-	switch system.GetEnvironment() {
-	case system.EnvironmentProd:
-		downloadSettings = &model.DownloaderSettings{
-			Timeout:        time.Second * 300,
-			OutputDir:      dir,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		}
-	case system.EnvironmentTest:
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			downloadSettings = &model.DownloaderSettings{
-				Timeout:        time.Second * 300,
-				OutputDir:      dir,
-				IPFSSwarmAddrs: os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"),
-			}
-		}
-	case system.EnvironmentDev:
-		log.Warn().Msg("Development environment has no download settings attached")
-	case system.EnvironmentStaging:
-		log.Warn().Msg("Staging environment has no download settings attached")
+	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
+	if IPFSSwarmAddrs == "" {
+		IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	return downloadSettings, nil
+	return &model.DownloaderSettings{
+		Timeout:    	time.Second *300,
+		OutputDir:      dir,
+		IPFSSwarmAddrs: IPFSSwarmAddrs,
+	}, nil
 }
 
 func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
