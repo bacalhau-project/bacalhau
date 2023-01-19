@@ -63,7 +63,10 @@ func (ds *DownloaderSuite) SetupTest() {
 
 	ds.downloadProvider = &MappedDownloaderProvider{
 		downloaders: map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(&ds.cm, ds.downloadSettings),
+			model.StorageSourceIPFS: &ipfs2.Downloader{
+				Settings: ds.downloadSettings,
+				Client:   client,
+			},
 		},
 	}
 }
@@ -145,9 +148,9 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 func (ds *DownloaderSuite) TestNoExpectedResults() {
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{},
 		[]model.PublishedResult{},
+		ds.downloadProvider,
 		ds.downloadSettings,
 	)
 	require.NoError(ds.T(), err)
@@ -165,7 +168,6 @@ func (ds *DownloaderSuite) TestFullOutput() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -184,6 +186,7 @@ func (ds *DownloaderSuite) TestFullOutput() {
 				},
 			},
 		},
+		ds.downloadProvider,
 		ds.downloadSettings,
 	)
 	require.NoError(ds.T(), err)
@@ -204,7 +207,6 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -223,6 +225,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 				},
 			},
 		},
+		ds.downloadProvider,
 		ds.downloadSettings,
 	)
 	require.NoError(ds.T(), err)
@@ -244,7 +247,6 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -272,6 +274,7 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 				},
 			},
 		},
+		ds.downloadProvider,
 		ds.downloadSettings,
 	)
 	require.NoError(ds.T(), err)
@@ -291,7 +294,6 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -311,6 +313,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 				},
 			},
 		},
+		ds.downloadProvider,
 		ds.downloadSettings,
 	)
 	require.NoError(ds.T(), err)

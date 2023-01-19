@@ -5,7 +5,6 @@ package estuary
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"os"
 	"testing"
 	"time"
@@ -18,7 +17,6 @@ const testCID = "bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
 
 func TestFetchResult(t *testing.T) {
 	// create a temp directory for the downloaded file
-	cm := *system.NewCleanupManager()
 	downloadDir, err := os.MkdirTemp("", "estuary-download-test")
 	require.NoError(t, err)
 
@@ -28,7 +26,8 @@ func TestFetchResult(t *testing.T) {
 	settings := &model.DownloaderSettings{
 		Timeout: time.Second * 60,
 	}
-	downloader := NewEstuaryDownloader(cm, settings)
+	downloader, err := NewEstuaryDownloader(settings)
+	require.NoError(t, err)
 
 	// create a PublishedResult with the test CID
 	result := model.PublishedResult{

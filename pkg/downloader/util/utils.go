@@ -1,9 +1,13 @@
 package util
 
 import (
+	"context"
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/estuary"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -34,4 +38,24 @@ func NewDownloadSettings() *model.DownloaderSettings {
 	}
 
 	return &settings
+}
+
+func NewIPFSDownloaders(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	settings *model.DownloaderSettings) (downloader.DownloaderProvider, error) {
+	ipfsDownloader, err := ipfs.NewIPFSDownloader(ctx, cm, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	estuaryDownloader, err := estuary.NewEstuaryDownloader(settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{
+		model.StorageSourceIPFS:    ipfsDownloader,
+		model.StorageSourceEstuary: estuaryDownloader,
+	}), nil
 }

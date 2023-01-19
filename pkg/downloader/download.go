@@ -33,13 +33,13 @@ var specialFiles = map[string]bool{
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
-	cm *system.CleanupManager,
 	// these are the outputs named in the job spec
 	// we need them so we know which volumes exists
 	outputVolumes []model.StorageSpec,
 	// these are the published results we have loaded
 	// from the api
 	publishedShardResults []model.PublishedResult,
+	downloadProvider DownloaderProvider,
 	settings *model.DownloaderSettings,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
@@ -49,7 +49,6 @@ func DownloadJob( //nolint:funlen,gocyclo
 		log.Ctx(ctx).Debug().Msg("No results to download")
 		return nil
 	}
-	downloadProvider := NewStandardDownloaders(cm, settings)
 
 	// this is the full path to the top level folder we are writing our results
 	// we have already processed this in the case of a default

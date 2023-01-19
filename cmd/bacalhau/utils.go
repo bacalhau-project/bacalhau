@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
 	"github.com/Masterminds/semver"
@@ -469,11 +471,16 @@ func downloadResultsHandler(
 		return err
 	}
 
+	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, &processedDownloadSettings)
+	if err != nil {
+		return err
+	}
+
 	err = downloader.DownloadJob(
 		ctx,
-		cm,
 		j.Spec.Outputs,
 		results,
+		downloaderProvider,
 		&processedDownloadSettings,
 	)
 
