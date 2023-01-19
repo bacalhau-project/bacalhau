@@ -12,7 +12,7 @@ func Submit(ctx context.Context) error {
 	client := getClient()
 
 	j := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, j)
+	submittedJob, err := client.Submit(ctx, j, nil)
 	if err != nil {
 		return err
 	}
