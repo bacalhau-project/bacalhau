@@ -17,29 +17,32 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// a normal test function and pass our suite to suite.Run
 func TestDownloaderSuite(t *testing.T) {
 	suite.Run(t, new(DownloaderSuite))
 }
 
-// Define the s, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
 type DownloaderSuite struct {
 	suite.Suite
-	cm               system.CleanupManager
+	cm               *system.CleanupManager
 	client           *Client
 	outputDir        string
 	downloadSettings IPFSDownloadSettings
 }
 
-// Before each test
-func (ds *DownloaderSuite) SetupTest() {
-	ds.cm = *system.NewCleanupManager()
+func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
 	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
+}
 
-	node, err := NewLocalNode(context.Background(), &ds.cm, nil)
+// Before each test
+func (ds *DownloaderSuite) SetupTest() {
+	ds.cm = system.NewCleanupManager()
+	ds.T().Cleanup(ds.cm.Cleanup)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ds.T().Cleanup(cancel)
+
+	node, err := NewLocalNode(ctx, ds.cm, nil)
 	require.NoError(ds.T(), err)
 
 	client, err := node.Client()
@@ -57,10 +60,6 @@ func (ds *DownloaderSuite) SetupTest() {
 		OutputDir:      testOutputDir,
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
-}
-
-func (ds *DownloaderSuite) TearDownTest() {
-	ds.cm.Cleanup()
 }
 
 // Generate a file with random data.
@@ -136,7 +135,7 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 func (ds *DownloaderSuite) TestNoExpectedResults() {
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
+		ds.cm,
 		[]model.StorageSpec{},
 		[]model.PublishedResult{},
 		*NewIPFSDownloadSettings(),
@@ -156,7 +155,7 @@ func (ds *DownloaderSuite) TestFullOutput() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
+		ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -195,7 +194,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
+		ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -235,7 +234,7 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
+		ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -282,7 +281,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 
 	err := DownloadJob(
 		context.Background(),
-		&ds.cm,
+		ds.cm,
 		[]model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
