@@ -693,7 +693,125 @@ paths:
       summary: Returns debug information on what the current node is doing.
       tags:
       - Health
-  /events:
+  /healthz:
+    get:
+      operationId: apiServer/healthz
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.HealthInfo'
+      tags:
+      - Health
+  /id:
+    get:
+      operationId: apiServer/id
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the id of the host node.
+      tags:
+      - Misc
+  /livez:
+    get:
+      operationId: apiServer/livez
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: TODO
+          schema:
+            type: string
+      tags:
+      - Health
+  /logz:
+    get:
+      operationId: apiServer/logz
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: TODO
+          schema:
+            type: string
+      tags:
+      - Health
+  /peers:
+    get:
+      description: |-
+        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.
+
+        Example response:
+        ```json
+        {
+          "bacalhau-job-event": [
+            "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+            "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+            "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
+            "QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT",
+            "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86"
+          ]
+        }
+        ```
+      operationId: apiServer/peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the peers connected to the host via the libp2pHost layer.
+      tags:
+      - Misc
+  /readyz:
+    get:
+      operationId: apiServer/readyz
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Health
+  /requester/debug:
+    get:
+      operationId: pkg/requester/publicapi/debug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns debug information on what the current node is doing.
+      tags:
+      - Health
+  /requester/events:
     post:
       consumes:
       - application/json
@@ -807,7 +925,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/events
+      operationId: pkg/requester/publicapi/events
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -837,36 +955,7 @@ paths:
         Useful for troubleshooting.
       tags:
       - Job
-  /healthz:
-    get:
-      operationId: apiServer/healthz
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/types.HealthInfo'
-      tags:
-      - Health
-  /id:
-    get:
-      operationId: apiServer/id
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the id of the host node.
-      tags:
-      - Misc
-  /list:
+  /requester/list:
     post:
       consumes:
       - application/json
@@ -1062,7 +1151,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi.list
+      operationId: pkg/requester/publicapi/list
       parameters:
       - description: Set `return_all` to `true` to return all jobs on the network
           (may degrade performance, use with care!).
@@ -1089,25 +1178,13 @@ paths:
       summary: Simply lists jobs.
       tags:
       - Job
-  /livez:
-    get:
-      operationId: apiServer/livez
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: TODO
-          schema:
-            type: string
-      tags:
-      - Health
-  /local_events:
+  /requester/local_events:
     post:
       consumes:
       - application/json
       description: Local events (e.g. Selected, BidAccepted, Verified) are useful
         to track the progress of a job.
-      operationId: pkg/publicapi/localEvents
+      operationId: pkg/requester/publicapi/localEvents
       parameters:
       - description: ' '
         in: body
@@ -1134,67 +1211,7 @@ paths:
         body payload. Useful for troubleshooting.
       tags:
       - Job
-  /logz:
-    get:
-      operationId: apiServer/logz
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: TODO
-          schema:
-            type: string
-      tags:
-      - Health
-  /peers:
-    get:
-      description: |-
-        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.
-
-        Example response:
-        ```json
-        {
-          "bacalhau-job-event": [
-            "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-            "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-            "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
-            "QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT",
-            "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86"
-          ]
-        }
-        ```
-      operationId: apiServer/peers
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              items:
-                type: string
-              type: array
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the peers connected to the host via the libp2pHost layer.
-      tags:
-      - Misc
-  /readyz:
-    get:
-      operationId: apiServer/readyz
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      tags:
-      - Health
-  /results:
+  /requester/results:
     post:
       consumes:
       - application/json
@@ -1215,7 +1232,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/results
+      operationId: pkg/requester/publicapi/results
       parameters:
       - description: ' '
         in: body
@@ -1241,7 +1258,7 @@ paths:
       summary: Returns the results of the job-id specified in the body payload.
       tags:
       - Job
-  /states:
+  /requester/states:
     post:
       consumes:
       - application/json
@@ -1302,7 +1319,7 @@ paths:
           }
         }
         ```
-      operationId: pkg/publicapi/states
+      operationId: pkg/requester/publicapi/states
       parameters:
       - description: ' '
         in: body
@@ -1328,7 +1345,7 @@ paths:
       summary: Returns the state of the job-id specified in the body payload.
       tags:
       - Job
-  /submit:
+  /requester/submit:
     post:
       consumes:
       - application/json
@@ -1339,7 +1356,7 @@ paths:
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
         `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
-      operationId: pkg/apiServer.submit
+      operationId: pkg/requester/publicapi/submit
       parameters:
       - description: ' '
         in: body

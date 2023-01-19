@@ -50,53 +50,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/events": {
-            "post": {
-                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n\nExample response (truncated):\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"events\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"EventName\": \"Created\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"JobExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"VerificationResult\": {},\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.331375351Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    ...\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"TargetNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsAccepted\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {\n        \"Complete\": true,\n        \"Result\": true\n      },\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.707825569Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsPublished\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {},\n      \"PublishedResult\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      },\n      \"EventTime\": \"2022-11-17T13:32:55.756658941Z\",\n      \"SenderPublicKey\": \"...\"\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/events",
-                "parameters": [
-                    {
-                        "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
-                        "name": "eventsRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.eventsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.eventsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/healthz": {
             "get": {
                 "produces": [
@@ -142,53 +95,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/list": {
-            "post": {
-                "description": "Returns the first (sorted) #` + "`" + `max_jobs` + "`" + ` jobs that belong to the ` + "`" + `client_id` + "`" + ` passed in the body payload (by default).\nIf ` + "`" + `return_all` + "`" + ` is set to true, it returns all jobs on the Bacalhau network.\n\nIf ` + "`" + `id` + "`" + ` is set, it returns only the job with that ID.\n\nExample response:\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"jobs\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:32:55.33837275Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                  \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    },\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"92d5d4ee-3765-4f78-8353-623f5f26df08\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"sleep\",\n            \"4\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:29:01.871140291Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                  \"CID\": \"QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "Simply lists jobs.",
-                "operationId": "pkg/publicapi.list",
-                "parameters": [
-                    {
-                        "description": "Set ` + "`" + `return_all` + "`" + ` to ` + "`" + `true` + "`" + ` to return all jobs on the network (may degrade performance, use with care!).",
-                        "name": "listRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.listRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.listResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/livez": {
             "get": {
                 "produces": [
@@ -201,53 +107,6 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "TODO",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/local_events": {
-            "post": {
-                "description": "Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/publicapi/localEvents",
-                "parameters": [
-                    {
-                        "description": " ",
-                        "name": "localEventsRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "type": "string"
                         }
@@ -326,7 +185,174 @@ const docTemplate = `{
                 }
             }
         },
-        "/results": {
+        "/requester/debug": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Returns debug information on what the current node is doing.",
+                "operationId": "pkg/requester/publicapi/debug",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/requester/events": {
+            "post": {
+                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n\nExample response (truncated):\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"events\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"EventName\": \"Created\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"JobExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"VerificationResult\": {},\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.331375351Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    ...\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"TargetNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsAccepted\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {\n        \"Complete\": true,\n        \"Result\": true\n      },\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.707825569Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsPublished\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {},\n      \"PublishedResult\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      },\n      \"EventTime\": \"2022-11-17T13:32:55.756658941Z\",\n      \"SenderPublicKey\": \"...\"\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.",
+                "operationId": "pkg/requester/publicapi/events",
+                "parameters": [
+                    {
+                        "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
+                        "name": "eventsRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.eventsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.eventsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/requester/list": {
+            "post": {
+                "description": "Returns the first (sorted) #` + "`" + `max_jobs` + "`" + ` jobs that belong to the ` + "`" + `client_id` + "`" + ` passed in the body payload (by default).\nIf ` + "`" + `return_all` + "`" + ` is set to true, it returns all jobs on the Bacalhau network.\n\nIf ` + "`" + `id` + "`" + ` is set, it returns only the job with that ID.\n\nExample response:\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"jobs\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:32:55.33837275Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                  \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    },\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"92d5d4ee-3765-4f78-8353-623f5f26df08\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"sleep\",\n            \"4\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:29:01.871140291Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                  \"CID\": \"QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Simply lists jobs.",
+                "operationId": "pkg/requester/publicapi/list",
+                "parameters": [
+                    {
+                        "description": "Set ` + "`" + `return_all` + "`" + ` to ` + "`" + `true` + "`" + ` to return all jobs on the network (may degrade performance, use with care!).",
+                        "name": "listRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.listRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.listResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/requester/local_events": {
+            "post": {
+                "description": "Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
+                "operationId": "pkg/requester/publicapi/localEvents",
+                "parameters": [
+                    {
+                        "description": " ",
+                        "name": "localEventsRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.localEventsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.localEventsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/requester/results": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "consumes": [
@@ -339,7 +365,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the results of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/results",
+                "operationId": "pkg/requester/publicapi/results",
                 "parameters": [
                     {
                         "description": " ",
@@ -373,7 +399,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/states": {
+        "/requester/states": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"state\": {\n    \"Nodes\": {\n      \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n            \"State\": \"Cancelled\",\n            \"VerificationResult\": {},\n            \"PublishedResults\": {}\n          }\n        }\n      },\n      \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n        \"Shards\": {\n          \"0\": {\n            \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n            \"State\": \"Completed\",\n            \"Status\": \"Got results proposal of length: 0\",\n            \"VerificationResult\": {\n              \"Complete\": true,\n              \"Result\": true\n            },\n            \"PublishedResults\": {\n              \"StorageSource\": \"IPFS\",\n              \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n              \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n            },\n            \"RunOutput\": {\n              \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n              \"stdouttruncated\": false,\n              \"stderr\": \"\",\n              \"stderrtruncated\": false,\n              \"exitCode\": 0,\n              \"runnerError\": \"\"\n            }\n          }\n        }\n      }\n    }\n  }\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "consumes": [
@@ -386,7 +412,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Returns the state of the job-id specified in the body payload.",
-                "operationId": "pkg/publicapi/states",
+                "operationId": "pkg/requester/publicapi/states",
                 "parameters": [
                     {
                         "description": " ",
@@ -420,7 +446,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/submit": {
+        "/requester/submit": {
             "post": {
                 "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `job_create_payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
@@ -433,7 +459,7 @@ const docTemplate = `{
                     "Job"
                 ],
                 "summary": "Submits a new job to the network.",
-                "operationId": "pkg/apiServer.submit",
+                "operationId": "pkg/requester/publicapi/submit",
                 "parameters": [
                     {
                         "description": " ",
