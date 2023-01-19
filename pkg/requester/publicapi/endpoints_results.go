@@ -19,19 +19,20 @@ type resultsResponse struct {
 	Results []model.PublishedResult `json:"results"`
 }
 
-// Results godoc
-// @ID                   pkg/publicapi/results
-// @Summary              Returns the results of the job-id specified in the body payload.
-// @Description.markdown endpoints_results
-// @Tags                 Job
-// @Accept               json
-// @Produce              json
-// @Param                stateRequest body     stateRequest true " "
-// @Success              200          {object} resultsResponse
-// @Failure              400          {object} string
-// @Failure              500          {object} string
-// @Router               /results [post]
-func (s *RequesterAPIServer) Results(res http.ResponseWriter, req *http.Request) {
+// results godoc
+//
+//	@ID						pkg/requester/publicapi/results
+//	@Summary				Returns the results of the job-id specified in the body payload.
+//	@Description.markdown	endpoints_results
+//	@Tags					Job
+//	@Accept					json
+//	@Produce				json
+//	@Param					stateRequest	body		stateRequest	true	" "
+//	@Success				200				{object}	resultsResponse
+//	@Failure				400				{object}	string
+//	@Failure				500				{object}	string
+//	@Router					/requester/results [post]
+func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.results")
 	defer span.End()
 

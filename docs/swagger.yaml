@@ -699,6 +699,17 @@ definitions:
     - VerifierNoop
     - VerifierDeterministic
     - verifierDone
+  publicapi.VersionRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+    type: object
+  publicapi.VersionResponse:
+    properties:
+      build_version_info:
+        $ref: '#/definitions/model.BuildVersionInfo'
+    type: object
   publicapi.eventsRequest:
     properties:
       client_id:
@@ -850,7 +861,7 @@ info:
 paths:
   /debug:
     get:
-      operationId: debug
+      operationId: apiServer/debug
       produces:
       - application/json
       responses:
@@ -864,43 +875,7 @@ paths:
             type: string
       summary: Returns debug information on what the current node is doing.
       tags:
-      - Utils
-  /events:
-    post:
-      consumes:
-      - application/json
-      description: |
-        Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.
-      operationId: events
-      parameters:
-      - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
-          you can do the following: (1) submit a dummy job to Bacalhau (or use one
-          you created before), (2) run `bacalhau describe <job-id>` and fetch the
-          `ClientID` field.'
-        in: body
-        name: eventsRequest
-        required: true
-        schema:
-          $ref: '#/definitions/publicapi.eventsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/publicapi.eventsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the events related to the job-id passed in the body payload.
-        Useful for troubleshooting.
-      tags:
-      - Job
+      - Health
   /healthz:
     get:
       operationId: healthz
@@ -930,42 +905,6 @@ paths:
       summary: Returns the id of the host node.
       tags:
       - Utils
-  /list:
-    post:
-      consumes:
-      - application/json
-      description: |-
-        Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).
-        If `return_all` is set to true, it returns all jobs on the Bacalhau network.
-
-        If `id` is set, it returns only the job with that ID.
-      operationId: list
-      parameters:
-      - description: Set `return_all` to `true` to return all jobs on the network
-          (may degrade performance, use with care!).
-        in: body
-        name: listRequest
-        required: true
-        schema:
-          $ref: '#/definitions/publicapi.listRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/publicapi.listResponse'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Simply lists jobs.
-      tags:
-      - Job
   /livez:
     get:
       operationId: livez
@@ -978,39 +917,6 @@ paths:
             type: string
       tags:
       - Utils
-  /local_events:
-    post:
-      consumes:
-      - application/json
-      description: Local events (e.g. Selected, BidAccepted, Verified) are useful
-        to track the progress of a job.
-      operationId: localEvents
-      parameters:
-      - description: ' '
-        in: body
-        name: localEventsRequest
-        required: true
-        schema:
-          $ref: '#/definitions/publicapi.localEventsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/publicapi.localEventsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the node's local events related to the job-id passed in the
-        body payload. Useful for troubleshooting.
-      tags:
-      - Job
   /logz:
     get:
       operationId: logz
@@ -1056,7 +962,7 @@ paths:
           description: Internal Server Error
           schema:
             type: string
-      summary: Returns the peers connected to the host via the libp2pHost layer.
+      summary: Returns the peers connected to the host via the transport layer.
       tags:
       - Utils
   /readyz:
@@ -1071,7 +977,129 @@ paths:
             type: string
       tags:
       - Utils
-  /results:
+  /requester/debug:
+    get:
+      operationId: pkg/requester/publicapi/debug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns debug information on what the current node is doing.
+      tags:
+      - Health
+  /requester/events:
+    post:
+      consumes:
+      - application/json
+      description: |
+        Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.
+      operationId: pkg/requester/publicapi/events
+      parameters:
+      - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
+          you can do the following: (1) submit a dummy job to Bacalhau (or use one
+          you created before), (2) run `bacalhau describe <job-id>` and fetch the
+          `ClientID` field.'
+        in: body
+        name: eventsRequest
+        required: true
+        schema:
+          $ref: '#/definitions/publicapi.eventsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/publicapi.eventsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the events related to the job-id passed in the body payload.
+        Useful for troubleshooting.
+      tags:
+      - Job
+  /requester/list:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).
+        If `return_all` is set to true, it returns all jobs on the Bacalhau network.
+
+        If `id` is set, it returns only the job with that ID.
+      operationId: pkg/requester/publicapi/list
+      parameters:
+      - description: Set `return_all` to `true` to return all jobs on the network
+          (may degrade performance, use with care!).
+        in: body
+        name: listRequest
+        required: true
+        schema:
+          $ref: '#/definitions/publicapi.listRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/publicapi.listResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Simply lists jobs.
+      tags:
+      - Job
+  /requester/local_events:
+    post:
+      consumes:
+      - application/json
+      description: Local events (e.g. Selected, BidAccepted, Verified) are useful
+        to track the progress of a job.
+      operationId: pkg/requester/publicapi/localEvents
+      parameters:
+      - description: ' '
+        in: body
+        name: localEventsRequest
+        required: true
+        schema:
+          $ref: '#/definitions/publicapi.localEventsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/publicapi.localEventsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the node's local events related to the job-id passed in the
+        body payload. Useful for troubleshooting.
+      tags:
+      - Job
+  /requester/results:
     post:
       consumes:
       - application/json
@@ -1092,7 +1120,7 @@ paths:
           ]
         }
         ```
-      operationId: results
+      operationId: pkg/requester/publicapi/results
       parameters:
       - description: ' '
         in: body
@@ -1118,7 +1146,7 @@ paths:
       summary: Returns the results of the job-id specified in the body payload.
       tags:
       - Job
-  /states:
+  /requester/states:
     post:
       consumes:
       - application/json
@@ -1179,7 +1207,7 @@ paths:
           }
         }
         ```
-      operationId: states
+      operationId: pkg/requester/publicapi/states
       parameters:
       - description: ' '
         in: body
@@ -1205,7 +1233,7 @@ paths:
       summary: Returns the state of the job-id specified in the body payload.
       tags:
       - Job
-  /submit:
+  /requester/submit:
     post:
       consumes:
       - application/json
@@ -1216,7 +1244,7 @@ paths:
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
         `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
-      operationId: submit
+      operationId: pkg/requester/publicapi/submit
       parameters:
       - description: ' '
         in: body
@@ -1262,7 +1290,7 @@ paths:
       - application/json
       description: See https://github.com/filecoin-project/bacalhau/releases for a
         complete list of `gitversion` tags.
-      operationId: version
+      operationId: apiServer/version
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -1290,7 +1318,7 @@ paths:
             type: string
       summary: Returns the build version running on the server.
       tags:
-      - Utils
+      - Misc
 schemes:
 - http
 swagger: "2.0"
