@@ -121,8 +121,12 @@ func writeCSVFile(filename string, header []string, rows [][]string) {
 	defer csvFile.Close()
 
 	csvWriter := csv.NewWriter(csvFile)
-	csvWriter.Write(header)
-	csvWriter.WriteAll(rows)
+	if err := csvWriter.Write(header); err != nil {
+		fmt.Printf("Failed to write CSV header: %s\n", err.Error())
+	}
+	if err := csvWriter.WriteAll(rows); err != nil {
+		fmt.Printf("Failed to write CSV rows: %s\n", err.Error())
+	}
 }
 
 type KeyCount struct {
