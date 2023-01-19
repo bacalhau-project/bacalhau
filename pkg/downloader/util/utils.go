@@ -1,7 +1,6 @@
 package util
 
 import (
-	"context"
 	"os"
 	"strings"
 
@@ -40,22 +39,14 @@ func NewDownloadSettings() *model.DownloaderSettings {
 	return &settings
 }
 
-func NewIPFSDownloaders(
-	ctx context.Context,
+func NewStandardDownloaders(
 	cm *system.CleanupManager,
-	settings *model.DownloaderSettings) (downloader.DownloaderProvider, error) {
-	ipfsDownloader, err := ipfs.NewIPFSDownloader(ctx, cm, settings)
-	if err != nil {
-		return nil, err
-	}
-
-	estuaryDownloader, err := estuary.NewEstuaryDownloader(settings)
-	if err != nil {
-		return nil, err
-	}
+	settings *model.DownloaderSettings) downloader.DownloaderProvider {
+	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
+	estuaryDownloader := estuary.NewEstuaryDownloader(cm, settings)
 
 	return downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{
 		model.StorageSourceIPFS:    ipfsDownloader,
 		model.StorageSourceEstuary: estuaryDownloader,
-	}), nil
+	})
 }

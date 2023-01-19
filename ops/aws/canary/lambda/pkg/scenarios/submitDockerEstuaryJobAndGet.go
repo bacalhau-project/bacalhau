@@ -60,7 +60,7 @@ func SubmitDockerEstuaryJobAndGet(ctx context.Context) error {
 	downloadSettings.OutputDir = outputDir
 	downloadSettings.Timeout = time.Second * 600
 
-	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
 		return fmt.Errorf("getting downloader provider settings: %s", err)
 	}

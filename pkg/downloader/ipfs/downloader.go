@@ -14,45 +14,45 @@ import (
 )
 
 type Downloader struct {
-	Settings *model.DownloaderSettings
-	Client   *ipfs.Client
+	settings *model.DownloaderSettings
+	cm       *system.CleanupManager
 }
 
-func NewIPFSDownloader(ctx context.Context, cm *system.CleanupManager, settings *model.DownloaderSettings) (*Downloader, error) {
+func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
+	return &Downloader{
+		cm:       cm,
+		settings: settings,
+	}
+}
+
+func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
+	defer span.End()
+
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
-	n, err := spinUpIPFSNode(ctx, cm, settings.IPFSSwarmAddrs)
+	n, err := spinUpIPFSNode(ctx, ipfsDownloader.cm, ipfsDownloader.settings.IPFSSwarmAddrs)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
 	ipfsClient, err := n.Client()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Downloader{
-		Settings: settings,
-		Client:   ipfsClient,
-	}, nil
-}
-
-func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
-	defer span.End()
-
-	err := func() error {
+	err = func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result CID %s '%s' to '%s'...",
 			result.Data.Name,
-			result.Data.CID, downloadDir,
+			result.Data.CID, downloadPath,
 		)
 
-		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(ipfsDownloader.Settings.Timeout))
+		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(ipfsDownloader.settings.Timeout))
 		defer cancel()
 
-		return ipfsDownloader.Client.Get(innerCtx, result.Data.CID, downloadDir)
+		return ipfsClient.Get(innerCtx, result.Data.CID, downloadPath)
 	}()
 
 	if err != nil {

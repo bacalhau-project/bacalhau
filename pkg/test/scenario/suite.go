@@ -187,7 +187,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}
 
-	ipfsDownloader, err := ipfs.NewIPFSDownloader(s.Ctx, cm, downloaderSettings)
+	ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 	require.NoError(s.T(), err)
 
 	downloaderProvider := downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{

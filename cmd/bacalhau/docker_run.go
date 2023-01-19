@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"

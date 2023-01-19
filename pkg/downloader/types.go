@@ -7,8 +7,8 @@ import (
 )
 
 type Downloader interface {
-	// FetchResult fetches published result and saves it to downloadDir
-	FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error
+	// FetchResult fetches published result and saves it to downloadPath
+	FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error
 }
 
 type DownloaderProvider interface {

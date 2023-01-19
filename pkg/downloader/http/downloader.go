@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -18,13 +17,13 @@ type Downloader struct {
 	Settings *model.DownloaderSettings
 }
 
-func NewHTTPDownloader(settings *model.DownloaderSettings) (*Downloader, error) {
+func NewHTTPDownloader(settings *model.DownloaderSettings) *Downloader {
 	return &Downloader{
 		Settings: settings,
-	}, nil
+	}
 }
 
-func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadDir string) error {
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
 	defer span.End()
 
@@ -32,14 +31,13 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result URL %s '%s' to '%s'...",
 			result.Data.Name,
-			result.Data.URL, downloadDir,
+			result.Data.URL, downloadPath,
 		)
 
-		fp := filepath.Join(downloadDir, result.Data.Name)
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, result.Data.URL, fp)
+		return fetch(innerCtx, result.Data.URL, downloadPath)
 	}()
 
 	if err != nil {

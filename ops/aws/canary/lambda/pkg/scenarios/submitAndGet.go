@@ -54,7 +54,7 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, downloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
 		return err
 	}

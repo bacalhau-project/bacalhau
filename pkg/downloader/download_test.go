@@ -63,10 +63,7 @@ func (ds *DownloaderSuite) SetupTest() {
 
 	ds.downloadProvider = &MappedDownloaderProvider{
 		downloaders: map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: &ipfs2.Downloader{
-				Settings: ds.downloadSettings,
-				Client:   client,
-			},
+			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(&ds.cm, ds.downloadSettings),
 		},
 	}
 }

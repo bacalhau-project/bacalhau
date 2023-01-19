@@ -471,7 +471,7 @@ func downloadResultsHandler(
 		return err
 	}
 
-	downloaderProvider, err := util.NewIPFSDownloaders(ctx, cm, &processedDownloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm, &processedDownloadSettings)
 	if err != nil {
 		return err
 	}
