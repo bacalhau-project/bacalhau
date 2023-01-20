@@ -122,7 +122,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 		},
 		{
 			name:          "select by negated env",
-			selector:      "name=env!=prod",
+			selector:      "env!=prod",
 			expectedNodes: []*node.Node{s.compute3},
 		},
 		{
