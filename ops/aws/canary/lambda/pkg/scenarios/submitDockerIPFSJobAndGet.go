@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -30,7 +27,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		expectedStat = "21"
 	}
 
-	submittedJob, err := client.Submit(ctx, j)
+	submittedJob, err := client.Submit(ctx, j, nil)
 	if err != nil {
 		return err
 	}
@@ -62,17 +59,13 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = time.Second * 600
+	downloadSettings.TimeoutSecs = 600
 
-	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
-	if err != nil {
-		return fmt.Errorf("getting downloader provider settings: %s", err)
-	}
-	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	err = ipfs.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, *downloadSettings)
 	if err != nil {
 		return fmt.Errorf("downloading job: %s", err)
 	}
-	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
+	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
 	if err != nil {
 		return fmt.Errorf("reading results directory: %s", err)
 	}
@@ -83,7 +76,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if len(files) != 3 {
 		return fmt.Errorf("expected 3 files in output dir, got %d", len(files))
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
 	if err != nil {
 		return err
 	}
@@ -93,7 +86,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("testing md5 of input: %s", err)
 	}
-	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
+	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
 	if err != nil {
 		return err
 	}
