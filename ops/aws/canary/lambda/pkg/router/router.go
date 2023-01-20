@@ -11,13 +11,12 @@ import (
 )
 
 var TestcasesMap = map[string]Handler{
-	"list":                         scenarios.List,
-	"submit":                       scenarios.Submit,
-	"submitAndGet":                 scenarios.SubmitAndGet,
-	"submitDockerIPFSJobAndGet":    scenarios.SubmitDockerIPFSJobAndGet,
-	"submitDockerEstuaryJobAndGet": scenarios.SubmitDockerEstuaryJobAndGet,
-	"submitAndDescribe":            scenarios.SubmitAnDescribe,
-	"submitWithConcurrency":        scenarios.SubmitWithConcurrency,
+	"list":                      scenarios.List,
+	"submit":                    scenarios.Submit,
+	"submitAndGet":              scenarios.SubmitAndGet,
+	"submitDockerIPFSJobAndGet": scenarios.SubmitDockerIPFSJobAndGet,
+	"submitAndDescribe":         scenarios.SubmitAnDescribe,
+	"submitWithConcurrency":     scenarios.SubmitWithConcurrency,
 }
 
 func init() {

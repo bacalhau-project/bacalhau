@@ -32,7 +32,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	// Need to set the local ipfs CID for SubmitDockerIPFSJobAndGet() to work in test
 	os.Setenv("BACALHAU_CANARY_TEST_CID", cid)
 
-	host := stack.Nodes[0].APIServer.Address
+	host := stack.Nodes[0].APIServer.Host
 	port := stack.Nodes[0].APIServer.Port
 	t.Log("Host set to", host)
 	t.Log("Port set to", port)

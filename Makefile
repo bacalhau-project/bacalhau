@@ -276,7 +276,7 @@ devstack:
 
 .PHONY: devstack-one
 devstack-one:
-	IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
+	IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 
 .PHONY: devstack-100
 devstack-100:
