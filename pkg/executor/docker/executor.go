@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/pkg/errors"
@@ -117,7 +118,7 @@ func (e *Executor) RunShard(
 		return executor.FailResult(err)
 	}
 
-	inputStorageSpecs := []model.StorageSpec{}
+	var inputStorageSpecs []model.StorageSpec
 	inputStorageSpecs = append(inputStorageSpecs, shard.Job.Spec.Contexts...)
 	inputStorageSpecs = append(inputStorageSpecs, shardStorageSpec...)
 
@@ -128,7 +129,7 @@ func (e *Executor) RunShard(
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
-	mounts := []mount.Mount{}
+	var mounts []mount.Mount
 	for spec, volumeMount := range inputVolumes {
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
@@ -209,7 +210,7 @@ func (e *Executor) RunShard(
 		Tty:        false,
 		Env:        useEnv,
 		Entrypoint: shard.Job.Spec.Docker.Entrypoint,
-		Labels:     e.jobContainerLabels(&shard),
+		Labels:     e.jobContainerLabels(shard),
 		WorkingDir: shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
@@ -273,6 +274,9 @@ func (e *Executor) RunShard(
 		return executor.FailResult(internalContainerStartError)
 	}
 
+	log.Ctx(ctx).Debug().Msg("Capturing stdout/stderr for container")
+	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(ctx, e.Client, jobContainer.ID)
+
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
 	var containerError error
@@ -292,9 +296,6 @@ func (e *Executor) RunShard(
 		}
 	}
 
-	log.Ctx(ctx).Debug().Msg("Capturing stdout/stderr for container")
-	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(ctx, e.Client, jobContainer.ID)
-
 	return executor.WriteJobResults(
 		jobResultsDir,
 		stdoutPipe,
@@ -305,7 +306,7 @@ func (e *Executor) RunShard(
 }
 
 func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	return docker.StopContainer(ctx, e.Client, e.jobContainerName(shard))
+	return docker.RemoveObjectsWithLabel(ctx, e.Client, labelJobName, e.labelJobValue(shard))
 }
 
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
@@ -313,7 +314,10 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 		return
 	}
 
-	err := docker.RemoveObjectsWithLabel(ctx, e.Client, labelJobName, e.ID+shard.ID())
+	// Use a separate context in case the current one has already been canceled
+	separateCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	err := docker.RemoveObjectsWithLabel(separateCtx, e.Client, labelJobName, e.labelJobValue(shard))
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
@@ -342,11 +346,15 @@ func (e *Executor) jobContainerName(shard model.JobShard) string {
 	return e.dockerObjectName(shard, "executor")
 }
 
-func (e *Executor) jobContainerLabels(shard *model.JobShard) map[string]string {
+func (e *Executor) jobContainerLabels(shard model.JobShard) map[string]string {
 	return map[string]string{
 		labelExecutorName: e.ID,
-		labelJobName:      e.ID + shard.ID(),
+		labelJobName:      e.labelJobValue(shard),
 	}
+}
+
+func (e *Executor) labelJobValue(shard model.JobShard) string {
+	return e.ID + shard.ID()
 }
 
 // Compile-time interface check:
