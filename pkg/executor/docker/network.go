@@ -106,7 +106,7 @@ func (e *Executor) createHTTPGateway(
 		Scope:      "local",
 		Internal:   true,
 		Attachable: true,
-		Labels:     e.jobContainerLabels(&shard),
+		Labels:     e.jobContainerLabels(shard),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating network")
@@ -135,7 +135,7 @@ func (e *Executor) createHTTPGateway(
 		},
 		Healthcheck:     &container.HealthConfig{}, //TODO
 		NetworkDisabled: false,
-		Labels:          e.jobContainerLabels(&shard),
+		Labels:          e.jobContainerLabels(shard),
 	}, &container.HostConfig{
 		NetworkMode: dockerNetworkBridge,
 		CapAdd:      gatewayCapabilities,

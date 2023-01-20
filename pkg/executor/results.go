@@ -10,6 +10,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 )
@@ -48,7 +49,7 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer closer.CloseWithLogOnError("file", file)
 
 	// First write the bytes we have already read, and then write whatever
 	// is left in the buffer, but only up to the maximum file limit.
@@ -66,7 +67,7 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	return nil
 }
 
-// WriteJobResult produces files and a model.RunCommandResult in the standard
+// WriteJobResults produces files and a model.RunCommandResult in the standard
 // format, including truncating the contents of both where necessary to fit
 // within system-defined limits.
 //

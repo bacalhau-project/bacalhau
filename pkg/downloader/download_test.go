@@ -5,12 +5,13 @@ package downloader
 import (
 	"context"
 	"crypto/rand"
-	ipfs2 "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	ipfs2 "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -19,30 +20,33 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// a normal test function and pass our suite to suite.Run
 func TestDownloaderSuite(t *testing.T) {
 	suite.Run(t, new(DownloaderSuite))
 }
 
-// Define the s, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
 type DownloaderSuite struct {
 	suite.Suite
-	cm               system.CleanupManager
+	cm               *system.CleanupManager
 	client           *ipfs.Client
 	outputDir        string
 	downloadSettings *model.DownloaderSettings
 	downloadProvider DownloaderProvider
 }
 
-// Before each test
-func (ds *DownloaderSuite) SetupTest() {
-	ds.cm = *system.NewCleanupManager()
+func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
 	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
+}
 
-	node, err := ipfs.NewLocalNode(context.Background(), &ds.cm, nil)
+// Before each test
+func (ds *DownloaderSuite) SetupTest() {
+	ds.cm = system.NewCleanupManager()
+	ds.T().Cleanup(ds.cm.Cleanup)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ds.T().Cleanup(cancel)
+
+	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
 	require.NoError(ds.T(), err)
 
 	client, err := node.Client()
@@ -63,13 +67,9 @@ func (ds *DownloaderSuite) SetupTest() {
 
 	ds.downloadProvider = &MappedDownloaderProvider{
 		downloaders: map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(&ds.cm, ds.downloadSettings),
+			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
 		},
 	}
-}
-
-func (ds *DownloaderSuite) TearDownTest() {
-	ds.cm.Cleanup()
 }
 
 // Generate a file with random data.
