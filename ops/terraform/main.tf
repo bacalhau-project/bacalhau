@@ -91,6 +91,14 @@ sudo tee /terraform_node/start-bacalhau.sh > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/start-bacalhau.sh")}
 EOI
 
+sudo tee /terraform_node/apply-http-allowlist.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/apply-http-allowlist.sh")}
+EOI
+
+sudo tee /terraform_node/http-domain-allowlist.txt > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/http-domain-allowlist.txt")}
+EOI
+
 #########
 # health checker
 #########
@@ -292,7 +300,7 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 
   allow {
     protocol = "tcp"
-    // Port 22   - Provides ssh access to the bacalhau server, for debugging 
+    // Port 22   - Provides ssh access to the bacalhau server, for debugging
     ports = ["22"]
   }
 
