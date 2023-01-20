@@ -90,7 +90,7 @@ require (
 	golang.org/x/net v0.5.0
 	google.golang.org/grpc v1.51.0
 	k8s.io/kubectl v0.25.4
-	modernc.org/sqlite v1.19.4
+	modernc.org/sqlite v1.20.2
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -353,7 +353,7 @@ require (
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
 	modernc.org/ccgo/v3 v3.16.13 // indirect
-	modernc.org/libc v1.21.4 // indirect
+	modernc.org/libc v1.22.2 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.4.0 // indirect
 	modernc.org/opt v0.1.3 // indirect
