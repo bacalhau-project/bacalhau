@@ -88,7 +88,7 @@ require (
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.5.0
-	google.golang.org/grpc v1.51.0
+	google.golang.org/grpc v1.52.0
 	k8s.io/kubectl v0.26.1
 	modernc.org/sqlite v1.20.2
 	sigs.k8s.io/yaml v1.3.0
