@@ -74,6 +74,7 @@ func (s *ComputeSuite) setupNode() {
 		context.Background(),
 		s.cm,
 		host,
+		map[string]string{}, // empty labels
 		apiServer,
 		s.config,
 		"",

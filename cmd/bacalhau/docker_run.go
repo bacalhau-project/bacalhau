@@ -62,6 +62,7 @@ type DockerRunOptions struct {
 	NetworkDomains   []string
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
+	NodeSelector     string   // Selector (label query) to filter nodes on which this job can be executed
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -103,6 +104,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
+		NodeSelector:       "",
 		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
@@ -240,6 +242,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Labels, "labels", "l", ODR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
+	)
+
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
 	)
 
 	dockerRunCmd.PersistentFlags().StringVar(
@@ -389,6 +396,7 @@ func CreateJob(ctx context.Context,
 		odr.MinBids,
 		odr.Timeout,
 		labels,
+		odr.NodeSelector,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,

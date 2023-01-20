@@ -10,25 +10,25 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Chained struct {
+type Chain struct {
 	discoverers  []requester.NodeDiscoverer
 	ignoreErrors bool
 }
 
-func NewChained(ignoreErrors bool) *Chained {
-	return &Chained{
+func NewChain(ignoreErrors bool) *Chain {
+	return &Chain{
 		ignoreErrors: ignoreErrors,
 	}
 }
 
-func (c *Chained) Add(discoverer ...requester.NodeDiscoverer) {
+func (c *Chain) Add(discoverer ...requester.NodeDiscoverer) {
 	c.discoverers = append(c.discoverers, discoverer...)
 }
 
-func (c *Chained) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, error) {
-	uniqueNodes := make(map[peer.ID]peer.ID, 0)
+func (c *Chain) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+	uniqueNodes := make(map[peer.ID]model.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
-		peerIDs, err := discoverer.FindNodes(ctx, job)
+		nodeInfos, err := discoverer.FindNodes(ctx, job)
 		if err != nil {
 			if !c.ignoreErrors {
 				return nil, err
@@ -37,17 +37,19 @@ func (c *Chained) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, erro
 			}
 		}
 		currentNodesCount := len(uniqueNodes)
-		for _, peerID := range peerIDs {
-			uniqueNodes[peerID] = peerID
+		for _, nodeInfo := range nodeInfos {
+			if _, ok := uniqueNodes[nodeInfo.PeerInfo.ID]; !ok {
+				uniqueNodes[nodeInfo.PeerInfo.ID] = nodeInfo
+			}
 		}
 		log.Debug().Msgf("found %d more nodes by %s", len(uniqueNodes)-currentNodesCount, reflect.TypeOf(discoverer))
 	}
-	peerIDs := make([]peer.ID, 0, len(uniqueNodes))
-	for _, peerID := range uniqueNodes {
-		peerIDs = append(peerIDs, peerID)
+	nodeInfos := make([]model.NodeInfo, 0, len(uniqueNodes))
+	for _, nodeInfo := range uniqueNodes {
+		nodeInfos = append(nodeInfos, nodeInfo)
 	}
-	return peerIDs, nil
+	return nodeInfos, nil
 }
 
 // compile-time interface assertions
-var _ requester.NodeDiscoverer = (*Chained)(nil)
+var _ requester.NodeDiscoverer = (*Chain)(nil)
