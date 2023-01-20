@@ -12,7 +12,7 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/didip/tollbooth/v7 v7.0.1
-	github.com/docker/docker v20.10.22+incompatible
+	github.com/docker/docker v20.10.23+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/felixge/httpsnoop v1.0.3
 	github.com/filecoin-project/go-address v1.1.0
