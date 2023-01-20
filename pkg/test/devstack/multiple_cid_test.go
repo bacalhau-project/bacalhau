@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -50,7 +49,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			},
 		},
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(ipfs.DownloadFilenameStdout, "file1\nfile2\n"),
+			scenario.FileEquals(model.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{

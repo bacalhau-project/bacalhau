@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -66,7 +67,7 @@ func newWasmCmd() *cobra.Command {
 func newRunWasmCmd() *cobra.Command {
 	wasmJob := defaultWasmJobSpec()
 	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := ipfs.NewIPFSDownloadSettings()
+	downloadSettings := util.NewDownloadSettings()
 
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
@@ -147,7 +148,7 @@ func runWasm(
 	args []string,
 	wasmJob *model.Job,
 	runtimeSettings *RunTimeSettings,
-	downloadSettings *ipfs.IPFSDownloadSettings,
+	downloadSettings *model.DownloaderSettings,
 ) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
