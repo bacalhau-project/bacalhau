@@ -61,6 +61,7 @@ func ConstructDockerJob( //nolint:funlen
 	minBids int,
 	timeout float64,
 	annotations []string,
+	nodeSelector string,
 	workingDir string,
 	shardingGlobPattern string,
 	shardingBasePath string,
@@ -99,6 +100,11 @@ func ConstructDockerJob( //nolint:funlen
 			strings.Join(unSafeAnnotations, ", "))
 	}
 
+	nodeSelectorRequirements, err := ParseNodeSelector(nodeSelector)
+	if err != nil {
+		return &model.Job{}, err
+	}
+
 	if len(workingDir) > 0 {
 		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
@@ -135,14 +141,15 @@ func ConstructDockerJob( //nolint:funlen
 			Type:    network,
 			Domains: domains,
 		},
-		Timeout:     timeout,
-		Resources:   jobResources,
-		Inputs:      jobInputs,
-		Contexts:    jobContexts,
-		Outputs:     jobOutputs,
-		Annotations: jobAnnotations,
-		Sharding:    jobShardingConfig,
-		DoNotTrack:  doNotTrack,
+		Timeout:       timeout,
+		Resources:     jobResources,
+		Inputs:        jobInputs,
+		Contexts:      jobContexts,
+		Outputs:       jobOutputs,
+		Annotations:   jobAnnotations,
+		NodeSelectors: nodeSelectorRequirements,
+		Sharding:      jobShardingConfig,
+		DoNotTrack:    doNotTrack,
 	}
 
 	// override working dir if provided

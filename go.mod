@@ -89,6 +89,7 @@ require (
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.5.0
 	google.golang.org/grpc v1.52.0
+	k8s.io/apimachinery v0.26.1
 	k8s.io/kubectl v0.26.1
 	modernc.org/sqlite v1.20.2
 	sigs.k8s.io/yaml v1.3.0
@@ -344,7 +345,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.3.0 // indirect
 	k8s.io/api v0.26.1 // indirect
-	k8s.io/apimachinery v0.26.1 // indirect
 	k8s.io/client-go v0.26.1 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect

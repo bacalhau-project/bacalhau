@@ -12,20 +12,20 @@ import (
 
 type ChainedSuite struct {
 	suite.Suite
-	chain   *Chained
-	peerID1 peer.ID
-	peerID2 peer.ID
-	peerID3 peer.ID
+	chain   *Chain
+	peerID1 model.NodeInfo
+	peerID2 model.NodeInfo
+	peerID3 model.NodeInfo
 }
 
 func (s *ChainedSuite) SetupSuite() {
-	s.peerID1 = peer.ID("peerID1")
-	s.peerID2 = peer.ID("peerID2")
-	s.peerID3 = peer.ID("peerID3")
+	s.peerID1 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID1")}}
+	s.peerID2 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID2")}}
+	s.peerID3 = model.NodeInfo{PeerInfo: peer.AddrInfo{ID: peer.ID("peerID3")}}
 }
 
 func (s *ChainedSuite) SetupTest() {
-	s.chain = NewChained(false) // don't ignore errors
+	s.chain = NewChain(false) // don't ignore errors
 }
 
 func TestChainedSuite(t *testing.T) {
@@ -39,7 +39,7 @@ func (s *ChainedSuite) TestFindNodes() {
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]peer.ID{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestFindNodes_Overlap() {
@@ -48,7 +48,7 @@ func (s *ChainedSuite) TestFindNodes_Overlap() {
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]peer.ID{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 func (s *ChainedSuite) TestHandle_Error() {
@@ -68,21 +68,21 @@ func (s *ChainedSuite) TestHandle_IgnoreError() {
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
-	s.ElementsMatch([]peer.ID{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
+	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
 }
 
 // node discoverer that always returns the same set of nodes
 type fixedDiscoverer struct {
-	peerIDs []peer.ID
+	peerIDs []model.NodeInfo
 }
 
-func newFixedDiscoverer(peerIDs ...peer.ID) *fixedDiscoverer {
+func newFixedDiscoverer(peerIDs ...model.NodeInfo) *fixedDiscoverer {
 	return &fixedDiscoverer{
 		peerIDs: peerIDs,
 	}
 }
 
-func (f *fixedDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, error) {
+func (f *fixedDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	return f.peerIDs, nil
 }
 
@@ -93,6 +93,6 @@ func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
 }
 
-func (b *badDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, error) {
+func (b *badDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }

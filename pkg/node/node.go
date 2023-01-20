@@ -40,6 +40,7 @@ type NodeConfig struct {
 	SimulatorNodeID      string
 	IsRequesterNode      bool
 	IsComputeNode        bool
+	Labels               map[string]string
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -190,6 +191,7 @@ func NewNode(
 			ctx,
 			config.CleanupManager,
 			config.Host,
+			config.Labels,
 			apiServer,
 			config.ComputeConfig,
 			config.SimulatorNodeID,
