@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -294,26 +293,14 @@ func (e *Executor) RunShard(
 	}
 
 	log.Ctx(ctx).Debug().Msg("Capturing stdout/stderr for container")
-	cmd := exec.CommandContext(ctx, "docker", "logs", "-f", jobContainer.ID) //nolint:gosec // not user input
-	stdoutPipe, stdoutErr := cmd.StdoutPipe()
-	stderrPipe, stderrErr := cmd.StderrPipe()
-	startErr := cmd.Start()
-
-	defer func() {
-		// Wait will get called once WriteJobResults has consumed all that it
-		// wants to (i.e. it has returned), at which point it will close pipes
-		err := cmd.Wait()
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("logs process failed")
-		}
-	}()
+	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(ctx, e.Client, jobContainer.ID)
 
 	return executor.WriteJobResults(
 		jobResultsDir,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),
-		multierr.Combine(containerError, startErr, stdoutErr, stderrErr),
+		multierr.Combine(containerError, logsErr),
 	)
 }
 

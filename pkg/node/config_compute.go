@@ -12,17 +12,21 @@ import (
 type ComputeConfigParams struct {
 	// Capacity config
 	TotalResourceLimits          model.ResourceUsageData
+	QueueResourceLimits          model.ResourceUsageData
 	JobResourceLimits            model.ResourceUsageData
 	DefaultJobResourceLimits     model.ResourceUsageData
 	PhysicalResourcesProvider    capacity.Provider
-	OverCommitResourcesFactor    float64
 	IgnorePhysicalResourceLimits bool
+
+	ExecutorBufferBackoffDuration time.Duration
 
 	// Timeout config
 	JobNegotiationTimeout      time.Duration
 	MinJobExecutionTimeout     time.Duration
 	MaxJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
+
+	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
@@ -39,10 +43,13 @@ type ComputeConfigParams struct {
 type ComputeConfig struct {
 	// Capacity config
 	TotalResourceLimits          model.ResourceUsageData
+	QueueResourceLimits          model.ResourceUsageData
 	JobResourceLimits            model.ResourceUsageData
 	DefaultJobResourceLimits     model.ResourceUsageData
-	OverCommitResourcesFactor    float64
 	IgnorePhysicalResourceLimits bool
+
+	// How long the buffer would backoff before polling the queue again for new jobs
+	ExecutorBufferBackoffDuration time.Duration
 
 	// JobNegotiationTimeout default timeout value to hold a bid for a job
 	JobNegotiationTimeout time.Duration
@@ -55,6 +62,10 @@ type ComputeConfig struct {
 	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
 	// no timeout requirement defined.
 	DefaultJobExecutionTimeout time.Duration
+
+	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
+	// check.
+	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
 	JobSelectionPolicy model.JobSelectionPolicy
@@ -98,6 +109,9 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	if params.NodeInfoPublisherInterval == 0 {
 		params.NodeInfoPublisherInterval = DefaultComputeConfig.NodeInfoPublisherInterval
 	}
+	if params.ExecutorBufferBackoffDuration == 0 {
+		params.ExecutorBufferBackoffDuration = DefaultComputeConfig.ExecutorBufferBackoffDuration
+	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
@@ -118,25 +132,30 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		Intersect(DefaultComputeConfig.JobResourceLimits).
 		Intersect(totalResourceLimits)
 
+	// by default set the queue size to the total resource limits, which allows the node overcommit to double of the total resource limits.
+	// i.e. total resource limits can be busy in running state, and enqueue up to the total resource limits in the queue.
+	if params.QueueResourceLimits.IsZero() {
+		params.QueueResourceLimits = totalResourceLimits
+	}
+
 	// populate default job resource limits with default values and job resource limits if not set
 	defaultJobResourceLimits := params.DefaultJobResourceLimits.
 		Intersect(DefaultComputeConfig.DefaultJobResourceLimits)
 
-	if params.OverCommitResourcesFactor == 0 {
-		params.OverCommitResourcesFactor = DefaultComputeConfig.OverCommitResourcesFactor
-	}
-
 	config = ComputeConfig{
-		TotalResourceLimits:          totalResourceLimits,
-		JobResourceLimits:            jobResourceLimits,
-		DefaultJobResourceLimits:     defaultJobResourceLimits,
-		OverCommitResourcesFactor:    params.OverCommitResourcesFactor,
-		IgnorePhysicalResourceLimits: params.IgnorePhysicalResourceLimits,
+		TotalResourceLimits:           totalResourceLimits,
+		QueueResourceLimits:           params.QueueResourceLimits,
+		JobResourceLimits:             jobResourceLimits,
+		DefaultJobResourceLimits:      defaultJobResourceLimits,
+		IgnorePhysicalResourceLimits:  params.IgnorePhysicalResourceLimits,
+		ExecutorBufferBackoffDuration: params.ExecutorBufferBackoffDuration,
 
 		JobNegotiationTimeout:      params.JobNegotiationTimeout,
 		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
 		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
 		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
+
+		JobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
@@ -164,6 +183,12 @@ func validateConfig(config ComputeConfig, physicalResources model.ResourceUsageD
 
 	if !config.JobResourceLimits.LessThanEq(config.TotalResourceLimits) {
 		err = fmt.Errorf("job resource limits %+v exceed total resource limits %+v", config.JobResourceLimits, config.TotalResourceLimits)
+		return
+	}
+
+	if !config.JobResourceLimits.LessThanEq(config.QueueResourceLimits) {
+		err = fmt.Errorf("job resource limits %+v exceed queue size limits %+v, which will prevent processing the job",
+			config.JobResourceLimits, config.QueueResourceLimits)
 		return
 	}
 
