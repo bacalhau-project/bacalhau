@@ -1,11 +1,14 @@
 package bidstrategy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
@@ -42,12 +45,16 @@ func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request BidStra
 	cmd := exec.Command("bash", "-c", s.command) //nolint:gosec
 	cmd.Env = []string{
 		"BACALHAU_JOB_SELECTION_PROBE_DATA=" + string(jsonData),
+		"PATH=" + os.Getenv("PATH"),
 	}
 	cmd.Stdin = strings.NewReader(string(jsonData))
+	buf := bytes.Buffer{}
+	cmd.Stderr = &buf
 	err = cmd.Run()
 	if err != nil {
 		// we ignore this error because it might be the script exiting 1 on purpose
-		log.Ctx(ctx).Debug().Msgf("We got an error back from a job selection probe exec: %s %s", s.command, err.Error())
+		logger.LogStream(ctx, &buf)
+		log.Ctx(ctx).Debug().Err(err).Str("Command", s.command).Msg("We got an error back from a job selection probe exec")
 	}
 
 	exitCode := cmd.ProcessState.ExitCode()

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
@@ -33,20 +34,20 @@ func TestExecutorTestSuite(t *testing.T) {
 	suite.Run(t, new(ExecutorTestSuite))
 }
 
-func (suite *ExecutorTestSuite) SetupTest() {
-	docker.MustHaveDocker(suite.T())
+func (s *ExecutorTestSuite) SetupTest() {
+	docker.MustHaveDocker(s.T())
 
 	var err error
-	suite.cm = system.NewCleanupManager()
-	suite.T().Cleanup(suite.cm.Cleanup)
+	s.cm = system.NewCleanupManager()
+	s.T().Cleanup(s.cm.Cleanup)
 
-	suite.executor, err = NewExecutor(
+	s.executor, err = NewExecutor(
 		context.Background(),
-		suite.cm,
+		s.cm,
 		"bacalhau-executor-unittest",
 		storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{}),
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Path))
@@ -59,28 +60,28 @@ func (suite *ExecutorTestSuite) SetupTest() {
 	// the "docker0" interface.
 	var gateway net.IP
 	if runtime.GOOS == "linux" {
-		gateway, err = docker.HostGatewayIP(context.Background(), suite.executor.Client)
-		require.NoError(suite.T(), err)
+		gateway, err = docker.HostGatewayIP(context.Background(), s.executor.Client)
+		require.NoError(s.T(), err)
 	} else {
 		gateway = net.ParseIP("127.0.0.1")
 	}
 
 	serverAddr := net.TCPAddr{IP: gateway, Port: 0}
 	listener, err := net.Listen("tcp", serverAddr.String())
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	// Don't need to close the listener as it'll be closed by the server.
 
-	suite.server = &http.Server{
+	s.server = &http.Server{
 		Addr:    listener.Addr().String(),
 		Handler: http.HandlerFunc(handler),
 	}
-	suite.cm.RegisterCallback(suite.server.Close)
-	go suite.server.Serve(listener)
+	s.cm.RegisterCallback(s.server.Close)
+	go s.server.Serve(listener)
 }
 
-func (suite *ExecutorTestSuite) containerHttpURL() *url.URL {
-	url, err := url.Parse("http://" + suite.server.Addr)
-	require.NoError(suite.T(), err)
+func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
+	url, err := url.Parse("http://" + s.server.Addr)
+	require.NoError(s.T(), err)
 
 	// On Mac/Windows, we are within a VM and hence we need to route to the
 	// host. On Linux we are not, so localhost should work.
@@ -89,22 +90,26 @@ func (suite *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (suite *ExecutorTestSuite) curlTask() model.JobSpecDocker {
+func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
 	return model.JobSpecDocker{
 		Image:      "curlimages/curl",
-		Entrypoint: []string{"curl", "--fail-with-body", suite.containerHttpURL().JoinPath("hello.txt").String()},
+		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
 }
 
-func (suite *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
-	result := suite.T().TempDir()
-	j := &model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
-	shard := model.JobShard{Job: j, Index: 0}
-	return suite.executor.RunShard(context.Background(), shard, result)
+func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
+	return s.runJobWithContext(context.Background(), spec)
 }
 
-func (suite *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {
-	runnerOutput, runErr := suite.runJob(spec)
+func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec) (*model.RunCommandResult, error) {
+	result := s.T().TempDir()
+	j := &model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
+	shard := model.JobShard{Job: j, Index: 0}
+	return s.executor.RunShard(ctx, shard, result)
+}
+
+func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {
+	runnerOutput, runErr := s.runJob(spec)
 	return runnerOutput.STDOUT, runErr
 }
 
@@ -113,15 +118,15 @@ const (
 	MEMORY_LIMIT = "100mb"
 )
 
-func (suite *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
+func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	if runtime.GOOS == "windows" {
-		suite.T().Skip("Resource limits don't apply to containers running on Windows")
+		s.T().Skip("Resource limits don't apply to containers running on Windows")
 	}
 
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result, err := suite.runJobGetStdout(model.Spec{
+	result, err := s.runJobGetStdout(model.Spec{
 		Engine: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
@@ -136,10 +141,10 @@ func (suite *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	values := strings.Fields(result)
 
 	numerator, err := strconv.Atoi(values[0])
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	denominator, err := strconv.Atoi(values[1])
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	var containerCPU float64 = 0
 
@@ -147,18 +152,18 @@ func (suite *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(suite.T(), capacity.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(s.T(), capacity.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
-func (suite *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
+func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	if runtime.GOOS == "windows" {
-		suite.T().Skip("Resource limits don't apply to containers running on Windows")
+		s.T().Skip("Resource limits don't apply to containers running on Windows")
 	}
 
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result, err := suite.runJobGetStdout(model.Spec{
+	result, err := s.runJobGetStdout(model.Spec{
 		Engine: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
@@ -169,88 +174,88 @@ func (suite *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
 		},
 	})
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), capacity.ConvertBytesString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), capacity.ConvertBytesString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingFull() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
+	result, err := s.runJob(model.Spec{
 		Engine:  model.EngineDocker,
 		Network: model.NetworkConfig{Type: model.NetworkFull},
-		Docker:  suite.curlTask(),
+		Docker:  s.curlTask(),
 	})
-	require.NoError(suite.T(), err, result.STDERR)
-	require.Zero(suite.T(), result.ExitCode, result.STDERR)
-	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+	require.NoError(s.T(), err, result.STDERR)
+	require.Zero(s.T(), result.ExitCode, result.STDERR)
+	require.Equal(s.T(), "/hello.txt", result.STDOUT)
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingNone() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
+	result, err := s.runJob(model.Spec{
 		Engine:  model.EngineDocker,
 		Network: model.NetworkConfig{Type: model.NetworkNone},
-		Docker:  suite.curlTask(),
+		Docker:  s.curlTask(),
 	})
-	require.NoError(suite.T(), err)
-	require.Empty(suite.T(), result.STDOUT)
-	require.NotEmpty(suite.T(), result.STDERR)
-	require.NotZero(suite.T(), result.ExitCode)
+	require.NoError(s.T(), err)
+	require.Empty(s.T(), result.STDOUT)
+	require.NotEmpty(s.T(), result.STDERR)
+	require.NotZero(s.T(), result.ExitCode)
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingHTTP() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
+	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
-			Domains: []string{suite.containerHttpURL().Hostname()},
+			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: suite.curlTask(),
+		Docker: s.curlTask(),
 	})
-	require.NoError(suite.T(), err, result.STDERR)
-	require.Zero(suite.T(), result.ExitCode, result.STDERR)
-	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+	require.NoError(s.T(), err, result.STDERR)
+	require.Zero(s.T(), result.ExitCode, result.STDERR)
+	require.Equal(s.T(), "/hello.txt", result.STDOUT)
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
+	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type: model.NetworkHTTP,
 			Domains: []string{
-				suite.containerHttpURL().Hostname(),
+				s.containerHttpURL().Hostname(),
 				"bacalhau.org",
 			},
 		},
-		Docker: suite.curlTask(),
+		Docker: s.curlTask(),
 	})
-	require.NoError(suite.T(), err, result.STDERR)
-	require.Zero(suite.T(), result.ExitCode, result.STDERR)
-	require.Equal(suite.T(), "/hello.txt", result.STDOUT)
+	require.NoError(s.T(), err, result.STDERR)
+	require.Zero(s.T(), result.ExitCode, result.STDERR)
+	require.Equal(s.T(), "/hello.txt", result.STDOUT)
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
+	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{"bacalhau.org"},
 		},
-		Docker: suite.curlTask(),
+		Docker: s.curlTask(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
-	require.NoError(suite.T(), err)
-	require.NotZero(suite.T(), result.ExitCode)
-	require.Contains(suite.T(), result.STDOUT, "ERROR: The requested URL could not be retrieved")
+	require.NoError(s.T(), err)
+	require.NotZero(s.T(), result.ExitCode)
+	require.Contains(s.T(), result.STDOUT, "ERROR: The requested URL could not be retrieved")
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
-	result, err := suite.runJob(model.Spec{
+func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
+	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
-			Domains: []string{suite.containerHttpURL().Hostname()},
+			Domains: []string{s.containerHttpURL().Hostname()},
 		},
 		Docker: model.JobSpecDocker{
 			Image:      "curlimages/curl",
@@ -258,23 +263,40 @@ func (suite *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 		},
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
-	require.NoError(suite.T(), err)
-	require.NotZero(suite.T(), result.ExitCode)
-	require.Empty(suite.T(), result.STDOUT)
+	require.NoError(s.T(), err)
+	require.NotZero(s.T(), result.ExitCode)
+	require.Empty(s.T(), result.STDOUT)
 }
 
-func (suite *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
-	suite.server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(r.Header.Get("X-Bacalhau-Job-ID")))
+func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
+	s.server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(r.Header.Get("X-Bacalhau-Job-ID")))
+		s.Require().NoError(err)
 	})
-	result, err := suite.runJob(model.Spec{
+	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
-			Domains: []string{suite.containerHttpURL().Hostname()},
+			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: suite.curlTask(),
+		Docker: s.curlTask(),
 	})
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), "test", result.STDOUT, result.STDOUT)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "test", result.STDOUT, result.STDOUT)
+}
+
+func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
+	expected := "message after sleep"
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := s.runJobWithContext(ctx, model.Spec{
+		Engine: model.EngineDocker,
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
+		},
+	})
+	s.ErrorIs(err, context.DeadlineExceeded)
+	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
 }

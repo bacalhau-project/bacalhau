@@ -9,13 +9,13 @@ import (
 )
 
 // debug godoc
-// @ID      apiServer/debug
+// @ID      pkg/requester/publicapi/debug
 // @Summary Returns debug information on what the current node is doing.
 // @Tags    Health
 // @Produce json
 // @Success 200 {object} string
 // @Failure 500 {object} string
-// @Router  /debug [get]
+// @Router  /requester/debug [get]
 func (s *RequesterAPIServer) debug(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/debug")
 	defer span.End()

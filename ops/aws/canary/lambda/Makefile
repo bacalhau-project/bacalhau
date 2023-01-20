@@ -2,6 +2,7 @@
 all: update build
 
 TARGET_COMMIT ?= $(shell git describe --tags --abbrev=0)
+TEST_BUILD_TAGS ?= unit,integration
 
 .PHONY: update
 update:
@@ -22,11 +23,15 @@ build: ${BIN_TARGETS}
 
 
 .PHONY: test
-test: unittests.xml
+test: TEST_BUILD_TAGS=unit
+test: tests.xml
 
-unittests.xml: $(shell find ./pkg ./cmd -type f)
-	gotestsum --junitfile $@ -- -timeout 300s ./...
+.PHONY: integration-test
+integration-test: TEST_BUILD_TAGS=integration
+integration-test: tests.xml
 
+tests.xml: $(shell find ./pkg ./cmd -type f)
+	gotestsum --junitfile $@ -- -timeout 300s --tags=$(TEST_BUILD_TAGS) ./...
 
 .PHONY: clean
 clean:
