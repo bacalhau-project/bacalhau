@@ -336,6 +336,25 @@ definitions:
       Requester:
         $ref: '#/definitions/model.JobRequester'
     type: object
+  model.LabelSelectorRequirement:
+    properties:
+      Key:
+        description: key is the label key that the selector applies to.
+        type: string
+      Operator:
+        description: |-
+          operator represents a key's relationship to a set of values.
+          Valid operators are In, NotIn, Exists and DoesNotExist.
+        type: string
+      Values:
+        description: |-
+          values is an array of string values. If the operator is In or NotIn,
+          the values array must be non-empty. If the operator is Exists or DoesNotExist,
+          the values array must be empty. This array is replaced during a strategic
+        items:
+          type: string
+        type: array
+    type: object
   model.Metadata:
     properties:
       ClientID:
@@ -440,6 +459,12 @@ definitions:
       Network:
         $ref: '#/definitions/model.NetworkConfig'
         description: The type of networking access that the job needs
+      NodeSelectors:
+        description: NodeSelectors is a selector which must be true for the compute
+          node to run this job.
+        items:
+          $ref: '#/definitions/model.LabelSelectorRequirement'
+        type: array
       Publisher:
         description: there can be multiple publishers for the job
         type: integer
