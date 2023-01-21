@@ -189,8 +189,8 @@ func NewRequesterNode(
 
 	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
 		DelegatePubSub: libp2p2JobEventPubSub,
-		MaxBufferSize:  32 * 1024,           //nolint:gomnd
-		MaxBufferAge:   1 * time.Nanosecond, // increase this once we move to an external job storage
+		MaxBufferSize:  1, //nolint:gomnd // increase this once we move to an external job storage
+		MaxBufferAge:   1 * time.Minute,
 	})
 
 	// Register event handlers
