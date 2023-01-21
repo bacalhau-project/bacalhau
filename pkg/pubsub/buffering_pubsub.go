@@ -83,7 +83,8 @@ func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
 	p.currentBuffer.Payloads = append(p.currentBuffer.Payloads, payload...)
 
 	if p.currentBuffer.Size() >= p.maxBufferSize || time.Since(p.oldestMessageTime) > p.maxBufferAge {
-		err = p.flushBuffer(ctx)
+		go p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
+		p.currentBuffer = BufferingEnvelope{} // reset the buffer
 	}
 
 	return err
@@ -147,7 +148,8 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 		if p.currentBuffer.Size() > 0 {
 			p.flushMutex.Lock()
 			defer p.flushMutex.Unlock()
-			err = p.flushBuffer(ctx)
+			p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
+			p.currentBuffer = BufferingEnvelope{} // reset the buffer
 		}
 	})
 	if err != nil {
@@ -158,15 +160,16 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 }
 
 // flush the buffer to the delegate pubsub
-func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context) error {
+func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context, envelope BufferingEnvelope, oldestMessageTime time.Time) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
 	defer span.End()
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",
-		time.Since(p.oldestMessageTime), len(p.currentBuffer.Offsets), p.currentBuffer.Size())
-	err := p.delegatePubSub.Publish(ctx, p.currentBuffer)
-	p.currentBuffer = BufferingEnvelope{} // reset the buffer
-	return err
+		time.Since(oldestMessageTime), len(envelope.Offsets), envelope.Size())
+	err := p.delegatePubSub.Publish(ctx, envelope)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to publish buffered messages")
+	}
 }
 
 func (p *BufferingPubSub[T]) antiStarvationTask() {
@@ -180,10 +183,8 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 				func() {
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()
-					err := p.flushBuffer(ctx)
-					if err != nil {
-						log.Ctx(ctx).Error().Err(err).Msg("failed to flush buffer")
-					}
+					go p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
+					p.currentBuffer = BufferingEnvelope{} // reset the buffer
 				}()
 			}
 		case <-p.antiStarvationStop:
