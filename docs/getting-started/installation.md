@@ -18,7 +18,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 :::tip
 
-Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
+Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases/latest) and extract `bacalhau.exe` to anywhere that is on the PATH.
 
 :::
 
