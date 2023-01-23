@@ -3,6 +3,8 @@ package bidstrategy
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -11,24 +13,45 @@ import (
 type TimeoutStrategyParams struct {
 	MaxJobExecutionTimeout time.Duration
 	MinJobExecutionTimeout time.Duration
+
+	JobExecutionTimeoutClientIDBypassList []string
 }
 
 type TimeoutStrategy struct {
-	maxJobExecutionTimeout time.Duration
-	minJobExecutionTimeout time.Duration
+	maxJobExecutionTimeout                time.Duration
+	minJobExecutionTimeout                time.Duration
+	jobExecutionTimeoutClientIDBypassList []string
 }
 
 func NewTimeoutStrategy(params TimeoutStrategyParams) *TimeoutStrategy {
 	return &TimeoutStrategy{
-		maxJobExecutionTimeout: params.MaxJobExecutionTimeout,
-		minJobExecutionTimeout: params.MinJobExecutionTimeout,
+		maxJobExecutionTimeout:                params.MaxJobExecutionTimeout,
+		minJobExecutionTimeout:                params.MinJobExecutionTimeout,
+		jobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 	}
 }
 
-func (s *TimeoutStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+func (s *TimeoutStrategy) ShouldBid(_ context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	if request.Job.Spec.Timeout <= 0 {
 		return newShouldBidResponse(), nil
 	}
+
+	// Timeout will be multiplied by 1000000000 (time.Second) when it gets converted to a time.Duration (which is an int64 underneath),
+	// so make sure that iit can fit into it.
+	if request.Job.Spec.Timeout > float64(math.MaxInt64/int64(time.Second)) {
+		timeout := strconv.FormatFloat(request.Job.Spec.Timeout, 'f', -1, sixtyFourBitFloat)
+		return BidStrategyResponse{
+			ShouldBid: false,
+			Reason:    fmt.Sprintf("job timeout %s exceeds maximum possible value", timeout),
+		}, nil
+	}
+
+	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
+		if request.Job.Metadata.ClientID == clientID {
+			return newShouldBidResponse(), nil
+		}
+	}
+
 	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
 	if s.maxJobExecutionTimeout > 0 && request.Job.Spec.GetTimeout() > s.maxJobExecutionTimeout {
 		return BidStrategyResponse{
@@ -45,7 +68,8 @@ func (s *TimeoutStrategy) ShouldBid(ctx context.Context, request BidStrategyRequ
 	return newShouldBidResponse(), nil
 }
 
-func (s *TimeoutStrategy) ShouldBidBasedOnUsage(
-	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
+func (s *TimeoutStrategy) ShouldBidBasedOnUsage(context.Context, BidStrategyRequest, model.ResourceUsageData) (BidStrategyResponse, error) {
 	return newShouldBidResponse(), nil
 }
+
+const sixtyFourBitFloat = 64

@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -22,6 +23,8 @@ import (
 // returns the current testing context
 type ServerSuite struct {
 	suite.Suite
+	cleanupManager *system.CleanupManager
+	client         *APIClient
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -33,32 +36,17 @@ func TestServerSuite(t *testing.T) {
 // Before each test
 func (s *ServerSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	s.cleanupManager = system.NewCleanupManager()
+	s.client = setupNodeForTest(s.T(), s.cleanupManager)
 }
 
-func (s *ServerSuite) TestList() {
-	ctx := context.Background()
-	c, cm := SetupRequesterNodeForTests(s.T(), false)
-	defer cm.Cleanup()
-
-	// Should have no jobs initially:
-	jobs, err := c.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
-	require.NoError(s.T(), err)
-	require.Empty(s.T(), jobs)
-
-	// Submit a random job to the node:
-	j := MakeNoopJob()
-
-	_, err = c.Submit(ctx, j, nil)
-	require.NoError(s.T(), err)
-
-	// Should now have one job:
-	jobs, err = c.List(ctx, "", model.IncludeAny, model.ExcludeNone, 10, true, "created_at", true)
-	require.NoError(s.T(), err)
-	require.Len(s.T(), jobs, 1)
+// After each test
+func (s *ServerSuite) TearDownTest() {
+	s.cleanupManager.Cleanup()
 }
 
 func (s *ServerSuite) TestHealthz() {
-	rawHealthData := testEndpoint(s.T(), "/healthz", "FreeSpace")
+	rawHealthData := s.testEndpoint(s.T(), "/healthz", "FreeSpace")
 
 	var healthData types.HealthInfo
 	err := model.JSONUnmarshalWithMax(rawHealthData, &healthData)
@@ -72,20 +60,20 @@ func (s *ServerSuite) TestHealthz() {
 }
 
 func (s *ServerSuite) TestLivez() {
-	_ = testEndpoint(s.T(), "/livez", "OK")
+	_ = s.testEndpoint(s.T(), "/livez", "OK")
 }
 
 // TODO: #240 Should we test for /tmp/ipfs.log in tests?
 // func (s *ServerSuite) TestLogz() {
-// 	_ = testEndpoint(s.T(), "/logz", "OK")
+// 	_ = s.testEndpoint(s.T(), "/logz", "OK")
 // }
 
 func (s *ServerSuite) TestReadyz() {
-	_ = testEndpoint(s.T(), "/readyz", "READY")
+	_ = s.testEndpoint(s.T(), "/readyz", "READY")
 }
 
 func (s *ServerSuite) TestVarz() {
-	rawVarZBody := testEndpoint(s.T(), "/varz", "{")
+	rawVarZBody := s.testEndpoint(s.T(), "/varz", "{")
 
 	var varZ types.VarZ
 	err := model.JSONUnmarshalWithMax(rawVarZBody, &varZ)
@@ -94,18 +82,17 @@ func (s *ServerSuite) TestVarz() {
 }
 
 func (s *ServerSuite) TestTimeout() {
-	config := &APIServerConfig{
+	config := APIServerConfig{
 		RequestHandlerTimeoutByURI: map[string]time.Duration{
 			"/logz": 10 * time.Nanosecond,
 		},
 	}
-	c, cm := SetupRequesterNodeForTestsWithConfig(s.T(), config, false)
-	defer cm.Cleanup()
+	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
 	endpoint := "/logz"
-	res, err := http.Get(c.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI + endpoint)
 	require.NoError(s.T(), err, "Could not get %s endpoint.", endpoint)
-	require.Equal(s.T(), res.StatusCode, http.StatusServiceUnavailable)
+	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
 
 	// validate response body
 	body, err := ioutil.ReadAll(res.Body)
@@ -115,50 +102,54 @@ func (s *ServerSuite) TestTimeout() {
 	defer res.Body.Close()
 }
 func (s *ServerSuite) TestMaxBodyReader() {
-	prev := MaxBytesToReadInBody
-	MaxBytesToReadInBody = 500
-	defer func() {
-		MaxBytesToReadInBody = prev
-	}()
+	config := APIServerConfig{
+		MaxBytesToReadInBody: 500,
+	}
+	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
-	c, cm := SetupRequesterNodeForTests(s.T(), false)
-	defer cm.Cleanup()
-
-	// Due to the rest of the List payload we need MaxBytes minus
+	// Due to the rest of the Version payload we need MaxBytes minus
 	// an amount that accounts for the other data we send
-	maxSizeOfString := int(MaxBytesToReadInBody) - 207
+	payloadSize := int(500) - 16
 	testCases := []struct {
 		name        string
 		size        int
 		expectError bool
 	}{
-		{name: "Max - 1", size: maxSizeOfString - 1, expectError: false},
-		{name: "Max", size: maxSizeOfString, expectError: false},
-		{name: "Max + 1", size: maxSizeOfString + 1, expectError: true},
+		{name: "Max - 1", size: payloadSize - 1, expectError: false},
+		{name: "Max", size: payloadSize, expectError: false},
+		{name: "Max + 1", size: payloadSize + 1, expectError: true},
 	}
 
 	_ = testCases
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			_, _, err := c.Get(context.TODO(), strings.Repeat("a", tc.size))
-			if !strings.Contains(err.Error(), "Job not found") {
-				if tc.expectError {
-					require.Error(s.T(), err, "expected error")
-					require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
-				} else {
-					require.NoError(s.T(), err, "expected no error")
+			request := VersionRequest{
+				ClientID: strings.Repeat("a", tc.size),
+			}
+
+			var res VersionResponse
+			err := s.client.Post(context.Background(), "version", request, &res)
+			if tc.expectError {
+				require.Error(s.T(), err)
+				if !strings.Contains(err.Error(), "Job not found") {
+					if tc.expectError {
+						require.Error(s.T(), err, "expected error")
+						require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
+					} else {
+						require.NoError(s.T(), err, "expected no error")
+					}
 				}
+			} else {
+				s.NoError(err)
 			}
 		})
 	}
 }
 
-func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-	c, cm := SetupRequesterNodeForTests(t, false)
-	defer cm.Cleanup()
+func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
 
-	res, err := http.Get(c.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI + endpoint)
 	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
 	defer res.Body.Close()
 

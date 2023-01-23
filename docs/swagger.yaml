@@ -70,12 +70,6 @@ definitions:
       ClientID:
         description: the id of the client that is submitting the job
         type: string
-      Context:
-        description: |-
-          Optional base64-encoded tar file that will be pinned to IPFS and
-          mounted as storage for the job. Not part of the spec so we don't
-          flood the transport layer with it (potentially very large).
-        type: string
       Spec:
         $ref: '#/definitions/model.Spec'
         description: The specification of this job.
@@ -102,6 +96,10 @@ definitions:
         type: integer
       EventTime:
         example: "2022-11-17T13:32:55.756658941Z"
+        type: string
+      ExecutionID:
+        description: compute execution identifier
+        example: 9304c616-291f-41ad-b862-54e133c0149e
         type: string
       JobExecutionPlan:
         $ref: '#/definitions/model.JobExecutionPlan'
@@ -187,6 +185,9 @@ definitions:
     type: object
   model.JobShardState:
     properties:
+      ExecutionId:
+        description: Compute node reference for this shard execution
+        type: string
       NodeId:
         description: which node is running this shard
         type: string
@@ -282,6 +283,9 @@ definitions:
     type: object
   model.JobSpecWasm:
     properties:
+      EntryModule:
+        $ref: '#/definitions/model.StorageSpec'
+        description: The module that contains the WASM code to start running.
       EntryPoint:
         description: |-
           The name of the function in the EntryModule to call to run the job. For
@@ -332,6 +336,25 @@ definitions:
       Requester:
         $ref: '#/definitions/model.JobRequester'
     type: object
+  model.LabelSelectorRequirement:
+    properties:
+      Key:
+        description: key is the label key that the selector applies to.
+        type: string
+      Operator:
+        description: |-
+          operator represents a key's relationship to a set of values.
+          Valid operators are In, NotIn, Exists and DoesNotExist.
+        type: string
+      Values:
+        description: |-
+          values is an array of string values. If the operator is In or NotIn,
+          the values array must be non-empty. If the operator is Exists or DoesNotExist,
+          the values array must be empty. This array is replaced during a strategic
+        items:
+          type: string
+        type: array
+    type: object
   model.Metadata:
     properties:
       ClientID:
@@ -346,6 +369,15 @@ definitions:
         description: The unique global ID of this job in the bacalhau network.
         example: 92d5d4ee-3765-4f78-8353-623f5f26df08
         type: string
+    type: object
+  model.NetworkConfig:
+    properties:
+      Domains:
+        items:
+          type: string
+        type: array
+      Type:
+        type: integer
     type: object
   model.PublishedResult:
     properties:
@@ -424,6 +456,15 @@ definitions:
         description: how will this job be executed by nodes on the network
       Language:
         $ref: '#/definitions/model.JobSpecLanguage'
+      Network:
+        $ref: '#/definitions/model.NetworkConfig'
+        description: The type of networking access that the job needs
+      NodeSelectors:
+        description: NodeSelectors is a selector which must be true for the compute
+          node to run this job.
+        items:
+          $ref: '#/definitions/model.LabelSelectorRequirement'
+        type: array
       Publisher:
         description: there can be multiple publishers for the job
         type: integer
@@ -501,6 +542,17 @@ definitions:
         type: boolean
       Result:
         type: boolean
+    type: object
+  publicapi.VersionRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+    type: object
+  publicapi.VersionResponse:
+    properties:
+      build_version_info:
+        $ref: '#/definitions/model.BuildVersionInfo'
     type: object
   publicapi.eventsRequest:
     properties:
@@ -612,17 +664,6 @@ definitions:
       job:
         $ref: '#/definitions/model.Job'
     type: object
-  publicapi.versionRequest:
-    properties:
-      client_id:
-        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
-        type: string
-    type: object
-  publicapi.versionResponse:
-    properties:
-      build_version_info:
-        $ref: '#/definitions/model.BuildVersionInfo'
-    type: object
   types.FreeSpace:
     properties:
       IPFSMount:
@@ -677,7 +718,125 @@ paths:
       summary: Returns debug information on what the current node is doing.
       tags:
       - Health
-  /events:
+  /healthz:
+    get:
+      operationId: apiServer/healthz
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.HealthInfo'
+      tags:
+      - Health
+  /id:
+    get:
+      operationId: apiServer/id
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the id of the host node.
+      tags:
+      - Misc
+  /livez:
+    get:
+      operationId: apiServer/livez
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: TODO
+          schema:
+            type: string
+      tags:
+      - Health
+  /logz:
+    get:
+      operationId: apiServer/logz
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: TODO
+          schema:
+            type: string
+      tags:
+      - Health
+  /peers:
+    get:
+      description: |-
+        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.
+
+        Example response:
+        ```json
+        {
+          "bacalhau-job-event": [
+            "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+            "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+            "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
+            "QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT",
+            "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86"
+          ]
+        }
+        ```
+      operationId: apiServer/peers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the peers connected to the host via the libp2pHost layer.
+      tags:
+      - Misc
+  /readyz:
+    get:
+      operationId: apiServer/readyz
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      tags:
+      - Health
+  /requester/debug:
+    get:
+      operationId: pkg/requester/publicapi/debug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns debug information on what the current node is doing.
+      tags:
+      - Health
+  /requester/events:
     post:
       consumes:
       - application/json
@@ -791,7 +950,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/events
+      operationId: pkg/requester/publicapi/events
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
           you can do the following: (1) submit a dummy job to Bacalhau (or use one
@@ -821,36 +980,7 @@ paths:
         Useful for troubleshooting.
       tags:
       - Job
-  /healthz:
-    get:
-      operationId: apiServer/healthz
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/types.HealthInfo'
-      tags:
-      - Health
-  /id:
-    get:
-      operationId: apiServer/id
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the id of the host node.
-      tags:
-      - Misc
-  /list:
+  /requester/list:
     post:
       consumes:
       - application/json
@@ -1046,7 +1176,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi.list
+      operationId: pkg/requester/publicapi/list
       parameters:
       - description: Set `return_all` to `true` to return all jobs on the network
           (may degrade performance, use with care!).
@@ -1073,25 +1203,13 @@ paths:
       summary: Simply lists jobs.
       tags:
       - Job
-  /livez:
-    get:
-      operationId: apiServer/livez
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: TODO
-          schema:
-            type: string
-      tags:
-      - Health
-  /local_events:
+  /requester/local_events:
     post:
       consumes:
       - application/json
       description: Local events (e.g. Selected, BidAccepted, Verified) are useful
         to track the progress of a job.
-      operationId: pkg/publicapi/localEvents
+      operationId: pkg/requester/publicapi/localEvents
       parameters:
       - description: ' '
         in: body
@@ -1118,67 +1236,7 @@ paths:
         body payload. Useful for troubleshooting.
       tags:
       - Job
-  /logz:
-    get:
-      operationId: apiServer/logz
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: TODO
-          schema:
-            type: string
-      tags:
-      - Health
-  /peers:
-    get:
-      description: |-
-        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.
-
-        Example response:
-        ```json
-        {
-          "bacalhau-job-event": [
-            "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-            "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-            "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
-            "QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT",
-            "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86"
-          ]
-        }
-        ```
-      operationId: apiServer/peers
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              items:
-                type: string
-              type: array
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Returns the peers connected to the host via the transport layer.
-      tags:
-      - Misc
-  /readyz:
-    get:
-      operationId: apiServer/readyz
-      produces:
-      - text/plain
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      tags:
-      - Health
-  /results:
+  /requester/results:
     post:
       consumes:
       - application/json
@@ -1199,7 +1257,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/results
+      operationId: pkg/requester/publicapi/results
       parameters:
       - description: ' '
         in: body
@@ -1225,7 +1283,7 @@ paths:
       summary: Returns the results of the job-id specified in the body payload.
       tags:
       - Job
-  /states:
+  /requester/states:
     post:
       consumes:
       - application/json
@@ -1286,7 +1344,7 @@ paths:
           }
         }
         ```
-      operationId: pkg/publicapi/states
+      operationId: pkg/requester/publicapi/states
       parameters:
       - description: ' '
         in: body
@@ -1312,7 +1370,7 @@ paths:
       summary: Returns the state of the job-id specified in the body payload.
       tags:
       - Job
-  /submit:
+  /requester/submit:
     post:
       consumes:
       - application/json
@@ -1323,7 +1381,7 @@ paths:
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
         `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
-      operationId: pkg/apiServer.submit
+      operationId: pkg/requester/publicapi/submit
       parameters:
       - description: ' '
         in: body
@@ -1376,17 +1434,17 @@ paths:
           you created before), (2) run `bacalhau describe <job-id>` and fetch the
           `ClientID` field.'
         in: body
-        name: versionRequest
+        name: VersionRequest
         required: true
         schema:
-          $ref: '#/definitions/publicapi.versionRequest'
+          $ref: '#/definitions/publicapi.VersionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/publicapi.versionResponse'
+            $ref: '#/definitions/publicapi.VersionResponse'
         "400":
           description: Bad Request
           schema:

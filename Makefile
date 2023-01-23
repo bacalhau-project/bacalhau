@@ -1,8 +1,5 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
 ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
 endif
@@ -108,7 +105,7 @@ endif
 swagger-docs:
 	@echo "Building swagger docs..."
 	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init --parseDependency --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag init --parseDependency --parseInternal --parseDepth 1 --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
 
 ################################################################################
@@ -139,14 +136,24 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 .PHONY: build-ipfs-sidecar-image
 build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
+HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
+HTTP_GATEWAY_TAG ?= ${TAG}
+.PHONY: build-http-gateway-image
+build-http-gateway-image:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
+		pkg/executor/docker/gateway
 
 .PHONY: build-docker-images
-build-docker-images:
-	@echo docker images built
+build-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -161,6 +168,23 @@ dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
 dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
+
+################################################################################
+# Target: images
+################################################################################
+IMAGE_REGEX := 'Image ?(:|=)\s*"[^"]+"'
+FILES_WITH_IMAGES := $(shell grep -Erl ${IMAGE_REGEX} pkg cmd)
+
+docker/.images: ${FILES_WITH_IMAGES}
+	grep -Eroh ${IMAGE_REGEX} $^ | cut -d'"' -f2 | sort | uniq > $@
+
+docker/.pulled: docker/.images
+	- cat $^ | xargs -n1 docker pull
+	touch $@
+
+.PHONY: images
+images: docker/.pulled
+
 ################################################################################
 # Target: clean
 ################################################################################
@@ -169,6 +193,32 @@ clean:
 	${GO} clean
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
+	${RM} docker/.images
+	${RM} docker/.pulled
+
+
+################################################################################
+# Target: schema
+################################################################################
+SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
+SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
+
+.PHONY: schema
+schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
+
+${SCHEMA_DIR}/%.json:
+	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
+	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
+
+################################################################################
+# Target: all_schemas
+################################################################################
+EARLIEST_TAG := v0.3.12
+ALL_TAGS := $(shell git tag -l --contains $$(git rev-parse ${EARLIEST_TAG}) | grep -E 'v\d+\.\d+.\d+')
+ALL_SCHEMAS := $(patsubst %,${SCHEMA_DIR}/%.json,${ALL_TAGS})
+
+.PHONY: all_schemas
+all_schemas: ${ALL_SCHEMAS}
 
 
 ################################################################################
@@ -186,18 +236,18 @@ integration-test:
 
 .PHONY: grc-test
 grc-test:
-	grc go test ./... -v -p 4
+	grc go test ./... -v
 .PHONY: grc-test-short
 grc-test-short:
 	grc go test ./... -test.short -v
 
 .PHONY: test-debug
 test-debug:
-	LOG_LEVEL=debug go test ./... -v -p 4
+	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: grc-test-debug
 grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v -p 4
+	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
@@ -226,19 +276,19 @@ devstack:
 
 .PHONY: devstack-one
 devstack-one:
-	IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --nodes 1
+	IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 
 .PHONY: devstack-100
 devstack-100:
-	go run . devstack --nodes 100
+	go run . devstack --compute-nodes 100
 
 .PHONY: devstack-250
 devstack-250:
-	go run . devstack --nodes 250
+	go run . devstack --compute-nodes 250
 
 .PHONY: devstack-20
 devstack-20:
-	go run . devstack --nodes 20
+	go run . devstack --compute-nodes 20
 
 .PHONY: devstack-noop
 devstack-noop:
@@ -246,7 +296,7 @@ devstack-noop:
 
 .PHONY: devstack-noop-100
 devstack-noop-100:
-	go run . devstack --noop --nodes 100
+	go run . devstack --noop --compute-nodes 100
 
 .PHONY: devstack-race
 devstack-race:
@@ -254,7 +304,7 @@ devstack-race:
 
 .PHONY: devstack-badactor
 devstack-badactor:
-	go run . devstack --bad-actors 1
+	go run . devstack --bad-compute-actors 1
 
 ################################################################################
 # Target: lint
@@ -292,7 +342,7 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: docker/.pulled ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
@@ -312,7 +362,7 @@ coverage-report: coverage/coverage.html
 coverage/coverage.out: $(wildcard coverage/*.coverage)
 	gocovmerge $^ > $@
 
-coverage/coverage.html: coverage/coverage.out coverage/ 
+coverage/coverage.html: coverage/coverage.out coverage/
 	go tool cover -html=$< -o $@
 
 coverage/:

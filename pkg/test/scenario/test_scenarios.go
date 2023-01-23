@@ -1,14 +1,17 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/testdata/wasm/cat"
+	"github.com/filecoin-project/bacalhau/testdata/wasm/csv"
+	"github.com/filecoin-project/bacalhau/testdata/wasm/env"
+	"github.com/filecoin-project/bacalhau/testdata/wasm/noop"
 )
 
 const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = ipfs.DownloadFilenameStdout
+const stdoutString = model.DownloadFilenameStdout
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
 var CatFileToStdout = Scenario{
@@ -16,19 +19,16 @@ var CatFileToStdout = Scenario{
 		helloWorld,
 		simpleMountPath,
 	),
-	Contexts: StoredFile(
-		"../../../testdata/wasm/cat/main.wasm",
-		"/job",
-	),
 	ResultsChecker: ManyChecks(
-		FileEquals(ipfs.DownloadFilenameStderr, ""),
-		FileEquals(ipfs.DownloadFilenameStdout, helloWorld),
+		FileEquals(model.DownloadFilenameStderr, ""),
+		FileEquals(model.DownloadFilenameStdout, helloWorld),
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-			Parameters: []string{simpleMountPath},
+			EntryPoint:  "_start",
+			EntryModule: InlineData(cat.Program()),
+			Parameters:  []string{simpleMountPath},
 		},
 	},
 }
@@ -132,10 +132,6 @@ var AwkFile = Scenario{
 }
 
 var WasmHelloWorld = Scenario{
-	Contexts: StoredFile(
-		"../../../testdata/wasm/noop/main.wasm",
-		"/job",
-	),
 	ResultsChecker: FileEquals(
 		stdoutString,
 		"Hello, world!\n",
@@ -143,17 +139,14 @@ var WasmHelloWorld = Scenario{
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-			Parameters: []string{},
+			EntryPoint:  "_start",
+			EntryModule: InlineData(noop.Program()),
+			Parameters:  []string{},
 		},
 	},
 }
 
 var WasmEnvVars = Scenario{
-	Contexts: StoredFile(
-		"../../../testdata/wasm/env/main.wasm",
-		"/job",
-	),
 	ResultsChecker: FileContains(
 		"stdout",
 		"AWESOME=definitely\nTEST=yes\n",
@@ -162,7 +155,8 @@ var WasmEnvVars = Scenario{
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
+			EntryPoint:  "_start",
+			EntryModule: InlineData(env.Program()),
 			EnvironmentVariables: map[string]string{
 				"TEST":    "yes",
 				"AWESOME": "definitely",
@@ -176,10 +170,6 @@ var WasmCsvTransform = Scenario{
 		"../../../testdata/wasm/csv/inputs",
 		"/inputs",
 	),
-	Contexts: StoredFile(
-		"../../../testdata/wasm/csv/main.wasm",
-		"/job",
-	),
 	ResultsChecker: FileContains(
 		"outputs/parents-children.csv",
 		"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva",
@@ -188,7 +178,8 @@ var WasmCsvTransform = Scenario{
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
+			EntryPoint:  "_start",
+			EntryModule: InlineData(csv.Program()),
 			Parameters: []string{
 				"inputs/horses.csv",
 				"outputs/parents-children.csv",

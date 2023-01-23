@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -31,7 +31,7 @@ var (
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
-			
+
 		# Dry Run: Check the job specification before submitting it to the bacalhau network
 		bacalhau docker run --dry-run ubuntu echo hello
 
@@ -58,8 +58,11 @@ type DockerRunOptions struct {
 	CPU              string
 	Memory           string
 	GPU              string
+	Networking       model.Network
+	NetworkDomains   []string
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
+	NodeSelector     string   // Selector (label query) to filter nodes on which this job can be executed
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -70,7 +73,7 @@ type DockerRunOptions struct {
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
-	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
+	DownloadFlags model.DownloaderSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -96,10 +99,13 @@ func NewDockerRunOptions() *DockerRunOptions {
 		CPU:                "",
 		Memory:             "",
 		GPU:                "",
+		Networking:         model.NetworkNone,
+		NetworkDomains:     []string{},
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		NodeSelector:       "",
+		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
@@ -211,6 +217,14 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		&ODR.GPU, "gpu", ODR.GPU,
 		`Job GPU requirement (e.g. 1, 2, 8).`,
 	)
+	dockerRunCmd.PersistentFlags().Var(
+		NetworkFlag(&ODR.Networking), "network",
+		`Networking capability required by the job`,
+	)
+	dockerRunCmd.PersistentFlags().StringArrayVar(
+		&ODR.NetworkDomains, "domain", ODR.NetworkDomains,
+		`Domain(s) that the job needs to access (for HTTP networking)`,
+	)
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.SkipSyntaxChecking, "skip-syntax-checking", ODR.SkipSyntaxChecking,
 		`Skip having 'shellchecker' verify syntax of the command`,
@@ -229,6 +243,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Labels, "labels", "l", ODR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
+	)
+
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
 	)
 
 	dockerRunCmd.PersistentFlags().StringVar(
@@ -299,7 +318,6 @@ func DockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) (str
 		j,
 		ODR.RunTimeSettings,
 		ODR.DownloadFlags,
-		nil,
 	)
 }
 
@@ -319,8 +337,8 @@ func CreateJob(ctx context.Context,
 		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+	odr.DownloadFlags = model.DownloaderSettings{
+		Timeout:        odr.DownloadFlags.Timeout,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,
 	}
@@ -366,6 +384,8 @@ func CreateJob(ctx context.Context,
 		odr.CPU,
 		odr.Memory,
 		odr.GPU,
+		odr.Networking,
+		odr.NetworkDomains,
 		odr.InputUrls,
 		odr.InputVolumes,
 		odr.OutputVolumes,
@@ -377,6 +397,7 @@ func CreateJob(ctx context.Context,
 		odr.MinBids,
 		odr.Timeout,
 		labels,
+		odr.NodeSelector,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,

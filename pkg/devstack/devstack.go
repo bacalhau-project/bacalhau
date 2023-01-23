@@ -8,28 +8,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"github.com/imdario/mergo"
+	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
 
 type DevStackOptions struct {
-	NumberOfNodes              int    // Number of nodes to start in the cluster
+	NumberOfHybridNodes        int    // Number of nodes to start in the cluster
+	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
+	NumberOfComputeOnlyNodes   int    // Number of nodes to start in the cluster
 	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
@@ -37,7 +37,8 @@ type DevStackOptions struct {
 	LocalNetworkLotus          bool
 	FilecoinUnsealedPath       string
 	EstuaryAPIKey              string
-	SimulatorURL               string // if this is set, we will use the simulator transport
+	SimulatorAddr              string // if this is set, we will use the simulator transport
+	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -52,8 +53,8 @@ func NewDevStackForRunLocal(
 	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	options := DevStackOptions{
-		NumberOfNodes:  count,
-		PublicIPFSMode: true,
+		NumberOfHybridNodes: count,
+		PublicIPFSMode:      true,
 	}
 
 	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -69,7 +70,7 @@ func NewDevStackForRunLocal(
 		cm,
 		options,
 		computeConfig,
-		requesternode.NewDefaultRequesterNodeConfig(),
+		node.NewRequesterConfigWithDefaults(),
 	)
 }
 
@@ -78,7 +79,7 @@ func NewStandardDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 ) (*DevStack, error) {
 	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
@@ -88,7 +89,7 @@ func NewNoopDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 ) (*DevStack, error) {
 	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
@@ -99,8 +100,9 @@ func NewDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeConfig node.ComputeConfig,
-	requesterNodeConfig requesternode.RequesterNodeConfig,
+	requesterNodeConfig node.RequesterConfig,
 	injector node.NodeDependencyInjector,
+	nodeOverrides ...node.NodeConfig,
 ) (*DevStack, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
 	defer span.End()
@@ -108,6 +110,19 @@ func NewDevStack(
 	nodes := []*node.Node{}
 	var lotus *LotusNode
 	var err error
+	var simulatorAddr multiaddr.Multiaddr
+	var simulatorNodeID string
+
+	if options.SimulatorAddr != "" {
+		simulatorAddr, err = multiaddr.NewMultiaddr(options.SimulatorAddr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse simulator address: %w", err)
+		}
+		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract p2p protocoll from simulator address: %w", err)
+		}
+	}
 
 	if options.LocalNetworkLotus {
 		lotus, err = newLotusNode(ctx) //nolint:govet
@@ -122,8 +137,17 @@ func NewDevStack(
 		}
 	}
 
-	for i := 0; i < options.NumberOfNodes; i++ {
-		log.Debug().Msgf(`Creating Node #%d`, i)
+	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
+	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
+	computeNodeCount := options.NumberOfHybridNodes + options.NumberOfComputeOnlyNodes
+
+	if requesterNodeCount == 0 {
+		return nil, fmt.Errorf("at least one requester node is required")
+	}
+	for i := 0; i < totalNodeCount; i++ {
+		isRequesterNode := i < requesterNodeCount
+		isComputeNode := (totalNodeCount - i) <= computeNodeCount
+		log.Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
 		// -------------------------------------
 		// IPFS
@@ -149,75 +173,68 @@ func NewDevStack(
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		// Assign all the ports up front, so that they can't collide
-		var ports []int
-		ports, err = freeport.GetFreePorts(3)
+		var libp2pHost host.Host
+		var libp2pPort int
+		libp2pPeer := []multiaddr.Multiaddr{}
+		if simulatorAddr != nil {
+			libp2pPeer = append(libp2pPeer, simulatorAddr)
+		}
+
+		//////////////////////////////////////
+		// libp2p
+		//////////////////////////////////////
+		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		var useTransport transport.Transport
-
-		var libp2pPort int
-		if options.SimulatorURL == "" {
-			//////////////////////////////////////
-			// libp2p
-			//////////////////////////////////////
-
-			libp2pPort, ports = ports[0], ports[1:]
-			libp2pPeer := []multiaddr.Multiaddr{}
-
-			if i == 0 {
-				if options.Peer != "" {
-					// connect 0'th node to external peer if specified
-					log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-					peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
-					if addrErr != nil {
-						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
-					}
-					libp2pPeer = []multiaddr.Multiaddr{peerAddr}
+		if i == 0 {
+			if options.Peer != "" {
+				// connect 0'th node to external peer if specified
+				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+				if addrErr != nil {
+					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
 				}
-			} else {
-				libp2pPeer, err = nodes[0].Transport.HostAddrs()
-				if err != nil {
-					return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
-				}
-				log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
+				libp2pPeer = append(libp2pPeer, peerAddr)
 			}
-
-			libp2pTransport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
-			if transportErr != nil {
-				return nil, transportErr
-			}
-
-			useTransport = libp2pTransport
 		} else {
-			var simulatorTransport transport.Transport
-			simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
-			if err != nil {
-				return nil, err
+			for _, addrs := range nodes[0].Host.Addrs() {
+				p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
+				if p2pAddrErr != nil {
+					return nil, p2pAddrErr
+				}
+				libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
 			}
-			useTransport = simulatorTransport
+			if err != nil {
+				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+			}
+			log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
+		libp2pHost, err = libp2p.NewHost(libp2pPort)
+		if err != nil {
+			return nil, err
+		}
+		cm.RegisterCallback(func() error {
+			return libp2pHost.Close()
+		})
+
 		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, useTransport.HostID())
+		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 		//////////////////////////////////////
 		// port for API
 		//////////////////////////////////////
-		var apiPort int
+		apiPort := 0
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			apiPort = 20000 + i
-		} else {
-			apiPort, ports = ports[0], ports[1:]
 		}
 
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
-		var metricsPort int
-		metricsPort, _ = ports[0], ports[1:]
+		metricsPort := 0
 
 		//////////////////////////////////////
 		// in-memory datastore
@@ -234,8 +251,8 @@ func NewDevStack(
 
 		// here is where we can parse string based CLI options
 		// into more meaningful model.SimulatorConfig values
-		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadComputeActors)
-		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadRequesterActors)
+		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
+		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
 
 		if isBadComputeActor {
 			computeConfig.SimulatorConfig.IsBadActor = isBadComputeActor
@@ -245,19 +262,36 @@ func NewDevStack(
 			requesterNodeConfig.SimulatorConfig.IsBadActor = isBadRequesterActor
 		}
 
+		// If we are running in a simulator mode, and didn't pass in a node ID, then the first node will be the simulator node
+		if options.SimulatorMode && simulatorAddr == nil {
+			p2pAddr, addrError := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
+			if err != nil {
+				return nil, addrError
+			}
+			simulatorAddr = libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
+			simulatorNodeID = libp2pHost.ID().String()
+		}
+
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
 			LocalDB:              datastore,
-			Transport:            useTransport,
+			Host:                 libp2pHost,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               useTransport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
+			SimulatorNodeID:      simulatorNodeID,
+			IsComputeNode:        isComputeNode,
+			IsRequesterNode:      isRequesterNode,
+			Labels: map[string]string{
+				"name": fmt.Sprintf("node-%d", i),
+				"id":   libp2pHost.ID().String(),
+				"env":  "devstack",
+			},
 		}
 
 		if lotus != nil {
@@ -271,6 +305,16 @@ func NewDevStack(
 			}
 		}
 
+		// allow overriding configs of some nodes
+		if i < len(nodeOverrides) {
+			originalConfig := nodeConfig
+			nodeConfig = nodeOverrides[i]
+			err = mergo.Merge(&nodeConfig, originalConfig)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig, injector)
 		if err != nil {
@@ -278,7 +322,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = useTransport.Start(ctx)
+		err = libp2p.ConnectToPeers(ctx, libp2pHost, libp2pPeer)
 		if err != nil {
 			return nil, err
 		}
@@ -290,16 +334,13 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, n)
-
-		// let's wait a small period to give the api server a chance to spin up
-		// meaning it's port will be in use the next time we spin around this loop
-		// and so hopefully avoid "listen tcp 0.0.0.0:43081: bind: address already in use" errors
-		time.Sleep(time.Millisecond * 100) //nolint:gomnd
 	}
 
 	// only start profiling after we've set everything up!
 	profiler := StartProfiling()
-	cm.RegisterCallback(profiler.Close)
+	if profiler != nil {
+		cm.RegisterCallback(profiler.Close)
+	}
 
 	return &DevStack{
 		Nodes:          nodes,
@@ -340,14 +381,18 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	}
 
 	logString := ""
-	devStackAPIPort := ""
-	devStackAPIHost := "0.0.0.0"
+	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
+	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
 
 	logString += `
 -----------------------------------------
 -----------------------------------------
 `
+
+	requesterOnlyNodes := 0
+	computeOnlyNodes := 0
+	hybridNodes := 0
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
@@ -367,16 +412,18 @@ export BACALHAU_API_PORT_%d=%d`,
 			nodeIndex,
 			swarmAddrrs,
 			nodeIndex,
-			stack.Nodes[nodeIndex].APIServer.Host,
+			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Port,
 		)
 
+		requesterOnlyNodes += boolToInt(node.IsRequesterNode() && !node.IsComputeNode())
+		computeOnlyNodes += boolToInt(node.IsComputeNode() && !node.IsRequesterNode())
+		hybridNodes += boolToInt(node.IsRequesterNode() && node.IsComputeNode())
+
 		// Just setting this to the last one, really doesn't matter
 		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(ctx)
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
-		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
-		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
 	}
 
 	// Just convenience below - print out the last of the nodes information as the global variable
@@ -409,14 +456,21 @@ ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 
 	returnString := fmt.Sprintf(`
 Devstack is ready!
-To use the devstack, run the following commands in your shell: %s`, summaryShellVariablesString)
+No. of requester only nodes: %d
+No. of compute only nodes: %d
+No. of hybrid nodes: %d
+To use the devstack, run the following commands in your shell: %s`,
+		requesterOnlyNodes,
+		computeOnlyNodes,
+		hybridNodes,
+		summaryShellVariablesString)
 	return returnString, nil
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
-		if node.Transport.HostID() == nodeID {
+		if node.Host.ID().String() == nodeID {
 			return node, nil
 		}
 	}
@@ -434,8 +488,14 @@ func (stack *DevStack) IPFSClients() []*ipfs.Client {
 func (stack *DevStack) GetNodeIds() ([]string, error) {
 	var ids []string
 	for _, node := range stack.Nodes {
-		ids = append(ids, node.Transport.HostID())
+		ids = append(ids, node.Host.ID().String())
 	}
-
 	return ids, nil
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

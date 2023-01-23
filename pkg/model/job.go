@@ -5,6 +5,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -152,6 +153,8 @@ type JobNodeState struct {
 type JobShardState struct {
 	// which node is running this shard
 	NodeID string `json:"NodeId,omitempty"`
+	// Compute node reference for this shard execution
+	ExecutionID string `json:"ExecutionId,omitempty"`
 	// what shard is this we are running
 	ShardIndex int `json:"ShardIndex,omitempty"`
 	// what is the state of the shard on this node
@@ -187,6 +190,22 @@ type Deal struct {
 	MinBids int `json:"MinBids,omitempty"`
 }
 
+// LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
+// These are based on labels library from kubernetes package. While we use labels.Requirement to represent the label selector requirements
+// in the command line arguments as the library supports multiple parsing formats, and we also use it when matching selectors to labels
+// as that's what the library expects, labels.Requirements are not serializable, so we need to convert them to LabelSelectorRequirements.
+type LabelSelectorRequirement struct {
+	// key is the label key that the selector applies to.
+	Key string `json:"Key"`
+	// operator represents a key's relationship to a set of values.
+	// Valid operators are In, NotIn, Exists and DoesNotExist.
+	Operator selection.Operator `json:"Operator"`
+	// values is an array of string values. If the operator is In or NotIn,
+	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
+	// the values array must be empty. This array is replaced during a strategic
+	Values []string `json:"Values,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
@@ -205,6 +224,9 @@ type Spec struct {
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
+
+	// The type of networking access that the job needs
+	Network NetworkConfig `json:"Network,omitempty"`
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
@@ -227,6 +249,8 @@ type Spec struct {
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
 
+	// NodeSelectors is a selector which must be true for the compute node to run this job.
+	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
 	Sharding JobShardingConfig `json:"Sharding,omitempty"`
@@ -244,6 +268,26 @@ type Spec struct {
 // Return timeout duration
 func (s *Spec) GetTimeout() time.Duration {
 	return time.Duration(s.Timeout * float64(time.Second))
+}
+
+// Return pointers to all the storage specs in the spec.
+func (s *Spec) AllStorageSpecs() []*StorageSpec {
+	storages := []*StorageSpec{
+		&s.Language.Context,
+		&s.Wasm.EntryModule,
+	}
+
+	for _, collection := range [][]StorageSpec{
+		s.Contexts,
+		s.Inputs,
+		s.Outputs,
+	} {
+		for index := range collection {
+			storages = append(storages, &collection[index])
+		}
+	}
+
+	return storages
 }
 
 // for VM style executors
@@ -276,8 +320,8 @@ type JobSpecLanguage struct {
 
 // Describes a raw WASM job
 type JobSpecWasm struct {
-	// TODO #915: The module that contains the WASM code to start running.
-	// EntryModule StorageSpec `json:"EntryModule,omitempty"`
+	// The module that contains the WASM code to start running.
+	EntryModule StorageSpec `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
@@ -316,6 +360,8 @@ type JobEvent struct {
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
 	ShardIndex int `json:"ShardIndex,omitempty"`
+	// compute execution identifier
+	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event
@@ -359,9 +405,4 @@ type JobCreatePayload struct {
 
 	// The specification of this job.
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty" validate:"optional"`
 }

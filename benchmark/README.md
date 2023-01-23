@@ -13,7 +13,7 @@ make devstack-noop
 
 or to test with *n* number of nodes
 ```bash
-go run . devstack --nodes <n>
+go run . devstack --compute-nodes <n>
 ```
 
 ## Generate Requests
@@ -42,7 +42,7 @@ You also have the following configurations for multiple jobs
 export TOTAL_JOBS=60 # Total number of jobs
 export BATCH_SIZE=10 # No. of jobs to send sequentially as a single hyperfine run
 export CONCURRENCY=2 # No. of concurrent batchs
-export REQUESTER_NODES=2 # No. of requester nodes to call
+export REQUESTER_NODES=1 # No. of requester nodes to call
 ```
 In the above example, we have a total of 60 jobs split across 6 (60/10) separate benchmarks. There can only be 2 concurrent benchamrks at a given time, and both will call 2 separate requester nodes.
 

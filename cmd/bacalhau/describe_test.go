@@ -5,15 +5,11 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -23,13 +19,7 @@ import (
 // functionality from testify - including a T() method which
 // returns the current testing context
 type DescribeSuite struct {
-	suite.Suite
-}
-
-// Before each test
-func (suite *DescribeSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+	BaseSuite
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
@@ -55,34 +45,29 @@ func (suite *DescribeSuite) TestDescribeJob() {
 			func() {
 				var submittedJob *model.Job
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-				defer cm.Cleanup()
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for k := 0; k < n.numOfJobs; k++ {
-						j := publicapi.MakeNoopJob()
+						j := testutils.MakeNoopJob()
 						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-						s, err := c.Submit(ctx, j, nil)
+						s, err := suite.client.Submit(ctx, j)
 						require.NoError(suite.T(), err)
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
 				}
-
-				parsedBasedURI, _ := url.Parse(c.BaseURI)
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				returnedJob := &model.Job{}
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), "describe",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", suite.host,
+					"--api-port", suite.port,
 				)
 				require.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", suite.host,
+					"--api-port", suite.port,
 					submittedJob.Metadata.ID,
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
@@ -97,9 +82,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				// Job Id in the middle
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
-					"--api-host", host,
+					"--api-host", suite.host,
 					submittedJob.Metadata.ID,
-					"--api-port", port,
+					"--api-port", suite.port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
@@ -113,9 +98,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				// Short job id
 				_, out, err = ExecuteTestCobraCommand(suite.T(), "describe",
-					"--api-host", host,
+					"--api-host", suite.host,
 					submittedJob.Metadata.ID[0:model.ShortIDLength],
-					"--api-port", port,
+					"--api-port", suite.port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
@@ -145,21 +130,17 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 		func() {
 			var submittedJob *model.Job
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
-			defer cm.Cleanup()
 
-			j := publicapi.MakeNoopJob()
-			s, err := c.Submit(ctx, j, nil)
+			j := testutils.MakeNoopJob()
+			s, err := suite.client.Submit(ctx, j)
 			require.NoError(suite.T(), err)
 			submittedJob = s // Default to the last job submitted, should be fine?
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			var returnedJob = &model.Job{}
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", host, "--api-port", port, submittedJob.Metadata.ID)
+			args = append(args, "describe", "--api-host", suite.host, "--api-port", suite.port, submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
@@ -205,19 +186,15 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				var submittedJob *model.Job
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-				defer cm.Cleanup()
 
 				for i := 0; i < n.numOfJobs; i++ {
-					j := publicapi.MakeNoopJob()
+					j := testutils.MakeNoopJob()
 					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-					jj, err := c.Submit(ctx, j, nil)
+					jj, err := s.client.Submit(ctx, j)
 					require.Nil(s.T(), err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}
 
-				parsedBasedURI, _ := url.Parse(c.BaseURI)
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				var returnedJob = model.NewJob()
 				var err error
 				var out string
@@ -231,8 +208,8 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				}
 
 				_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", s.host,
+					"--api-port", s.port,
 					jobID,
 				)
 				if tc.describeIDEdgecase == "" {

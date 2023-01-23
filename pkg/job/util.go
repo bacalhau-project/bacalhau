@@ -10,9 +10,22 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
+
+func ParseNodeSelector(nodeSelector string) ([]model.LabelSelectorRequirement, error) {
+	selector := strings.TrimSpace(nodeSelector)
+	if len(selector) == 0 {
+		return []model.LabelSelectorRequirement{}, nil
+	}
+	requirements, err := labels.ParseToRequirements(selector)
+	if err != nil {
+		return []model.LabelSelectorRequirement{}, fmt.Errorf("failed to parse node selector: %w", err)
+	}
+	return model.ToLabelSelectorRequirements(requirements...), nil
+}
 
 func SafeStringStripper(s string) string {
 	rChars := SafeAnnotationRegex()

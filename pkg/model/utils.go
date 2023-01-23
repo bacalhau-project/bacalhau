@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"unsafe"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/yaml"
 )
 
@@ -16,12 +15,9 @@ type KeyString string
 type KeyInt int
 
 const MaxSerializedStringInput = int(10 * datasize.MB)
-const MaxSerializedStringOutput = int(10 * datasize.MB)
 
 // Arbitrarily choosing 1000 jobs to serialize - this is a pretty high
 const MaxNumberOfObjectsToSerialize = 1000
-
-const JSONIndentSpaceNumber = 4
 
 const ShortIDLength = 8
 
@@ -29,33 +25,6 @@ func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)
 	return strings.EqualFold(a, b)
-}
-
-func PrintContextInternals(ctx interface{}, inner bool) {
-	contextValues := reflect.ValueOf(ctx).Elem()
-	contextKeys := reflect.TypeOf(ctx).Elem()
-
-	if !inner {
-		log.Debug().Msgf("\nFields for %s.%s\n", contextKeys.PkgPath(), contextKeys.Name())
-	}
-
-	if contextKeys.Kind() == reflect.Struct {
-		for i := 0; i < contextValues.NumField(); i++ {
-			reflectValue := contextValues.Field(i)
-			reflectValue = reflect.NewAt(reflectValue.Type(), unsafe.Pointer(reflectValue.UnsafeAddr())).Elem()
-
-			reflectField := contextKeys.Field(i)
-
-			if reflectField.Name == "Context" {
-				PrintContextInternals(reflectValue.Interface(), true)
-			} else {
-				log.Debug().Msgf("field name: %+v\n", reflectField.Name)
-				log.Debug().Msgf("value: %+v\n", reflectValue.Interface())
-			}
-		}
-	} else {
-		log.Debug().Msgf("context is empty (int)\n")
-	}
 }
 
 const (
@@ -132,4 +101,28 @@ func ConfirmMaxSliceSize[T any](t T, maxSize int) error {
 
 func GetShardID(jobID string, shardIndex int) string {
 	return fmt.Sprintf("%s:%d", jobID, shardIndex)
+}
+
+func ToLabelSelectorRequirements(requirements ...labels.Requirement) []LabelSelectorRequirement {
+	var labelSelectorRequirements []LabelSelectorRequirement
+	for _, requirement := range requirements {
+		labelSelectorRequirements = append(labelSelectorRequirements, LabelSelectorRequirement{
+			Key:      requirement.Key(),
+			Operator: requirement.Operator(),
+			Values:   requirement.Values().List(),
+		})
+	}
+	return labelSelectorRequirements
+}
+
+func FromLabelSelectorRequirements(requirements ...LabelSelectorRequirement) ([]labels.Requirement, error) {
+	var labelSelectorRequirements []labels.Requirement
+	for _, requirement := range requirements {
+		req, err := labels.NewRequirement(requirement.Key, requirement.Operator, requirement.Values)
+		if err != nil {
+			return nil, err
+		}
+		labelSelectorRequirements = append(labelSelectorRequirements, *req)
+	}
+	return labelSelectorRequirements, nil
 }

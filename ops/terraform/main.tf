@@ -41,6 +41,7 @@ sudo mkdir -p /terraform_node
 ##############################
 
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
+export TERRAFORM_WORKSPACE="${terraform.workspace}"
 export TERRAFORM_NODE_INDEX="${count.index}"
 export TERRAFORM_NODE0_IP="${var.internal_ip_addresses[0]}"
 export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.internal_ip_addresses[1] : ""}"
@@ -58,6 +59,9 @@ export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "t
 export PROMETHEUS_VERSION="${var.prometheus_version}"
 export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
 export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
+export GRAFANA_CLOUD_LOKI_USER="${var.grafana_cloud_loki_user}"
+export GRAFANA_CLOUD_LOKI_ENDPOINT="${var.grafana_cloud_loki_endpoint}"
+export LOKI_VERSION="${var.loki_version}"
 
 ### secrets are installed in the install-node.sh script
 export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
@@ -85,6 +89,14 @@ EOI
 
 sudo tee /terraform_node/start-bacalhau.sh > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/start-bacalhau.sh")}
+EOI
+
+sudo tee /terraform_node/apply-http-allowlist.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/apply-http-allowlist.sh")}
+EOI
+
+sudo tee /terraform_node/http-domain-allowlist.txt > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/http-domain-allowlist.txt")}
 EOI
 
 #########
@@ -131,6 +143,10 @@ EOI
 
 sudo tee /etc/systemd/system/prometheus-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/configs/prometheus-daemon.service")}
+EOI
+
+sudo tee /etc/systemd/system/promtail.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/promtail.service")}
 EOI
 
 ##############################
@@ -284,7 +300,7 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 
   allow {
     protocol = "tcp"
-    // Port 22   - Provides ssh access to the bacalhau server, for debugging 
+    // Port 22   - Provides ssh access to the bacalhau server, for debugging
     ports = ["22"]
   }
 

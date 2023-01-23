@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -91,29 +90,16 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 		return nil, err
 	}
 
-	var downloadSettings *ipfs.IPFSDownloadSettings
-	switch system.GetEnvironment() {
-	case system.EnvironmentProd:
-		downloadSettings = &ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    300,
-			OutputDir:      dir,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		}
-	case system.EnvironmentTest:
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			downloadSettings = &ipfs.IPFSDownloadSettings{
-				TimeoutSecs:    300,
-				OutputDir:      dir,
-				IPFSSwarmAddrs: os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES"),
-			}
-		}
-	case system.EnvironmentDev:
-		log.Warn().Msg("Development environment has no download settings attached")
-	case system.EnvironmentStaging:
-		log.Warn().Msg("Staging environment has no download settings attached")
+	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
+	if IPFSSwarmAddrs == "" {
+		IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	return downloadSettings, nil
+	return &ipfs.IPFSDownloadSettings{
+		TimeoutSecs:    300,
+		OutputDir:      dir,
+		IPFSSwarmAddrs: IPFSSwarmAddrs,
+	}, nil
 }
 
 func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
@@ -137,24 +123,6 @@ func compareOutput(output []byte, expectedOutput string) error {
 		return fmt.Errorf("output mismatch: expected '%v' but got '%v'", expectedOutput, outputStr)
 	}
 	return nil
-}
-
-func osReadDir(root string) ([]string, error) {
-	var files []string
-	f, err := os.Open(root)
-	if err != nil {
-		return files, err
-	}
-	fileInfo, err := f.Readdir(-1)
-	f.Close()
-	if err != nil {
-		return files, err
-	}
-
-	for _, file := range fileInfo {
-		files = append(files, file.Name())
-	}
-	return files, nil
 }
 
 func getClient() *publicapi.APIClient {

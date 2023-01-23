@@ -5,19 +5,14 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,15 +27,13 @@ func TestGetSuite(t *testing.T) {
 // functionality from testify - including a T() method which
 // returns the current testing context
 type GetSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 // Before each test
-func (suite *GetSuite) SetupTest() {
-	testutils.MustHaveDocker(suite.T())
-
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+func (s *GetSuite) SetupTest() {
+	docker.MustHaveDocker(s.T())
+	s.BaseSuite.SetupTest()
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -60,34 +53,34 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
 
 	expected := []string{
-		"/" + ipfs.DownloadVolumesFolderName,
-		"/" + ipfs.DownloadVolumesFolderName + "/data",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/apples",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/apples/file.txt",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/file.txt",
-		"/" + ipfs.DownloadVolumesFolderName + "/outputs",
-		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStderr,
-		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStdout,
-		"/" + ipfs.DownloadShardsFolderName,
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID,
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
-		"/" + ipfs.DownloadCIDsFolderName,
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID,
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
+		"/" + model.DownloadVolumesFolderName,
+		"/" + model.DownloadVolumesFolderName + "/data",
+		"/" + model.DownloadVolumesFolderName + "/data/apples",
+		"/" + model.DownloadVolumesFolderName + "/data/apples/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/data/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/outputs",
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
+		"/" + model.DownloadShardsFolderName,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
+		"/" + model.DownloadCIDsFolderName,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
@@ -122,24 +115,20 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 	}
 }
 
-func getDockerRunArgs(
-	t *testing.T,
-	stack *devstack.DevStack,
-	extraArgs []string,
-) []string {
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(t, err)
+func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
 	args := []string{
 		"docker", "run",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.host,
+		"--api-port", s.port,
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"-o", "data:/data",
 		"--wait",
 	}
 	args = append(args, extraArgs...)
 	args = append(args,
-		"ubuntu",
+		"ubuntu:latest",
 		"--",
 		"bash", "-c",
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",
@@ -151,23 +140,17 @@ func getDockerRunArgs(
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--download",
 	})
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].HostID
+	hostID := s.node.Host.ID().String()
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID)
@@ -177,16 +160,10 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // this tests that when we do docker run with an --output-dir
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--download",
 		"--output-dir", tempDir,
@@ -194,7 +171,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
-	hostID := stack.Nodes[0].HostID
+	hostID := s.node.Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID)
 }
@@ -203,28 +180,22 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
-	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(s.T(), err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].HostID
+	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
@@ -238,29 +209,24 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
-		node.NewComputeConfigWithDefaults(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(ctx)
 	require.NoError(s.T(), err)
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
-	args := getDockerRunArgs(s.T(), stack, []string{
+	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
-	hostID := stack.Nodes[0].HostID
+	hostID := s.node.Host.ID().String()
 
 	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
-		"--api-host", stack.Nodes[0].APIServer.Host,
-		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"--output-dir", tempDir,
 		jobID,

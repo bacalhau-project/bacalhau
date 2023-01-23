@@ -77,7 +77,7 @@ func Reinterpret[T any](node datamodel.Node, schema *Schema) (*T, error) {
 	schemaType := schema.GetSchemaType((*T)(nil))
 
 	var buf bytes.Buffer
-	var val *T = new(T)
+	var val = new(T)
 	err := json.Encode(node, &buf)
 	if err != nil {
 		return val, err

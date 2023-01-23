@@ -6,17 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -24,19 +19,11 @@ import (
 )
 
 type CreateSuite struct {
-	suite.Suite
+	BaseSuite
 }
 
 func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
-}
-
-// before each test
-func (s *CreateSuite) SetupTest() {
-	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
-
-	Fatal = FakeFatalErrorHandler
 }
 
 func (s *CreateSuite) TestCreateGenericSubmit() {
@@ -47,66 +34,53 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
+	// TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network
 	for i, tc := range tests {
 		testFiles := []string{
-			"../../testdata/job.json",
-			"../../testdata/job.yaml",
-			"../../testdata/job-url.yaml",
+			"../../testdata/job-noop.json",
+			"../../testdata/job-noop.yaml",
+			"../../testdata/job-noop-url.yaml",
 			"../../pkg/model/tasks/docker_task.json",
 			"../../pkg/model/tasks/task_with_config.json",
-			"../../pkg/model/tasks/wasm_task.json",
+			//"../../pkg/model/tasks/wasm_task.json",
 		}
 
 		for _, testFile := range testFiles {
 			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
 			s.Run(name, func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-				defer cm.Cleanup()
 
-				parsedBasedURI, err := url.Parse(c.BaseURI)
-				require.NoError(s.T(), err)
-
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
-					"--api-host", host,
-					"--api-port", port,
+					"--api-host", s.host,
+					"--api-port", s.port,
 					testFile,
 				)
 
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+				testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 			})
 		}
 	}
 }
-
 func (s *CreateSuite) TestCreateFromStdin() {
-	testFile := "../../testdata/job.yaml"
-
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
-	defer cm.Cleanup()
-
-	parsedBasedURI, err := url.Parse(c.BaseURI)
-	require.NoError(s.T(), err)
+	testFile := "../../testdata/job-noop.yaml"
 
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
-		"--api-host", host,
-		"--api-port", port,
+		"--api-host", s.host,
+		"--api-port", s.port,
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
-	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), c, out)
-	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
-		"--api-host", host,
-		"--api-port", port,
+	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
+	_, _, err = ExecuteTestCobraCommand(s.T(), "describe",
+		"--api-host", s.host,
+		"--api-port", s.port,
 		job.Metadata.ID,
 	)
 
@@ -156,6 +130,8 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
+	Fatal = FakeFatalErrorHandler
+
 	type commandReturn struct {
 		c   *cobra.Command
 		out string

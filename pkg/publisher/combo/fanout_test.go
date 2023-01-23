@@ -24,11 +24,13 @@ var uninstalledPublisher = mockPublisher{
 
 func TestFanoutPublisher(t *testing.T) {
 	runTestCases(t, map[string]comboTestCase{
-		"single publsiher":      {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
-		"takes first value":     {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
-		"waits for installed":   {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
-		"noone is installed":    {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
-		"waits for good value":  {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
-		"returns error for all": {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
+		"single publisher":                 {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
+		"takes first value":                {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
+		"waits for installed":              {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
+		"noone is installed":               {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
+		"waits for good value":             {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
+		"returns error for all":            {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
+		"waits for highest priority value": {NewPrioritizedFanoutPublisher(time.Millisecond*100, &sleepyPublisher, &healthyPublisher), sleepyPublisher},
+		"only waits for max time":          {NewPrioritizedFanoutPublisher(time.Millisecond*20, &sleepyPublisher, &healthyPublisher), healthyPublisher},
 	})
 }

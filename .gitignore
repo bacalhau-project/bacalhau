@@ -1,4 +1,5 @@
 outputs
+vendor
 data
 .cache
 node_modules
@@ -44,5 +45,8 @@ output_dir
 experimental/*
 .idea/
 job-*
+!testdata/job-*
 coverage/
 coverage.out
+docker/.images
+docker/.pulled

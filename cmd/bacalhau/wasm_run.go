@@ -1,20 +1,22 @@
 package bacalhau
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -66,7 +68,8 @@ func newWasmCmd() *cobra.Command {
 func newRunWasmCmd() *cobra.Command {
 	wasmJob := defaultWasmJobSpec()
 	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := ipfs.NewIPFSDownloadSettings()
+	downloadSettings := util.NewDownloadSettings()
+	var nodeSelector string
 
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
@@ -76,7 +79,7 @@ func newRunWasmCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings)
+			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings, nodeSelector)
 		},
 	}
 
@@ -85,6 +88,11 @@ func newRunWasmCmd() *cobra.Command {
 
 	downloadFlags := NewIPFSDownloadFlags(downloadSettings)
 	runWasmCommand.Flags().AddFlagSet(downloadFlags)
+
+	runWasmCommand.PersistentFlags().StringVarP(
+		&nodeSelector, "selector", "s", nodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
+	)
 
 	runWasmCommand.PersistentFlags().Var(
 		VerifierFlag(&wasmJob.Spec.Verifier), "verifier",
@@ -112,7 +120,7 @@ func newRunWasmCmd() *cobra.Command {
 	)
 	runWasmCommand.PersistentFlags().StringVar(
 		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
-		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that 
+		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
 	runWasmCommand.PersistentFlags().VarP(
@@ -147,7 +155,8 @@ func runWasm(
 	args []string,
 	wasmJob *model.Job,
 	runtimeSettings *RunTimeSettings,
-	downloadSettings *ipfs.IPFSDownloadSettings,
+	downloadSettings *model.DownloaderSettings,
+	nodeSelector string,
 ) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
@@ -156,32 +165,36 @@ func runWasm(
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	var buf bytes.Buffer
 	wasmCidOrPath := args[0]
 	wasmJob.Spec.Wasm.Parameters = args[1:]
+
+	nodeSelectorRequirements, err := job.ParseNodeSelector(nodeSelector)
+	if err != nil {
+		return err
+	}
+	wasmJob.Spec.NodeSelectors = nodeSelectorRequirements
 
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(wasmCidOrPath)
 	if err == nil {
 		// It is a valid CID – proceed to create IPFS context.
-		wasmJob.Spec.Contexts = append(wasmJob.Spec.Contexts, model.StorageSpec{
+		wasmJob.Spec.Wasm.EntryModule = model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           wasmCid.String(),
-			Path:          "/job",
-		})
+		}
 	} else {
 		// Try interpreting this as a path.
 		info, err := os.Stat(wasmCidOrPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("%q is not a valid CID or local file: %s", wasmCidOrPath, err.Error())
+				return errors.Wrapf(err, "%q is not a valid CID or local file", wasmCidOrPath)
 			} else {
 				return err
 			}
 		}
 
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%s should point to a single file", wasmCidOrPath)
+			return fmt.Errorf("%q should point to a single file", wasmCidOrPath)
 		}
 
 		err = os.Chdir(filepath.Dir(wasmCidOrPath))
@@ -191,10 +204,13 @@ func runWasm(
 
 		cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", wasmCidOrPath)
 		time.Sleep(1 * time.Second)
-		err = targzip.Compress(ctx, filepath.Base(wasmCidOrPath), &buf)
+
+		storage := inline.NewStorage()
+		inlineData, err := storage.Upload(cmd.Context(), wasmCidOrPath)
 		if err != nil {
 			return err
 		}
+		wasmJob.Spec.Wasm.EntryModule = inlineData
 	}
 
 	// We can only use a Deterministic verifier if we have multiple nodes running the job
@@ -213,7 +229,7 @@ func runWasm(
 		}
 	}
 
-	_, err = ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings, &buf)
+	_, err = ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings)
 	return err
 }
 
@@ -231,7 +247,7 @@ func newValidateWasmCmd() *cobra.Command {
 
 	validateWasmCommand.PersistentFlags().StringVar(
 		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
-		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that 
+		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
 

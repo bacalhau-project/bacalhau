@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -36,13 +35,13 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file1\n", filepath.Join(dirCID1, fileName1)),
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
-		Contexts: scenario.CatFileToStdout.Contexts,
 		Spec: model.Spec{
 			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
 			Wasm: model.JobSpecWasm{
-				EntryPoint: "_start",
+				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
+				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
 				Parameters: []string{
 					filepath.Join(dirCID1, fileName1),
 					filepath.Join(dirCID2, fileName2),
@@ -50,7 +49,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			},
 		},
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(ipfs.DownloadFilenameStdout, "file1\nfile2\n"),
+			scenario.FileEquals(model.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{

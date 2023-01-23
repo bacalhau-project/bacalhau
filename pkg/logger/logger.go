@@ -1,13 +1,19 @@
 package logger
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/pkgerrors"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	ipfslog2 "github.com/ipfs/go-log/v2"
@@ -95,23 +101,17 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 
 	textWriter := zerolog.NewConsoleWriter(loggingOptions...)
 
-	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
-		short := file
-
-		separatorCount := 2
-		countedSeparators := 0
-
-		for i := len(file) - 1; i > 0; i-- {
-			if file[i] == '/' {
-				countedSeparators += 1
-				if countedSeparators >= separatorCount {
-					short = file[i+1:]
-					break
-				}
-			}
+	info, ok := debug.ReadBuildInfo()
+	if ok && info.Main.Path != "" {
+		// Branch that'll be used when the binary is run, as it is built as a Go module
+		zerolog.CallerMarshalFunc = marshalCaller(info.Main.Path)
+	} else {
+		// Branch typically used when running under test as build info isn't populated
+		// https://github.com/golang/go/issues/33976
+		dir := findRepositoryRoot()
+		if dir != "" {
+			zerolog.CallerMarshalFunc = marshalCaller(dir)
 		}
-		file = short
-		return file + ":" + strconv.Itoa(line)
 	}
 
 	// we default to text output
@@ -128,10 +128,12 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 		useLogWriter = io.Discard
 	}
 
-	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
+	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Stack().Logger()
 	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
 	// Tests will use the DefaultContextLogger instead
 	zerolog.DefaultContextLogger = &log.Logger
+
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	configureIpfsLogging(log.Logger)
 }
@@ -175,4 +177,42 @@ func configureIpfsLogging(l zerolog.Logger) {
 	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
 
 	ipfslog2.SetPrimaryCore(core)
+}
+
+func LogStream(ctx context.Context, r io.Reader) {
+	s := bufio.NewScanner(r)
+	for s.Scan() {
+		log.Ctx(ctx).Debug().Msg(s.Text())
+	}
+	if s.Err() != nil {
+		log.Ctx(ctx).Error().Err(s.Err()).Msg("error consuming log")
+	}
+}
+
+func findRepositoryRoot() string {
+	dir, _ := os.Getwd()
+	for {
+		_, err := os.Stat(filepath.Join(dir, "go.mod"))
+		if os.IsNotExist(err) {
+			parentDir := filepath.Dir(dir)
+			if dir == parentDir {
+				return ""
+			}
+			dir = parentDir
+			continue
+		}
+
+		if runtime.GOOS == "windows" {
+			dir = strings.ReplaceAll(dir, "\\", "/")
+		}
+
+		return dir
+	}
+}
+
+func marshalCaller(prefix string) func(uintptr, string, int) string {
+	return func(_ uintptr, file string, line int) string {
+		file = strings.TrimPrefix(file, prefix+"/")
+		return file + ":" + strconv.Itoa(line)
+	}
 }
