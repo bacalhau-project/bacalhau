@@ -12,7 +12,7 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
-const APIPrefix = "requester/"
+var APIPrefix = "requester/"
 
 type RequesterAPIServerParams struct {
 	APIServer          *publicapi.APIServer

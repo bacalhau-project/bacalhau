@@ -3,8 +3,6 @@ package server
 // client code for accessing bacalhau, literally ripped straight from the CLI
 
 import (
-	"log"
-
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/rundocker"
 	"github.com/spf13/cobra"
@@ -22,7 +20,6 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	// need to set this to get the cid out
 	runOptions.RunTimeSettings.PrintNodeDetails = true
 
-	log.Printf("HELLO FISHES")
 	// because the rundocker machinery likes to run cmd.Print{,f}
 	nullCommand := &cobra.Command{
 		Use:   "null",
