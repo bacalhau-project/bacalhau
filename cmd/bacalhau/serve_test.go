@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -41,22 +39,20 @@ func TestServeSuite(t *testing.T) {
 }
 
 // Before each test
-func (suite *ServeSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+func (s *ServeSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
+	s.Require().NoError(system.InitConfigForTesting(s.T()))
 
 	cm := system.NewCleanupManager()
-	suite.T().Cleanup(cm.Cleanup)
+	s.T().Cleanup(cm.Cleanup)
 
 	node, err := ipfs.NewLocalNode(context.Background(), cm, []string{})
-	suite.NoError(err)
-	suite.ipfsPort = node.APIPort
+	s.NoError(err)
+	s.ipfsPort = node.APIPort
 }
 
-func (suite *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	suite.T().Log("Starting")
+func (s *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int) {
+	s.T().Log("Starting")
 
 	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
 		os.Args[1] = ""
@@ -67,7 +63,7 @@ func (suite *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int, w
 	args := []string{
 		"serve",
 		"--peer", "none",
-		"--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", suite.ipfsPort),
+		"--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", s.ipfsPort),
 		"--api-port", fmt.Sprintf("%d", port),
 	}
 
@@ -75,61 +71,58 @@ func (suite *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int, w
 
 	log.Trace().Msgf("Command to execute: %v", rootCmd.CalledAs())
 
-	_, _ = rootCmd.ExecuteC()
+	_, err := rootCmd.ExecuteC()
+	s.Require().NoError(err)
 }
 
-func curlEndpoint(URL string) (string, error) {
-	req, err := http.NewRequest("GET", URL, nil)
+func curlEndpoint(URL string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", URL, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer closer.DrainAndCloseWithLogOnError(context.Background(), "test", resp.Body)
+	defer closer.DrainAndCloseWithLogOnError(ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(responseText), nil
+	return responseText, nil
 }
 
-func (suite *ServeSuite) TestRun_GenericServe() {
+func (s *ServeSuite) TestRun_GenericServe() {
 	port, err := freeport.GetFreePort()
+	s.Require().NoError(err, "Error getting free port.")
 
-	require.NoError(suite.T(), err, "Error getting free port.")
+	go s.writeToServeChannel(NewRootCmd(), port)
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	timeout := time.NewTicker(20 * time.Second)
+	defer timeout.Stop()
 
-	go suite.writeToServeChannel(NewRootCmd(), port, &wg)
-
-	timeoutInMilliseconds := 20 * 1000
-	currentTime := 0
 	for {
 		time.Sleep(100 * time.Millisecond)
-		currentTime = currentTime + 100
-		livezText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
-		if livezText == "OK" {
-			healthzText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
-			healthzJSON := &types.HealthInfo{}
-			err := model.JSONUnmarshalWithMax([]byte(healthzText), healthzJSON)
-			require.NoError(suite.T(), err, "Error unmarshalling healthz JSON.")
-			require.Greater(suite.T(), int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
-			wg.Done()
-			break
-		}
-
-		if currentTime > timeoutInMilliseconds {
-			require.Fail(suite.T(), fmt.Sprintf("Server did not start in %d", timeoutInMilliseconds))
-			wg.Done()
-			break
+		select {
+		case <-timeout.C:
+			s.Require().Fail("Server did not start in time")
+		default:
+			livezText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
+			if string(livezText) == "OK" {
+				healthzText, err := curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
+				s.NoError(err)
+				var healthzJSON types.HealthInfo
+				s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
+				s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
+				return
+			}
 		}
 	}
-
 }
