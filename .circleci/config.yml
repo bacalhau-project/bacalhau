@@ -413,7 +413,6 @@ jobs:
           name: Update dashboard
           command: |
             heroku run build --app bacalhau-dashboards
-
   release:
     executor: linux-amd64
     steps:
@@ -616,6 +615,20 @@ jobs:
                 -d '{"event_type":"build-schema-pages"}'
             fi
 
+  docker:
+    executor: linux-amd64
+    steps:
+      - checkout
+      - run:
+          name: Login to GHCR
+          command: |
+            echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+      - run:
+          name: Push application Docker image
+          command: |
+            docker context create buildx-build
+            docker buildx create --use buildx-build
+            make push-bacalhau-image
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -793,6 +806,9 @@ workflows:
           name: update-terraform-files
           requires:
             - release-all-binaries
+          filters:
+            <<: *filters_tags_only
+      - docker:
           filters:
             <<: *filters_tags_only
 
