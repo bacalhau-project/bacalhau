@@ -54,6 +54,7 @@ if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
 fi
 
 BACALHAU_PROBE_EXEC='/terraform_node/apply-http-allowlist.sh'
+chmod +x "$BACALHAU_PROBE_EXEC"
 
 bacalhau serve \
   --node-type requester,compute \
