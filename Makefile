@@ -164,8 +164,32 @@ build-http-gateway-image:
 		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
 		pkg/executor/docker/gateway
 
+BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
+BACALHAU_TAG ?= ${TAG}
+.PHONY: build-bacalhau-image
+build-bacalhau-image:
+	docker build --progress=plain \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
+.PHONY: push-bacalhau-image
+push-bacalhau-image:
+	docker buildx build --push --progress=plain \
+		--platform linux/amd64,linux/arm64 \
+		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		--label org.opencontainers.image.version=${BACALHAU_TAG} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
+
+.PHONY: push-docker-images
+push-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
