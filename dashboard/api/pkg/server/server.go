@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -78,19 +79,30 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	return srv.ListenAndServe()
 }
 
+type PromptParam struct {
+	Prompt string `json:"prompt"`
+}
+
 func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, req *http.Request) {
 	// any crazy mofo on the planet can build this into their web apps
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// TODO: read "prompt" key of POST'ed JSON, or error
-	prompt := "fish fingers"
+	promptParam := PromptParam{}
+	err := json.NewDecoder(req.Body).Decode(&promptParam)
+	if err != nil {
+		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
+		return
+	}
+	prompt := promptParam.Prompt
+	_, testing := req.URL.Query()["testing"] // user can pass ?testing=1 to bypass GPU and just return the prompt
 
 	// TODO: put client code in here, hoisted directly from CLI
-	cid, err := runStableDiffusion(prompt)
+	cid, err := runStableDiffusion(prompt, testing)
 	if err != nil {
-		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, err.Error())))
+		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 	} else {
-		res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, cid)))
+		res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
 	}
 }
 

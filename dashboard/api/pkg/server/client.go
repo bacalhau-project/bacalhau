@@ -12,7 +12,7 @@ import (
 
 var configInitRan bool
 
-func runStableDiffusion(prompt string) (string, error) {
+func runStableDiffusion(prompt string, testing bool) (string, error) {
 	if !configInitRan {
 		system.InitConfig()
 		configInitRan = true
@@ -33,17 +33,19 @@ func runStableDiffusion(prompt string) (string, error) {
 	// just to fill in contexts, etc... hacks hacks hacks
 	nullCommand.Execute()
 
-	// gpus:
-	// runOptions.GPU = "1"
-	// return rundocker.DockerRun(nullCommand, []string{
-	// 	"ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-	// 	"python", "main.py", "--o", "./outputs", "--p",
-	// 	prompt,
-	// }, runOptions)
-
-	// testing only:
-	return rundocker.DockerRun(nullCommand, []string{
-		"ubuntu",
-		"echo", prompt,
-	}, runOptions)
+	if !testing {
+		// gpus, actual stable diffusion:
+		runOptions.GPU = "1"
+		return rundocker.DockerRun(nullCommand, []string{
+			"ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
+			"python", "main.py", "--o", "./outputs", "--p",
+			prompt,
+		}, runOptions)
+	} else {
+		// testing only:
+		return rundocker.DockerRun(nullCommand, []string{
+			"ubuntu",
+			"echo", prompt,
+		}, runOptions)
+	}
 }
