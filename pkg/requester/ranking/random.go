@@ -3,11 +3,11 @@ package ranking
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type RandomNodeRankerParams struct {
@@ -21,12 +21,15 @@ type RandomNodeRanker struct {
 }
 
 func NewRandomNodeRanker(params RandomNodeRankerParams) *RandomNodeRanker {
+	if params.RandomnessRange <= 0 {
+		panic(fmt.Sprintf("randomness range must be >= 0: %d", params.RandomnessRange))
+	}
 	return &RandomNodeRanker{
 		randomnessRange: big.NewInt(int64(params.RandomnessRange)),
 	}
 }
 
-func (s *RandomNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []peer.ID) ([]requester.NodeRank, error) {
+func (s *RandomNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
 	ranks := make([]requester.NodeRank, len(nodes))
 	for i, node := range nodes {
 		rank, err := s.getRandomRank()
@@ -34,8 +37,8 @@ func (s *RandomNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 			return nil, err
 		}
 		ranks[i] = requester.NodeRank{
-			ID:   node,
-			Rank: rank,
+			NodeInfo: node,
+			Rank:     rank,
 		}
 	}
 	return ranks, nil

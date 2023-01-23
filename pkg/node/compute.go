@@ -39,6 +39,7 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
+	labels map[string]string,
 	apiServer *publicapi.APIServer,
 	config ComputeConfig,
 	simulatorNodeID string,
@@ -165,15 +166,19 @@ func NewComputeNode(
 		}),
 	)
 
-	// node info publisher
-	nodeInfoPublisher := compute.NewNodeInfoPublisher(compute.NodeInfoPublisherParams{
-		PubSub:             nodeInfoPubSub,
+	// node info
+	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Host:               host,
+		Labels:             labels,
 		Executors:          executors,
 		CapacityTracker:    runningCapacityTracker,
 		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,
-		Interval:           config.NodeInfoPublisherInterval,
+	})
+	nodeInfoPublisher := compute.NewNodeInfoPublisher(compute.NodeInfoPublisherParams{
+		PubSub:           nodeInfoPubSub,
+		NodeInfoProvider: nodeInfoProvider,
+		Interval:         config.NodeInfoPublisherInterval,
 	})
 
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
@@ -199,9 +204,9 @@ func NewComputeNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
-			Name:            "AvailableCapacity",
-			CapacityTracker: runningCapacityTracker,
+		sensors.NewNodeDebugInfoProvider(sensors.NodeDebugInfoProviderParams{
+			Name:             "NodeInfo",
+			NodeInfoProvider: nodeInfoProvider,
 		}),
 		runningInfoProvider,
 	}

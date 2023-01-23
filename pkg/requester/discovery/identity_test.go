@@ -64,7 +64,7 @@ func (s *IdentityNodeDiscovererSuite) TestFindNodes() {
 
 	peerIDStrings := make([]string, len(peerIDs))
 	for i, p := range peerIDs {
-		peerIDStrings[i] = p.String()
+		peerIDStrings[i] = p.PeerInfo.ID.String()
 	}
 	s.ElementsMatch([]string{s.node1.ID().String(), s.node2.ID().String()}, peerIDStrings)
 }

@@ -303,7 +303,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				Disk:   1 * 1024 * 1024 * 1024,
 				GPU:    1,
 			},
-			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+			IgnorePhysicalResourceLimits: true,                  // we need to pretend that we have GPUs on each node
+			NodeInfoPublisherInterval:    10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 		}),
 		node.NewRequesterConfigWithDefaults(),
 		noop_executor.ExecutorConfig{
@@ -312,6 +313,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			},
 		},
 	)
+	time.Sleep(50 * time.Millisecond) // for the requester node to pick up the nodeInfo messages
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{

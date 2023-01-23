@@ -2,7 +2,6 @@ package ipfs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +15,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/phayes/freeport"
+	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/log"
 
@@ -366,6 +366,13 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 			return fmt.Errorf("failed to listen on api multiaddr: %w", err)
 		}
 
+		cm.RegisterCallback(func() error {
+			if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				return errors.Wrap(err, "error shutting down IPFS listener")
+			}
+			return nil
+		})
+
 		listeners = append(listeners, listener)
 	}
 
@@ -388,23 +395,8 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 	}
 
 	for _, listener := range listeners {
+		// NOTE: this is not critical, but we should log for debugging
 		go func(listener manet.Listener) {
-			cm.RegisterCallback(func() error {
-				if err := listener.Close(); err != nil {
-					if !errors.Is(err, net.ErrClosed) {
-						return fmt.Errorf("problem when shutting down IPFS listener: %w", err)
-					}
-
-					// I'm fairly sure this error occurs because the listener is getting closed twice
-					// once in this callback and again when `corehttp.Serve` returns (it has a defer statement).
-					// `corehttp.Serve` looks like it'll return when the context passed into the node on creation gets
-					// closed.
-					log.Debug().Err(err).Msg("Error occurred when trying to shut down listener")
-				}
-				return nil
-			})
-
-			// NOTE: this is not critical, but we should log for debugging
 			if err := corehttp.Serve(node, manet.NetListener(listener), opts...); err != nil {
 				log.Debug().Msgf("node '%s' failed to serve ipfs api: %s", node.Identity, err)
 			}

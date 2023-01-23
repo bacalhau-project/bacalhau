@@ -16,11 +16,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
+
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
@@ -196,10 +199,10 @@ func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...str
 	return c, buf.String(), err
 }
 
-func NewIPFSDownloadFlags(settings *ipfs.IPFSDownloadSettings) *pflag.FlagSet {
+func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
-	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
-		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
+	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
+		settings.Timeout, "Timeout duration for IPFS downloads.")
 	flags.StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")
 	flags.StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
@@ -226,7 +229,7 @@ func ensureDefaultDownloadLocation(jobID string) (string, error) {
 	return downloadDir, nil
 }
 
-func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (ipfs.IPFSDownloadSettings, error) {
+func processDownloadSettings(settings model.DownloaderSettings, jobID string) (model.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {
@@ -288,7 +291,7 @@ func ExecuteJob(ctx context.Context,
 	cmd *cobra.Command,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
-	downloadSettings ipfs.IPFSDownloadSettings,
+	downloadSettings model.DownloaderSettings,
 ) error {
 	var apiClient *publicapi.RequesterAPIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -441,7 +444,7 @@ func downloadResultsHandler(
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings ipfs.IPFSDownloadSettings,
+	downloadSettings model.DownloaderSettings,
 ) error {
 	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
 	j, _, err := GetAPIClient().Get(ctx, jobID)
@@ -468,12 +471,17 @@ func downloadResultsHandler(
 		return err
 	}
 
-	err = ipfs.DownloadJob(
+	downloaderProvider := util.NewStandardDownloaders(cm, &processedDownloadSettings)
+	if err != nil {
+		return err
+	}
+
+	err = downloader.DownloadJob(
 		ctx,
-		cm,
 		j.Spec.Outputs,
 		results,
-		processedDownloadSettings,
+		downloaderProvider,
+		&processedDownloadSettings,
 	)
 
 	if err != nil {

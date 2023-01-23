@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -11,10 +13,15 @@ const (
 	NodeTypeCompute
 )
 
+type NodeInfoProvider interface {
+	GetNodeInfo(ctx context.Context) NodeInfo
+}
+
 type NodeInfo struct {
-	PeerInfo        peer.AddrInfo   `json:"PeerInfo"`
-	NodeType        NodeType        `json:"NodeType"`
-	ComputeNodeInfo ComputeNodeInfo `json:"ComputeNodeInfo"`
+	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
+	NodeType        NodeType          `json:"NodeType"`
+	Labels          map[string]string `json:"Labels"`
+	ComputeNodeInfo ComputeNodeInfo   `json:"ComputeNodeInfo"`
 }
 
 // IsComputeNode returns true if the node is a compute node

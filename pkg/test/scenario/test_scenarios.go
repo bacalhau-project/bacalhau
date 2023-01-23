@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/testdata/wasm/cat"
 	"github.com/filecoin-project/bacalhau/testdata/wasm/csv"
@@ -12,7 +11,7 @@ import (
 const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = ipfs.DownloadFilenameStdout
+const stdoutString = model.DownloadFilenameStdout
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
 var CatFileToStdout = Scenario{
@@ -21,8 +20,8 @@ var CatFileToStdout = Scenario{
 		simpleMountPath,
 	),
 	ResultsChecker: ManyChecks(
-		FileEquals(ipfs.DownloadFilenameStderr, ""),
-		FileEquals(ipfs.DownloadFilenameStdout, helloWorld),
+		FileEquals(model.DownloadFilenameStderr, ""),
+		FileEquals(model.DownloadFilenameStdout, helloWorld),
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
