@@ -94,6 +94,7 @@ EOI
 sudo tee /terraform_node/apply-http-allowlist.sh > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/apply-http-allowlist.sh")}
 EOI
+chmod +x /terraform_node/apply-http-allowlist.sh
 
 sudo tee /terraform_node/http-domain-allowlist.txt > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/http-domain-allowlist.txt")}
