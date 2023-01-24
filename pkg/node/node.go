@@ -196,6 +196,7 @@ func NewNode(
 			config.ComputeConfig,
 			config.SimulatorNodeID,
 			simulatorRequestHandler,
+			storageProviders,
 			executors,
 			verifiers,
 			publishers,

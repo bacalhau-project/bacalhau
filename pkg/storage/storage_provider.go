@@ -45,3 +45,8 @@ func (p *MappedStorageProvider) GetStorage(ctx context.Context, storageType mode
 
 	return storage, nil
 }
+
+func (p *MappedStorageProvider) HasStorage(ctx context.Context, sourceType model.StorageSourceType) bool {
+	_, err := p.GetStorage(ctx, sourceType)
+	return err == nil
+}

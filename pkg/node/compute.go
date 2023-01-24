@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
@@ -44,6 +45,7 @@ func NewComputeNode(
 	config ComputeConfig,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
+	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider,
@@ -143,8 +145,10 @@ func NewComputeNode(
 			NetworkSize: 1,
 		}),
 		bidstrategy.NewEnginesInstalledStrategy(bidstrategy.EnginesInstalledStrategyParams{
-			Executors: executors,
-			Verifiers: verifiers,
+			Storages:   storages,
+			Executors:  executors,
+			Verifiers:  verifiers,
+			Publishers: publishers,
 		}),
 		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
 			Command: config.JobSelectionPolicy.ProbeExec,
