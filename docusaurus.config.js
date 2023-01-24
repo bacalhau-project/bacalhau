@@ -61,6 +61,7 @@ const config = {
           },
         ],
       },
+      blog: false,
       algolia :{
         appId: 'VLYBZRSZSU',
         apiKey: '833f6b97e76869f94a4a564c4c67f7d9',
