@@ -141,7 +141,7 @@ jobs:
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
-                name: Test
+                name: Test Go
                 environment:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
@@ -151,6 +151,7 @@ jobs:
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@v1.8.2
                   make test-and-report
+
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
@@ -166,6 +167,22 @@ jobs:
               - equal: ["amd64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
+            - run:
+                name: Test Python SDK
+                command: |
+                  sudo apt install python3.10 -y
+                  curl -sSL https://install.python-poetry.org | python3 -
+                  cd python
+                  # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
+                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
+                  # uUsing '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
+                  env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
+                  # The python sdk doesn't generate a pem key, so we use the go-cli to generate one, I know it sucks :)
+                  curl -sL https://get.bacalhau.org/install.sh | bash
+                  /usr/local/bin/bacalhau list
+                  # Run tests
+                  cd ..
+                  make test-python
             - run:
                 name: Upload results
                 command: |
@@ -479,23 +496,23 @@ jobs:
             golangci-lint version
       - run:
           name: Install Swagger
-          command: go install github.com/swaggo/swag/cmd/swag@v1.8.7
+          command:
+            go install github.com/swaggo/swag/cmd/swag@v1.8.9-rc3
+      - run:
+          name: Install swagger-codegen
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
       - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
       - run:
-          name: Install golangci-lint
-          command: |
-            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-            # binary will be /usr/local/go/bin/bin/golangci-lint
-            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-            # This breaks normal pathing. So just installing in ./bin/
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-            golangci-lint version
-      - run:
-          name: Build Swagger Docs
-          command: make swagger-docs
+          name: Build Swagger Docs and Clients
+          command:
+            make swagger-docs clients
 
       - when:
           condition:
@@ -598,6 +615,7 @@ jobs:
                 https://api.github.com/repos/filecoin-project/bacalhau/dispatches \
                 -d '{"event_type":"build-schema-pages"}'
             fi
+
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -745,6 +763,8 @@ workflows:
             - build
           filters:
             <<: *filters_tags_only
+
+
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:

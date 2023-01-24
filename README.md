@@ -3,6 +3,9 @@
 
 <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
 -->
+
+<!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
+-->
 <p align="center">
   <a href="https://github.com/filecoin-project/bacalhau">
     <img src="https://github.com/filecoin-project/bacalhau/blob/590a1c84dbde3636a54c371c40c73ed6ea86bf48/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
@@ -112,7 +115,10 @@ Bacalhau's CI pipeline performs a variety of linting and formatting checks on ne
 To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
 
 ```bash
-git config core.hooksPath ./githooks
+make install-pre-commit
+
+# check if pre-commit works
+make precommit
 ```
 If you want to run the linter manually:
 

@@ -24,11 +24,12 @@ func GenerateHealthData() types.HealthInfo {
 }
 
 // livez godoc
-// @ID      apiServer/livez
-// @Tags    Health
-// @Produce text/plain
-// @Success 200 {object} string "TODO"
-// @Router  /livez [get]
+//
+//	@ID			livez
+//	@Tags		Utils
+//	@Produce	text/plain
+//	@Success	200	{object}	string	"TODO"
+//	@Router		/livez [get]
 func (apiServer *APIServer) livez(res http.ResponseWriter, req *http.Request) {
 	// Extremely simple liveness check (should be fine to be public / no-auth)
 	log.Debug().Msg("Received OK request")
@@ -41,11 +42,12 @@ func (apiServer *APIServer) livez(res http.ResponseWriter, req *http.Request) {
 }
 
 // logz godoc
-// @ID      apiServer/logz
-// @Tags    Health
-// @Produce text/plain
-// @Success 200 {object} string "TODO"
-// @Router  /logz [get]
+//
+//	@ID			logz
+//	@Tags		Utils
+//	@Produce	text/plain
+//	@Success	200	{object}	string	"TODO"
+//	@Router		/logz [get]
 func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 	log.Debug().Msg("Received logz request")
 	res.Header().Add("Content-Type", "text/plain")
@@ -67,11 +69,12 @@ func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 }
 
 // readyz godoc
-// @ID      apiServer/readyz
-// @Tags    Health
-// @Produce text/plain
-// @Success 200 {object} string
-// @Router  /readyz [get]
+//
+//	@ID			readyz
+//	@Tags		Utils
+//	@Produce	text/plain
+//	@Success	200	{object}	string
+//	@Router		/readyz [get]
 func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 	log.Debug().Msg("Received readyz request.")
 	// TODO: Add checker for queue that this node can accept submissions
@@ -89,11 +92,12 @@ func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 }
 
 // healthz godoc
-// @ID      apiServer/healthz
-// @Tags    Health
-// @Produce json
-// @Success 200 {object} types.HealthInfo
-// @Router  /healthz [get]
+//
+//	@ID			healthz
+//	@Tags		Utils
+//	@Produce	json
+//	@Success	200	{object}	types.HealthInfo
+//	@Router		/healthz [get]
 func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) {
 	// TODO: A list of health information. Should require authing (of some kind)
 	log.Debug().Msg("Received healthz request.")
@@ -113,11 +117,12 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 }
 
 // varz godoc
-// @ID      apiServer/varz
-// @Tags    Health
-// @Produce json
-// @Success 200 {object} json.RawMessage
-// @Router  /varz [get]
+//
+//	@ID			varz
+//	@Tags		Utils
+//	@Produce	json
+//	@Success	200	{object}	json.RawMessage
+//	@Router		/varz [get]
 func (apiServer *APIServer) varz(res http.ResponseWriter, req *http.Request) {
 	// TODO: Fill in with the configuration settings for this node
 	res.WriteHeader(http.StatusOK)

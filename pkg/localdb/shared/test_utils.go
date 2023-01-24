@@ -17,8 +17,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const linuxRuntime = "linux"
+
 func skipIfNotLinux(t *testing.T) {
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != linuxRuntime {
 		t.Skip("Test does not pass natively on non linux")
 	}
 }
@@ -36,7 +38,7 @@ type GenericSQLSuite struct {
 }
 
 func (suite *GenericSQLSuite) SetupTest() {
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != linuxRuntime {
 		return
 	}
 	datastore := suite.SetupHandler()
@@ -45,7 +47,7 @@ func (suite *GenericSQLSuite) SetupTest() {
 }
 
 func (suite *GenericSQLSuite) TearDownSuite() {
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != linuxRuntime {
 		return
 	}
 	if suite.TeardownHandler != nil {
@@ -66,7 +68,7 @@ select id from job;
 	require.NoError(suite.T(), err)
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&id)
+		err = rows.Scan(&id)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,7 +133,7 @@ func (suite *GenericSQLSuite) TestGetJobs() {
 				Annotations: annotations,
 			},
 		}
-		err := suite.datastore.AddJob(context.Background(), job)
+		err = suite.datastore.AddJob(context.Background(), job)
 		require.NoError(suite.T(), err)
 	}
 
@@ -159,19 +161,20 @@ func (suite *GenericSQLSuite) TestGetJobs() {
 	require.Equal(suite.T(), "hellojob99", sortedDesc[0].Metadata.ID)
 
 	// check basic limit
+	const limit = 10
 	tenJobs, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
-		Limit: 10,
+		Limit: limit,
 	})
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), 10, len(tenJobs))
+	require.Equal(suite.T(), limit, len(tenJobs))
 
 	// pagination
 	tenJobsSecondPage, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
-		Limit:  10,
+		Limit:  limit,
 		Offset: 10,
 	})
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), 10, len(tenJobsSecondPage))
+	require.Equal(suite.T(), limit, len(tenJobsSecondPage))
 	require.Equal(suite.T(), "hellojob10", tenJobsSecondPage[0].Metadata.ID)
 
 	loadedJobCount, err := suite.datastore.GetJobsCount(context.Background(), localdb.JobQuery{
@@ -186,10 +189,10 @@ func (suite *GenericSQLSuite) TestGetJobs() {
 	sortedWithLimit, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
 		SortBy:      "created_at",
 		SortReverse: true,
-		Limit:       10,
+		Limit:       limit,
 	})
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), 10, len(sortedWithLimit))
+	require.Equal(suite.T(), limit, len(sortedWithLimit))
 
 	// a label they all have
 	withAppleLabel, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
@@ -213,11 +216,11 @@ func (suite *GenericSQLSuite) TestGetJobs() {
 	require.Equal(suite.T(), jobCount/2, len(withAppleAndBananaLabel))
 
 	// combine three labels - only 1 result
-	withAppleAndBananaAndIdLabel, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
+	withAppleAndBananaAndIDLabel, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
 		IncludeTags: []model.IncludedTag{"apples", "bananas", "oranges17"},
 	})
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), 1, len(withAppleAndBananaAndIdLabel))
+	require.Equal(suite.T(), 1, len(withAppleAndBananaAndIDLabel))
 
 	// exclude with a single id
 	basicExclude, err := suite.datastore.GetJobs(context.Background(), localdb.JobQuery{
@@ -277,7 +280,7 @@ func (suite *GenericSQLSuite) TestJobEvents() {
 			EventName: eventName,
 			EventTime: date,
 		}
-		err := suite.datastore.AddEvent(context.Background(), job.Metadata.ID, ev)
+		err = suite.datastore.AddEvent(context.Background(), job.Metadata.ID, ev)
 		require.NoError(suite.T(), err)
 		localEvent := model.JobLocalEvent{
 			JobID:     job.Metadata.ID,

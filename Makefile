@@ -67,6 +67,7 @@ install-pre-commit:
 .PHONY: precommit
 precommit: buildenvcorrect
 	${PRECOMMIT} run --all
+	cd python && make pre-commit
 
 .PHONY: buildenvcorrect
 buildenvcorrect:
@@ -107,6 +108,17 @@ swagger-docs:
 	swag fmt -g "pkg/publicapi/server.go" && \
 	swag init --parseDependency --parseInternal --parseDepth 1 --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
+
+################################################################################
+# Target: clients
+################################################################################
+# Generate Bacalhau API clients but only if the swagger.json has actually been
+# updated because the clients include random numbers and timestamps and hence
+# will generate a lot of noisy diffs if regenerated all of the time
+.PHONY: clients
+clients:
+	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
+		cd clients && ${MAKE} -j all) || true
 
 ################################################################################
 # Target: build
@@ -228,6 +240,10 @@ all_schemas: ${ALL_SCHEMAS}
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
+
+.PHONY: test-python
+test-python:
+	cd python && make unittest
 
 .PHONY: integration-test
 integration-test:

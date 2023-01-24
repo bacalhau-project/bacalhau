@@ -56,9 +56,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/healthz",
+                "operationId": "healthz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -75,10 +75,10 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the id of the host node.",
-                "operationId": "apiServer/id",
+                "operationId": "id",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -101,9 +101,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/livez",
+                "operationId": "livez",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -120,9 +120,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/logz",
+                "operationId": "logz",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -140,10 +140,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
-                "summary": "Returns the peers connected to the host via the libp2pHost layer.",
-                "operationId": "apiServer/peers",
+                "summary": "Returns the peers connected to the host via the transport layer.",
+                "operationId": "peers",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -172,9 +172,9 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/readyz",
+                "operationId": "readyz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -213,7 +213,7 @@ const docTemplate = `{
         },
         "/requester/events": {
             "post": {
-                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n\nExample response (truncated):\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"events\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"EventName\": \"Created\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"JobExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"VerificationResult\": {},\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.331375351Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    ...\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"TargetNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsAccepted\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {\n        \"Complete\": true,\n        \"Result\": true\n      },\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.707825569Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsPublished\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {},\n      \"PublishedResult\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      },\n      \"EventTime\": \"2022-11-17T13:32:55.756658941Z\",\n      \"SenderPublicKey\": \"...\"\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
+                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -260,7 +260,7 @@ const docTemplate = `{
         },
         "/requester/list": {
             "post": {
-                "description": "Returns the first (sorted) #` + "`" + `max_jobs` + "`" + ` jobs that belong to the ` + "`" + `client_id` + "`" + ` passed in the body payload (by default).\nIf ` + "`" + `return_all` + "`" + ` is set to true, it returns all jobs on the Bacalhau network.\n\nIf ` + "`" + `id` + "`" + ` is set, it returns only the job with that ID.\n\nExample response:\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"jobs\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:32:55.33837275Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                  \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    },\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"92d5d4ee-3765-4f78-8353-623f5f26df08\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"sleep\",\n            \"4\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:29:01.871140291Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                  \"CID\": \"QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
+                "description": "Returns the first (sorted) #` + "`" + `max_jobs` + "`" + ` jobs that belong to the ` + "`" + `client_id` + "`" + ` passed in the body payload (by default).\nIf ` + "`" + `return_all` + "`" + ` is set to true, it returns all jobs on the Bacalhau network.\n\nIf ` + "`" + `id` + "`" + ` is set, it returns only the job with that ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -499,9 +499,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/varz",
+                "operationId": "varz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -614,6 +614,33 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Engine": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "EngineLanguage": "wraps python_wasm",
+                "EnginePythonWasm": "wraps docker",
+                "engineDone": "must be last",
+                "engineUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "engineUnknown",
+                "EngineNoop",
+                "EngineDocker",
+                "EngineWasm",
+                "EngineLanguage",
+                "EnginePythonWasm",
+                "engineDone"
+            ]
+        },
         "model.Job": {
             "type": "object",
             "properties": {
@@ -626,33 +653,19 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "The status of the job: where are the nodes at, what are the events",
-                    "$ref": "#/definitions/model.JobStatus"
-                }
-            }
-        },
-        "model.JobCreatePayload": {
-            "type": "object",
-            "required": [
-                "APIVersion",
-                "ClientID",
-                "Spec"
-            ],
-            "properties": {
-                "APIVersion": {
-                    "type": "string",
-                    "example": "V1beta1"
-                },
-                "ClientID": {
-                    "description": "the id of the client that is submitting the job",
-                    "type": "string"
-                },
-                "Spec": {
-                    "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -671,10 +684,14 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "this is only defined in \"update_deal\" events",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobEventType"
                 },
                 "EventTime": {
                     "type": "string",
@@ -687,7 +704,11 @@ const docTemplate = `{
                 },
                 "JobExecutionPlan": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "JobID": {
                     "type": "string",
@@ -698,7 +719,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "SenderPublicKey": {
                     "type": "array",
@@ -717,7 +742,11 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "type": "string",
@@ -739,6 +768,51 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+            ],
+            "x-enum-comments": {
+                "jobEventDone": "must be last",
+                "jobEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobEventUnknown",
+                "JobEventInitialSubmission",
+                "JobEventCreated",
+                "JobEventDealUpdated",
+                "JobEventBid",
+                "JobEventBidAccepted",
+                "JobEventBidRejected",
+                "JobEventBidCancelled",
+                "JobEventRunning",
+                "JobEventComputeError",
+                "JobEventResultsProposed",
+                "JobEventResultsAccepted",
+                "JobEventResultsRejected",
+                "JobEventResultsPublished",
+                "JobEventError",
+                "JobEventInvalidRequest",
+                "jobEventDone"
+            ]
+        },
         "model.JobExecutionPlan": {
             "type": "object",
             "properties": {
@@ -752,7 +826,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobLocalEventType"
                 },
                 "JobID": {
                     "type": "string"
@@ -764,6 +838,31 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.JobLocalEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "jobLocalEventDone": "must be last",
+                "jobLocalEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobLocalEventUnknown",
+                "JobLocalEventSelected",
+                "JobLocalEventBid",
+                "JobLocalEventBidAccepted",
+                "JobLocalEventBidRejected",
+                "JobLocalEventVerified",
+                "jobLocalEventDone"
+            ]
         },
         "model.JobNodeState": {
             "type": "object",
@@ -809,7 +908,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "ShardIndex": {
                     "description": "what shard is this we are running",
@@ -817,7 +920,11 @@ const docTemplate = `{
                 },
                 "State": {
                     "description": "what is the state of the shard on this node",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStateType"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "an arbitrary status message",
@@ -892,7 +999,11 @@ const docTemplate = `{
                 },
                 "JobContext": {
                     "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "Language": {
                     "description": "e.g. python",
@@ -917,7 +1028,11 @@ const docTemplate = `{
             "properties": {
                 "EntryModule": {
                     "description": "The module that contains the WASM code to start running.",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "EntryPoint": {
                     "description": "The name of the function in the EntryModule to call to run the job. For\nWASI jobs, this will always be ` + "`" + `_start` + "`" + `, but jobs can choose to call\nother WASM functions instead. The EntryPoint must be a zero-parameter\nzero-result function.",
@@ -957,6 +1072,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+            ],
+            "x-enum-comments": {
+                "jobStateDone": "must be last",
+                "jobStateUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobStateUnknown",
+                "JobStateBidding",
+                "JobStateWaiting",
+                "JobStateRunning",
+                "JobStateVerifying",
+                "JobStateCancelled",
+                "JobStateError",
+                "JobStateCompleted",
+                "jobStateDone"
+            ]
+        },
         "model.JobStatus": {
             "type": "object",
             "properties": {
@@ -969,7 +1113,11 @@ const docTemplate = `{
                 },
                 "JobState": {
                     "description": "The current state of the job",
-                    "$ref": "#/definitions/model.JobState"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobState"
+                        }
+                    ]
                 },
                 "LocalJobEvents": {
                     "description": "All local events associated with the job",
@@ -1023,6 +1171,19 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Network": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "NetworkNone",
+                "NetworkFull",
+                "NetworkHTTP"
+            ]
+        },
         "model.NetworkConfig": {
             "type": "object",
             "properties": {
@@ -1033,7 +1194,7 @@ const docTemplate = `{
                     }
                 },
                 "Type": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Network"
                 }
             }
         },
@@ -1050,6 +1211,29 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "model.Publisher": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+            ],
+            "x-enum-comments": {
+                "publisherDone": "must be last",
+                "publisherUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "publisherUnknown",
+                "PublisherNoop",
+                "PublisherIpfs",
+                "PublisherFilecoin",
+                "PublisherEstuary",
+                "publisherDone"
+            ]
         },
         "model.ResourceUsageConfig": {
             "type": "object",
@@ -1119,7 +1303,11 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "The deal the client has made, such as which job bids they have accepted.",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "DoNotTrack": {
                     "description": "Do not track specified by the client",
@@ -1127,22 +1315,38 @@ const docTemplate = `{
                 },
                 "Docker": {
                     "description": "executor specific data",
-                    "$ref": "#/definitions/model.JobSpecDocker"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecDocker"
+                        }
+                    ]
                 },
                 "Engine": {
                     "description": "e.g. docker or language",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Engine"
+                        }
+                    ]
                 },
                 "ExecutionPlan": {
                     "description": "how will this job be executed by nodes on the network",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
-                    "$ref": "#/definitions/model.NetworkConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.NetworkConfig"
+                        }
+                    ]
                 },
                 "NodeSelectors": {
                     "description": "NodeSelectors is a selector which must be true for the compute node to run this job.",
@@ -1153,22 +1357,34 @@ const docTemplate = `{
                 },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Publisher"
+                        }
+                    ]
                 },
                 "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",
-                    "$ref": "#/definitions/model.ResourceUsageConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ResourceUsageConfig"
+                        }
+                    ]
                 },
                 "Sharding": {
                     "description": "the sharding config for this job\ndescribes how the job might be split up into parallel shards",
-                    "$ref": "#/definitions/model.JobShardingConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobShardingConfig"
+                        }
+                    ]
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
                 "Verifier": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Verifier"
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
@@ -1188,6 +1404,33 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "model.StorageSourceType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "x-enum-comments": {
+                "storageSourceDone": "must be last",
+                "storageSourceUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "storageSourceUnknown",
+                "StorageSourceIPFS",
+                "StorageSourceURLDownload",
+                "StorageSourceFilecoinUnsealed",
+                "StorageSourceFilecoin",
+                "StorageSourceEstuary",
+                "StorageSourceInline",
+                "storageSourceDone"
+            ]
         },
         "model.StorageSpec": {
             "type": "object",
@@ -1211,7 +1454,11 @@ const docTemplate = `{
                 },
                 "StorageSource": {
                     "description": "StorageSource is the abstract source of the data. E.g. a storage source\nmight be a URL download, but doesn't specify how the execution engine\ndoes the download or what it will do with the downloaded data.",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSourceType"
+                        }
+                    ]
                 },
                 "URL": {
                     "description": "Source URL of the data",
@@ -1233,6 +1480,25 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "model.Verifier": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "verifierDone": "must be last",
+                "verifierUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "verifierUnknown",
+                "VerifierNoop",
+                "VerifierDeterministic",
+                "verifierDone"
+            ]
         },
         "publicapi.VersionRequest": {
             "type": "object",
@@ -1399,7 +1665,10 @@ const docTemplate = `{
                 },
                 "job_create_payload": {
                     "description": "The data needed to submit and run a job on the network:",
-                    "$ref": "#/definitions/model.JobCreatePayload"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",
