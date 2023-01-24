@@ -69,6 +69,7 @@ function install-ipfs() {
 
 function install-bacalhau() {
   echo "Installing Bacalhau"
+  sudo apt-get -y install --no-install-recommends jq
   wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
@@ -178,7 +179,7 @@ function mount-disk() {
   done
   # mount /dev/sdb at /data
   sudo mkdir -p /data
-  sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data) 
+  sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data)
 }
 
 # make sure that "ipfs init" has been run

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+	"github.com/filecoin-project/bacalhau/pkg/model"
+
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -46,7 +48,7 @@ type LanguageRunOptions struct {
 	// WorkingDir string // Working directory for docker
 
 	RuntimeSettings  RunTimeSettings
-	DownloadSettings ipfs.IPFSDownloadSettings
+	DownloadSettings model.DownloaderSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -70,7 +72,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		RequirementsPath: "",
 		ContextPath:      ".",
 		RuntimeSettings:  *NewRunTimeSettings(),
-		DownloadSettings: *ipfs.NewIPFSDownloadSettings(),
+		DownloadSettings: *util.NewDownloadSettings(),
 	}
 }
 

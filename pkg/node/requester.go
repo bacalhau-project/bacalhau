@@ -83,25 +83,37 @@ func NewRequesterNode(
 	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
 		TTL: config.NodeInfoStoreTTL,
 	})
-	nodeDiscoverer := discovery.NewChained(true)
-	nodeDiscoverer.Add(
+	nodeDiscoveryChain := discovery.NewChain(true)
+	nodeDiscoveryChain.Add(
 		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
-			Host:         host,
-			Store:        nodeInfoStore,
-			PeerStoreTTL: config.DiscoveredPeerStoreTTL,
+			Store: nodeInfoStore,
 		}),
 		discovery.NewIdentityNodeDiscoverer(discovery.IdentityNodeDiscovererParams{
 			Host: host,
 		}),
 	)
 
-	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
-		ID:             host.ID().String(),
-		JobStore:       jobStore,
-		NodeDiscoverer: nodeDiscoverer,
-		NodeRanker: ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
+	// compute node ranker
+	nodeRankerChain := ranking.NewChain()
+	nodeRankerChain.Add(
+		// rankers that act as filters and give a -1 score to nodes that do not match the filter
+		ranking.NewEnginesNodeRanker(),
+		ranking.NewLabelsNodeRanker(),
+		ranking.NewMaxUsageNodeRanker(),
+
+		// arbitrary rankers
+		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: config.NodeRankRandomnessRange,
 		}),
+	)
+
+	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
+		ID:               host.ID().String(),
+		Host:             host,
+		PeerStoreTTL:     config.DiscoveredPeerStoreTTL,
+		JobStore:         jobStore,
+		NodeDiscoverer:   nodeDiscoveryChain,
+		NodeRanker:       nodeRankerChain,
 		ComputeEndpoint:  computeProxy,
 		Verifiers:        verifiers,
 		StorageProviders: storageProviders,
@@ -177,8 +189,8 @@ func NewRequesterNode(
 
 	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
 		DelegatePubSub: libp2p2JobEventPubSub,
-		MaxBufferSize:  32 * 1024,           //nolint:gomnd
-		MaxBufferAge:   1 * time.Nanosecond, // increase this once we move to an external job storage
+		MaxBufferSize:  1, //nolint:gomnd // increase this once we move to an external job storage
+		MaxBufferAge:   1 * time.Minute,
 	})
 
 	// Register event handlers

@@ -5,33 +5,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 )
 
 type NodeInfoPublisherParams struct {
-	PubSub             pubsub.PubSub[model.NodeInfo]
-	Host               host.Host
-	Executors          executor.ExecutorProvider
-	CapacityTracker    capacity.Tracker
-	ExecutorBuffer     *ExecutorBuffer
-	MaxJobRequirements model.ResourceUsageData
-	Interval           time.Duration
+	PubSub           pubsub.PubSub[model.NodeInfo]
+	NodeInfoProvider model.NodeInfoProvider
+	Interval         time.Duration
 }
 
 type NodeInfoPublisher struct {
-	pubSub             pubsub.PubSub[model.NodeInfo]
-	h                  host.Host
-	executors          executor.ExecutorProvider
-	capacityTracker    capacity.Tracker
-	executorBuffer     *ExecutorBuffer
-	maxJobRequirements model.ResourceUsageData
-	interval           time.Duration
+	pubSub           pubsub.PubSub[model.NodeInfo]
+	nodeInfoProvider model.NodeInfoProvider
+	interval         time.Duration
 
 	stopChannel chan struct{}
 	stopOnce    sync.Once
@@ -39,14 +27,10 @@ type NodeInfoPublisher struct {
 
 func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 	p := &NodeInfoPublisher{
-		pubSub:             params.PubSub,
-		h:                  params.Host,
-		executors:          params.Executors,
-		capacityTracker:    params.CapacityTracker,
-		executorBuffer:     params.ExecutorBuffer,
-		maxJobRequirements: params.MaxJobRequirements,
-		interval:           params.Interval,
-		stopChannel:        make(chan struct{}),
+		pubSub:           params.PubSub,
+		nodeInfoProvider: params.NodeInfoProvider,
+		interval:         params.Interval,
+		stopChannel:      make(chan struct{}),
 	}
 
 	go p.publishBackgroundTask()
@@ -55,30 +39,7 @@ func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 
 // Publish publishes the node info to the pubsub topic manually and won't wait for the background task to do it.
 func (n *NodeInfoPublisher) Publish(ctx context.Context) error {
-	var executionEngines []model.Engine
-	for _, e := range model.EngineTypes() {
-		if n.executors.HasExecutor(ctx, e) {
-			executionEngines = append(executionEngines, e)
-		}
-	}
-
-	nodeInfo := model.NodeInfo{
-		PeerInfo: peer.AddrInfo{
-			ID:    n.h.ID(),
-			Addrs: n.h.Addrs(),
-		},
-		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: model.ComputeNodeInfo{
-			ExecutionEngines:   executionEngines,
-			MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
-			AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
-			MaxJobRequirements: n.maxJobRequirements,
-			RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
-			EnqueuedExecutions: len(n.executorBuffer.EnqueuedExecutions()),
-		},
-	}
-
-	return n.pubSub.Publish(ctx, nodeInfo)
+	return n.pubSub.Publish(ctx, n.nodeInfoProvider.GetNodeInfo(ctx))
 }
 
 func (n *NodeInfoPublisher) publishBackgroundTask() {

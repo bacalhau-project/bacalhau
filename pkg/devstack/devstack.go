@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
@@ -101,6 +102,7 @@ func NewDevStack(
 	computeConfig node.ComputeConfig,
 	requesterNodeConfig node.RequesterConfig,
 	injector node.NodeDependencyInjector,
+	nodeOverrides ...node.NodeConfig,
 ) (*DevStack, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
 	defer span.End()
@@ -285,6 +287,11 @@ func NewDevStack(
 			SimulatorNodeID:      simulatorNodeID,
 			IsComputeNode:        isComputeNode,
 			IsRequesterNode:      isRequesterNode,
+			Labels: map[string]string{
+				"name": fmt.Sprintf("node-%d", i),
+				"id":   libp2pHost.ID().String(),
+				"env":  "devstack",
+			},
 		}
 
 		if lotus != nil {
@@ -295,6 +302,16 @@ func NewDevStack(
 				// devstack will only be talking to a single node, so don't bother filtering based on ping
 				// as the ping may be quite large while it is trying to run everything
 				MaximumPing: time.Duration(math.MaxInt64),
+			}
+		}
+
+		// allow overriding configs of some nodes
+		if i < len(nodeOverrides) {
+			originalConfig := nodeConfig
+			nodeConfig = nodeOverrides[i]
+			err = mergo.Merge(&nodeConfig, originalConfig)
+			if err != nil {
+				return nil, err
 			}
 		}
 

@@ -143,7 +143,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			filename := filepath.Join("results", fmt.Sprintf("%d.txt", i))
 			checks = append(checks,
 				scenario.FileEquals(filename, content+"\n"),
-				scenario.FileContains(ipfs.DownloadFilenameStdout, content, totalFiles*3+1),
+				scenario.FileContains(model.DownloadFilenameStdout, content, totalFiles*3+1),
 			)
 		}
 	}

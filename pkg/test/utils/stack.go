@@ -22,6 +22,7 @@ func SetupTest(
 	lotusNode bool,
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
+	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	t.Cleanup(cm.Cleanup)
@@ -31,7 +32,7 @@ func SetupTest(
 		NumberOfBadComputeActors: badActors,
 		LocalNetworkLotus:        lotusNode,
 	}
-	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{})
+	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{}, nodeOverrides...)
 	return stack, cm
 }
 
@@ -70,6 +71,7 @@ func SetupTestWithNoopExecutor(
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
 	executorConfig noop_executor.ExecutorConfig,
+	nodeOverrides ...node.NodeConfig,
 ) *devstack.DevStack {
 	require.NoError(t, system.InitConfigForTesting(t))
 	// We will take the standard executors and add in the noop executor
@@ -88,7 +90,7 @@ func SetupTestWithNoopExecutor(
 	cm := system.NewCleanupManager()
 	t.Cleanup(cm.Cleanup)
 
-	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector)
+	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector, nodeOverrides...)
 	require.NoError(t, err)
 
 	return stack

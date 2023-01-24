@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,7 +22,10 @@ import (
 const OverAskForBidsFactor = 3 // ask up to 3 times the desired number of bids
 
 type SchedulerParams struct {
-	ID                                 string
+	ID           string
+	Host         host.Host
+	PeerStoreTTL time.Duration
+
 	JobStore                           localdb.LocalDB
 	NodeDiscoverer                     NodeDiscoverer
 	NodeRanker                         NodeRanker
@@ -35,6 +39,8 @@ type SchedulerParams struct {
 
 type Scheduler struct {
 	id                string
+	host              host.Host
+	peerStoreTTL      time.Duration
 	jobStore          localdb.LocalDB
 	nodeDiscoverer    NodeDiscoverer
 	nodeRanker        NodeRanker
@@ -48,6 +54,8 @@ type Scheduler struct {
 func NewScheduler(ctx context.Context, cm *system.CleanupManager, params SchedulerParams) *Scheduler {
 	return &Scheduler{
 		id:               params.ID,
+		host:             params.Host,
+		peerStoreTTL:     params.PeerStoreTTL,
 		jobStore:         params.JobStore,
 		nodeDiscoverer:   params.NodeDiscoverer,
 		nodeRanker:       params.NodeRanker,
@@ -71,6 +79,15 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	if err != nil {
 		return err
 	}
+
+	// filter nodes with rank below 0
+	var filteredNodes []NodeRank
+	for _, node := range rankedNodes {
+		if node.Rank >= 0 {
+			filteredNodes = append(filteredNodes, node)
+		}
+	}
+	rankedNodes = filteredNodes
 	log.Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
 
 	minBids := max(req.Job.Spec.Deal.MinBids, req.Job.Spec.Deal.Concurrency)
@@ -91,17 +108,17 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	// TODO: which context should we pass to fsm? We used to pass the request context, but that was wrong
 	//  as it the context would be canceled the request returns
 	s.shardStateManager.startShardsState(logger.ContextWithNodeIDLogger(context.Background(), s.id), &req.Job, s)
-	for _, node := range rankedNodes[:min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
+	for _, nodeRank := range rankedNodes[:min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
 		// create a new space linked to request context, but call noitfyAskForBid with a new context
 		// as the request context will be canceled the request returns
 		_, span := s.newSpan(ctx, "askForBid", req.Job.Metadata.ID)
-		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), span, &req.Job, node.ID.String())
+		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), span, &req.Job, nodeRank.NodeInfo)
 	}
 
 	return nil
 }
 
-func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *model.Job, nodeID string) {
+func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *model.Job, nodeInfo model.NodeInfo) {
 	defer span.End()
 	// TODO: ask to bid on certain shards rather than asking all compute nodes to bid on all shards
 	shardIndexes := make([]int, job.Spec.ExecutionPlan.TotalShards)
@@ -109,12 +126,15 @@ func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *m
 		shardIndexes[i] = i
 	}
 
+	// add peer info to the host's peerstore to be able to connect to it
+	s.host.Peerstore().AddAddrs(nodeInfo.PeerInfo.ID, nodeInfo.PeerInfo.Addrs, s.peerStoreTTL)
+
 	request := compute.AskForBidRequest{
 		Job:          *job,
 		ShardIndexes: shardIndexes,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: nodeID,
+			TargetPeerID: nodeInfo.PeerInfo.ID.String(),
 		},
 	}
 
@@ -133,7 +153,7 @@ func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *m
 					shard, shardResponse.ExecutionID)
 				continue
 			}
-			shardState.bid(ctx, nodeID, shardResponse.ExecutionID)
+			shardState.bid(ctx, nodeInfo.PeerInfo.ID.String(), shardResponse.ExecutionID)
 		}
 	}
 }

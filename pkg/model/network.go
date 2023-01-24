@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 
 	"go.uber.org/multierr"
@@ -11,13 +12,13 @@ import (
 type Network int
 
 const (
-	// Specifies that the job does not require networking.
+	// NetworkNone specifies that the job does not require networking.
 	NetworkNone Network = iota
 
-	// Specifies that the job requires unfiltered raw IP networking.
+	// NetworkFull specifies that the job requires unfiltered raw IP networking.
 	NetworkFull
 
-	// Specifies that the job requires HTTP networking to certain domains.
+	// NetworkHTTP specifies that the job requires HTTP networking to certain domains.
 	//
 	// The model is: the job specifier submits a job with the domain(s) it will
 	// need to communicate with, the compute provider uses this to make some
@@ -30,14 +31,14 @@ const (
 	//
 	// The “risk” for the compute provider is that the job does something that
 	// violates its terms, the terms of its hosting provider or ISP, or even the
-	// law in it’s jurisdiction (e.g. accessing and spreading illegal content,
-	// performing cyber attacks). So the same sort of risk as operating a Tor
+	// law in its jurisdiction (e.g. accessing and spreading illegal content,
+	// performing cyberattacks). So the same sort of risk as operating a Tor
 	// exit node.
 	//
 	// The risk for the job specifier is that we are operating in an environment
 	// they are paying for, so there is an incentive to hijack that environment
 	// (e.g. via a compromised package download that runs a crypto miner on
-	// install, and uses up all of the paid-for job time). Having the traffic
+	// install, and uses up all the paid-for job time). Having the traffic
 	// enforced to only domains specified makes those sorts of attacks much
 	// trickier and less valuable.
 	//
@@ -76,7 +77,7 @@ type NetworkConfig struct {
 	Domains []string `json:"Domains,omitempty"`
 }
 
-// Returns whether network connections should be completely disabled according
+// Disabled returns whether network connections should be completely disabled according
 // to this config.
 func (n NetworkConfig) Disabled() bool {
 	return n.Type == NetworkNone
@@ -90,9 +91,13 @@ func (n NetworkConfig) IsValid() (err error) {
 	}
 
 	for _, domain := range n.Domains {
-		if !domainRegex.MatchString(domain) {
-			err = multierr.Append(err, fmt.Errorf("invalid domain %q", domain))
+		if domainRegex.MatchString(domain) {
+			continue
 		}
+		if net.ParseIP(domain) != nil {
+			continue
+		}
+		err = multierr.Append(err, fmt.Errorf("invalid domain %q", domain))
 	}
 
 	return

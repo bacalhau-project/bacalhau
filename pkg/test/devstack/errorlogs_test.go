@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -52,8 +51,8 @@ var errorLogsTestCase = scenario.Scenario{
 		},
 	},
 	ResultsChecker: scenario.ManyChecks(
-		scenario.FileEquals(ipfs.DownloadFilenameStdout, "apples"),
-		scenario.FileEquals(ipfs.DownloadFilenameStderr, "oranges"),
+		scenario.FileEquals(model.DownloadFilenameStdout, "apples"),
+		scenario.FileEquals(model.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
 		job.WaitThrowErrors([]model.JobStateType{

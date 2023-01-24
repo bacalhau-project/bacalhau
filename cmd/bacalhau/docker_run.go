@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -62,6 +62,7 @@ type DockerRunOptions struct {
 	NetworkDomains   []string
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
+	NodeSelector     string   // Selector (label query) to filter nodes on which this job can be executed
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -72,7 +73,7 @@ type DockerRunOptions struct {
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
-	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
+	DownloadFlags model.DownloaderSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -103,7 +104,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		NodeSelector:       "",
+		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
@@ -242,6 +244,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
+	)
+
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
 		`Use this pattern to match files to be sharded.`,
@@ -329,8 +336,8 @@ func CreateJob(ctx context.Context,
 		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+	odr.DownloadFlags = model.DownloaderSettings{
+		Timeout:        odr.DownloadFlags.Timeout,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,
 	}
@@ -389,6 +396,7 @@ func CreateJob(ctx context.Context,
 		odr.MinBids,
 		odr.Timeout,
 		labels,
+		odr.NodeSelector,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,

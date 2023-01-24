@@ -78,6 +78,39 @@ export class PipelineStack extends cdk.Stack {
             },
         });
 
+        // Test artifacts
+        const canaryIntegrationTest = new codebuild.PipelineProject(this, 'IntegrationTest', {
+            buildSpec: codebuild.BuildSpec.fromObject({
+                version: '0.2',
+                phases: {
+                    install: {
+                        commands: [
+                            'export GOBIN=${HOME}/bin',
+                            'export PATH=$GOBIN:$PATH',
+                            'go install gotest.tools/gotestsum@v1.8.2',
+                        ],
+                    },
+                    build: {
+                        commands: [
+                            'cd ops/aws/canary/lambda',
+                            'make integration-test',
+                        ],
+                    },
+                },
+                reports: {
+                    IntegrationTest: {
+                        files: [
+                            'ops/aws/canary/lambda/tests.xml',
+                        ],
+                        'discard-paths': 'yes',
+                    }
+                },
+            }),
+            environment: {
+                buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
+            },
+        });
+
         const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
         const lambdaBuildOutput = new codepipeline.Artifact('LambdaBuildOutput');
 
@@ -94,6 +127,16 @@ export class PipelineStack extends cdk.Stack {
                             branch: config.bacalhauSourceConnection.branch,
                             connectionArn: config.bacalhauSourceConnection.connectionArn,
                         })
+                    ],
+                },
+                {
+                    stageName: 'Test',
+                    actions: [
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'Integration_Test',
+                            project: canaryIntegrationTest,
+                            input: sourceOutput,
+                        }),
                     ],
                 },
                 {

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-// Publisher provider that always return NoopPublisher regardless of requested publisher type
+// NoopPublisherProvider is a publisher provider that always return NoopPublisher regardless of requested publisher type
 type NoopPublisherProvider struct {
 	noopPublisher *NoopPublisher
 }
@@ -19,8 +19,13 @@ func NewNoopPublisherProvider(noopPublisher *NoopPublisher) *NoopPublisherProvid
 	}
 }
 
-func (s *NoopPublisherProvider) GetPublisher(ctx context.Context, publisherType model.Publisher) (publisher.Publisher, error) {
+func (s *NoopPublisherProvider) GetPublisher(context.Context, model.Publisher) (publisher.Publisher, error) {
 	return s.noopPublisher, nil
+}
+
+func (s *NoopPublisherProvider) HasPublisher(ctx context.Context, publisher model.Publisher) bool {
+	_, err := s.GetPublisher(ctx, publisher)
+	return err == nil
 }
 
 type NoopPublisher struct{}
@@ -29,15 +34,15 @@ func NewNoopPublisher() *NoopPublisher {
 	return &NoopPublisher{}
 }
 
-func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
+func (publisher *NoopPublisher) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
 func (publisher *NoopPublisher) PublishShardResult(
 	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
+	_ model.JobShard,
+	_ string,
+	_ string,
 ) (model.StorageSpec, error) {
 	//nolint:staticcheck,ineffassign
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.PublishShardResult")

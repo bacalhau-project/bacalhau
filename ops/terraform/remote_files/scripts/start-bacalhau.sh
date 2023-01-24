@@ -37,7 +37,7 @@ if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
       export UNSAFE_NODE0_ID="$BACALHAU_NODE0_UNSAFE_ID"
     fi
     export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$UNSAFE_NODE0_ID")
-  # otherwise we will construct our connect string based on 
+  # otherwise we will construct our connect string based on
   # what node index we are
   else
     # we are > node0 so we can connect to node0
@@ -53,10 +53,15 @@ if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
   fi
 fi
 
+BACALHAU_PROBE_EXEC='/terraform_node/apply-http-allowlist.sh'
+
 bacalhau serve \
   --node-type requester,compute \
   --job-selection-data-locality anywhere \
+  --job-selection-accept-networked \
+  --job-selection-probe-exec "${BACALHAU_PROBE_EXEC}" \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --swarm-port "${BACALHAU_PORT}" \
   --api-port 1234 \
-  --peer "${CONNECT_PEER}"
+  --peer "${CONNECT_PEER}" \
+  --labels owner=bacalhau

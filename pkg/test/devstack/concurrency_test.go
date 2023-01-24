@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -33,7 +31,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	}
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(
-		ipfs.DownloadFilenameStdout,
+		model.DownloadFilenameStdout,
 		"Hello, world!\nHello, world!\n",
 	)
 	testCase.JobCheckers = []job.CheckStatesFunction{

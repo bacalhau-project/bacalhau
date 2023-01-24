@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
@@ -84,7 +84,7 @@ func getSampleDockerIPFSJob() *model.Job {
 	return j
 }
 
-func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
+func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return nil, err
@@ -95,8 +95,8 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 		IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	}
 
-	return &ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    300,
+	return &model.DownloaderSettings{
+		Timeout:        300 * time.Second,
 		OutputDir:      dir,
 		IPFSSwarmAddrs: IPFSSwarmAddrs,
 	}, nil

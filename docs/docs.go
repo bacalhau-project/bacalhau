@@ -1131,6 +1131,26 @@ const docTemplate = `{
                 }
             }
         },
+        "model.LabelSelectorRequirement": {
+            "type": "object",
+            "properties": {
+                "Key": {
+                    "description": "key is the label key that the selector applies to.",
+                    "type": "string"
+                },
+                "Operator": {
+                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                    "type": "string"
+                },
+                "Values": {
+                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "model.Metadata": {
             "type": "object",
             "properties": {
@@ -1327,6 +1347,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.NetworkConfig"
                         }
                     ]
+                },
+                "NodeSelectors": {
+                    "description": "NodeSelectors is a selector which must be true for the compute node to run this job.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelSelectorRequirement"
+                    }
                 },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
@@ -39,10 +40,12 @@ func NewComputeNode(
 	ctx context.Context,
 	cleanupManager *system.CleanupManager,
 	host host.Host,
+	labels map[string]string,
 	apiServer *publicapi.APIServer,
 	config ComputeConfig,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
+	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider,
@@ -142,8 +145,10 @@ func NewComputeNode(
 			NetworkSize: 1,
 		}),
 		bidstrategy.NewEnginesInstalledStrategy(bidstrategy.EnginesInstalledStrategyParams{
-			Executors: executors,
-			Verifiers: verifiers,
+			Storages:   storages,
+			Executors:  executors,
+			Verifiers:  verifiers,
+			Publishers: publishers,
 		}),
 		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
 			Command: config.JobSelectionPolicy.ProbeExec,
@@ -165,15 +170,19 @@ func NewComputeNode(
 		}),
 	)
 
-	// node info publisher
-	nodeInfoPublisher := compute.NewNodeInfoPublisher(compute.NodeInfoPublisherParams{
-		PubSub:             nodeInfoPubSub,
+	// node info
+	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Host:               host,
+		Labels:             labels,
 		Executors:          executors,
 		CapacityTracker:    runningCapacityTracker,
 		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,
-		Interval:           config.NodeInfoPublisherInterval,
+	})
+	nodeInfoPublisher := compute.NewNodeInfoPublisher(compute.NodeInfoPublisherParams{
+		PubSub:           nodeInfoPubSub,
+		NodeInfoProvider: nodeInfoProvider,
+		Interval:         config.NodeInfoPublisherInterval,
 	})
 
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
@@ -199,9 +208,9 @@ func NewComputeNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		sensors.NewCapacityDebugInfoProvider(sensors.CapacityDebugInfoProviderParams{
-			Name:            "AvailableCapacity",
-			CapacityTracker: runningCapacityTracker,
+		sensors.NewNodeDebugInfoProvider(sensors.NodeDebugInfoProviderParams{
+			Name:             "NodeInfo",
+			NodeInfoProvider: nodeInfoProvider,
 		}),
 		runningInfoProvider,
 	}
