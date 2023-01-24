@@ -168,7 +168,7 @@ jobs:
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
-                name: Test Python
+                name: Test Python SDK
                 command: |
                   sudo apt install python3.10 -y
                   curl -sSL https://install.python-poetry.org | python3 -
@@ -177,7 +177,7 @@ jobs:
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
                   # uUsing '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
-                  # The python sdk doesn't generate a pem key, so we use the go-cli to generate one
+                  # The python sdk doesn't generate a pem key, so we use the go-cli to generate one, I know it sucks :)
                   curl -sL https://get.bacalhau.org/install.sh | bash
                   /usr/local/bin/bacalhau list
                   # Run tests
