@@ -31,7 +31,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ## Roadmap
 
-Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://www.starmaps.app/roadmap/github.com/filecoin-project/bacalhau/issues/115)!
+Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/filecoin-project/bacalhau/issues/1151)!
 
 ## Community
 
