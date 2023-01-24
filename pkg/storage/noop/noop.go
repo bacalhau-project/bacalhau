@@ -30,7 +30,7 @@ type StorageConfig struct {
 	ExternalHooks StorageConfigExternalHooks
 }
 
-// Storage provider that always return NoopStorage regardless of requested source type
+// NoopStorageProvider is a storage provider that always return NoopStorage regardless of requested source type
 type NoopStorageProvider struct {
 	noopStorage *NoopStorage
 }
@@ -41,8 +41,13 @@ func NewNoopStorageProvider(noopStorage *NoopStorage) *NoopStorageProvider {
 	}
 }
 
-func (s *NoopStorageProvider) GetStorage(ctx context.Context, storageType model.StorageSourceType) (storage.Storage, error) {
+func (s *NoopStorageProvider) GetStorage(context.Context, model.StorageSourceType) (storage.Storage, error) {
 	return s.noopStorage, nil
+}
+
+func (s *NoopStorageProvider) HasStorage(ctx context.Context, sourceType model.StorageSourceType) bool {
+	_, err := s.GetStorage(ctx, sourceType)
+	return err == nil
 }
 
 // a storage driver runs the downloads content
@@ -54,14 +59,14 @@ type NoopStorage struct {
 	Config StorageConfig
 }
 
-func NewNoopStorage(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorage(_ context.Context, _ *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}
 	return storageHandler, nil
 }
 
-func NewNoopStorageWithConfig(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorageWithConfig(_ context.Context, _ *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}
