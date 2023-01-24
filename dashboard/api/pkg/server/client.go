@@ -3,46 +3,98 @@ package server
 // client code for accessing bacalhau, literally ripped straight from the CLI
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/rundocker"
-	"github.com/spf13/cobra"
 )
 
-var configInitRan bool
+func init() { //nolint:gochecknoinits
+	err := system.InitConfig()
+	if err != nil {
+		panic(err)
+	}
+}
+
+var realSpec model.Spec = model.Spec{
+	Engine:    model.EngineDocker,
+	Verifier:  model.VerifierNoop,
+	Publisher: model.PublisherIpfs,
+	Docker: model.JobSpecDocker{
+		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
+		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
+	},
+	Resources: model.ResourceUsageConfig{
+		GPU: "1",
+	},
+	Outputs: []model.StorageSpec{
+		{
+			Name: "outputs",
+			Path: "/outputs",
+		},
+	},
+	Deal: model.Deal{
+		Concurrency: 1,
+	},
+}
+
+var testSpec model.Spec = model.Spec{
+	Engine:    model.EngineDocker,
+	Verifier:  model.VerifierNoop,
+	Publisher: model.PublisherIpfs,
+	Docker: model.JobSpecDocker{
+		Image:      "ubuntu",
+		Entrypoint: []string{"echo"},
+	},
+	Outputs: []model.StorageSpec{
+		{
+			Name: "outputs",
+			Path: "/outputs",
+		},
+	},
+	Deal: model.Deal{
+		Concurrency: 1,
+	},
+}
 
 func runStableDiffusion(prompt string, testing bool) (string, error) {
-	if !configInitRan {
-		system.InitConfig()
-		configInitRan = true
-	}
-	runOptions := rundocker.NewDockerRunOptions()
-	runOptions.RunTimeSettings.WaitForJobToFinish = true
-	// need to set this to get the cid out
-	runOptions.RunTimeSettings.PrintNodeDetails = true
+	env := system.Production
+	baseURI := fmt.Sprintf("http://%s:%d", system.Envs[env].APIHost, system.Envs[env].APIPort)
+	client := publicapi.NewRequesterAPIClient(baseURI)
 
-	// because the rundocker machinery likes to run cmd.Print{,f}
-	nullCommand := &cobra.Command{
-		Use:   "null",
-		Short: "null",
-		Run: func(cmd *cobra.Command, args []string) {
-		},
+	j, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		return err.Error(), err
 	}
-	// just to fill in contexts, etc... hacks hacks hacks
-	nullCommand.Execute()
-
-	if !testing {
-		// gpus, actual stable diffusion:
-		runOptions.GPU = "1"
-		return rundocker.DockerRun(nullCommand, []string{
-			"ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-			"python", "main.py", "--o", "./outputs", "--p",
-			prompt,
-		}, runOptions)
+	if testing {
+		j.Spec = testSpec
 	} else {
-		// testing only:
-		return rundocker.DockerRun(nullCommand, []string{
-			"ubuntu",
-			"echo", prompt,
-		}, runOptions)
+		j.Spec = realSpec
 	}
+	j.Spec.Docker.Entrypoint = append(j.Spec.Docker.Entrypoint, prompt)
+
+	submittedJob, err := client.Submit(context.Background(), j)
+	if err != nil {
+		return err.Error(), err
+	}
+
+	err = client.GetJobStateResolver().WaitUntilComplete(context.Background(), submittedJob.Metadata.ID)
+	if err != nil {
+		return err.Error(), err
+	}
+
+	results, err := client.GetResults(context.Background(), submittedJob.Metadata.ID)
+	if err != nil {
+		return err.Error(), err
+	}
+
+	for _, result := range results {
+		if result.Data.Name == "outputs" {
+			return result.Data.CID, nil
+		}
+	}
+
+	return "", fmt.Errorf("no results found?")
 }

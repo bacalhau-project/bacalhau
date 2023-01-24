@@ -13,9 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/rundocker"
 	"github.com/gorilla/mux"
 )
 
@@ -93,33 +91,22 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 	promptParam := PromptParam{}
 	err := json.NewDecoder(req.Body).Decode(&promptParam)
 	if err != nil {
-		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 		return
 	}
 	prompt := promptParam.Prompt
 
 	// user can pass ?testing=1 to bypass GPU and just return the prompt
 	testing := len(req.URL.Query()["testing"]) > 0
-	// user can pass ?oldAPI=1 to not include /requestor in the URI string so we
-	// can talk to the old network
-	oldAPI := len(req.URL.Query()["oldAPI"]) > 0
-	if oldAPI {
-		publicapi.APIPrefix = ""
-	}
-	local := len(req.URL.Query()["local"]) > 0
-	if local {
-		rundocker.ApiHost = "172.17.0.1"
-		rundocker.ApiPort = 20000
-	}
 
-	log.Info().Msgf("--> testing=%t, oldAPI=%t, local=%t", testing, oldAPI, local)
+	log.Info().Msgf("--> testing=%t", testing)
 
 	// TODO: put client code in here, hoisted directly from CLI
 	cid, err := runStableDiffusion(prompt, testing)
 	if err != nil {
-		res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 	} else {
-		res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
 	}
 }
 
