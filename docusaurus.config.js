@@ -27,6 +27,8 @@ const config = {
           sidebarPath: require.resolve("./sidebars.js"),
           editUrl: `https://github.com/bacalhau-project/docs.bacalhau.org/blob/main/`,
           remarkPlugins: [simplePlantUML],
+          showLastUpdateAuthor: true,
+          showLastUpdateTime: true,
         },
         gtag: {
           trackingID: 'G-D6NP6P151C',
