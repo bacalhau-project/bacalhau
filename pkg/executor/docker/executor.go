@@ -274,9 +274,6 @@ func (e *Executor) RunShard(
 		return executor.FailResult(internalContainerStartError)
 	}
 
-	log.Ctx(ctx).Debug().Msg("Capturing stdout/stderr for container")
-	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(ctx, e.Client, jobContainer.ID)
-
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
 	var containerError error
@@ -295,6 +292,12 @@ func (e *Executor) RunShard(
 			containerError = errors.New(exitStatus.Error.Message)
 		}
 	}
+
+	// Can't use the original context as it may have already been timed out
+	detachedContext, cancel := context.WithTimeout(detachedContext{ctx}, 3*time.Second)
+	defer cancel()
+	log.Ctx(detachedContext).Debug().Msg("Capturing stdout/stderr for container")
+	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(detachedContext, e.Client, jobContainer.ID)
 
 	return executor.WriteJobResults(
 		jobResultsDir,
@@ -359,3 +362,25 @@ func (e *Executor) labelJobValue(shard model.JobShard) string {
 
 // Compile-time interface check:
 var _ executor.Executor = (*Executor)(nil)
+
+var _ context.Context = detachedContext{}
+
+type detachedContext struct {
+	parent context.Context
+}
+
+func (d detachedContext) Deadline() (deadline time.Time, ok bool) {
+	return time.Time{}, false
+}
+
+func (d detachedContext) Done() <-chan struct{} {
+	return nil
+}
+
+func (d detachedContext) Err() error {
+	return nil
+}
+
+func (d detachedContext) Value(key any) any {
+	return d.parent.Value(key)
+}

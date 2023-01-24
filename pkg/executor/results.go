@@ -32,6 +32,9 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	// write that directly to disk rather than needing to hold it all in memory.
 	summary := make([]byte, output.summaryLimit+1)
 	summaryRead, err := output.contents.Read(summary)
+	if err != nil && err != io.EOF {
+		return err
+	}
 
 	available := system.Min(summaryRead, int(output.summaryLimit))
 
