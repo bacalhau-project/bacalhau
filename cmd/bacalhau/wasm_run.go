@@ -229,8 +229,7 @@ func runWasm(
 		}
 	}
 
-	_, err = ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings)
-	return err
+	return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings)
 }
 
 func newValidateWasmCmd() *cobra.Command {

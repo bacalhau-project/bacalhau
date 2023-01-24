@@ -240,7 +240,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		j.Spec.Contexts = append(j.Spec.Contexts, context)
 	}
 
-	_, err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)
+	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error executing job: %s", err), 1)
 		return nil

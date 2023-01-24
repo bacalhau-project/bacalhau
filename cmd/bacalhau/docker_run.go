@@ -147,8 +147,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			_, err := DockerRun(cmd, cmdArgs, ODR)
-			return err
+			return dockerRun(cmd, cmdArgs, ODR)
 		},
 	}
 
@@ -276,7 +275,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func DockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) (string, error) {
+func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 	ctx := cmd.Context()
@@ -288,16 +287,16 @@ func DockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) (str
 	j, err := CreateJob(ctx, cmdArgs, ODR)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating job: %s", err), 1)
-		return "", nil
+		return nil
 	}
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
 			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-			return "", nil
+			return nil
 		} else {
 			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
-			return "", nil
+			return nil
 		}
 	}
 	if ODR.DryRun {
@@ -306,10 +305,10 @@ func DockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) (str
 		yamlBytes, err = yaml.Marshal(j)
 		if err != nil {
 			Fatal(cmd, fmt.Sprintf("Error converting job to yaml: %s", err), 1)
-			return "", nil
+			return nil
 		}
 		cmd.Print(string(yamlBytes))
-		return "", nil
+		return nil
 	}
 
 	return ExecuteJob(ctx,
