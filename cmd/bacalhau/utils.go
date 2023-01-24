@@ -932,3 +932,14 @@ func formatMessage(msg string) string {
 	return fmt.Sprintf("\t%s%s",
 		strings.Repeat(" ", maxLength-len(msg)+2), msg)
 }
+
+// Check if the image contains a tag or a digest
+func DockerImageContainsTag(image string) bool {
+	if strings.Contains(image, ":") {
+		return true
+	}
+	if strings.Contains(image, "@") {
+		return true
+	}
+	return false
+}
