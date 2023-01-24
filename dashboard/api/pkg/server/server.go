@@ -70,10 +70,10 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", apiServer.Options.Host, apiServer.Options.Port),
-		WriteTimeout:      time.Second * 15,
-		ReadTimeout:       time.Second * 15,
-		ReadHeaderTimeout: time.Second * 15,
-		IdleTimeout:       time.Second * 60,
+		WriteTimeout:      time.Minute * 15,
+		ReadTimeout:       time.Minute * 15,
+		ReadHeaderTimeout: time.Minute * 15,
+		IdleTimeout:       time.Minute * 60,
 		Handler:           router,
 	}
 	return srv.ListenAndServe()
@@ -104,8 +104,10 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 	// TODO: put client code in here, hoisted directly from CLI
 	cid, err := runStableDiffusion(prompt, testing)
 	if err != nil {
+		log.Error().Err(err).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 	} else {
+		log.Info().Str("CID", cid).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
 	}
 }

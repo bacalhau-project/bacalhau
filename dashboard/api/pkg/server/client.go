@@ -5,11 +5,15 @@ package server
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
+
+const maxWaitTime = 900
 
 func init() { //nolint:gochecknoinits
 	err := system.InitConfig()
@@ -80,7 +84,12 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 		return err.Error(), err
 	}
 
-	err = client.GetJobStateResolver().WaitUntilComplete(context.Background(), submittedJob.Metadata.ID)
+	resolver := client.GetJobStateResolver()
+	resolver.SetWaitTime(maxWaitTime, time.Second)
+
+	err = resolver.Wait(context.Background(), submittedJob.Metadata.ID, 1, job.WaitForJobStates(map[model.JobStateType]int{
+		model.JobStateCompleted: 1,
+	}))
 	if err != nil {
 		return err.Error(), err
 	}
@@ -91,7 +100,7 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	}
 
 	for _, result := range results {
-		if result.Data.Name == "outputs" {
+		if result.Data.CID != "" {
 			return result.Data.CID, nil
 		}
 	}
