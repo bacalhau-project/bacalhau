@@ -92,7 +92,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 
 	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
 	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
 	return &model.DownloaderSettings{
@@ -129,10 +129,10 @@ func getClient() *publicapi.RequesterAPIClient {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
-		apiHost = system.Envs[system.Production].APIHost
+		apiHost = system.Envs[system.GetEnvironment()].APIHost
 	}
 	if apiPort == "" {
-		apiPort = fmt.Sprint(system.Envs[system.Production].APIPort)
+		apiPort = fmt.Sprint(system.Envs[system.GetEnvironment()].APIPort)
 	}
 	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
 	return client

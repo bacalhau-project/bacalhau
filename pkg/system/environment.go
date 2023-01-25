@@ -70,6 +70,10 @@ func GetEnvironment() Environment {
 	return env
 }
 
+func SetEnvironment(e Environment) {
+	env = e
+}
+
 func IsTest() bool {
 	return env == EnvironmentTest
 }
