@@ -25,11 +25,6 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var DefaultBootstrapAddresses = []string{
-	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-}
 var DefaultSwarmPort = 1235
 
 var (
@@ -182,7 +177,7 @@ func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
 	} else if OS.PeerConnect == "" {
-		peersStrings = DefaultBootstrapAddresses
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}

@@ -347,7 +347,7 @@ func CreateJob(ctx context.Context,
 	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
 
 	if swarmAddresses == "" {
-		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
 	odr.DownloadFlags = model.DownloaderSettings{
