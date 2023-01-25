@@ -25,7 +25,7 @@ Windows users can download the [latest release tarball from Github](https://gith
 
 ### Running The Bacalhau CLI Via Docker
 
-Instead of installing the client, you can use the [Bacalhau Docker image](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau) to run the client. To pull the latest image run the following command:
+Instead of installing the client, you can use the [Bacalhau Docker image](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau) to run the client. There's also a [comprehensive example](../examples/workload-onboarding/bacalhau-docker-image/index.md). To pull the latest image run the following command:
 
 ```bash
 docker pull ghcr.io/bacalhau-project/bacalhau:latest
@@ -42,7 +42,7 @@ docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
 ```
 
 :::tip
-If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. For example, to mount the current directory as a volume.
+If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. You can see an example of this in the [Bacalhau Docker example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
 :::
 
 ### Verify the Installation
