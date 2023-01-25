@@ -18,70 +18,113 @@ export class PipelineStack extends cdk.Stack {
         // Source artifacts
         const sourceOutput = new codepipeline.Artifact("SourceOutput")
 
+        // Configs
+        const prodConfig = getConfig(app, 'prod');
+        const stagingConfig = getConfig(app, 'staging');
+
         // Build artifacts
-        const cdkBuild = new codebuild.PipelineProject(this, 'CdkBuild', {
-            buildSpec: codebuild.BuildSpec.fromObject({
-                version: '0.2',
-                phases: {
-                    install: {
-                        commands: [
-                            'cd ops/aws/canary',
-                            'npm install',
-                        ]
-                    },
-                    build: {
-                        commands: [
-                            'npm run build',
-                            'npm run cdk synth -- -c config=prod -o dist',
-                        ],
-                    },
-                },
-                artifacts: {
-                    'base-directory': 'ops/aws/canary/dist',
-                    files: [
-                        '**/*'
+        const cdkBuild = this.getCdkBuild([prodConfig]);
+        const lambdaBuild = this.getLambdaBuild();
+
+        const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
+        const lambdaBuildOutput = new codepipeline.Artifact('LambdaBuildOutput');
+
+        new codepipeline.Pipeline(this, 'Pipeline', {
+            stages: [
+                {
+                    stageName: 'Source',
+                    actions: [
+                        new codepipeline_actions.CodeStarConnectionsSourceAction({
+                            actionName: "Bacalhau_Commit",
+                            output: sourceOutput,
+                            owner: config.bacalhauSourceConnection.owner,
+                            repo: config.bacalhauSourceConnection.repo,
+                            branch: config.bacalhauSourceConnection.branch,
+                            connectionArn: config.bacalhauSourceConnection.connectionArn,
+                        })
                     ],
                 },
-            }),
-            environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
-            },
-        });
-
-        const lambdaBuild = new codebuild.PipelineProject(this, 'LambdaBuild', {
-            buildSpec: codebuild.BuildSpec.fromObject({
-                version: '0.2',
-                phases: {
-                    install: {
-                        'runtime-versions': {
-                            'golang': 1.18
-                        },
-                    },
-                    build: {
-                        commands: [
-                            'cd ops/aws/canary/lambda',
-                            'go build -ldflags="-s -w" -o scenario_handler ./cmd/scenario_lambda_runner/',
-                            'go build -ldflags="-s -w" -o alarm_handler ./cmd/alarm_slack_handler/',
-                        ],
-                    },
-                },
-                artifacts: {
-                    'base-directory': 'ops/aws/canary/lambda',
-                    files: [
-                        'scenario_handler',
-                        'alarm_handler',
+                {
+                    stageName: 'Build',
+                    actions: [
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'CDK_Build',
+                            project: cdkBuild,
+                            input: sourceOutput,
+                            outputs: [cdkBuildOutput],
+                        }),
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'Lambda_Code_Build',
+                            project: lambdaBuild,
+                            input: sourceOutput,
+                            outputs: [lambdaBuildOutput],
+                        })
                     ],
                 },
-            }),
-            environment: {
-                buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
-            },
-        });
+                {
+                    stageName: 'TestStaging',
+                    actions: [
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'Integration_Test_Staging',
+                            project: this.getIntegrationTest(stagingConfig),
+                            input: sourceOutput,
+                        }),
+                    ],
+                },
 
-        // Test artifacts
-        const canaryIntegrationTest = new codebuild.PipelineProject(this, 'IntegrationTest', {
+                {
+                    stageName: 'DeployStaging',
+                    actions: [
+                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                            actionName: 'Canary_Deploy_Staging',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryStaging.template.json'),
+                            stackName: 'BacalhauCanaryStaging',
+                            adminPermissions: true,
+                            parameterOverrides: {
+                                ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
+                            },
+                            extraInputs: [lambdaBuildOutput],
+                        }),
+                    ],
+                },
+                {
+                    stageName: 'TestProd',
+                    actions: [
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'Integration_Test_Prod',
+                            project: this.getIntegrationTest(prodConfig),
+                            input: sourceOutput,
+                        }),
+                    ],
+                },
+                {
+                    stageName: 'DeployProd',
+                    actions: [
+                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                            actionName: 'Canary_Deploy_Prod',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
+                            stackName: 'BacalhauCanaryProd',
+                            adminPermissions: true,
+                            parameterOverrides: {
+                                ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
+                            },
+                            extraInputs: [lambdaBuildOutput],
+                        }),
+                    ],
+                }
+            ],
+        });
+    }
+
+    private getIntegrationTest(config: BuildConfig) {
+        return new codebuild.PipelineProject(this, 'IntegrationTest' + config.envTitle, {
             buildSpec: codebuild.BuildSpec.fromObject({
                 version: '0.2',
+                env: {
+                    variables: {
+                        'BACALHAU_ENVIRONMENT': config.bacalhauEnvironment,
+                    },
+                },
                 phases: {
                     install: {
                         commands: [
@@ -110,68 +153,73 @@ export class PipelineStack extends cdk.Stack {
                 buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
             },
         });
+    }
 
-        const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
-        const lambdaBuildOutput = new codepipeline.Artifact('LambdaBuildOutput');
+    private getLambdaBuild() {
+        return new codebuild.PipelineProject(this, 'LambdaBuild', {
+            buildSpec: codebuild.BuildSpec.fromObject({
+                version: '0.2',
+                phases: {
+                    install: {
+                        'runtime-versions': {
+                            'golang': 1.18
+                        },
+                    },
+                    build: {
+                        commands: [
+                            'cd ops/aws/canary/lambda',
+                            'go build -ldflags="-s -w" -o scenario_handler ./cmd/scenario_lambda_runner/',
+                            'go build -ldflags="-s -w" -o alarm_handler ./cmd/alarm_slack_handler/',
+                        ],
+                    },
+                },
+                artifacts: {
+                    'base-directory': 'ops/aws/canary/lambda',
+                    files: [
+                        'scenario_handler',
+                        'alarm_handler',
+                    ],
+                },
+            }),
+            environment: {
+                buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
+            },
+        });
+    }
 
-        new codepipeline.Pipeline(this, 'Pipeline', {
-            stages: [
-                {
-                    stageName: 'Source',
-                    actions: [
-                        new codepipeline_actions.CodeStarConnectionsSourceAction({
-                            actionName: "Bacalhau_Commit",
-                            output: sourceOutput,
-                            owner: config.bacalhauSourceConnection.owner,
-                            repo: config.bacalhauSourceConnection.repo,
-                            branch: config.bacalhauSourceConnection.branch,
-                            connectionArn: config.bacalhauSourceConnection.connectionArn,
-                        })
+    private getCdkBuild(configs: [BuildConfig]) {
+        const synthCommands:string[] = new Array(configs.length)
+        for (const config of configs) {
+            synthCommands.push(`npm run cdk synth -- -c config=${config.env} -o dist`);
+        }
+
+        return new codebuild.PipelineProject(this, 'CdkBuild', {
+            buildSpec: codebuild.BuildSpec.fromObject({
+                version: '0.2',
+                phases: {
+                    install: {
+                        commands: [
+                            'cd ops/aws/canary',
+                            'npm install',
+                        ]
+                    },
+                    build: {
+                        commands: [
+                            'npm run build',
+                            synthCommands,
+                        ],
+                    },
+                },
+                artifacts: {
+                    'base-directory': 'ops/aws/canary/dist',
+                    files: [
+                        '**/*'
                     ],
                 },
-                {
-                    stageName: 'Test',
-                    actions: [
-                        new codepipeline_actions.CodeBuildAction({
-                            actionName: 'Integration_Test',
-                            project: canaryIntegrationTest,
-                            input: sourceOutput,
-                        }),
-                    ],
-                },
-                {
-                    stageName: 'Build',
-                    actions: [
-                        new codepipeline_actions.CodeBuildAction({
-                            actionName: 'CDK_Build',
-                            project: cdkBuild,
-                            input: sourceOutput,
-                            outputs: [cdkBuildOutput],
-                        }),
-                        new codepipeline_actions.CodeBuildAction({
-                            actionName: 'Lambda_Code_Build',
-                            project: lambdaBuild,
-                            input: sourceOutput,
-                            outputs: [lambdaBuildOutput],
-                        })
-                    ],
-                },
-                {
-                    stageName: 'DeployProd',
-                    actions: [
-                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'Canary_Deploy_Prod',
-                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
-                            stackName: 'BacalhauCanaryProd',
-                            adminPermissions: true,
-                            parameterOverrides: {
-                                ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
-                            },
-                            extraInputs: [lambdaBuildOutput],
-                        }),
-                    ],
-                }
-            ],
+            }),
+            environment: {
+                buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
+            },
         });
     }
 }
