@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // peers godoc
@@ -21,7 +22,11 @@ func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 	_, span := system.GetSpanFromRequest(req, "apiServer/peers")
 	defer span.End()
 	res.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(res).Encode(apiServer.host.Peerstore().Peers())
+	var peerInfos []peer.AddrInfo
+	for _, p := range apiServer.host.Peerstore().Peers() {
+		peerInfos = append(peerInfos, apiServer.host.Peerstore().PeerInfo(p))
+	}
+	err := json.NewEncoder(res).Encode(peerInfos)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

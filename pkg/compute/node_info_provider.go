@@ -8,10 +8,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 )
 
 type NodeInfoProviderParams struct {
 	Host               host.Host
+	IdentityService    identify.IDService
 	Labels             map[string]string
 	Executors          executor.ExecutorProvider
 	CapacityTracker    capacity.Tracker
@@ -21,6 +23,7 @@ type NodeInfoProviderParams struct {
 
 type NodeInfoProvider struct {
 	h                  host.Host
+	identityService    identify.IDService
 	labels             map[string]string
 	executors          executor.ExecutorProvider
 	capacityTracker    capacity.Tracker
@@ -31,6 +34,7 @@ type NodeInfoProvider struct {
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	return &NodeInfoProvider{
 		h:                  params.Host,
+		identityService:    params.IdentityService,
 		labels:             params.Labels,
 		executors:          params.Executors,
 		capacityTracker:    params.CapacityTracker,
@@ -50,7 +54,7 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) model.NodeInfo {
 	return model.NodeInfo{
 		PeerInfo: peer.AddrInfo{
 			ID:    n.h.ID(),
-			Addrs: n.h.Addrs(),
+			Addrs: n.identityService.OwnObservedAddrs(),
 		},
 		NodeType: model.NodeTypeCompute,
 		Labels:   n.labels,

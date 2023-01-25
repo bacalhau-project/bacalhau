@@ -4,7 +4,6 @@ After=network-online.target ipfs-daemon.service
 Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.service
 
 [Service]
-Environment="LOG_LEVEL=debug"
 Environment="LOG_TYPE=json"
 Environment="BACALHAU_PATH=/data"
 Environment="BACALHAU_DIR=/data"

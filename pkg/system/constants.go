@@ -36,5 +36,13 @@ var Envs = map[EnvironmentType]EnvironmentData{
 
 	// TODO: fill these in
 	Development: {},
-	Staging:     {},
+	Staging: {
+		APIPort: 1234,
+		APIHost: "bootstrap.staging.bacalhau.org",
+		IPFSSwarmAddresses: []string{
+			"/ip4/35.199.72.224/tcp/1235/p2p/QmP6RVpStuEoShqTTTiS2e3PYazcd54sj2RaZTeJP9VCeh",
+			"/ip4/35.198.1.209/tcp/1235/p2p/QmU7NmyuztsYPeLxrw3B3p97bZfJD5PRL9igvhDepfhsGY",
+			"/ip4/35.247.208.185/tcp/1235/p2p/QmWhWSQLxuGARV2g8oXt2v5HVfwYWqRCDAuGVz6qDnS6kX",
+		},
+	},
 }
