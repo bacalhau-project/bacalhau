@@ -17,4 +17,5 @@ ingress_cidrs               = ["0.0.0.0/0"]
 ssh_access_cidrs            = ["0.0.0.0/0"]
 num_gpu_machines            = 0
 internal_ip_addresses       = ["10.158.0.5", "10.158.0.6", "10.158.0.7"]
+public_ip_addresses         = ["35.199.72.224", "35.198.1.209", "35.247.208.185"]
 log_level                   = "trace"
