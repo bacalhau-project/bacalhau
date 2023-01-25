@@ -100,7 +100,6 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
-
 	identify.ActivationThresh = 2
 
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
