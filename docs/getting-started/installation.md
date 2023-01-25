@@ -41,7 +41,7 @@ Now you can run any Bacalhau client command by prefixing it with `docker run ghc
 docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
 ```
 
-::tip
+:::tip
 If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. For example, to mount the current directory as a volume.
 :::
 
