@@ -108,3 +108,15 @@ proxy.golang.org
 sum.golang.org
 index.golang.org
 storage.googleapis.com
+
+# boinc.multi-pool.info/latinsquares BOINC project
+78.26.93.125
+boinc.berkeley.edu
+boinc.multi-pool.info
+
+# einsteinathome.org BOINC project
+einsteinathome.org
+scheduler.einsteinathome.org
+einstein.phys.uwm.edu
+einstein-dl.syr.edu
+.aei.uni-hannover.de
