@@ -180,9 +180,9 @@ To ensure that our node can communicate with other nodes on the network - we nee
 
 Firewall configuration is very specific to your network and we can't provide generic instructions for this step but if you need any help feel free to reach out on [Slack!](https://filecoinproject.slack.com/archives/C02RLM3JHUY)
 
-### Install the bacalhau binary
+### Install the Bacalhau Binary
 
-[Install the bacalhau binary](/getting-started/installation#prerequisite-install-bacalhau-client) to run `bacalhau serve`.
+[Install the bacalhau binary](/getting-started/installation#install-the-bacalhau-client) to run `bacalhau serve`.
 
 :::info
 
@@ -199,7 +199,15 @@ LOG_LEVEL=debug bacalhau serve \
   --ipfs-connect $IPFS_CONNECT
 ```
 
-With the command above our node joins the Bacalhau network, congrats! :tada:
+Alternatively, you can run the following Docker command:
+
+```bash
+docker run -it --rm \
+  -e LOG_LEVEL=debug \
+  ghcr.io/bacalhau-project/bacalhau:latest serve --ipfs-connect $IPFS_CONNECT
+```
+
+These commands join this node to the public Bacalhau network, congrats! :tada:
 
 ### Check your node works
 

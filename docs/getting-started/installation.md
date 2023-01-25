@@ -7,7 +7,11 @@ sidebar_position: 1
 
 In this tutorial, you'll learn how to install and run a job with the Bacalhau client. 
 
-## Install the Bacalhau client
+## Install the Bacalhau Client
+
+The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. It is also available as a Docker image.
+
+### Installing the Bacalhau CLI Locally
 
 You can install or update the Bacalhau CLI by running the following command in a terminal:
 
@@ -15,12 +19,33 @@ You can install or update the Bacalhau CLI by running the following command in a
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
-
 :::tip
-
-Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases/latest) and extract `bacalhau.exe` to anywhere that is on the PATH.
-
+Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
 :::
+
+### Running The Bacalhau CLI Via Docker
+
+Instead of installing the client, you can use the [Bacalhau Docker image](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau) to run the client. To pull the latest image run the following command:
+
+```bash
+docker pull ghcr.io/bacalhau-project/bacalhau:latest
+```
+
+:::warning
+Remember that the "latest" tag is just a string. It doesn't refer to the latest version of the Bacalhau client, it refers to an image that has the "latest" tag. Therefore, if your machine has already downloaded the "latest" image, it won't download it again. To force a download, you can use the `--no-cache` flag.
+:::
+
+Now you can run any Bacalhau client command by prefixing it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`. For example, to run the `version` command, you can run:
+
+```bash
+docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
+```
+
+::tip
+If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. For example, to mount the current directory as a volume.
+:::
+
+### Verify the Installation
 
 Once your Bacalhau client is installed, it will show the client and server version. Your client and server versions must be aligned before you can run a job with Bacalhau client. You can use the code below to check this:
 
