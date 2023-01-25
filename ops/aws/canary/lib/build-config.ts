@@ -3,7 +3,7 @@ import * as cdk from "aws-cdk-lib";
 // These values map to the keys in our cdk.json and make sure
 // no values that aren't supported are passed in with the
 // -c config=env flag
-const supportedEnvironments = ["prod"] as const;
+const supportedEnvironments = ["prod", "staging"] as const;
 
 type SupportedEnvironments = typeof supportedEnvironments[number];
 
