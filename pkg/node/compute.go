@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
@@ -23,6 +24,7 @@ import (
 	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
 
 type Compute struct {
@@ -170,9 +172,14 @@ func NewComputeNode(
 		}),
 	)
 
+	basicHost, ok := host.(*basichost.BasicHost)
+	if !ok {
+		return nil, fmt.Errorf("host is not a basic host")
+	}
 	// node info
 	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Host:               host,
+		IdentityService:    basicHost.IDService(),
 		Labels:             labels,
 		Executors:          executors,
 		CapacityTracker:    runningCapacityTracker,

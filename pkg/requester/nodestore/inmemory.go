@@ -89,6 +89,19 @@ func (r *InMemoryNodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.
 	return infoWrapper.NodeInfo, nil
 }
 
+func (r *InMemoryNodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	infoWrapper, ok := r.nodeInfoMap[peerID]
+	if !ok {
+		return peer.AddrInfo{}, nil
+	}
+	if len(infoWrapper.PeerInfo.Addrs) > 0 {
+		return infoWrapper.PeerInfo, nil
+	}
+	return peer.AddrInfo{}, nil
+}
+
 func (r *InMemoryNodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

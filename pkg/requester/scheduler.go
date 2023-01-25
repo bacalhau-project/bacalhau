@@ -126,9 +126,6 @@ func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *m
 		shardIndexes[i] = i
 	}
 
-	// add peer info to the host's peerstore to be able to connect to it
-	s.host.Peerstore().AddAddrs(nodeInfo.PeerInfo.ID, nodeInfo.PeerInfo.Addrs, s.peerStoreTTL)
-
 	request := compute.AskForBidRequest{
 		Job:          *job,
 		ShardIndexes: shardIndexes,

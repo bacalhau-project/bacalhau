@@ -25,6 +25,7 @@ import (
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/rs/zerolog/log"
 )
 
@@ -56,16 +57,21 @@ func NewRequesterNode(
 	tracerContextProvider := system.NewTracerContextProvider(host.ID().String())
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
+	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+		TTL: config.NodeInfoStoreTTL,
+	})
+	routedHost := routedhost.Wrap(host, nodeInfoStore)
+
 	// compute proxy
 	var computeProxy compute.Endpoint
 	standardComputeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
-		Host: host,
+		Host: routedHost,
 	})
 	// if we are running in simulator mode, then we use the simulator proxy to forward all requests to th simulator node.
 	if simulatorNodeID != "" {
 		simulatorProxy := simulator_protocol.NewComputeProxy(simulator_protocol.ComputeProxyParams{
 			SimulatorNodeID: simulatorNodeID,
-			Host:            host,
+			Host:            routedHost,
 		})
 		if simulatorRequestHandler != nil {
 			// if this node is the simulator node, we need to register a local endpoint to allow self dialing
@@ -80,9 +86,6 @@ func NewRequesterNode(
 	}
 
 	// compute node discoverer
-	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
-		TTL: config.NodeInfoStoreTTL,
-	})
 	nodeDiscoveryChain := discovery.NewChain(true)
 	nodeDiscoveryChain.Add(
 		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
