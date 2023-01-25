@@ -14,5 +14,6 @@ auto_subnets           = false
 ingress_cidrs          = ["0.0.0.0/0"]
 ssh_access_cidrs       = ["0.0.0.0/0"]
 internal_ip_addresses  = ["192.168.0.5", "192.168.0.6"]
+public_ip_addresses    = ["34.88.147.110", "34.88.135.65"]
 num_gpu_machines       = 0
 log_level              = "trace"
