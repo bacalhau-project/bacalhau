@@ -16,6 +16,7 @@ import (
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/rs/zerolog/log"
 )
 
@@ -99,6 +100,9 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
+
+	identify.ActivationThresh = 2
+
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
 	if err != nil {
 		return nil, err
