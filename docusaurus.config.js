@@ -1,9 +1,5 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
-module.exports = {
-  scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'yourdomain.com'}],
-};
-
 
 const lightCodeTheme = require("prism-react-renderer/themes/github");
 const darkCodeTheme = require("prism-react-renderer/themes/dracula");
