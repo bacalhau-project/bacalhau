@@ -17,6 +17,7 @@ const config = {
   favicon: "img/favicon.ico",
   organizationName: "bacalhau-project", // Usually your GitHub org/user name.
   projectName: "docs.bacalhau.org", // Usually your repo name.
+  scripts: [{src: 'https://plausible.io/js/plausible.js', async: true, defer: true, 'data-domain': 'docs.bacalhau.org'}],
 
   presets: [
     [
@@ -112,7 +113,6 @@ const config = {
         ],
         copyright: `Copyright © ${new Date().getFullYear()} Bacalhau, Inc. Built with Docusaurus.`,
       },
-      scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'docs.bacalhau.org'}],
       prism: {
         theme: darkCodeTheme,
         lightTheme: lightCodeTheme,
