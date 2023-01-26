@@ -114,7 +114,7 @@ export const getPipelineConfig = (app: cdk.App, forceEnv?: any): PipelineConfig 
 // strings be sure to create a new validation function
 function ensureString(object: { [name: string]: any },
                       key: keyof CanaryConfig | keyof PipelineConfig | keyof SourceConnectionProps): string {
-    if (!object[key] ||
+    if (!(key in object) ||
         typeof object[key] !== "string" ||
         object[key].trim().length === 0) {
         throw new Error(key + " does not exist in config: " + JSON.stringify(object));
@@ -124,7 +124,7 @@ function ensureString(object: { [name: string]: any },
 
 function ensureBool(object: { [name: string]: any },
                       key: keyof CanaryConfig | keyof PipelineConfig | keyof SourceConnectionProps): boolean {
-    if (!object[key] || typeof object[key] !== "boolean") {
+    if (!(key in object) || typeof object[key] !== "boolean") {
         throw new Error(key + " does not exist in config: " + JSON.stringify(object));
     }
     return object[key];
