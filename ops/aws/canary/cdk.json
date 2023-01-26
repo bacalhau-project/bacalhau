@@ -17,28 +17,31 @@
     ]
   },
   "context": {
-    "prod": {
-      "bacalhauEnvironment": "production",
-      "account": "284305717835",
-      "region": "eu-west-1",
-      "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=",
-      "bacalhauSourceConnection": {
-        "owner": "filecoin-project",
-        "repo": "bacalhau",
-        "branch": "main",
-        "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/3e52f80b-f440-4195-8a4b-5cda27e8d46f"
+    "canary": {
+      "prod": {
+        "bacalhauEnvironment": "production",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0="
+      },
+      "staging": {
+        "bacalhauEnvironment": "staging",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryStaging&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTo2Nzk5ODFmZC03ZjZlLTRmYjItOTY3Ny1iNjYxMDA2NjBlZjgiLCJNIjoiUHVibGljIn0="
       }
     },
-    "staging": {
-      "bacalhauEnvironment": "staging",
-      "account": "284305717835",
-      "region": "eu-west-1",
-      "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryStaging&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=",
-      "bacalhauSourceConnection": {
-        "owner": "filecoin-project",
-        "repo": "bacalhau",
-        "branch": "main",
-        "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/3e52f80b-f440-4195-8a4b-5cda27e8d46f"
+    "pipeline": {
+      "prod": {
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "suffix": "",
+        "bacalhauSourceConnection": {
+          "owner": "filecoin-project",
+          "repo": "bacalhau",
+          "branch": "main",
+          "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/3e52f80b-f440-4195-8a4b-5cda27e8d46f"
+        }
       }
     },
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,

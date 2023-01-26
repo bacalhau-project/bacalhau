@@ -9,13 +9,20 @@ type SupportedEnvironments = typeof supportedEnvironments[number];
 
 // This maps to the values you specified in your cdk.json file
 // if you add any values to your cdk.json file, also add them here!
-export type BuildConfig = {
+export type CanaryConfig = {
     readonly env: SupportedEnvironments;
     readonly envTitle: string;
     readonly bacalhauEnvironment: string;
     readonly account: string;
     readonly region: string;
     readonly dashboardPublicUrl: string;
+};
+
+export type PipelineConfig = {
+    readonly env: SupportedEnvironments;
+    readonly suffix: string;
+    readonly account: string;
+    readonly region: string;
     readonly bacalhauSourceConnection: SourceConnectionProps
 };
 
@@ -28,9 +35,15 @@ export type SourceConnectionProps = {
 
 // This function is used by your CDK app and pulls your config values
 // from the context
-export const getConfig = (app: cdk.App, forceEnv?: any): BuildConfig => {
-    const env = forceEnv || app.node.tryGetContext("config");
+export const getCanaryConfig = (app: cdk.App, forceEnv?: any): CanaryConfig => {
+    const node = app.node.tryGetContext("canary");
+    if (!node) {
+        throw new Error(
+            "`canary` is missing in cdk context"
+        );
+    }
 
+    const env = forceEnv || app.node.tryGetContext("config");
     if (!env) {
         throw new Error(
             "Context variable defining the environment must be passed to cdk: `cdk -c config=XXX`"
@@ -45,7 +58,7 @@ export const getConfig = (app: cdk.App, forceEnv?: any): BuildConfig => {
     }
     // this contains the values in the context without being
     // validated
-    const unparsedEnv = app.node.tryGetContext(env);
+    const unparsedEnv = node[env];
     const envTitle = env.charAt(0).toUpperCase() + env.slice(1);
 
     return {
@@ -55,6 +68,36 @@ export const getConfig = (app: cdk.App, forceEnv?: any): BuildConfig => {
         account: ensureString(unparsedEnv, "account"),
         region: ensureString(unparsedEnv, "region"),
         dashboardPublicUrl: ensureString(unparsedEnv, "dashboardPublicUrl"),
+    };
+};
+
+// This function is used by your CDK app and pulls your config values
+// from the context
+export const getPipelineConfig = (app: cdk.App, forceEnv?: any): PipelineConfig => {
+    const node = app.node.tryGetContext("pipeline");
+    if (!node) {
+        throw new Error(
+            "`pipeline` is missing in cdk context"
+        );
+    }
+    const env = forceEnv || app.node.tryGetContext("config") || "prod";
+
+    if (!supportedEnvironments.includes(env)) {
+        throw new Error(
+            `${env} is not in supported environments: ${supportedEnvironments.join(
+                ", "
+            )}`
+        );
+    }
+    // this contains the values in the context without being
+    // validated
+    const unparsedEnv = node[env];
+
+    return {
+        env: env,
+        suffix: unparsedEnv["suffix"], // suffix can be blank
+        account: ensureString(unparsedEnv, "account"),
+        region: ensureString(unparsedEnv, "region"),
         bacalhauSourceConnection: {
             owner: ensureString(unparsedEnv['bacalhauSourceConnection'], "owner"),
             repo: ensureString(unparsedEnv['bacalhauSourceConnection'], "repo"),
@@ -68,11 +111,11 @@ export const getConfig = (app: cdk.App, forceEnv?: any): BuildConfig => {
 // the correct type. If you have any types other than
 // strings be sure to create a new validation function
 function ensureString(object: { [name: string]: any },
-                      key: keyof BuildConfig | keyof SourceConnectionProps): string {
+                      key: keyof CanaryConfig | keyof PipelineConfig | keyof SourceConnectionProps): string {
     if (!object[key] ||
         typeof object[key] !== "string" ||
         object[key].trim().length === 0) {
-        throw new Error(key + " does not exist in cdk config");
+        throw new Error(key + " does not exist in config: " + JSON.stringify(object));
     }
     return object[key];
 }
