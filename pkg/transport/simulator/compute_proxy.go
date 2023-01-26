@@ -138,16 +138,19 @@ func proxyRequest[Request any, Response any](
 	if err != nil {
 		return *response, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
+	defer stream.Close() //nolint:errcheck
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
+		stream.Reset() //nolint:errcheck
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
 	// Now we read the response that was sent from the dest peer
 	err = json.NewDecoder(stream).Decode(response)
 	if err != nil {
+		stream.Reset() //nolint:errcheck
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
