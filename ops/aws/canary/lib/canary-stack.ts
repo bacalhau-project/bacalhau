@@ -56,7 +56,11 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
                 action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
                 datapointsToAlarm: 4, evaluationPeriods: 6}});
-        this.createOperatorGroup(id)
+
+        // TODO: create separate stack for this
+        if (config.env == 'prod') {
+            this.createOperatorGroup(id)
+        }
     }
 
     // Create a lambda function that handles alarms and sends a slack notification

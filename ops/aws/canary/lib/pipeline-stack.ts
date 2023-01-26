@@ -21,9 +21,10 @@ export class PipelineStack extends cdk.Stack {
         // Configs
         const prodConfig = getConfig(app, 'prod');
         const stagingConfig = getConfig(app, 'staging');
+        const allConfigs = [prodConfig, stagingConfig]
 
         // Build artifacts
-        const cdkBuild = this.getCdkBuild([prodConfig]);
+        const cdkBuild = this.getCdkBuild(allConfigs);
         const lambdaBuild = this.getLambdaBuild();
 
         const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
@@ -187,7 +188,7 @@ export class PipelineStack extends cdk.Stack {
         });
     }
 
-    private getCdkBuild(configs: [BuildConfig]) {
+    private getCdkBuild(configs: BuildConfig[]) {
         const synthCommands:string[] = new Array(configs.length)
         for (const config of configs) {
             synthCommands.push(`npm run cdk synth -- -c config=${config.env} -o dist`);
@@ -203,11 +204,13 @@ export class PipelineStack extends cdk.Stack {
                             'npm install',
                         ]
                     },
-                    build: {
+                    pre_build: {
                         commands: [
                             'npm run build',
-                            synthCommands,
                         ],
+                    },
+                    build: {
+                        commands: synthCommands,
                     },
                 },
                 artifacts: {
