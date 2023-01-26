@@ -57,9 +57,8 @@ export class CanaryStack extends cdk.Stack {
                 action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
                 datapointsToAlarm: 4, evaluationPeriods: 6}});
 
-        // TODO: create separate stack for this
-        if (config.env == 'prod') {
-            this.createOperatorGroup(id)
+        if (config.createOperators) {
+            this.createOperatorGroup()
         }
     }
 
@@ -178,7 +177,7 @@ export class CanaryStack extends cdk.Stack {
         alarm.addOkAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
     }
 
-    private createOperatorGroup(stackID: string) {
+    private createOperatorGroup() {
         const group = new iam.Group(this, 'OperatorGroup', {
             groupName: 'BacalhauCanaryOperators-' + this.config.envTitle
         })

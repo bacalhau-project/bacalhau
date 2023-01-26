@@ -15,6 +15,7 @@ export type CanaryConfig = {
     readonly bacalhauEnvironment: string;
     readonly account: string;
     readonly region: string;
+    readonly createOperators: boolean;
     readonly dashboardPublicUrl: string;
 };
 
@@ -67,6 +68,7 @@ export const getCanaryConfig = (app: cdk.App, forceEnv?: any): CanaryConfig => {
         bacalhauEnvironment: ensureString(unparsedEnv, "bacalhauEnvironment"),
         account: ensureString(unparsedEnv, "account"),
         region: ensureString(unparsedEnv, "region"),
+        createOperators: ensureBool(unparsedEnv, "createOperators"),
         dashboardPublicUrl: ensureString(unparsedEnv, "dashboardPublicUrl"),
     };
 };
@@ -115,6 +117,14 @@ function ensureString(object: { [name: string]: any },
     if (!object[key] ||
         typeof object[key] !== "string" ||
         object[key].trim().length === 0) {
+        throw new Error(key + " does not exist in config: " + JSON.stringify(object));
+    }
+    return object[key];
+}
+
+function ensureBool(object: { [name: string]: any },
+                      key: keyof CanaryConfig | keyof PipelineConfig | keyof SourceConnectionProps): boolean {
+    if (!object[key] || typeof object[key] !== "boolean") {
         throw new Error(key + " does not exist in config: " + JSON.stringify(object));
     }
     return object[key];
