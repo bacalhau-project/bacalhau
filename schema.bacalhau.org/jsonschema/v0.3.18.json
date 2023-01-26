@@ -517,7 +517,7 @@
       "properties": {
         "StorageSource": {
           "type": "string"
-        ,"enum":["IPFS","URLDownload","FilecoinUnsealed","Filecoin","Estuary","Inline"]},
+        ,"enum":["IPFS","URLDownload","FilecoinUnsealed","Filecoin","Estuary","Inline","LocalDirectory"]},
         "Name": {
           "type": "string"
         },
@@ -525,6 +525,9 @@
           "type": "string"
         },
         "URL": {
+          "type": "string"
+        },
+        "SourcePath": {
           "type": "string"
         },
         "path": {
