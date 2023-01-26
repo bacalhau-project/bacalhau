@@ -20,6 +20,9 @@ type StorageSpec struct {
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
 
+	// The path of the host data if we are using local directory paths
+	SourcePath string `json:"SourcePath,omitempty"`
+
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).

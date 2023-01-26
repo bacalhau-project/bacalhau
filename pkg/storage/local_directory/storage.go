@@ -1,12 +1,11 @@
-package filecoinunsealed
+package localdirectory
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
-	"text/template"
+	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -16,21 +15,20 @@ import (
 )
 
 type StorageProvider struct {
-	LocalPathTemplateString string
-	localPathTemplate       *template.Template
+	LocalDirectoryPath string
 }
 
-func NewStorage(cm *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
-	t := template.New("bacalhau-storage-filecoin-unsealed-path")
-	t, err := t.Parse(localPathTemplate)
-	if err != nil {
-		return nil, err
-	}
+func NewStorage(cm *system.CleanupManager, localDirectoryPath string) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
-		LocalPathTemplateString: localPathTemplate,
-		localPathTemplate:       t,
+		LocalDirectoryPath: localDirectoryPath,
 	}
-	log.Debug().Msgf("Filecoin unsealed driver created with path template: %s", localPathTemplate)
+	log.Debug().Msgf("Local directory driver createde: %s", localDirectoryPath)
+
+	// check if the localDirectoryPath exists and error if it doesn't
+	if _, err := os.Stat(localDirectoryPath); errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("local directory path %s does not exist", localDirectoryPath)
+	}
+
 	return storageHandler, nil
 }
 
@@ -39,7 +37,7 @@ func (driver *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.HasStorageLocally")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/local_directory.HasStorageLocally")
 	defer span.End()
 
 	localPath, err := driver.getPathToVolume(ctx, volume)
@@ -53,7 +51,7 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume mod
 }
 
 func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.GetVolumeSize")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/local_directory.GetVolumeSize")
 	defer span.End()
 	localPath, err := driver.getPathToVolume(ctx, volume)
 	if err != nil {
@@ -66,9 +64,8 @@ func (driver *StorageProvider) PrepareStorage(
 	ctx context.Context,
 	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.PrepareStorage")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/local_directory.PrepareStorage")
 	defer span.End()
-
 	localPath, err := driver.getPathToVolume(ctx, storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -102,12 +99,10 @@ func (driver *StorageProvider) Explode(ctx context.Context, spec model.StorageSp
 }
 
 func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume model.StorageSpec) (string, error) {
-	var buffer bytes.Buffer
-	err := driver.localPathTemplate.Execute(&buffer, volume)
-	if err != nil {
-		return "", err
-	}
-	return buffer.String(), nil
+	// join the driver.LocalDirectoryPath with the volume.SourcePath
+	// use the os.PathSeparator to make sure we are using the correct separator for the OS
+	localPath := filepath.Join(driver.LocalDirectoryPath, volume.SourcePath)
+	return localPath, nil
 }
 
 // Compile time interface check:
