@@ -1,7 +1,8 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
-
-<script defer data-domain="docs.bacalhau.org" src="https://plausible.io/js/script.js"></script>
+module.exports = {
+  scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'yourdomain.com'}],
+};
 
 
 const lightCodeTheme = require("prism-react-renderer/themes/github");
@@ -115,6 +116,7 @@ const config = {
         ],
         copyright: `Copyright © ${new Date().getFullYear()} Bacalhau, Inc. Built with Docusaurus.`,
       },
+      scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'docs.bacalhau.org'}],
       prism: {
         theme: darkCodeTheme,
         lightTheme: lightCodeTheme,
