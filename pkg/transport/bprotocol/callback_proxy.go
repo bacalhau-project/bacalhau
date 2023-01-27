@@ -101,6 +101,11 @@ func proxyCallbackRequest(
 			return
 		}
 		defer stream.Close() //nolint:errcheck
+		if err := stream.Scope().SetService(ComputeServiceName); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("error attaching stream to requester service")
+			stream.Reset() //nolint:errcheck
+			return
+		}
 
 		// write the request to the stream
 		_, err = stream.Write(data)
