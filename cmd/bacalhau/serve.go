@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -297,10 +298,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 	defer cm.Cleanup()
 
-	ctx := cmd.Context()
-
 	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
 	defer cancel()
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
