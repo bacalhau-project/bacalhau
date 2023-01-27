@@ -16,6 +16,7 @@ import (
 	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	local_directory "github.com/filecoin-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -48,6 +49,11 @@ func NewStandardStorageProvider(
 	}
 
 	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	localDirectoryStorage, err := local_directory.NewStorage(cm)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +102,7 @@ func NewStandardStorageProvider(
 		model.StorageSourceURLDownload:      urlDownloadStorage,
 		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
 		model.StorageSourceInline:           inlineStorage,
+		model.StorageSourceLocalDirectory:   localDirectoryStorage,
 	}), nil
 }
 

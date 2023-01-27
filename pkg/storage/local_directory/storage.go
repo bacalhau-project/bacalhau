@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -15,20 +15,11 @@ import (
 )
 
 type StorageProvider struct {
-	LocalDirectoryPath string
 }
 
-func NewStorage(cm *system.CleanupManager, localDirectoryPath string) (*StorageProvider, error) {
-	storageHandler := &StorageProvider{
-		LocalDirectoryPath: localDirectoryPath,
-	}
-	log.Debug().Msgf("Local directory driver createde: %s", localDirectoryPath)
-
-	// check if the localDirectoryPath exists and error if it doesn't
-	if _, err := os.Stat(localDirectoryPath); errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("local directory path %s does not exist", localDirectoryPath)
-	}
-
+func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
+	storageHandler := &StorageProvider{}
+	log.Debug().Msgf("Local directory driver created")
 	return storageHandler, nil
 }
 
@@ -44,6 +35,22 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume mod
 	if err != nil {
 		return false, err
 	}
+
+	allowList := os.Getenv("BACALHAU_LOCAL_DIRECTORY_ALLOW_LIST")
+	allowPaths := strings.Split(allowList, ",")
+	isPathAllowed := false
+
+	for _, allowPath := range allowPaths {
+		if strings.HasPrefix(localPath, allowPath) {
+			isPathAllowed = true
+			break
+		}
+	}
+
+	if !isPathAllowed {
+		return false, fmt.Errorf("path %s is not allowed", localPath)
+	}
+
 	if _, err := os.Stat(localPath); errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
@@ -99,10 +106,7 @@ func (driver *StorageProvider) Explode(ctx context.Context, spec model.StorageSp
 }
 
 func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume model.StorageSpec) (string, error) {
-	// join the driver.LocalDirectoryPath with the volume.SourcePath
-	// use the os.PathSeparator to make sure we are using the correct separator for the OS
-	localPath := filepath.Join(driver.LocalDirectoryPath, volume.SourcePath)
-	return localPath, nil
+	return volume.SourcePath, nil
 }
 
 // Compile time interface check:

@@ -32,7 +32,7 @@ func (suite *LocalDirectorySuite) prepareStorageSpec(sourcePath string) model.St
 	return model.StorageSpec{
 		// source path is some kind of sub-path
 		// inside our local folder
-		SourcePath: sourcePath,
+		SourcePath: folderPath,
 		Path:       "/path/inside/the/container",
 	}
 }
@@ -50,7 +50,7 @@ func (suite *LocalDirectorySuite) SetupTest() {
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
 	tempDir = suite.T().TempDir()
-	driver, setupErr = NewStorage(cm, tempDir)
+	driver, setupErr = NewStorage(cm)
 	require.NoError(suite.T(), setupErr)
 }
 
@@ -99,5 +99,5 @@ func (suite *LocalDirectorySuite) TestExplode() {
 	exploded, err := driver.Explode(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), len(exploded), 1, "the exploded list should be 1 item long")
-	require.Equal(suite.T(), exploded[0].SourcePath, subpath, "the subpath is correct")
+	require.Equal(suite.T(), exploded[0].SourcePath, filepath.Join(tempDir, subpath), "the subpath is correct")
 }
