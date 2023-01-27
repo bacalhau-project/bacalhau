@@ -84,21 +84,21 @@ Examples:
 An example job in YAML format:
 
 ```yaml
-Spec:
-    Engine: Docker
-    Verifier: Noop
-    Publisher: IPFS
-    Docker:
-        Image: ubuntu
-        Entrypoint:
+spec:
+    engine: Docker
+    verifier: Noop
+    publisher: IPFS
+    docker:
+        image: ubuntu
+        entryPoint:
             - echo
             - Hello
-            - W0rLd
+            - World
     outputs:
-        - Name: outputs
+        - name: outputs
           path: /outputs
-Deal:
-    Concurrency: 1
+deal:
+    concurrency: 1
 ```
 
 ### UCAN Invocation format
