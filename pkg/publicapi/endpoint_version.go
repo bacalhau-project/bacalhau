@@ -19,17 +19,17 @@ type VersionResponse struct {
 
 // version godoc
 //
-//	@ID				apiServer/version
-//	@Summary		Returns the build version running on the server.
-//	@Description	See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.
-//	@Tags			Misc
-//	@Accept			json
-//	@Produce		json
-//	@Param			VersionRequest	body		VersionRequest	true	"Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
-//	@Success		200				{object}	VersionResponse
-//	@Failure		400				{object}	string
-//	@Failure		500				{object}	string
-//	@Router			/version [post]
+// @ID          apiServer/version
+// @Summary     Returns the build version running on the server.
+// @Description See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.
+// @Tags        Misc
+// @Accept      json
+// @Produce     json
+// @Param       VersionRequest body     VersionRequest true "Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field."
+// @Success     200            {object} VersionResponse
+// @Failure     400            {object} string
+// @Failure     500            {object} string
+// @Router      /version [post]
 //
 //nolint:lll
 func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {
