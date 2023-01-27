@@ -13,9 +13,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/requester/discovery"
-	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
 	requester_publicapi "github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requester/ranking"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -25,17 +25,17 @@ import (
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/rs/zerolog/log"
 )
 
 type Requester struct {
 	// Visible for testing
-	Endpoint      requester.Endpoint
-	JobStore      localdb.LocalDB
-	computeProxy  *bprotocol.ComputeProxy
-	localCallback *requester.Scheduler
-	cleanupFunc   func(ctx context.Context)
+	Endpoint           requester.Endpoint
+	JobStore           localdb.LocalDB
+	computeProxy       *bprotocol.ComputeProxy
+	localCallback      *requester.Scheduler
+	requesterAPIServer *requester_publicapi.RequesterAPIServer
+	cleanupFunc        func(ctx context.Context)
 }
 
 //nolint:funlen
@@ -50,28 +50,23 @@ func NewRequesterNode(
 	simulatorRequestHandler *simulator.RequestHandler,
 	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
-	nodeInfoPubSub pubsub.PubSub[model.NodeInfo],
 	gossipSub *libp2p_pubsub.PubSub,
+	nodeInfoStore routing.NodeInfoStore,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := system.NewTracerContextProvider(host.ID().String())
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
-	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
-		TTL: config.NodeInfoStoreTTL,
-	})
-	routedHost := routedhost.Wrap(host, nodeInfoStore)
-
 	// compute proxy
 	var computeProxy compute.Endpoint
 	standardComputeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
-		Host: routedHost,
+		Host: host,
 	})
 	// if we are running in simulator mode, then we use the simulator proxy to forward all requests to th simulator node.
 	if simulatorNodeID != "" {
 		simulatorProxy := simulator_protocol.NewComputeProxy(simulator_protocol.ComputeProxyParams{
 			SimulatorNodeID: simulatorNodeID,
-			Host:            routedHost,
+			Host:            host,
 		})
 		if simulatorRequestHandler != nil {
 			// if this node is the simulator node, we need to register a local endpoint to allow self dialing
@@ -113,7 +108,6 @@ func NewRequesterNode(
 	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
 		ID:               host.ID().String(),
 		Host:             host,
-		PeerStoreTTL:     config.DiscoveredPeerStoreTTL,
 		JobStore:         jobStore,
 		NodeDiscoverer:   nodeDiscoveryChain,
 		NodeRanker:       nodeRankerChain,
@@ -231,15 +225,6 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](requesterAPIServer.PushNodeInfoToWebsocket))
-	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-	if err != nil {
-		return nil, err
-	}
-
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
@@ -263,11 +248,12 @@ func NewRequesterNode(
 	}
 
 	return &Requester{
-		Endpoint:      endpoint,
-		localCallback: scheduler,
-		JobStore:      jobStore,
-		computeProxy:  standardComputeProxy,
-		cleanupFunc:   cleanupFunc,
+		Endpoint:           endpoint,
+		localCallback:      scheduler,
+		JobStore:           jobStore,
+		computeProxy:       standardComputeProxy,
+		cleanupFunc:        cleanupFunc,
+		requesterAPIServer: requesterAPIServer,
 	}, nil
 }
 

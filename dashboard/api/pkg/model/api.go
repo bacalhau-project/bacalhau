@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
+	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,7 +30,7 @@ type ModelOptions struct {
 type ModelAPI struct {
 	options          ModelOptions
 	localDB          localdb.LocalDB
-	nodeDB           requester.NodeInfoStore
+	nodeDB           routing.NodeInfoStore
 	store            *store.PostgresStore
 	stateResolver    *jobutils.StateResolver
 	jobEventHandler  *jobEventHandler
@@ -82,7 +82,7 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 		return nil, err
 	}
 
-	nodeDB := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+	nodeDB := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
 		// compute nodes publish every 30 seconds. We give a graceful period of 2 minutes for them to be considered offline
 		TTL: 2 * time.Minute,
 	})

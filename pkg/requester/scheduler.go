@@ -22,10 +22,8 @@ import (
 const OverAskForBidsFactor = 3 // ask up to 3 times the desired number of bids
 
 type SchedulerParams struct {
-	ID           string
-	Host         host.Host
-	PeerStoreTTL time.Duration
-
+	ID                                 string
+	Host                               host.Host
 	JobStore                           localdb.LocalDB
 	NodeDiscoverer                     NodeDiscoverer
 	NodeRanker                         NodeRanker
@@ -40,7 +38,6 @@ type SchedulerParams struct {
 type Scheduler struct {
 	id                string
 	host              host.Host
-	peerStoreTTL      time.Duration
 	jobStore          localdb.LocalDB
 	nodeDiscoverer    NodeDiscoverer
 	nodeRanker        NodeRanker
@@ -55,7 +52,6 @@ func NewScheduler(ctx context.Context, cm *system.CleanupManager, params Schedul
 	return &Scheduler{
 		id:               params.ID,
 		host:             params.Host,
-		peerStoreTTL:     params.PeerStoreTTL,
 		jobStore:         params.JobStore,
 		nodeDiscoverer:   params.NodeDiscoverer,
 		nodeRanker:       params.NodeRanker,

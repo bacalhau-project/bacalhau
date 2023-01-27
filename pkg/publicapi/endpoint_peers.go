@@ -10,14 +10,14 @@ import (
 
 // peers godoc
 //
-//	@ID						peers
-//	@Summary				Returns the peers connected to the host via the transport layer.
-//	@Description.markdown	endpoints_peers
-//	@Tags					Utils
-//	@Produce				json
-//	@Success				200	{object}	map[string][]string{}
-//	@Failure				500	{object}	string
-//	@Router					/peers [get]
+// @ID                   peers
+// @Summary              Returns the peers connected to the host via the transport layer.
+// @Description.markdown endpoints_peers
+// @Tags                 Utils
+// @Produce              json
+// @Success              200 {object} []peer.AddrInfo
+// @Failure              500 {object} string
+// @Router               /peers [get]
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 	_, span := system.GetSpanFromRequest(req, "apiServer/peers")
 	defer span.End()

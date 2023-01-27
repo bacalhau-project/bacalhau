@@ -12,6 +12,7 @@ import (
 	"github.com/didip/tollbooth/v7/limiter"
 	"github.com/filecoin-project/bacalhau/docs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
@@ -56,30 +57,33 @@ type APIServerConfig struct {
 }
 
 type APIServerParams struct {
-	Address string
-	Port    int
-	Host    host.Host
-	Config  APIServerConfig
+	Address          string
+	Port             int
+	Host             host.Host
+	NodeInfoProvider model.NodeInfoProvider
+	Config           APIServerConfig
 }
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Address    string
-	Port       int
-	host       host.Host
-	config     APIServerConfig
-	handlers   map[string]http.Handler
-	handlersMu sync.Mutex
-	started    bool
+	Address          string
+	Port             int
+	host             host.Host
+	nodeInfoProvider model.NodeInfoProvider
+	config           APIServerConfig
+	handlers         map[string]http.Handler
+	handlersMu       sync.Mutex
+	started          bool
 }
 
 func NewAPIServer(params APIServerParams) (*APIServer, error) {
 	server := &APIServer{
-		Address:  params.Address,
-		Port:     params.Port,
-		host:     params.Host,
-		config:   params.Config,
-		handlers: make(map[string]http.Handler),
+		Address:          params.Address,
+		Port:             params.Port,
+		host:             params.Host,
+		nodeInfoProvider: params.NodeInfoProvider,
+		config:           params.Config,
+		handlers:         make(map[string]http.Handler),
 	}
 
 	server.handlersMu.EnableTracerWithOpts(sync.Opts{
@@ -94,6 +98,7 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 	handlerConfigs := []HandlerConfig{
 		{URI: "/id", Handler: http.HandlerFunc(server.id)},
 		{URI: "/peers", Handler: http.HandlerFunc(server.peers)},
+		{URI: "/node_info", Handler: http.HandlerFunc(server.nodeInfo)},
 		{URI: "/version", Handler: http.HandlerFunc(server.version)},
 		{URI: "/healthz", Handler: http.HandlerFunc(server.healthz)},
 		{URI: "/logz", Handler: http.HandlerFunc(server.logz)},
@@ -116,16 +121,16 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port)
 }
 
-//	@title			Bacalhau API
-//	@description	This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
-//	@contact.name	Bacalhau Team
-//	@contact.url	https://github.com/filecoin-project/bacalhau
-//	@contact.email	team@bacalhau.org
-//	@license.name	Apache 2.0
-//	@license.url	https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
-//	@host			bootstrap.production.bacalhau.org:1234
-//	@BasePath		/
-//	@schemes		http
+// @title         Bacalhau API
+// @description   This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
+// @contact.name  Bacalhau Team
+// @contact.url   https://github.com/filecoin-project/bacalhau
+// @contact.email team@bacalhau.org
+// @license.name  Apache 2.0
+// @license.url   https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
+// @host          bootstrap.production.bacalhau.org:1234
+// @BasePath      /
+// @schemes       http
 //
 // ListenAndServe listens for and serves HTTP requests against the API server.
 //

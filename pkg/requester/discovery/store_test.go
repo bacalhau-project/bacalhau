@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
+	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
@@ -15,11 +15,11 @@ import (
 type StoreNodeDiscovererSuite struct {
 	suite.Suite
 	discoverer *StoreNodeDiscoverer
-	store      *nodestore.InMemoryNodeInfoStore
+	store      *inmemory.NodeInfoStore
 }
 
 func (s *StoreNodeDiscovererSuite) SetupTest() {
-	s.store = nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+	s.store = inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
 		TTL: math.MaxInt64,
 	})
 	s.discoverer = NewStoreNodeDiscoverer(StoreNodeDiscovererParams{

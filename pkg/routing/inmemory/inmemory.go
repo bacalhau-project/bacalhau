@@ -1,4 +1,4 @@
-package nodestore
+package inmemory
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
@@ -17,19 +18,19 @@ type nodeInfoWrapper struct {
 	evictAt time.Time
 }
 
-type InMemoryNodeInfoStoreParams struct {
+type NodeInfoStoreParams struct {
 	TTL time.Duration
 }
 
-type InMemoryNodeInfoStore struct {
+type NodeInfoStore struct {
 	ttl             time.Duration
 	nodeInfoMap     map[peer.ID]nodeInfoWrapper
 	engineNodeIDMap map[model.Engine]map[peer.ID]struct{}
 	mu              sync.RWMutex
 }
 
-func NewInMemoryNodeInfoStore(params InMemoryNodeInfoStoreParams) *InMemoryNodeInfoStore {
-	res := &InMemoryNodeInfoStore{
+func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
+	res := &NodeInfoStore{
 		ttl:             params.TTL,
 		nodeInfoMap:     make(map[peer.ID]nodeInfoWrapper),
 		engineNodeIDMap: make(map[model.Engine]map[peer.ID]struct{}),
@@ -41,7 +42,7 @@ func NewInMemoryNodeInfoStore(params InMemoryNodeInfoStoreParams) *InMemoryNodeI
 	return res
 }
 
-func (r *InMemoryNodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error {
+func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error {
 	if !nodeInfo.IsComputeNode() {
 		return nil
 	}
@@ -75,7 +76,7 @@ func (r *InMemoryNodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo
 	return nil
 }
 
-func (r *InMemoryNodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.NodeInfo, error) {
+func (r *NodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[peerID]
@@ -89,7 +90,7 @@ func (r *InMemoryNodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.
 	return infoWrapper.NodeInfo, nil
 }
 
-func (r *InMemoryNodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
+func (r *NodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[peerID]
@@ -102,7 +103,7 @@ func (r *InMemoryNodeInfoStore) FindPeer(ctx context.Context, peerID peer.ID) (p
 	return peer.AddrInfo{}, nil
 }
 
-func (r *InMemoryNodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
+func (r *NodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var nodeInfos []model.NodeInfo
@@ -120,7 +121,7 @@ func (r *InMemoryNodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, err
 	return nodeInfos, nil
 }
 
-func (r *InMemoryNodeInfoStore) ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error) {
+func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var nodeInfos []model.NodeInfo
@@ -139,13 +140,13 @@ func (r *InMemoryNodeInfoStore) ListForEngine(ctx context.Context, engine model.
 	return nodeInfos, nil
 }
 
-func (r *InMemoryNodeInfoStore) Delete(ctx context.Context, peerID peer.ID) error {
+func (r *NodeInfoStore) Delete(ctx context.Context, peerID peer.ID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.doDelete(ctx, peerID)
 }
 
-func (r *InMemoryNodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapper) {
+func (r *NodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeInfoWrapper) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, infoWrapper := range infoWrappers {
@@ -160,7 +161,7 @@ func (r *InMemoryNodeInfoStore) evict(ctx context.Context, infoWrappers ...nodeI
 	}
 }
 
-func (r *InMemoryNodeInfoStore) doDelete(ctx context.Context, peerID peer.ID) error {
+func (r *NodeInfoStore) doDelete(ctx context.Context, peerID peer.ID) error {
 	nodeInfo, ok := r.nodeInfoMap[peerID]
 	if !ok {
 		return nil
@@ -173,4 +174,4 @@ func (r *InMemoryNodeInfoStore) doDelete(ctx context.Context, peerID peer.ID) er
 }
 
 // compile time check that we implement the interface
-var _ requester.NodeInfoStore = (*InMemoryNodeInfoStore)(nil)
+var _ routing.NodeInfoStore = (*NodeInfoStore)(nil)

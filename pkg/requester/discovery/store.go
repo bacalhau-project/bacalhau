@@ -5,14 +5,15 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
 )
 
 type StoreNodeDiscovererParams struct {
-	Store requester.NodeInfoStore
+	Store routing.NodeInfoStore
 }
 
 type StoreNodeDiscoverer struct {
-	store requester.NodeInfoStore
+	store routing.NodeInfoStore
 }
 
 func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscoverer {

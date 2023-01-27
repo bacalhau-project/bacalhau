@@ -21,7 +21,6 @@ var DefaultComputeConfig = ComputeConfigParams{
 	DefaultJobExecutionTimeout: 10 * time.Minute,
 
 	LogRunningExecutionsInterval: 10 * time.Second,
-	NodeInfoPublisherInterval:    30 * time.Second,
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
@@ -31,6 +30,4 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 	StateManagerBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            10,
-	NodeInfoStoreTTL:                   10 * time.Minute,
-	DiscoveredPeerStoreTTL:             30 * time.Minute,
 }
