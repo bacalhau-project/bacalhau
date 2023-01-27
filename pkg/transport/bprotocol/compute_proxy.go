@@ -132,9 +132,9 @@ func proxyRequest[Request any, Response any](
 		return *response, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 	defer stream.Close() //nolint:errcheck
-	if err := stream.Scope().SetService(ComputeServiceName); err != nil {
+	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
 		stream.Reset() //nolint:errcheck
-		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), err)
+		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
 	}
 
 	// write the request to the stream
