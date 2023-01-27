@@ -201,7 +201,7 @@ func toGeneric(event *bacalhau_model_v1beta1.JobEvent) (interface{}, error) {
 		return nil, err
 	}
 	var line interface{}
-	err = json.Unmarshal([]byte(text), &line)
+	err = json.Unmarshal(text, &line)
 	if err != nil {
 		return nil, err
 	}
