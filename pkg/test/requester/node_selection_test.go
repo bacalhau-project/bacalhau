@@ -59,10 +59,11 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		},
 	}
 
+	for _, override := range nodeOverrides {
+		override.NodeInfoPublisherInterval = 10 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
+	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWith(node.ComputeConfigParams{
-			NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
-		}),
+		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		noop_executor.ExecutorConfig{},
 		nodeOverrides...,

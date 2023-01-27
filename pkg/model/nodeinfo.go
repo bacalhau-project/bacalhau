@@ -17,6 +17,10 @@ type NodeInfoProvider interface {
 	GetNodeInfo(ctx context.Context) NodeInfo
 }
 
+type ComputeNodeInfoProvider interface {
+	GetComputeInfo(ctx context.Context) ComputeNodeInfo
+}
+
 type NodeInfo struct {
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`

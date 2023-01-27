@@ -1,4 +1,4 @@
-package nodestore
+package inmemory
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 
 type InMemoryNodeInfoStoreSuite struct {
 	suite.Suite
-	store *InMemoryNodeInfoStore
+	store *NodeInfoStore
 }
 
 func (s *InMemoryNodeInfoStoreSuite) SetupTest() {
-	s.store = NewInMemoryNodeInfoStore(InMemoryNodeInfoStoreParams{
+	s.store = NewNodeInfoStore(NodeInfoStoreParams{
 		TTL: 1 * time.Hour,
 	})
 }
@@ -140,7 +140,7 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Replace() {
 
 func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
 	ttl := 1 * time.Second
-	s.store = NewInMemoryNodeInfoStore(InMemoryNodeInfoStoreParams{
+	s.store = NewNodeInfoStore(NodeInfoStoreParams{
 		TTL: ttl,
 	})
 	ctx := context.Background()
