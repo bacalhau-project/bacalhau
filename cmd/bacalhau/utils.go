@@ -40,10 +40,10 @@ const (
 	YAMLFormat                         string = "yaml"
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
-	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm                    = 0755
-	HowFrequentlyToUpdateTicker               = 50 * time.Millisecond
-	DefaultTimeout              time.Duration = 30 * time.Minute
+	// AutoDownloadFolderPerm is what permissions we give to a folder we create when downloading results
+	AutoDownloadFolderPerm      = 0755
+	HowFrequentlyToUpdateTicker = 50 * time.Millisecond
+	DefaultTimeout              = 30 * time.Minute
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
@@ -445,7 +445,7 @@ func downloadResultsHandler(
 	jobID string,
 	downloadSettings model.DownloaderSettings,
 ) error {
-	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
+	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	j, _, err := GetAPIClient().Get(ctx, jobID)
 
 	if err != nil {
@@ -487,8 +487,8 @@ func downloadResultsHandler(
 		return err
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Results for job '%s' have been written to...\n", jobID)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", processedDownloadSettings.OutputDir)
+	cmd.PrintErrf("Results for job '%s' have been written to...\n", jobID)
+	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
 
 	return nil
 }
@@ -555,7 +555,7 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
 
-// Need these as global so that multiple routines can access
+// FullLineMessage has to be global so that multiple routines can access
 type FullLineMessage struct {
 	Message     string
 	TimerString string
@@ -659,8 +659,6 @@ To get more information at any time, run:
 	var returnError error
 	returnError = nil
 
-	printDownloadFlag := true
-
 	go func() {
 		for {
 			log.Trace().Msgf("Ticker goreturn")
@@ -735,7 +733,7 @@ To get more information at any time, run:
 
 		if !quiet {
 			for i := range jobEvents {
-				printingUpdateForEvent(cmd.OutOrStdout(),
+				printingUpdateForEvent(cmd,
 					&printedEventsTracker,
 					jobEvents[i].EventName,
 					spin)
@@ -750,11 +748,7 @@ To get more information at any time, run:
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
 
-				if printDownloadFlag {
-					_ = spin.Stop()
-				} else {
-					_ = spin.StopFail()
-				}
+				_ = spin.Stop()
 				tickerDone <- true
 				signalChan <- os.Interrupt
 				return err
@@ -785,7 +779,7 @@ To get more information at any time, run:
 // Create a lock for printing events
 var printedEventsLock sync.Mutex
 
-func printingUpdateForEvent(w io.Writer, pe *sync.Map,
+func printingUpdateForEvent(cmd *cobra.Command, pe *sync.Map,
 	jet model.JobEventType,
 	spin *yacspin.Spinner) bool {
 	// We need to lock this because we're using a map
@@ -806,16 +800,15 @@ func printingUpdateForEvent(w io.Writer, pe *sync.Map,
 
 		// Need to skip printing the initial submission event
 		if jet != model.JobEventInitialSubmission {
-			// log.Debug().Msgf("Printing event: %s\n", jet)
-			fmt.Fprintf(w, "\r\033[K\r")
+			cmd.Printf("\r\033[K\r")
 			if eventsWorthPrinting[jet].IsError {
-				fmt.Fprintf(w, "%s\n", fullLineMessage.PrintError())
+				cmd.Printf("%s\n", fullLineMessage.PrintError())
 			} else {
-				fmt.Fprintf(w, "%s\n", fullLineMessage.PrintDone())
+				cmd.Printf("%s\n", fullLineMessage.PrintDone())
 			}
 
 			if eventsWorthPrinting[jet].IsTerminal {
-				fmt.Fprintf(w, "\n%s\n", eventsWorthPrinting[jet].Message)
+				cmd.Printf("\n%s\n", eventsWorthPrinting[jet].Message)
 				return eventsWorthPrinting[jet].PrintDownload
 			}
 		}
@@ -842,7 +835,7 @@ func FatalErrorHandler(cmd *cobra.Command, msg string, code int) {
 	os.Exit(code)
 }
 
-// Captures for testing, responsibility of the test to handle the exit (if any)
+// FakeFatalErrorHandler captures the error for testing, responsibility of the test to handle the exit (if any)
 // NOTE: If your test is not idempotent, you can cause side effects
 // (the underlying function will continue to run)
 // Returned as text JSON to wherever RootCmd is printing.
@@ -932,7 +925,7 @@ func formatMessage(msg string) string {
 		strings.Repeat(" ", maxLength-len(msg)+2), msg)
 }
 
-// Check if the image contains a tag or a digest
+// DockerImageContainsTag checks if the image contains a tag or a digest
 func DockerImageContainsTag(image string) bool {
 	if strings.Contains(image, ":") {
 		return true

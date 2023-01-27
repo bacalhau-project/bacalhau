@@ -113,6 +113,16 @@ func (cfg *Config) getPeerAddrs() []string {
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
 func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return newNode(ctx, cm, peerAddrs, ModeDefault)
+}
+
+// NewLocalNode creates a new local IPFS node in local mode, which can be used
+// to create test environments without polluting the public IPFS nodes.
+func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return newNode(ctx, cm, peerAddrs, ModeLocal)
+}
+
+func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
 	// filter out any empty peer addresses
 	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
 	for _, addr := range peerAddrs {
@@ -121,17 +131,8 @@ func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string)
 		}
 	}
 	return tryCreateNode(ctx, cm, Config{
-		Mode:      ModeDefault,
+		Mode:      mode,
 		PeerAddrs: filteredPeerAddrs,
-	})
-}
-
-// NewLocalNode creates a new local IPFS node in local mode, which can be used
-// to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return tryCreateNode(ctx, cm, Config{
-		Mode:      ModeLocal,
-		PeerAddrs: peerAddrs,
 	})
 }
 
@@ -487,9 +488,6 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 		cfg.Swarm.RelayService.Enabled = config.False
 		cfg.Swarm.Transports.Network.Relay = config.False
 		cfg.Discovery.MDNS.Enabled = false
-		cfg.Addresses.Announce = []string{
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-		}
 		cfg.Addresses.Gateway = []string{
 			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", gatewayPort),
 		}
