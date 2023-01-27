@@ -31,17 +31,17 @@ type submitResponse struct {
 
 // submit godoc
 //
-//	@ID						pkg/requester/publicapi/submit
-//	@Summary				Submits a new job to the network.
-//	@Description.markdown	endpoints_submit
-//	@Tags					Job
-//	@Accept					json
-//	@Produce				json
-//	@Param					submitRequest	body		submitRequest	true	" "
-//	@Success				200				{object}	submitResponse
-//	@Failure				400				{object}	string
-//	@Failure				500				{object}	string
-//	@Router					/requester/submit [post]
+// @ID                   pkg/requester/publicapi/submit
+// @Summary              Submits a new job to the network.
+// @Description.markdown endpoints_submit
+// @Tags                 Job
+// @Accept               json
+// @Produce              json
+// @Param                submitRequest body     submitRequest true " "
+// @Success              200           {object} submitResponse
+// @Failure              400           {object} string
+// @Failure              500           {object} string
+// @Router               /requester/submit [post]
 func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
 	defer span.End()
