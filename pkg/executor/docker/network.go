@@ -120,7 +120,7 @@ func (e *Executor) createHTTPGateway(
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
 	// Create the gateway container initially attached to the *host* network
-	domainList, derr := json.Marshal(shard.Job.Spec.Network.Domains)
+	domainList, derr := json.Marshal(shard.Job.Spec.Network.DomainSet())
 	clientList, cerr := json.Marshal([]string{subnet})
 	if derr != nil || cerr != nil {
 		return nil, nil, errors.Wrap(multierr.Combine(derr, cerr), "error preparing gateway config")

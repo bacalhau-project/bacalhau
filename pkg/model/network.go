@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 
 	"go.uber.org/multierr"
+	"golang.org/x/exp/slices"
 )
 
 //go:generate stringer -type=Network --trimprefix=Network
@@ -101,4 +103,73 @@ func (n NetworkConfig) IsValid() (err error) {
 	}
 
 	return
+}
+
+// DomainSet returns the "unique set" of domains from the network config.
+// Domains listed multiple times and any subdomain that is also matched by a
+// wildcard is removed.
+//
+// This is something of an implementation detail – it matches the behavior
+// expected by our Docker HTTP gateway, which complains and/or fails to start if
+// these requirements are not met.
+func (n NetworkConfig) DomainSet() []string {
+	domains := slices.Clone(n.Domains)
+	slices.SortFunc(domains, func(a, b string) bool {
+		// If the domains "match", the match may be the result of a wildcard. We
+		// want to keep the wildcard because it matches more things. Wildcards
+		// will always be shorter than any subdomain they match, so we can
+		// simply sort on string length. Compact will then remove non-wildcards.
+		ret := matchDomain(a, b)
+		if ret == 0 {
+			return len(a) < len(b)
+		} else {
+			return ret < 0
+		}
+	})
+	domains = slices.CompactFunc(domains, func(a, b string) bool {
+		return matchDomain(a, b) == 0
+	})
+	return domains
+}
+
+func matchDomain(left, right string) (diff int) {
+	const wildcard = ""
+	lefts := strings.Split(strings.ToLower(strings.Trim(left, " ")), ".")
+	rights := strings.Split(strings.ToLower(strings.Trim(right, " ")), ".")
+
+	diff = len(lefts) - len(rights)
+	if diff != 0 && lefts[0] != wildcard && rights[0] != wildcard {
+		// Domains don't have same number of components, so
+		// the one that is longer should sort after.
+		return diff
+	}
+
+	lcur, rcur := len(lefts)-1, len(rights)-1
+	for lcur >= 0 && rcur >= 0 {
+		// If neither is a blank, these components need to match.
+		if lefts[lcur] != wildcard && rights[rcur] != wildcard {
+			if diff = strings.Compare(lefts[lcur], rights[rcur]); diff != 0 {
+				return diff
+			}
+		}
+
+		// If both are blanks, they match.
+		if lefts[lcur] == wildcard || rights[rcur] == wildcard {
+			break
+		}
+
+		// Blank means we are matching any subdomains, so only the rest of
+		// the domain needs to match for this to work.
+		if lefts[lcur] != wildcard {
+			lcur -= 1
+		}
+
+		if rights[rcur] != wildcard {
+			rcur -= 1
+		}
+	}
+
+	// If we are here, we have run out of components; either the domains match
+	// in all components or one of them is a wildcard.
+	return 0
 }

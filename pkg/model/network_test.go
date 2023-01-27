@@ -1,8 +1,11 @@
 package model
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkConfig_IsValid(t *testing.T) {
@@ -53,6 +56,64 @@ func TestNetworkConfig_IsValid(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestDomainSet(t *testing.T) {
+	tests := []struct {
+		input, output []string
+	}{
+		{
+			[]string{"foo.com", "bar.com"},
+			[]string{"foo.com", "bar.com"},
+		},
+		{
+			[]string{"y.foo.com", ".foo.com", "x.foo.com"},
+			[]string{".foo.com"},
+		},
+		{
+			[]string{"y.foo.com", "foo.com", "x.foo.com"},
+			[]string{"y.foo.com", "foo.com", "x.foo.com"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v->%v", test.input, test.output), func(t *testing.T) {
+			set := NetworkConfig{Domains: test.input}
+			require.ElementsMatch(t, test.output, set.DomainSet())
+		})
+	}
+}
+
+func TestDomainMatching(t *testing.T) {
+	tests := []struct {
+		require     func(require.TestingT, interface{}, interface{}, ...interface{})
+		left, right string
+	}{
+		{require.Equal, "foo.com", "foo.com"},
+		{require.Equal, ".foo.com", "foo.com"},
+		{require.Equal, "foo.com", ".foo.com"},
+		{require.Equal, " .foo.com", ".foo.com"},
+		{require.Equal, "x.foo.com", ".foo.com"},
+		{require.Equal, "y.x.foo.com", ".foo.com"},
+		{require.NotEqual, "x.foo.com", "foo.com"},
+		{require.NotEqual, "foo.com", "x.foo.com"},
+		{require.NotEqual, "bar.com", "foo.com"},
+		{require.NotEqual, ".bar.com", "foo.com"},
+		{require.NotEqual, ".bar.com", ".foo.com"},
+		{require.NotEqual, "bar.com", ".foo.com"},
+		{require.Less, "zzz.com", "foo.com"},
+		{require.Greater, "aaa.com", "foo.com"},
+		{require.Equal, "FOO.com", "foo.COM"},
+		{require.Less, "bfoo.com", "afoo.com"},
+		{require.Greater, "afoo.com", "bfoo.com"},
+		{require.Less, "x-foo.com", ".foo.com"},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s<=>%s", test.left, test.right), func(t *testing.T) {
+			test.require(t, 0, matchDomain(test.left, test.right))
 		})
 	}
 }
