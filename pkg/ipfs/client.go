@@ -40,11 +40,17 @@ func NewClientUsingRemoteHandler(apiAddr string) (Client, error) {
 		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
 
-	log.Debug().Msgf("Created remote IPFS client for node API address: %s", apiAddr)
-	return Client{
+	client := Client{
 		API:  api,
 		addr: apiAddr,
-	}, nil
+	}
+
+	id, err := client.ID(context.Background())
+	if err != nil {
+		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
+	}
+	log.Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
+	return client, nil
 }
 
 const MagicInternalIPFSAddress = "memory://in-memory-node/"
