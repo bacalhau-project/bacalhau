@@ -12,15 +12,16 @@ type JobQuery struct {
 	IncludeTags []model.IncludedTag `json:"includeTags"`
 	ExcludeTags []model.ExcludedTag `json:"excludeTags"`
 	Limit       int                 `json:"limit"`
-	ReturnAll   bool                `json:"returnAll"`
-	SortBy      string              `json:"sortBy"`
-	SortReverse bool                `json:"sortReverse"`
+	Offset      int                 `json:"offset"`
+	ReturnAll   bool                `json:"return_all"`
+	SortBy      string              `json:"sort_by"`
+	SortReverse bool                `json:"sort_reverse"`
 }
 
 type LocalEventFilter func(ev model.JobLocalEvent) bool
 
 // A LocalDB will persist jobs and their state to the underlying storage.
-// It also gives an efficient way to retrieve jobs using queries.
+// It also gives an efficiernt way to retrieve jobs using queries.
 // The LocalDB is the local view of the world and the transport
 // will get events to other nodes that will update their datastore.
 //
@@ -32,6 +33,7 @@ type LocalDB interface {
 	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]*model.Job, error)
+	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	HasLocalEvent(ctx context.Context, jobID string, eventFilter LocalEventFilter) (bool, error)
 	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error

@@ -28,7 +28,7 @@ const (
 	// pkg/executor/docker/gateway/Dockerfile for design notes. We specify this
 	// using a fully-versioned tag so that the interface between code and image
 	// stay in sync.
-	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.15-58-g438e22e3"
+	httpGatewayImage = "ghcr.io/bacalhau-project/http-gateway:v0.3.17"
 
 	// The hostname used by Mac OS X and Windows hosts to refer to the Docker
 	// host in a network context. Linux hosts can use this hostname if they
@@ -106,7 +106,7 @@ func (e *Executor) createHTTPGateway(
 		Scope:      "local",
 		Internal:   true,
 		Attachable: true,
-		Labels:     e.jobContainerLabels(&shard),
+		Labels:     e.jobContainerLabels(shard),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating network")
@@ -135,7 +135,7 @@ func (e *Executor) createHTTPGateway(
 		},
 		Healthcheck:     &container.HealthConfig{}, //TODO
 		NetworkDisabled: false,
-		Labels:          e.jobContainerLabels(&shard),
+		Labels:          e.jobContainerLabels(shard),
 	}, &container.HostConfig{
 		NetworkMode: dockerNetworkBridge,
 		CapAdd:      gatewayCapabilities,

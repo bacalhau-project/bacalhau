@@ -31,6 +31,8 @@ __debug_bin.exe
 .terraform.lock.hcl
 production.tfvars
 ops/terraform/*.out
+dashboard/terraform/.terraform
+dashboard/frontend/dist
 *_unit.json
 .trunk/logs
 benchmark/results

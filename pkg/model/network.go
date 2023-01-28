@@ -72,8 +72,8 @@ func (n *Network) UnmarshalText(text []byte) (err error) {
 }
 
 type NetworkConfig struct {
-	Type    Network  `json:"type"`
-	Domains []string `json:"domains,omitempty"`
+	Type    Network  `json:"Type"`
+	Domains []string `json:"Domains,omitempty"`
 }
 
 // Returns whether network connections should be completely disabled according

@@ -11,12 +11,13 @@ import (
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestScenarios(t *testing.T) {
-	stack, _ := testutils.SetupTest(context.Background(), t, 3, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
+	stack, _ := testutils.SetupTest(context.Background(), t, 3, 0, false, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
 
 	os.Setenv("BACALHAU_ENVIRONMENT", "test")
 	t.Logf("BACALHAU_ENVIRONMENT: %s", os.Getenv("BACALHAU_ENVIRONMENT"))
@@ -34,7 +35,7 @@ func TestScenarios(t *testing.T) {
 	// Need to set the local ipfs CID for SubmitDockerIPFSJobAndGet() to work in test
 	os.Setenv("BACALHAU_CANARY_TEST_CID", cid)
 
-	host := stack.Nodes[0].APIServer.Address
+	host := stack.Nodes[0].APIServer.Host
 	port := stack.Nodes[0].APIServer.Port
 	t.Log("Host set to", host)
 	t.Log("Port set to", port)

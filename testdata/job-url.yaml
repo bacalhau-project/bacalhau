@@ -13,7 +13,7 @@ spec:
     - storageSource: IPFS
       name: output_custom
       path: /output_custom
-  deal:
-    concurrency: 1
-    confidence: 0
-    minBids: 0
+  Deal:
+    Concurrency: 1
+    Confidence: 0
+    MinBids: 0

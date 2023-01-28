@@ -71,12 +71,6 @@ definitions:
       ClientID:
         description: the id of the client that is submitting the job
         type: string
-      Context:
-        description: |-
-          Optional base64-encoded tar file that will be pinned to IPFS and
-          mounted as storage for the job. Not part of the spec so we don't
-          flood the transport layer with it (potentially very large).
-        type: string
       Spec:
         $ref: "#/definitions/model.Spec"
         description: The specification of this job.
@@ -104,6 +98,10 @@ definitions:
         type: integer
       EventTime:
         example: "2022-11-17T13:32:55.756658941Z"
+        type: string
+      ExecutionID:
+        description: compute execution identifier
+        example: 9304c616-291f-41ad-b862-54e133c0149e
         type: string
       JobExecutionPlan:
         $ref: "#/definitions/model.JobExecutionPlan"
@@ -189,6 +187,9 @@ definitions:
     type: object
   model.JobShardState:
     properties:
+      ExecutionId:
+        description: Compute node reference for this shard execution
+        type: string
       NodeId:
         description: which node is running this shard
         type: string
@@ -287,6 +288,9 @@ definitions:
     type: object
   model.JobSpecWasm:
     properties:
+      EntryModule:
+        $ref: '#/definitions/model.StorageSpec'
+        description: The module that contains the WASM code to start running.
       EntryPoint:
         description: |-
           The name of the function in the EntryModule to call to run the job. For
@@ -351,6 +355,15 @@ definitions:
         description: The unique global ID of this job in the bacalhau network.
         example: 92d5d4ee-3765-4f78-8353-623f5f26df08
         type: string
+    type: object
+  model.NetworkConfig:
+    properties:
+      Domains:
+        items:
+          type: string
+        type: array
+      Type:
+        type: integer
     type: object
   model.PublishedResult:
     properties:
@@ -429,7 +442,7 @@ definitions:
         $ref: "#/definitions/model.JobExecutionPlan"
         description: how will this job be executed by nodes on the network
       Language:
-        $ref: "#/definitions/model.JobSpecLanguage"
+        $ref: '#/definitions/model.JobSpecLanguage'
       Publisher:
         description: there can be multiple publishers for the job
         type: integer
@@ -507,6 +520,17 @@ definitions:
         type: boolean
       Result:
         type: boolean
+    type: object
+  publicapi.VersionRequest:
+    properties:
+      client_id:
+        example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        type: string
+    type: object
+  publicapi.VersionResponse:
+    properties:
+      build_version_info:
+        $ref: '#/definitions/model.BuildVersionInfo'
     type: object
   publicapi.eventsRequest:
     properties:
@@ -627,7 +651,7 @@ definitions:
   publicapi.versionResponse:
     properties:
       build_version_info:
-        $ref: "#/definitions/model.BuildVersionInfo"
+        $ref: '#/definitions/model.BuildVersionInfo'
     type: object
   types.FreeSpace:
     properties:
@@ -683,7 +707,7 @@ paths:
             type: string
       summary: Returns debug information on what the current node is doing.
       tags:
-        - Health
+      - Health
   /events:
     post:
       consumes:
@@ -798,7 +822,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/events
+      operationId: pkg/requester/publicapi/events
       parameters:
         - description:
             "Request must specify a `client_id`. To retrieve your `client_id`,
@@ -829,24 +853,24 @@ paths:
         Returns the events related to the job-id passed in the body payload.
         Useful for troubleshooting.
       tags:
-        - Job
+      - Job
   /healthz:
     get:
       operationId: apiServer/healthz
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/types.HealthInfo"
+            $ref: '#/definitions/types.HealthInfo'
       tags:
-        - Health
+      - Health
   /id:
     get:
       operationId: apiServer/id
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: OK
@@ -858,7 +882,7 @@ paths:
             type: string
       summary: Returns the id of the host node.
       tags:
-        - Misc
+      - Misc
   /list:
     post:
       consumes:
@@ -1055,7 +1079,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi.list
+      operationId: pkg/requester/publicapi/list
       parameters:
         - description:
             Set `return_all` to `true` to return all jobs on the network
@@ -1082,19 +1106,19 @@ paths:
             type: string
       summary: Simply lists jobs.
       tags:
-        - Job
+      - Job
   /livez:
     get:
       operationId: apiServer/livez
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: TODO
           schema:
             type: string
       tags:
-        - Health
+      - Health
   /local_events:
     post:
       consumes:
@@ -1102,7 +1126,7 @@ paths:
       description:
         Local events (e.g. Selected, BidAccepted, Verified) are useful
         to track the progress of a job.
-      operationId: pkg/publicapi/localEvents
+      operationId: pkg/requester/publicapi/localEvents
       parameters:
         - description: " "
           in: body
@@ -1129,19 +1153,19 @@ paths:
         Returns the node's local events related to the job-id passed in the
         body payload. Useful for troubleshooting.
       tags:
-        - Job
+      - Job
   /logz:
     get:
       operationId: apiServer/logz
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: TODO
           schema:
             type: string
       tags:
-        - Health
+      - Health
   /peers:
     get:
       description: |-
@@ -1161,7 +1185,7 @@ paths:
         ```
       operationId: apiServer/peers
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
@@ -1177,19 +1201,19 @@ paths:
             type: string
       summary: Returns the peers connected to the host via the transport layer.
       tags:
-        - Misc
+      - Misc
   /readyz:
     get:
       operationId: apiServer/readyz
       produces:
-        - text/plain
+      - text/plain
       responses:
         "200":
           description: OK
           schema:
             type: string
       tags:
-        - Health
+      - Health
   /results:
     post:
       consumes:
@@ -1211,7 +1235,7 @@ paths:
           ]
         }
         ```
-      operationId: pkg/publicapi/results
+      operationId: pkg/requester/publicapi/results
       parameters:
         - description: " "
           in: body
@@ -1236,7 +1260,7 @@ paths:
             type: string
       summary: Returns the results of the job-id specified in the body payload.
       tags:
-        - Job
+      - Job
   /states:
     post:
       consumes:
@@ -1298,7 +1322,7 @@ paths:
           }
         }
         ```
-      operationId: pkg/publicapi/states
+      operationId: pkg/requester/publicapi/states
       parameters:
         - description: " "
           in: body
@@ -1323,7 +1347,7 @@ paths:
             type: string
       summary: Returns the state of the job-id specified in the body payload.
       tags:
-        - Job
+      - Job
   /submit:
     post:
       consumes:
@@ -1335,7 +1359,7 @@ paths:
         Request must specify a `ClientID`. To retrieve your `ClientID`, you can do
         the following: (1) submit a dummy job to Bacalhau (or use one you created
         before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n\t*
-        `apiVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
+        `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n"
       operationId: pkg/apiServer.submit
       parameters:
         - description: " "
@@ -1385,23 +1409,22 @@ paths:
         complete list of `gitversion` tags.
       operationId: apiServer/version
       parameters:
-        - description:
-            "Request must specify a `client_id`. To retrieve your `client_id`,
-            you can do the following: (1) submit a dummy job to Bacalhau (or use one
-            you created before), (2) run `bacalhau describe <job-id>` and fetch the
-            `ClientID` field."
-          in: body
-          name: versionRequest
-          required: true
-          schema:
-            $ref: "#/definitions/publicapi.versionRequest"
+      - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
+          you can do the following: (1) submit a dummy job to Bacalhau (or use one
+          you created before), (2) run `bacalhau describe <job-id>` and fetch the
+          `ClientID` field.'
+        in: body
+        name: versionRequest
+        required: true
+        schema:
+          $ref: '#/definitions/publicapi.versionRequest'
       produces:
         - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/publicapi.versionResponse"
+            $ref: '#/definitions/publicapi.versionResponse'
         "400":
           description: Bad Request
           schema:

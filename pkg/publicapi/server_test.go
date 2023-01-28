@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -37,6 +36,8 @@ func TestServerSuite(t *testing.T) {
 // Before each test
 func (s *ServerSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	s.cleanupManager = system.NewCleanupManager()
+	s.client = setupNodeForTest(s.T(), s.cleanupManager)
 	s.cleanupManager = system.NewCleanupManager()
 	s.client = setupNodeForTest(s.T(), s.cleanupManager)
 }
@@ -103,10 +104,8 @@ func (s *ServerSuite) TestTimeout() {
 	defer res.Body.Close()
 }
 func (s *ServerSuite) TestMaxBodyReader() {
-	maxBytesToReadInBody := 500
-
 	config := APIServerConfig{
-		MaxBytesToReadInBody: datasize.ByteSize(maxBytesToReadInBody),
+		MaxBytesToReadInBody: 500,
 	}
 	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 

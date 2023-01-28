@@ -151,9 +151,9 @@ type JobNodeState struct {
 
 type JobShardState struct {
 	// which node is running this shard
-	NodeID string `json:"nodeId,omitempty"`
+	NodeID string `json:"NodeId,omitempty"`
 	// Compute node reference for this shard execution
-	ExecutionID string `json:"executionId,omitempty"`
+	ExecutionID string `json:"ExecutionId,omitempty"`
 	// what shard is this we are running
 	ShardIndex int `json:"shardIndex,omitempty"`
 	// what is the state of the shard on this node
@@ -206,10 +206,10 @@ type Spec struct {
 	Wasm     JobSpecWasm     `json:"wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
-	Resources ResourceUsageConfig `json:"resources,omitempty"`
+	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
 	// The type of networking access that the job needs
-	Network NetworkConfig `json:"network,omitempty"`
+	Network NetworkConfig `json:"Network,omitempty"`
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
@@ -302,7 +302,7 @@ type JobSpecLanguage struct {
 // Describes a raw WASM job
 type JobSpecWasm struct {
 	// The module that contains the WASM code to start running.
-	EntryModule StorageSpec `json:"entryModule,omitempty"`
+	EntryModule StorageSpec `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
@@ -340,9 +340,9 @@ type JobEvent struct {
 
 	JobID string `json:"jobId,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
-	ShardIndex int `json:"shardIndex,omitempty"`
+	ShardIndex int `json:"ShardIndex,omitempty"`
 	// compute execution identifier
-	ExecutionID string `json:"executionId,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"clientId,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event
@@ -385,5 +385,5 @@ type JobCreatePayload struct {
 	APIVersion string `json:"apiVersion,omitempty" example:"V1beta1" validate:"required"`
 
 	// The specification of this job.
-	Spec *Spec `json:"spec,omitempty" validate:"required"`
+	Spec *Spec `json:"Spec,omitempty" validate:"required"`
 }

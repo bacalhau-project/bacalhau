@@ -14,7 +14,7 @@ type VersionRequest struct {
 }
 
 type VersionResponse struct {
-	VersionInfo *model.BuildVersionInfo `json:"buildVersionInfo"`
+	VersionInfo *model.BuildVersionInfo `json:"build_version_info"`
 }
 
 // version godoc

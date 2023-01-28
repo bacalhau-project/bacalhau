@@ -1,11 +1,11 @@
-apiVersion: v1beta1
-spec:
-  engine: Docker
-  verifier: Noop
-  publisher: Estuary
-  docker:
-    image: ubuntu:latest
-    entrypoint:
+APIVersion: v1beta1
+Spec:
+  Engine: Docker
+  Verifier: Noop
+  Publisher: Estuary
+  Docker:
+    Image: ubuntu:latest
+    Entrypoint:
       - /bin/bash
       - -c
       - echo 15
