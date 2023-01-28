@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -29,6 +30,8 @@ import (
 // returns the current testing context
 type ServeSuite struct {
 	suite.Suite
+
+	ipfsPort int
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -41,22 +44,32 @@ func TestServeSuite(t *testing.T) {
 func (suite *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+
+	cm := system.NewCleanupManager()
+	suite.T().Cleanup(cm.Cleanup)
+
+	node, err := ipfs.NewLocalNode(context.Background(), cm, []string{})
+	suite.NoError(err)
+	suite.ipfsPort = node.APIPort
 }
 
-func writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
+func (suite *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("Starting")
+	suite.T().Log("Starting")
 
 	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
 		os.Args[1] = ""
 		os.Args[2] = ""
 	}
 
-	ipfsPort, _ := freeport.GetFreePort()
-
 	// peer set to none to avoid accidentally talking to production endpoints
-	args := []string{"serve", "--peer", "none", "--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", ipfsPort), "--api-port", fmt.Sprintf("%d", port)}
+	args := []string{
+		"serve",
+		"--peer", "none",
+		"--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", suite.ipfsPort),
+		"--api-port", fmt.Sprintf("%d", port),
+	}
 
 	rootCmd.SetArgs(args)
 
@@ -94,7 +107,7 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go writeToServeChannel(NewRootCmd(), port, &wg)
+	go suite.writeToServeChannel(NewRootCmd(), port, &wg)
 
 	timeoutInMilliseconds := 20 * 1000
 	currentTime := 0
