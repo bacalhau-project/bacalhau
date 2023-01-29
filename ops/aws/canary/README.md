@@ -18,6 +18,7 @@ The canary is composed of several scenarios, each is executed periodically on it
 - `submitAndGet`: Submits a job to Bacalhau, waits for it to complete, and then download the output and verify its correctness.
 - `submitDockerIPFSJobAndGet`: Submits a job to Bacalhau with an IPFS input, waits for it to complete, and then download the output and verify its correctness.
 - `submitWithConcurrency`: Submits a job to Bacalhau with a concurrency of 3, and waits for it to complete.
+- `submitWithConcurrencyOwnedNodes`: Submits a job to Bacalhau owned nodes with a concurrency of 3, and waits for it to complete.
 
 ### Local Testing
 You can run the scenarios locally before deploying to lambda by using the following command:
