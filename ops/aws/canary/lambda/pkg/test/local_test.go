@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
@@ -18,7 +19,22 @@ import (
 )
 
 func TestScenariosAgainstDevstack(t *testing.T) {
-	stack, _ := testutils.SetupTest(context.Background(), t, 3, 0, false, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())
+	nodeOverride := node.NodeConfig{
+		Labels: map[string]string{
+			"owner": "bacalhau",
+		},
+		NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+	}
+	nodeCount := 3
+	nodeOverrides := make([]node.NodeConfig, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		nodeOverrides[i] = nodeOverride
+	}
+	stack, _ := testutils.SetupTest(context.Background(), t,
+		3, 0, false,
+		node.NewComputeConfigWithDefaults(),
+		node.NewRequesterConfigWithDefaults(),
+		nodeOverrides...)
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(t, err)
 	// Need to set the swarm addresses for getIPFSDownloadSettings() to work in test
