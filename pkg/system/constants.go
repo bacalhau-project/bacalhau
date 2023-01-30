@@ -48,14 +48,14 @@ var Envs = map[Environment]EnvironmentData{
 		APIPort: 1234,
 		APIHost: "bootstrap.staging.bacalhau.org",
 		BootstrapAddresses: []string{
-			"/ip4/35.199.72.224/tcp/1235/p2p/QmP6RVpStuEoShqTTTiS2e3PYazcd54sj2RaZTeJP9VCeh",
-			"/ip4/35.198.1.209/tcp/1235/p2p/QmU7NmyuztsYPeLxrw3B3p97bZfJD5PRL9igvhDepfhsGY",
-			"/ip4/35.247.208.185/tcp/1235/p2p/QmWhWSQLxuGARV2g8oXt2v5HVfwYWqRCDAuGVz6qDnS6kX",
+			"/ip4/34.125.80.77/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+			"/ip4/34.125.130.185/tcp/1235/p2p/QmTRsYgLck8RHedBdZijjA8jPfkSKjmUwVu2k9iUXJ7SLp",
+			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
 		},
 		IPFSSwarmAddresses: []string{
-			"/ip4/35.199.72.224/tcp/1235/p2p/QmP6RVpStuEoShqTTTiS2e3PYazcd54sj2RaZTeJP9VCeh",
-			"/ip4/35.198.1.209/tcp/1235/p2p/QmU7NmyuztsYPeLxrw3B3p97bZfJD5PRL9igvhDepfhsGY",
-			"/ip4/35.247.208.185/tcp/1235/p2p/QmWhWSQLxuGARV2g8oXt2v5HVfwYWqRCDAuGVz6qDnS6kX",
+			"/ip4/34.125.80.77/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+			"/ip4/34.125.130.185/tcp/1235/p2p/QmTRsYgLck8RHedBdZijjA8jPfkSKjmUwVu2k9iUXJ7SLp",
+			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
 		},
 	},
 }
