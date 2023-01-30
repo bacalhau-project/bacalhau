@@ -30,26 +30,6 @@ type StorageConfig struct {
 	ExternalHooks StorageConfigExternalHooks
 }
 
-// NoopStorageProvider is a storage provider that always return NoopStorage regardless of requested source type
-type NoopStorageProvider struct {
-	noopStorage *NoopStorage
-}
-
-func NewNoopStorageProvider(noopStorage *NoopStorage) *NoopStorageProvider {
-	return &NoopStorageProvider{
-		noopStorage: noopStorage,
-	}
-}
-
-func (s *NoopStorageProvider) GetStorage(context.Context, model.StorageSourceType) (storage.Storage, error) {
-	return s.noopStorage, nil
-}
-
-func (s *NoopStorageProvider) HasStorage(ctx context.Context, sourceType model.StorageSourceType) bool {
-	_, err := s.GetStorage(ctx, sourceType)
-	return err == nil
-}
-
 // a storage driver runs the downloads content
 // from a remote ipfs server and copies it to
 // to a local directory in preparation for
@@ -140,5 +120,4 @@ func (s *NoopStorage) CleanupStorage(ctx context.Context, storageSpec model.Stor
 }
 
 // Compile time interface check:
-var _ storage.StorageProvider = (*NoopStorageProvider)(nil)
 var _ storage.Storage = (*NoopStorage)(nil)

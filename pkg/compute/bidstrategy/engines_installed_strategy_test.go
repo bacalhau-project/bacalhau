@@ -18,19 +18,19 @@ import (
 func TestEnginesInstalledStrategy(t *testing.T) {
 	tests := []struct {
 		name       string
-		storages   dummyStorageProvider
-		executors  dummyExecutorProvider
-		verifiers  dummyVerifierProvider
-		publishers dummyPublisherProvider
+		storages   storage.StorageProvider
+		executors  executor.ExecutorProvider
+		verifiers  verifier.VerifierProvider
+		publishers publisher.PublisherProvider
 		bid        BidStrategyRequest
 		shouldBid  bool
 	}{
 		{
 			name:       "no-storage",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceURLDownload: {}},
-			executors:  map[model.Engine]struct{}{model.EngineDocker: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierNoop: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherEstuary: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceURLDownload),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineDocker),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierNoop),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherEstuary),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -45,10 +45,10 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 		},
 		{
 			name:       "invalid-storage",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceURLDownload: {}},
-			executors:  map[model.Engine]struct{}{model.EngineDocker: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierNoop: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherEstuary: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceURLDownload),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineDocker),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierNoop),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherEstuary),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -67,10 +67,10 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 		},
 		{
 			name:       "invalid-executor",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceInline: {}},
-			executors:  map[model.Engine]struct{}{model.EngineWasm: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierDeterministic: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherEstuary: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceInline),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineWasm),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierDeterministic),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherEstuary),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -89,10 +89,10 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 		},
 		{
 			name:       "invalid-verifier",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceURLDownload: {}},
-			executors:  map[model.Engine]struct{}{model.EngineDocker: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierNoop: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherEstuary: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceURLDownload),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineDocker),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierNoop),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherEstuary),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -111,10 +111,10 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 		},
 		{
 			name:       "invalid-publisher",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceFilecoin: {}},
-			executors:  map[model.Engine]struct{}{model.EngineDocker: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierNoop: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherFilecoin: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceFilecoin),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineDocker),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierNoop),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherFilecoin),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -133,10 +133,10 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 		},
 		{
 			name:       "valid-request",
-			storages:   map[model.StorageSourceType]struct{}{model.StorageSourceInline: {}},
-			executors:  map[model.Engine]struct{}{model.EngineWasm: {}},
-			verifiers:  map[model.Verifier]struct{}{model.VerifierDeterministic: {}},
-			publishers: map[model.Publisher]struct{}{model.PublisherIpfs: {}},
+			storages:   dummy[model.StorageSourceType, storage.Storage](model.StorageSourceInline),
+			executors:  dummy[model.Engine, executor.Executor](model.EngineWasm),
+			verifiers:  dummy[model.Verifier, verifier.Verifier](model.VerifierDeterministic),
+			publishers: dummy[model.Publisher, publisher.Publisher](model.PublisherIpfs),
 			bid: BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -172,70 +172,20 @@ func TestEnginesInstalledStrategy(t *testing.T) {
 	}
 }
 
-var _ storage.StorageProvider = dummyStorageProvider{}
-
-type dummyStorageProvider map[model.StorageSourceType]struct{}
-
-func (d dummyStorageProvider) GetStorage(context.Context, model.StorageSourceType) (storage.Storage, error) {
-	panic("not implemented")
+type dummyProvider[Key model.ProviderKey, Value model.Providable] struct {
+	key Key
 }
 
-func (d dummyStorageProvider) HasStorage(_ context.Context, sourceType model.StorageSourceType) bool {
-	if _, ok := d[sourceType]; ok {
-		return true
-	}
-	return false
+// Get implements executor.ExecutorProvider
+func (dummyProvider[Key, Value]) Get(context.Context, Key) (Value, error) {
+	panic("unimplemented")
 }
 
-var _ executor.ExecutorProvider = dummyExecutorProvider{}
-
-type dummyExecutorProvider map[model.Engine]struct{}
-
-func (d dummyExecutorProvider) AddExecutor(context.Context, model.Engine, executor.Executor) error {
-	panic("not implemented")
-
+// Has implements executor.ExecutorProvider
+func (d dummyProvider[Key, Value]) Has(_ context.Context, k Key) bool {
+	return d.key == k
 }
 
-func (d dummyExecutorProvider) GetExecutor(context.Context, model.Engine) (executor.Executor, error) {
-	panic("not implemented")
-
-}
-
-func (d dummyExecutorProvider) HasExecutor(_ context.Context, engineType model.Engine) bool {
-	if _, ok := d[engineType]; ok {
-		return true
-	}
-	return false
-}
-
-var _ verifier.VerifierProvider = dummyVerifierProvider{}
-
-type dummyVerifierProvider map[model.Verifier]struct{}
-
-func (d dummyVerifierProvider) GetVerifier(context.Context, model.Verifier) (verifier.Verifier, error) {
-	panic("not implemented")
-
-}
-
-func (d dummyVerifierProvider) HasVerifier(_ context.Context, job model.Verifier) bool {
-	if _, ok := d[job]; ok {
-		return true
-	}
-	return false
-}
-
-var _ publisher.PublisherProvider = dummyPublisherProvider{}
-
-type dummyPublisherProvider map[model.Publisher]struct{}
-
-func (d dummyPublisherProvider) GetPublisher(context.Context, model.Publisher) (publisher.Publisher, error) {
-	panic("not implemented")
-
-}
-
-func (d dummyPublisherProvider) HasPublisher(_ context.Context, publisher model.Publisher) bool {
-	if _, ok := d[publisher]; ok {
-		return true
-	}
-	return false
+func dummy[Key model.ProviderKey, Value model.Providable](k Key) model.Provider[Key, Value] {
+	return dummyProvider[Key, Value]{key: k}
 }

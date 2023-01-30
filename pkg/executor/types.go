@@ -8,17 +8,13 @@ import (
 
 // Returns a executor for the given engine type
 type ExecutorProvider interface {
-	AddExecutor(ctx context.Context, engineType model.Engine, executor Executor) error
-	GetExecutor(ctx context.Context, engineType model.Engine) (Executor, error)
-	HasExecutor(ctx context.Context, engineType model.Engine) bool
+	model.Provider[model.Engine, Executor]
 }
 
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
 type Executor interface {
-	// tells you if the required software is installed on this machine
-	// this is used in job selection
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
 
 	// used to filter and select jobs
 	//    tells us if the storage resource is "close" i.e. cheap to access

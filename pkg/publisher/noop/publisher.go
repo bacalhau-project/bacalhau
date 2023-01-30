@@ -8,26 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-// NoopPublisherProvider is a publisher provider that always return NoopPublisher regardless of requested publisher type
-type NoopPublisherProvider struct {
-	noopPublisher *NoopPublisher
-}
-
-func NewNoopPublisherProvider(noopPublisher *NoopPublisher) *NoopPublisherProvider {
-	return &NoopPublisherProvider{
-		noopPublisher: noopPublisher,
-	}
-}
-
-func (s *NoopPublisherProvider) GetPublisher(context.Context, model.Publisher) (publisher.Publisher, error) {
-	return s.noopPublisher, nil
-}
-
-func (s *NoopPublisherProvider) HasPublisher(ctx context.Context, publisher model.Publisher) bool {
-	_, err := s.GetPublisher(ctx, publisher)
-	return err == nil
-}
-
 type NoopPublisher struct{}
 
 func NewNoopPublisher() *NoopPublisher {
@@ -51,6 +31,5 @@ func (publisher *NoopPublisher) PublishShardResult(
 	return model.StorageSpec{}, nil
 }
 
-// Compile-time check that Verifier implements the correct interface:
-var _ publisher.PublisherProvider = (*NoopPublisherProvider)(nil)
+// Compile-time check that Publisher implements the correct interface:
 var _ publisher.Publisher = (*NoopPublisher)(nil)

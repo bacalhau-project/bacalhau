@@ -63,11 +63,11 @@ func (ds *DownloaderSuite) SetupTest() {
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
 
-	ds.downloadProvider = &MappedDownloaderProvider{
-		downloaders: map[model.StorageSourceType]Downloader{
+	ds.downloadProvider = model.NewMappedProvider(
+		map[model.StorageSourceType]Downloader{
 			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
 		},
-	}
+	)
 }
 
 // Generate a file with random data.

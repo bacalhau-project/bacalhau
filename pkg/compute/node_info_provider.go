@@ -34,7 +34,7 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	var executionEngines []model.Engine
 	for _, e := range model.EngineTypes() {
-		if n.executors.HasExecutor(ctx, e) {
+		if n.executors.Has(ctx, e) {
 			executionEngines = append(executionEngines, e)
 		}
 	}

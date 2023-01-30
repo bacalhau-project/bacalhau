@@ -71,7 +71,7 @@ func NewExecutor(
 }
 
 func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
-	return e.StorageProvider.GetStorage(ctx, engine)
+	return e.StorageProvider.Get(ctx, engine)
 }
 
 // IsInstalled checks if docker itself is installed.
