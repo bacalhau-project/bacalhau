@@ -76,7 +76,7 @@ func handleStream[Request any, Response any](
 	stream network.Stream,
 	f func(ctx context.Context, r Request) (Response, error)) {
 	if err := stream.Scope().SetService(ComputeServiceName); err != nil {
-		log.Ctx(ctx).Debug().Msgf("error attaching stream to compute service: %s", err)
+		log.Ctx(ctx).Error().Err(err).Msg("error attaching stream to compute service")
 		stream.Reset()
 		return
 	}
@@ -88,6 +88,7 @@ func handleStream[Request any, Response any](
 		stream.Reset()
 		return
 	}
+	defer stream.Close() //nolint:errcheck
 
 	response, err := f(ctx, *request)
 	if err != nil {
@@ -102,5 +103,4 @@ func handleStream[Request any, Response any](
 		stream.Reset()
 		return
 	}
-	stream.Close()
 }

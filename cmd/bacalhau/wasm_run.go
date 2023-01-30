@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -66,7 +68,8 @@ func newWasmCmd() *cobra.Command {
 func newRunWasmCmd() *cobra.Command {
 	wasmJob := defaultWasmJobSpec()
 	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := ipfs.NewIPFSDownloadSettings()
+	downloadSettings := util.NewDownloadSettings()
+	var nodeSelector string
 
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
@@ -76,7 +79,7 @@ func newRunWasmCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings)
+			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings, nodeSelector)
 		},
 	}
 
@@ -85,6 +88,11 @@ func newRunWasmCmd() *cobra.Command {
 
 	downloadFlags := NewIPFSDownloadFlags(downloadSettings)
 	runWasmCommand.Flags().AddFlagSet(downloadFlags)
+
+	runWasmCommand.PersistentFlags().StringVarP(
+		&nodeSelector, "selector", "s", nodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
+	)
 
 	runWasmCommand.PersistentFlags().Var(
 		VerifierFlag(&wasmJob.Spec.Verifier), "verifier",
@@ -147,7 +155,8 @@ func runWasm(
 	args []string,
 	wasmJob *model.Job,
 	runtimeSettings *RunTimeSettings,
-	downloadSettings *ipfs.IPFSDownloadSettings,
+	downloadSettings *model.DownloaderSettings,
+	nodeSelector string,
 ) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
@@ -158,6 +167,12 @@ func runWasm(
 
 	wasmCidOrPath := args[0]
 	wasmJob.Spec.Wasm.Parameters = args[1:]
+
+	nodeSelectorRequirements, err := job.ParseNodeSelector(nodeSelector)
+	if err != nil {
+		return err
+	}
+	wasmJob.Spec.NodeSelectors = nodeSelectorRequirements
 
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(wasmCidOrPath)

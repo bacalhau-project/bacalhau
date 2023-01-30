@@ -2,53 +2,30 @@ package discovery
 
 import (
 	"context"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
 )
 
 type StoreNodeDiscovererParams struct {
-	Host         host.Host
-	Store        requester.NodeInfoStore
-	PeerStoreTTL time.Duration
+	Store routing.NodeInfoStore
 }
 
 type StoreNodeDiscoverer struct {
-	host         host.Host
-	store        requester.NodeInfoStore
-	peerStoreTTL time.Duration
+	store routing.NodeInfoStore
 }
 
 func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscoverer {
 	return &StoreNodeDiscoverer{
-		host:         params.Host,
-		store:        params.Store,
-		peerStoreTTL: params.PeerStoreTTL,
+		store: params.Store,
 	}
 }
 
 // FindNodes returns the nodes that support the job's execution engine, and have enough TOTAL capacity to run the job.
-func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]peer.ID, error) {
-	var peers []peer.ID
-	nodeInfos, err := d.store.ListForEngine(ctx, job.Spec.Engine)
-	if err != nil || len(nodeInfos) == 0 {
-		return peers, err
-	}
-
-	jobResourceUsage := capacity.ParseResourceUsageConfig(job.Spec.Resources)
-	for _, nodeInfo := range nodeInfos {
-		if jobResourceUsage.LessThanEq(nodeInfo.ComputeNodeInfo.MaxJobRequirements) {
-			// add peer info to the host's peerstore to be able to connect to it
-			d.host.Peerstore().AddAddrs(nodeInfo.PeerInfo.ID, nodeInfo.PeerInfo.Addrs, d.peerStoreTTL)
-			peers = append(peers, nodeInfo.PeerInfo.ID)
-		}
-	}
-
-	return peers, nil
+func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+	// filter nodes that support the job's engine
+	return d.store.ListForEngine(ctx, job.Spec.Engine)
 }
 
 // compile time check that StoreNodeDiscoverer implements NodeDiscoverer

@@ -3,11 +3,13 @@ package bacalhau
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
@@ -25,11 +27,6 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var DefaultBootstrapAddresses = []string{
-	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-}
 var DefaultSwarmPort = 1235
 
 var (
@@ -53,31 +50,33 @@ var (
 `))
 )
 
+//nolint:lll // Documentation
 type ServeOptions struct {
-	NodeType                              []string      // "compute", "requester" node or both
-	PeerConnect                           string        // The libp2p multiaddress to connect to.
-	IPFSConnect                           string        // The IPFS multiaddress to connect to.
-	FilecoinUnsealedPath                  string        // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
-	EstuaryAPIKey                         string        // The API key used when using the estuary API.
-	HostAddress                           string        // The host address to listen on.
-	SwarmPort                             int           // The host port for libp2p network.
-	JobSelectionDataLocality              string        // The data locality to use for job selection.
-	JobSelectionDataRejectStateless       bool          // Whether to reject jobs that don't specify any data.
-	JobSelectionDataAcceptNetworked       bool          // Whether to accept jobs that require network access.
-	JobSelectionProbeHTTP                 string        // The HTTP URL to use for job selection.
-	JobSelectionProbeExec                 string        // The executable to use for job selection.
-	MetricsPort                           int           // The port to listen on for metrics.
-	LimitTotalCPU                         string        // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                      string        // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                         string        // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                           string        // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                        string        // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                           string        // The amount of GPU the system can be using at one time for a single job.
-	LotusFilecoinStorageDuration          time.Duration // How long deals should be for the Lotus Filecoin publisher
-	LotusFilecoinPathDirectory            string        // The location of the Lotus configuration directory which contains config.toml, etc
-	LotusFilecoinUploadDirectory          string        // Directory to put files when uploading to Lotus (optional)
-	LotusFilecoinMaximumPing              time.Duration // The maximum ping allowed when selecting a Filecoin miner
-	JobExecutionTimeoutClientIDBypassList []string      // IDs of clients that can submit jobs more than the configured job execution timeout
+	NodeType                              []string          // "compute", "requester" node or both
+	PeerConnect                           string            // The libp2p multiaddress to connect to.
+	IPFSConnect                           string            // The IPFS multiaddress to connect to.
+	FilecoinUnsealedPath                  string            // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                         string            // The API key used when using the estuary API.
+	HostAddress                           string            // The host address to listen on.
+	SwarmPort                             int               // The host port for libp2p network.
+	JobSelectionDataLocality              string            // The data locality to use for job selection.
+	JobSelectionDataRejectStateless       bool              // Whether to reject jobs that don't specify any data.
+	JobSelectionDataAcceptNetworked       bool              // Whether to accept jobs that require network access.
+	JobSelectionProbeHTTP                 string            // The HTTP URL to use for job selection.
+	JobSelectionProbeExec                 string            // The executable to use for job selection.
+	MetricsPort                           int               // The port to listen on for metrics.
+	LimitTotalCPU                         string            // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                      string            // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                         string            // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                           string            // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                        string            // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                           string            // The amount of GPU the system can be using at one time for a single job.
+	LotusFilecoinStorageDuration          time.Duration     // How long deals should be for the Lotus Filecoin publisher
+	LotusFilecoinPathDirectory            string            // The location of the Lotus configuration directory which contains config.toml, etc
+	LotusFilecoinUploadDirectory          string            // Directory to put files when uploading to Lotus (optional)
+	LotusFilecoinMaximumPing              time.Duration     // The maximum ping allowed when selecting a Filecoin miner
+	JobExecutionTimeoutClientIDBypassList []string          // IDs of clients that can submit jobs more than the configured job execution timeout
+	Labels                                map[string]string // Labels to apply to the node that can be used for node selection and filtering
 }
 
 func NewServeOptions() *ServeOptions {
@@ -180,7 +179,7 @@ func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
 	} else if OS.PeerConnect == "" {
-		peersStrings = DefaultBootstrapAddresses
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
@@ -247,6 +246,11 @@ func newServeCmd() *cobra.Command {
 		`Whether the node is a compute, requester or both.`,
 	)
 
+	serveCmd.PersistentFlags().StringToStringVar(
+		&OS.Labels, "labels", OS.Labels,
+		`Labels to be associated with the node that can be used for node selection and filtering. (e.g. --labels key1=value1,key2=value2)`,
+	)
+
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to.`,
@@ -294,10 +298,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 	defer cm.Cleanup()
 
-	ctx := cmd.Context()
-
 	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
 	defer cancel()
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
@@ -327,7 +329,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	peers := getPeers(OS)
 	log.Debug().Msgf("libp2p connecting to: %s", peers)
 
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
 	}
@@ -339,7 +341,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
-	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+	ipfs, err := ipfs.NewClientUsingRemoteHandler(OS.IPFSConnect)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating IPFS client: %s", err), 1)
 	}
@@ -364,6 +366,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
 		IsComputeNode:        isComputeNode,
 		IsRequesterNode:      isRequesterNode,
+		Labels:               OS.Labels,
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&

@@ -86,7 +86,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorage(cm, node.APIAddress())
+	ipfsProvider, err := apicopy.NewStorage(cm, node)
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
@@ -143,7 +143,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			filename := filepath.Join("results", fmt.Sprintf("%d.txt", i))
 			checks = append(checks,
 				scenario.FileEquals(filename, content+"\n"),
-				scenario.FileContains(ipfs.DownloadFilenameStdout, content, totalFiles*3+1),
+				scenario.FileContains(model.DownloadFilenameStdout, content, totalFiles*3+1),
 			)
 		}
 	}

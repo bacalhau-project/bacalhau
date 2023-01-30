@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	noop_verifier "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 	"github.com/phayes/freeport"
@@ -70,6 +70,9 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
+	storage, err := noop_storage.NewNoopStorage(nil, nil, noop_storage.StorageConfig{})
+	s.Require().NoError(err)
+
 	s.node, err = node.NewComputeNode(
 		context.Background(),
 		s.cm,
@@ -78,10 +81,10 @@ func (s *ComputeSuite) setupNode() {
 		s.config,
 		"",
 		nil,
+		noop_storage.NewNoopStorageProvider(storage),
 		noop_executor.NewNoopExecutorProvider(s.executor),
 		noop_verifier.NewNoopVerifierProvider(s.verifier),
 		noop_publisher.NewNoopPublisherProvider(s.publisher),
-		pubsub.NewInMemoryPubSub[model.NodeInfo](),
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

@@ -33,6 +33,7 @@ type listResponse struct {
 type ListResponse = listResponse
 
 // list godoc
+//
 // @ID                   pkg/requester/publicapi/list
 // @Summary              Simply lists jobs.
 // @Description.markdown endpoints_list

@@ -59,7 +59,7 @@ func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
 		return err
 	}
 
-	log.Ctx(ctx).Trace().Msgf("Sending message %+v", payload)
+	log.Ctx(ctx).Trace().Msgf("Sending message %+v", message)
 	return p.topic.Publish(ctx, payload)
 }
 

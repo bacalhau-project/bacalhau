@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -40,14 +39,14 @@ func (suite *IPFSHostStorageSuite) SetupTest() {
 	require.NoError(suite.T(), err)
 }
 
-type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
+type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 	storage.Storage, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
 			return apicopy.NewStorage(cm, api)
@@ -59,7 +58,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
 			return apicopy.NewStorage(cm, api)
@@ -84,8 +83,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
-	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -136,8 +134,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
-	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added

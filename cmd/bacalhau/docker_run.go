@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -25,18 +25,23 @@ var (
 
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
-		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container.
-		# All flags after the '--' are passed directly into the container for execution.
+		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container. All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 
-		# Dry Run: Check the job specification before submitting it to the bacalhau network
+		# Dry Run: check the job specification before submitting it to the bacalhau network
 		bacalhau docker run --dry-run ubuntu echo hello
 
-		saving the job specification to a yaml file
+		# Save the job specification to a YAML file
 		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+
+		# Specify an image tag (default is 'latest' - using a specific tag other than 'latest' is recommended for reproducibility)
+		bacalhau docker run ubuntu:bionic echo hello
+
+		# Specify an image digest
+		bacalhau docker run ubuntu@sha256:35b4f89ec2ee42e7e12db3d107fe6a487137650a2af379bbd49165a1494246ea echo hello
 		`))
 )
 
@@ -62,6 +67,7 @@ type DockerRunOptions struct {
 	NetworkDomains   []string
 	WorkingDirectory string   // Working directory for docker
 	Labels           []string // Labels for the job on the Bacalhau network (for searching)
+	NodeSelector     string   // Selector (label query) to filter nodes on which this job can be executed
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -72,7 +78,7 @@ type DockerRunOptions struct {
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
-	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
+	DownloadFlags model.DownloaderSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -103,7 +109,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDirectory:   "",
 		Labels:             []string{},
-		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		NodeSelector:       "",
+		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
@@ -130,7 +137,6 @@ func newDockerCmd() *cobra.Command {
 	}
 
 	dockerCmd.AddCommand(newDockerRunCmd())
-
 	return dockerCmd
 }
 
@@ -138,7 +144,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	ODR := NewDockerRunOptions()
 
 	dockerRunCmd := &cobra.Command{
-		Use:     "run",
+		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
 		Short:   "Run a docker job on the network",
 		Long:    dockerRunLong,
 		Example: dockerRunExample,
@@ -242,6 +248,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
+		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
+	)
+
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
 		`Use this pattern to match files to be sharded.`,
@@ -292,6 +303,15 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 			return nil
 		}
 	}
+
+	quiet := ODR.RunTimeSettings.PrintJobIDOnly
+	if !quiet {
+		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
+		if !containsTag {
+			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
+		}
+	}
+
 	if ODR.DryRun {
 		// Converting job to yaml
 		var yamlBytes []byte
@@ -313,6 +333,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
+// CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context,
 	cmdArgs []string,
 	odr *DockerRunOptions) (*model.Job, error) {
@@ -326,11 +347,11 @@ func CreateJob(ctx context.Context,
 	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
 
 	if swarmAddresses == "" {
-		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
-	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+	odr.DownloadFlags = model.DownloaderSettings{
+		Timeout:        odr.DownloadFlags.Timeout,
 		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: swarmAddresses,
 	}
@@ -389,6 +410,7 @@ func CreateJob(ctx context.Context,
 		odr.MinBids,
 		odr.Timeout,
 		labels,
+		odr.NodeSelector,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,

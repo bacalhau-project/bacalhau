@@ -5,13 +5,13 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -53,34 +53,34 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
 
 	expected := []string{
-		"/" + ipfs.DownloadVolumesFolderName,
-		"/" + ipfs.DownloadVolumesFolderName + "/data",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/apples",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/apples/file.txt",
-		"/" + ipfs.DownloadVolumesFolderName + "/data/file.txt",
-		"/" + ipfs.DownloadVolumesFolderName + "/outputs",
-		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStderr,
-		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStdout,
-		"/" + ipfs.DownloadShardsFolderName,
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID,
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
-		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
-		"/" + ipfs.DownloadCIDsFolderName,
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID,
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
-		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
+		"/" + model.DownloadVolumesFolderName,
+		"/" + model.DownloadVolumesFolderName + "/data",
+		"/" + model.DownloadVolumesFolderName + "/data/apples",
+		"/" + model.DownloadVolumesFolderName + "/data/apples/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/data/file.txt",
+		"/" + model.DownloadVolumesFolderName + "/outputs",
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
+		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
+		"/" + model.DownloadShardsFolderName,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID,
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
+		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
+		"/" + model.DownloadCIDsFolderName,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID,
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
+		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
@@ -128,7 +128,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	}
 	args = append(args, extraArgs...)
 	args = append(args,
-		"ubuntu",
+		"ubuntu:latest",
 		"--",
 		"bash", "-c",
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",

@@ -8,7 +8,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import {BuildConfig} from "./build-config";
+import {CanaryConfig} from "./config";
 import {Size} from "aws-cdk-lib";
 
 export interface ScenarioProps {
@@ -33,11 +33,11 @@ const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
 
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
-    private readonly config: BuildConfig;
+    private readonly config: CanaryConfig;
     private readonly dashboard: cloudwatch.Dashboard
     private readonly snsAlarmTopic: sns.ITopic
 
-    constructor(app: cdk.App, id: string, props: cdk.StackProps, config: BuildConfig) {
+    constructor(app: cdk.App, id: string, props: cdk.StackProps, config: CanaryConfig) {
         super(app, id, props)
 
         this.config = config;
@@ -48,13 +48,14 @@ export class CanaryStack extends cdk.Stack {
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
         this.createLambdaAlarmSlackHandlerFunc()
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "list"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submit"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitAndDescribe"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{action: "submitWithConcurrency"}});
-        this.createLambdaScenarioFunc({ ...DEFAULT_LAMBDA_PROPS, ...{
-            action: "submitDockerIPFSJobAndGet", timeoutMinutes: 10, memorySize: 2048, storageSize: 5012}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "list"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submit"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndGet", memorySize: 1024}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndDescribe"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
+        this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
+                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
+                datapointsToAlarm: 4, evaluationPeriods: 6}});
         this.createOperatorGroup(id)
     }
 
@@ -173,7 +174,7 @@ export class CanaryStack extends cdk.Stack {
         alarm.addOkAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
     }
 
-    private createOperatorGroup(stackID: string) {
+    private createOperatorGroup() {
         const group = new iam.Group(this, 'OperatorGroup', {
             groupName: 'BacalhauCanaryOperators-' + this.config.envTitle
         })

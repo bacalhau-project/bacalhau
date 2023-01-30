@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
@@ -33,6 +32,9 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	// write that directly to disk rather than needing to hold it all in memory.
 	summary := make([]byte, output.summaryLimit+1)
 	summaryRead, err := output.contents.Read(summary)
+	if err != nil && err != io.EOF {
+		return err
+	}
 
 	available := system.Min(summaryRead, int(output.summaryLimit))
 
@@ -81,7 +83,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard output
 		{
 			stdout,
-			ipfs.DownloadFilenameStdout,
+			model.DownloadFilenameStdout,
 			system.MaxStdoutFileLength,
 			&result.STDOUT,
 			system.MaxStdoutReturnLength,
@@ -90,7 +92,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Standard error
 		{
 			stderr,
-			ipfs.DownloadFilenameStderr,
+			model.DownloadFilenameStderr,
 			system.MaxStderrFileLength,
 			&result.STDERR,
 			system.MaxStderrReturnLength,
@@ -99,7 +101,7 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		// Exit code
 		{
 			strings.NewReader(fmt.Sprint(exitcode)),
-			ipfs.DownloadFilenameExitCode,
+			model.DownloadFilenameExitCode,
 			4,
 			nil,
 			4,

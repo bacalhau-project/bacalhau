@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-// A simple publisher repo that selects a publisher based on the job's publisher type.
+// MappedPublisherProvider is a simple publisher repo that selects a publisher based on the job's publisher type.
 type MappedPublisherProvider struct {
 	publishers                    map[model.Publisher]Publisher
 	publishersInstalledCache      map[model.Publisher]bool
@@ -49,4 +49,9 @@ func (p *MappedPublisherProvider) GetPublisher(ctx context.Context, publisherTyp
 	}
 
 	return publisher, nil
+}
+
+func (p *MappedPublisherProvider) HasPublisher(ctx context.Context, publisher model.Publisher) bool {
+	_, err := p.GetPublisher(ctx, publisher)
+	return err == nil
 }

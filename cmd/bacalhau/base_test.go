@@ -26,6 +26,8 @@ type BaseSuite struct {
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	Fatal = FakeFatalErrorHandler
+
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -49,6 +51,7 @@ func (s *BaseSuite) SetupTest() {
 
 // After each test
 func (s *BaseSuite) TearDownTest() {
+	Fatal = FatalErrorHandler
 	if s.node != nil {
 		s.node.CleanupManager.Cleanup()
 	}

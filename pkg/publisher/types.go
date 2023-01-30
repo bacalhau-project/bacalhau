@@ -6,16 +6,17 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-// Returns a publisher for the given publisher type
+// PublisherProvider returns a publisher for the given publisher type
 type PublisherProvider interface {
 	GetPublisher(ctx context.Context, job model.Publisher) (Publisher, error)
+	HasPublisher(ctx context.Context, publisher model.Publisher) bool
 }
 
 // Publisher is the interface for publishing results of a job
 // The job spec will choose which publisher(s) it wants to use
 // (there can be multiple publishers configured)
 type Publisher interface {
-	// tells you if the required software is installed on this machine
+	// IsInstalled tells you if the required software is installed on this machine
 	IsInstalled(context.Context) (bool, error)
 
 	// compute node

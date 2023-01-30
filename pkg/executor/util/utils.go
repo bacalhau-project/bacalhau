@@ -9,6 +9,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
@@ -21,7 +22,7 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	IPFSMultiaddress     string
+	API                  ipfs.Client
 	FilecoinUnsealedPath string
 	DownloadPath         string
 }
@@ -36,7 +37,7 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := apicopy.NewStorage(cm, options.IPFSMultiaddress)
+	ipfsAPICopyStorage, err := apicopy.NewStorage(cm, options.API)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 )
 
 // debug godoc
+//
 // @ID      apiServer/debug
 // @Summary Returns debug information on what the current node is doing.
 // @Tags    Health

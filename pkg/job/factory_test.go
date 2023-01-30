@@ -89,6 +89,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					0,          // min bids
 					300,        // timeout
 					[]string{}, // annotations
+					"",         // node selector
 					"",         // working dir
 					"",         // sharding base path
 					"",         // sharding glob pattern

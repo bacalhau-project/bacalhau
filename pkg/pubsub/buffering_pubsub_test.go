@@ -45,9 +45,11 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub() {
 		s.NoError(s.pusSub.Publish(ctx, message))
 		s.Empty(s.subscriber.Events())
 		s.True(s.pusSub.currentBuffer.Size() < s.maxBufferSize)
+		s.True(s.pusSub.currentBuffer.Size() > 0)
 	}
 
 	err := s.pusSub.Publish(ctx, toWrite[3])
+	time.Sleep(50 * time.Millisecond)
 	s.NoError(err)
 	s.Equal(toWrite, s.subscriber.Events())
 	s.Equal(int64(0), s.pusSub.currentBuffer.Size())
@@ -56,6 +58,7 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub() {
 func (s *BufferingPubSubSuite) TestBufferingPubSub_SingleLargeMessage() {
 	message := "1234567890 abcdefghijklmnopqrstuvwxyz"
 	s.NoError(s.pusSub.Publish(context.Background(), message))
+	time.Sleep(50 * time.Millisecond)
 	s.Equal([]string{message}, s.subscriber.Events())
 }
 
@@ -67,12 +70,14 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub_Reset() {
 	for _, message := range toWrite1 {
 		s.NoError(s.pusSub.Publish(ctx, message))
 	}
+	time.Sleep(50 * time.Millisecond)
 	s.Equal(toWrite1, s.subscriber.Events())
 
 	// Verify messages from previous buffer don't show up in the new buffer
 	for _, message := range toWrite2 {
 		s.NoError(s.pusSub.Publish(ctx, message))
 	}
+	time.Sleep(50 * time.Millisecond)
 	s.Equal(toWrite2, s.subscriber.Events())
 }
 
@@ -83,9 +88,11 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub_MaxBufferAge() {
 
 	s.NoError(s.pusSub.Publish(ctx, "a"))
 	s.Empty(s.subscriber.Events())
+	s.True(s.pusSub.currentBuffer.Size() > 0)
 
 	time.Sleep(s.maxBufferAge * 2)
 	s.Equal([]string{"a"}, s.subscriber.Events())
+	s.Equal(int64(0), s.pusSub.currentBuffer.Size())
 }
 
 func (s *BufferingPubSubSuite) TestBufferingPubSub_MaxBufferAge_Empty() {
@@ -103,9 +110,11 @@ func (s *BufferingPubSubSuite) TestBufferingPubSub_Close() {
 
 	s.NoError(s.pusSub.Publish(ctx, "a"))
 	s.Empty(s.subscriber.Events())
+	s.True(s.pusSub.currentBuffer.Size() > 0)
 
 	s.NoError(s.pusSub.Close(ctx))
 	s.Equal([]string{"a"}, s.subscriber.Events())
+	s.Equal(int64(0), s.pusSub.currentBuffer.Size())
 
 	s.NoError(s.pusSub.Close(ctx))
 	s.Equal([]string{}, s.subscriber.Events())

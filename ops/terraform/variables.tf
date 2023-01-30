@@ -161,3 +161,13 @@ variable "internal_ip_addresses" {
   type    = list(string)
   default = []
 }
+
+variable "public_ip_addresses" {
+  type    = list(string)
+  default = []
+}
+
+variable "log_level" {
+  type    = string
+  default = "debug"
+}

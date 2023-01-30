@@ -130,8 +130,6 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
-	Fatal = FakeFatalErrorHandler
-
 	type commandReturn struct {
 		c   *cobra.Command
 		out string

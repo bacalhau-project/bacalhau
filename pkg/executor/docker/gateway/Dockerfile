@@ -30,10 +30,12 @@
 # configure iptables and traffic control.
 
 FROM ubuntu:22.04
-RUN apt update && apt install -y squid iptables iproute2 jq
+RUN apt update && apt install -y squid iptables iproute2 jq curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY squid.conf /etc/squid/conf.d/
-COPY gateway.sh /bin
+COPY gateway.sh /usr/local/bin
+COPY health_check.sh /usr/local/bin
 
-CMD ["sh", "/bin/gateway.sh"]
-HEALTHCHECK --interval=1s --start-period=5s CMD ["bash", "-c", ": &>/dev/null </dev/tcp/127.0.0.1/8080"]
+CMD ["bash", "/usr/local/bin/gateway.sh"]
+HEALTHCHECK --interval=1s --start-period=5s CMD ["bash", "/usr/local/bin/health_check.sh" ]

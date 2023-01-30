@@ -5,6 +5,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -189,6 +190,22 @@ type Deal struct {
 	MinBids int `json:"minBids,omitempty"`
 }
 
+// LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
+// These are based on labels library from kubernetes package. While we use labels.Requirement to represent the label selector requirements
+// in the command line arguments as the library supports multiple parsing formats, and we also use it when matching selectors to labels
+// as that's what the library expects, labels.Requirements are not serializable, so we need to convert them to LabelSelectorRequirements.
+type LabelSelectorRequirement struct {
+	// key is the label key that the selector applies to.
+	Key string `json:"Key"`
+	// operator represents a key's relationship to a set of values.
+	// Valid operators are In, NotIn, Exists and DoesNotExist.
+	Operator selection.Operator `json:"Operator"`
+	// values is an array of string values. If the operator is In or NotIn,
+	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
+	// the values array must be empty. This array is replaced during a strategic
+	Values []string `json:"Values,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
@@ -232,6 +249,8 @@ type Spec struct {
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"annotations,omitempty"`
 
+	// NodeSelectors is a selector which must be true for the compute node to run this job.
+	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
 	Sharding JobShardingConfig `json:"sharding,omitempty"`
