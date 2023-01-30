@@ -113,7 +113,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 		// get downloader for each shard and download it's CID
 		// (if we have not already done so)
-		downloader, err := downloadProvider.GetDownloader(shardResult.Data.StorageSource) //nolint
+		downloader, err := downloadProvider.Get(ctx, shardResult.Data.StorageSource) //nolint
 		_, ok := downloadedCids[shardResult.Data.CID]
 		if !ok {
 			err = downloader.FetchResult(ctx, shardResult, cidDownloadDir)

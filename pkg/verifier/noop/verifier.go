@@ -11,30 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
 )
 
-// Verifier provider that always return NoopVerifier regardless of requested verifier type
-type NoopVerifierProvider struct {
-	noopVerifier *NoopVerifier
-}
-
-func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
-	return &NoopVerifierProvider{
-		noopVerifier: noopVerifier,
-	}
-}
-
-func (p *NoopVerifierProvider) GetVerifier(ctx context.Context, jobVerifier model.Verifier) (verifier.Verifier, error) {
-	if jobVerifier != model.VerifierNoop {
-		return nil, fmt.Errorf("no verifier available for type %s. Only VerifierNoop is supported", jobVerifier)
-	}
-	return p.noopVerifier, nil
-}
-
-// Check if a verifier is available or not
-func (p *NoopVerifierProvider) HasVerifier(ctx context.Context, verifierType model.Verifier) bool {
-	_, err := p.GetVerifier(ctx, verifierType)
-	return err == nil
-}
-
 type NoopVerifier struct {
 	stateResolver *job.StateResolver
 	results       *results.Results
@@ -127,5 +103,4 @@ func (noopVerifier *NoopVerifier) VerifyShard(
 }
 
 // Compile-time check that NoopVerifier implements the correct interface:
-var _ verifier.VerifierProvider = (*NoopVerifierProvider)(nil)
 var _ verifier.Verifier = (*NoopVerifier)(nil)

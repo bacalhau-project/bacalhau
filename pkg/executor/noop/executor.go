@@ -2,7 +2,6 @@ package noop
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -22,34 +21,6 @@ type ExecutorConfigExternalHooks struct {
 
 type ExecutorConfig struct {
 	ExternalHooks ExecutorConfigExternalHooks
-}
-
-type NoopExecutorProvider struct {
-	noopExecutor *NoopExecutor
-}
-
-func NewNoopExecutorProvider(noopExecutor *NoopExecutor) *NoopExecutorProvider {
-	return &NoopExecutorProvider{
-		noopExecutor: noopExecutor,
-	}
-}
-
-func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model.Engine, executor executor.Executor) error {
-	return fmt.Errorf("noop executor provider does not support adding executors")
-}
-
-func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
-	// NoopExecutorProvider also support Docker engine in addition to Noop as some tests use `docker run` cli command
-	// to submit jobs, and we don't have a noop cli option.
-	if engineType != model.EngineNoop && engineType != model.EngineDocker {
-		return nil, fmt.Errorf("noop executor doesn't support %s", engineType)
-	}
-	return p.noopExecutor, nil
-}
-
-func (p *NoopExecutorProvider) HasExecutor(ctx context.Context, engineType model.Engine) bool {
-	_, err := p.GetExecutor(ctx, engineType)
-	return err == nil
 }
 
 type NoopExecutor struct {
@@ -112,5 +83,4 @@ func (e *NoopExecutor) CancelShard(ctx context.Context, shard model.JobShard) er
 }
 
 // Compile-time check that Executor implements the Executor interface.
-var _ executor.ExecutorProvider = (*NoopExecutorProvider)(nil)
 var _ executor.Executor = (*NoopExecutor)(nil)

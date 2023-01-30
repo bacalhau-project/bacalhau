@@ -32,7 +32,7 @@ func NewStandardDownloaders(
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
 	estuaryDownloader := estuary.NewEstuaryDownloader(cm, settings)
 
-	return downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{
+	return model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
 		model.StorageSourceIPFS:    ipfsDownloader,
 		model.StorageSourceEstuary: estuaryDownloader,
 	})

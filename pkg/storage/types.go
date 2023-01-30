@@ -8,12 +8,11 @@ import (
 
 // StorageProvider returns a storage that can be used by the job to store data.
 type StorageProvider interface {
-	GetStorage(ctx context.Context, storageSourceType model.StorageSourceType) (Storage, error)
-	HasStorage(ctx context.Context, sourceType model.StorageSourceType) bool
+	model.Provider[model.StorageSourceType, Storage]
 }
 
 type Storage interface {
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
 
 	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
 

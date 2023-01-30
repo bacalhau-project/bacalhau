@@ -25,6 +25,10 @@ func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSett
 	}
 }
 
+func (ipfsDownloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+	return true, nil
+}
+
 func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()

@@ -32,7 +32,7 @@ func NewExecutor(
 }
 
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
-	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return false, err
 	}
@@ -76,7 +76,7 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 }
 
 func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return err
 	}

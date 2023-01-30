@@ -112,7 +112,7 @@ func ExplodeShardedVolumes(
 
 	// loop over each input volume and explode it using the storage driver
 	for _, volume := range spec.Inputs {
-		volumeStorage, err := storageProviders.GetStorage(ctx, volume.StorageSource)
+		volumeStorage, err := storageProviders.Get(ctx, volume.StorageSource)
 		if err != nil {
 			return allVolumes, err
 		}

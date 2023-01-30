@@ -90,7 +90,7 @@ func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard
 		log.Ctx(ctx).Debug().Msgf("Running deterministic %v", requiredLang)
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
-		executor, err := e.executors.GetExecutor(ctx, engineKey)
+		executor, err := e.executors.Get(ctx, engineKey)
 		if err != nil {
 			return nil, err
 		}

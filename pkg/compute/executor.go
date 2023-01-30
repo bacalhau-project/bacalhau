@@ -70,7 +70,7 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 		return
 	}
 
-	jobVerifier, err := e.verifiers.GetVerifier(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Shard.Job.Spec.Verifier)
 	if err != nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 		return
 	}
 
-	jobExecutor, err := e.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Shard.Job.Spec.Engine)
 	if err != nil {
 		return
 	}
@@ -151,7 +151,7 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 	if err != nil {
 		return
 	}
-	jobVerifier, err := e.verifiers.GetVerifier(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Shard.Job.Spec.Verifier)
 	if err != nil {
 		return
 	}
@@ -159,7 +159,7 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 	if err != nil {
 		return
 	}
-	jobPublisher, err := e.publishers.GetPublisher(ctx, execution.Shard.Job.Spec.Publisher)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Shard.Job.Spec.Publisher)
 	if err != nil {
 		return
 	}
@@ -198,7 +198,7 @@ func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (er
 
 	log.Ctx(ctx).Debug().Msgf("Canceling execution %s", execution.ID)
 	// check that we have the executor to cancel this job
-	jobExecutor, err := e.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Shard.Job.Spec.Engine)
 	if err != nil {
 		return
 	}

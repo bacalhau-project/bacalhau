@@ -278,7 +278,7 @@ func (s *Scheduler) verifyShard(
 	ctx context.Context,
 	shard model.JobShard,
 ) ([]verifier.VerifierResult, error) {
-	jobVerifier, err := s.verifiers.GetVerifier(ctx, shard.Job.Spec.Verifier)
+	jobVerifier, err := s.verifiers.Get(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
 		return nil, err
 	}

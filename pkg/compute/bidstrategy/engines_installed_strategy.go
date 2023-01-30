@@ -37,7 +37,7 @@ func NewEnginesInstalledStrategy(params EnginesInstalledStrategyParams) *Engines
 func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	// skip bidding if we don't have the executor and verifier for the job spec
 	for _, input := range request.Job.Spec.Inputs {
-		if !s.storages.HasStorage(ctx, input.StorageSource) {
+		if !s.storages.Has(ctx, input.StorageSource) {
 			return BidStrategyResponse{
 				ShouldBid: false,
 				Reason:    fmt.Sprintf("storage %s not installed", input.StorageSource),
@@ -45,21 +45,21 @@ func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStr
 		}
 	}
 
-	if !s.executors.HasExecutor(ctx, request.Job.Spec.Engine) {
+	if !s.executors.Has(ctx, request.Job.Spec.Engine) {
 		return BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    fmt.Sprintf("executor %s not installed", request.Job.Spec.Engine),
 		}, nil
 	}
 
-	if !s.verifiers.HasVerifier(ctx, request.Job.Spec.Verifier) {
+	if !s.verifiers.Has(ctx, request.Job.Spec.Verifier) {
 		return BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    fmt.Sprintf("verifier %s not installed", request.Job.Spec.Verifier),
 		}, nil
 	}
 
-	if !s.publishers.HasPublisher(ctx, request.Job.Spec.Publisher) {
+	if !s.publishers.Has(ctx, request.Job.Spec.Publisher) {
 		return BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    fmt.Sprintf("publisher %s not installed", request.Job.Spec.Publisher),

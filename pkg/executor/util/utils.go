@@ -91,7 +91,7 @@ func NewStandardStorageProvider(
 		useIPFSDriver = comboDriver
 	}
 
-	return storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{
+	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
 		model.StorageSourceIPFS:             useIPFSDriver,
 		model.StorageSourceURLDownload:      urlDownloadStorage,
 		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
@@ -108,7 +108,7 @@ func NewNoopStorageProvider(
 	if err != nil {
 		return nil, err
 	}
-	return noop_storage.NewNoopStorageProvider(noopStorage), nil
+	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
@@ -131,7 +131,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	executors := executor.NewTypeExecutorProvider(map[model.Engine]executor.Executor{
+	executors := model.NewMappedProvider(map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
 		model.EngineWasm:   wasmExecutor,
 	})
@@ -142,24 +142,19 @@ func NewStandardExecutorProvider(
 	if err != nil {
 		return nil, err
 	}
-	err = executors.AddExecutor(ctx, model.EngineLanguage, exLang)
-	if err != nil {
-		return nil, err
-	}
+	executors.Add(model.EngineLanguage, exLang)
 
 	exPythonWasm, err := pythonwasm.NewExecutor(executors)
 	if err != nil {
 		return nil, err
 	}
-	err = executors.AddExecutor(ctx, model.EnginePythonWasm, exPythonWasm)
-	if err != nil {
-		return nil, err
-	}
+	executors.Add(model.EnginePythonWasm, exPythonWasm)
+
 	return executors, nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return noop_executor.NewNoopExecutorProvider(noopExecutor)
+	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
 }
