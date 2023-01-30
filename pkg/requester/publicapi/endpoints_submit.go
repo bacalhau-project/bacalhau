@@ -16,7 +16,7 @@ import (
 
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	JobCreatePayload model.JobCreatePayload `json:"job_create_payload" validate:"required"`
+	JobCreatePayload model.JobCreatePayload `json:"jobCreatePayload" validate:"required"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature" validate:"required"`
