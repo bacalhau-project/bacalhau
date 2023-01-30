@@ -38,7 +38,7 @@ func NewStandardVerifiers(
 		return nil, err
 	}
 
-	return verifier.NewMappedVerifierProvider(map[model.Verifier]verifier.Verifier{
+	return model.NewMappedProvider(map[model.Verifier]verifier.Verifier{
 		model.VerifierNoop:          noopVerifier,
 		model.VerifierDeterministic: deterministicVerifier,
 	}), nil
@@ -53,5 +53,5 @@ func NewNoopVerifiers(
 	if err != nil {
 		return nil, err
 	}
-	return noop.NewNoopVerifierProvider(noopVerifier), nil
+	return model.NewNoopProvider[model.Verifier, verifier.Verifier](noopVerifier), nil
 }

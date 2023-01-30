@@ -51,7 +51,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.StorageProvider.GetStorage(ctx, volume.StorageSource)
+	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
 	if err != nil {
 		return false, err
 	}
@@ -63,7 +63,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.GetVolumeSize")
 	defer span.End()
 
-	storageProvider, err := e.StorageProvider.GetStorage(ctx, volume.StorageSource)
+	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
 	if err != nil {
 		return 0, err
 	}

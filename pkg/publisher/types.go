@@ -8,16 +8,14 @@ import (
 
 // PublisherProvider returns a publisher for the given publisher type
 type PublisherProvider interface {
-	GetPublisher(ctx context.Context, job model.Publisher) (Publisher, error)
-	HasPublisher(ctx context.Context, publisher model.Publisher) bool
+	model.Provider[model.Publisher, Publisher]
 }
 
 // Publisher is the interface for publishing results of a job
 // The job spec will choose which publisher(s) it wants to use
 // (there can be multiple publishers configured)
 type Publisher interface {
-	// IsInstalled tells you if the required software is installed on this machine
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
 
 	// compute node
 	//

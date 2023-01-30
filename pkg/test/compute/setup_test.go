@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
@@ -14,9 +15,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
@@ -70,7 +74,7 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	storage, err := noop_storage.NewNoopStorage(nil, nil, noop_storage.StorageConfig{})
+	noopstorage, err := noop_storage.NewNoopStorage(nil, nil, noop_storage.StorageConfig{})
 	s.Require().NoError(err)
 
 	s.node, err = node.NewComputeNode(
@@ -81,10 +85,10 @@ func (s *ComputeSuite) setupNode() {
 		s.config,
 		"",
 		nil,
-		noop_storage.NewNoopStorageProvider(storage),
-		noop_executor.NewNoopExecutorProvider(s.executor),
-		noop_verifier.NewNoopVerifierProvider(s.verifier),
-		noop_publisher.NewNoopPublisherProvider(s.publisher),
+		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
+		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
+		model.NewNoopProvider[model.Verifier, verifier.Verifier](s.verifier),
+		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

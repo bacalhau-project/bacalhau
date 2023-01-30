@@ -23,6 +23,10 @@ func NewHTTPDownloader(settings *model.DownloaderSettings) *Downloader {
 	}
 }
 
+func (httpDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
+	return true, nil
+}
+
 func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
 	defer span.End()

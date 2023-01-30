@@ -26,7 +26,7 @@ func RunTestCase(
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
-	executor, err := stack.Nodes[0].ComputeNode.Executors.GetExecutor(ctx, spec.Engine)
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)

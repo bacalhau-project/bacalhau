@@ -118,7 +118,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	// Check that the stack has the appropriate executor installed
 	for _, node := range stack.Nodes {
-		executor, err := node.ComputeNode.Executors.GetExecutor(s.Ctx, spec.Engine)
+		executor, err := node.ComputeNode.Executors.Get(s.Ctx, spec.Engine)
 		require.NoError(s.T(), err)
 
 		isInstalled, err := executor.IsInstalled(s.Ctx)
@@ -190,7 +190,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 	require.NoError(s.T(), err)
 
-	downloaderProvider := downloader.NewMappedDownloaderProvider(map[model.StorageSourceType]downloader.Downloader{
+	downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
 		model.StorageSourceIPFS: ipfsDownloader,
 	})
 

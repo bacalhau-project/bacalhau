@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
@@ -87,7 +88,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 
 	for _, test := range testCases {
 		s.Run(test.name, func() {
-			executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
+			noop_executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
 						return test.hasStorageLocally, nil
@@ -96,7 +97,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 			})
 			params := InputLocalityStrategyParams{
 				Locality:  test.policy,
-				Executors: noop_executor.NewNoopExecutorProvider(executor),
+				Executors: model.NewNoopProvider[model.Engine, executor.Executor](noop_executor),
 			}
 			strategy := NewInputLocalityStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), test.request)

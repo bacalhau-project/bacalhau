@@ -45,7 +45,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 		context.Background(),
 		s.cm,
 		"bacalhau-executor-unittest",
-		storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{}),
+		model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{}),
 	)
 	require.NoError(s.T(), err)
 
