@@ -313,26 +313,25 @@ func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error 
 }
 
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
-	if config.ShouldKeepStack() {
-		return
-	}
-
 	// Use a separate context in case the current one has already been canceled
 	separateCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
+	if config.ShouldKeepStack() || !docker.IsInstalled(separateCtx, e.Client) {
+		return
+	}
+
 	err := docker.RemoveObjectsWithLabel(separateCtx, e.Client, labelJobName, e.labelJobValue(shard))
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
 
 func (e *Executor) cleanupAll(ctx context.Context) {
-	if config.ShouldKeepStack() {
-		return
-	}
-
 	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := context.Background()
+	if config.ShouldKeepStack() || !docker.IsInstalled(safeCtx, e.Client) {
+		return
+	}
 
 	err := docker.RemoveObjectsWithLabel(safeCtx, e.Client, labelExecutorName, e.ID)
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
