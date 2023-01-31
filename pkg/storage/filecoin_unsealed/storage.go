@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"text/template"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -59,7 +59,7 @@ func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume model.S
 	if err != nil {
 		return 0, err
 	}
-	return dirSize(localPath)
+	return util.DirSize(localPath)
 }
 
 func (driver *StorageProvider) PrepareStorage(
@@ -108,20 +108,6 @@ func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume model
 		return "", err
 	}
 	return buffer.String(), nil
-}
-
-func dirSize(path string) (uint64, error) {
-	var size uint64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			size += uint64(info.Size())
-		}
-		return err
-	})
-	return size, err
 }
 
 // Compile time interface check:

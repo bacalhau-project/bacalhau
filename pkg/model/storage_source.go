@@ -20,6 +20,7 @@ const (
 	StorageSourceFilecoin
 	StorageSourceEstuary
 	StorageSourceInline
+	StorageSourceLocalDirectory
 	storageSourceDone // must be last
 )
 

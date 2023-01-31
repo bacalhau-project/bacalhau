@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -650,7 +649,7 @@ To get more information at any time, run:
 	// Capture Ctrl+C if the user wants to finish early the job
 	ctx, cancel := context.WithCancel(ctx)
 	signalChan := make(chan os.Signal, 2)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(signalChan, ShutdownSignals...)
 	defer func() {
 		signal.Stop(signalChan)
 		cancel()
@@ -757,13 +756,13 @@ To get more information at any time, run:
 					_ = spin.StopFail()
 				}
 				tickerDone <- true
-				signalChan <- syscall.SIGINT
+				signalChan <- os.Interrupt
 				return err
 			}
 		}
 
 		if condition := ctx.Err(); condition != nil {
-			signalChan <- syscall.SIGINT
+			signalChan <- os.Interrupt
 			break
 		} else {
 			jobEvents, err = GetAPIClient().GetEvents(ctx, j.Metadata.ID)
@@ -931,4 +930,15 @@ func formatMessage(msg string) string {
 
 	return fmt.Sprintf("\t%s%s",
 		strings.Repeat(" ", maxLength-len(msg)+2), msg)
+}
+
+// Check if the image contains a tag or a digest
+func DockerImageContainsTag(image string) bool {
+	if strings.Contains(image, ":") {
+		return true
+	}
+	if strings.Contains(image, "@") {
+		return true
+	}
+	return false
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	ipfsClient "github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -18,13 +19,13 @@ import (
 func NewIPFSPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	ipfsMultiAddress string,
+	cl ipfsClient.Client,
 	estuaryAPIKey string,
 	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	defaultPriorityPublisherTimeout := time.Second * 2
 	noopPublisher := noop.NewNoopPublisher()
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, ipfsMultiAddress)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, cl)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func NewIPFSPublishers(
 		}
 	}
 
-	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
+	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop:     noopPublisher,
 		model.PublisherIpfs:     ipfsPublisher,
 		model.PublisherEstuary:  estuaryPublisher,
@@ -65,5 +66,5 @@ func NewNoopPublishers(
 	resolver *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
-	return noop.NewNoopPublisherProvider(noopPublisher), nil
+	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil
 }

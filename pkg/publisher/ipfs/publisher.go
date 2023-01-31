@@ -12,20 +12,15 @@ import (
 )
 
 type IPFSPublisher struct {
-	IPFSClient *ipfs.Client
+	IPFSClient ipfs.Client
 }
 
 func NewIPFSPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	ipfsAPIAddr string,
+	cl ipfs.Client,
 ) (*IPFSPublisher, error) {
-	cl, err := ipfs.NewClient(ipfsAPIAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
+	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", cl.APIAddress())
 	return &IPFSPublisher{
 		IPFSClient: cl,
 	}, nil

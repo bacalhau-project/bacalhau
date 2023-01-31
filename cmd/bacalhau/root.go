@@ -22,8 +22,8 @@ var defaultAPIHost string
 var defaultAPIPort int
 
 func init() { //nolint:gochecknoinits
-	defaultAPIHost = system.Envs[system.Production].APIHost
-	defaultAPIPort = system.Envs[system.Production].APIPort
+	defaultAPIHost = system.Envs[system.GetEnvironment()].APIHost
+	defaultAPIPort = system.Envs[system.GetEnvironment()].APIPort
 
 	if config.GetAPIHost() != "" {
 		defaultAPIHost = config.GetAPIHost()

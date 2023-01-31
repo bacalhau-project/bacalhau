@@ -67,6 +67,7 @@ install-pre-commit:
 .PHONY: precommit
 precommit: buildenvcorrect
 	${PRECOMMIT} run --all
+	cd python && make pre-commit
 
 .PHONY: buildenvcorrect
 buildenvcorrect:
@@ -107,6 +108,17 @@ swagger-docs:
 	swag fmt -g "pkg/publicapi/server.go" && \
 	swag init --parseDependency --parseInternal --parseDepth 1 --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
 	@echo "Swagger docs built."
+
+################################################################################
+# Target: clients
+################################################################################
+# Generate Bacalhau API clients but only if the swagger.json has actually been
+# updated because the clients include random numbers and timestamps and hence
+# will generate a lot of noisy diffs if regenerated all of the time
+.PHONY: clients
+clients:
+	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
+		cd clients && ${MAKE} -j all) || true
 
 ################################################################################
 # Target: build
@@ -152,8 +164,32 @@ build-http-gateway-image:
 		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
 		pkg/executor/docker/gateway
 
+BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
+BACALHAU_TAG ?= ${TAG}
+.PHONY: build-bacalhau-image
+build-bacalhau-image:
+	docker build --progress=plain \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
+.PHONY: push-bacalhau-image
+push-bacalhau-image:
+	docker buildx build --push --progress=plain \
+		--platform linux/amd64,linux/arm64 \
+		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		--label org.opencontainers.image.version=${BACALHAU_TAG} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
+
+.PHONY: push-docker-images
+push-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -228,6 +264,10 @@ all_schemas: ${ALL_SCHEMAS}
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
+
+.PHONY: test-python
+test-python:
+	cd python && make unittest
 
 .PHONY: integration-test
 integration-test:

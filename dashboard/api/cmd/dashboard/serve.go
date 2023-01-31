@@ -2,6 +2,8 @@ package dashboard
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/server"
@@ -82,7 +84,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	}
 
 	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "dashboard/api/cmd/dashboard/serve")

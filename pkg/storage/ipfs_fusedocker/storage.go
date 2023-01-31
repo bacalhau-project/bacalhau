@@ -46,17 +46,12 @@ type StorageProvider struct {
 	// the job of this mutex is to stop a race condition starting two sidecars
 	Mutex        sync.Mutex
 	ID           string
-	IPFSClient   *ipfs.Client
+	IPFSClient   ipfs.Client
 	DockerClient *dockerclient.Client
 }
 
-func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIAddress string) (
+func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 	*StorageProvider, error) {
-	api, err := ipfs.NewClient(ipfsAPIAddress)
-	if err != nil {
-		return nil, err
-	}
-
 	peerID, err := api.ID(ctx)
 	if err != nil {
 		return nil, err
@@ -87,7 +82,7 @@ func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIA
 	})
 
 	log.Ctx(ctx).Debug().Msgf(
-		"Docker IPFS storage initialized with address: %s", ipfsAPIAddress)
+		"Docker IPFS storage initialized with address: %s", api.APIAddress())
 	return storageHandler, nil
 }
 

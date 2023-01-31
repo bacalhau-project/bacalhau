@@ -24,6 +24,24 @@ definitions:
         example: "3"
         type: string
     type: object
+  model.ComputeNodeInfo:
+    properties:
+      AvailableCapacity:
+        $ref: '#/definitions/model.ResourceUsageData'
+      EnqueuedExecutions:
+        type: integer
+      ExecutionEngines:
+        items:
+          description: e.g. docker or language
+          type: integer
+        type: array
+      MaxCapacity:
+        $ref: '#/definitions/model.ResourceUsageData'
+      MaxJobRequirements:
+        $ref: '#/definitions/model.ResourceUsageData'
+      RunningExecutions:
+        type: integer
+    type: object
   model.Deal:
     properties:
       Concurrency:
@@ -61,22 +79,6 @@ definitions:
         $ref: '#/definitions/model.JobStatus'
         description: 'The status of the job: where are the nodes at, what are the
           events'
-    type: object
-  model.JobCreatePayload:
-    properties:
-      APIVersion:
-        example: V1beta1
-        type: string
-      ClientID:
-        description: the id of the client that is submitting the job
-        type: string
-      Spec:
-        $ref: '#/definitions/model.Spec'
-        description: The specification of this job.
-    required:
-    - APIVersion
-    - ClientID
-    - Spec
     type: object
   model.JobEvent:
     properties:
@@ -379,6 +381,19 @@ definitions:
       Type:
         type: integer
     type: object
+  model.NodeInfo:
+    properties:
+      ComputeNodeInfo:
+        $ref: '#/definitions/model.ComputeNodeInfo'
+      Labels:
+        additionalProperties:
+          type: string
+        type: object
+      NodeType:
+        type: integer
+      PeerInfo:
+        $ref: '#/definitions/peer.AddrInfo'
+    type: object
   model.PublishedResult:
     properties:
       Data:
@@ -401,6 +416,24 @@ definitions:
       Memory:
         description: github.com/c2h5oh/datasize string
         type: string
+    type: object
+  model.ResourceUsageData:
+    properties:
+      CPU:
+        description: cpu units
+        example: 9.600000000000001
+        type: number
+      Disk:
+        description: bytes
+        example: 212663867801
+        type: integer
+      GPU:
+        example: 1
+        type: integer
+      Memory:
+        description: bytes
+        example: 27487790694
+        type: integer
     type: object
   model.RunCommandResult:
     properties:
@@ -519,6 +552,9 @@ definitions:
         description: Name of the spec's data, for reference.
         example: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
         type: string
+      SourcePath:
+        description: The path of the host data if we are using local directory paths
+        type: string
       StorageSource:
         description: |-
           StorageSource is the abstract source of the data. E.g. a storage source
@@ -542,6 +578,14 @@ definitions:
         type: boolean
       Result:
         type: boolean
+    type: object
+  peer.AddrInfo:
+    properties:
+      addrs:
+        items: {}
+        type: array
+      id:
+        type: string
     type: object
   publicapi.VersionRequest:
     properties:
@@ -649,8 +693,10 @@ definitions:
         description: 'The base64-encoded public key of the client:'
         type: string
       job_create_payload:
-        $ref: '#/definitions/model.JobCreatePayload'
         description: 'The data needed to submit and run a job on the network:'
+        items:
+          type: integer
+        type: array
       signature:
         description: 'A base64-encoded signature of the data, signed by the client:'
         type: string
@@ -720,7 +766,7 @@ paths:
       - Health
   /healthz:
     get:
-      operationId: apiServer/healthz
+      operationId: healthz
       produces:
       - application/json
       responses:
@@ -729,10 +775,10 @@ paths:
           schema:
             $ref: '#/definitions/types.HealthInfo'
       tags:
-      - Health
+      - Utils
   /id:
     get:
-      operationId: apiServer/id
+      operationId: id
       produces:
       - text/plain
       responses:
@@ -746,10 +792,10 @@ paths:
             type: string
       summary: Returns the id of the host node.
       tags:
-      - Misc
+      - Utils
   /livez:
     get:
-      operationId: apiServer/livez
+      operationId: livez
       produces:
       - text/plain
       responses:
@@ -758,10 +804,10 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /logz:
     get:
-      operationId: apiServer/logz
+      operationId: logz
       produces:
       - text/plain
       responses:
@@ -770,7 +816,24 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
+  /node_info:
+    get:
+      operationId: nodeInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NodeInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Returns the info of the node.
+      tags:
+      - Utils
   /peers:
     get:
       description: |-
@@ -788,28 +851,26 @@ paths:
           ]
         }
         ```
-      operationId: apiServer/peers
+      operationId: peers
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              items:
-                type: string
-              type: array
-            type: object
+            items:
+              $ref: '#/definitions/peer.AddrInfo'
+            type: array
         "500":
           description: Internal Server Error
           schema:
             type: string
-      summary: Returns the peers connected to the host via the libp2pHost layer.
+      summary: Returns the peers connected to the host via the transport layer.
       tags:
-      - Misc
+      - Utils
   /readyz:
     get:
-      operationId: apiServer/readyz
+      operationId: readyz
       produces:
       - text/plain
       responses:
@@ -818,7 +879,7 @@ paths:
           schema:
             type: string
       tags:
-      - Health
+      - Utils
   /requester/debug:
     get:
       operationId: pkg/requester/publicapi/debug
@@ -840,116 +901,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: |-
+      description: |
         Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.
-
-        Example response (truncated):
-        ```json
-        {
-          "events": [
-            {
-              "APIVersion": "V1beta1",
-              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
-              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
-              "SourceNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-              "EventName": "Created",
-              "Spec": {
-                "Engine": "Docker",
-                "Verifier": "Noop",
-                "Publisher": "Estuary",
-                "Docker": {
-                  "Image": "ubuntu",
-                  "Entrypoint": [
-                    "date"
-                  ]
-                },
-                "Language": {
-                  "JobContext": {}
-                },
-                "Wasm": {},
-                "Resources": {
-                  "GPU": ""
-                },
-                "Timeout": 1800,
-                "outputs": [
-                  {
-                    "StorageSource": "IPFS",
-                    "Name": "outputs",
-                    "path": "/outputs"
-                  }
-                ],
-                "Sharding": {
-                  "BatchSize": 1,
-                  "GlobPatternBasePath": "/inputs"
-                }
-              },
-              "JobExecutionPlan": {
-                "ShardsTotal": 1
-              },
-              "Deal": {
-                "Concurrency": 1
-              },
-              "VerificationResult": {},
-              "PublishedResult": {},
-              "EventTime": "2022-11-17T13:32:55.331375351Z",
-              "SenderPublicKey": "..."
-            },
-            ...
-            {
-              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
-              "SourceNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-              "TargetNodeID": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-              "EventName": "ResultsAccepted",
-              "Spec": {
-                "Docker": {},
-                "Language": {
-                  "JobContext": {}
-                },
-                "Wasm": {},
-                "Resources": {
-                  "GPU": ""
-                },
-                "Sharding": {}
-              },
-              "JobExecutionPlan": {},
-              "Deal": {},
-              "VerificationResult": {
-                "Complete": true,
-                "Result": true
-              },
-              "PublishedResult": {},
-              "EventTime": "2022-11-17T13:32:55.707825569Z",
-              "SenderPublicKey": "..."
-            },
-            {
-              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
-              "SourceNodeID": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-              "EventName": "ResultsPublished",
-              "Spec": {
-                "Docker": {},
-                "Language": {
-                  "JobContext": {}
-                },
-                "Wasm": {},
-                "Resources": {
-                  "GPU": ""
-                },
-                "Sharding": {}
-              },
-              "JobExecutionPlan": {},
-              "Deal": {},
-              "VerificationResult": {},
-              "PublishedResult": {
-                "StorageSource": "IPFS",
-                "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-                "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
-              },
-              "EventTime": "2022-11-17T13:32:55.756658941Z",
-              "SenderPublicKey": "..."
-            }
-          ]
-        }
-        ```
       operationId: pkg/requester/publicapi/events
       parameters:
       - description: 'Request must specify a `client_id`. To retrieve your `client_id`,
@@ -989,193 +942,6 @@ paths:
         If `return_all` is set to true, it returns all jobs on the Bacalhau network.
 
         If `id` is set, it returns only the job with that ID.
-
-        Example response:
-        ```json
-        {
-          "jobs": [
-            {
-              "APIVersion": "V1beta1",
-              "ID": "9304c616-291f-41ad-b862-54e133c0149e",
-              "RequesterNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-              "RequesterPublicKey": "...",
-              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
-              "Spec": {
-                "Engine": "Docker",
-                "Verifier": "Noop",
-                "Publisher": "Estuary",
-                "Docker": {
-                  "Image": "ubuntu",
-                  "Entrypoint": [
-                    "date"
-                  ]
-                },
-                "Language": {
-                  "JobContext": {}
-                },
-                "Wasm": {},
-                "Resources": {
-                  "GPU": ""
-                },
-                "Timeout": 1800,
-                "outputs": [
-                  {
-                    "StorageSource": "IPFS",
-                    "Name": "outputs",
-                    "path": "/outputs"
-                  }
-                ],
-                "Sharding": {
-                  "BatchSize": 1,
-                  "GlobPatternBasePath": "/inputs"
-                }
-              },
-              "Deal": {
-                "Concurrency": 1
-              },
-              "ExecutionPlan": {
-                "ShardsTotal": 1
-              },
-              "CreatedAt": "2022-11-17T13:32:55.33837275Z",
-              "JobState": {
-                "Nodes": {
-                  "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86": {
-                    "Shards": {
-                      "0": {
-                        "NodeId": "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86",
-                        "State": "Cancelled",
-                        "VerificationResult": {},
-                        "PublishedResults": {}
-                      }
-                    }
-                  },
-                  "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3": {
-                    "Shards": {
-                      "0": {
-                        "NodeId": "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-                        "State": "Cancelled",
-                        "VerificationResult": {},
-                        "PublishedResults": {}
-                      }
-                    }
-                  },
-                  "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL": {
-                    "Shards": {
-                      "0": {
-                        "NodeId": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-                        "State": "Completed",
-                        "Status": "Got results proposal of length: 0",
-                        "VerificationResult": {
-                          "Complete": true,
-                          "Result": true
-                        },
-                        "PublishedResults": {
-                          "StorageSource": "IPFS",
-                          "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-                          "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
-                        },
-                        "RunOutput": {
-                          "stdout": "Thu Nov 17 13:32:55 UTC 2022\n",
-                          "stdouttruncated": false,
-                          "stderr": "",
-                          "stderrtruncated": false,
-                          "exitCode": 0,
-                          "runnerError": ""
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "APIVersion": "V1beta1",
-              "ID": "92d5d4ee-3765-4f78-8353-623f5f26df08",
-              "RequesterNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-              "RequesterPublicKey": "...",
-              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
-              "Spec": {
-                "Engine": "Docker",
-                "Verifier": "Noop",
-                "Publisher": "Estuary",
-                "Docker": {
-                  "Image": "ubuntu",
-                  "Entrypoint": [
-                    "sleep",
-                    "4"
-                  ]
-                },
-                "Language": {
-                  "JobContext": {}
-                },
-                "Wasm": {},
-                "Resources": {
-                  "GPU": ""
-                },
-                "Timeout": 1800,
-                "outputs": [
-                  {
-                    "StorageSource": "IPFS",
-                    "Name": "outputs",
-                    "path": "/outputs"
-                  }
-                ],
-                "Sharding": {
-                  "BatchSize": 1,
-                  "GlobPatternBasePath": "/inputs"
-                }
-              },
-              "Deal": {
-                "Concurrency": 1
-              },
-              "ExecutionPlan": {
-                "ShardsTotal": 1
-              },
-              "CreatedAt": "2022-11-17T13:29:01.871140291Z",
-              "JobState": {
-                "Nodes": {
-                  "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86": {
-                    "Shards": {
-                      "0": {
-                        "NodeId": "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86",
-                        "State": "Cancelled",
-                        "VerificationResult": {},
-                        "PublishedResults": {}
-                      }
-                    }
-                  },
-                  "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3": {
-                    "Shards": {
-                      "0": {
-                        "NodeId": "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-                        "State": "Completed",
-                        "Status": "Got results proposal of length: 0",
-                        "VerificationResult": {
-                          "Complete": true,
-                          "Result": true
-                        },
-                        "PublishedResults": {
-                          "StorageSource": "IPFS",
-                          "Name": "job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-                          "CID": "QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG"
-                        },
-                        "RunOutput": {
-                          "stdout": "",
-                          "stdouttruncated": false,
-                          "stderr": "",
-                          "stderrtruncated": false,
-                          "exitCode": 0,
-                          "runnerError": ""
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        }
-        ```
       operationId: pkg/requester/publicapi/list
       parameters:
       - description: Set `return_all` to `true` to return all jobs on the network
@@ -1409,18 +1175,19 @@ paths:
       - Job
   /varz:
     get:
-      operationId: apiServer/varz
+      operationId: varz
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
+            description: 'The data needed to submit and run a job on the network:'
             items:
               type: integer
             type: array
       tags:
-      - Health
+      - Utils
   /version:
     post:
       consumes:

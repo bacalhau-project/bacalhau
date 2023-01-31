@@ -20,6 +20,7 @@ type resultsResponse struct {
 }
 
 // results godoc
+//
 // @ID                   pkg/requester/publicapi/results
 // @Summary              Returns the results of the job-id specified in the body payload.
 // @Description.markdown endpoints_results

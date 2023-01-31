@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package bidstrategy
 
 import "github.com/filecoin-project/bacalhau/pkg/model"

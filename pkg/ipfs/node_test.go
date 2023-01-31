@@ -64,9 +64,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.NoError(suite.T(), err)
 
 	// Upload a file to the second client:
-	cl2, err := n2.Client()
-	require.NoError(suite.T(), err)
-	require.NoError(suite.T(), cl2.WaitUntilAvailable(ctx))
+	cl2 := n2.Client()
 
 	cid, err := cl2.Put(ctx, filePath)
 	require.NoError(suite.T(), err)
@@ -78,9 +76,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.True(suite.T(), isPinned)
 
 	// Download the file from the first client:
-	cl1, err := n1.Client()
-	require.NoError(suite.T(), err)
-	require.NoError(suite.T(), cl1.WaitUntilAvailable(ctx))
+	cl1 := n1.Client()
 
 	outputPath := filepath.Join(dirPath, "output.txt")
 	err = cl1.Get(ctx, cid, outputPath)

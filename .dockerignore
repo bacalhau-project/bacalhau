@@ -17,7 +17,6 @@
 **/.vscode
 **/vendor/*
 **/bin/*
-**//bacalhau
 **/.venv
 **/temperature_sensor_data.csv
 **/temperature_sensor_data.csv.bz2
@@ -46,3 +45,4 @@
 **/job-*
 **/coverage/
 **/coverage.out
+**/Dockerfile

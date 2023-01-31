@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
+// VerifyJobCreatePayload verifies the values in a job creation request are legal.
 func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
 	if jc.ClientID == "" {
 		return fmt.Errorf("ClientID is empty")
@@ -23,6 +24,7 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 	})
 }
 
+// VerifyJob verifies that job object passed is valid.
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
+	"go.uber.org/multierr"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/http"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -22,6 +23,12 @@ func NewEstuaryDownloader(cm *system.CleanupManager, settings *model.DownloaderS
 		ipfsDownloader: ipfs.NewIPFSDownloader(cm, settings),
 		httpDownloader: http.NewHTTPDownloader(settings),
 	}
+}
+
+func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+	ipfsInstalled, ipfsErr := downloader.ipfsDownloader.IsInstalled(ctx)
+	httpInstalled, httpErr := downloader.httpDownloader.IsInstalled(ctx)
+	return ipfsInstalled && httpInstalled, multierr.Combine(ipfsErr, httpErr)
 }
 
 func (downloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {

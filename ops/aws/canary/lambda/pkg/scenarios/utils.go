@@ -6,12 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -84,7 +84,7 @@ func getSampleDockerIPFSJob() *model.Job {
 	return j
 }
 
-func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
+func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return nil, err
@@ -92,17 +92,17 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 
 	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
 	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
-	return &ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    300,
+	return &model.DownloaderSettings{
+		Timeout:        300 * time.Second,
 		OutputDir:      dir,
 		IPFSSwarmAddrs: IPFSSwarmAddrs,
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(
@@ -125,15 +125,15 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.APIClient {
+func getClient() *publicapi.RequesterAPIClient {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
-		apiHost = system.Envs[system.Production].APIHost
+		apiHost = system.Envs[system.GetEnvironment()].APIHost
 	}
 	if apiPort == "" {
-		apiPort = fmt.Sprint(system.Envs[system.Production].APIPort)
+		apiPort = fmt.Sprint(system.Envs[system.GetEnvironment()].APIPort)
 	}
-	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
+	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
 	return client
 }

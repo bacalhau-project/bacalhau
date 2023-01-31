@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"golang.org/x/exp/maps"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -26,7 +28,6 @@ import (
 )
 
 type Executor struct {
-	Engine          wazero.Runtime
 	StorageProvider storage.StorageProvider
 }
 
@@ -34,11 +35,7 @@ func NewExecutor(
 	ctx context.Context,
 	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
-	// TODO: add host-specific config about WASM runtime and mem limits
-	engine := wazero.NewRuntime(ctx)
-
 	executor := &Executor{
-		Engine:          engine,
 		StorageProvider: storageProvider,
 	}
 
@@ -54,7 +51,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.StorageProvider.GetStorage(ctx, volume.StorageSource)
+	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
 	if err != nil {
 		return false, err
 	}
@@ -66,59 +63,11 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.GetVolumeSize")
 	defer span.End()
 
-	storageProvider, err := e.StorageProvider.GetStorage(ctx, volume.StorageSource)
+	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
 	if err != nil {
 		return 0, err
 	}
 	return storageProvider.GetVolumeSize(ctx, volume)
-}
-
-func (e *Executor) getVolume(ctx context.Context, spec model.StorageSpec) (*storage.StorageVolume, error) {
-	log.Ctx(ctx).Debug().Stringer("StorageSource", spec.StorageSource).Msg("Getting object")
-
-	storage, err := e.StorageProvider.GetStorage(ctx, spec.StorageSource)
-	if err != nil {
-		return nil, err
-	}
-
-	volume, err := storage.PrepareStorage(ctx, spec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &volume, nil
-}
-
-func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec) (wazero.CompiledModule, error) {
-	volume, err := e.getVolume(ctx, spec)
-	if err != nil {
-		return nil, err
-	}
-
-	programPath := volume.Source
-	info, err := os.Stat(programPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// We expect the input to be a single WASM file. It is common however for
-	// IPFS implementations to wrap files into a directory. So we make a special
-	// case here – if the input is a single file in a directory, we will assume
-	// this is the program file and load it.
-	if info.IsDir() {
-		files, err := os.ReadDir(programPath)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(files) != 1 {
-			return nil, fmt.Errorf("should be %d file in %s but there are %d", 1, programPath, len(files))
-		}
-		programPath = filepath.Join(programPath, files[0].Name())
-	}
-
-	log.Ctx(ctx).Debug().Msgf("Loading WASM module from '%s'", programPath)
-	return LoadModule(ctx, e.Engine, programPath)
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
@@ -193,9 +142,27 @@ func (e *Executor) RunShard(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
 	defer span.End()
 
+	engineConfig := wazero.NewRuntimeConfig()
+
+	// Apply memory limits to the runtime. We have to do this in multiples of
+	// the WASM page size of 64kb, so round up to the nearest page size if the
+	// limit is not specified as a multiple of that.
+	if shard.Job.Spec.Resources.Memory != "" {
+		memoryLimit, err := datasize.ParseString(shard.Job.Spec.Resources.Memory)
+		if err != nil {
+			return executor.FailResult(err)
+		}
+
+		const pageSize = 65536
+		pageLimit := memoryLimit.Bytes()/pageSize + system.Min(memoryLimit.Bytes()%pageSize, 1)
+		engineConfig = engineConfig.WithMemoryLimitPages(uint32(pageLimit))
+	}
+
+	engine := wazero.NewRuntimeWithConfig(ctx, engineConfig)
+
 	wasmSpec := shard.Job.Spec.Wasm
 	contextStorageSpec := shard.Job.Spec.Wasm.EntryModule
-	module, err := e.loadRemoteModule(ctx, contextStorageSpec)
+	module, err := LoadRemoteModule(ctx, engine, e.StorageProvider, contextStorageSpec)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -221,51 +188,50 @@ func (e *Executor) RunShard(
 	args := []string{module.Name()}
 	args = append(args, wasmSpec.Parameters...)
 
-	namespace := e.Engine.NewNamespace(ctx)
+	namespace := engine.NewNamespace(ctx)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
 		WithStderr(stderr).
 		WithArgs(args...).
 		WithFS(fs)
-	for _, key := range keys(wasmSpec.EnvironmentVariables) {
+
+	keys := maps.Keys(wasmSpec.EnvironmentVariables)
+	sort.Strings(keys)
+	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
 		config = config.WithEnv(key, wasmSpec.EnvironmentVariables[key])
 	}
+
 	entryPoint := wasmSpec.EntryPoint
 	importedModules := []wazero.CompiledModule{}
 
 	// Load and instantiate imported modules
 	for _, wasmSpec := range wasmSpec.ImportModules {
-		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.Metadata.ID)
-		importedWasi, importErr := e.loadRemoteModule(ctx, wasmSpec)
+		importedWasi, importErr := LoadRemoteModule(ctx, engine, e.StorageProvider, wasmSpec)
 		if importErr != nil {
 			return executor.FailResult(importErr)
 		}
 		importedModules = append(importedModules, importedWasi)
 
-		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.Metadata.ID)
 		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
 			return executor.FailResult(instantiateErr)
 		}
 	}
 
-	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.Metadata.ID)
-	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
+	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 	defer wasi.Close(ctx)
 
-	log.Ctx(ctx).Debug().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.Metadata.ID)
 	_, err = namespace.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	log.Ctx(ctx).Debug().Msgf("Instantiation of module for job '%s'", shard.Job.Metadata.ID)
 	instance, err := namespace.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return executor.FailResult(err)
@@ -282,7 +248,7 @@ func (e *Executor) RunShard(
 	// the exit code for inclusion in the job output, and ignore the return code
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Debug().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.Metadata.ID)
+	log.Ctx(ctx).Debug().Msgf("Running WASM %q from job %q", entryPoint, shard.Job.Metadata.ID)
 	entryFunc := instance.ExportedFunction(entryPoint)
 	exitCode := int(-1)
 	_, wasmErr := entryFunc.Call(ctx)
@@ -300,15 +266,6 @@ func (e *Executor) RunShard(
 func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
 	// TODO: Implement CancelShard for WASM executor #1060
 	return nil
-}
-
-func keys(m map[string]string) []string {
-	var ks []string
-	for k := range m {
-		ks = append(ks, k)
-	}
-	sort.Strings(ks)
-	return ks
 }
 
 // Compile-time check that Executor implements the Executor interface.

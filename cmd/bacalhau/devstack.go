@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 
@@ -138,7 +139,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 
 	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
+	ctx, cancel := signal.NotifyContext(ctx, ShutdownSignals...)
 	defer cancel()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")

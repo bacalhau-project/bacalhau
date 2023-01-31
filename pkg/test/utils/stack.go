@@ -53,13 +53,13 @@ func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConf
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.GetExecutor(ctx, model.EngineNoop)
+	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
 	if err != nil {
 		return nil, err
 	}
 
-	err = stdProvider.AddExecutor(ctx, model.EngineNoop, noopExecutor)
-	return stdProvider, err
+	stdProvider.(*model.MappedProvider[model.Engine, executor.Executor]).Add(model.EngineNoop, noopExecutor)
+	return stdProvider, nil
 }
 
 var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)

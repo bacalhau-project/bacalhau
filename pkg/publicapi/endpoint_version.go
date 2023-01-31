@@ -18,6 +18,7 @@ type VersionResponse struct {
 }
 
 // version godoc
+//
 // @ID          apiServer/version
 // @Summary     Returns the build version running on the server.
 // @Description See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.

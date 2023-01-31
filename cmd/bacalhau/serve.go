@@ -1,13 +1,16 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
@@ -25,11 +28,6 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var DefaultBootstrapAddresses = []string{
-	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-}
 var DefaultSwarmPort = 1235
 
 var (
@@ -182,11 +180,11 @@ func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
 	} else if OS.PeerConnect == "" {
-		peersStrings = DefaultBootstrapAddresses
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
-	// convert peers stringsto multiaddrs
+
 	peers := make([]multiaddr.Multiaddr, len(peersStrings))
 	for i, peer := range peersStrings {
 		peers[i], _ = multiaddr.NewMultiaddr(peer)
@@ -301,10 +299,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 	defer cm.Cleanup()
 
-	ctx := cmd.Context()
-
 	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
+	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
 	defer cancel()
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
@@ -322,43 +318,37 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		}
 	}
 
-	if OS.IPFSConnect == "" {
-		Fatal(cmd, "You must specify --ipfs-connect.", 1)
-	}
-
 	if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
-		Fatal(cmd, "--job-selection-data-locality must be either 'local' or 'anywhere'", 1)
+		return fmt.Errorf("--job-selection-data-locality must be either 'local' or 'anywhere'")
 	}
 
 	// Establishing p2p connection
 	peers := getPeers(OS)
 	log.Debug().Msgf("libp2p connecting to: %s", peers)
 
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
 	}
-	cm.RegisterCallback(func() error {
-		return libp2pHost.Close()
-	})
+	cm.RegisterCallback(libp2pHost.Close)
 
 	// add nodeID to logging context
 	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
-	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+	ipfsClient, err := ipfsClient(ctx, OS, cm)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating IPFS client: %s", err), 1)
+		return err
 	}
 
 	datastore, err := inmemory.NewInMemoryDatastore()
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating in memory datastore: %s", err), 1)
+		return fmt.Errorf("error creating in memory datastore: %s", err)
 	}
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		IPFSClient:           ipfs,
+		IPFSClient:           ipfsClient,
 		CleanupManager:       cm,
 		LocalDB:              datastore,
 		Host:                 libp2pHost,
@@ -386,23 +376,49 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Create node
-	node, err := node.NewStandardNode(ctx, nodeConfig)
+	standardNode, err := node.NewStandardNode(ctx, nodeConfig)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating node: %s", err), 1)
+		return fmt.Errorf("error creating node: %s", err)
 	}
 
 	// Start transport layer
 	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
-		Fatal(cmd, err.Error(), 1)
+		return err
 	}
 
 	// Start node
-	err = node.Start(ctx)
+	err = standardNode.Start(ctx)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error starting node: %s", err), 1)
+		return fmt.Errorf("error starting node: %s", err)
 	}
 
 	<-ctx.Done() // block until killed
 	return nil
+}
+
+func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {
+	if OS.IPFSConnect == "" {
+		// Connect to the public IPFS nodes
+		ipfsNode, err := ipfs.NewNode(ctx, cm, []string{})
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
+		}
+		client := ipfsNode.Client()
+
+		swarmAddresses, err := client.SwarmAddresses(ctx)
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error looking up IPFS addresses: %s", err)
+		}
+
+		log.Ctx(ctx).Info().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
+		return client, nil
+	}
+
+	client, err := ipfs.NewClientUsingRemoteHandler(OS.IPFSConnect)
+	if err != nil {
+		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+
+	return client, nil
 }

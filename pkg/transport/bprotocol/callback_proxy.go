@@ -97,15 +97,20 @@ func proxyCallbackRequest(
 		// opening a stream to the destination peer
 		stream, err := p.host.NewStream(ctx, peerID, protocolID)
 		if err != nil {
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
-				return
-			}
+			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
+			return
+		}
+		defer stream.Close() //nolint:errcheck
+		if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
+			log.Ctx(ctx).Error().Err(scopingErr).Msg("error attaching stream to requester service")
+			stream.Reset() //nolint:errcheck
+			return
 		}
 
 		// write the request to the stream
 		_, err = stream.Write(data)
 		if err != nil {
+			stream.Reset() //nolint:errcheck
 			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}

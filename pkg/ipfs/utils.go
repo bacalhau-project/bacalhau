@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func AddFileToNodes(ctx context.Context, filePath string, clients ...*Client) (string, error) {
+func AddFileToNodes(ctx context.Context, filePath string, clients ...Client) (string, error) {
 	var res string
 	for i, client := range clients {
 		cid, err := client.Put(ctx, filePath)
@@ -27,7 +27,7 @@ func AddFileToNodes(ctx context.Context, filePath string, clients ...*Client) (s
 	return res, nil
 }
 
-func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*Client) (string, error) {
+func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...Client) (string, error) {
 	tempDir, err := os.MkdirTemp("", "bacalhau-test")
 	if err != nil {
 		return "", err

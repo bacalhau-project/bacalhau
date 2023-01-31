@@ -34,9 +34,6 @@ type ComputeConfigParams struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
-	// interval to publish node info to pubsub network
-	NodeInfoPublisherInterval time.Duration
-
 	SimulatorConfig model.SimulatorConfigCompute
 }
 
@@ -73,9 +70,6 @@ type ComputeConfig struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
-	// interval to publish node info to pubsub network
-	NodeInfoPublisherInterval time.Duration
-
 	SimulatorConfig model.SimulatorConfigCompute
 }
 
@@ -105,9 +99,6 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	}
 	if params.LogRunningExecutionsInterval == 0 {
 		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
-	}
-	if params.NodeInfoPublisherInterval == 0 {
-		params.NodeInfoPublisherInterval = DefaultComputeConfig.NodeInfoPublisherInterval
 	}
 	if params.ExecutorBufferBackoffDuration == 0 {
 		params.ExecutorBufferBackoffDuration = DefaultComputeConfig.ExecutorBufferBackoffDuration
@@ -160,7 +151,6 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
-		NodeInfoPublisherInterval:    params.NodeInfoPublisherInterval,
 		SimulatorConfig:              params.SimulatorConfig,
 	}
 

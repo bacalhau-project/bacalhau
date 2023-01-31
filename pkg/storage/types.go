@@ -6,13 +6,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-// Returns a storage that can be used by the job to store data.
+// StorageProvider returns a storage that can be used by the job to store data.
 type StorageProvider interface {
-	GetStorage(ctx context.Context, storageSourceType model.StorageSourceType) (Storage, error)
+	model.Provider[model.StorageSourceType, Storage]
 }
 
 type Storage interface {
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
 
 	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
 

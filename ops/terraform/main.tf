@@ -43,10 +43,11 @@ sudo mkdir -p /terraform_node
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
 export TERRAFORM_WORKSPACE="${terraform.workspace}"
 export TERRAFORM_NODE_INDEX="${count.index}"
-export TERRAFORM_NODE0_IP="${var.internal_ip_addresses[0]}"
-export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.internal_ip_addresses[1] : ""}"
-export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? var.internal_ip_addresses[2] : ""}"
+export TERRAFORM_NODE0_IP="${var.public_ip_addresses[0]}"
+export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.public_ip_addresses[1] : ""}"
+export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? var.public_ip_addresses[2] : ""}"
 export IPFS_VERSION="${var.ipfs_version}"
+export LOG_LEVEL="${var.log_level}"
 export BACALHAU_ENVIRONMENT="${terraform.workspace}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
 export BACALHAU_PORT="${var.bacalhau_port}"
@@ -94,6 +95,7 @@ EOI
 sudo tee /terraform_node/apply-http-allowlist.sh > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/apply-http-allowlist.sh")}
 EOI
+chmod +x /terraform_node/apply-http-allowlist.sh
 
 sudo tee /terraform_node/http-domain-allowlist.txt > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/scripts/http-domain-allowlist.txt")}

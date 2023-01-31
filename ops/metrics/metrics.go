@@ -1,5 +1,13 @@
 package main
 
+//
+// Steps to use:
+// 1) Obtain the necessary event log file from any VM:
+//    % gcloud compute scp bacalhau-vm-production-0:/data/.bacalhau/bacalhau-event-tracer.json --project bacalhau-production ./events-0.json
+// 2) Run this tool over the data:
+//    % time go run ./ops/metrics/metrics.go ./events-0.json
+//
+
 import (
 	"bufio"
 	"encoding/csv"
@@ -100,9 +108,9 @@ func importEvents(filename string) ([]*bacalhau_model_v1beta1.JobEvent, error) {
 			continue
 		}
 		jobCreated++
-		//if counter > 1000 {
-		//	return events, nil
-		//}
+		// if jobCreated > 10 {
+		// 	return events, nil
+		// }
 		events = append(events, event)
 	}
 	fmt.Printf("Events: total=%d, parsed=%d, notCanary=%d, jobCreated=%d\n",
@@ -187,6 +195,86 @@ func writeCSVStats(events []*bacalhau_model_v1beta1.JobEvent) {
 	writeCSVMap("jobs_by_image.csv", "docker_image", jobsByImage)
 }
 
+func toGeneric(event *bacalhau_model_v1beta1.JobEvent) (interface{}, error) {
+	text, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+	var line interface{}
+	err = json.Unmarshal(text, &line)
+	if err != nil {
+		return nil, err
+	}
+	return line, nil
+}
+
+func flatten(path string, line interface{}, paths map[string]string) {
+	switch vv := line.(type) {
+	case map[string]interface{}:
+		for k, v := range vv {
+			flatten(path+"."+k, v, paths)
+		}
+	case []interface{}:
+		if path == ".Spec.Docker.Entrypoint" ||
+			path == ".Spec.Wasm.Parameters" ||
+			path == ".Spec.Docker.EnvironmentVariables" {
+			ss := []string{}
+			for _, v := range vv {
+				ss = append(ss, v.(string))
+			}
+			paths[path] = strings.Join(ss, " ")
+		} else {
+			for i, v := range vv {
+				flatten(path+"_"+fmt.Sprintf("%02d", i), v, paths)
+			}
+		}
+	case int:
+		paths[path] = strconv.Itoa(vv)
+	case float64:
+		paths[path] = fmt.Sprintf("%f", vv)
+	case string:
+		paths[path] = vv
+	default:
+	}
+}
+
+func writeCSVAll(events []*bacalhau_model_v1beta1.JobEvent) {
+	hs := map[string]struct{}{}
+	rs := make([]map[string]string, len(events))
+	for i, event := range events {
+		line, _ := toGeneric(event)
+		rs[i] = map[string]string{}
+		flatten("", line, rs[i])
+		for path := range rs[i] {
+			hs[path] = struct{}{}
+		}
+	}
+	header := []string{}
+	for path := range hs {
+		if strings.HasPrefix(path, ".Spec.inputs") ||
+			strings.HasPrefix(path, ".Spec.outputs") {
+			continue
+		}
+		header = append(header, path)
+	}
+	sort.Strings(header)
+	for _, path := range header {
+		fmt.Printf("Final: %s\n", path)
+	}
+	rows := make([][]string, len(rs))
+	for i, m := range rs {
+		rows[i] = make([]string, len(header))
+		for j, path := range header {
+			v, has := m[path]
+			if !has {
+				v = ""
+			}
+			rows[i][j] = v
+		}
+	}
+	writeCSVFile("events.csv", header, rows)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Printf("usage: %s eventfile\n", os.Args[0])
@@ -197,4 +285,5 @@ func main() {
 		fmt.Println(err.Error())
 	}
 	writeCSVStats(events)
+	writeCSVAll(events)
 }

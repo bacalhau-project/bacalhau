@@ -17,6 +17,7 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 7. Download the binaries and test that they do what you expect. Use the pre-release option to download the newest pre-release version. `(export PRE_RELEASE=true ; curl -sL https://get.bacalhau.org/install.sh | bash)` If you are testing against a dev/staging cluster, you **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
 8. Edit the release and de-select the "This is a pre-release" checkbox. You must also re-tick the `Set as the latest release` checkbox. Otherwise the get.bacalhau script will not see it as "latest".
 9. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
+10. Inform the head of DevRel (Iryna) so we can write a blog post!
 
 ## Updating the Bacalhau Networks
 

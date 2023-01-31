@@ -50,6 +50,9 @@ func init() { //nolint:gochecknoinits
 			flag.Lookup("test.v") != nil ||
 			flag.Lookup("test.run") != nil {
 			env = EnvironmentTest
+		} else if os.Args[0] == "bacalhau" {
+			log.Debug().Msgf("Defaulting to production environment: \n os.Args: %v", os.Args)
+			env = EnvironmentProd
 		} else {
 			flags := []string{}
 			fn := func(f *flag.Flag) {
@@ -65,6 +68,10 @@ func init() { //nolint:gochecknoinits
 
 func GetEnvironment() Environment {
 	return env
+}
+
+func SetEnvironment(e Environment) {
+	env = e
 }
 
 func IsTest() bool {

@@ -25,6 +25,10 @@ func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSett
 	}
 }
 
+func (ipfsDownloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+	return true, nil
+}
+
 func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()
@@ -37,10 +41,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 	}
 
 	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
-	ipfsClient, err := n.Client()
-	if err != nil {
-		return err
-	}
+	ipfsClient := n.Client()
 
 	err = func() error {
 		log.Ctx(ctx).Debug().Msgf(

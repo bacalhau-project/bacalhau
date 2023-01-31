@@ -38,7 +38,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	for action, _ := range router.TestcasesMap {
+	for action := range router.TestcasesMap {
 		go run(ctx, action, rate)
 	}
 

@@ -5,20 +5,20 @@ import (
 	"fmt"
 
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/rs/zerolog/log"
 )
 
 type nodeEventHandler struct {
 	eventChan chan bacalhau_model.NodeInfo
 	firehose  *EventFirehose[bacalhau_model.NodeInfo]
-	nodeDB    requester.NodeInfoStore
+	nodeDB    routing.NodeInfoStore
 }
 
 func newNodeEventHandler(
 	host string,
 	port int,
-	nodeDB requester.NodeInfoStore,
+	nodeDB routing.NodeInfoStore,
 ) (*nodeEventHandler, error) {
 	eventChan := make(chan bacalhau_model.NodeInfo)
 	url := fmt.Sprintf("ws://%s:%d/requester/node/websocket", host, port)

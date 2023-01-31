@@ -45,7 +45,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 		context.Background(),
 		s.cm,
 		"bacalhau-executor-unittest",
-		storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{}),
+		model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{}),
 	)
 	require.NoError(s.T(), err)
 
@@ -227,6 +227,23 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 				s.containerHttpURL().Hostname(),
 				"bacalhau.org",
 			},
+		},
+		Docker: s.curlTask(),
+	})
+	require.NoError(s.T(), err, result.STDERR)
+	require.Zero(s.T(), result.ExitCode, result.STDERR)
+	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+}
+
+func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
+	hostname := s.containerHttpURL().Hostname()
+	hostroot := strings.Join(strings.SplitN(hostname, ".", 2)[:1], ".")
+
+	result, err := s.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{hostname, hostroot},
 		},
 		Docker: s.curlTask(),
 	})

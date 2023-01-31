@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -18,7 +20,7 @@ func SubmitAndGet(ctx context.Context) error {
 
 	cm := system.NewCleanupManager()
 	j := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, j, nil)
+	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err
 	}
@@ -51,11 +53,16 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	downloadSettings.OutputDir = outputDir
 
-	err = ipfs.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, *downloadSettings)
+	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, ipfs.DownloadFilenameStdout))
+
+	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	if err != nil {
+		return err
+	}
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, model.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}

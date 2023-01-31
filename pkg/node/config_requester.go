@@ -15,8 +15,6 @@ type RequesterConfigParams struct {
 
 	StateManagerBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
-	NodeInfoStoreTTL                   time.Duration
-	DiscoveredPeerStoreTTL             time.Duration
 	SimulatorConfig                    model.SimulatorConfigRequester
 }
 
@@ -36,13 +34,7 @@ type RequesterConfig struct {
 	StateManagerBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
-	// NodeInfoStoreTTL defines how long a node info is kept in the store
-	NodeInfoStoreTTL time.Duration
-	// DiscoveredPeerStoreTTL defines how long a peer is kept in the libp2p host's peerstore so that it can be connected to after the node was
-	// discovered outside of the libp2p host's peerstore.
-	// We only need to store the peer long enough for the requester to connect to the compute node for the duration of the job.
-	DiscoveredPeerStoreTTL time.Duration
-	SimulatorConfig        model.SimulatorConfigRequester
+	SimulatorConfig         model.SimulatorConfigRequester
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -73,12 +65,6 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 	if params.NodeRankRandomnessRange == 0 {
 		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
 	}
-	if params.NodeInfoStoreTTL == 0 {
-		params.NodeInfoStoreTTL = DefaultRequesterConfig.NodeInfoStoreTTL
-	}
-	if params.DiscoveredPeerStoreTTL == 0 {
-		params.DiscoveredPeerStoreTTL = DefaultRequesterConfig.DiscoveredPeerStoreTTL
-	}
 
 	config = RequesterConfig{
 		JobNegotiationTimeout:      params.JobNegotiationTimeout,
@@ -88,8 +74,6 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		StateManagerBackgroundTaskInterval: params.StateManagerBackgroundTaskInterval,
 
 		NodeRankRandomnessRange: params.NodeRankRandomnessRange,
-		NodeInfoStoreTTL:        params.NodeInfoStoreTTL,
-		DiscoveredPeerStoreTTL:  params.DiscoveredPeerStoreTTL,
 		SimulatorConfig:         params.SimulatorConfig,
 	}
 

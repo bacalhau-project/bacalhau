@@ -7,6 +7,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -101,7 +102,7 @@ func TestCopyOversize(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			provider := noop.NewNoopStorageProvider(noopStorage)
+			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage)
 			modified, err := CopyOversize(
 				context.Background(),
 				provider,

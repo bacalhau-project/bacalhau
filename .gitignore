@@ -41,6 +41,7 @@ __pycache__
 stderr
 stdout
 unittests.xml
+tests.xml
 output_dir
 experimental/*
 .idea/

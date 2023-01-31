@@ -33,7 +33,7 @@ func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrate
 
 	// otherwise we are checking that all of the named inputs in the job
 	// are local to us
-	e, err := s.executors.GetExecutor(ctx, request.Job.Spec.Engine)
+	e, err := s.executors.Get(ctx, request.Job.Spec.Engine)
 	if err != nil {
 		return BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to get executor %s: %w", request.Job.Spec.Engine, err)
 	}

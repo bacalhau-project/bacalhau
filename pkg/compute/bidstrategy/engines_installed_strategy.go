@@ -6,39 +6,63 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
 type EnginesInstalledStrategyParams struct {
-	Executors executor.ExecutorProvider
-	Verifiers verifier.VerifierProvider
+	Storages   storage.StorageProvider
+	Executors  executor.ExecutorProvider
+	Verifiers  verifier.VerifierProvider
+	Publishers publisher.PublisherProvider
 }
 
 type EnginesInstalledStrategy struct {
-	executors executor.ExecutorProvider
-	verifiers verifier.VerifierProvider
+	storages   storage.StorageProvider
+	executors  executor.ExecutorProvider
+	verifiers  verifier.VerifierProvider
+	publishers publisher.PublisherProvider
 }
 
 func NewEnginesInstalledStrategy(params EnginesInstalledStrategyParams) *EnginesInstalledStrategy {
 	return &EnginesInstalledStrategy{
-		executors: params.Executors,
-		verifiers: params.Verifiers,
+		storages:   params.Storages,
+		executors:  params.Executors,
+		verifiers:  params.Verifiers,
+		publishers: params.Publishers,
 	}
 }
 
 func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	// skip bidding if we don't have the executor and verifier for the job spec
-	if !s.executors.HasExecutor(ctx, request.Job.Spec.Engine) {
+	for _, input := range request.Job.Spec.Inputs {
+		if !s.storages.Has(ctx, input.StorageSource) {
+			return BidStrategyResponse{
+				ShouldBid: false,
+				Reason:    fmt.Sprintf("storage %s not installed", input.StorageSource),
+			}, nil
+		}
+	}
+
+	if !s.executors.Has(ctx, request.Job.Spec.Engine) {
 		return BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    fmt.Sprintf("executor %s not installed", request.Job.Spec.Engine),
 		}, nil
 	}
 
-	if !s.verifiers.HasVerifier(ctx, request.Job.Spec.Verifier) {
+	if !s.verifiers.Has(ctx, request.Job.Spec.Verifier) {
 		return BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    fmt.Sprintf("verifier %s not installed", request.Job.Spec.Verifier),
+		}, nil
+	}
+
+	if !s.publishers.Has(ctx, request.Job.Spec.Publisher) {
+		return BidStrategyResponse{
+			ShouldBid: false,
+			Reason:    fmt.Sprintf("publisher %s not installed", request.Job.Spec.Publisher),
 		}, nil
 	}
 

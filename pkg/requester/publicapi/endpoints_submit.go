@@ -16,7 +16,7 @@ import (
 
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	JobCreatePayload model.JobCreatePayload `json:"job_create_payload" validate:"required"`
+	JobCreatePayload *json.RawMessage `json:"job_create_payload" validate:"required"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature" validate:"required"`
@@ -30,6 +30,7 @@ type submitResponse struct {
 }
 
 // submit godoc
+//
 // @ID                   pkg/requester/publicapi/submit
 // @Summary              Submits a new job to the network.
 // @Description.markdown endpoints_submit
@@ -58,16 +59,32 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
-	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.JobCreatePayload.ClientID)
 
-	if err := verifySubmitRequest(&submitReq); err != nil {
+	// first verify the signature on the raw bytes
+	if err := verifyRequestSignature(&submitReq); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> VerifyRequestSignature error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
+		return
+	}
+
+	// then decode the job create payload
+	var jobCreatePayload model.JobCreatePayload
+	if err := json.Unmarshal(*submitReq.JobCreatePayload, &jobCreatePayload); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> Decode JobCreatePayload error: %s", err)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+		return
+	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCreatePayload.ClientID)
+
+	if err := verifySubmitRequest(&submitReq, &jobCreatePayload); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
-	if err := job.VerifyJobCreatePayload(ctx, &submitReq.JobCreatePayload); err != nil {
+	if err := job.VerifyJobCreatePayload(ctx, &jobCreatePayload); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyJobCreate error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
@@ -76,7 +93,7 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 
 	j, err := s.requester.SubmitJob(
 		ctx,
-		submitReq.JobCreatePayload,
+		jobCreatePayload,
 	)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
 	span.SetAttributes(attribute.String(model.TracerAttributeNameJobID, j.Metadata.ID))
