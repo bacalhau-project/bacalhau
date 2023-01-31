@@ -63,21 +63,16 @@ var testSpec model.Spec = model.Spec{
 	},
 }
 
-func runStableDiffusion(prompt string, testing bool) (string, error) {
-	env := system.Production
-	baseURI := fmt.Sprintf("http://%s:%d", system.Envs[env].APIHost, system.Envs[env].APIPort)
-	client := publicapi.NewRequesterAPIClient(baseURI)
-
+func runGenericJob(s model.Spec) (string, error) {
 	j, err := model.NewJobWithSaneProductionDefaults()
 	if err != nil {
 		return err.Error(), err
 	}
-	if testing {
-		j.Spec = testSpec
-	} else {
-		j.Spec = realSpec
-	}
-	j.Spec.Docker.Entrypoint = append(j.Spec.Docker.Entrypoint, prompt)
+	j.Spec = s
+
+	env := system.EnvironmentProd
+	baseURI := fmt.Sprintf("http://%s:%d", system.Envs[env].APIHost, system.Envs[env].APIPort)
+	client := publicapi.NewRequesterAPIClient(baseURI)
 
 	submittedJob, err := client.Submit(context.Background(), j)
 	if err != nil {
@@ -106,4 +101,15 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	}
 
 	return "", fmt.Errorf("no results found?")
+}
+
+func runStableDiffusion(prompt string, testing bool) (string, error) {
+	var s model.Spec
+	if testing {
+		s = testSpec
+	} else {
+		s = realSpec
+	}
+	s.Docker.Entrypoint = append(s.Docker.Entrypoint, prompt)
+	return runGenericJob(s)
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	bacmodel "github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
@@ -51,6 +52,7 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	router := mux.NewRouter()
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 	subrouter.HandleFunc("/nodes", apiServer.nodes).Methods("GET")
+	subrouter.HandleFunc("/run", apiServer.run).Methods("POST")
 	subrouter.HandleFunc("/stablediffusion", apiServer.stablediffusion).Methods("POST")
 	subrouter.HandleFunc("/jobs", apiServer.jobs).Methods("POST")
 	subrouter.HandleFunc("/jobs/count", apiServer.jobsCount).Methods("POST")
@@ -83,11 +85,32 @@ type PromptParam struct {
 	Prompt string `json:"prompt"`
 }
 
+// TODO: factor commonality from following two funcs
+func (apiServer *DashboardAPIServer) run(res http.ResponseWriter, req *http.Request) {
+	// any crazy mofo on the planet can build this into their web apps
+	res.Header().Set("Access-Control-Allow-Origin", "*")
+
+	spec := bacmodel.Spec{}
+	err := json.NewDecoder(req.Body).Decode(&spec)
+	if err != nil {
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
+		return
+	}
+
+	cid, err := runGenericJob(spec)
+	if err != nil {
+		log.Error().Err(err).Send()
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
+	} else {
+		log.Info().Str("CID", cid).Send()
+		_, _ = res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
+	}
+}
+
 func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, req *http.Request) {
 	// any crazy mofo on the planet can build this into their web apps
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// TODO: read "prompt" key of POST'ed JSON, or error
 	promptParam := PromptParam{}
 	err := json.NewDecoder(req.Body).Decode(&promptParam)
 	if err != nil {
@@ -101,7 +124,6 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 
 	log.Info().Msgf("--> testing=%t", testing)
 
-	// TODO: put client code in here, hoisted directly from CLI
 	cid, err := runStableDiffusion(prompt, testing)
 	if err != nil {
 		log.Error().Err(err).Send()
