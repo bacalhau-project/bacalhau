@@ -78,7 +78,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
-	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
+	_, _, err = ExecuteTestCobraCommand(s.T(), "describe",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		job.Metadata.ID,
