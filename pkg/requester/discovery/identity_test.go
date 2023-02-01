@@ -37,8 +37,8 @@ func (s *IdentityNodeDiscovererSuite) SetupSuite() {
 	s.node2.SetStreamHandler(bprotocol.AskForBidProtocolID, func(s network.Stream) {})
 
 	// connect all nodes after implementing bprotocol to share the info in the initial handshake
-	s.NoError(s.node2.Connect(ctx, libp2p.ExtractAddrInfoFromHost(s.node1)))
-	s.NoError(s.random3.Connect(ctx, libp2p.ExtractAddrInfoFromHost(s.node1)))
+	s.NoError(s.node2.Connect(ctx, *host.InfoFromHost(s.node1)))
+	s.NoError(s.random3.Connect(ctx, *host.InfoFromHost(s.node1)))
 
 	s.discoverer = NewIdentityNodeDiscoverer(IdentityNodeDiscovererParams{
 		Host: s.node1,

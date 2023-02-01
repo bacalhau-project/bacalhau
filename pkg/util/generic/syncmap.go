@@ -2,7 +2,7 @@ package generic
 
 import "sync"
 
-// A generic.SyncMap is a concurrency-safe sync.Map that uses strongly-typed
+// A SyncMap is a concurrency-safe sync.Map that uses strongly-typed
 // method signatures to ensure the types of its stored data are known.
 type SyncMap[K comparable, V any] struct {
 	sync.Map

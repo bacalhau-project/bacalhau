@@ -7,11 +7,13 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -49,7 +51,23 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		return nil, err
 	}
 
-	log.Info().Msgf("started libp2p host %s listening on: %s", h.ID().String(), h.Addrs())
+	p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + h.ID().String())
+	if err != nil {
+		return nil, err
+	}
+	addresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
+		return m
+	})
+	p2pAddresses := generic.Map[multiaddr.Multiaddr, fmt.Stringer](h.Addrs(), func(m multiaddr.Multiaddr) fmt.Stringer {
+		return m.Encapsulate(p2pAddr)
+	})
+
+	log.Info().
+		Stringers("listening-addresses", addresses).
+		Stringers("p2p-addresses", p2pAddresses).
+		Stringer("host-id", h.ID()).
+		Msgf("started libp2p host")
+
 	return h, err
 }
 
@@ -84,22 +102,35 @@ func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, 
 }
 
 func ConnectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiaddr) error {
-	errors := []error{}
+	var errors []error
+	grouped := map[peer.ID][]multiaddr.Multiaddr{}
+
+	// Group up the peers by ID, so we only connect to a peer once rather than multiple times
 	for _, peerAddress := range peers {
-		// Extract the peer ID from the multiaddr.
 		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
 		if err != nil {
 			errors = append(errors, err)
-			log.Ctx(ctx).Warn().Msgf("Error parsing peer address: %s", err)
+			log.Ctx(ctx).Warn().Err(err).Msgf("Error parsing peer address")
 			continue
 		}
-		h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-		err = h.Connect(ctx, *info)
+
+		grouped[info.ID] = append(grouped[info.ID], info.Addrs...)
+	}
+
+	for id, addresses := range grouped {
+		h.Peerstore().AddAddrs(id, addresses, peerstore.PermanentAddrTTL)
+		err := h.Connect(ctx, peer.AddrInfo{
+			ID:    id,
+			Addrs: addresses,
+		})
 		if err != nil {
 			errors = append(errors, err)
-			log.Ctx(ctx).Warn().Msgf("Error connecting to peer %s: %s, continuing...", info.ID, err)
+			log.Ctx(ctx).Warn().Err(err).Stringer("peer", id).Msgf("Error connecting to peer, continuing...")
 		} else {
-			log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
+			log.Ctx(ctx).Trace().
+				Array("addresses", fmtStringerLoggerHelper[multiaddr.Multiaddr](addresses)).
+				Stringer("peer", id).
+				Msg("Libp2p transport connected to peer")
 		}
 	}
 	if len(errors) > 0 {
@@ -107,4 +138,14 @@ func ConnectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 	}
 
 	return nil
+}
+
+var _ zerolog.LogArrayMarshaler = fmtStringerLoggerHelper[fmt.Stringer]{}
+
+type fmtStringerLoggerHelper[T fmt.Stringer] []T
+
+func (m fmtStringerLoggerHelper[T]) MarshalZerologArray(a *zerolog.Array) {
+	for _, address := range m {
+		a.Str(address.String())
+	}
 }

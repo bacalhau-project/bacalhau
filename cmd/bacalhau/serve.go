@@ -55,7 +55,7 @@ var (
 type ServeOptions struct {
 	NodeType                              []string          // "compute", "requester" node or both
 	PeerConnect                           string            // The libp2p multiaddress to connect to.
-	IPFSConnect                           string            // The IPFS multiaddress to connect to.
+	IPFSConnect                           string            // The multiaddress to connect to for IPFS.
 	FilecoinUnsealedPath                  string            // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
 	EstuaryAPIKey                         string            // The API key used when using the estuary API.
 	HostAddress                           string            // The host address to listen on.
@@ -78,6 +78,8 @@ type ServeOptions struct {
 	LotusFilecoinMaximumPing              time.Duration     // The maximum ping allowed when selecting a Filecoin miner
 	JobExecutionTimeoutClientIDBypassList []string          // IDs of clients that can submit jobs more than the configured job execution timeout
 	Labels                                map[string]string // Labels to apply to the node that can be used for node selection and filtering
+	IPFSSwarmAddresses                    []string          // IPFS multiaddresses that the in-process IPFS should connect to
+	PrivateInternalIPFS                   bool              // Whether the in-process IPFS should automatically discover other IPFS nodes
 }
 
 func NewServeOptions() *ServeOptions {
@@ -175,7 +177,7 @@ func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	)
 }
 
-func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
+func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
@@ -185,11 +187,15 @@ func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
 
-	peers := make([]multiaddr.Multiaddr, len(peersStrings))
-	for i, peer := range peersStrings {
-		peers[i], _ = multiaddr.NewMultiaddr(peer)
+	peers := make([]multiaddr.Multiaddr, 0, len(peersStrings))
+	for _, peer := range peersStrings {
+		parsed, err := multiaddr.NewMultiaddr(peer)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, parsed)
 	}
-	return peers
+	return peers, nil
 }
 
 func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
@@ -254,7 +260,7 @@ func newServeCmd() *cobra.Command {
 
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
-		`The ipfs host multiaddress to connect to.`,
+		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&OS.FilecoinUnsealedPath, "filecoin-unsealed-path", OS.FilecoinUnsealedPath,
@@ -284,6 +290,15 @@ func newServeCmd() *cobra.Command {
 		&OS.LotusFilecoinMaximumPing, "lotus-max-ping", OS.LotusFilecoinMaximumPing,
 		"The highest ping a Filecoin miner could have when selecting.",
 	)
+	serveCmd.PersistentFlags().StringSliceVar(
+		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
+		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
+	)
+	serveCmd.PersistentFlags().BoolVar(
+		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
+		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
+			"cannot be used with --ipfs-connect.",
+	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
 	setupJobSelectionCLIFlags(serveCmd, OS)
@@ -292,7 +307,7 @@ func newServeCmd() *cobra.Command {
 	return serveCmd
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
@@ -322,8 +337,19 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return fmt.Errorf("--job-selection-data-locality must be either 'local' or 'anywhere'")
 	}
 
+	if OS.IPFSConnect != "" && OS.PrivateInternalIPFS {
+		return fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
+	}
+
+	if OS.IPFSConnect != "" && len(OS.IPFSSwarmAddresses) != 0 {
+		return fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
+	}
+
 	// Establishing p2p connection
-	peers := getPeers(OS)
+	peers, err := getPeers(OS)
+	if err != nil {
+		return err
+	}
 	log.Debug().Msgf("libp2p connecting to: %s", peers)
 
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
@@ -399,8 +425,13 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {
 	if OS.IPFSConnect == "" {
-		// Connect to the public IPFS nodes
-		ipfsNode, err := ipfs.NewNode(ctx, cm, []string{})
+		// Connect to the public IPFS nodes by default
+		newNode := ipfs.NewNode
+		if OS.PrivateInternalIPFS {
+			newNode = ipfs.NewLocalNode
+		}
+
+		ipfsNode, err := newNode(ctx, cm, OS.IPFSSwarmAddresses)
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
 		}
