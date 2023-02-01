@@ -142,7 +142,8 @@ func (e *Executor) RunShard(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
 	defer span.End()
 
-	engineConfig := wazero.NewRuntimeConfig()
+	cache := wazero.NewCompilationCache()
+	engineConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
@@ -188,7 +189,6 @@ func (e *Executor) RunShard(
 	args := []string{module.Name()}
 	args = append(args, wasmSpec.Parameters...)
 
-	namespace := engine.NewNamespace(ctx)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
@@ -214,7 +214,7 @@ func (e *Executor) RunShard(
 		}
 		importedModules = append(importedModules, importedWasi)
 
-		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
+		_, instantiateErr := engine.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
 			return executor.FailResult(instantiateErr)
 		}
@@ -226,13 +226,13 @@ func (e *Executor) RunShard(
 	}
 	defer wasi.Close(ctx)
 
-	_, err = namespace.InstantiateModule(ctx, wasi, config)
+	_, err = engine.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	instance, err := namespace.InstantiateModule(ctx, module, config)
+	instance, err := engine.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
