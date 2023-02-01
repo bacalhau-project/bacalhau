@@ -54,7 +54,7 @@ func init() { //nolint:gochecknoinits
 			log.Debug().Msgf("Defaulting to production environment: \n os.Args: %v", os.Args)
 			env = EnvironmentProd
 		} else {
-			flags := []string{}
+			var flags []string
 			fn := func(f *flag.Flag) {
 				flags = append(flags, fmt.Sprintf("%s - %s\n", f.Name, f.Value))
 			}
@@ -68,24 +68,4 @@ func init() { //nolint:gochecknoinits
 
 func GetEnvironment() Environment {
 	return env
-}
-
-func SetEnvironment(e Environment) {
-	env = e
-}
-
-func IsTest() bool {
-	return env == EnvironmentTest
-}
-
-func IsStaging() bool {
-	return env == EnvironmentStaging
-}
-
-func IsProd() bool {
-	return env == EnvironmentProd
-}
-
-func IsDev() bool {
-	return env == EnvironmentDev
 }
