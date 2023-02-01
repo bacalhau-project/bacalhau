@@ -19,17 +19,17 @@ type localEventsResponse struct {
 
 // localEvents godoc
 //
-// @ID          pkg/requester/publicapi/localEvents
-// @Summary     Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
-// @Description Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
-// @Tags        Job
-// @Accept      json
-// @Produce     json
-// @Param       localEventsRequest body     localEventsRequest true " "
-// @Success     200                {object} localEventsResponse
-// @Failure     400                {object} string
-// @Failure     500                {object} string
-// @Router      /requester/local_events [post]
+//	@ID				pkg/requester/publicapi/localEvents
+//	@Summary		Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
+//	@Description	Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
+//	@Tags			Job
+//	@Accept			json
+//	@Produce		json
+//	@Param			localEventsRequest	body		localEventsRequest	true	" "
+//	@Success		200					{object}	localEventsResponse
+//	@Failure		400					{object}	string
+//	@Failure		500					{object}	string
+//	@Router			/requester/local_events [post]
 //
 //nolint:dupl
 func (s *RequesterAPIServer) localEvents(res http.ResponseWriter, req *http.Request) {

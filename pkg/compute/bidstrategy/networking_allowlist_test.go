@@ -46,6 +46,8 @@ func TestNetworkAllowlistStrategyFiltersDomains(t *testing.T) {
 
 	for _, testCase := range networkAllowlistTestCases {
 		t.Run(testCase.String(), func(t *testing.T) {
+			// fmt.Println(testCase.Type)
+			// fmt.Println(testCase.Domains)
 			resp, err := strategy.ShouldBid(context.Background(), BidStrategyRequest{
 				Job: model.Job{
 					Spec: model.Spec{
@@ -56,7 +58,7 @@ func TestNetworkAllowlistStrategyFiltersDomains(t *testing.T) {
 					},
 				},
 			})
-
+			fmt.Println(resp.ShouldBid)
 			require.NoError(t, err)
 			require.Equal(t, testCase.ShouldBid, resp.ShouldBid, resp.Reason)
 		})
