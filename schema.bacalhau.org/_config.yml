@@ -11,3 +11,9 @@ github_repo: "filecoin-project/bacalhau"
 theme: minima
 plugins:
   - jekyll-feed
+
+defaults:
+  - scope:
+      path: "jsonschema"
+    values:
+      schema: true
