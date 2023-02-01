@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
@@ -170,7 +171,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	// error if determinism is false
 	if !OLR.Deterministic {
