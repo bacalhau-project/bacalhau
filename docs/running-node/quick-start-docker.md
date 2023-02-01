@@ -31,7 +31,7 @@ This is not appropriate for:
 
 ### Prerequisites
 
-* [Create a new Docker network](docker-network)
+* [Create a new Docker network](#docker-network)
 
 ### (Optional) Start a Public IPFS Node
 
@@ -160,7 +160,7 @@ This method is not appropriate for:
 
 ### Prerequisites
 
-* [Create a new Docker network](docker-network)
+* [Create a new Docker network](#docker-network)
 
 ### Start a Local IPFS Node (Insecure)
 
@@ -274,7 +274,7 @@ You need two things. A private IPFS node to store data and a Bacalhau node to ex
 
 ### Prerequisites
 
-* [Create a new Docker network](docker-network)
+* [Create a new Docker network](#docker-network)
 
 ### Start a Private IPFS Node (Secure)
 
