@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package apicopy
+package ipfs
 
 import (
 	"context"
