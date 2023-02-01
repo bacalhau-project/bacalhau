@@ -237,14 +237,12 @@ clean:
 # Target: schema
 ################################################################################
 SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
 ${SCHEMA_DIR}/%.json:
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
 ################################################################################
 # Target: all_schemas
