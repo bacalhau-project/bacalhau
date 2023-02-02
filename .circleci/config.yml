@@ -654,7 +654,7 @@ workflows:
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
-            - build-linux-amd64-unit
+            - test-linux-amd64-unit
       - coverage:
           name: Build coverage report
           requires:
