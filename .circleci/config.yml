@@ -146,6 +146,7 @@ jobs:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
                   TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+                  SKIP_LOTUS: <<parameters.skip_lotus>>
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
@@ -639,13 +640,12 @@ workflows:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
-            environment:
-              SKIP_LOTUS: true
             parameters:
               target_os: [ "linux" ]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
+              skip_lotus: [ true ]
           filters:
             branches:
               ignore: main
@@ -667,13 +667,12 @@ workflows:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
-            environment:
-              SKIP_LOTUS: true
             parameters:
               target_os: [ "linux" ]
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
+              skip_lotus: [ true ]
           filters:
             branches:
               ignore: main
@@ -685,13 +684,12 @@ workflows:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
-            environment:
-              SKIP_LOTUS: true
             parameters:
               target_os: [ "darwin" ]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
+              skip_lotus: [ true ]
           filters:
             branches:
               ignore: main
@@ -703,13 +701,12 @@ workflows:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
-            environment:
-              SKIP_LOTUS: true
             parameters:
               target_os: [ "darwin" ]
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
+              skip_lotus: [ true ]
           filters:
             branches:
               ignore: main
@@ -721,13 +718,13 @@ workflows:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
-            environment:
-              SKIP_LOTUS: true
             parameters:
               target_os: [ "windows" ]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
+              skip_lotus: [ true ]
+
           filters:
             branches:
               ignore: main
@@ -744,6 +741,7 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "integration" ]
+              skip_lotus: [ false ]
           filters:
             branches:
               ignore: main
