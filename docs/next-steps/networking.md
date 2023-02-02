@@ -31,7 +31,7 @@ To run Docker jobs on Bacalhau to access the internet, you'll need to specify on
 Specifying `none` will still allow Bacalhau to download and upload data before and after the job.
 :::
 
-Jobs using `http` must specify the domains they want to access when the job is submitted. When the job runs, only HTTP requests to those domains will be possible and data transfer will be rate limited to 10Mbit/sec in either direction.
+Jobs using `http` must specify the domains they want to access when the job is submitted. When the job runs, only HTTP requests to those domains will be possible and data transfer will be rate limited to 10Mbit/sec in either direction to prevent ddos.
 
 Jobs will be provided with [`http_proxy` and `https_proxy` environment variables](https://about.gitlab.com/blog/2021/01/27/we-need-to-talk-no-proxy/) which contain a TCP address of an HTTP proxy to connect through. Most tools and libraries will use these environment variables by default. If not, they must be used by user code to configure HTTP proxy usage.
 
