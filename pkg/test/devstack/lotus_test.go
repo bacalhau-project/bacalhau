@@ -1,4 +1,4 @@
-//go:build lotus
+//go:build integration
 
 package devstack
 

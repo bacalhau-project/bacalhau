@@ -743,7 +743,7 @@ workflows:
               target_os: [ "linux", "windows"]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
-              build_tags: [ "lotus" ]
+              build_tags: [ "integration" ]
           filters:
             branches:
               ignore: main
