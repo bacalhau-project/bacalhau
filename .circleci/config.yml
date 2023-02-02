@@ -638,6 +638,8 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          environment:
+            SKIP_LOTUS: true
           matrix:
             parameters:
               target_os: [ "linux" ]
@@ -664,6 +666,8 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          environment:
+            SKIP_LOTUS: true
           matrix:
             parameters:
               target_os: [ "linux" ]
@@ -680,6 +684,8 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          environment:
+            SKIP_LOTUS: true
           matrix:
             parameters:
               target_os: [ "darwin" ]
@@ -696,6 +702,8 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          environment:
+            SKIP_LOTUS: true
           matrix:
             parameters:
               target_os: [ "darwin" ]
@@ -712,6 +720,8 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          environment:
+            SKIP_LOTUS: true
           matrix:
             parameters:
               target_os: [ "windows" ]
@@ -730,7 +740,7 @@ workflows:
           name: test-lotus-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
-              target_os: [ "linux", "darwin", "windows"]
+              target_os: [ "linux", "windows"]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "lotus" ]

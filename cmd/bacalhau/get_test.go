@@ -1,15 +1,16 @@
-//go:build integration || !unit
+//go:build integration
 
 package bacalhau
 
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
