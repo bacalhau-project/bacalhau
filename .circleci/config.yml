@@ -175,11 +175,8 @@ jobs:
                   cd python
                   # Unsetting locale because of https://github.com/python-poetry/poetry/issues/3412
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry lock --no-update --no-interaction
-                  # uUsing '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
+                  # Using '--no-ansi' because of https://github.com/python-poetry/poetry/issues/7184
                   env LANG= LANGUAGE= LC_ALL= /home/circleci/.local/bin/poetry install --no-root --no-interaction --no-ansi --with test
-                  # The python sdk doesn't generate a pem key, so we use the go-cli to generate one, I know it sucks :)
-                  curl -sL https://get.bacalhau.org/install.sh | bash
-                  /usr/local/bin/bacalhau list
                   # Run tests
                   cd ..
                   make test-python
