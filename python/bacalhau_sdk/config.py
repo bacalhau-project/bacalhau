@@ -12,7 +12,6 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 
-
 __client_id = None
 __user_id_key = None
 log = logging.getLogger(__name__)

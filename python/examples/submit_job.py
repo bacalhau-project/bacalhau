@@ -1,5 +1,7 @@
 """Example of submitting a docker job to the API."""
 
+import pprint
+
 from bacalhau_sdk.api import submit
 from bacalhau_sdk.config import get_client_id
 from bacalhau_apiclient.models.storage_spec import StorageSpec
@@ -20,7 +22,7 @@ data = dict(
         publisher="Estuary",
         docker=JobSpecDocker(
             image="ubuntu",
-            entrypoint=["echo", "123"],
+            entrypoint=["echo", "Hello World!"],
         ),
         language=JobSpecLanguage(job_context=None),
         wasm=None,
@@ -43,4 +45,5 @@ data = dict(
     ),
 )
 
-print(submit(data))
+pprint.pprint(submit(data))
+

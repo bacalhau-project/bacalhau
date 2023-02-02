@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **execution_plan** | [**SpecExecutionPlan**](SpecExecutionPlan.md) |  | [optional] 
 **language** | [**JobSpecLanguage**](JobSpecLanguage.md) |  | [optional] 
 **network** | [**SpecNetwork**](SpecNetwork.md) |  | [optional] 
+**node_selectors** | [**list[LabelSelectorRequirement]**](LabelSelectorRequirement.md) | NodeSelectors is a selector which must be true for the compute node to run this job. | [optional] 
 **publisher** | [**SpecPublisher**](SpecPublisher.md) |  | [optional] 
 **resources** | [**SpecResources**](SpecResources.md) |  | [optional] 
 **sharding** | [**SpecSharding**](SpecSharding.md) |  | [optional] 

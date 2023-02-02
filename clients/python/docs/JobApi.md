@@ -4,12 +4,12 @@ All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**events**](JobApi.md#events) | **POST** /events | Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
-[**list**](JobApi.md#list) | **POST** /list | Simply lists jobs.
-[**local_events**](JobApi.md#local_events) | **POST** /local_events | Returns the node&#39;s local events related to the job-id passed in the body payload. Useful for troubleshooting.
-[**results**](JobApi.md#results) | **POST** /results | Returns the results of the job-id specified in the body payload.
-[**states**](JobApi.md#states) | **POST** /states | Returns the state of the job-id specified in the body payload.
-[**submit**](JobApi.md#submit) | **POST** /submit | Submits a new job to the network.
+[**events**](JobApi.md#events) | **POST** /requester/events | Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
+[**list**](JobApi.md#list) | **POST** /requester/list | Simply lists jobs.
+[**local_events**](JobApi.md#local_events) | **POST** /requester/local_events | Returns the node&#39;s local events related to the job-id passed in the body payload. Useful for troubleshooting.
+[**results**](JobApi.md#results) | **POST** /requester/results | Returns the results of the job-id specified in the body payload.
+[**states**](JobApi.md#states) | **POST** /requester/states | Returns the state of the job-id specified in the body payload.
+[**submit**](JobApi.md#submit) | **POST** /requester/submit | Submits a new job to the network.
 
 
 # **events**

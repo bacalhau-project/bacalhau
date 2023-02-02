@@ -3,12 +3,12 @@
 import json
 
 from bacalhau_apiclient.api import job_api
-from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.models.list_request import ListRequest
 from bacalhau_apiclient.models.state_request import StateRequest
+from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.rest import ApiException
 
-from bacalhau_sdk.config import get_client_public_key, init_config, sign_for_client, get_client_id
+from bacalhau_sdk.config import get_client_id, get_client_public_key, init_config, sign_for_client
 
 conf = init_config()
 client = job_api.ApiClient(conf)
@@ -25,7 +25,6 @@ def submit(data: dict):
     submit_req = SubmitRequest(
         client_public_key=client_public_key, job_create_payload=sanitized_data, signature=signature
     )
-    print(submit_req)
     return api_instance.submit(submit_req)
 
 
@@ -47,6 +46,7 @@ def list():
         print("Exception when calling JobApi->list: %s\n" % e)
     return api_response
 
+
 def results(job_id: str):
     """Get results."""
     try:
@@ -60,10 +60,11 @@ def results(job_id: str):
         print("Exception when calling JobApi->results: %s\n" % e)
     return api_response
 
+
 def states(job_id: str):
     """Get states."""
     try:
-    # Returns the state of the job-id specified in the body payload.
+        # Returns the state of the job-id specified in the body payload.
         state_request = StateRequest(
             client_id=get_client_id(),
             job_id=job_id,

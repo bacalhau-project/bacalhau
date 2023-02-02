@@ -1,6 +1,6 @@
 # Autogenerate Bacalhau clients
 
-This folder contains the Makefile and config files to use Swagger/OpenAPI to auto-generate Bacalhau clients for the programming languages listed in [clients/supported_langs](clients/supported_langs).
+This folder contains the Makefile and config files to use [Swagger](https://swagger.io/tools/swagger-codegen/)/OpenAPI to auto-generate Bacalhau clients for the programming languages listed in [clients/supported_langs](clients/supported_langs).
 These clients wrap *only* the API endpoint calls and request/response models and do not ship the client-side logic necessary to properly operate the endpoints. It's highly recommended to use the [Bacalhau Python SDK instead](../python).
 
 ---
