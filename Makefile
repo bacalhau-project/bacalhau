@@ -1,9 +1,5 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-ifeq ($(BUILD_SIDECAR), 1)
-	$(MAKE) build-ipfs-sidecar-image
-endif
-
 ifeq ($(GOOS),)
 GOOS = $(shell $(GO) env GOOS)
 endif
@@ -148,13 +144,6 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
-.PHONY: build-ipfs-sidecar-image
-build-ipfs-sidecar-image:
-	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
-
 HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
 HTTP_GATEWAY_TAG ?= ${TAG}
 .PHONY: build-http-gateway-image

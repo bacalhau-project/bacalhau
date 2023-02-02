@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -86,7 +86,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorage(cm, node)
+	ipfsProvider, err := ipfs_storage.NewStorage(cm, node)
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
