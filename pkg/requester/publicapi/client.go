@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// for some queries (like read events and read state)
+// APIRetryCount - for some queries (like read events and read state)
 // we want to fail early (10 seconds should be ample time)
 // but retry a number of times - this is to avoid network
 // flakes failing the canary
@@ -234,15 +234,14 @@ func (apiClient *RequesterAPIClient) Submit(
 		return &model.Job{}, err
 	}
 	jsonRaw := json.RawMessage(jsonData)
-	log.Debug().Msgf("jsonRaw str: %s", string(jsonRaw))
-	log.Debug().Msgf("jsonRaw bytes: %v", jsonRaw)
+	log.Ctx(ctx).Debug().RawJSON("json", jsonRaw).Msgf("jsonRaw")
 
 	// sign the raw bytes representation of model.JobCreatePayload
 	signature, err := system.SignForClient(jsonRaw)
 	if err != nil {
 		return &model.Job{}, err
 	}
-	log.Debug().Msgf("signature: %s", signature)
+	log.Ctx(ctx).Debug().Str("signature", signature).Msgf("signature")
 
 	var res submitResponse
 	req := submitRequest{
