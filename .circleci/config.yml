@@ -50,6 +50,8 @@ jobs:
         type: boolean
       build_tags:
         type: string
+      skip_lotus:
+        type: boolean
     steps:
       - checkout
 
