@@ -2,18 +2,21 @@ POETRY := $(shell command -v poetry 2> /dev/null)
 
 sources = bacalhau_sdk
 
+.`.PHONY: all
+all: format lint pre-commit test
+
 .PHONY: test
-test: format lint unittest
+test: unittest coverage
 
 .PHONY: format
 format:
-	$(POETRY) run isort $(sources) tests
-	$(POETRY) run black $(sources) tests
+	$(POETRY) run isort $(sources) tests examples
+	$(POETRY) run black $(sources) tests examples
 
 .PHONY: lint
 lint:
-	$(POETRY) run flake8 $(sources) tests
-	$(POETRY) run mypy $(sources) tests
+	$(POETRY) run flake8 $(sources) tests examples
+	$(POETRY) run mypy $(sources) tests examples
 
 .PHONY: unittest
 unittest:
@@ -23,9 +26,14 @@ unittest:
 coverage:
 	$(POETRY) run pytest --cov=$(sources) --cov-branch --cov-report=term-missing tests
 
+.PHONY: install-pre-commit
+install-pre-commit:
+	$(POETRY) run pre-commit install
+	@echo "Pre-commit installed."
+
 .PHONY: pre-commit
 pre-commit:
-	$(POETRY) run pre-commit run --all-files
+	$(POETRY) run pre-commit run --files ./**/*
 
 .PHONY: clean
 clean:
