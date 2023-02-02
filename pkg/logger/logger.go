@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -20,7 +20,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -167,16 +166,7 @@ func (z *zerologWriteSyncer) Sync() error {
 }
 
 func configureIpfsLogging(l zerolog.Logger) {
-	encCfg := zap.NewProductionEncoderConfig()
-	encCfg.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {}
-	encCfg.EncodeLevel = zapcore.CapitalLevelEncoder
-	encCfg.EncodeCaller = func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {}
-	encCfg.ConsoleSeparator = " "
-	encoder := zapcore.NewConsoleEncoder(encCfg)
-
-	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
-
-	ipfslog2.SetPrimaryCore(core)
+	ipfslog2.SetPrimaryCore(&zerologZapCore{l})
 }
 
 func LogStream(ctx context.Context, r io.Reader) {
@@ -202,9 +192,7 @@ func findRepositoryRoot() string {
 			continue
 		}
 
-		if runtime.GOOS == "windows" {
-			dir = strings.ReplaceAll(dir, "\\", "/")
-		}
+		dir = trimRepositoryRootDir(dir)
 
 		return dir
 	}
@@ -215,4 +203,144 @@ func marshalCaller(prefix string) func(uintptr, string, int) string {
 		file = strings.TrimPrefix(file, prefix+"/")
 		return file + ":" + strconv.Itoa(line)
 	}
+}
+
+var _ zapcore.Core = &zerologZapCore{}
+
+type zerologZapCore struct {
+	l zerolog.Logger
+}
+
+func (z *zerologZapCore) Enabled(level zapcore.Level) bool {
+	zerologLevel := marshalZapCoreLogLevel(level)
+
+	return z.l.GetLevel() <= zerologLevel
+}
+
+func (z *zerologZapCore) With(fields []zapcore.Field) zapcore.Core {
+	logCtx := marshalZapCoreFields(fields, z.l.With())
+
+	return &zerologZapCore{logCtx.Logger()}
+}
+
+func (z *zerologZapCore) Check(entry zapcore.Entry, checkedEntry *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if z.Enabled(entry.Level) {
+		return checkedEntry.AddCore(entry, z)
+	}
+
+	return checkedEntry
+}
+
+// zapCoreCallDepth is how far zerologZapCore.Write is down the stack from someone calling `log.Error`
+const zapCoreCallDepth = 4
+
+func (z *zerologZapCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+	e := z.l.
+		WithLevel(marshalZapCoreLogLevel(entry.Level)).
+		CallerSkipFrame(zapCoreCallDepth).
+		Str("logger-name", entry.LoggerName)
+
+	e = marshalZapCoreFields(fields, e)
+
+	e.Msg(entry.Message)
+
+	return nil
+}
+
+func (z *zerologZapCore) Sync() error {
+	return nil
+}
+
+func marshalZapCoreLogLevel(level zapcore.Level) zerolog.Level {
+	switch level {
+	case zapcore.DebugLevel:
+		return zerolog.DebugLevel
+	case zapcore.InfoLevel:
+		return zerolog.InfoLevel
+	case zapcore.WarnLevel:
+		return zerolog.WarnLevel
+	case zapcore.ErrorLevel:
+		return zerolog.ErrorLevel
+	}
+
+	return zerolog.PanicLevel
+}
+
+//nolint:gocyclo
+func marshalZapCoreFields[T zerologFields[T]](fields []zapcore.Field, handler T) T {
+	keyPrefix := ""
+
+	for _, f := range fields {
+		key := keyPrefix + f.Key
+		switch f.Type {
+		case zapcore.BinaryType:
+			handler = handler.Bytes(key, f.Interface.([]byte))
+		case zapcore.BoolType:
+			handler = handler.Bool(key, f.Integer == 1)
+		case zapcore.DurationType:
+			handler = handler.Dur(key, time.Duration(f.Integer))
+		case zapcore.Float64Type:
+			handler = handler.Float64(key, math.Float64frombits(uint64(f.Integer)))
+		case zapcore.Float32Type:
+			handler = handler.Float32(key, math.Float32frombits(uint32(f.Integer)))
+		case zapcore.Int64Type:
+			handler = handler.Int64(key, f.Integer)
+		case zapcore.Int32Type:
+			handler = handler.Int32(key, int32(f.Integer))
+		case zapcore.Int16Type:
+			handler = handler.Int16(key, int16(f.Integer))
+		case zapcore.Int8Type:
+			handler = handler.Int8(key, int8(f.Integer))
+		case zapcore.StringType:
+			handler = handler.Str(key, f.String)
+		case zapcore.TimeType:
+			t := time.Unix(0, f.Integer)
+			if f.Interface != nil {
+				t = t.In(f.Interface.(*time.Location))
+			}
+			handler = handler.Time(key, t)
+		case zapcore.TimeFullType:
+			handler = handler.Time(key, f.Interface.(time.Time))
+		case zapcore.Uint64Type:
+			handler = handler.Uint64(key, uint64(f.Integer))
+		case zapcore.Uint32Type:
+			handler = handler.Uint32(key, uint32(f.Integer))
+		case zapcore.Uint16Type:
+			handler = handler.Uint16(key, uint16(f.Integer))
+		case zapcore.Uint8Type:
+			handler = handler.Uint8(key, uint8(f.Integer))
+		case zapcore.NamespaceType:
+			keyPrefix = f.Key
+		case zapcore.StringerType:
+			handler = handler.Stringer(key, f.Interface.(fmt.Stringer))
+		case zapcore.ErrorType:
+			handler = handler.AnErr(key, f.Interface.(error))
+		case zapcore.SkipType:
+		default:
+			handler = handler.Interface(key, f.Interface)
+		}
+	}
+
+	return handler
+}
+
+type zerologFields[T any] interface {
+	Bytes(key string, val []byte) T
+	Bool(key string, b bool) T
+	Dur(key string, d time.Duration) T
+	Float64(key string, f float64) T
+	Float32(key string, f float32) T
+	Int64(key string, i int64) T
+	Int32(key string, i int32) T
+	Int16(key string, i int16) T
+	Int8(key string, i int8) T
+	Str(key, val string) T
+	Time(key string, t time.Time) T
+	Uint64(key string, i uint64) T
+	Uint32(key string, i uint32) T
+	Uint16(key string, i uint16) T
+	Uint8(key string, i uint8) T
+	Stringer(key string, val fmt.Stringer) T
+	AnErr(key string, err error) T
+	Interface(key string, i interface{}) T
 }

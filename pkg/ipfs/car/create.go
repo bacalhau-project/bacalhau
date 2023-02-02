@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipfs/go-unixfsnode/data/builder"
 	"github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
@@ -41,7 +41,7 @@ func CreateCar(
 	}
 	proxyRoot := cid.NewCidV1(uint64(multicodec.DagPb), hash)
 
-	options := []car.Option{}
+	var options []car.Option
 
 	switch version {
 	case 1:
@@ -63,7 +63,7 @@ func CreateCar(
 		return "", err
 	}
 
-	carFilePaths := []string{}
+	var carFilePaths []string
 	for _, file := range files {
 		carFilePaths = append(carFilePaths, fmt.Sprintf("%s/%s", inputDirectory, file.Name()))
 	}

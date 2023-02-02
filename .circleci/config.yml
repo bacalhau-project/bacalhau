@@ -433,20 +433,6 @@ jobs:
             find dist/
             gh release upload $TAG dist/*
 
-  update_ops:
-    executor: linux-amd64
-    steps:
-      - checkout
-      - run:
-          name: Install updatecli
-          command: |
-            wget https://github.com/updatecli/updatecli/releases/download/v0.33.3/updatecli_amd64.deb
-            sudo dpkg -i updatecli_amd64.deb
-      - run:
-          name: Run
-          command: |
-            updatecli apply --config .circleci/dependency-ops.yaml
-
   update_metadata:
     executor: linux-amd64
     parameters:
@@ -735,10 +721,6 @@ workflows:
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
       #     filters:
       #       <<: *filters_main_only # this is calling the previously set yaml anchor
-      - update_ops:
-          name: update-terraform-files
-          filters:
-            <<: *filters_main_only
 
   build_swagger: # This workflow will only run on 'main' and will not run on tags
     jobs:
@@ -795,12 +777,6 @@ workflows:
           name: release-all-binaries
           requires:
             - build
-          filters:
-            <<: *filters_tags_only
-      - update_ops:
-          name: update-terraform-files
-          requires:
-            - release-all-binaries
           filters:
             <<: *filters_tags_only
       - docker:

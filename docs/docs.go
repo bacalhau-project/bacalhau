@@ -529,7 +529,6 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "description": "The data needed to submit and run a job on the network:",
                             "type": "array",
                             "items": {
                                 "type": "integer"
@@ -633,8 +632,7 @@ const docTemplate = `{
                 "ExecutionEngines": {
                     "type": "array",
                     "items": {
-                        "description": "e.g. docker or language",
-                        "type": "integer"
+                        "$ref": "#/definitions/model.Engine"
                     }
                 },
                 "MaxCapacity": {
@@ -665,6 +663,33 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Engine": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "EngineLanguage": "wraps python_wasm",
+                "EnginePythonWasm": "wraps docker",
+                "engineDone": "must be last",
+                "engineUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "engineUnknown",
+                "EngineNoop",
+                "EngineDocker",
+                "EngineWasm",
+                "EngineLanguage",
+                "EnginePythonWasm",
+                "engineDone"
+            ]
+        },
         "model.Job": {
             "type": "object",
             "properties": {
@@ -677,11 +702,19 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "The status of the job: where are the nodes at, what are the events",
-                    "$ref": "#/definitions/model.JobStatus"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -700,10 +733,14 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "this is only defined in \"update_deal\" events",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobEventType"
                 },
                 "EventTime": {
                     "type": "string",
@@ -716,7 +753,11 @@ const docTemplate = `{
                 },
                 "JobExecutionPlan": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "JobID": {
                     "type": "string",
@@ -727,7 +768,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "SenderPublicKey": {
                     "type": "array",
@@ -746,7 +791,11 @@ const docTemplate = `{
                 },
                 "Spec": {
                     "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 },
                 "Status": {
                     "type": "string",
@@ -768,6 +817,51 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+            ],
+            "x-enum-comments": {
+                "jobEventDone": "must be last",
+                "jobEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobEventUnknown",
+                "JobEventInitialSubmission",
+                "JobEventCreated",
+                "JobEventDealUpdated",
+                "JobEventBid",
+                "JobEventBidAccepted",
+                "JobEventBidRejected",
+                "JobEventBidCancelled",
+                "JobEventRunning",
+                "JobEventComputeError",
+                "JobEventResultsProposed",
+                "JobEventResultsAccepted",
+                "JobEventResultsRejected",
+                "JobEventResultsPublished",
+                "JobEventError",
+                "JobEventInvalidRequest",
+                "jobEventDone"
+            ]
+        },
         "model.JobExecutionPlan": {
             "type": "object",
             "properties": {
@@ -781,7 +875,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "EventName": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.JobLocalEventType"
                 },
                 "JobID": {
                     "type": "string"
@@ -793,6 +887,31 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.JobLocalEventType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "jobLocalEventDone": "must be last",
+                "jobLocalEventUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobLocalEventUnknown",
+                "JobLocalEventSelected",
+                "JobLocalEventBid",
+                "JobLocalEventBidAccepted",
+                "JobLocalEventBidRejected",
+                "JobLocalEventVerified",
+                "jobLocalEventDone"
+            ]
         },
         "model.JobNodeState": {
             "type": "object",
@@ -838,7 +957,11 @@ const docTemplate = `{
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
                 },
                 "ShardIndex": {
                     "description": "what shard is this we are running",
@@ -846,7 +969,11 @@ const docTemplate = `{
                 },
                 "State": {
                     "description": "what is the state of the shard on this node",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStateType"
+                        }
+                    ]
                 },
                 "Status": {
                     "description": "an arbitrary status message",
@@ -921,7 +1048,11 @@ const docTemplate = `{
                 },
                 "JobContext": {
                     "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "Language": {
                     "description": "e.g. python",
@@ -946,7 +1077,11 @@ const docTemplate = `{
             "properties": {
                 "EntryModule": {
                     "description": "The module that contains the WASM code to start running.",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "EntryPoint": {
                     "description": "The name of the function in the EntryModule to call to run the job. For\nWASI jobs, this will always be ` + "`" + `_start` + "`" + `, but jobs can choose to call\nother WASM functions instead. The EntryPoint must be a zero-parameter\nzero-result function.",
@@ -986,6 +1121,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+            ],
+            "x-enum-comments": {
+                "jobStateDone": "must be last",
+                "jobStateUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "jobStateUnknown",
+                "JobStateBidding",
+                "JobStateWaiting",
+                "JobStateRunning",
+                "JobStateVerifying",
+                "JobStateCancelled",
+                "JobStateError",
+                "JobStateCompleted",
+                "jobStateDone"
+            ]
+        },
         "model.JobStatus": {
             "type": "object",
             "properties": {
@@ -998,7 +1162,11 @@ const docTemplate = `{
                 },
                 "JobState": {
                     "description": "The current state of the job",
-                    "$ref": "#/definitions/model.JobState"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobState"
+                        }
+                    ]
                 },
                 "LocalJobEvents": {
                     "description": "All local events associated with the job",
@@ -1021,7 +1189,11 @@ const docTemplate = `{
                 },
                 "Operator": {
                     "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
-                    "type": "string"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/selection.Operator"
+                        }
+                    ]
                 },
                 "Values": {
                     "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
@@ -1052,6 +1224,19 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Network": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "NetworkNone",
+                "NetworkFull",
+                "NetworkHTTP"
+            ]
+        },
         "model.NetworkConfig": {
             "type": "object",
             "properties": {
@@ -1062,7 +1247,7 @@ const docTemplate = `{
                     }
                 },
                 "Type": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Network"
                 }
             }
         },
@@ -1079,12 +1264,23 @@ const docTemplate = `{
                     }
                 },
                 "NodeType": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.NodeType"
                 },
                 "PeerInfo": {
                     "$ref": "#/definitions/peer.AddrInfo"
                 }
             }
+        },
+        "model.NodeType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "nodeTypeUnknown",
+                "NodeTypeCompute"
+            ]
         },
         "model.PublishedResult": {
             "type": "object",
@@ -1099,6 +1295,29 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "model.Publisher": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5
+            ],
+            "x-enum-comments": {
+                "publisherDone": "must be last",
+                "publisherUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "publisherUnknown",
+                "PublisherNoop",
+                "PublisherIpfs",
+                "PublisherFilecoin",
+                "PublisherEstuary",
+                "publisherDone"
+            ]
         },
         "model.ResourceUsageConfig": {
             "type": "object",
@@ -1192,7 +1411,11 @@ const docTemplate = `{
                 },
                 "Deal": {
                     "description": "The deal the client has made, such as which job bids they have accepted.",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "DoNotTrack": {
                     "description": "Do not track specified by the client",
@@ -1200,22 +1423,38 @@ const docTemplate = `{
                 },
                 "Docker": {
                     "description": "executor specific data",
-                    "$ref": "#/definitions/model.JobSpecDocker"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecDocker"
+                        }
+                    ]
                 },
                 "Engine": {
                     "description": "e.g. docker or language",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Engine"
+                        }
+                    ]
                 },
                 "ExecutionPlan": {
                     "description": "how will this job be executed by nodes on the network",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobExecutionPlan"
+                        }
+                    ]
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
-                    "$ref": "#/definitions/model.NetworkConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.NetworkConfig"
+                        }
+                    ]
                 },
                 "NodeSelectors": {
                     "description": "NodeSelectors is a selector which must be true for the compute node to run this job.",
@@ -1226,22 +1465,34 @@ const docTemplate = `{
                 },
                 "Publisher": {
                     "description": "there can be multiple publishers for the job",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Publisher"
+                        }
+                    ]
                 },
                 "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",
-                    "$ref": "#/definitions/model.ResourceUsageConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ResourceUsageConfig"
+                        }
+                    ]
                 },
                 "Sharding": {
                     "description": "the sharding config for this job\ndescribes how the job might be split up into parallel shards",
-                    "$ref": "#/definitions/model.JobShardingConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobShardingConfig"
+                        }
+                    ]
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
                 "Verifier": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Verifier"
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
@@ -1261,6 +1512,35 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "model.StorageSourceType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+            ],
+            "x-enum-comments": {
+                "storageSourceDone": "must be last",
+                "storageSourceUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "storageSourceUnknown",
+                "StorageSourceIPFS",
+                "StorageSourceURLDownload",
+                "StorageSourceFilecoinUnsealed",
+                "StorageSourceFilecoin",
+                "StorageSourceEstuary",
+                "StorageSourceInline",
+                "StorageSourceLocalDirectory",
+                "storageSourceDone"
+            ]
         },
         "model.StorageSpec": {
             "type": "object",
@@ -1288,7 +1568,11 @@ const docTemplate = `{
                 },
                 "StorageSource": {
                     "description": "StorageSource is the abstract source of the data. E.g. a storage source\nmight be a URL download, but doesn't specify how the execution engine\ndoes the download or what it will do with the downloaded data.",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSourceType"
+                        }
+                    ]
                 },
                 "URL": {
                     "description": "Source URL of the data",
@@ -1310,6 +1594,25 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "model.Verifier": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "verifierDone": "must be last",
+                "verifierUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "verifierUnknown",
+                "VerifierNoop",
+                "VerifierDeterministic",
+                "verifierDone"
+            ]
         },
         "peer.AddrInfo": {
             "type": "object",
@@ -1506,6 +1809,31 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.Job"
                 }
             }
+        },
+        "selection.Operator": {
+            "type": "string",
+            "enum": [
+                "!",
+                "=",
+                "==",
+                "in",
+                "!=",
+                "notin",
+                "exists",
+                "gt",
+                "lt"
+            ],
+            "x-enum-varnames": [
+                "DoesNotExist",
+                "Equals",
+                "DoubleEquals",
+                "In",
+                "NotEquals",
+                "NotIn",
+                "Exists",
+                "GreaterThan",
+                "LessThan"
+            ]
         },
         "types.FreeSpace": {
             "type": "object",
