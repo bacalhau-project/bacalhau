@@ -439,6 +439,14 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 			"%s serve %s--private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
+
+		if isRequesterNode {
+			cmd.Println()
+			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
+			cmd.Printf("export BACALHAU_IPFS_SWARM_ADDRESSES=%s\n", ipfsSwarmAddress)
+			cmd.Printf("export BACALHAU_API_HOST=%s\n", OS.HostAddress)
+			cmd.Printf("export BACALHAU_API_PORT=%d\n", apiPort)
+		}
 	}
 
 	<-ctx.Done() // block until killed
