@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build integration
 
 package devstack
 
@@ -41,6 +41,7 @@ func (s *lotusNodeSuite) SetupTest() {
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
+	testutils.SkipLotus(s.T(), "https://github.com/filecoin-project/bacalhau/pull/1865")
 	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

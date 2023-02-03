@@ -4,11 +4,12 @@ package estuary
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/system"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
