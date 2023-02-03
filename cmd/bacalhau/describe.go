@@ -35,12 +35,14 @@ type DescribeOptions struct {
 	Filename      string // Filename for job (can be .json or .yaml)
 	IncludeEvents bool   // Include events in the description
 	OutputSpec    bool   // Print Just the jobspec to stdout
+	Json          bool   // Print description as JSON
 }
 
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{
 		IncludeEvents: false,
 		OutputSpec:    false,
+		Json:          false,
 	}
 }
 
@@ -67,6 +69,10 @@ func newDescribeCmd() *cobra.Command {
 		&OD.IncludeEvents, "include-events", OD.IncludeEvents,
 		`Include events in the description (could be noisy)`,
 	)
+	describeCmd.PersistentFlags().BoolVar(
+		&OD.Json, "json", OD.Json,
+		`Output description as JSON (if not included will be outputed as YAML by default)`,
+	)
 
 	return describeCmd
 }
@@ -76,6 +82,10 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
+	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
+		Fatal(cmd, fmt.Sprintf("Failed to parse flags: %v\n", err), 1)
+	}
+	
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
@@ -132,18 +142,23 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		jobDesc.Status.LocalEvents = localEvents
 	}
 
-	b, err := model.JSONMarshalWithMax(jobDesc)
+	b, err := model.JSONMarshalIndentWithMax(jobDesc,3)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.Metadata.ID, err), 1)
 	}
 
 	// Convert Json to Yaml
-	y, err := yaml.JSONToYAML(b)
-	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
+	if OD.Json != true {
+		y, err := yaml.JSONToYAML(b)
+		if err != nil {
+			Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
+		}
+		cmd.Print(string(y))
+	} else {
+		cmd.Print(string(b))
 	}
 
-	cmd.Print(string(y))
+	//cmd.Print(string(y))
 
 	return nil
 }
