@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
@@ -66,7 +67,6 @@ type ServeOptions struct {
 	JobSelectionDataAcceptNetworked       bool              // Whether to accept jobs that require network access.
 	JobSelectionProbeHTTP                 string            // The HTTP URL to use for job selection.
 	JobSelectionProbeExec                 string            // The executable to use for job selection.
-	MetricsPort                           int               // The port to listen on for metrics.
 	LimitTotalCPU                         string            // The total amount of CPU the system can be using at one time.
 	LimitTotalMemory                      string            // The total amount of memory the system can be using at one time.
 	LimitTotalGPU                         string            // The total amount of GPU the system can be using at one time.
@@ -92,7 +92,6 @@ func NewServeOptions() *ServeOptions {
 		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
 		HostAddress:                     "0.0.0.0",
 		SwarmPort:                       DefaultSwarmPort,
-		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
 		JobSelectionDataAcceptNetworked: false,
@@ -271,10 +270,6 @@ func newServeCmd() *cobra.Command {
 		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
 		`The API key used when using the estuary API.`,
 	)
-	serveCmd.PersistentFlags().IntVar(
-		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
-		`The port to serve prometheus metrics on.`,
-	)
 	serveCmd.PersistentFlags().DurationVar(
 		&OS.LotusFilecoinStorageDuration, "lotus-storage-duration", OS.LotusFilecoinStorageDuration,
 		"Duration to store data in Lotus Filecoin for.",
@@ -312,7 +307,7 @@ func newServeCmd() *cobra.Command {
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup()
 
 	// Context ensures main goroutine waits until killed with ctrl+c:
@@ -321,7 +316,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -383,7 +378,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
-		MetricsPort:          OS.MetricsPort,
 		ComputeConfig:        getComputeConfig(OS),
 		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
 		IsComputeNode:        isComputeNode,

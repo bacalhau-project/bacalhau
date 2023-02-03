@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ func newIDCmd() *cobra.Command {
 func id(_ *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup()
 
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)

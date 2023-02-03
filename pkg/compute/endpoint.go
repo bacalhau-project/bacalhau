@@ -3,7 +3,6 @@ package compute
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
@@ -11,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -51,7 +49,7 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	ctx, span := s.newSpan(ctx, "AskForBid")
 	defer span.End()
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
-	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.Metadata.ClientID}).Inc()
+	jobsReceived.Add(ctx, 1)
 
 	// ask the bidding strategy if we should bid on this job
 	// TODO: we should check at the shard level, not the job level
@@ -170,11 +168,7 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 	}
 
 	// Increment the number of jobs accepted by this compute node:
-	jobsAccepted.With(prometheus.Labels{
-		"node_id":     s.id,
-		"shard_index": strconv.Itoa(execution.Shard.Index),
-		"client_id":   execution.Shard.Job.Metadata.ClientID,
-	}).Inc()
+	jobsAccepted.Add(ctx, 1)
 
 	err = s.executor.Run(ctx, execution)
 	if err != nil {

@@ -1,7 +1,7 @@
 [Unit]
 Description=Bacalhau Daemon
-After=network-online.target ipfs-daemon.service
-Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.service
+After=network-online.target ipfs-daemon.service otel-collector-daemon.service
+Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.service otel-collector-daemon.service
 
 [Service]
 Environment="LOG_TYPE=json"

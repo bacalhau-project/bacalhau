@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 
@@ -53,7 +54,7 @@ func (s *ScenarioRunner) SetupTest() {
 	s.Ctx = ctx
 	s.Span = rootSpan
 
-	s.T().Cleanup(func() { _ = system.CleanupTraceProvider() })
+	s.T().Cleanup(func() { _ = telemetry.Cleanup() })
 }
 
 func (s *ScenarioRunner) TearDownTest() {

@@ -2,14 +2,12 @@ package compute
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
 
@@ -90,17 +88,9 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 	if !e.simulatorConfig.IsBadActor {
 		runCommandResult, err = jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
 		if err != nil {
-			jobsFailed.With(prometheus.Labels{
-				"node_id":     e.ID,
-				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.Metadata.ClientID,
-			}).Inc()
+			jobsFailed.Add(ctx, 1)
 		} else {
-			jobsCompleted.With(prometheus.Labels{
-				"node_id":     e.ID,
-				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.Metadata.ClientID,
-			}).Inc()
+			jobsCompleted.Add(ctx, 1)
 		}
 
 		if err != nil {
