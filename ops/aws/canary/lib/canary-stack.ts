@@ -55,7 +55,7 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrencyOwnedNodes"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
-                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
+                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 6, memorySize: 5120, storageSize: 5012,
                 datapointsToAlarm: 4, evaluationPeriods: 6}});
 
         if (config.createOperators) {
