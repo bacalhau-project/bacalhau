@@ -10,12 +10,11 @@ The latter is listed as a dependency of this SDK and will be installed automatic
 
 #### Features
 
-* TODO
-* TODO
-* Supported environment variables
-    * `BACALHAU_DIR`
+* List, create and inspect Bacalhau jobs
+* Use the production network, or set the following environment variables to target any Bacalhau network out there:
     * `BACALHAU_API_HOST`
     * `BACALHAU_API_PORT`
+* Generate a key pair used to sign requests stored in the path specifified by the `BACALHAU_DIR` env var (default: your home folder)
 ## Install
 
 Clone the public repository:
@@ -34,7 +33,6 @@ $ pip install .
 ## Initalize
 
 Likewise the Bacalhau CLI, this SDK requires a key pair to be stored in `BACALHAU_DIR` used for signing requests.
-
 
 ## Example Use
 
