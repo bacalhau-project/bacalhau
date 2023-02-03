@@ -35,14 +35,14 @@ type DescribeOptions struct {
 	Filename      string // Filename for job (can be .json or .yaml)
 	IncludeEvents bool   // Include events in the description
 	OutputSpec    bool   // Print Just the jobspec to stdout
-	Json          bool   // Print description as JSON
+	JSON          bool   // Print description as JSON
 }
 
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{
 		IncludeEvents: false,
 		OutputSpec:    false,
-		Json:          false,
+		JSON:          false,
 	}
 }
 
@@ -70,7 +70,7 @@ func newDescribeCmd() *cobra.Command {
 		`Include events in the description (could be noisy)`,
 	)
 	describeCmd.PersistentFlags().BoolVar(
-		&OD.Json, "json", OD.Json,
+		&OD.JSON, "json", OD.JSON,
 		`Output description as JSON (if not included will be outputed as YAML by default)`,
 	)
 
@@ -148,7 +148,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	}
 
 	
-	if OD.Json != true {
+	if OD.JSON != true {
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
 		if err != nil {
