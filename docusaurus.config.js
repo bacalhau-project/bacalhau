@@ -109,12 +109,12 @@ const config = {
             title: "More",
             items: [
               {
-                label: "Blog",
-                href: "https://bacalhau.substack.com/",
-              },
-              {
                 label: "GitHub",
                 href: "https://github.com/filecoin-project/bacalhau",
+              },
+              {
+                label: "Blog",
+                href: "https://bacalhau.substack.com/",
               },
               {
                 label: "Changelog",
