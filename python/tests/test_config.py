@@ -13,12 +13,23 @@ def test_ensure_config_dir():
     """Test ensure_config_dir()."""
     from bacalhau_sdk.config import __ensure_config_dir
 
+    # test it creates a default config dir
     config_dir = __ensure_config_dir()
     home_path = Path.home()
     assert config_dir.exists()
     assert config_dir.is_dir()
     assert config_dir.is_absolute()
     assert config_dir == home_path.joinpath(".bacalhau")
+
+    # test it detects an existing config dir
+    with TemporaryDirectory() as config_dir:
+        os.environ["BACALHAU_DIR"] = config_dir
+        config_dir = __ensure_config_dir()
+        assert config_dir.exists()
+        assert config_dir.is_dir()
+        assert config_dir.is_absolute()
+        # clean up
+        os.environ["BACALHAU_DIR"] = ""
 
 
 def test_ensure_config_file():
@@ -32,13 +43,21 @@ def test_ensure_user_id_key():
     """Test ensure_user_id_key()."""
     from bacalhau_sdk.config import __ensure_user_id_key
 
-    home_path = Path.home()
-    config_dir = home_path.joinpath(".bacalhau")
-    user_id_key_path = __ensure_user_id_key(config_dir)
-    assert user_id_key_path.exists()
-    assert user_id_key_path.is_file()
-    assert user_id_key_path.is_absolute()
-    assert user_id_key_path == config_dir.joinpath("user_id.pem")
+    # test it detects no existing key and creates one
+    with TemporaryDirectory() as config_dir:
+        os.environ["BACALHAU_DIR"] = config_dir
+        user_id_key_path = __ensure_user_id_key(Path(config_dir))
+        assert user_id_key_path.is_file()
+        assert user_id_key_path.is_absolute()
+        assert user_id_key_path == Path(config_dir).joinpath("user_id.pem")
+
+        # test it detects an existing key
+        user_id_key_path = __ensure_user_id_key(Path(config_dir))
+        assert user_id_key_path.is_file()
+        assert user_id_key_path.is_absolute()
+        assert user_id_key_path == Path(config_dir).joinpath("user_id.pem")
+        # clean up
+        os.environ["BACALHAU_DIR"] = ""
 
 
 def test_load_user_id_key():
@@ -51,11 +70,11 @@ def test_load_user_id_key():
     with TemporaryDirectory(prefix="bacalhau_sdk_test-") as tmpdirname:
         tmpdir = Path(tmpdirname)
         key = RSA.generate(2048)
-        with open(tmpdir.joinpath('mykey.pem'), 'wb') as f:
-            f.write(key.export_key('PEM'))
-        loaded_key = __load_user_id_key(tmpdir.joinpath('mykey.pem'))
+        with open(tmpdir.joinpath("mykey.pem"), "wb") as f:
+            f.write(key.export_key("PEM"))
+        loaded_key = __load_user_id_key(tmpdir.joinpath("mykey.pem"))
         assert type(loaded_key) == RSA.RsaKey
-        assert loaded_key.export_key('PEM') == key.export_key('PEM')
+        assert loaded_key.export_key("PEM") == key.export_key("PEM")
 
 
 def test_load_client_id():
@@ -67,9 +86,9 @@ def test_load_client_id():
     with TemporaryDirectory(prefix="bacalhau_sdk_test-") as tmpdirname:
         tmpdir = Path(tmpdirname)
         key = RSA.generate(2048)
-        with open(tmpdir.joinpath('mykey.pem'), 'wb') as f:
-            f.write(key.export_key('PEM'))
-        client_id = __load_client_id(tmpdir.joinpath('mykey.pem'))
+        with open(tmpdir.joinpath("mykey.pem"), "wb") as f:
+            f.write(key.export_key("PEM"))
+        client_id = __load_client_id(tmpdir.joinpath("mykey.pem"))
         assert len(client_id) == 64
 
 
@@ -79,14 +98,14 @@ def test_init_config():
 
     from bacalhau_sdk.config import init_config
 
-    os.environ['BACALHAU_API_HOST'] = "1.1.1.1"
-    os.environ['BACALHAU_API_PORT'] = "9999"
+    os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
+    os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
     assert type(conf) == Configuration
     assert conf.host == "http://1.1.1.1:9999"
 
-    os.environ['BACALHAU_API_HOST'] = ""
-    os.environ['BACALHAU_API_PORT'] = ""
+    os.environ["BACALHAU_API_HOST"] = ""
+    os.environ["BACALHAU_API_PORT"] = ""
     conf = init_config()
     assert type(conf) == Configuration
     assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
@@ -113,7 +132,7 @@ def test_sign_for_client():
     _ = init_config()
 
     test_payload = dict(
-        api_version='V1beta1',
+        api_version="V1beta1",
         client_id=get_client_id(),
         spec=Spec(
             engine="Docker",
@@ -146,8 +165,8 @@ def test_sign_for_client():
 
     client = job_api.ApiClient()
     sanitized_data = client.sanitize_for_serialization(test_payload)
-    json_data = json.dumps(sanitized_data, indent=None, separators=(', ', ': '))
-    json_bytes = json_data.encode('utf-8')
+    json_data = json.dumps(sanitized_data, indent=None, separators=(", ", ": "))
+    json_bytes = json_data.encode("utf-8")
 
     signature = sign_for_client(json_bytes)
     assert signature is not None

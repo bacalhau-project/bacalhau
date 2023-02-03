@@ -254,7 +254,7 @@ test:
 
 .PHONY: test-python
 test-python:
-	cd python && make unittest
+	cd python && make test
 
 .PHONY: integration-test
 integration-test:

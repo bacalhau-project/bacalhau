@@ -16,26 +16,31 @@ api_instance = job_api.JobApi(client)
 
 
 def submit(data: dict):
-    """Submit a job to the server."""
+    """Submit a job to the server.
+
+    Input `data` object is sanittized and signed before being sent to the server.
+    """
     sanitized_data = client.sanitize_for_serialization(data)
-    json_data = json.dumps(sanitized_data, indent=None, separators=(', ', ': '))
-    json_bytes = json_data.encode('utf-8')
+    json_data = json.dumps(sanitized_data, indent=None, separators=(", ", ": "))
+    json_bytes = json_data.encode("utf-8")
     signature = sign_for_client(json_bytes)
     client_public_key = get_client_public_key()
     submit_req = SubmitRequest(
-        client_public_key=client_public_key, job_create_payload=sanitized_data, signature=signature
+        client_public_key=client_public_key,
+        job_create_payload=sanitized_data,
+        signature=signature,
     )
     return api_instance.submit(submit_req)
 
 
 def list():
-    """List jobs."""
+    """List all jobs."""
     try:
         # Simply lists jobs.
         list_request = ListRequest(
             client_id=get_client_id(),
             sort_reverse=False,
-            sort_by='created_at',
+            sort_by="created_at",
             return_all=False,
             max_jobs=5,
             exclude_tags=[],
