@@ -222,6 +222,7 @@ export class PipelineStack extends cdk.Stack {
             }),
             environment: {
                 buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
+                computeType: codebuild.ComputeType.MEDIUM,
             },
         });
     }
