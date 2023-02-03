@@ -50,6 +50,9 @@ jobs:
         type: boolean
       build_tags:
         type: string
+      skip_lotus:
+        type: string
+        default: "false"
     steps:
       - checkout
 
@@ -146,6 +149,7 @@ jobs:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
                   TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+                  SKIP_LOTUS: <<parameters.skip_lotus>>
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
@@ -633,25 +637,18 @@ workflows:
             tags:
               ignore: /.*/
 
-  dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
+  # These workflow will run on all branches except 'main' and will not run on tags
+  test_linux_amd64:
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
-              target_os: ["linux", "darwin", "windows"]
-              target_arch: ["amd64", "arm64"]
-              run_tests: [true]
+              target_os: [ "linux" ]
+              target_arch: [ "amd64" ]
+              run_tests: [ true ]
               build_tags: ["unit", "integration"]
-            exclude:
-              - target_os: "windows"
-                target_arch: "arm64"
-                run_tests: true
-                build_tags: "unit"
-              - target_os: "windows"
-                target_arch: "arm64"
-                run_tests: true
-                build_tags: "integration"
+              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -662,21 +659,97 @@ workflows:
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
-            - build-linux-amd64-unit
+            - test-linux-amd64-unit
       - coverage:
           name: Build coverage report
           requires:
             - build
-      ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
-      ## See https://github.com/filecoin-project/bacalhau/issues/434
-      # - deploy:
-      #     name: deploy-development-cluster
-      #     requires:
-      #       - build-linux-amd64-unit
-      #     rollout_stage: development
-      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
-      #     filters:
-      #       <<: *filters_dev_branches # this is calling the previously set yaml anchor
+
+  test_linux_arm64:
+    jobs:
+      - build:
+          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: [ "linux" ]
+              target_arch: [ "arm64" ]
+              run_tests: [ true ]
+              build_tags: [ "unit", "integration" ]
+              skip_lotus: [ "true" ]
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
+  test_darwin_amd64:
+    jobs:
+      - build:
+          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: [ "darwin" ]
+              target_arch: [ "amd64" ]
+              run_tests: [ true ]
+              build_tags: [ "unit", "integration" ]
+              skip_lotus: [ "true" ]
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
+  test_darwin_arm64:
+    jobs:
+      - build:
+          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: [ "darwin" ]
+              target_arch: [ "arm64" ]
+              run_tests: [ true ]
+              build_tags: [ "unit", "integration" ]
+              skip_lotus: [ "true" ]
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
+  test_windows_amd64:
+    jobs:
+      - build:
+          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: [ "windows" ]
+              target_arch: [ "amd64" ]
+              run_tests: [ true ]
+              build_tags: ["unit", "integration"]
+              skip_lotus: [ "true" ]
+
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
+  test_lotus:
+    jobs:
+      - build:
+          name: test-lotus-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: [ "linux"]
+              target_arch: [ "amd64" ]
+              run_tests: [ true ]
+              build_tags: [ "integration" ]
+              skip_lotus: [ "false" ]
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
 
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:

@@ -4,11 +4,12 @@ package executor
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/stretchr/testify/require"

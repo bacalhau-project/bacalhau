@@ -3,6 +3,7 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"runtime"
 	"testing"
@@ -41,6 +42,12 @@ func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerCo
 func SkipIfArm(t *testing.T, issueURL string) {
 	if runtime.GOARCH == "arm64" {
 		t.Skip("Test does not pass natively on arm64", issueURL)
+	}
+}
+
+func SkipLotus(t *testing.T, issueURL string) {
+	if os.Getenv("SKIP_LOTUS") == "true" {
+		t.Skip("Explicitly skipping lotus test suite by setting SKIP_LOTUS", issueURL)
 	}
 }
 
