@@ -74,6 +74,7 @@ type Node struct {
 	APIServer      *publicapi.APIServer
 	ComputeNode    *Compute
 	RequesterNode  *Requester
+	NodeInfoStore  routing.NodeInfoStore
 	CleanupManager *system.CleanupManager
 	IPFSClient     ipfs.Client
 	Host           host.Host
@@ -293,6 +294,7 @@ func NewNode(
 		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
+		NodeInfoStore:  nodeInfoStore,
 		Host:           routedHost,
 	}
 
