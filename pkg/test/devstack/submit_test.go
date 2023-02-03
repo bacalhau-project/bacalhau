@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build integration
 
 package devstack
 
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -52,7 +53,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewRequesterAPIClient(apiUri)

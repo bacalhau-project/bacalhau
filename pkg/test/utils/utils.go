@@ -3,11 +3,14 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -41,6 +44,12 @@ func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerCo
 func SkipIfArm(t *testing.T, issueURL string) {
 	if runtime.GOARCH == "arm64" {
 		t.Skip("Test does not pass natively on arm64", issueURL)
+	}
+}
+
+func SkipLotus(t *testing.T, issueURL string) {
+	if os.Getenv("SKIP_LOTUS") == "true" {
+		t.Skip("Explicitly skipping lotus test suite by setting SKIP_LOTUS", issueURL)
 	}
 }
 
@@ -80,4 +89,27 @@ func MakeJob(
 	}
 
 	return j
+}
+
+// WaitForNodeDiscovery for the requester node to pick up the nodeInfo messages
+func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCount int) {
+	ctx := context.Background()
+	waitDuration := 10 * time.Second
+	waitGaps := 20 * time.Millisecond
+	waitUntil := time.Now().Add(waitDuration)
+
+	for time.Now().Before(waitUntil) {
+		nodeInfos, err := requesterNode.NodeInfoStore.List(ctx)
+		require.NoError(t, err)
+		if len(nodeInfos) == expectedNodeCount {
+			break
+		}
+		time.Sleep(waitGaps)
+	}
+	nodeInfos, err := requesterNode.NodeInfoStore.List(ctx)
+	require.NoError(t, err)
+	if len(nodeInfos) != expectedNodeCount {
+		require.FailNowf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
+			"expected 4 node infos, got %d. %+v", len(nodeInfos), nodeInfos)
+	}
 }

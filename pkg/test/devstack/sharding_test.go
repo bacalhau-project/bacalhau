@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build integration
 
 package devstack
 
@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -75,7 +76,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/explodecid")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	node := stack.IPFSClients[0]
 
@@ -216,7 +217,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testnoshards")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	dirPath := prepareFolderWithFiles(suite.T(), 0)
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
@@ -65,7 +67,6 @@ type ServeOptions struct {
 	JobSelectionDataAcceptNetworked       bool              // Whether to accept jobs that require network access.
 	JobSelectionProbeHTTP                 string            // The HTTP URL to use for job selection.
 	JobSelectionProbeExec                 string            // The executable to use for job selection.
-	MetricsPort                           int               // The port to listen on for metrics.
 	LimitTotalCPU                         string            // The total amount of CPU the system can be using at one time.
 	LimitTotalMemory                      string            // The total amount of memory the system can be using at one time.
 	LimitTotalGPU                         string            // The total amount of GPU the system can be using at one time.
@@ -91,7 +92,6 @@ func NewServeOptions() *ServeOptions {
 		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
 		HostAddress:                     "0.0.0.0",
 		SwarmPort:                       DefaultSwarmPort,
-		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
 		JobSelectionDataAcceptNetworked: false,
@@ -270,10 +270,6 @@ func newServeCmd() *cobra.Command {
 		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
 		`The API key used when using the estuary API.`,
 	)
-	serveCmd.PersistentFlags().IntVar(
-		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
-		`The port to serve prometheus metrics on.`,
-	)
 	serveCmd.PersistentFlags().DurationVar(
 		&OS.LotusFilecoinStorageDuration, "lotus-storage-duration", OS.LotusFilecoinStorageDuration,
 		"Duration to store data in Lotus Filecoin for.",
@@ -311,7 +307,7 @@ func newServeCmd() *cobra.Command {
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup()
 
 	// Context ensures main goroutine waits until killed with ctrl+c:
@@ -320,7 +316,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -382,7 +378,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
-		MetricsPort:          OS.MetricsPort,
 		ComputeConfig:        getComputeConfig(OS),
 		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
 		IsComputeNode:        isComputeNode,
@@ -419,8 +414,68 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return fmt.Errorf("error starting node: %s", err)
 	}
 
+	if OS.PrivateInternalIPFS && OS.PeerConnect == "none" {
+		nodeType := ""
+		if !isRequesterNode {
+			nodeType = "--node-type requester "
+		}
+
+		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
+		if err != nil {
+			return fmt.Errorf("error looking up IPFS addresses: %s", err)
+		}
+
+		p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
+		if err != nil {
+			return err
+		}
+
+		peerAddress := pickP2pAddress(libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
+		ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
+
+		cmd.Println()
+		cmd.Println("To connect another node to this private one, run the following command in your shell:")
+		cmd.Printf(
+			"%s serve %s--private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
+			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
+		)
+
+		if isRequesterNode {
+			cmd.Println()
+			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
+			cmd.Printf("export BACALHAU_IPFS_SWARM_ADDRESSES=%s\n", ipfsSwarmAddress)
+			cmd.Printf("export BACALHAU_API_HOST=%s\n", OS.HostAddress)
+			cmd.Printf("export BACALHAU_API_PORT=%d\n", apiPort)
+		}
+	}
+
 	<-ctx.Done() // block until killed
 	return nil
+}
+
+// pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list
+// of addresses.
+func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
+	value := func(m multiaddr.Multiaddr) int {
+		count := 0
+		if _, err := m.ValueForProtocol(multiaddr.P_TCP); err == nil {
+			count++
+		}
+		if ip, err := m.ValueForProtocol(multiaddr.P_IP4); err == nil {
+			count++
+			if ip != "127.0.0.1" {
+				count++
+			}
+		} else if ip, err := m.ValueForProtocol(multiaddr.P_IP6); err == nil && ip != "::1" {
+			count++
+		}
+		return count
+	}
+	sort.Slice(addresses, func(i, j int) bool {
+		return value(addresses[i]) > value(addresses[j])
+	})
+
+	return addresses[0]
 }
 
 func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {

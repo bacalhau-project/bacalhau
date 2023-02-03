@@ -82,7 +82,8 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		},
 	)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
-	time.Sleep(50 * time.Millisecond) // for the requester node to pick up the nodeInfo messages
+
+	testutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
 }
 
 func (s *NodeSelectionSuite) TearDownSuite() {

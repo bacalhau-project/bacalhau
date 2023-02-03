@@ -26,7 +26,7 @@ func newSimulatorCmd() *cobra.Command {
 func runSimulator(cmd *cobra.Command) error {
 	//Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
-	//cm.RegisterCallback(system.CleanupTraceProvider)
+	//cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 	datastore, err := inmemory.NewInMemoryDatastore()

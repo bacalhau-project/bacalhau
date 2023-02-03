@@ -1,6 +1,10 @@
 variable "bacalhau_version" {
   type = string
 }
+# allows deploying bacalhau from a specific branch instead of a release
+variable "bacalhau_branch" {
+  type = string
+}
 variable "bacalhau_port" {
   type = string
 }
@@ -74,15 +78,6 @@ variable "ssh_access_cidrs" {
   default = []
 }
 
-// secrets - if these are set then they will get injected into a secrets file
-// on the node's persistent data disk. This is useful for initialising stuff
-// like API keys that shouldn't go in the public repo.
-variable "honeycomb_api_key" {
-  type      = string
-  default   = ""
-  sensitive = true
-}
-
 // Out of a total of var.instance_count machines, how many do you want to be GPU machines?
 // I chose this, rather than making a new pool of machines, to maintain configuration parity
 variable "num_gpu_machines" {
@@ -108,30 +103,24 @@ variable "gpu_machine_type" {
   default = "n1-standard-4"
 }
 
-// Version number, omit the 'v' prefix
-variable "prometheus_version" {
-  type    = string
-  default = ""
-}
-
 // Grafana: you can find the /api/prom/push URL, username, and password for your metrics
 // endpoint by clicking on Details in the Prometheus card of the Cloud Portal
 // https://grafana.com/docs/grafana-cloud/fundamentals/cloud-portal/
 // Note: this is not an account-wide API key, but rather a key for Prometheus
-variable "grafana_cloud_api_key" {
+variable "grafana_cloud_prometheus_api_key" {
   type      = string
   default   = ""
   sensitive = true
 }
 
-variable "grafana_cloud_api_user" {
+variable "grafana_cloud_prometheus_user" {
   type    = string
   default = ""
 }
 
 // Remote Write Endpoint 
 // e.g. https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
-variable "grafana_cloud_api_endpoint" {
+variable "grafana_cloud_prometheus_endpoint" {
   type    = string
   default = ""
 }
@@ -141,12 +130,34 @@ variable "grafana_cloud_loki_user" {
   default = ""
 }
 
+variable "grafana_cloud_loki_api_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
 variable "grafana_cloud_loki_endpoint" {
   type    = string
   default = ""
 }
 
 variable "loki_version" {
+  type    = string
+  default = ""
+}
+
+variable "grafana_cloud_tempo_api_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "grafana_cloud_tempo_user" {
+  type    = string
+  default = ""
+}
+
+variable "grafana_cloud_tempo_endpoint" {
   type    = string
   default = ""
 }
@@ -170,4 +181,15 @@ variable "public_ip_addresses" {
 variable "log_level" {
   type    = string
   default = "debug"
+}
+
+// Version number, omit the 'v' prefix
+variable "otel_collector_version" {
+  type    = string
+  default = ""
+}
+
+variable "otel_collector_endpoint" {
+  type    = string
+  default = ""
 }

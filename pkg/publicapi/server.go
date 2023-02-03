@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/libp2p/go-libp2p/core/host"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -105,7 +104,6 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 		{URI: "/varz", Handler: http.HandlerFunc(server.varz)},
 		{URI: "/livez", Handler: http.HandlerFunc(server.livez)},
 		{URI: "/readyz", Handler: http.HandlerFunc(server.readyz)},
-		{URI: "/metrics", Handler: promhttp.Handler(), Raw: true},
 		{URI: "/swagger/", Handler: httpSwagger.WrapHandler, Raw: true},
 	}
 	err := server.RegisterHandlers(handlerConfigs...)
