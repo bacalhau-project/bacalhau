@@ -72,15 +72,19 @@ const config = {
         style: "dark",
         links: [
           {
-            title: "Docs",
+            title: "Learn",
             items: [
               {
                 label: "Getting Started",
                 to: "/getting-started/installation",
               },
               {
-                label: "About Bacalhau",
-                to: "/",
+                label: "Examples",
+                to: "https://docs.bacalhau.org/examples/",
+              },
+              {
+                label: "FAQs",
+                to: "https://docs.bacalhau.org/faqs",
               },
             ],
           },
@@ -88,25 +92,46 @@ const config = {
             title: "Community",
             items: [
               {
-                label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/bacalhau",
+                label: "Discussions",
+                href: "https://github.com/filecoin-project/bacalhau/discussions",
               },
               {
-                label: "Twitter",
-                href: "https://twitter.com/BacalhauProject",
+                label: "Slack",
+                href: "https://filecoin.io/slack",
+              },
+              {
+                label: "Help",
+                href: "https://docs.bacalhau.org/community/ways-to-contribute/",
               },
             ],
           },
           {
             title: "More",
             items: [
-              // {
-              //   label: "Blog",
-              //   to: "https://docs.bacalhau.org/blog",
-              // },
+              {
+                label: "Blog",
+                href: "https://bacalhau.substack.com/",
+              },
               {
                 label: "GitHub",
                 href: "https://github.com/filecoin-project/bacalhau",
+              },
+              {
+                label: "Changelog",
+                href: "https://github.com/filecoin-project/bacalhau/releases/",
+              },
+            ],
+          },
+          {
+            title: "Socials",
+            items: [
+              {
+                label: "YouTube",
+                href: "https://www.youtube.com/channel/UCUgZfGPLRxnxpUK3tSLsmMg",
+              },
+              {
+                label: "Twitter",
+                href: "https://twitter.com/BacalhauProject",
               },
             ],
           },
