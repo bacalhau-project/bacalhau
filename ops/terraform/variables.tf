@@ -1,6 +1,10 @@
 variable "bacalhau_version" {
   type = string
 }
+# allows deploying bacalhau from a specific branch instead of a release
+variable "bacalhau_branch" {
+  type = string
+}
 variable "bacalhau_port" {
   type = string
 }

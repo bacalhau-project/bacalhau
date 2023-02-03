@@ -1,4 +1,5 @@
-bacalhau_version       = "v0.0.0"
+bacalhau_version       = "v0.3.18"
+bacalhau_branch        = ""
 bacalhau_port          = "1235"
 bacalhau_node_id_0     = "QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD"
 bacalhau_node_id_1     = "QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo"
