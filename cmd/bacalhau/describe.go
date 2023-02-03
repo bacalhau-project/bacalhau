@@ -147,18 +147,19 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		Fatal(cmd, fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.Metadata.ID, err), 1)
 	}
 
-	// Convert Json to Yaml
+	
 	if OD.Json != true {
+		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
 		if err != nil {
 			Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
 		}
 		cmd.Print(string(y))
 	} else {
+		// Print as Json
 		cmd.Print(string(b))
 	}
 
-	//cmd.Print(string(y))
 
 	return nil
 }
