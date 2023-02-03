@@ -71,7 +71,7 @@ func newDescribeCmd() *cobra.Command {
 	)
 	describeCmd.PersistentFlags().BoolVar(
 		&OD.JSON, "json", OD.JSON,
-		`Output description as JSON (if not included will be outputed as YAML by default)`,
+		`Output description as JSON (if not included will be outputted as YAML by default)`,
 	)
 
 	return describeCmd
@@ -148,7 +148,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	}
 
 	
-	if OD.JSON != true {
+	if !OD.JSON {
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
 		if err != nil {
