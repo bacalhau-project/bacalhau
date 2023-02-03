@@ -68,10 +68,30 @@ function install-ipfs() {
 }
 
 function install-bacalhau() {
-  echo "Installing Bacalhau"
+  if [[ -n "${BACALHAU_BRANCH}" ]] ; then
+    install-bacalhau-from-source
+  elif [[ -n "${BACALHAU_VERSION}" ]] ; then
+    install-bacalhau-from-release
+  else
+    echo "No bacalhau version or branch specified. Not installing bacalhau."
+    exit 1
+  fi
+}
+
+function install-bacalhau-from-release() {
+  echo "Installing Bacalhau from release ${BACALHAU_VERSION}"
   sudo apt-get -y install --no-install-recommends jq
   wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
+  sudo mv ./bacalhau /usr/local/bin/bacalhau
+}
+
+function install-bacalhau-from-source() {
+  echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
+  sudo apt-get -y install --no-install-recommends golang-go jq
+  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/filecoin-project/bacalhau.git
+  cd bacalhau
+  GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }
 
