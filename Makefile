@@ -373,7 +373,7 @@ ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
-		--format standard-quiet \
+		--format testname \
 		-- \
 			-p ${TEST_PARALLEL_PACKAGES} \
 			./pkg/... ./cmd/... \

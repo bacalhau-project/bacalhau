@@ -51,8 +51,8 @@ jobs:
       build_tags:
         type: string
       skip_lotus:
-        type: boolean
-        default: false
+        type: string
+        default: "false"
     steps:
       - checkout
 
@@ -648,7 +648,7 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
-              skip_lotus: [ true ]
+              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -675,7 +675,7 @@ workflows:
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ true ]
+              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -692,7 +692,7 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ true ]
+              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -709,7 +709,7 @@ workflows:
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ true ]
+              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -726,7 +726,7 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
-              skip_lotus: [ true ]
+              skip_lotus: [ "true" ]
 
           filters:
             branches:
@@ -740,11 +740,11 @@ workflows:
           name: test-lotus-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
-              target_os: [ "linux", "windows"]
+              target_os: [ "linux"]
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "integration" ]
-              skip_lotus: [ false ]
+              skip_lotus: [ "false" ]
           filters:
             branches:
               ignore: main
