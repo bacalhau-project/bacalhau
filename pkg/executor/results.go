@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -25,6 +26,11 @@ type outputResult struct {
 }
 
 func writeOutputResult(resultsDir string, output outputResult) error {
+	if output.contents == nil {
+		// contents may be nil if something went wrong while trying to get the logs
+		output.contents = bytes.NewReader(nil)
+	}
+
 	var err error
 
 	// Consume the passed buffers up to the limit of the maximum bytes. The

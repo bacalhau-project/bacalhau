@@ -84,7 +84,7 @@ func TestWriteResultLimitsEnforced(t *testing.T) {
 
 func TestWriteResultHandlesNilPointers(t *testing.T) {
 	spec := outputResult{
-		contents:     strings.NewReader("hello world"),
+		contents:     nil,
 		filename:     "whatever",
 		fileLimit:    1024,
 		summary:      nil,
