@@ -40,3 +40,31 @@ First, you'll need to check that the bacalhau server is up and running on the sa
 ### Can I run Bacalhau in a containerized setup (nested containers)?
 
 We don't support this as it will result in the classic Dind(Docker In Docker) problem. 
+
+### Can I run non Docker jobs?
+
+Yes! You can run programs using WebAssembly instead. See the [onboarding WebAssembly](https://docs.bacalhau.org/getting-started/wasm-workload-onboarding) for information on how to do that.
+
+### How do I run a script that requires installing packages from a package repository like pypi or apt?
+
+Networking is supported by Bacalhau which enables one to run a script that requires packages from external repository. This is only for Docker workloads
+
+## How do I see a job’s progress while it’s running?
+
+That's currently not possible
+
+## How do I get an IPFS peer if I want to start Bacalhau Server?
+
+A viable option is to run your own IPFS daemon and fetch your multiaddress as explained [here](https://docs.bacalhau.org/running-node/quick-start/#ensure-ipfs-is-running).
+
+## Can I run bacalhau serve on my home machine? What are the requirements?
+
+You can run `bacalhau serve` on any machine that fits the prerequisites listed [here](https://docs.bacalhau.org/running-node/quick-start/). 
+
+:::tip
+The walkthrough in the docs has been tested only on Ubuntu 22, bacalhau is being developed on Linux/macOS environments and therefore should work fine there as well. However, Windows hosts are supported with [limitations](https://docs.bacalhau.org/running-node/windows-support/).
+:::
+
+## Can I stop a running job?
+
+No. Once a job has been submitted (and accepted), it is currently not possible to stop it from runnin
