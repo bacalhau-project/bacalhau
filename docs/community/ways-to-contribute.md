@@ -27,7 +27,7 @@ Before contributing to the Bacalhau docs, please read through our Style guide an
 For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions).
 
 
-## Build with Bacalhau
+### Build with Bacalhau
 
 Bacalhau has an extensive list of examples and tutorial that showcase it's abilities.
 
@@ -35,4 +35,6 @@ However this is just the tip of the iceberg, there are more usecases where Bacal
 
 ## Research
 
-Finally, we see Protocol Labs as a research lab, where YOUR ideas can become technologies that have a real impact on the world. If you're interested in contributing to our research, please reach out to [research@bacalhau.org](mailto:research@bacalhau.org) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.
+Finally, we see Protocol Labs as a research lab, where YOUR ideas can become technologies that have a real impact on the world.
+
+If you're interested in contributing to our research, please reach out to [research@bacalhau.org](mailto:research@bacalhau.org) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.
