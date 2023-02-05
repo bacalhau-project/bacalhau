@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/server"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 
@@ -75,7 +76,7 @@ func newServeCmd() *cobra.Command {
 func serve(cmd *cobra.Command, options *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 

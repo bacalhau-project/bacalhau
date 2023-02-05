@@ -6,20 +6,22 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestTracer(t *testing.T) {
 	t.Cleanup(func() {
-		assert.NoError(t, CleanupTraceProvider())
+		assert.NoError(t, telemetry.Cleanup())
 	})
 
 	var sr SpanRecorder
-	tp := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	tp := sdktrace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
 	tp.RegisterSpanProcessor(&sr)
 
 	ctx := context.Background()

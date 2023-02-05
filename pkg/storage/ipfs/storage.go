@@ -1,4 +1,4 @@
-package apicopy
+package ipfs
 
 import (
 	"context"
@@ -66,7 +66,7 @@ func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume mod
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.PrepareStorage")
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.PrepareStorage")
 	defer span.End()
 
 	var cancel context.CancelFunc
@@ -97,7 +97,7 @@ func (dockerIPFS *StorageProvider) CleanupStorage(_ context.Context, storageSpec
 }
 
 func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.Upload")
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Upload")
 	defer span.End()
 
 	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
@@ -111,7 +111,7 @@ func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string)
 }
 
 func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.Explode")
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Explode")
 	defer span.End()
 
 	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.CID)
@@ -147,7 +147,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 }
 
 func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.copyFile")
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.copyFile")
 	defer span.End()
 
 	outputPath := filepath.Join(dockerIPFS.LocalDir, storageSpec.CID)

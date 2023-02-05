@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -163,7 +164,7 @@ func runWasm(
 
 	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.runWasmCommand")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	wasmCidOrPath := args[0]
 	wasmJob.Spec.Wasm.Parameters = args[1:]
@@ -259,7 +260,7 @@ func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
 
 	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	programPath := args[0]
 	entryPoint := wasmJob.Spec.Wasm.EntryPoint

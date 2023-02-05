@@ -3,7 +3,6 @@ module github.com/filecoin-project/bacalhau
 go 1.19
 
 require (
-	contrib.go.opencensus.io/exporter/prometheus v0.4.2
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/Masterminds/semver v1.5.0
@@ -60,7 +59,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.6
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.14.0
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
 	github.com/rs/zerolog v1.28.0
 	github.com/russross/blackfriday v1.6.0
@@ -70,18 +68,23 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.10
-	github.com/tetratelabs/wazero v1.0.0-pre.4
+	github.com/tetratelabs/wazero v1.0.0-pre.8
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opencensus.io v0.24.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.38.0
 	go.opentelemetry.io/otel v1.12.0
+	go.opentelemetry.io/otel/bridge/opencensus v0.35.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.35.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.12.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.12.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.12.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.7.0
+	go.opentelemetry.io/otel/metric v0.35.0
 	go.opentelemetry.io/otel/sdk v1.12.0
+	go.opentelemetry.io/otel/sdk/metric v0.35.0
 	go.opentelemetry.io/otel/trace v1.12.0
 	go.ptx.dk/multierrgroup v0.0.2
 	go.uber.org/multierr v1.9.0
@@ -90,7 +93,6 @@ require (
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.5.0
-	google.golang.org/grpc v1.52.0
 	k8s.io/apimachinery v0.26.1
 	k8s.io/kubectl v0.26.1
 	modernc.org/sqlite v1.20.2
@@ -99,6 +101,7 @@ require (
 
 require (
 	bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512 // indirect
+	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -284,6 +287,7 @@ require (
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
+	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
@@ -319,9 +323,9 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.12.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.7.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.35.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.12.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.7.0 // indirect
-	go.opentelemetry.io/otel/metric v0.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.14.1 // indirect
@@ -337,6 +341,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
+	google.golang.org/grpc v1.52.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

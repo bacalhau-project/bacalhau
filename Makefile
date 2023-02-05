@@ -1,9 +1,5 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
-ifeq ($(BUILD_SIDECAR), 1)
-	$(MAKE) build-ipfs-sidecar-image
-endif
-
 ifeq ($(GOOS),)
 GOOS = $(shell $(GO) env GOOS)
 endif
@@ -148,13 +144,6 @@ ${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 ################################################################################
 # Target: build-docker-images
 ################################################################################
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
-.PHONY: build-ipfs-sidecar-image
-build-ipfs-sidecar-image:
-	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
-
 HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
 HTTP_GATEWAY_TAG ?= ${TAG}
 .PHONY: build-http-gateway-image
@@ -265,7 +254,7 @@ test:
 
 .PHONY: test-python
 test-python:
-	cd python && make unittest
+	cd python && make test
 
 .PHONY: integration-test
 integration-test:
@@ -380,11 +369,11 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: docker/.pulled ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
-		--format standard-quiet \
+		--format testname \
 		-- \
 			-p ${TEST_PARALLEL_PACKAGES} \
 			./pkg/... ./cmd/... \

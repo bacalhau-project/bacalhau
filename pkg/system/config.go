@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -69,8 +70,7 @@ func InitConfig() error {
 		return fmt.Errorf("failed to load client ID: %w", err)
 	}
 
-	newTraceProvider()
-
+	telemetry.SetupFromEnvs()
 	return nil
 }
 

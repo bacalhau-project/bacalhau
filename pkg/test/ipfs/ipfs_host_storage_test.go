@@ -14,8 +14,9 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -49,7 +50,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return apicopy.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(cm, api)
 		},
 	)
 }
@@ -61,7 +62,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return apicopy.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(cm, api)
 		},
 	)
 }
@@ -75,7 +76,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	tr := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
@@ -98,7 +99,6 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	require.NoError(t, err)
 
@@ -121,7 +121,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	tr := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	dir := t.TempDir()
 
@@ -149,7 +149,6 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	require.NoError(t, err)
 

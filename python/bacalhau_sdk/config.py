@@ -3,6 +3,7 @@
 import base64
 import logging
 import os
+import stat
 from pathlib import Path
 from typing import Union
 
@@ -12,9 +13,9 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 
-
 __client_id = None
 __user_id_key = None
+bits_per_key = 2048
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
@@ -32,7 +33,6 @@ def set_client_id(client_id: str):
     log.debug("set client_id to %s", __client_id)
 
 
-# def get_user_id_key() -> Union[RSA.RsaKey, None]:
 def get_user_id_key():
     """Return the user ID key."""
     global __user_id_key
@@ -69,7 +69,7 @@ def init_config():
 def __ensure_config_dir() -> Path:
     """Ensure the config directory exists and return its path."""
     config_dir_str = os.getenv("BACALHAU_DIR")
-    if config_dir_str is None:
+    if config_dir_str == "" or config_dir_str is None:
         log.debug("BACALHAU_DIR not set, using default of ~/.bacalhau")
         home_path = Path.home()
         config_dir = home_path.joinpath(".bacalhau")
@@ -88,26 +88,24 @@ def __ensure_config_file() -> str:
 
 
 def __ensure_user_id_key(config_dir: Path) -> Path:
-    """Ensure that the user_id key exists."""
-    user_id_key = config_dir.joinpath("user_id.pem")
+    """Ensure that a default user ID key exists in the config dir."""
+    key_file_name = "user_id.pem"
+    user_id_key = config_dir.joinpath(key_file_name)
     if not os.path.isfile(user_id_key):
-        log.error("User ID key not found at %s", user_id_key)
-        raise Exception(
-            """{} does not exist and this python sdk will not generate one for you.
-        Please install the go client and run any command to generate the key:
-        https://docs.bacalhau.org/getting-started/installation""".format(
-                user_id_key
-            )
-        )
+        log.info("User ID key not found at %s, generating one.", user_id_key)
+        key = RSA.generate(bits_per_key)
+        with open(user_id_key, "wb") as f:
+            f.write(key.export_key("PEM", pkcs=1))
+        os.chmod(user_id_key, stat.S_IRUSR | stat.S_IWUSR)
     else:
-        log.debug("Found user ID key at %s", user_id_key)
+        log.info("Found user ID key at %s", user_id_key)
     return user_id_key
 
 
 def __load_user_id_key(key_file: Path) -> RSA.RsaKey:
     """Return the private key."""
     log.debug("Loading user ID key from %s", key_file)
-    with open(key_file, 'rb') as f:
+    with open(key_file, "rb") as f:
         certs = pem.parse(f.read())
         private_key = RSA.import_key(certs[0].as_bytes())
     return private_key
@@ -120,7 +118,7 @@ def __convert_to_client_id(key: RSA.RsaKey) -> str:
     """
     der_key = key.public_key()
     hash_obj = SHA256.new()
-    hash_obj.update(der_key.n.to_bytes(der_key.size_in_bytes(), byteorder='big'))
+    hash_obj.update(der_key.n.to_bytes(der_key.size_in_bytes(), byteorder="big"))
 
     return hash_obj.hexdigest()
 
@@ -168,5 +166,5 @@ def __clean_pem_pub_key(pem_pub_key: str) -> str:
 def get_client_public_key() -> str:
     """Return the client public key."""
     public_key = get_user_id_key().publickey()
-    pem_public_key = public_key.export_key('PEM').decode()
+    pem_public_key = public_key.export_key("PEM").decode()
     return __clean_pem_pub_key(pem_public_key)

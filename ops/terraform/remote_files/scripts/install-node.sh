@@ -68,58 +68,163 @@ function install-ipfs() {
 }
 
 function install-bacalhau() {
-  echo "Installing Bacalhau"
+  if [[ -n "${BACALHAU_BRANCH}" ]] ; then
+    install-bacalhau-from-source
+  elif [[ -n "${BACALHAU_VERSION}" ]] ; then
+    install-bacalhau-from-release
+  else
+    echo "No bacalhau version or branch specified. Not installing bacalhau."
+    exit 1
+  fi
+}
+
+function install-bacalhau-from-release() {
+  echo "Installing Bacalhau from release ${BACALHAU_VERSION}"
   sudo apt-get -y install --no-install-recommends jq
   wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }
 
-function install-prometheus() {
-  echo "Installing Prometheus"
-  if [[ -z "${PROMETHEUS_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_ENDPOINT}" ]] || [[ -z "${GRAFANA_CLOUD_API_USER}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]]; then
-    echo 'PROMETHEUS_VERSION or any of the GRAFANA_CLOUD_API_* env variables are undefined. Skipping Prometheus installation.'
+function install-bacalhau-from-source() {
+  echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
+  sudo apt-get -y install --no-install-recommends golang-go jq
+  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/filecoin-project/bacalhau.git
+  cd bacalhau
+  GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
+  sudo mv ./bacalhau /usr/local/bin/bacalhau
+}
+
+function install-otel-collector() {
+  echo "Installing otel collector"
+  if [[ -z "${OTEL_COLLECTOR_VERSION}" ]] ; then
+    echo 'OTEL_COLLECTOR_VERSION is undefined. Skipping otel collector installation.'
   else
     sudo apt -y update
-    sudo groupadd --system prometheus
-    sudo useradd -s /sbin/nologin --system -g prometheus prometheus
-    sudo mkdir -p /etc/prometheus
-    sudo mkdir -p /var/lib/prometheus
-    wget "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
-    tar xvf "prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
-    # TODO should reset PWD to home dir after each function call
-    cd "prometheus-${PROMETHEUS_VERSION}.linux-amd64"
-    sudo mv prometheus promtool /usr/local/bin/
-    sudo mv consoles/ console_libraries/ /etc/prometheus/
+    sudo groupadd --system otel
+    sudo useradd -s /sbin/nologin --system -g otel otel
+    sudo mkdir -p /etc/otel
+    sudo mkdir -p /var/lib/otel
+    wget "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTEL_COLLECTOR_VERSION}/otelcol-contrib_${OTEL_COLLECTOR_VERSION}_linux_amd64.tar.gz"
+    tar xvf "otelcol-contrib_${OTEL_COLLECTOR_VERSION}_linux_amd64.tar.gz"
+    sudo mv otelcol-contrib /usr/local/bin/otelcol
     # config file
-    HOSTNAME=$(hostname)
-    sudo tee /terraform_node/prometheus.yml > /dev/null <<EOF
-        global:
-          scrape_interval: 240s
-          evaluation_interval: 60s
-          external_labels:
-            origin_prometheus: ${HOSTNAME}
+    sudo tee /terraform_node/otel-collector.yml > /dev/null <<EOF
 
-        scrape_configs:
-          - job_name: 'opentelemetry'
-            static_configs:
-              - targets: ['localhost:2112']
+extensions:
+  health_check:
+  zpages:
+    endpoint: :55679
+  basicauth/prometheus:
+    client_auth:
+      username: ${GRAFANA_CLOUD_PROMETHEUS_USER}
+      password: ${GRAFANA_CLOUD_PROMETHEUS_API_KEY}
+  basicauth/tempo:
+    client_auth:
+      username: ${GRAFANA_CLOUD_TEMPO_USER}
+      password: ${GRAFANA_CLOUD_TEMPO_API_KEY}
+  basicauth/loki:
+    client_auth:
+      username: ${GRAFANA_CLOUD_LOKI_USER}
+      password: ${GRAFANA_CLOUD_LOKI_API_KEY}
 
-        remote_write:
-        - url: ${GRAFANA_CLOUD_API_ENDPOINT}
-          basic_auth:
-            username: ${GRAFANA_CLOUD_API_USER}
-            password: ${GRAFANA_CLOUD_API_KEY}
+receivers:
+  hostmetrics:
+    scrapers:
+      cpu:
+      disk:
+      load:
+      filesystem:
+      memory:
+      network:
+      paging:
+  otlp:
+    protocols:
+      http:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 5s
+          static_configs:
+            - targets: [ '0.0.0.0:8888' ]
+
+exporters:
+  prometheusremotewrite:
+    endpoint: ${GRAFANA_CLOUD_PROMETHEUS_ENDPOINT}
+    auth:
+      authenticator: basicauth/prometheus
+    resource_to_telemetry_conversion:
+      enabled: true
+  otlp:
+    endpoint: ${GRAFANA_CLOUD_TEMPO_ENDPOINT}
+    auth:
+      authenticator: basicauth/tempo
+  loki:
+    endpoint: https://${GRAFANA_CLOUD_LOKI_ENDPOINT}/loki/api/v1/push
+    auth:
+      authenticator: basicauth/loki
+
+processors:
+  batch:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 4000
+    spike_limit_mib: 500
+  resourcedetection/gcp:
+    detectors: [ env, gcp ]
+    timeout: 2s
+    override: false
+  resource:
+    attributes:
+    - key: deployment.environment
+      value: ${TERRAFORM_WORKSPACE}
+      action: insert
+    - key: service.namespace
+      value: bacalhau
+      action: insert
+
+service:
+  extensions: [basicauth/tempo, basicauth/prometheus, basicauth/loki, zpages, health_check]
+  pipelines:
 EOF
-    sudo cp /terraform_node/prometheus.yml /etc/prometheus/prometheus.yml
-    sudo chown -R prometheus:prometheus /var/lib/prometheus/
+
+    if [[ -n "${GRAFANA_CLOUD_PROMETHEUS_ENDPOINT}" ]] && [[ -n "${GRAFANA_CLOUD_PROMETHEUS_USER}" ]] && [[ -n "${GRAFANA_CLOUD_PROMETHEUS_API_KEY}" ]]; then
+      sudo tee -a /terraform_node/otel-collector.yml > /dev/null <<EOF
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection/gcp, resource, batch]
+      exporters: [otlp]
+EOF
+    fi
+
+    if [[ -n "${GRAFANA_CLOUD_TEMPO_ENDPOINT}" ]] && [[ -n "${GRAFANA_CLOUD_TEMPO_USER}" ]] && [[ -n "${GRAFANA_CLOUD_TEMPO_API_KEY}" ]]; then
+      sudo tee -a /terraform_node/otel-collector.yml > /dev/null <<EOF
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resourcedetection/gcp, resource, batch]
+      exporters: [prometheusremotewrite]
+EOF
+    fi
+
+    if [[ -n "${GRAFANA_CLOUD_LOKI_ENDPOINT}" ]] && [[ -n "${GRAFANA_CLOUD_LOKI_USER}" ]] && [[ -n "${GRAFANA_CLOUD_LOKI_API_KEY}" ]]; then
+      sudo tee -a /terraform_node/otel-collector.yml > /dev/null <<EOF
+
+# disabled until promtail receiver is merged in collector-contrib
+#    logs:
+#      receivers: []
+#      processors: [memory_limiter, resourcedetection/gcp, resource, batch]
+#      exporters: [loki]
+EOF
+    fi
+    sudo chown -R otel:otel /terraform_node/otel-collector.yml
   fi
 }
 
 function install-promtail() {
   echo "Installing Promtail/Loki"
-  if [[ -z "${LOKI_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_USER}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_ENDPOINT}" ]]; then
-    echo 'Any of LOKI_VERSION, GRAFANA_CLOUD_API_KEY, GRAFANA_CLOUD_LOKI_USER, GRAFANA_CLOUD_LOKI_ENDPOINT env variables is undefined. Skipping Promtail/Loki installation.'
+  if [[ -z "${LOKI_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_API_KEY}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_USER}" ]] || [[ -z "${GRAFANA_CLOUD_LOKI_ENDPOINT}" ]]; then
+    echo 'Any of LOKI_VERSION, GRAFANA_CLOUD_LOKI_API_KEY, GRAFANA_CLOUD_LOKI_USER, GRAFANA_CLOUD_LOKI_ENDPOINT env variables is undefined. Skipping Promtail/Loki installation.'
   else
     cd ~
     curl -O -L "https://github.com/grafana/loki/releases/download/v${LOKI_VERSION}/promtail-linux-amd64.zip"
@@ -139,7 +244,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: https://${GRAFANA_CLOUD_LOKI_USER}:${GRAFANA_CLOUD_API_KEY}@${GRAFANA_CLOUD_LOKI_ENDPOINT}/loki/api/v1/push
+  - url: https://${GRAFANA_CLOUD_LOKI_USER}:${GRAFANA_CLOUD_LOKI_API_KEY}@${GRAFANA_CLOUD_LOKI_ENDPOINT}/loki/api/v1/push
 
 scrape_configs:
   - job_name: journal
@@ -197,20 +302,23 @@ function init-ipfs() {
 function install-secrets() {
   echo "Installing secrets"
   # set defaults
-  export HONEYCOMB_KEY=""
-  export HONEYCOMB_DATASET="bacalhau_production"
-  export GRAFANA_CLOUD_API_KEY=""
+  export GRAFANA_CLOUD_PROMETHEUS_API_KEY=""
+  export GRAFANA_CLOUD_TEMPO_API_KEY=""
+  export GRAFANA_CLOUD_LOKI_API_KEY=""
   export ESTUARY_API_KEY=""
   if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
 
   # load new values if they were provided
-  if [[ -n "${SECRETS_HONEYCOMB_KEY}" ]]; then
-    export HONEYCOMB_KEY="${SECRETS_HONEYCOMB_KEY}"
+  if [[ -n "${SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY}" ]]; then
+    export GRAFANA_CLOUD_PROMETHEUS_API_KEY="${SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY}"
   fi
-  if [[ -n "${SECRETS_GRAFANA_CLOUD_API_KEY}" ]]; then
-    export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
+  if [[ -n "${SECRETS_GRAFANA_CLOUD_TEMPO_API_KEY}" ]]; then
+      export GRAFANA_CLOUD_TEMPO_API_KEY="${SECRETS_GRAFANA_CLOUD_TEMPO_API_KEY}"
+  fi
+  if [[ -n "${SECRETS_GRAFANA_CLOUD_LOKI_API_KEY}" ]]; then
+      export GRAFANA_CLOUD_LOKI_API_KEY="${SECRETS_GRAFANA_CLOUD_LOKI_API_KEY}"
   fi
   if [[ -n "${SECRETS_ESTUARY_API_KEY}" ]]; then
     export ESTUARY_API_KEY="${SECRETS_ESTUARY_API_KEY}"
@@ -218,9 +326,9 @@ function install-secrets() {
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
-export HONEYCOMB_KEY="${HONEYCOMB_KEY}"
-export HONEYCOMB_DATASET="${HONEYCOMB_DATASET}"
-export GRAFANA_CLOUD_API_KEY="${GRAFANA_CLOUD_API_KEY}"
+export GRAFANA_CLOUD_PROMETHEUS_API_KEY="${GRAFANA_CLOUD_PROMETHEUS_API_KEY}"
+export GRAFANA_CLOUD_TEMPO_API_KEY="${GRAFANA_CLOUD_TEMPO_API_KEY}"
+export GRAFANA_CLOUD_LOKI_API_KEY="${GRAFANA_CLOUD_LOKI_API_KEY}"
 export ESTUARY_API_KEY="${ESTUARY_API_KEY}"
 EOG
 
@@ -246,11 +354,11 @@ function start-services() {
   sudo systemctl daemon-reload
   sudo systemctl enable ipfs-daemon
   sudo systemctl enable bacalhau-daemon
-  sudo systemctl enable prometheus-daemon
+  sudo systemctl enable otel-collector-daemon
   sudo systemctl enable promtail
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
-  sudo systemctl start prometheus-daemon
+  sudo systemctl start otel-collector-daemon
   sudo systemctl start promtail
   sudo service openresty reload
 }
@@ -265,7 +373,7 @@ function install() {
   init-ipfs
   init-bacalhau
   install-secrets
-  install-prometheus
+  install-otel-collector
   install-promtail
   start-services
 }

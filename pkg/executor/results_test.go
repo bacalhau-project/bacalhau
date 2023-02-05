@@ -4,11 +4,12 @@ package executor
 
 import (
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/stretchr/testify/require"
@@ -83,7 +84,7 @@ func TestWriteResultLimitsEnforced(t *testing.T) {
 
 func TestWriteResultHandlesNilPointers(t *testing.T) {
 	spec := outputResult{
-		contents:     strings.NewReader("hello world"),
+		contents:     nil,
 		filename:     "whatever",
 		fileLimit:    1024,
 		summary:      nil,

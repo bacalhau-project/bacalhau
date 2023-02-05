@@ -50,6 +50,7 @@ export IPFS_VERSION="${var.ipfs_version}"
 export LOG_LEVEL="${var.log_level}"
 export BACALHAU_ENVIRONMENT="${terraform.workspace}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
+export BACALHAU_BRANCH="${var.bacalhau_branch}"
 export BACALHAU_PORT="${var.bacalhau_port}"
 export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_NODE_ID_0="${var.bacalhau_node_id_0}"
@@ -57,16 +58,21 @@ export BACALHAU_NODE_ID_1="${var.instance_count > 1 ? var.bacalhau_node_id_1 : "
 export BACALHAU_NODE_ID_2="${var.instance_count > 2 ? var.bacalhau_node_id_2 : ""}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
 export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "true" : "false"}"
-export PROMETHEUS_VERSION="${var.prometheus_version}"
-export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
-export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
+export GRAFANA_CLOUD_PROMETHEUS_USER="${var.grafana_cloud_prometheus_user}"
+export GRAFANA_CLOUD_PROMETHEUS_ENDPOINT="${var.grafana_cloud_prometheus_endpoint}"
 export GRAFANA_CLOUD_LOKI_USER="${var.grafana_cloud_loki_user}"
 export GRAFANA_CLOUD_LOKI_ENDPOINT="${var.grafana_cloud_loki_endpoint}"
 export LOKI_VERSION="${var.loki_version}"
+export GRAFANA_CLOUD_TEMPO_USER="${var.grafana_cloud_tempo_user}"
+export GRAFANA_CLOUD_TEMPO_ENDPOINT="${var.grafana_cloud_tempo_endpoint}"
+export OTEL_COLLECTOR_VERSION="${var.otel_collector_version}"
+export OTEL_EXPORTER_OTLP_ENDPOINT="${var.otel_collector_endpoint}"
+export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=${terraform.workspace}"
 
 ### secrets are installed in the install-node.sh script
-export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
-export SECRETS_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
+export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"
+export SECRETS_GRAFANA_CLOUD_TEMPO_API_KEY="${var.grafana_cloud_tempo_api_key}"
+export SECRETS_GRAFANA_CLOUD_LOKI_API_KEY="${var.grafana_cloud_loki_api_key}"
 export SECRETS_ESTUARY_API_KEY="${var.estuary_api_key}"
 EOI
 
@@ -143,8 +149,8 @@ sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/configs/bacalhau-daemon.service")}
 EOI
 
-sudo tee /etc/systemd/system/prometheus-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/remote_files/configs/prometheus-daemon.service")}
+sudo tee /etc/systemd/system/otel-collector-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/otel-collector-daemon.service")}
 EOI
 
 sudo tee /etc/systemd/system/promtail.service > /dev/null <<'EOI'
@@ -282,8 +288,8 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "4001",  // ipfs swarm
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
-      "2112",  // bacalhau metrics
-      "9090",  // prometheus service
+      "13133",  // otel collector health_check extension
+      "55679", // otel collector zpages extension
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts
     ]

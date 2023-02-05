@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
 	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -37,7 +37,7 @@ func NewStandardStorageProvider(
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := apicopy.NewStorage(cm, options.API)
+	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(cm, options.API)
 	if err != nil {
 		return nil, err
 	}

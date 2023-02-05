@@ -229,11 +229,6 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
-		// metrics
-		//////////////////////////////////////
-		metricsPort := 0
-
-		//////////////////////////////////////
 		// in-memory datastore
 		//////////////////////////////////////
 		var datastore localdb.LocalDB
@@ -278,7 +273,6 @@ func NewDevStack(
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
 			APIPort:              apiPort,
-			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			SimulatorNodeID:      simulatorNodeID,

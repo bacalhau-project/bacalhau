@@ -4,58 +4,15 @@ All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**debug**](UtilsApi.md#debug) | **GET** /debug | Returns debug information on what the current node is doing.
 [**healthz**](UtilsApi.md#healthz) | **GET** /healthz | 
 [**id**](UtilsApi.md#id) | **GET** /id | Returns the id of the host node.
 [**livez**](UtilsApi.md#livez) | **GET** /livez | 
 [**logz**](UtilsApi.md#logz) | **GET** /logz | 
+[**node_info**](UtilsApi.md#node_info) | **GET** /node_info | Returns the info of the node.
 [**peers**](UtilsApi.md#peers) | **GET** /peers | Returns the peers connected to the host via the transport layer.
 [**readyz**](UtilsApi.md#readyz) | **GET** /readyz | 
 [**varz**](UtilsApi.md#varz) | **GET** /varz | 
-[**version**](UtilsApi.md#version) | **POST** /version | Returns the build version running on the server.
 
-
-# **debug**
-> str debug()
-
-Returns debug information on what the current node is doing.
-
-### Example
-```python
-from __future__ import print_function
-import time
-import bacalhau_apiclient
-from bacalhau_apiclient.rest import ApiException
-from pprint import pprint
-
-# create an instance of the API class
-api_instance = bacalhau_apiclient.UtilsApi()
-
-try:
-    # Returns debug information on what the current node is doing.
-    api_response = api_instance.debug()
-    pprint(api_response)
-except ApiException as e:
-    print("Exception when calling UtilsApi->debug: %s\n" % e)
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-**str**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **healthz**
 > HealthInfo healthz()
@@ -222,8 +179,50 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **node_info**
+> NodeInfo node_info()
+
+Returns the info of the node.
+
+### Example
+```python
+from __future__ import print_function
+import time
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = bacalhau_apiclient.UtilsApi()
+
+try:
+    # Returns the info of the node.
+    api_response = api_instance.node_info()
+    pprint(api_response)
+except ApiException as e:
+    print("Exception when calling UtilsApi->node_info: %s\n" % e)
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**NodeInfo**](NodeInfo.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **peers**
-> dict(str, list[str]) peers()
+> list[PeerAddrInfo] peers()
 
 Returns the peers connected to the host via the transport layer.
 
@@ -253,7 +252,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, list[str])**
+[**list[PeerAddrInfo]**](PeerAddrInfo.md)
 
 ### Authorization
 
@@ -344,54 +343,6 @@ No authorization required
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **version**
-> VersionResponse version(version_request)
-
-Returns the build version running on the server.
-
-See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.
-
-### Example
-```python
-from __future__ import print_function
-import time
-import bacalhau_apiclient
-from bacalhau_apiclient.rest import ApiException
-from pprint import pprint
-
-# create an instance of the API class
-api_instance = bacalhau_apiclient.UtilsApi()
-version_request = bacalhau_apiclient.VersionRequest() # VersionRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
-
-try:
-    # Returns the build version running on the server.
-    api_response = api_instance.version(version_request)
-    pprint(api_response)
-except ApiException as e:
-    print("Exception when calling UtilsApi->version: %s\n" % e)
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **version_request** | [**VersionRequest**](VersionRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. | 
-
-### Return type
-
-[**VersionResponse**](VersionResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

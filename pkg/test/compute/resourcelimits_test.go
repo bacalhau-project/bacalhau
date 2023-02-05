@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build integration
 
 package compute
 
@@ -320,7 +320,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		},
 		nodeOverrides...,
 	)
-	time.Sleep(50 * time.Millisecond) // for the requester node to pick up the nodeInfo messages
+	// for the requester node to pick up the nodeInfo messages
+	testutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{

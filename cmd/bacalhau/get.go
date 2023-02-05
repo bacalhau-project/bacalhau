@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -65,7 +66,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 
 	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
 	defer span.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	var err error
 

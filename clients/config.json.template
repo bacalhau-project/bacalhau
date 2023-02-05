@@ -1,1 +1,1 @@
-{"packageName": "PACKAGE-NAME", "projectName":"PACKAGE-NAME", "packageVersion": "VERSION", "projectVersion": "VERSION", "gemVersion": "VERSION" }\
+{"packageName": "PACKAGE-NAME", "projectName":"PACKAGE-NAME", "packageUrl": "https://github.com/filecoin-project/bacalhau/", "packageVersion": "VERSION", "projectVersion": "VERSION", "gemVersion": "VERSION" }\

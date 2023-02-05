@@ -1,18 +1,20 @@
 """Example of submitting a docker job to the API."""
 
+import pprint
+
+from bacalhau_apiclient.models.deal import Deal
+from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
+from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
+from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
+from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
+from bacalhau_apiclient.models.spec import Spec
+from bacalhau_apiclient.models.storage_spec import StorageSpec
+
 from bacalhau_sdk.api import submit
 from bacalhau_sdk.config import get_client_id
-from bacalhau_apiclient.models.storage_spec import StorageSpec
-from bacalhau_apiclient.models.spec import Spec
-from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
-from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
-from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
-from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
-from bacalhau_apiclient.models.deal import Deal
-
 
 data = dict(
-    APIVersion='V1beta1',
+    APIVersion="V1beta1",
     ClientID=get_client_id(),
     Spec=Spec(
         engine="Docker",
@@ -20,7 +22,7 @@ data = dict(
         publisher="Estuary",
         docker=JobSpecDocker(
             image="ubuntu",
-            entrypoint=["echo", "123"],
+            entrypoint=["echo", "Hello World!"],
         ),
         language=JobSpecLanguage(job_context=None),
         wasm=None,
@@ -43,4 +45,4 @@ data = dict(
     ),
 )
 
-print(submit(data))
+pprint.pprint(submit(data))

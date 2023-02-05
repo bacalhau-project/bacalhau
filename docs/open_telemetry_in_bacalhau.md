@@ -55,7 +55,7 @@ For any top level function (e.g. that could be executed by the CLI), include the
 
 		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), NAME_OF_FUNCTION)
 		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+		cm.RegisterCallback(telemetry.Cleanup)
 ```
 
 where `NAME_OF_FUNCTION` is of the form `folder/file/command` -> `cmd/bacalhau/describe`.
