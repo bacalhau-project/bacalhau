@@ -24,7 +24,7 @@ Before contributing to the Bacalhau docs, please read through our Style guide an
 
 ## Community
 
-If you enjoy connecting with people, sharing ideas, have questions, need assistance or have suggestions, you can join our [Slack (#bacalhau channel)](https://filecoin.io/slack) to connect with the team and other members of the community
+For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions).
 
 
 ## Build with Bacalhau
@@ -33,12 +33,6 @@ Bacalhau has an extensive list of examples and tutorial that showcase it's abili
 
 However this is just the tip of the iceberg, there are more usecases where Bacalhau can be implemented, if you have a specific idea you want to try out with Bacalhau, we encourage you to do that and build anything that you think is missing. 
 
-If you're unsure about something, you can join the [Slack (#bacalhau channel)](https://filecoin.io/slack)  to get help or feedback on your specific problem/idea.
-
 ## Research
 
-Finally, we see Protocol Labs as a research lab, where YOUR ideas can become technologies that have a real impact on the world. If you're interested in contributing to our research, please reach out to [research@protocol.ai](mailto:research@protocol.ai) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.
-
-## Need Support?
-
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
+Finally, we see Protocol Labs as a research lab, where YOUR ideas can become technologies that have a real impact on the world. If you're interested in contributing to our research, please reach out to [research@bacalhau.org](mailto:research@bacalhau.org) for more information. Include what your interests are so we can make sure you get to work on something fun and valuable.

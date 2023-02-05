@@ -18,7 +18,6 @@ Subscribe to the [Bacalhau newsletter](https://bacalhau.substack.com/) for offic
 
 Also, our blog contains product updates, company news, and educational content on how you can leverage Bacalhau and the Compute over Data ecosytem [Bacalhau Blog](https://bacalhau.substack.com/).
 
-
 ## Twitter
 
 You can follow our twitter account [@Project Bacalhau](https://twitter.com/BacalhauProject)  to get Bacalhau news, product updates, etc in tweet-sized bites.
