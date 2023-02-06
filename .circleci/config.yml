@@ -255,6 +255,14 @@ jobs:
       - checkout
 
       - run:
+          name: Install golang
+          command: |
+            sudo rm -fr /usr/local/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            go version
+            which go
+
+      - run:
           name: Set canary dependency
           working_directory: ops/aws/canary/lambda
           command: make update
