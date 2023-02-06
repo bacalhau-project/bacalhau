@@ -47,9 +47,8 @@ const (
 // Node is a wrapper around an in-process IPFS node that can be used to
 // interact with the IPFS network without requiring an `ipfs` binary.
 type Node struct {
-	api    icore.CoreAPI
-	node   *core.IpfsNode
-	cancel context.CancelFunc
+	api      icore.CoreAPI
+	ipfsNode *core.IpfsNode
 
 	// Mode is the mode the ipfs node was created in.
 	Mode NodeMode
@@ -162,34 +161,32 @@ func tryCreateNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (
 func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
-		err = loadPlugins()
+		err = loadPlugins(cm)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// go-ipfs uses contexts for lifecycle management:
-	ctx, cancel := context.WithCancel(ctx)
-	cm.RegisterCallback(func() error {
-		cancel()
-		return nil
-	})
-
-	api, node, repoPath, err := createNode(ctx, cm, cfg)
+	api, ipfsNode, repoPath, err := createNode(ctx, cm, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			_ = ipfsNode.Close()
+		}
+	}()
 
-	if err = connectToPeers(ctx, api, node, cfg.getPeerAddrs()); err != nil {
+	if err = connectToPeers(ctx, api, ipfsNode, cfg.getPeerAddrs()); err != nil {
 		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
-	if err = serveAPI(cm, node, repoPath); err != nil {
+	if err = serveAPI(cm, ipfsNode, repoPath); err != nil {
 		return nil, fmt.Errorf("failed to serve API: %w", err)
 	}
 
 	// Fetch useful info from the newly initialized node:
-	nodeCfg, err := node.Repo.Config()
+	nodeCfg, err := ipfsNode.Repo.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
@@ -211,18 +208,20 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	}
 
 	n := Node{
-		api:    api,
-		node:   node,
-		cancel: cancel,
-
+		api:       api,
+		ipfsNode:  ipfsNode,
 		Mode:      cfg.getMode(),
 		RepoPath:  repoPath,
 		APIPort:   apiPort,
 		SwarmPort: swarmPort,
 	}
 
+	cm.RegisterCallback(func() error {
+		return n.Close()
+	})
+
 	// Log details so that user can connect to the new node:
-	log.Trace().Msgf("IPFS node created with ID: %s", node.Identity)
+	log.Trace().Msgf("IPFS node created with ID: %s", ipfsNode.Identity)
 	n.LogDetails()
 
 	return &n, nil
@@ -230,12 +229,12 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 
 // ID returns the node's ipfs ID.
 func (n *Node) ID() string {
-	return n.node.Identity.String()
+	return n.ipfsNode.Identity.String()
 }
 
 // APIAddresses returns the node's api addresses.
 func (n *Node) APIAddresses() ([]string, error) {
-	cfg, err := n.node.Repo.Config()
+	cfg, err := n.ipfsNode.Repo.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
@@ -250,7 +249,7 @@ func (n *Node) APIAddresses() ([]string, error) {
 
 // SwarmAddresses returns the node's swarm addresses.
 func (n *Node) SwarmAddresses() ([]string, error) {
-	cfg, err := n.node.Repo.Config()
+	cfg, err := n.ipfsNode.Repo.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
@@ -291,6 +290,31 @@ func (n *Node) Client() Client {
 	return NewClient(n.api)
 }
 
+func (n *Node) Close() error {
+	log.Debug().Msgf("Closing IPFS node %s", n.ID())
+	var errs *multierror.Error
+	if n.ipfsNode != nil {
+		errs = multierror.Append(errs, n.ipfsNode.Close())
+
+		// We need to make sure we close the repo before we delete the disk contents as this will cause IPFS to print out messages about how
+		// 'flatfs could not store final value of disk usage to file', which is both annoying and can cause test flakes
+		// as the message can be written just after the test has finished but before the repo has been told by node
+		// that it's supposed to shut down.
+		if n.ipfsNode.Repo != nil {
+			if err := n.ipfsNode.Repo.Close(); err != nil { //nolint:govet
+				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
+			}
+		}
+	}
+
+	if n.RepoPath != "" {
+		if err := os.RemoveAll(n.RepoPath); err != nil { //nolint:govet
+			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
+		}
+	}
+	return errs.ErrorOrNil()
+}
+
 // createNode spawns a new IPFS node using a temporary repo path.
 func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
@@ -299,23 +323,6 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 	}
 
 	var repo kuboRepo.Repo
-	cm.RegisterCallback(func() error {
-		var errs error
-		// We need to make sure we close the repo before we delete the disk contents as this will cause IPFS to print out messages about how
-		// 'flatfs could not store final value of disk usage to file', which is both annoying and can cause test flakes
-		// as the message can be written just after the test has finished but before the repo has been told by node
-		// that it's supposed to shut down.
-		if repo != nil {
-			if err := repo.Close(); err != nil { //nolint:govet
-				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
-			}
-		}
-		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
-			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
-		}
-		return errs
-	})
-
 	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
@@ -328,7 +335,7 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 	nodeOptions := &core.BuildCfg{
 		Repo:    repo,
 		Online:  true,
-		Routing: libp2p.DHTOption,
+		Routing: libp2p.DHTClientOption,
 	}
 
 	node, err := core.NewNode(ctx, nodeOptions)
@@ -512,7 +519,7 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 }
 
 // loadPlugins initializes and injects the standard set of ipfs plugins.
-func loadPlugins() error {
+func loadPlugins(cm *system.CleanupManager) error {
 	plugins, err := loader.NewPluginLoader("")
 	if err != nil {
 		return fmt.Errorf("error loading plugins: %s", err)
@@ -528,6 +535,9 @@ func loadPlugins() error {
 
 	// Set the global cache so we can use it in the ipfs daemon:
 	pluginLoader = plugins
+	cm.RegisterCallback(func() error {
+		return plugins.Close()
+	})
 	return nil
 }
 

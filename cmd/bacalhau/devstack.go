@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -46,6 +47,8 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		LocalNetworkLotus:          false,
 		SimulatorAddr:              "",
 		SimulatorMode:              false,
+		CPUProfilingFile:           "",
+		MemoryProfilingFile:        "",
 	}
 }
 
@@ -108,6 +111,14 @@ func newDevStackCmd() *cobra.Command {
 		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
 		`Connect devstack to public IPFS`,
 	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
+		"File to save CPU profiling to",
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
+		"File to save memory profiling to",
+	)
 
 	setupJobSelectionCLIFlags(devstackCmd, OS)
 	setupCapacityManagerCLIFlags(devstackCmd, OS)
@@ -123,7 +134,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
 	defer rootSpan.End()
 
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
 

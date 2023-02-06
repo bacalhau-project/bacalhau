@@ -40,7 +40,6 @@ type NodeConfig struct {
 	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   int
-	MetricsPort               int
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
@@ -75,22 +74,16 @@ type Node struct {
 	APIServer      *publicapi.APIServer
 	ComputeNode    *Compute
 	RequesterNode  *Requester
+	NodeInfoStore  routing.NodeInfoStore
 	CleanupManager *system.CleanupManager
 	IPFSClient     ipfs.Client
 	Host           host.Host
-	metricsPort    int
 }
 
 func (n *Node) Start(ctx context.Context) error {
 	go func(ctx context.Context) {
 		if err := n.APIServer.ListenAndServe(ctx, n.CleanupManager); err != nil {
 			log.Ctx(ctx).Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
-		}
-	}(ctx)
-
-	go func(ctx context.Context) {
-		if err := system.ListenAndServeMetrics(ctx, n.CleanupManager, n.metricsPort); err != nil {
-			log.Ctx(ctx).Error().Msgf("Cannot serve metrics: %v", err)
 		}
 	}(ctx)
 
@@ -301,8 +294,8 @@ func NewNode(
 		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
+		NodeInfoStore:  nodeInfoStore,
 		Host:           routedHost,
-		metricsPort:    config.MetricsPort,
 	}
 
 	return node, nil

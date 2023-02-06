@@ -43,10 +43,6 @@ func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
 }
 
 func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error {
-	if !nodeInfo.IsComputeNode() {
-		return nil
-	}
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

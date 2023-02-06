@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build integration
 
 package devstack
 
@@ -81,7 +81,7 @@ func (suite *ComboDriverSuite) TestComboDriverUnsealed() {
 	testcase.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
 			NumberOfHybridNodes:  1,
-			PublicIPFSMode:       true,
+			PublicIPFSMode:       false,
 			FilecoinUnsealedPath: fmt.Sprintf("%s/{{.CID}}", basePath),
 		},
 	}

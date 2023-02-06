@@ -39,6 +39,8 @@ type DevStackOptions struct {
 	EstuaryAPIKey              string
 	SimulatorAddr              string // if this is set, we will use the simulator transport
 	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
+	CPUProfilingFile           string
+	MemoryProfilingFile        string
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -107,7 +109,7 @@ func NewDevStack(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
 	defer span.End()
 
-	nodes := []*node.Node{}
+	var nodes []*node.Node
 	var lotus *LotusNode
 	var err error
 	var simulatorAddr multiaddr.Multiaddr
@@ -172,7 +174,7 @@ func NewDevStack(
 
 		var libp2pHost host.Host
 		var libp2pPort int
-		libp2pPeer := []multiaddr.Multiaddr{}
+		var libp2pPeer []multiaddr.Multiaddr
 		if simulatorAddr != nil {
 			libp2pPeer = append(libp2pPeer, simulatorAddr)
 		}
@@ -229,11 +231,6 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
-		// metrics
-		//////////////////////////////////////
-		metricsPort := 0
-
-		//////////////////////////////////////
 		// in-memory datastore
 		//////////////////////////////////////
 		var datastore localdb.LocalDB
@@ -278,7 +275,6 @@ func NewDevStack(
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
 			APIPort:              apiPort,
-			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			SimulatorNodeID:      simulatorNodeID,
@@ -334,7 +330,7 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling()
+	profiler := StartProfiling(options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
 		cm.RegisterCallback(profiler.Close)
 	}
@@ -464,7 +460,7 @@ To use the devstack, run the following commands in your shell: %s`,
 	return returnString, nil
 }
 
-func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
+func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
 		if node.Host.ID().String() == nodeID {

@@ -62,7 +62,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = 600 * time.Second
+	downloadSettings.Timeout = 100 * time.Second
 
 	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
@@ -79,7 +79,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	}
 
 	for _, file := range files {
-		log.Debug().Msgf("downloaded files: %s", file)
+		log.Debug().Msgf("downloaded files: %s", file.Name())
 	}
 	if len(files) != 3 {
 		return fmt.Errorf("expected 3 files in output dir, got %d", len(files))

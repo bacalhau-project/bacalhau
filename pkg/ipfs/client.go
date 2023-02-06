@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -102,14 +103,15 @@ func (cl Client) APIAddress() string {
 	return cl.addr
 }
 
-// SwarmAddresses returns a list of swarm addresses the node has announced.
-func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmAddresses")
-	defer span.End()
-
-	id, err := cl.ID(ctx)
+func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error) {
+	id, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching node's ipfs id: %w", err)
+	}
+
+	p2pID, err := ma.NewMultiaddr("/p2p/" + id.ID().String())
+	if err != nil {
+		return nil, err
 	}
 
 	addrs, err := cl.API.Swarm().LocalAddrs(ctx)
@@ -117,12 +119,28 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("error fetching node's swarm addresses: %w", err)
 	}
 
-	var res []string
-	for _, addr := range addrs {
-		res = append(res, fmt.Sprintf("%s/p2p/%s", addr.String(), id))
+	addrs = generic.Map(addrs, func(f ma.Multiaddr) ma.Multiaddr {
+		return f.Encapsulate(p2pID)
+	})
+
+	return addrs, nil
+}
+
+// SwarmAddresses returns a list of swarm addresses the node has announced.
+func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmAddresses")
+	defer span.End()
+
+	multiAddresses, err := cl.SwarmMultiAddresses(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return res, nil
+	addresses := generic.Map(multiAddresses, func(f ma.Multiaddr) string {
+		return f.String()
+	})
+
+	return addresses, nil
 }
 
 // Get fetches a file or directory from the ipfs network.

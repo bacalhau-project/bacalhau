@@ -25,6 +25,9 @@ You can run the scenarios locally before deploying to lambda by using the follow
 ```bash
 # Assuming you are in the ops/aws/canary directory
 go run ./lambda/cmd/scenario_local_runner --action list # or any other scenario
+
+# If you get a `no packages loaded from` error just cd into the /ops/aws/canary/lambda/cmd/scenario_local_runner directory
+go run . --action list
 ```
 
 ## Releasing a New Version

@@ -1,12 +1,10 @@
 package rcmgr
 
 import (
-	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"go.opencensus.io/stats/view"
 )
@@ -56,12 +54,6 @@ var DefaultResourceManager = func(cfg *libp2p.Config) error {
 	err := view.Register(obs.DefaultViews...)
 	if err != nil {
 		log.Warn().Err(err).Msg("failed to register resource manager metrics")
-	}
-	_, err = ocprom.NewExporter(ocprom.Options{
-		Registry: prometheus.DefaultRegisterer.(*prometheus.Registry),
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to register resource manager metric exporter")
 	}
 
 	str, err := obs.NewStatsTraceReporter()

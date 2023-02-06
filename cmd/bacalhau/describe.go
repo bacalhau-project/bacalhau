@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -34,12 +35,14 @@ type DescribeOptions struct {
 	Filename      string // Filename for job (can be .json or .yaml)
 	IncludeEvents bool   // Include events in the description
 	OutputSpec    bool   // Print Just the jobspec to stdout
+	JSON          bool   // Print description as JSON
 }
 
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{
 		IncludeEvents: false,
 		OutputSpec:    false,
+		JSON:          false,
 	}
 }
 
@@ -66,6 +69,10 @@ func newDescribeCmd() *cobra.Command {
 		&OD.IncludeEvents, "include-events", OD.IncludeEvents,
 		`Include events in the description (could be noisy)`,
 	)
+	describeCmd.PersistentFlags().BoolVar(
+		&OD.JSON, "json", OD.JSON,
+		`Output description as JSON (if not included will be outputted as YAML by default)`,
+	)
 
 	return describeCmd
 }
@@ -75,9 +82,13 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
+	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
+		Fatal(cmd, fmt.Sprintf("Failed to parse flags: %v\n", err), 1)
+	}
+
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
 	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	var err error
 	inputJobID := cmdArgs[0]
@@ -131,18 +142,22 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		jobDesc.Status.LocalEvents = localEvents
 	}
 
-	b, err := model.JSONMarshalWithMax(jobDesc)
+	b, err := model.JSONMarshalIndentWithMax(jobDesc, 3)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.Metadata.ID, err), 1)
 	}
 
-	// Convert Json to Yaml
-	y, err := yaml.JSONToYAML(b)
-	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
+	if !OD.JSON {
+		// Convert Json to Yaml
+		y, err := yaml.JSONToYAML(b)
+		if err != nil {
+			Fatal(cmd, fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.Metadata.ID, err), 1)
+		}
+		cmd.Print(string(y))
+	} else {
+		// Print as Json
+		cmd.Print(string(b))
 	}
-
-	cmd.Print(string(y))
 
 	return nil
 }
