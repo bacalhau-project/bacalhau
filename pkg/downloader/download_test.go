@@ -45,7 +45,6 @@ func (ds *DownloaderSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
 
-	// don't use local ipfs node as downloader is using LiteNode which is not compatible with local ipfs node
 	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
 	require.NoError(ds.T(), err)
 
@@ -86,7 +85,7 @@ func (ds *DownloaderSuite) TearDownSuite() {
 		_ = ds.ipfsDownloader.Close()
 	}
 	if ds.node != nil {
-		//ds.node.Close()
+		_ = ds.node.Close()
 	}
 	ds.cm.Cleanup()
 	_ = os.RemoveAll(ds.outputDir)

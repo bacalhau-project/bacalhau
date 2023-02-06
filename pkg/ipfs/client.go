@@ -159,25 +159,9 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
-	providers, err := cl.NodesWithCID(ctx, cid)
-	if err != nil {
-		log.Warn().Err(err).Msgf("failed to fetch providers for %s. Will still attempt to download", cid)
-	} else {
-		log.Trace().Msgf("Found %d providers for %s", len(providers), cid)
-		for i, provider := range providers {
-			log.Trace().Msgf("Provider %d: %+v", i, provider)
-		}
-	}
-
 	node, err := cl.API.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
-	}
-	size, err := node.Size()
-	if err != nil {
-		return fmt.Errorf("failed to get ipfs cid '%s' size: %w", cid, err)
-	} else {
-		log.Trace().Msgf("downloading from ipfs cid '%s' size: %d", cid, size)
 	}
 
 	if err := files.WriteTo(node, outputPath); err != nil {
