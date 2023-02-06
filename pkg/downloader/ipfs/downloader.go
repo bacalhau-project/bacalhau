@@ -22,7 +22,10 @@ type Downloader struct {
 func NewIPFSDownloader(ctx context.Context, settings *model.DownloaderSettings) (*Downloader, error) {
 	var peerAddrs []string
 	for _, addr := range strings.Split(settings.IPFSSwarmAddrs, ",") {
-		peerAddrs = append(peerAddrs, strings.TrimSpace(addr))
+		peerAdr := strings.TrimSpace(addr)
+		if peerAdr != "" {
+			peerAddrs = append(peerAddrs, strings.TrimSpace(addr))
+		}
 	}
 
 	node, err := ipfs.NewLiteNode(ctx, ipfs.LiteNodeParams{
