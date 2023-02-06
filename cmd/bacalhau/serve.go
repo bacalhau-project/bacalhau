@@ -490,6 +490,7 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
 		}
+		cm.RegisterCallback(ipfsNode.Close)
 		client := ipfsNode.Client()
 
 		swarmAddresses, err := client.SwarmAddresses(ctx)

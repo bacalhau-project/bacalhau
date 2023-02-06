@@ -39,6 +39,11 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := n.Close(); closeErr != nil {
+			log.Ctx(ctx).Error().Err(closeErr).Msg("Failed to close IPFS node")
+		}
+	}()
 
 	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
 	ipfsClient := n.Client()
