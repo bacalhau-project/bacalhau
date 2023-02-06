@@ -266,7 +266,7 @@ scrape_configs:
     relabel_configs:
       - action: keep
         source_labels: [__journal__systemd_unit]
-        regex: '^bacalhau-daemon\.service$'
+        regex: '^bacalhau\.service$'
       - source_labels: ['__journal__systemd_unit']
         target_label: 'systemd_unit'
 EOF
@@ -352,13 +352,13 @@ function init-bacalhau() {
 
 function start-services() {
   sudo systemctl daemon-reload
-  sudo systemctl enable ipfs-daemon
-  sudo systemctl enable bacalhau-daemon
-  sudo systemctl enable otel-collector-daemon
+  sudo systemctl enable ipfs
+  sudo systemctl enable bacalhau
+  sudo systemctl enable otel
   sudo systemctl enable promtail
-  sudo systemctl start ipfs-daemon
-  sudo systemctl start bacalhau-daemon
-  sudo systemctl start otel-collector-daemon
+  sudo systemctl start ipfs
+  sudo systemctl start bacalhau
+  sudo systemctl start otel
   sudo systemctl start promtail
   sudo service openresty reload
 }
