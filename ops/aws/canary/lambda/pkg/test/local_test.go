@@ -35,6 +35,9 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...)
+	// for the requester node to pick up the nodeInfo messages
+	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], 2)
+
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
 	require.NoError(t, err)
 	// Need to set the swarm addresses for getIPFSDownloadSettings() to work in test
