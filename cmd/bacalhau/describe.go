@@ -85,7 +85,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
 		Fatal(cmd, fmt.Sprintf("Failed to parse flags: %v\n", err), 1)
 	}
-	
+
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
@@ -142,12 +142,11 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		jobDesc.Status.LocalEvents = localEvents
 	}
 
-	b, err := model.JSONMarshalIndentWithMax(jobDesc,3)
+	b, err := model.JSONMarshalIndentWithMax(jobDesc, 3)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.Metadata.ID, err), 1)
 	}
 
-	
 	if !OD.JSON {
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
@@ -159,7 +158,6 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		// Print as Json
 		cmd.Print(string(b))
 	}
-
 
 	return nil
 }
