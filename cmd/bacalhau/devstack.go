@@ -47,6 +47,8 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		LocalNetworkLotus:          false,
 		SimulatorAddr:              "",
 		SimulatorMode:              false,
+		CPUProfilingFile:           "",
+		MemoryProfilingFile:        "",
 	}
 }
 
@@ -108,6 +110,14 @@ func newDevStackCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
 		`Connect devstack to public IPFS`,
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
+		"File to save CPU profiling to",
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
+		"File to save memory profiling to",
 	)
 
 	setupJobSelectionCLIFlags(devstackCmd, OS)

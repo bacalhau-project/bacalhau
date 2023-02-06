@@ -316,7 +316,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
 	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
