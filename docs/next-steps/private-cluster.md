@@ -4,13 +4,10 @@ sidebar_position: 5
 ---
 # Private Cluster
 
-It is possible to run Bacalhau completely disconnected from the main Bacalhau network, so that you can run private
-workloads without risking running on public nodes. The isolated network will not connect to the public Bacalhau network
-nor connect to the public IPFS network. To do this, we will run IPFS in-process rather than externally.
+It is possible to run Bacalhau completely disconnected from the main Bacalhau network, so that you can run private workloads without risking running on public nodes or inadvertantly sharing your data outside of your organization. The isolated network will not connect to the public Bacalhau network nor connect to the public IPFS network. To do this, we will run IPFS in-process rather than externally.
 
 :::info
-The in-process IPFS is easier to set up, but an IPFS server is better for production. The in-process IPFS
-will use a temporary directory for its repository and so the contents will be lost on shutdown.
+The in-process IPFS is easier to set up, but a separate IPFS server is better for production. The in-process IPFS will use a temporary directory for its repository and so the contents will be lost on shutdown.
 :::
 
 ## Initial Requester Node
