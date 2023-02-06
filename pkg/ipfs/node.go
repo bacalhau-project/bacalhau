@@ -335,7 +335,7 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 	nodeOptions := &core.BuildCfg{
 		Repo:    repo,
 		Online:  true,
-		Routing: libp2p.DHTOption,
+		Routing: libp2p.DHTClientOption,
 	}
 
 	node, err := core.NewNode(ctx, nodeOptions)
