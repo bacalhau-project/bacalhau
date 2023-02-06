@@ -124,7 +124,7 @@ export class PipelineStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            'golang': 1.19
+                            'golang': 1.18
                         },
                     },
                     build: {
