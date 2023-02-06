@@ -28,7 +28,6 @@ import (
 	"github.com/ipfs/kubo/plugin/loader"
 	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -177,7 +176,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		}
 	}()
 
-	if err = connectToPeers(ctx, api, ipfsNode, cfg.getPeerAddrs()); err != nil {
+	if err = connectToPeers(ctx, ipfsNode, cfg.getPeerAddrs()); err != nil {
 		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
@@ -404,47 +403,6 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 	}
 
 	return nil
-}
-
-// connectToPeers connects the node to a list of IPFS bootstrap peers.
-func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, peerAddrs []string) error {
-	log.Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
-	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, peerAddrs)
-
-	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
-	peerInfos := make(map[peer.ID]*peer.AddrInfo)
-	for _, addrStr := range peerAddrs {
-		addr, err := ma.NewMultiaddr(addrStr)
-		if err != nil {
-			return err
-		}
-
-		pii, err := peer.AddrInfoFromP2pAddr(addr)
-		if err != nil {
-			return err
-		}
-
-		peerInfos[pii.ID] = pii
-	}
-
-	// Bootstrap the node's list of peers:
-	var anyErr error
-	var wg sync.WaitGroup
-	wg.Add(len(peerInfos))
-	for _, peerInfo := range peerInfos {
-		go func(peerInfo *peer.AddrInfo) {
-			defer wg.Done()
-			if err := api.Swarm().Connect(ctx, *peerInfo); err != nil {
-				anyErr = err
-				log.Debug().Msgf(
-					"failed to connect to ipfs peer %s, skipping: %s",
-					peerInfo.ID, err)
-			}
-		}(peerInfo)
-	}
-
-	wg.Wait()
-	return anyErr
 }
 
 // createRepo creates an IPFS repository in a given directory.

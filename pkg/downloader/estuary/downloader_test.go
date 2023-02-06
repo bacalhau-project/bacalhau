@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
-
+	"github.com/filecoin-project/bacalhau/pkg/downloader/http"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
@@ -23,8 +23,15 @@ func TestFetchResult(t *testing.T) {
 	settings := &model.DownloaderSettings{
 		Timeout: time.Second * 60,
 	}
-	cm := system.NewCleanupManager()
-	downloader := NewEstuaryDownloader(cm, settings)
+	ipfsDownloader, err := ipfs.NewIPFSDownloader(context.Background(), settings)
+	require.NoError(t, err)
+	defer func() {
+		_ = ipfsDownloader.Close()
+	}()
+	downloader := NewEstuaryDownloader(DownloaderParams{
+		IPFSDownloader: ipfsDownloader,
+		HTTPDownloader: http.NewHTTPDownloader(settings),
+	})
 
 	tests := []struct {
 		CID  string

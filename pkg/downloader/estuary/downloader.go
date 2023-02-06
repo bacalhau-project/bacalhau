@@ -11,6 +11,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
+type DownloaderParams struct {
+	HTTPDownloader *http.Downloader
+	IPFSDownloader *ipfs.Downloader
+}
+
 // Estuary downloader uses HTTP downloader to download result published to Estuary
 // by combining Estuary gateway URL and CID returned by Estuary publisher and passing it for download.
 type Downloader struct {
@@ -18,10 +23,10 @@ type Downloader struct {
 	ipfsDownloader *ipfs.Downloader
 }
 
-func NewEstuaryDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
+func NewEstuaryDownloader(params DownloaderParams) *Downloader {
 	return &Downloader{
-		ipfsDownloader: ipfs.NewIPFSDownloader(cm, settings),
-		httpDownloader: http.NewHTTPDownloader(settings),
+		ipfsDownloader: params.IPFSDownloader,
+		httpDownloader: params.HTTPDownloader,
 	}
 }
 

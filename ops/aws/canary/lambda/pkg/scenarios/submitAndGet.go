@@ -53,7 +53,7 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	downloadSettings.OutputDir = outputDir
 
-	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cm, downloadSettings)
 	if err != nil {
 		return err
 	}

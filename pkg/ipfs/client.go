@@ -16,6 +16,7 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	icoreoptions "github.com/ipfs/interface-go-ipfs-core/options"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 )
@@ -148,6 +149,7 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Get")
 	defer span.End()
 
+	log.Trace().Msgf("Fetching %s from IPFS", cid)
 	// Output path is required to not exist yet:
 	ok, err := system.PathExists(outputPath)
 	if err != nil {
@@ -157,9 +159,25 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
+	providers, err := cl.NodesWithCID(ctx, cid)
+	if err != nil {
+		log.Warn().Err(err).Msgf("failed to fetch providers for %s. Will still attempt to download", cid)
+	} else {
+		log.Trace().Msgf("Found %d providers for %s", len(providers), cid)
+		for i, provider := range providers {
+			log.Trace().Msgf("Provider %d: %+v", i, provider)
+		}
+	}
+
 	node, err := cl.API.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
+	}
+	size, err := node.Size()
+	if err != nil {
+		return fmt.Errorf("failed to get ipfs cid '%s' size: %w", cid, err)
+	} else {
+		log.Trace().Msgf("downloading from ipfs cid '%s' size: %d", cid, size)
 	}
 
 	if err := files.WriteTo(node, outputPath); err != nil {
@@ -244,7 +262,7 @@ func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 }
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
-func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
+func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]peer.AddrInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.NodesWithCID")
 	defer span.End()
 
@@ -253,9 +271,9 @@ func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]string, error)
 		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
 	}
 
-	var res []string
+	var res []peer.AddrInfo
 	for info := range ch {
-		res = append(res, info.ID.String())
+		res = append(res, info)
 	}
 
 	return res, nil
@@ -277,7 +295,7 @@ func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	}
 
 	for _, node := range nodes {
-		if node == id {
+		if node.ID.String() == id {
 			return true, nil
 		}
 	}

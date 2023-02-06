@@ -470,7 +470,7 @@ func downloadResultsHandler(
 		return err
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm, &processedDownloadSettings)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cm, &processedDownloadSettings)
 	if err != nil {
 		return err
 	}

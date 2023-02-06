@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration
 
 package downloader
 
@@ -27,28 +27,29 @@ func TestDownloaderSuite(t *testing.T) {
 type DownloaderSuite struct {
 	suite.Suite
 	cm               *system.CleanupManager
+	node             *ipfs.Node
 	client           ipfs.Client
 	outputDir        string
 	downloadSettings *model.DownloaderSettings
 	downloadProvider DownloaderProvider
+	ipfsDownloader   *ipfs2.Downloader
 }
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
 	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
-}
 
-// Before each test
-func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = system.NewCleanupManager()
 	ds.T().Cleanup(ds.cm.Cleanup)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
 
+	// don't use local ipfs node as downloader is using LiteNode which is not compatible with local ipfs node
 	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
 	require.NoError(ds.T(), err)
 
+	ds.node = node
 	ds.client = node.Client()
 
 	swarm, err := node.SwarmAddresses()
@@ -63,11 +64,32 @@ func (ds *DownloaderSuite) SetupTest() {
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
 
+	ipfsDownloader, err := ipfs2.NewIPFSDownloader(ctx, ds.downloadSettings)
+	require.NoError(ds.T(), err)
+	ds.ipfsDownloader = ipfsDownloader
+
 	ds.downloadProvider = model.NewMappedProvider(
 		map[model.StorageSourceType]Downloader{
-			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
+			model.StorageSourceIPFS: ipfsDownloader,
 		},
 	)
+}
+
+func (ds *DownloaderSuite) SetupTest() {
+	// cleanup output dir before each test
+	ds.NoError(os.RemoveAll(ds.outputDir))
+	ds.NoError(os.MkdirAll(ds.outputDir, os.ModePerm))
+}
+
+func (ds *DownloaderSuite) TearDownSuite() {
+	if ds.ipfsDownloader != nil {
+		_ = ds.ipfsDownloader.Close()
+	}
+	if ds.node != nil {
+		//ds.node.Close()
+	}
+	ds.cm.Cleanup()
+	_ = os.RemoveAll(ds.outputDir)
 }
 
 // Generate a file with random data.

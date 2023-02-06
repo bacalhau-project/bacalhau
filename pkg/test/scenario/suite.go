@@ -115,7 +115,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
 	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
 
-	stack, cm := s.setupStack(scenario.Stack)
+	stack, _ := s.setupStack(scenario.Stack)
 
 	// Check that the stack has the appropriate executor installed
 	for _, node := range stack.Nodes {
@@ -188,8 +188,11 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
 	}
 
-	ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
+	ipfsDownloader, err := ipfs.NewIPFSDownloader(context.Background(), downloaderSettings)
 	require.NoError(s.T(), err)
+	defer func() {
+		_ = ipfsDownloader.Close()
+	}()
 
 	downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
 		model.StorageSourceIPFS: ipfsDownloader,

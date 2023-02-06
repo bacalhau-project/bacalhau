@@ -14,15 +14,29 @@ import (
 )
 
 type Downloader struct {
-	settings *model.DownloaderSettings
-	cm       *system.CleanupManager
+	settings   *model.DownloaderSettings
+	ipfsNode   *ipfs.LiteNode
+	ipfsClient ipfs.LiteClient
 }
 
-func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
-	return &Downloader{
-		cm:       cm,
-		settings: settings,
+func NewIPFSDownloader(ctx context.Context, settings *model.DownloaderSettings) (*Downloader, error) {
+	var peerAddrs []string
+	for _, addr := range strings.Split(settings.IPFSSwarmAddrs, ",") {
+		peerAddrs = append(peerAddrs, strings.TrimSpace(addr))
 	}
+
+	node, err := ipfs.NewLiteNode(ctx, ipfs.LiteNodeParams{
+		PeerAddrs: peerAddrs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Downloader{
+		settings:   settings,
+		ipfsNode:   node,
+		ipfsClient: node.Client(),
+	}, nil
 }
 
 func (ipfsDownloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
@@ -33,22 +47,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
 	defer span.End()
 
-	// NOTE: we have to spin up a temporary IPFS node as we don't
-	// generally have direct access to a remote node's API server.
-	n, err := spinUpIPFSNode(ctx, ipfsDownloader.cm, ipfsDownloader.settings.IPFSSwarmAddrs)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := n.Close(); closeErr != nil {
-			log.Ctx(ctx).Error().Err(closeErr).Msg("Failed to close IPFS node")
-		}
-	}()
-
-	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
-	ipfsClient := n.Client()
-
-	err = func() error {
+	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result CID %s '%s' to '%s'...",
 			result.Data.Name,
@@ -58,7 +57,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(ipfsDownloader.settings.Timeout))
 		defer cancel()
 
-		return ipfsClient.Get(innerCtx, result.Data.CID, downloadPath)
+		return ipfsDownloader.ipfsClient.Get(innerCtx, result.Data.CID, downloadPath)
 	}()
 
 	if err != nil {
@@ -71,18 +70,6 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 	return nil
 }
 
-func spinUpIPFSNode(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	ipfsSwarmAddrs string,
-) (*ipfs.Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
-	defer span.End()
-
-	log.Ctx(ctx).Debug().Msg("Spinning up IPFS node...")
-	n, err := ipfs.NewNode(ctx, cm, strings.Split(ipfsSwarmAddrs, ","))
-	if err != nil {
-		return nil, err
-	}
-	return n, nil
+func (ipfsDownloader *Downloader) Close() error {
+	return ipfsDownloader.ipfsNode.Close()
 }

@@ -64,7 +64,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	downloadSettings.OutputDir = outputDir
 	downloadSettings.Timeout = 100 * time.Second
 
-	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cm, downloadSettings)
 	if err != nil {
 		return err
 	}
