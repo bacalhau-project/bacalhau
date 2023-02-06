@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/phayes/freeport"
@@ -28,7 +29,6 @@ import (
 	"github.com/ipfs/kubo/plugin/loader"
 	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var (
@@ -89,15 +89,15 @@ type Config struct {
 
 	// KeypairSize is the number of bits to use for the node's repo keypair. If
 	// nil, then a default value of 2048 is used.
-	KeypairSize *int
+	KeypairSize int
 }
 
 func (cfg *Config) getKeypairSize() int {
-	if cfg.KeypairSize == nil {
+	if cfg.KeypairSize == 0 {
 		return defaultKeypairSize
 	}
 
-	return *cfg.KeypairSize
+	return cfg.KeypairSize
 }
 
 func (cfg *Config) getMode() NodeMode {
@@ -323,7 +323,7 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 	}
 
 	var repo kuboRepo.Repo
-	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
+	if err = createRepo(repoPath, cfg); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
@@ -407,24 +407,15 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
+// event though we have Peering enabled, some test scenarios relies on the node being eagerly connected to the peers
 func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, peerAddrs []string) error {
 	log.Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
 	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, peerAddrs)
 
 	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
-	peerInfos := make(map[peer.ID]*peer.AddrInfo)
-	for _, addrStr := range peerAddrs {
-		addr, err := ma.NewMultiaddr(addrStr)
-		if err != nil {
-			return err
-		}
-
-		pii, err := peer.AddrInfoFromP2pAddr(addr)
-		if err != nil {
-			return err
-		}
-
-		peerInfos[pii.ID] = pii
+	peerInfos, err := ParsePeersString(peerAddrs)
+	if err != nil {
+		return err
 	}
 
 	// Bootstrap the node's list of peers:
@@ -432,9 +423,9 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 	var wg sync.WaitGroup
 	wg.Add(len(peerInfos))
 	for _, peerInfo := range peerInfos {
-		go func(peerInfo *peer.AddrInfo) {
+		go func(peerInfo peer.AddrInfo) {
 			defer wg.Done()
-			if err := api.Swarm().Connect(ctx, *peerInfo); err != nil {
+			if err := api.Swarm().Connect(ctx, peerInfo); err != nil {
 				anyErr = err
 				log.Debug().Msgf(
 					"failed to connect to ipfs peer %s, skipping: %s",
@@ -448,14 +439,14 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 }
 
 // createRepo creates an IPFS repository in a given directory.
-func createRepo(path string, mode NodeMode, keypairSize int) error {
-	cfg, err := config.Init(io.Discard, keypairSize)
+func createRepo(path string, nodeConfig Config) error {
+	cfg, err := config.Init(io.Discard, nodeConfig.getKeypairSize())
 	if err != nil {
 		return fmt.Errorf("failed to initialize config: %w", err)
 	}
 
 	profile := "flatfs"
-	if mode == ModeLocal {
+	if nodeConfig.getMode() == ModeLocal {
 		profile = "test"
 	}
 
@@ -475,7 +466,7 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 
 	// If we're in local mode, then we need to manually change the config to
 	// serve an IPFS swarm client on some local port:
-	if mode == ModeLocal {
+	if nodeConfig.getMode() == ModeLocal {
 		var gatewayPort int
 		gatewayPort, err = freeport.GetFreePort()
 		if err != nil {
@@ -508,6 +499,17 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 		cfg.Addresses.API = []string{
 			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
 		}
+	}
+
+	// establish peering with the passed nodes. This is different than bootstrapping or manually connecting to peers,
+	//and kubo will create sticky connections with these nodes and reconnect if the connection is lost
+	// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
+	swarmPeers, err := ParsePeersString(nodeConfig.getPeerAddrs())
+	if err != nil {
+		return fmt.Errorf("failed to parse peer addresses: %w", err)
+	}
+	cfg.Peering = config.Peering{
+		Peers: swarmPeers,
 	}
 
 	err = fsrepo.Init(path, cfg)
