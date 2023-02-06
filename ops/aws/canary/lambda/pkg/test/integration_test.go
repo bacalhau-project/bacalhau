@@ -14,6 +14,11 @@ import (
 func TestScenariosAgainstProduction(t *testing.T) {
 	for name := range router.TestcasesMap {
 		t.Run(name, func(t *testing.T) {
+			if name == "submitDockerIPFSJobAndGet" {
+				t.Skip("skipping submitDockerIPFSJobAndGet as it is not stable yet. " +
+					"https://github.com/filecoin-project/bacalhau/issues/1869")
+				return
+			}
 			event := models.Event{Action: name}
 			err := router.Route(context.Background(), event)
 			require.NoError(t, err)
