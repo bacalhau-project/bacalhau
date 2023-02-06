@@ -141,16 +141,16 @@ sudo chmod u+x /var/www/health_checker/*.sh
 # systemd units
 #########
 
-sudo tee /etc/systemd/system/ipfs-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/remote_files/configs/ipfs-daemon.service")}
+sudo tee /etc/systemd/system/ipfs.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/ipfs.service")}
 EOI
 
-sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/remote_files/configs/bacalhau-daemon.service")}
+sudo tee /etc/systemd/system/bacalhau.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/bacalhau.service")}
 EOI
 
-sudo tee /etc/systemd/system/otel-collector-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/remote_files/configs/otel-collector-daemon.service")}
+sudo tee /etc/systemd/system/otel.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/otel.service")}
 EOI
 
 sudo tee /etc/systemd/system/promtail.service > /dev/null <<'EOI'

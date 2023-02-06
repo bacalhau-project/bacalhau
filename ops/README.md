@@ -99,9 +99,9 @@ terraform apply \
   -var="instance_count=1"
 # wait a bit of time so the bacalhau server is up and running
 sleep 10
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau
 # now we need to get the libp2p id of the first node
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -u bacalhau-daemon | grep "peer id is" | awk -F': ' '{print $2}'
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -u bacalhau | grep "peer id is" | awk -F': ' '{print $2}'
 # copy this id and paste it into the variables file
 # edit variables
 #   * bacalhau_connect_node0 = <id copied from SSH command above>
@@ -157,7 +157,7 @@ bash scripts/connect_workspace.sh $WORKSPACE
 terraform apply \
   -var-file $WORKSPACE.tfvars
 sleep 10
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau
 ```
 
 # Deleting short lived cluster
@@ -226,4 +226,4 @@ bash scripts/upload_cid.sh production ~/path/to/local/content
 To inspect the aggregated logs in Grafana Cloud access [this dashboard](https://protocollabs.grafana.net/goto/lKmGkWT4z?orgId=1) (requires credentials!).
 
 
-Alternatively, you need to ssh into the hosts in the [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production) project. Inspect the logs with `journalctl -u bacalhau-daemon -f`.
+Alternatively, you need to ssh into the hosts in the [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production) project. Inspect the logs with `journalctl -u bacalhau -f`.
