@@ -62,7 +62,7 @@ export class PipelineStack extends cdk.Stack {
                     ],
                 },
                 {
-                    stageName: 'TestStaging',
+                    stageName: 'PreStagingVerification',
                     actions: [
                         new codepipeline_actions.CodeBuildAction({
                             actionName: 'IntegrationTest',
@@ -88,12 +88,16 @@ export class PipelineStack extends cdk.Stack {
                     ],
                 },
                 {
-                    stageName: 'TestProd',
+                    stageName: 'PreProdVerification',
                     actions: [
                         new codepipeline_actions.CodeBuildAction({
                             actionName: 'IntegrationTest',
                             project: this.getIntegrationTest(prodConfig),
                             input: sourceOutput,
+                        }),
+                        new codepipeline_actions.ManualApprovalAction({
+                            actionName: 'ManualApproval',
+                            additionalInformation: 'Approve the Canary deployment to production',
                         }),
                     ],
                 },
