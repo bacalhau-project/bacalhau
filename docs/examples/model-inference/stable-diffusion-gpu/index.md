@@ -338,7 +338,7 @@ path=!echo $PATH
 
 To submit a job, you can use the Bacalhau CLI. The following command passes a prompt to the model and generates an image in the outputs directory.
 
-The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/getting-started/gpu) in the documentation. 
+The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](../../../next-steps/gpu) in the documentation. 
 
 :::tip
 
