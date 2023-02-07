@@ -41,8 +41,7 @@ func (s *lotusNodeSuite) SetupTest() {
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
-	s.T().Skip("Test is flaky", "https://github.com/filecoin-project/bacalhau/issues/1705")
-	testutils.SkipLotus(s.T(), "https://github.com/filecoin-project/bacalhau/pull/1865")
+	s.T().Skip("Test is flaky", "https://github.com/filecoin-project/bacalhau/issues/1705", "pkg/publisher/filecoin_lotus/publisher_test.go")
 	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

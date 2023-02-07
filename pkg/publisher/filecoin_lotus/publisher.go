@@ -39,12 +39,12 @@ type Publisher struct {
 	client api.Client
 }
 
-func NewFilecoinLotusPublisher(
+func NewPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	config PublisherConfig,
 ) (*Publisher, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewFilecoinLotusPublisher")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewPublisher")
 	defer span.End()
 
 	if config.StorageDuration == time.Duration(0) {
@@ -63,16 +63,20 @@ func NewFilecoinLotusPublisher(
 	}
 	cm.RegisterCallback(client.Close)
 
+	return newPublisher(config, client), nil
+}
+
+func newPublisher(
+	config PublisherConfig,
+	client api.Client,
+) *Publisher {
 	return &Publisher{
 		config: config,
 		client: client,
-	}, nil
+	}
 }
 
 func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
-	defer span.End()
-
 	if _, err := l.client.Version(ctx); err != nil {
 		return false, err
 	}
@@ -85,9 +89,6 @@ func (l *Publisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/PublishShardResult")
-	defer span.End()
-
 	log.Ctx(ctx).Debug().
 		Stringer("shard", shard).
 		Str("host", hostID).
@@ -115,9 +116,6 @@ func (l *Publisher) PublishShardResult(
 }
 
 func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/carResultsDir")
-	defer span.End()
-
 	tempFile, err := os.CreateTemp(l.config.UploadDir, "results-*.car")
 	if err != nil {
 		return "", err
@@ -142,9 +140,6 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 }
 
 func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
-	defer span.End()
-
 	res, err := l.client.ClientImport(ctx, api.FileRef{
 		Path:  filePath,
 		IsCAR: true,
@@ -156,9 +151,6 @@ func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, e
 }
 
 func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
-	defer span.End()
-
 	dataSize, err := l.client.ClientDealPieceCID(ctx, contentCid)
 	if err != nil {
 		return "", err

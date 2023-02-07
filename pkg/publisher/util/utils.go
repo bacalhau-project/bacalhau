@@ -46,7 +46,7 @@ func NewIPFSPublishers(
 
 	var lotus publisher.Publisher = ipfsPublisher
 	if lotusConfig != nil {
-		lotus, err = filecoinlotus.NewFilecoinLotusPublisher(ctx, cm, *lotusConfig)
+		lotus, err = filecoinlotus.NewPublisher(ctx, cm, *lotusConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -61,9 +61,9 @@ func NewIPFSPublishers(
 }
 
 func NewNoopPublishers(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	resolver *job.StateResolver,
+	_ context.Context,
+	_ *system.CleanupManager,
+	_ *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
 	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil
