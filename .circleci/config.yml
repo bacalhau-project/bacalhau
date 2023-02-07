@@ -50,9 +50,6 @@ jobs:
         type: boolean
       build_tags:
         type: string
-      skip_lotus:
-        type: string
-        default: "false"
     steps:
       - checkout
 
@@ -149,7 +146,6 @@ jobs:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
                   TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
-                  SKIP_LOTUS: <<parameters.skip_lotus>>
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
@@ -653,7 +649,6 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
-              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -680,7 +675,6 @@ workflows:
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -697,7 +691,6 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -714,7 +707,6 @@ workflows:
               target_arch: [ "arm64" ]
               run_tests: [ true ]
               build_tags: [ "unit", "integration" ]
-              skip_lotus: [ "true" ]
           filters:
             branches:
               ignore: main
@@ -731,25 +723,6 @@ workflows:
               target_arch: [ "amd64" ]
               run_tests: [ true ]
               build_tags: ["unit", "integration"]
-              skip_lotus: [ "true" ]
-
-          filters:
-            branches:
-              ignore: main
-            tags:
-              ignore: /.*/
-
-  test_lotus:
-    jobs:
-      - build:
-          name: test-lotus-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-          matrix:
-            parameters:
-              target_os: [ "linux"]
-              target_arch: [ "amd64" ]
-              run_tests: [ true ]
-              build_tags: [ "integration" ]
-              skip_lotus: [ "false" ]
           filters:
             branches:
               ignore: main

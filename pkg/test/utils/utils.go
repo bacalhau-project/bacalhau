@@ -3,9 +3,7 @@ package testutils
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
-	"runtime"
 	"testing"
 	"time"
 
@@ -27,7 +25,7 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.Reques
 	return j
 }
 
-func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerContents, error) {
+func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerContents, error) {
 	linesInOutput := system.SplitLines(output)
 	fakeFatalError := &model.TestFatalErrorHandlerContents{}
 	for _, line := range linesInOutput {
@@ -39,18 +37,6 @@ func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerCo
 		}
 	}
 	return model.TestFatalErrorHandlerContents{}, fmt.Errorf("no fatal error found in output")
-}
-
-func SkipIfArm(t *testing.T, issueURL string) {
-	if runtime.GOARCH == "arm64" {
-		t.Skip("Test does not pass natively on arm64", issueURL)
-	}
-}
-
-func SkipLotus(t *testing.T, issueURL string) {
-	if os.Getenv("SKIP_LOTUS") == "true" {
-		t.Skip("Explicitly skipping lotus test suite by setting SKIP_LOTUS", issueURL)
-	}
 }
 
 func MakeGenericJob() *model.Job {
