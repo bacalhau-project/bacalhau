@@ -21,8 +21,8 @@ import (
 )
 
 // Client is a front-end for an ipfs node's API endpoints. You can create
-// Client instances manually by connecting to an ipfs node's API multiaddr,
-// or automatically from an active Node instance.
+// Client instances manually by connecting to an ipfs node's API multiaddr using NewClientUsingRemoteHandler,
+// or automatically from an active Node instance using NewClient.
 type Client struct {
 	API  icore.CoreAPI
 	addr string
@@ -90,6 +90,9 @@ func (cl Client) WaitUntilAvailable(ctx context.Context) error {
 
 // ID returns the node's ipfs ID.
 func (cl Client) ID(ctx context.Context) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.ID")
+	defer span.End()
+
 	key, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
@@ -104,6 +107,9 @@ func (cl Client) APIAddress() string {
 }
 
 func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmMultiAddresses")
+	defer span.End()
+
 	id, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching node's ipfs id: %w", err)
@@ -128,9 +134,6 @@ func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error
 
 // SwarmAddresses returns a list of swarm addresses the node has announced.
 func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmAddresses")
-	defer span.End()
-
 	multiAddresses, err := cl.SwarmMultiAddresses(ctx)
 	if err != nil {
 		return nil, err
@@ -213,7 +216,7 @@ type StatResult struct {
 
 // Stat returns information about an IPLD CID on the ipfs network.
 func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "kg/ipfs.Stat")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Stat")
 	defer span.End()
 
 	node, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
