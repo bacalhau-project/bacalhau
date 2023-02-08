@@ -78,3 +78,20 @@ bacalhau serve \
 You can use the `--host` flag to restrict network access to the REST api.
 
 :::
+
+## Generic Endpoint
+You can now call http://dashboard.bacalhau.org:1000/api/v1/run with the POST body as a JSON serialized v1beta1 Spec as defined here
+
+```
+curl -XPOST -d '{"Engine": "Docker", "Docker": {"Image": "ubuntu", "Entrypoint": ["echo", "hello"]}, "Deal": {"Concurrency": 1}, "Verifier": "Noop", "Publisher": "IPFS"}' 'http://dashboard.bacalhau.org:1000/api/v1/run'; echo
+```
+You'll get a CID output
+```
+"cid": "QmeNhAA97qtdGHQtd1Qvgk13C6GHkn6aTCT8ih53JLN7vL"
+```
+
+Here is a working example on how this can be done:
+
+```
+curl -XPOST -d '{"prompt": "rainbow unicorn"}' 'http://dashboard.bacalhau.org:1000/api/v1/stablediffusion'
+```
