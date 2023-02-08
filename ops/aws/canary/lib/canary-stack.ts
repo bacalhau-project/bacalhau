@@ -103,6 +103,7 @@ export class CanaryStack extends cdk.Stack {
             timeout: cdk.Duration.minutes(props.timeoutMinutes),
             memorySize: props.memorySize,
             ephemeralStorageSize: Size.mebibytes(props.storageSize),
+            retryAttempts: 0,
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': props.logLevel,
