@@ -130,7 +130,7 @@ Once the executor has completed the running of the job, a verification proposal 
 - The requester node will wait for enough proposals before comparing the results hashes
 - It will then broadcast “results accepted” and “results rejected” events based on it’s decision for verification
 
-In the case of a deterministic job, a user can guard against malicious compute nodes that join the network that bid and propose wrong results by using `--verifier deterministic --min-bids N --concurrency 3` (where N is, say, >half of the size  of the network, currently 9) this will require that _N_ bids are received before the requestor node chooses between them randomly. So when you submit wasm jobs (which are deterministic) this can give you a good level of confidence the jobs are evenly spread across nodes and malicious nodes will be, on average, caught out.
+In the case of a deterministic job, a user can guard against malicious compute nodes that join the network, bids and propose wrong results by using `--verifier deterministic --min-bids N --concurrency 3` (where N is, say, >half of the size  of the network, currently 9). This will require that _N_ bids are received before the requestor node chooses between them randomly. So when you submit WASM jobs (which are deterministic) this can give you a good level of confidence the jobs are evenly spread across nodes and malicious nodes will be, on average, caught out.
 
 It’s possible to use other types of verification methods by re-implementing the verification interface and using another technique.
 
