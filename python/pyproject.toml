@@ -40,7 +40,7 @@ toml = {version = "^0.10.2", optional = true}
 bacalhau-apiclient = "*"
 pem = "^21.2.0"
 pycryptodome = "^3.16.0"
-cryptography = "^38.0.4"
+cryptography = "^39.0.1"
 six = "^1.16.0"
 types-six = "^1.16.21.4"
 
