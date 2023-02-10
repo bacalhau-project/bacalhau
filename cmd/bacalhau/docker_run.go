@@ -52,6 +52,7 @@ type DockerRunOptions struct {
 	Verifier         string   // Verifier - verifier.Verifier
 	Publisher        string   // Publisher - publisher.Publisher
 	Inputs           []string // Array of input CIDs
+	InputRepos       []string // Array of input Repos
 	InputUrls        []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
@@ -94,6 +95,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Verifier:           "noop",
 		Publisher:          "estuary",
 		Inputs:             []string{},
+		InputRepos:         []string{},
 		InputUrls:          []string{},
 		InputVolumes:       []string{},
 		OutputVolumes:      []string{},
@@ -172,6 +174,14 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Inputs, "inputs", "i", ODR.Inputs,
 		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+	)
+
+	//nolint:lll // Documentation, ok if long.
+	// #TODO support mounting from a branch or a commit
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&ODR.InputRepos, "input-repos", "r", ODR.InputRepos,
+		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/filecoin-project/bacalhau.git'
+		mounts the repo at '/inputs/filecoin-project/bacalhau').`,
 	)
 
 	//nolint:lll // Documentation, ok if long.
@@ -401,6 +411,7 @@ func CreateJob(ctx context.Context,
 		odr.Networking,
 		odr.NetworkDomains,
 		odr.InputUrls,
+		odr.InputRepos,
 		odr.InputVolumes,
 		odr.OutputVolumes,
 		odr.Env,

@@ -102,6 +102,7 @@ func (f *StandardExecutorsFactory) Get(
 			Storage: executor_util.StandardStorageProviderOptions{
 				API:                  nodeConfig.IPFSClient,
 				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
+				EstuaryAPIKey:        nodeConfig.EstuaryAPIKey,
 			},
 		},
 	)

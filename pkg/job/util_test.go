@@ -76,7 +76,7 @@ func (s *JobUtilSuite) TestRun_URLs() {
 		for _, testURL := range testURLs {
 			func() {
 				// Test all URLs against the validator
-				spec, err := buildJobInputs(nil, []string{testURL.submittedURL})
+				spec, err := buildJobInputs(nil, []string{testURL.submittedURL}, nil)
 				originalURLTrimmed := strings.Trim(testURL.submittedURL, `"' `)
 				convertedTrimmed := strings.Trim(testURL.convertedURL, `"' `)
 				if testURL.valid {

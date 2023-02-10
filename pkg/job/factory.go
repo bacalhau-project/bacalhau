@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/clone"
+
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -51,6 +53,7 @@ func ConstructDockerJob( //nolint:funlen
 	network model.Network,
 	domains []string,
 	inputUrls []string,
+	inputRepos []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -75,7 +78,22 @@ func ConstructDockerJob( //nolint:funlen
 	}
 	jobContexts := []model.StorageSpec{}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
+	for _, url := range inputRepos {
+		repoCID, _ := clone.RepoExistsOnIPFSGivenUrl(url)
+		// if err != nil {
+		// 	fmt.Print(err)
+		// }
+		if repoCID != "" {
+			inputRepos = clone.RemoveFromSlice(inputRepos, url)
+			repoCIDPATH := repoCID + ":/inputs"
+
+			SHAtoCID := []string{}
+			SHAtoCID = append(SHAtoCID, repoCIDPATH)
+			inputVolumes = append(inputVolumes, SHAtoCID...)
+		}
+	}
+
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls,inputRepos)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -189,7 +207,7 @@ func ConstructLanguageJob(
 	// TODO refactor this wrt ConstructDockerJob
 	jobContexts := []model.StorageSpec{}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls,nil)
 	if err != nil {
 		return &model.Job{}, err
 	}

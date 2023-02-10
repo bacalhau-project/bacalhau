@@ -28,10 +28,12 @@ type Task struct {
 type Resource struct {
 	IPFS *IPFSResource
 	HTTP *HTTPResource
+	Repo *RepoResource
 }
 
 type IPFSResource string
 type HTTPResource string
+type RepoResource string
 
 type BacalhauConfig struct {
 	Publisher   Publisher
@@ -117,6 +119,9 @@ func parseStorageSource(path string, resource *Resource) StorageSpec {
 	if resource.IPFS != nil {
 		storageSpec.StorageSource = StorageSourceIPFS
 		storageSpec.CID = strings.TrimLeft(string(*resource.IPFS), ":/")
+	} else if resource.HTTP != nil && strings.HasSuffix(path, ".git") {
+		storageSpec.StorageSource = StorageSourceRepoClone
+		storageSpec.Repo = "http" + string(*resource.HTTP)
 	} else if resource.HTTP != nil {
 		storageSpec.StorageSource = StorageSourceURLDownload
 		storageSpec.URL = "http" + string(*resource.HTTP)

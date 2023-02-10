@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -56,8 +57,21 @@ func NewNoopStateLoader() StateLoader {
 	return stateLoader
 }
 
-func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
+func buildJobInputs(inputVolumes, inputUrls []string, inputRepos []string) ([]model.StorageSpec, error) {
 	jobInputs := []model.StorageSpec{}
+
+	for _, inputRepo := range inputRepos {
+		u, err := IsValidGitRepoURL(inputRepo)
+
+		if err != nil {
+			return []model.StorageSpec{}, err
+		}
+		jobInputs = append(jobInputs, model.StorageSpec{
+			StorageSource: model.StorageSourceRepoClone,
+			Repo:          u.String(),
+			Path:          "/inputs",
+		})
+	}
 
 	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
 	for _, inputURL := range inputUrls {
@@ -181,4 +195,29 @@ func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSour
 		CID:           cid,
 		Metadata:      map[string]string{},
 	}
+}
+
+
+func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
+	// Check if the URL string is empty
+	if urlStr == "" {
+		return nil, fmt.Errorf("URL is empty")
+	}
+
+	// Parse the URL
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if the URL is a Git repository URL
+	if u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "ssh" {
+		return nil, fmt.Errorf("URL must use HTTPS, HTTP, or SSH scheme")
+	}
+
+	if !strings.HasSuffix(u.Path, ".git") {
+		return nil, fmt.Errorf("URL must use .git file extension")
+	}
+
+	return u, nil
 }

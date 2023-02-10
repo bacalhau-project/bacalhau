@@ -79,6 +79,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					model.NetworkNone, // networking
 					[]string{},        // domains
 					[]string{},        // input urls
+					[]string{},        // input repos
 					[]string{},        // input volumes
 					outputVolumes,
 					[]string{}, // env

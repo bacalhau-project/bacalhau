@@ -99,4 +99,31 @@ func (e *estuaryPublisher) PublishShardResult(
 	return spec, nil
 }
 
+func PinToIPFSViaEstuary(
+	ctx context.Context,
+	EstuaryAPIKey string,
+	CID string,
+) error {
+
+	client := GetClient(ctx, EstuaryAPIKey)
+	_, cancel := context.WithTimeout(ctx, publisherTimeout)
+	defer cancel()
+	pin := estuary_client.TypesIpfsPin{
+		Cid: CID,
+	}
+	addCarResponse, httpResponse, err := client.PinningApi.PinningPinsPost( //nolint:bodyclose // golangcilint is dumb - this is closed
+		ctx,
+		pin,
+	)
+	if err != nil && err != io.EOF {
+		return err
+	} else if httpResponse.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("Pinning to Estuary failed")
+	}
+	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
+	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
+
+	return nil
+}
+
 var _ publisher.Publisher = (*estuaryPublisher)(nil)
