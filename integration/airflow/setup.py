@@ -8,7 +8,15 @@ with open('README.md') as readme_file:
     readme = readme_file.read()
 
 
-requirements = []
+requirements = [
+    # "Package-A @ git+https://example.net/package-a.git@main",
+    # "bacalhau_sdk==0.1.2",
+
+    # "bacalhau_sdk @ git+https://github.com/filecoin-project/bacalhau.git@main#egg=bacalhau_sdk&subdirectory=python"
+    "bacalhau_sdk @ git+https://github.com/filecoin-project/bacalhau.git@7c2b6208538a28f558f5de21c34a49e4c58c0f76#egg=bacalhau_sdk&subdirectory=python",
+
+    "apache-airflow>=2.3.0",
+]
 
 test_requirements = []
 
@@ -22,7 +30,6 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
     description="Python Boilerplate contains all the boilerplate you need to create a Python package.",

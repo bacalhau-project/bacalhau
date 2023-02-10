@@ -5,11 +5,11 @@
 
 import unittest
 
-from bacalhau import bacalhau
+from bacalhau.hooks import BacalhauHook
 
 
-class TestBacalhau(unittest.TestCase):
-    """Tests for `bacalhau` package."""
+class TestBacalhauHook(unittest.TestCase):
+    """Tests for `bacalhau.hooks` package."""
 
     def setUp(self):
         """Set up test fixtures, if any."""
@@ -19,3 +19,5 @@ class TestBacalhau(unittest.TestCase):
 
     def test_000_something(self):
         """Test something."""
+        assert True is True
+        pass
