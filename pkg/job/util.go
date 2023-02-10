@@ -197,27 +197,22 @@ func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSour
 	}
 }
 
-
 func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
 	// Check if the URL string is empty
 	if urlStr == "" {
 		return nil, fmt.Errorf("URL is empty")
 	}
-
 	// Parse the URL
 	u, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
-
 	// Check if the URL is a Git repository URL
 	if u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "ssh" {
 		return nil, fmt.Errorf("URL must use HTTPS, HTTP, or SSH scheme")
 	}
-
 	if !strings.HasSuffix(u.Path, ".git") {
 		return nil, fmt.Errorf("URL must use .git file extension")
 	}
-
 	return u, nil
 }

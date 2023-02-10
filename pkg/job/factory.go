@@ -79,7 +79,7 @@ func ConstructDockerJob( //nolint:funlen
 	jobContexts := []model.StorageSpec{}
 
 	for _, url := range inputRepos {
-		repoCID, _ := clone.RepoExistsOnIPFSGivenUrl(url)
+		repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
 		// if err != nil {
 		// 	fmt.Print(err)
 		// }
@@ -93,7 +93,7 @@ func ConstructDockerJob( //nolint:funlen
 		}
 	}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls,inputRepos)
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, inputRepos)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -207,7 +207,7 @@ func ConstructLanguageJob(
 	// TODO refactor this wrt ConstructDockerJob
 	jobContexts := []model.StorageSpec{}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls,nil)
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, nil)
 	if err != nil {
 		return &model.Job{}, err
 	}

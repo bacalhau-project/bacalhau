@@ -104,7 +104,6 @@ func PinToIPFSViaEstuary(
 	EstuaryAPIKey string,
 	CID string,
 ) error {
-
 	client := GetClient(ctx, EstuaryAPIKey)
 	_, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
@@ -118,11 +117,10 @@ func PinToIPFSViaEstuary(
 	if err != nil && err != io.EOF {
 		return err
 	} else if httpResponse.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("Pinning to Estuary failed")
+		return fmt.Errorf("pinning to estuary failed")
 	}
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
-
 	return nil
 }
 

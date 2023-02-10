@@ -2,9 +2,8 @@ package repo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	log1 "log"
 	"os"
 	"path/filepath"
@@ -13,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
-	"path"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -28,10 +26,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-type ScriptStruct struct {
-	path      string
-	arguments []string
-}
+// type ScriptStruct struct {
+// 	path      string
+// 	arguments []string
+// }
 
 type Response struct {
 	CID string
@@ -49,12 +47,10 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 	if err != nil {
 		return nil, err
 	}
-
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-repo")
 	if err != nil {
 		return nil, err
 	}
-
 	cm.RegisterCallback(func() error {
 		if err := os.RemoveAll(dir); err != nil {
 			return fmt.Errorf("unable to remove storage folder: %w", err)
@@ -67,7 +63,6 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 		IPFSClient:    IPFSapiclient.IPFSClient,
 		CloneClient:   c,
 	}
-
 	log.Debug().Msgf("URL download driver created with output dir: %s", dir)
 	return storageHandler, nil
 }
@@ -78,7 +73,6 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 		return false, err
 	} else {
 		return true, nil
-
 	}
 }
 
@@ -100,17 +94,13 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-
 	// # create a tmp directory
-
 	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
 	fmt.Printf("Output Path: %s\n", outputPath)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-
 	cmd := exec.Command("git", "clone", repoURL, outputPath)
-
 	// The `Output` method executes the command and
 	// collects the output, returning its value
 	out, err := cmd.Output()
@@ -120,29 +110,23 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 	// otherwise, print the output from running the command
 	fmt.Println("Output: ", string(out))
-
 	if err != nil {
 		panic(err)
 	}
-
 	filepath, err := url.Parse(repoURL)
 	filename := strings.Split(filepath.Path, ".")[0]
 	targetPath := "/inputs" + filename
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-
 	CIDSpec, err := sp.Upload(ctx, outputPath)
 	// If estuary key exists then upload it to estuary
-
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 	CID := CIDSpec.CID
-
 	// Update the KV store
 	SHA1HASH, _ := UrltoLatestCommitHash(repoURL)
-	CIDstring := fmt.Sprintf("%s", CID)
 	spkey := sp.EstuaryAPIKey
 	envkey := os.Getenv("ESTUARY_API_KEY")
 	var key string
@@ -157,23 +141,24 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 	if key != "" {
 		log1.Println("Pinning to Estuary...")
-		err := estuary.PinToIPFSViaEstuary(ctx, key, CIDstring)
+		//nolint:govet,noctx
+		err := estuary.PinToIPFSViaEstuary(ctx, key, CID)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
 		log1.Println("Successfully Pinned to Estuary...")
-
 	}
 	data := url.Values{}
 	data.Set("key", SHA1HASH)
-	data.Set("value", CIDstring)
-
-	CreateSHA1CIDPair(data)
+	data.Set("value", CID)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
+	err = CreateSHA1CIDPair(data)
+	if err != nil {
+		fmt.Printf("Failed to create SHA1CIDPair: %v", err)
+	}
 	// return the volume
-
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
@@ -197,7 +182,6 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.
 		StorageSource: model.StorageSourceIPFS,
 		CID:           cid,
 	}, nil
-
 }
 
 func (sp *StorageProvider) CleanupStorage(
@@ -224,40 +208,10 @@ func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([
 	}, nil
 }
 
-func RepoExistsOnIPFSGivenUrl(urlStr string) (string, error) {
-	cmd := exec.Command("git", "ls-remote", urlStr)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(err)
-		return "", err
-	}
-	x := "http://kv.bacalhau.org/" + fmt.Sprintf("%v", string(output)[:40])
-	resp, _ := http.Get(x)
-
-	if err != nil {
-		return "", err
-
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	return "", err
-
-	// }
-	// fmt.Println(string(body))
-
-	var response Response
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return "", err
-
-	}
-	return response.CID, nil
-
-}
 func CreateSHA1CIDPair(data url.Values) error {
-
+	//nolint:gomnd
 	time.Sleep(100 * time.Millisecond)
+	//nolint:noctx
 	resp, err := http.PostForm("http://kv.bacalhau.org", data)
 	if err != nil {
 		fmt.Println("ERROR")
@@ -272,13 +226,12 @@ func CreateSHA1CIDPair(data url.Values) error {
 		log1.Println("Request failed")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("ERROR")
 		fmt.Println(err)
 		return err
 	}
-
 	fmt.Println(string(body))
 	return nil
 }
@@ -288,83 +241,66 @@ func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
 	if urlStr == "" {
 		return nil, fmt.Errorf("URL is empty")
 	}
-
 	// Parse the URL
 	u, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
-
 	// Check if the URL is a Git repository URL
 	if u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "ssh" {
 		return nil, fmt.Errorf("URL must use HTTPS, HTTP, or SSH scheme")
 	}
-
 	if !strings.HasSuffix(u.Path, ".git") {
 		return nil, fmt.Errorf("URL must use .git file extension")
 	}
-
 	return u, nil
 }
 
-func runShellScript(scriptPath string, args []string) (string, error) {
-	scriptArgs := []string{}
-	scriptArgs = append(scriptArgs, scriptPath)
-	scriptArgs = append(scriptArgs, args...)
+// func runShellScript(scriptPath string, args []string) (string, error) {
+// 	scriptArgs := []string{}
+// 	scriptArgs = append(scriptArgs, scriptPath)
+// 	scriptArgs = append(scriptArgs, args...)
+// 	if len(args) > 0 {
+// 		last := scriptArgs[len(scriptArgs)-1]
+// 		path, err := ioutil.TempDir("", path.Base(last))
+// 		scriptArgs[len(scriptArgs)-1] = path
+// 		if err != nil {
+// 			fmt.Println(err)
+// 		}
+// 		return path, nil
+// 	}
+// 	cmd := exec.Command("/bin/bash", scriptArgs...)
+// 	// Run the command and get the output
+// 	output, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to execute script: %s", err)
+// 	}
+// 	// Print the output
+// 	fmt.Printf("%s\n", output)
+// 	return "", nil
+// }
 
-	if len(args) > 0 {
+// func IfNotInstalledInstallingGitlfs() {
+// 	args := ScriptStruct{
+// 		path: "pkg/storage/repo/install-lfs.sh", arguments: []string{}}
+// 	if _, err := runShellScript(args.path, args.arguments); err != nil {
+// 		fmt.Println(err)
+// 	}
+// }
 
-		last := scriptArgs[len(scriptArgs)-1]
-		path, err := ioutil.TempDir("", path.Base(last))
-		scriptArgs[len(scriptArgs)-1] = path
-		if err != nil {
-
-			fmt.Println(err)
-
-		}
-		return path, nil
-	}
-
-	cmd := exec.Command("/bin/bash", scriptArgs...)
-
-	// Run the command and get the output
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to execute script: %s", err)
-	}
-
-	// Print the output
-	fmt.Printf("%s\n", output)
-
-	return "", nil
-}
-
-func IfNotInstalledInstallingGitlfs() {
-	args := ScriptStruct{
-		path: "pkg/storage/repo/install-lfs.sh", arguments: []string{}}
-
-	if _, err := runShellScript(args.path, args.arguments); err != nil {
-		fmt.Println(err)
-	}
-
-}
-
-func CloneRepo(repoURL *url.URL) (string, error) {
-	args := ScriptStruct{
-		path:      "pkg/storage/repo/clone.sh",
-		arguments: []string{},
-	}
-
-	args.arguments = append(args.arguments, repoURL.String())
-	args.arguments = append(args.arguments, repoURL.Path)
-
-	if path, err := runShellScript(args.path, args.arguments); err != nil {
-		return "", err
-	} else {
-		return path, nil
-	}
-
-}
+// func CloneRepo(repoURL *url.URL) (string, error) {
+// 	args := ScriptStruct{
+// 		path:      "pkg/storage/repo/clone.sh",
+// 		arguments: []string{},
+// 	}
+// 	args.arguments = append(args.arguments, repoURL.String())
+// 	args.arguments = append(args.arguments, repoURL.Path)
+// 	if path, err := runShellScript(args.path, args.arguments); err != nil {
+// 		return "", err
+// 	} else {
+// 		return path, nil
+// 	}
+// }
 
 func UrltoLatestCommitHash(urlStr string) (string, error) {
 	cmd := exec.Command("git", "ls-remote", urlStr)

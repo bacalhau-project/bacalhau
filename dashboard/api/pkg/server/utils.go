@@ -36,7 +36,7 @@ func GetRequestBody[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 
 func HTTPGet[T any](url string) (T, error) {
 	var data T
-	//nolint:gosec
+	//nolint:gosec,noctx
 	resp, err := http.Get(url)
 	if err != nil {
 		return data, err
