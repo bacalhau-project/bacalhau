@@ -183,6 +183,10 @@ processors:
     - key: service.namespace
       value: bacalhau
       action: insert
+  attributes/metrics:
+    actions:
+    - pattern: net\.sock.+
+      action: delete
 
 service:
   extensions: [basicauth/tempo, basicauth/prometheus, basicauth/loki, zpages, health_check]
@@ -202,7 +206,7 @@ EOF
       sudo tee -a /terraform_node/otel-collector.yml > /dev/null <<EOF
     metrics:
       receivers: [otlp, prometheus, hostmetrics]
-      processors: [memory_limiter, resourcedetection/gcp, resource, batch]
+      processors: [memory_limiter, resourcedetection/gcp, resource, attributes/metrics, batch]
       exporters: [prometheusremotewrite]
 EOF
     fi

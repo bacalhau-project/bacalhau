@@ -62,7 +62,9 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = 100 * time.Second
+	// canary is running every 5 minutes with a 5 minutes timeout. It should be safe to allow the download to take up to 4 minutes and leave
+	// 1 minute for the rest of the test
+	downloadSettings.Timeout = 240 * time.Second
 
 	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
