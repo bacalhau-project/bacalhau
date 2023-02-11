@@ -263,10 +263,5 @@ func (e *Executor) RunShard(
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	// TODO: Implement CancelShard for WASM executor #1060
-	return nil
-}
-
 // Compile-time check that Executor implements the Executor interface.
 var _ executor.Executor = (*Executor)(nil)

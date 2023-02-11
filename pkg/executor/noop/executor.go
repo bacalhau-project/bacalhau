@@ -78,9 +78,5 @@ func (e *NoopExecutor) RunShard(
 	return &model.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	return nil
-}
-
 // Compile-time check that Executor implements the Executor interface.
 var _ executor.Executor = (*NoopExecutor)(nil)

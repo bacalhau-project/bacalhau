@@ -308,10 +308,6 @@ func (e *Executor) RunShard(
 	)
 }
 
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	return docker.RemoveObjectsWithLabel(ctx, e.Client, labelJobName, e.labelJobValue(shard))
-}
-
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	// Use a separate context in case the current one has already been canceled
 	separateCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
