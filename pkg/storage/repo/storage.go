@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/clone"
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/estuary"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -39,7 +38,7 @@ type StorageProvider struct {
 	LocalDir      string
 	EstuaryAPIKey string
 	CloneClient   *clone.Clone
-	IPFSClient    ipfs.Client
+	IPFSClient    *apicopy.StorageProvider
 }
 
 func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvider, EstuaryAPIKey string) (*StorageProvider, error) {
@@ -60,7 +59,7 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 	storageHandler := &StorageProvider{
 		LocalDir:      dir,
 		EstuaryAPIKey: EstuaryAPIKey,
-		IPFSClient:    IPFSapiclient.IPFSClient,
+		IPFSClient:    IPFSapiclient,
 		CloneClient:   c,
 	}
 	log.Debug().Msgf("URL download driver created with output dir: %s", dir)
@@ -172,7 +171,7 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.
 	ctx, span := system.GetTracer().Start(ctx, "storage/repo/apicopy.Upload")
 	defer span.End()
 
-	cid, err := sp.IPFSClient.Put(ctx, localPath)
+	cid, err := sp.IPFSClient.Upload(ctx, localPath)
 	fmt.Print(cid)
 	if err != nil {
 		fmt.Print(err)
@@ -180,7 +179,7 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.
 	}
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
+		CID:           cid.CID,
 	}, nil
 }
 
