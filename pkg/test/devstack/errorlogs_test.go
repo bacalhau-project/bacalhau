@@ -55,12 +55,7 @@ var errorLogsTestCase = scenario.Scenario{
 		scenario.FileEquals(model.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	},
 }
 

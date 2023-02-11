@@ -2,9 +2,9 @@ package localdb
 
 import (
 	"context"
+	"time"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 )
 
 // An event handler that listens to both job and local events, and updates the LocalDB instance accordingly
@@ -34,10 +34,8 @@ func (h *LocalDBEventHandler) HandleJobEvent(ctx context.Context, event model.Jo
 	var err error
 	switch event.EventName {
 	case model.JobEventCreated:
-		j := jobutils.ConstructJobFromEvent(event)
+		j := ConstructJobFromEvent(event)
 		err = h.localDB.AddJob(ctx, j)
-	case model.JobEventDealUpdated:
-		err = h.localDB.UpdateJobDeal(ctx, event.JobID, event.Deal)
 	}
 
 	if err != nil {
@@ -84,4 +82,34 @@ func (h *LocalDBEventHandler) HandleJobEvent(ctx context.Context, event model.Jo
 	}
 
 	return nil
+}
+
+func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
+	publicKey := ev.SenderPublicKey
+	if publicKey == nil {
+		publicKey = []byte{}
+	}
+	useCreatedAt := time.Now()
+	if !ev.EventTime.IsZero() {
+		useCreatedAt = ev.EventTime
+	}
+	j := &model.Job{
+		APIVersion: ev.APIVersion,
+		Metadata: model.Metadata{
+			ID:        ev.JobID,
+			ClientID:  ev.ClientID,
+			CreatedAt: useCreatedAt,
+		},
+		Status: model.JobStatus{
+			Requester: model.JobRequester{
+				RequesterNodeID:    ev.SourceNodeID,
+				RequesterPublicKey: publicKey,
+			},
+		},
+		Spec: ev.Spec,
+	}
+	j.Spec.Deal = ev.Deal
+	j.Spec.ExecutionPlan = ev.JobExecutionPlan
+
+	return j
 }

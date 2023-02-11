@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -19,7 +18,6 @@ import (
 type BaseEndpointParams struct {
 	ID                         string
 	PublicKey                  []byte
-	JobStore                   localdb.LocalDB
 	Scheduler                  *Scheduler
 	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
@@ -30,8 +28,6 @@ type BaseEndpointParams struct {
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
 	id         string
-	publicKey  []byte
-	jobStore   localdb.LocalDB
 	scheduler  *Scheduler
 	transforms []jobtransform.Transformer
 }
@@ -41,12 +37,11 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewExecutionPlanner(params.StorageProviders),
+		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 	}
 
 	return &BaseEndpoint{
 		id:         params.ID,
-		publicKey:  params.PublicKey,
-		jobStore:   params.JobStore,
 		scheduler:  params.Scheduler,
 		transforms: transforms,
 	}
@@ -77,12 +72,6 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 			ClientID:  data.ClientID,
 			CreatedAt: time.Now(),
 		},
-		Status: model.JobStatus{
-			Requester: model.JobRequester{
-				RequesterNodeID:    node.id,
-				RequesterPublicKey: node.publicKey,
-			},
-		},
 		Spec: *data.Spec,
 	}
 
@@ -101,10 +90,6 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	}
 
 	return job, nil
-}
-func (node *BaseEndpoint) UpdateDeal(ctx context.Context, jobID string, deal model.Deal) error {
-	//TODO: Is there an action to take here?
-	return node.jobStore.UpdateJobDeal(ctx, jobID, deal)
 }
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {

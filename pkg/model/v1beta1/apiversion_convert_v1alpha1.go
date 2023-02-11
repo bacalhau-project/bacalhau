@@ -1,4 +1,4 @@
-package model
+package v1beta1
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"

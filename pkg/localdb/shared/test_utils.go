@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

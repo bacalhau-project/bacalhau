@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
@@ -34,7 +34,7 @@ const DefaultNodeInfoPublisherInterval = 30 * time.Second
 type NodeConfig struct {
 	IPFSClient                ipfs.Client
 	CleanupManager            *system.CleanupManager
-	LocalDB                   localdb.LocalDB
+	JobStore                  jobstore.Store
 	Host                      host.Host
 	FilecoinUnsealedPath      string
 	EstuaryAPIKey             string
@@ -215,7 +215,7 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.RequesterNodeConfig,
-			config.LocalDB,
+			config.JobStore,
 			config.SimulatorNodeID,
 			simulatorRequestHandler,
 			verifiers,

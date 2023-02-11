@@ -83,9 +83,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				MinBids:     testCase.minBids,
 			},
 			JobCheckers: []job.CheckStatesFunction{
-				job.WaitForJobStates(map[model.JobStateType]int{
-					model.JobStateCompleted: testCase.completedCount,
-					model.JobStateError:     testCase.errorCount,
+				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+					model.ExecutionStateCompleted: testCase.completedCount,
+					model.ExecutionStateFailed:    testCase.errorCount,
 				}),
 			},
 		}

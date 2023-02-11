@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -155,8 +154,6 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	err = resolver.Wait(
 		ctx,
 		jobID,
-		args.NodeCount*args.ShardCount,
-		job.WaitForTerminalStates(args.NodeCount*args.ShardCount),
 	)
 	require.NoError(t, err)
 
@@ -166,10 +163,10 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	verifiedCount := 0
 	failedCount := 0
 
-	for _, state := range state.Nodes {
-		for _, shard := range state.Shards { //nolint:gocritic
-			require.True(t, shard.VerificationResult.Complete)
-			if shard.VerificationResult.Result {
+	for _, shard := range state.Shards {
+		for _, execution := range shard.Executions { //nolint:gocritic
+			require.True(t, execution.VerificationResult.Complete)
+			if execution.VerificationResult.Result {
 				verifiedCount++
 			} else {
 				failedCount++

@@ -35,5 +35,5 @@ func TestGet(t *testing.T) {
 	job2, ok, err := c.Get(ctx, j.Metadata.ID)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, job2.Metadata.ID, j.Metadata.ID)
+	require.Equal(t, job2.Job.Metadata.ID, j.Metadata.ID)
 }

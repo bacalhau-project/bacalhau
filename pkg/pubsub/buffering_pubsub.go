@@ -141,8 +141,10 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 
 func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 	p.closeOnce.Do(func() {
-		// stop the anti-starvation background task
-		p.antiStarvationStop <- struct{}{}
+		if p.antiStarvationTicker != nil {
+			// stop the anti-starvation background task
+			p.antiStarvationStop <- struct{}{}
+		}
 
 		// flush the buffer before closing
 		if p.currentBuffer.Size() > 0 {

@@ -65,5 +65,5 @@ func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getJobStateFromRequest")
 	defer span.End()
 
-	return apiServer.localDB.GetJobState(ctx, stateReq.JobID)
+	return apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
 }

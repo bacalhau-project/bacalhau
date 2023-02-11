@@ -5,7 +5,6 @@ import (
 	"time"
 
 	ipfsClient "github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/combo"
@@ -63,7 +62,6 @@ func NewIPFSPublishers(
 func NewNoopPublishers(
 	_ context.Context,
 	_ *system.CleanupManager,
-	_ *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
 	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil

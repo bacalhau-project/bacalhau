@@ -128,8 +128,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	const nodeCount = 3
 
 	var assertShardCounts job.CheckStatesFunction = func(js model.JobState) (bool, error) {
-		for _, node := range js.Nodes {
-			if len(node.Shards) != batchCount {
+		for _, shard := range js.Shards {
+			if len(shard.Executions) != batchCount {
 				return false, nil
 			}
 		}
@@ -186,11 +186,11 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		Deal: model.Deal{Concurrency: 3},
 		JobCheckers: []job.CheckStatesFunction{
 			assertShardCounts,
-			job.WaitThrowErrors([]model.JobStateType{
-				model.JobStateError,
+			job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+				model.ExecutionStateFailed,
 			}),
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: nodeCount * batchCount,
+			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				model.ExecutionStateCompleted: nodeCount * batchCount,
 			}),
 		},
 		ResultsChecker: scenario.ManyChecks(checks...),

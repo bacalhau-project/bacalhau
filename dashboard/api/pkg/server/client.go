@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
@@ -82,7 +82,7 @@ func runGenericJob(s model.Spec) (string, error) {
 	resolver := client.GetJobStateResolver()
 	resolver.SetWaitTime(maxWaitTime, time.Second)
 
-	err = resolver.Wait(context.Background(), submittedJob.Metadata.ID, 1, job.WaitForJobStates(map[model.JobStateType]int{
+	err = resolver.Wait(context.Background(), submittedJob.Metadata.ID, 1, job.WaitForExecutionStates(map[model.JobStateType]int{
 		model.JobStateCompleted: 1,
 	}))
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -47,7 +47,7 @@ func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	stateResolver := localdb.GetStateResolver(s.localDB)
+	stateResolver := jobstore.GetStateResolver(s.jobStore)
 	results, err := stateResolver.GetResults(ctx, stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
@@ -170,8 +169,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	// Wait for job to complete
 	resolver := apiClient.GetJobStateResolver()
 	checkers := scenario.JobCheckers
-	shards := job.GetJobTotalExecutionCount(submittedJob)
-	err = resolver.Wait(s.Ctx, submittedJob.Metadata.ID, shards, checkers...)
+	err = resolver.Wait(s.Ctx, submittedJob.Metadata.ID, checkers...)
 	require.NoError(s.T(), err)
 
 	// Check outputs

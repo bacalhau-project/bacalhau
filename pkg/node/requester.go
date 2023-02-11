@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
@@ -31,7 +31,7 @@ import (
 type Requester struct {
 	// Visible for testing
 	Endpoint           requester.Endpoint
-	JobStore           localdb.LocalDB
+	JobStore           jobstore.Store
 	computeProxy       *bprotocol.ComputeProxy
 	localCallback      *requester.Scheduler
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
@@ -45,7 +45,7 @@ func NewRequesterNode(
 	host host.Host,
 	apiServer *publicapi.APIServer,
 	config RequesterConfig,
-	jobStore localdb.LocalDB,
+	jobStore jobstore.Store,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
 	verifiers verifier.VerifierProvider,
@@ -105,7 +105,7 @@ func NewRequesterNode(
 		}),
 	)
 
-	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
+	scheduler := requester.NewScheduler(requester.SchedulerParams{
 		ID:               host.ID().String(),
 		Host:             host,
 		JobStore:         jobStore,
@@ -117,8 +117,7 @@ func NewRequesterNode(
 		EventEmitter: requester.NewEventEmitter(requester.EventEmitterParams{
 			EventConsumer: localJobEventConsumer,
 		}),
-		JobNegotiationTimeout:              config.JobNegotiationTimeout,
-		StateManagerBackgroundTaskInterval: config.StateManagerBackgroundTaskInterval,
+		JobNegotiationTimeout: config.JobNegotiationTimeout,
 	})
 
 	publicKey := host.Peerstore().PubKey(host.ID())
@@ -130,7 +129,6 @@ func NewRequesterNode(
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
-		JobStore:                   jobStore,
 		Scheduler:                  scheduler,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
@@ -153,19 +151,14 @@ func NewRequesterNode(
 	}
 
 	// register debug info providers for the /debug endpoint
-	debugInfoProviders := []model.DebugInfoProvider{
-		requester.NewScheduledJobsInfoProvider(requester.ScheduledJobsInfoProviderParams{
-			Name:      "ScheduledJobs",
-			Scheduler: scheduler,
-		}),
-	}
+	debugInfoProviders := []model.DebugInfoProvider{}
 
 	// register requester public http apis
 	requesterAPIServer := requester_publicapi.NewRequesterAPIServer(requester_publicapi.RequesterAPIServerParams{
 		APIServer:          apiServer,
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
-		LocalDB:            jobStore,
+		JobStore:           jobStore,
 		StorageProviders:   storageProviders,
 	})
 	err = requesterAPIServer.RegisterAllHandlers()
@@ -192,7 +185,6 @@ func NewRequesterNode(
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
-	localDBEventHandler := localdb.NewLocalDBEventHandler(jobStore)
 	eventTracer, err := eventhandler.NewTracer()
 	if err != nil {
 		return nil, err
@@ -206,24 +198,11 @@ func NewRequesterNode(
 		tracerContextProvider,
 		// record the event in a log
 		eventTracer,
-		// update the job state in the local DB
-		localDBEventHandler,
 		// dispatches events to listening websockets
 		requesterAPIServer,
 		// dispatches events to the network
 		eventhandler.JobEventHandlerFunc(bufferedJobEventPubSub.Publish),
 	)
-
-	// register consumers of job events publishes over gossipSub
-	networkJobEventConsumer := eventhandler.NewChainedJobEventHandler(system.NewNoopContextProvider())
-	networkJobEventConsumer.AddHandlers(
-		// update the job state in the local DB
-		localDBEventHandler,
-	)
-	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[model.JobEvent](networkJobEventConsumer.HandleJobEvent))
-	if err != nil {
-		return nil, err
-	}
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {

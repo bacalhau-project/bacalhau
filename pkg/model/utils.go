@@ -99,10 +99,6 @@ func ConfirmMaxSliceSize[T any](t T, maxSize int) error {
 	return nil
 }
 
-func GetShardID(jobID string, shardIndex int) string {
-	return fmt.Sprintf("%s:%d", jobID, shardIndex)
-}
-
 func ToLabelSelectorRequirements(requirements ...labels.Requirement) []LabelSelectorRequirement {
 	var labelSelectorRequirements []LabelSelectorRequirement
 	for _, requirement := range requirements {

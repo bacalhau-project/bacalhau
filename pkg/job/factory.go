@@ -2,42 +2,11 @@ package job
 
 import (
 	"strings"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
-
-func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
-	publicKey := ev.SenderPublicKey
-	if publicKey == nil {
-		publicKey = []byte{}
-	}
-	useCreatedAt := time.Now()
-	if !ev.EventTime.IsZero() {
-		useCreatedAt = ev.EventTime
-	}
-	j := &model.Job{
-		APIVersion: ev.APIVersion,
-		Metadata: model.Metadata{
-			ID:        ev.JobID,
-			ClientID:  ev.ClientID,
-			CreatedAt: useCreatedAt,
-		},
-		Status: model.JobStatus{
-			Requester: model.JobRequester{
-				RequesterNodeID:    ev.SourceNodeID,
-				RequesterPublicKey: publicKey,
-			},
-		},
-		Spec: ev.Spec,
-	}
-	j.Spec.Deal = ev.Deal
-	j.Spec.ExecutionPlan = ev.JobExecutionPlan
-
-	return j
-}
 
 // these are util methods for the CLI
 // to pass in the collection of CLI args as strings

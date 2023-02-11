@@ -55,11 +55,11 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			Deal:     model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),
-				job.WaitThrowErrors([]model.JobStateType{
-					model.JobStateError,
+				job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+					model.ExecutionStateFailed,
 				}),
-				job.WaitForJobStates(map[model.JobStateType]int{
-					model.JobStateCompleted: testCase.expectedAccepts,
+				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+					model.ExecutionStateCompleted: testCase.expectedAccepts,
 				}),
 			},
 		}

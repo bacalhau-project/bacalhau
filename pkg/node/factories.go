@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -120,7 +118,6 @@ func (f *StandardVerifiersFactory) Get(
 	return verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
-		localdb.GetStateResolver(nodeConfig.LocalDB),
 		encrypter.Encrypt,
 		encrypter.Decrypt,
 	)
