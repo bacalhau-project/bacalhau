@@ -66,14 +66,6 @@ func (e *Executor) RunShard(
 	return executor.RunShard(ctx, shard, jobResultsDir)
 }
 
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	executor, err := e.getDelegateExecutor(ctx, shard)
-	if err != nil {
-		return err
-	}
-	return executor.CancelShard(ctx, shard)
-}
-
 func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard) (executor.Executor, error) {
 	requiredLang := LanguageSpec{
 		Language: shard.Job.Spec.Language.Language,

@@ -31,10 +31,4 @@ type Executor interface {
 		shard model.JobShard,
 		resultsDir string,
 	) (*model.RunCommandResult, error)
-
-	// Cancel a running shard.
-	CancelShard(
-		ctx context.Context,
-		shard model.JobShard,
-	) error
 }
