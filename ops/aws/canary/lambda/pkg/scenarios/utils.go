@@ -104,7 +104,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	}
 
 	return &model.DownloaderSettings{
-		Timeout:        300 * time.Second,
+		Timeout:        50 * time.Second,
 		OutputDir:      dir,
 		IPFSSwarmAddrs: IPFSSwarmAddrs,
 	}, nil
