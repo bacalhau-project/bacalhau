@@ -230,7 +230,7 @@ func (s *Scheduler) notifyResultAccepted(ctx context.Context, result verifier.Ve
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: result.Execution.ID(),
 		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateWaitingVerification,
+			ExpectedState: model.ExecutionStateResultProposed,
 		},
 		NewValues: model.ExecutionState{
 			VerificationResult: model.VerificationResult{
@@ -265,7 +265,7 @@ func (s *Scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: result.Execution.ID(),
 		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateWaitingVerification,
+			ExpectedState: model.ExecutionStateResultProposed,
 		},
 		NewValues: model.ExecutionState{
 			VerificationResult: model.VerificationResult{
@@ -311,11 +311,11 @@ func (s *Scheduler) notifyCancel(ctx context.Context, message string, execution 
 			},
 		},
 		NewValues: model.ExecutionState{
-			State: model.ExecutionStateCancelled,
+			State: model.ExecutionStateCanceled,
 		},
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Cancelled. %s:%d",
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Canceled. %s:%d",
 			execution.JobID, execution.ShardIndex)
 	} else {
 		go func() {
@@ -479,7 +479,7 @@ func (s *Scheduler) OnRunComplete(ctx context.Context, result compute.RunResult)
 		NewValues: model.ExecutionState{
 			VerificationProposal: result.ResultProposal,
 			RunOutput:            result.RunCommandResult,
-			State:                model.ExecutionStateWaitingVerification,
+			State:                model.ExecutionStateResultProposed,
 		},
 	})
 	if err != nil {
@@ -503,7 +503,7 @@ func (s *Scheduler) startVerificationIfPossible(ctx context.Context, shardID mod
 	var pendingVerifications []model.ExecutionState
 	for _, execution := range shardState.Executions {
 		// compute nodes that are waiting for their results to be verified
-		if execution.State == model.ExecutionStateWaitingVerification {
+		if execution.State == model.ExecutionStateResultProposed {
 			pendingVerifications = append(pendingVerifications, execution)
 		}
 	}
@@ -595,7 +595,7 @@ func (s *Scheduler) OnComputeFailure(ctx context.Context, result compute.Compute
 		Condition: jobstore.UpdateExecutionCondition{
 			UnexpectedStates: []model.ExecutionStateType{
 				model.ExecutionStateCompleted,
-				model.ExecutionStateCancelled,
+				model.ExecutionStateCanceled,
 			},
 		},
 		NewValues: model.ExecutionState{

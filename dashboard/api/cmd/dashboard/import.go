@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
+	bacalhau_model_v1beta1 "github.com/filecoin-project/bacalhau/pkg/model"
 	bacalhau_model_v1alpha1 "github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
-	bacalhau_model_v1beta1 "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/spf13/cobra"
 )
 

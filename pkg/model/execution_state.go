@@ -22,8 +22,8 @@ const (
 	ExecutionStateBidAccepted // aka running
 	// ExecutionStateBidRejected requester has rejected the bid.
 	ExecutionStateBidRejected
-	// ExecutionStateWaitingVerification The execution is done, and is waiting for verification.
-	ExecutionStateWaitingVerification
+	// ExecutionStateResultProposed The execution is done, and is waiting for verification.
+	ExecutionStateResultProposed
 	// ExecutionStateResultAccepted The execution result has been accepted by the requester, and publishing of the result is in progress.
 	ExecutionStateResultAccepted // aka publishing
 	// ExecutionStateResultRejected The execution result has been rejected by the requester.
@@ -32,13 +32,13 @@ const (
 	ExecutionStateCompleted
 	// ExecutionStateFailed The execution has failed.
 	ExecutionStateFailed
-	// ExecutionStateCancelled The execution has been cancelled by the user
-	ExecutionStateCancelled
+	// ExecutionStateCanceled The execution has been canceled by the user
+	ExecutionStateCanceled
 )
 
 func ExecutionStateTypes() []ExecutionStateType {
 	var res []ExecutionStateType
-	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
 		res = append(res, typ)
 	}
 	return res
@@ -47,12 +47,12 @@ func ExecutionStateTypes() []ExecutionStateType {
 // IsDiscarded returns true if the execution has been discarded due to a failure, rejection or cancellation
 func (s ExecutionStateType) IsDiscarded() bool {
 	return s == ExecutionStateAskForBidRejected || s == ExecutionStateBidRejected || s == ExecutionStateResultRejected ||
-		s == ExecutionStateCancelled || s == ExecutionStateFailed
+		s == ExecutionStateCanceled || s == ExecutionStateFailed
 }
 
 // IsActive returns true if the execution is running or has completed
 func (s ExecutionStateType) IsActive() bool {
-	return s == ExecutionStateBidAccepted || s == ExecutionStateWaitingVerification ||
+	return s == ExecutionStateBidAccepted || s == ExecutionStateResultProposed ||
 		s == ExecutionStateResultAccepted || s == ExecutionStateCompleted
 }
 
@@ -61,15 +61,15 @@ func (s ExecutionStateType) IsTerminal() bool {
 	return s.IsDiscarded() || s == ExecutionStateCompleted
 }
 
-func (e ExecutionStateType) MarshalText() ([]byte, error) {
-	return []byte(e.String()), nil
+func (s ExecutionStateType) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
 }
 
-func (e *ExecutionStateType) UnmarshalText(text []byte) (err error) {
+func (s *ExecutionStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
 		if equal(typ.String(), name) {
-			*e = typ
+			*s = typ
 			return
 		}
 	}

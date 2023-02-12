@@ -11,7 +11,7 @@ import (
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
-	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
 	"golang.org/x/crypto/bcrypt"

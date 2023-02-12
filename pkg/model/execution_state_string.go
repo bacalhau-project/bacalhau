@@ -14,12 +14,12 @@ func _() {
 	_ = x[ExecutionStateAskForBidRejected-3]
 	_ = x[ExecutionStateBidAccepted-4]
 	_ = x[ExecutionStateBidRejected-5]
-	_ = x[ExecutionStateWaitingVerification-6]
+	_ = x[ExecutionStateResultProposed-6]
 	_ = x[ExecutionStateResultAccepted-7]
 	_ = x[ExecutionStateResultRejected-8]
 	_ = x[ExecutionStateCompleted-9]
 	_ = x[ExecutionStateFailed-10]
-	_ = x[ExecutionStateCancelled-11]
+	_ = x[ExecutionStateCanceled-11]
 }
 
 const _ExecutionStateType_name = "NewAskForBidAskForBidAcceptedAskForBidRejectedBidAcceptedBidRejectedWaitingVerificationResultAcceptedResultRejectedCompletedFailedCancelled"

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	bacmodel "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	bacmodel "github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"

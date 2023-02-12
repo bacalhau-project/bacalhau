@@ -79,11 +79,11 @@ func FailShard(ctx context.Context, db Store, shardID model.ShardID, failure err
 					},
 				},
 				NewValues: model.ExecutionState{
-					State: model.ExecutionStateCancelled,
+					State: model.ExecutionStateCanceled,
 				},
 			})
 			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Cancelled. %s:%d",
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Canceled. %s:%d",
 					execution.JobID, execution.ShardIndex)
 			} else {
 				cancelledExecutions = append(cancelledExecutions, execution)

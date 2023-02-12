@@ -16,13 +16,13 @@ const (
 
 	JobStateInProgress
 
-	// Job is cancelled by the user.
+	// Job is canceled by the user.
 	JobStateCancelled
 
 	// All shards have failed
 	JobStateError
 
-	// Some shards have failed, while others have completed successfuly
+	// Some shards have failed, while others have completed successfully
 	JobStatePartialError
 
 	// All shards have completed successfully

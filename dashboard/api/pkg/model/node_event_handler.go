@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/rs/zerolog/log"
 )

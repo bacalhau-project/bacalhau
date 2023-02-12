@@ -12,7 +12,7 @@ type ShardStateType int
 const (
 	ShardStateNew ShardStateType = iota
 	ShardStateInProgress
-	// The job/shard is cancelled by the user.
+	// The job/shard is canceled by the user.
 	ShardStateCancelled
 	// The shard has failed due to an error.
 	ShardStateError

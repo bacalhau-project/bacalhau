@@ -57,7 +57,7 @@ func (noopVerifier *NoopVerifier) VerifyShard(
 	shard model.JobShard,
 	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyShard")
+	_, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyShard")
 	defer span.End()
 
 	err := verifier.ValidateExecutions(shard, executionStates)

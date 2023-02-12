@@ -176,7 +176,8 @@ type ErrInvalidExecutionState struct {
 	Expected    model.ExecutionStateType
 }
 
-func NewErrInvalidExecutionState(id model.ExecutionID, actual model.ExecutionStateType, expected model.ExecutionStateType) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(
+	id model.ExecutionID, actual model.ExecutionStateType, expected model.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
@@ -206,7 +207,8 @@ type ErrExecutionAlreadyTerminal struct {
 	NewState    model.ExecutionStateType
 }
 
-func NewErrExecutionAlreadyTerminal(id model.ExecutionID, actual model.ExecutionStateType, newState model.ExecutionStateType) ErrExecutionAlreadyTerminal {
+func NewErrExecutionAlreadyTerminal(
+	id model.ExecutionID, actual model.ExecutionStateType, newState model.ExecutionStateType) ErrExecutionAlreadyTerminal {
 	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
 }
 

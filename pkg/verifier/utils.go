@@ -18,7 +18,7 @@ func ValidateExecutions(shard model.JobShard, executions []model.ExecutionState)
 		if execution.ShardID() != shard.ShardID() {
 			return NewErrMismatchingExecution(shard.ShardID(), execution.ID())
 		}
-		if execution.State != model.ExecutionStateWaitingVerification {
+		if execution.State != model.ExecutionStateResultProposed {
 			return NewErrInvalidExecutionState(execution.ID(), execution.State)
 		}
 	}

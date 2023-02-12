@@ -58,10 +58,10 @@ var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
 	model.ExecutionStateFailed: {Message: "Error while executing the job.", IsTerminal: true, PrintDownload: false, IsError: true},
 
 	// Job is on StorageNode
-	model.ExecutionStateWaitingVerification: {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.ExecutionStateResultRejected:      {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
-	model.ExecutionStateResultAccepted:      {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.ExecutionStateCompleted:           {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
+	model.ExecutionStateResultProposed: {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateResultRejected: {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
+	model.ExecutionStateResultAccepted: {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateCompleted:      {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
 }
 
 // Struct for tracking what's been printedEvents
