@@ -58,7 +58,7 @@ func (h *Housekeeping) housekeepingBackgroundTask() {
 				}
 				// cancel jobs that have been in progress beyond the timeout period
 				if now.Sub(jobDescription.State.CreateTime).Seconds() > jobDescription.Job.Spec.Timeout {
-					log.Ctx(ctx).Info().Msgf("job %s timed out. Cancelling", jobDescription.Job.Metadata.ID)
+					log.Ctx(ctx).Info().Msgf("job %s timed out. Canceling", jobDescription.Job.Metadata.ID)
 					go func(jobID string) {
 						_, innerErr := h.endpoint.CancelJob(ctx, CancelJobRequest{
 							JobID:  jobID,
