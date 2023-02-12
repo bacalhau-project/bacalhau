@@ -28,13 +28,10 @@ type Task struct {
 type Resource struct {
 	IPFS *IPFSResource
 	HTTP *HTTPResource
-	// Repo *RepoResource
 }
 
 type IPFSResource string
 type HTTPResource string
-
-// type RepoResource string
 
 type BacalhauConfig struct {
 	Publisher   Publisher
