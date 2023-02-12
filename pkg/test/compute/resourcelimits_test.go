@@ -338,7 +338,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
@@ -377,7 +377,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		require.NoError(suite.T(), err)
 		completedShards := job.GetCompletedShardStates(jobState)
 		require.Equal(suite.T(), 1, len(completedShards))
-		require.Equal(suite.T(), model.JobStateCompleted, completedShards[0].State)
+		require.Equal(suite.T(), model.ExecutionStateCompleted, completedShards[0].State)
 		allocationMap[completedShards[0].NodeID]++
 	}
 

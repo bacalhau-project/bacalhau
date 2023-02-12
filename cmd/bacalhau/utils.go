@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -46,35 +45,23 @@ const (
 	DefaultTimeout              = 30 * time.Minute
 )
 
-var eventsWorthPrinting = map[model.JobEventType]eventStruct{
-	// In Rough execution order
-	model.JobEventInitialSubmission: {Message: "Communicating with the network", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false, PrintDownload: true, IsError: false},
+var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
+	model.ExecutionStateNew: {Message: "Creating job for submission", IsTerminal: false, PrintDownload: true, IsError: false},
 
 	// Job is on Requester
-	model.JobEventBid: {Message: "Finding node(s) for the job", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateAskForBid: {Message: "Finding node(s) for the job", IsTerminal: false, PrintDownload: true, IsError: false},
 
 	// Job is on ComputeNode
-	model.JobEventBidAccepted: {Message: "Running the job", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventRunning:     {Message: "Node started running the job", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateBidAccepted: {Message: "Running the job", IsTerminal: false, PrintDownload: true, IsError: false},
 
 	// Need to add a carriage return to the end of the line, but only this one
-	model.JobEventComputeError: {Message: "Error while executing the job.", IsTerminal: true, PrintDownload: false, IsError: true},
+	model.ExecutionStateFailed: {Message: "Error while executing the job.", IsTerminal: true, PrintDownload: false, IsError: true},
 
 	// Job is on StorageNode
-	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
-	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventResultsPublished: {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
-
-	// General Error?
-	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true, PrintDownload: false, IsError: true},
-
-	// Should we print at all? Empty events get skipped
-	model.JobEventBidCancelled: {},
-	model.JobEventBidRejected:  {},
-	model.JobEventDealUpdated:  {},
+	model.ExecutionStateResultProposed: {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateResultRejected: {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
+	model.ExecutionStateResultAccepted: {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
+	model.ExecutionStateCompleted:      {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
 }
 
 // Struct for tracking what's been printedEvents
@@ -351,17 +338,10 @@ func ExecuteJob(ctx context.Context,
 		Fatal(cmd, fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
 	}
 
-	js, err := apiClient.GetJobState(ctx, jobReturn.Metadata.ID)
+	js, err := apiClient.GetJobState(ctx, jobReturn.Job.Metadata.ID)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
-
-	// Need to create index because map ordering are not guaranteed
-	nodeIndexes := make([]string, 0, len(js.Nodes))
-	for i := range js.Nodes {
-		nodeIndexes = append(nodeIndexes, i)
-	}
-	sort.Strings(nodeIndexes)
 
 	printOut := "%s" // We only know this at the end, we'll fill it in there.
 	resultsCID := ""
@@ -370,18 +350,17 @@ func ExecuteJob(ctx context.Context,
 	if runtimeSettings.PrintNodeDetails {
 		printOut += "\n"
 		printOut += "Job Results By Node:\n"
-		for i := range nodeIndexes {
-			n := js.Nodes[nodeIndexes[i]]
-			printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
-			for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
-				printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
-				printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
-				printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
-				if s.RunOutput == nil {
+		for j, s := range js.Shards {
+			printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
+			printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
+			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
+			for _, n := range s.Executions {
+				printOut += fmt.Sprintf("Node %s:\n", n.NodeID[:8])
+				if n.RunOutput == nil {
 					printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
 				} else {
-					printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
-					resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+					printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", n.RunOutput.ExitCode)
+					resultsCID = n.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
 					printResults := func(t string, s string, trunc bool) {
 						truncatedString := ""
 						if trunc {
@@ -393,8 +372,8 @@ func ExecuteJob(ctx context.Context,
 							printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
 						}
 					}
-					printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
-					printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
+					printResults("Stdout", n.RunOutput.STDOUT, n.RunOutput.StdoutTruncated)
+					printResults("Stderr", n.RunOutput.STDERR, n.RunOutput.StderrTruncated)
 				}
 			}
 		}
@@ -454,7 +433,7 @@ func downloadResultsHandler(
 		}
 	}
 
-	results, err := GetAPIClient().GetResults(ctx, j.Metadata.ID)
+	results, err := GetAPIClient().GetResults(ctx, j.Job.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -463,7 +442,7 @@ func downloadResultsHandler(
 		return fmt.Errorf("no results found")
 	}
 
-	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Metadata.ID)
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Job.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -475,7 +454,7 @@ func downloadResultsHandler(
 
 	err = downloader.DownloadJob(
 		ctx,
-		j.Spec.Outputs,
+		j.Job.Spec.Outputs,
 		results,
 		downloaderProvider,
 		&processedDownloadSettings,
@@ -612,7 +591,7 @@ To get more information at any time, run:
 
 	// Create a map of job state types to printed structs
 	var printedEventsTracker sync.Map
-	for _, jobEventType := range model.JobEventTypes() {
+	for _, jobEventType := range model.ExecutionStateTypes() {
 		printedEventsTracker.Store(jobEventType, printedEvents{
 			printed: false,
 			order:   int(jobEventType),
@@ -628,10 +607,9 @@ To get more information at any time, run:
 
 	// Inject "Job Initiated Event" to start - should we do this on the server?
 	// TODO: #1068 Should jobs auto add a "start event" on the client at creation?
-	jobEvents = append([]model.JobEvent{{EventName: model.JobEventInitialSubmission}}, jobEvents...)
 	// Faking an initial time (sometimes it happens too fast to see)
 	fullLineMessage.TimerString = spinnerFmtDuration(30 * time.Millisecond) //nolint:gomnd // 30ms is just a default
-	fullLineMessage.Message = formatMessage(eventsWorthPrinting[model.JobEventInitialSubmission].Message)
+	fullLineMessage.Message = formatMessage("Communicating with the network")
 
 	// Create a spinner var that will span all printouts
 	spin, err := createSpinner(cmd.OutOrStdout(), fmt.Sprintf("%s%s", fullLineMessage.Message, spacerText))
@@ -711,9 +689,9 @@ To get more information at any time, run:
 		log.Trace().Msgf("Job Events:")
 		for i := range jobEvents {
 			log.Trace().Msgf("\t%s - %s - %s",
-				model.GetStateFromEvent(jobEvents[i].EventName),
-				jobEvents[i].EventTime.UTC().String(),
-				jobEvents[i].EventName)
+				jobEvents[i].NewState,
+				jobEvents[i].Time.UTC().String(),
+				jobEvents[i].Comment)
 		}
 		log.Trace().Msgf("\n")
 
@@ -728,10 +706,12 @@ To get more information at any time, run:
 
 		if !quiet {
 			for i := range jobEvents {
-				printingUpdateForEvent(cmd,
-					&printedEventsTracker,
-					jobEvents[i].EventName,
-					spin)
+				if jobEvents[i].Type == model.JobHistoryTypeExecutionLevel {
+					printingUpdateForEvent(cmd,
+						&printedEventsTracker,
+						jobEvents[i].NewStateType,
+						spin)
+				}
 			}
 		}
 
@@ -739,7 +719,7 @@ To get more information at any time, run:
 		// Look for any terminal event in all the events. If it's done, we're done.
 		for i := range jobEvents {
 			// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
-			if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
+			if eventsWorthPrinting[jobEvents[i].NewStateType].IsTerminal {
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
 
@@ -775,7 +755,7 @@ To get more information at any time, run:
 var printedEventsLock sync.Mutex
 
 func printingUpdateForEvent(cmd *cobra.Command, pe *sync.Map,
-	jet model.JobEventType,
+	jet model.ExecutionStateType,
 	spin *yacspin.Spinner) bool {
 	// We need to lock this because we're using a map
 	printedEventsLock.Lock()
@@ -794,18 +774,16 @@ func printingUpdateForEvent(cmd *cobra.Command, pe *sync.Map,
 		_ = spin.Pause()
 
 		// Need to skip printing the initial submission event
-		if jet != model.JobEventInitialSubmission {
-			cmd.Printf("\r\033[K\r")
-			if eventsWorthPrinting[jet].IsError {
-				cmd.Printf("%s\n", fullLineMessage.PrintError())
-			} else {
-				cmd.Printf("%s\n", fullLineMessage.PrintDone())
-			}
+		cmd.Printf("\r\033[K\r")
+		if eventsWorthPrinting[jet].IsError {
+			cmd.Printf("%s\n", fullLineMessage.PrintError())
+		} else {
+			cmd.Printf("%s\n", fullLineMessage.PrintDone())
+		}
 
-			if eventsWorthPrinting[jet].IsTerminal {
-				cmd.Printf("\n%s\n", eventsWorthPrinting[jet].Message)
-				return eventsWorthPrinting[jet].PrintDownload
-			}
+		if eventsWorthPrinting[jet].IsTerminal {
+			cmd.Printf("\n%s\n", eventsWorthPrinting[jet].Message)
+			return eventsWorthPrinting[jet].PrintDownload
 		}
 
 		fullLineMessage.Message = formatMessage(eventsWorthPrinting[jet].Message)

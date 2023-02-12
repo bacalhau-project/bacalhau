@@ -69,7 +69,7 @@ func ApplyGlobPattern(
 	return result, nil
 }
 
-func GetJobTotalShards(j *model.Job) int {
+func GetJobTotalShards(j model.Job) int {
 	shardCount := j.Spec.ExecutionPlan.TotalShards
 	if shardCount == 0 {
 		shardCount = 1
@@ -77,7 +77,7 @@ func GetJobTotalShards(j *model.Job) int {
 	return shardCount
 }
 
-func GetJobConcurrency(j *model.Job) int {
+func GetJobConcurrency(j model.Job) int {
 	concurrency := j.Spec.Deal.Concurrency
 	if concurrency < 1 {
 		concurrency = 1
@@ -85,7 +85,7 @@ func GetJobConcurrency(j *model.Job) int {
 	return concurrency
 }
 
-func GetJobTotalExecutionCount(j *model.Job) int {
+func GetJobTotalExecutionCount(j model.Job) int {
 	return GetJobConcurrency(j) * GetJobTotalShards(j)
 }
 

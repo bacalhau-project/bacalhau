@@ -10,8 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -30,7 +28,6 @@ type ComputeSuite struct {
 	suite.Suite
 	node          *node.Compute
 	config        node.ComputeConfig
-	jobStore      localdb.LocalDB
 	cm            *system.CleanupManager
 	executor      *noop_executor.NoopExecutor
 	verifier      *noop_verifier.NoopVerifier
@@ -39,19 +36,17 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupTest() {
+	var err error
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
-	jobStore, err := inmemory.NewInMemoryDatastore()
-	s.NoError(err)
-
-	s.jobStore = jobStore
 	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits: model.ResourceUsageData{
 			CPU: 2,
 		},
 	})
 	s.executor = noop_executor.NewNoopExecutor()
-	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm, localdb.GetStateResolver(s.jobStore))
+	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm)
+	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.setupNode()
 }

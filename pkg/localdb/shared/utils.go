@@ -3,7 +3,7 @@ package shared
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 )
 
 func UpdateShardState(

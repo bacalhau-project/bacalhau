@@ -22,11 +22,9 @@ require (
 	github.com/filecoin-project/go-state-types v0.9.9
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/go-test/deep v1.1.0
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.13
@@ -90,7 +88,6 @@ require (
 	go.ptx.dk/multierrgroup v0.0.2
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.5.0
 	golang.org/x/exp v0.0.0-20221106115401-f9659909a136
 	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.5.0
@@ -332,6 +329,7 @@ require (
 	go.uber.org/dig v1.14.1 // indirect
 	go.uber.org/fx v1.17.1 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect

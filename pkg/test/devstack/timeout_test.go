@@ -38,13 +38,13 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		computeJobExecutionBypassList       []string
 		computeMinJobExecutionTimeout       time.Duration
 		computeMaxJobExecutionTimeout       time.Duration
-		requesterJobNegotiationTimeout      time.Duration
 		requesterMinJobExecutionTimeout     time.Duration
 		requesterDefaultJobExecutionTimeout time.Duration
 		jobTimeout                          time.Duration
 		sleepTime                           time.Duration
 		completedCount                      int
-		errorCount                          int
+		rejectedCount                       int // when no bids are received
+		errorCount                          int // when execution takes too long
 	}
 
 	runTest := func(testCase TestCase) {
@@ -58,10 +58,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
 				}),
 				RequesterConfig: node.NewRequesterConfigWith(node.RequesterConfigParams{
-					JobNegotiationTimeout:              testCase.requesterJobNegotiationTimeout,
 					MinJobExecutionTimeout:             testCase.requesterMinJobExecutionTimeout,
 					DefaultJobExecutionTimeout:         testCase.requesterDefaultJobExecutionTimeout,
-					StateManagerBackgroundTaskInterval: 1 * time.Second,
+					HousekeepingBackgroundTaskInterval: 1 * time.Second,
 				}),
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
@@ -83,9 +82,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				MinBids:     testCase.minBids,
 			},
 			JobCheckers: []job.CheckStatesFunction{
-				job.WaitForJobStates(map[model.JobStateType]int{
-					model.JobStateCompleted: testCase.completedCount,
-					model.JobStateError:     testCase.errorCount,
+				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+					model.ExecutionStateCompleted:         testCase.completedCount,
+					model.ExecutionStateFailed:            testCase.errorCount,
+					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
 		}
@@ -99,7 +99,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       0 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 10 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -113,7 +112,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 20 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -128,7 +126,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 1 * time.Millisecond,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -142,7 +139,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -158,7 +154,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      500 * time.Millisecond,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -166,7 +161,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
 			jobTimeout:                          2 * time.Minute,
-			errorCount:                          1,
+			rejectedCount:                       1,
 		},
 		{
 			// no bid will be submitted, so the requester node should time out
@@ -174,7 +169,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       5 * time.Minute,
 			computeMaxJobExecutionTimeout:       10 * time.Minute,
-			requesterJobNegotiationTimeout:      500 * time.Millisecond,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -182,14 +176,13 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
 			jobTimeout:                          2 * time.Minute,
-			errorCount:                          1,
+			rejectedCount:                       1,
 		},
 		{
 			name:                                "job_timeout_greater_than_max",
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,
@@ -197,7 +190,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			concurrency:                         1,
 			sleepTime:                           1 * time.Second,
 			jobTimeout:                          2 * time.Minute,
-			errorCount:                          1,
+			rejectedCount:                       1,
 		},
 		{
 			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
@@ -205,7 +198,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterJobNegotiationTimeout:      10 * time.Second,
 			requesterDefaultJobExecutionTimeout: 40 * time.Second,
 			requesterMinJobExecutionTimeout:     1 * time.Nanosecond,
 			nodeCount:                           1,

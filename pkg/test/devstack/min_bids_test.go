@@ -29,9 +29,9 @@ type minBidsTestCase struct {
 	shards         int
 	concurrency    int
 	minBids        int
-	expectedResult map[model.JobStateType]int
+	expectedResult map[model.ExecutionStateType]int
 	submitChecker  scenario.CheckSubmitResponse
-	errorStates    []model.JobStateType
+	errorStates    []model.ExecutionStateType
 }
 
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
@@ -55,8 +55,8 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 			MinBids:     testCase.minBids,
 		},
 		JobCheckers: []job.CheckStatesFunction{
-			job.WaitThrowErrors(testCase.errorStates),
-			job.WaitForJobStates(testCase.expectedResult),
+			job.WaitExecutionsThrowErrors(testCase.errorStates),
+			job.WaitForExecutionStates(testCase.expectedResult),
 		},
 		SubmitChecker: testCase.submitChecker,
 	}
@@ -71,11 +71,11 @@ func (s *MinBidsSuite) TestMinBids_0and1Node() {
 		shards:      1,
 		concurrency: 1,
 		minBids:     0,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
+		expectedResult: map[model.ExecutionStateType]int{
+			model.ExecutionStateCompleted: 1,
 		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
+		errorStates: []model.ExecutionStateType{
+			model.ExecutionStateFailed,
 		},
 	})
 }
@@ -87,11 +87,11 @@ func (s *MinBidsSuite) TestMinBids_isConcurrency() {
 		shards:      1,
 		concurrency: 3,
 		minBids:     3,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateCompleted: 3,
+		expectedResult: map[model.ExecutionStateType]int{
+			model.ExecutionStateCompleted: 3,
 		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
+		errorStates: []model.ExecutionStateType{
+			model.ExecutionStateFailed,
 		},
 	})
 

@@ -50,7 +50,7 @@ func (apiClient *RequesterAPIClient) List(
 	sortBy string,
 	sortReverse bool,
 ) (
-	[]*model.Job, error) {
+	[]*model.JobWithInfo, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.List")
 	defer span.End()
 
@@ -75,23 +75,23 @@ func (apiClient *RequesterAPIClient) List(
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
+func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobWithInfo, bool, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
 	defer span.End()
 
 	if jobID == "" {
-		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return &model.JobWithInfo{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
 	jobsList, err := apiClient.List(ctx, jobID, model.IncludeAny, model.ExcludeNone, 1, false, "created_at", true)
 	if err != nil {
-		return &model.Job{}, false, err
+		return &model.JobWithInfo{}, false, err
 	}
 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.Job{}, false, bacerrors.NewJobNotFound(jobID)
+		return &model.JobWithInfo{}, false, bacerrors.NewJobNotFound(jobID)
 	}
 }
 
@@ -126,12 +126,12 @@ func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID stri
 }
 
 func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
-	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
+	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
 		j, _, err := apiClient.Get(ctx, jobID)
 		if err != nil {
-			return &model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
+			return model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
 		}
-		return j, err
+		return j.Job, err
 	}
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
@@ -139,7 +139,7 @@ func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
 	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
-func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobEvent, err error) {
+func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobHistory, err error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
 	defer span.End()
 
@@ -171,27 +171,6 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 		}
 	}
 	return nil, outerErr
-}
-
-func (apiClient *RequesterAPIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetLocalEvents")
-	defer span.End()
-
-	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetLocalEvents call")
-	}
-
-	req := localEventsRequest{
-		ClientID: system.GetClientID(),
-		JobID:    jobID,
-	}
-
-	var res localEventsResponse
-	if err := apiClient.Post(ctx, APIPrefix+"local_events", req, &res); err != nil {
-		return nil, err
-	}
-
-	return res.LocalEvents, nil
 }
 
 func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID string) (results []model.PublishedResult, err error) {
@@ -234,14 +213,14 @@ func (apiClient *RequesterAPIClient) Submit(
 		return &model.Job{}, err
 	}
 	jsonRaw := json.RawMessage(jsonData)
-	log.Ctx(ctx).Debug().RawJSON("json", jsonRaw).Msgf("jsonRaw")
+	log.Ctx(ctx).Trace().RawJSON("json", jsonRaw).Msgf("jsonRaw")
 
 	// sign the raw bytes representation of model.JobCreatePayload
 	signature, err := system.SignForClient(jsonRaw)
 	if err != nil {
 		return &model.Job{}, err
 	}
-	log.Ctx(ctx).Debug().Str("signature", signature).Msgf("signature")
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
 
 	var res submitResponse
 	req := submitRequest{

@@ -36,8 +36,7 @@ func (s *BaseSuite) SetupTest() {
 			},
 		}),
 		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			JobNegotiationTimeout:              5 * time.Second,
-			StateManagerBackgroundTaskInterval: 1 * time.Second,
+			HousekeepingBackgroundTaskInterval: 1 * time.Second,
 		}),
 	)
 	s.node = stack.Nodes[0]

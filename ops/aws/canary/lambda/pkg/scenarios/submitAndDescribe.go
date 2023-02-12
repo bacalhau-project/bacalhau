@@ -41,10 +41,5 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetLocalEvents(ctx, submittedJob.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

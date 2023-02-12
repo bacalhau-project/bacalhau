@@ -74,7 +74,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute3 = stack.Nodes[3]
 	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.GetURI())
 	s.stateResolver = job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {

@@ -50,12 +50,7 @@ var testcase = scenario.Scenario{
 		},
 	},
 	JobCheckers: []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	},
 }
 

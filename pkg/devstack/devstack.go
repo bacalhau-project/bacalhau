@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
@@ -16,8 +17,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -233,11 +232,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// in-memory datastore
 		//////////////////////////////////////
-		var datastore localdb.LocalDB
-		datastore, err = inmemory.NewInMemoryDatastore()
-		if err != nil {
-			return nil, err
-		}
+		datastore := inmemory.NewJobStore()
 
 		//////////////////////////////////////
 		// Create and Run Node
@@ -269,7 +264,7 @@ func NewDevStack(
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
-			LocalDB:              datastore,
+			JobStore:             datastore,
 			Host:                 libp2pHost,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,

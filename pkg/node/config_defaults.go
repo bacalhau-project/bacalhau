@@ -24,10 +24,9 @@ var DefaultComputeConfig = ComputeConfigParams{
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	JobNegotiationTimeout:      2 * time.Minute,
 	MinJobExecutionTimeout:     0 * time.Second,
 	DefaultJobExecutionTimeout: 30 * time.Minute,
 
-	StateManagerBackgroundTaskInterval: 30 * time.Second,
+	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            10,
 }

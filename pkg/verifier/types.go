@@ -10,11 +10,8 @@ type EncrypterFunction func(ctx context.Context, data []byte, publicKeyBytes []b
 type DecrypterFunction func(ctx context.Context, data []byte) ([]byte, error)
 
 type VerifierResult struct {
-	JobID       string
-	NodeID      string
-	ExecutionID string
-	ShardIndex  int
-	Verified    bool
+	Execution model.ExecutionState
+	Verified  bool
 }
 
 // Returns a verifier that can be used to verify a job.
@@ -53,16 +50,6 @@ type Verifier interface {
 
 	// requester node
 	//
-	// do we think that enough executions have occurred to call this job "complete"
-	// there should be at least 1 result per shard but it's really up to the verifier
-	// to decide that a job has "completed"
-	IsExecutionComplete(
-		ctx context.Context,
-		shard model.JobShard,
-	) (bool, error)
-
-	// requester node
-	//
 	// once we've decided that a job is complete - we verify the results reported
 	// by the compute nodes - what this actually does is up to the verifier but
 	// it's highly likely that a verifier implementation has a controller attached
@@ -73,5 +60,6 @@ type Verifier interface {
 	VerifyShard(
 		ctx context.Context,
 		shard model.JobShard,
+		executions []model.ExecutionState,
 	) ([]VerifierResult, error)
 }

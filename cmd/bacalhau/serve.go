@@ -10,13 +10,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -362,7 +361,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return err
 	}
 
-	datastore, err := inmemory.NewInMemoryDatastore()
+	datastore := inmemory.NewJobStore()
 	if err != nil {
 		return fmt.Errorf("error creating in memory datastore: %s", err)
 	}
@@ -371,7 +370,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	nodeConfig := node.NodeConfig{
 		IPFSClient:           ipfsClient,
 		CleanupManager:       cm,
-		LocalDB:              datastore,
+		JobStore:             datastore,
 		Host:                 libp2pHost,
 		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
