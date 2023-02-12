@@ -62,8 +62,6 @@ func RunTestCase(
 			ID:        "test-job",
 			ClientID:  "test-client",
 			CreatedAt: time.Now(),
-		},
-		Status: model.JobStatus{
 			Requester: model.JobRequester{
 				RequesterNodeID: "test-owner",
 			},

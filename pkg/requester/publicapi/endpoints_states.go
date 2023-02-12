@@ -60,5 +60,5 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 }
 
 func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (model.JobState, error) {
-	return apiServer.localDB.GetJobState(ctx, stateReq.JobID)
+	return apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
 }

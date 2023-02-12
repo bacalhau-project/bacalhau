@@ -240,18 +240,18 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 }
 
 // Renders job details into a table row
-func summarizeJob(j *model.Job, OL *ListOptions) (table.Row, error) {
+func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 	jobDesc := []string{
-		j.Spec.Engine.String(),
+		j.Job.Spec.Engine.String(),
 	}
 	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-	if j.Spec.Engine == model.EngineDocker {
-		jobDesc = append(jobDesc, j.Spec.Docker.Image, strings.Join(j.Spec.Docker.Entrypoint, " "))
+	if j.Job.Spec.Engine == model.EngineDocker {
+		jobDesc = append(jobDesc, j.Job.Spec.Docker.Image, strings.Join(j.Job.Spec.Docker.Entrypoint, " "))
 	}
 
 	// compute state summary
 	//nolint:gocritic
-	stateSummary := job.ComputeStateSummary(j)
+	stateSummary := job.ComputeStateSummary(j.State)
 
 	// compute verifiedSummary
 	verifiedSummary := job.ComputeVerifiedSummary(j)
@@ -260,8 +260,8 @@ func summarizeJob(j *model.Job, OL *ListOptions) (table.Row, error) {
 	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
-		shortenTime(OL.OutputWide, j.Metadata.CreatedAt),
-		shortID(OL.OutputWide, j.Metadata.ID),
+		shortenTime(OL.OutputWide, j.Job.Metadata.CreatedAt),
+		shortID(OL.OutputWide, j.Job.Metadata.ID),
 		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 		shortenString(OL.OutputWide, stateSummary),
 		shortenString(OL.OutputWide, verifiedSummary),

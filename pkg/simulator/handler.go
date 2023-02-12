@@ -34,7 +34,7 @@ func (e *RequestHandler) SetRequesterProxy(requesterProxy compute.Callback) {
 
 func (e *RequestHandler) AskForBid(ctx context.Context, request compute.AskForBidRequest) (compute.AskForBidResponse, error) {
 	jobCreatedEvent := model.JobEvent{
-		SourceNodeID: request.Job.Status.Requester.RequesterNodeID,
+		SourceNodeID: request.Job.Metadata.Requester.RequesterNodeID,
 		JobID:        request.Job.Metadata.ID,
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),

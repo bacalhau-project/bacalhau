@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/rs/zerolog/log"
@@ -26,7 +26,7 @@ type listRequest struct {
 type ListRequest = listRequest
 
 type listResponse struct {
-	Jobs []*model.Job `json:"jobs"`
+	Jobs []*model.JobWithInfo `json:"jobs"`
 }
 
 type ListResponse = listResponse
@@ -64,18 +64,23 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	if len(jobList) > 0 {
-		// get JobStates
-		err = s.getJobStates(ctx, jobList)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("error getting job states")
+
+	jobWithInfos := make([]*model.JobWithInfo, len(jobList))
+	for i, job := range jobList {
+		jobState, innerErr := s.jobStore.GetJobState(ctx, job.Metadata.ID)
+		if innerErr != nil {
+			log.Ctx(ctx).Error().Err(innerErr).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		jobWithInfos[i] = &model.JobWithInfo{
+			Job:   job,
+			State: jobState,
 		}
 	}
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(ListResponse{
-		Jobs: jobList,
+		Jobs: jobWithInfos,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -83,8 +88,8 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]*model.Job, error) {
-	list, err := s.localDB.GetJobs(ctx, localdb.JobQuery{
+func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]model.Job, error) {
+	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
@@ -98,16 +103,4 @@ func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListReques
 		return nil, err
 	}
 	return list, nil
-}
-
-func (s *RequesterAPIServer) getJobStates(ctx context.Context, jobList []*model.Job) error {
-	var err error
-	for k := range jobList {
-		jobList[k].Status.State, err = s.localDB.GetJobState(ctx, jobList[k].Metadata.ID)
-		if err != nil {
-			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
-			return err
-		}
-	}
-	return nil
 }

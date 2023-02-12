@@ -43,7 +43,7 @@ func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *ht
 
 	if jobID != "" {
 		// list events for job out of localDB and send them to the client
-		events, err := s.localDB.GetJobEvents(context.Background(), jobID)
+		events, err := s.jobStore.GetJobHistory(context.Background(), jobID)
 		if err != nil {
 			log.Error().Msgf("error listing job events: %s\n", err.Error())
 			return

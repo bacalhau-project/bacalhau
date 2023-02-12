@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -29,10 +30,6 @@ type ListSuite struct {
 // a normal test function and pass our suite to suite.Run
 func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
-}
-
-type listResponse struct {
-	Jobs []*model.Job `json:"jobs"`
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
@@ -118,12 +115,12 @@ func (suite *ListSuite) TestList_IdFilter() {
 	require.NoError(suite.T(), err)
 
 	// parse response
-	response := listResponse{}
+	response := publicapi.ListResponse{}
 	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
-	var firstItem *model.Job
+	var firstItem model.Job
 	for _, v := range response.Jobs {
-		firstItem = v
+		firstItem = v.Job
 		break
 	}
 
@@ -191,11 +188,11 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
 				require.NoError(suite.T(), err)
 
-				response := listResponse{}
+				response := publicapi.ListResponse{}
 				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
-					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Metadata.ID)
+					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)
 				} else {
 					require.Empty(suite.T(), response.Jobs)
 				}

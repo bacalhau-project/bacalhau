@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
@@ -47,9 +48,11 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 
 		for _, testFile := range testFiles {
 			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
+			if strings.Contains(testFile, "docker") {
+				docker.MustHaveDocker(s.T())
+			}
 			s.Run(name, func() {
 				ctx := context.Background()
-
 				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
 					"--api-host", s.host,
 					"--api-port", s.port,

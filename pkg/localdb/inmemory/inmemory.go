@@ -14,7 +14,7 @@ import (
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 

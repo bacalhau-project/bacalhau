@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 )
@@ -40,22 +39,6 @@ func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (str
 	}
 	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
 	return dir, err
-}
-
-func (results *Results) CheckShardStates(
-	shardStates []model.JobShardState,
-	concurrency int,
-) (bool, error) {
-	if len(shardStates) < concurrency {
-		return false, nil
-	}
-	hasExecutedCount := 0
-	for _, state := range shardStates { //nolint:gocritic
-		if state.State == model.JobStateError || state.State == model.JobStateVerifying {
-			hasExecutedCount++
-		}
-	}
-	return hasExecutedCount >= concurrency, nil
 }
 
 func (results *Results) Close() error {
