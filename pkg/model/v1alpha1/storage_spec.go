@@ -17,6 +17,9 @@ type StorageSpec struct {
 	// NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
 	CID string `json:"CID,omitempty" example:"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"`
 
+	// URL of the git Repo to clone
+	Repo string `json:"Repo,omitempty"`
+
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
 
