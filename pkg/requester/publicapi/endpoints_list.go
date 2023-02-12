@@ -27,7 +27,7 @@ type listRequest struct {
 type ListRequest = listRequest
 
 type listResponse struct {
-	Jobs []*model.JobDescription `json:"jobs"`
+	Jobs []*model.JobWithInfo `json:"jobs"`
 }
 
 type ListResponse = listResponse
@@ -68,7 +68,7 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	jobDescriptions := make([]*model.JobDescription, len(jobList))
+	jobWithInfos := make([]*model.JobWithInfo, len(jobList))
 	for i, job := range jobList {
 		jobState, innerErr := s.jobStore.GetJobState(ctx, job.Metadata.ID)
 		if innerErr != nil {
@@ -76,14 +76,14 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		jobDescriptions[i] = &model.JobDescription{
+		jobWithInfos[i] = &model.JobWithInfo{
 			Job:   job,
 			State: jobState,
 		}
 	}
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(ListResponse{
-		Jobs: jobDescriptions,
+		Jobs: jobWithInfos,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

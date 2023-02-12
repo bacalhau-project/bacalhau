@@ -66,14 +66,6 @@ type JobState struct {
 	CreateTime time.Time `json:"CreateTime"`
 	// UpdateTime is the time when the job state was last updated.
 	UpdateTime time.Time `json:"UpdateTime"`
-}
-
-// JobDescription holds all information about a job, including the job state and history of state changes.
-type JobDescription struct {
-	// Job info
-	Job Job `json:"Job"`
-	// The current state of the job
-	State JobState `json:"State"`
-	// History of changes to the job state. Not always populated in the job description
-	History []JobHistory `json:"History,omitempty"`
+	// TimeoutAt is the time when the job will be timed out if it is not completed.
+	TimeoutAt time.Time `json:"TimeoutAt,omitempty"`
 }

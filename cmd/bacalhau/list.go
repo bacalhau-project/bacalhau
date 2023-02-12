@@ -241,7 +241,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 }
 
 // Renders job details into a table row
-func summarizeJob(ctx context.Context, j *model.JobDescription, OL *ListOptions) (table.Row, error) {
+func summarizeJob(ctx context.Context, j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 	//nolint:ineffassign,staticcheck // For tracing
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.summarizeJob")
 	defer span.End()

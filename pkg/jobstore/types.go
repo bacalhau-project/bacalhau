@@ -24,6 +24,7 @@ type Store interface {
 	GetJob(ctx context.Context, id string) (model.Job, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
+	GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error)
 	GetJobHistory(ctx context.Context, jobID string) ([]model.JobHistory, error)
 	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	CreateJob(ctx context.Context, j model.Job) error

@@ -70,10 +70,12 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 
 // JobWithInfo is the job request + the result of attempting to run it on the network
 type JobWithInfo struct {
-	Job            Job             `json:"Job,omitempty"`
-	JobState       JobState        `json:"JobState,omitempty"`
-	JobEvents      []JobEvent      `json:"JobEvents,omitempty"`
-	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty"`
+	// Job info
+	Job Job `json:"Job"`
+	// The current state of the job
+	State JobState `json:"State"`
+	// History of changes to the job state. Not always populated in the job description
+	History []JobHistory `json:"History,omitempty"`
 }
 
 // JobShard contains data about a job shard in the bacalhau network.
@@ -286,17 +288,6 @@ type JobSpecWasm struct {
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
-}
-
-// gives us a way to keep local data against a job
-// so our compute node and requester node control loops
-// can keep state against a job without broadcasting it
-// to the rest of the network
-type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName,omitempty"`
-	JobID        string            `json:"JobID,omitempty"`
-	ShardIndex   int               `json:"ShardIndex,omitempty"`
-	TargetNodeID string            `json:"TargetNodeID,omitempty"`
 }
 
 // we emit these to other nodes so they update their

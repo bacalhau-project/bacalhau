@@ -55,7 +55,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
 				}
-				returnedJobDescription := &model.JobDescription{}
+				returnedJobDescription := &model.JobWithInfo{}
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), "describe",
@@ -196,7 +196,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}
 
-				var returnedJobDescription = &model.JobDescription{}
+				var returnedJobDescription = &model.JobWithInfo{}
 				var err error
 				var out string
 				var jobID string

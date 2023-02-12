@@ -93,8 +93,7 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 }
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
-	//TODO implement me
-	panic("implement me")
+	return node.scheduler.CancelJob(ctx, request)
 }
 
 func (node *BaseEndpoint) newRootSpanForJob(ctx context.Context, jobID string) (context.Context, trace.Span) {

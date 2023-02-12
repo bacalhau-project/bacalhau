@@ -117,7 +117,6 @@ func NewRequesterNode(
 		EventEmitter: requester.NewEventEmitter(requester.EventEmitterParams{
 			EventConsumer: localJobEventConsumer,
 		}),
-		JobNegotiationTimeout: config.JobNegotiationTimeout,
 	})
 
 	publicKey := host.Peerstore().PubKey(host.ID())
@@ -134,6 +133,13 @@ func NewRequesterNode(
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+	})
+
+	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
+		Endpoint: endpoint,
+		JobStore: jobStore,
+		NodeID:   host.ID().String(),
+		Interval: config.HousekeepingBackgroundTaskInterval,
 	})
 
 	// if this node is the simulator, then we pass incoming requests to the simulator before passing them to the endpoint
@@ -206,6 +212,9 @@ func NewRequesterNode(
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		// stop the housekeeping background task
+		housekeeping.Stop()
+
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
 		if cleanupErr != nil {
 			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")

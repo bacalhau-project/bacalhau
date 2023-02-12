@@ -37,7 +37,8 @@ type StartJobRequest struct {
 }
 
 type CancelJobRequest struct {
-	JobID string
+	JobID  string
+	Reason string
 }
 
 type CancelJobResult struct {

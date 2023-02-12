@@ -20,17 +20,19 @@ const newJobComment = "Job created"
 
 type JobStore struct {
 	// we keep pointers to these things because we will update them partially
-	jobs    map[string]model.Job
-	states  map[string]model.JobState
-	history map[string][]model.JobHistory
-	mtx     sync.RWMutex
+	jobs       map[string]model.Job
+	states     map[string]model.JobState
+	history    map[string][]model.JobHistory
+	inprogress map[string]struct{}
+	mtx        sync.RWMutex
 }
 
 func NewJobStore() *JobStore {
 	res := &JobStore{
-		jobs:    make(map[string]model.Job),
-		states:  make(map[string]model.JobState),
-		history: make(map[string][]model.JobHistory),
+		jobs:       make(map[string]model.Job),
+		states:     make(map[string]model.JobState),
+		history:    make(map[string][]model.JobHistory),
+		inprogress: make(map[string]struct{}),
 	}
 	res.mtx.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -127,6 +129,19 @@ func (d *JobStore) GetJobState(_ context.Context, jobID string) (model.JobState,
 	return state, nil
 }
 
+func (d *JobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	var result []model.JobWithInfo
+	for id := range d.inprogress {
+		result = append(result, model.JobWithInfo{
+			Job:   d.jobs[id],
+			State: d.states[id],
+		})
+	}
+	return result, nil
+}
+
 func (d *JobStore) GetJobHistory(_ context.Context, jobID string) ([]model.JobHistory, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
@@ -180,6 +195,7 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 		UpdateTime: time.Now(),
 	}
 	d.states[job.Metadata.ID] = jobState
+	d.inprogress[job.Metadata.ID] = struct{}{}
 	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
 	return nil
 }
@@ -236,6 +252,9 @@ func (d *JobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobS
 	jobState.Version++
 	jobState.UpdateTime = time.Now()
 	d.states[request.JobID] = jobState
+	if request.NewState.IsTerminal() {
+		delete(d.inprogress, request.JobID)
+	}
 	d.appendJobHistory(jobState, previousState, request.Comment)
 	return nil
 }

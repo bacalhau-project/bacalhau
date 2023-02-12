@@ -137,7 +137,7 @@ func ShortID(id string) string {
 
 func ComputeStateSummary(j model.JobState) string {
 	var currentJobState model.ExecutionStateType
-	jobShardStates := FlattenShardStates(j)
+	jobShardStates := FlattenExecutionStates(j)
 	for i := range jobShardStates {
 		if jobShardStates[i].State > currentJobState {
 			currentJobState = jobShardStates[i].State
@@ -147,7 +147,7 @@ func ComputeStateSummary(j model.JobState) string {
 	return stateSummary
 }
 
-func ComputeResultsSummary(j *model.JobDescription) string {
+func ComputeResultsSummary(j *model.JobWithInfo) string {
 	var resultSummary string
 	if GetJobTotalShards(j.Job) > 1 {
 		resultSummary = ""
@@ -162,7 +162,7 @@ func ComputeResultsSummary(j *model.JobDescription) string {
 	return resultSummary
 }
 
-func ComputeVerifiedSummary(j *model.JobDescription) string {
+func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	var verifiedSummary string
 	if j.Job.Spec.Verifier == model.VerifierNoop {
 		verifiedSummary = ""

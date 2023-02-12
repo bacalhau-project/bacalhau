@@ -51,12 +51,6 @@ func NewDefaultTracer() *Tracer {
 	}
 }
 
-// HandleLocalEvent implements LocalEventHandler
-func (t *Tracer) HandleLocalEvent(ctx context.Context, event model.JobLocalEvent) error {
-	trace(t.Logger, event)
-	return nil
-}
-
 // HandleJobEvent implements JobEventHandler
 func (t *Tracer) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
 	trace(t.Logger, event)
@@ -89,4 +83,3 @@ func (t *Tracer) Shutdown() error {
 }
 
 var _ JobEventHandler = (*Tracer)(nil)
-var _ LocalEventHandler = (*Tracer)(nil)

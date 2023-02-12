@@ -50,7 +50,7 @@ func (apiClient *RequesterAPIClient) List(
 	sortBy string,
 	sortReverse bool,
 ) (
-	[]*model.JobDescription, error) {
+	[]*model.JobWithInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
@@ -75,23 +75,23 @@ func (apiClient *RequesterAPIClient) List(
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobDescription, bool, error) {
+func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobWithInfo, bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
 	defer span.End()
 
 	if jobID == "" {
-		return &model.JobDescription{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return &model.JobWithInfo{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
 	jobsList, err := apiClient.List(ctx, jobID, model.IncludeAny, model.ExcludeNone, 1, false, "created_at", true)
 	if err != nil {
-		return &model.JobDescription{}, false, err
+		return &model.JobWithInfo{}, false, err
 	}
 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.JobDescription{}, false, bacerrors.NewJobNotFound(jobID)
+		return &model.JobWithInfo{}, false, bacerrors.NewJobNotFound(jobID)
 	}
 }
 
@@ -213,14 +213,14 @@ func (apiClient *RequesterAPIClient) Submit(
 		return &model.Job{}, err
 	}
 	jsonRaw := json.RawMessage(jsonData)
-	log.Ctx(ctx).Debug().RawJSON("json", jsonRaw).Msgf("jsonRaw")
+	log.Ctx(ctx).Trace().RawJSON("json", jsonRaw).Msgf("jsonRaw")
 
 	// sign the raw bytes representation of model.JobCreatePayload
 	signature, err := system.SignForClient(jsonRaw)
 	if err != nil {
 		return &model.Job{}, err
 	}
-	log.Ctx(ctx).Debug().Str("signature", signature).Msgf("signature")
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
 
 	var res submitResponse
 	req := submitRequest{

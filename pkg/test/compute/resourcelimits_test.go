@@ -377,7 +377,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		require.NoError(suite.T(), err)
 		completedShards := job.GetCompletedShardStates(jobState)
 		require.Equal(suite.T(), 1, len(completedShards))
-		require.Equal(suite.T(), model.JobStateCompleted, completedShards[0].State)
+		require.Equal(suite.T(), model.ExecutionStateCompleted, completedShards[0].State)
 		allocationMap[completedShards[0].NodeID]++
 	}
 

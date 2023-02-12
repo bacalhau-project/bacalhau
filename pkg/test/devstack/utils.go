@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
@@ -154,6 +155,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	err = resolver.Wait(
 		ctx,
 		jobID,
+		job.WaitForTerminalStates(),
 	)
 	require.NoError(t, err)
 
