@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -15,6 +17,8 @@ import (
 var apiHost string
 var apiPort int
 var doNotTrack bool
+
+var loggingMode logger.Logmode = logger.LogModeDefault
 
 var Fatal = FatalErrorHandler
 
@@ -36,6 +40,10 @@ func init() { //nolint:gochecknoinits
 		}
 	}
 
+	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
+		loggingMode = logger.Logmode(strings.ToLower(logtype))
+	}
+
 	// Force cobra to set apiHost & apiPort
 	NewRootCmd()
 }
@@ -45,8 +53,10 @@ func NewRootCmd() *cobra.Command {
 		Use:   getCommandLineExecutable(),
 		Short: "Compute over data",
 		Long:  `Compute over data`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			logger.ConfigureLogging(loggingMode)
+		},
 	}
-
 	// ====== Start a job
 
 	// Create job from file
@@ -90,6 +100,10 @@ Ignored if BACALHAU_API_HOST environment variable is set.`,
 		&apiPort, "api-port", defaultAPIPort,
 		`The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
+	)
+	RootCmd.PersistentFlags().Var(
+		LoggingFlag(&loggingMode), "log-mode",
+		`Log format: 'default','station','json','combined','event'`,
 	)
 	return RootCmd
 }

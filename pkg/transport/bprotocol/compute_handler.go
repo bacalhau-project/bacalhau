@@ -36,7 +36,7 @@ func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	handler.host.SetStreamHandler(ResultAcceptedProtocolID, handler.onResultAccepted)
 	handler.host.SetStreamHandler(ResultRejectedProtocolID, handler.onResultRejected)
 	handler.host.SetStreamHandler(CancelProtocolID, handler.onCancelJob)
-	log.Info().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
+	log.Debug().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
 	return handler
 }
 
