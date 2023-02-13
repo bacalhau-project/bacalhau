@@ -25,10 +25,11 @@ func TestConfigureLogging(t *testing.T) {
 	})
 
 	var logging strings.Builder
-	configureLogging(func(w *zerolog.ConsoleWriter) {
+	configureLogging(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+		defaultLogFormat(w)
 		w.Out = &logging
 		w.NoColor = true
-	})
+	}))
 
 	subsubpackage.TestLog("testing error logging", "testing message")
 
@@ -45,10 +46,11 @@ func TestConfigureLogging(t *testing.T) {
 // TestConfigureIpfsLogging checks that we configure IPFS logging correctly, forwarding logging to zerolog.
 func TestConfigureIpfsLogging(t *testing.T) {
 	var logging strings.Builder
-	configureLogging(func(w *zerolog.ConsoleWriter) {
+	configureLogging(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+		defaultLogFormat(w)
 		w.Out = &logging
 		w.NoColor = true
-	})
+	}))
 
 	l := ipfslog2.Logger("name")
 	l.With("hello", "world", "err", errors.New("example")).Error("test")
