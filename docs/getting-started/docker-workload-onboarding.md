@@ -77,21 +77,21 @@ All Bacalhau nodes are of an `x86_64` architecture, therefore containers must be
 
 For example:
 
-```bash
-export IMAGE=myuser/myimage:latest
-docker build -t ${IMAGE} .
-docker image push ${IMAGE}
+```shell
+$ export IMAGE=myuser/myimage:latest
+$ docker build -t ${IMAGE} .
+$ docker image push ${IMAGE}
 ```
 
 ### Step 4 - Test Your Container
 
 To test your docker image locally, you'll need to execute the following command, changing the environment variables as necessary:
 
-```bash
-export LOCAL_INPUT_DIR=$PWD
-export LOCAL_OUTPUT_DIR=$PWD
-export CMD=(sh -c 'ls /inputs; echo do something useful > /outputs/stdout')
-docker run --rm \
+```shell
+$ export LOCAL_INPUT_DIR=$PWD
+$ export LOCAL_OUTPUT_DIR=$PWD
+$ export CMD=(sh -c 'ls /inputs; echo do something useful > /outputs/stdout')
+$ docker run --rm \
   -v ${LOCAL_INPUT_DIR}:/inputs  \
   -v ${LOCAL_OUTPUT_DIR}:/outputs \
   ${IMAGE} \
@@ -100,19 +100,19 @@ docker run --rm \
 
 For example:
 
-```bash
-export IMAGE=ubuntu
-docker run --rm \
+```shell
+$ export IMAGE=ubuntu
+$ docker run --rm \
   -v ${LOCAL_INPUT_DIR}:/inputs  \
   -v ${LOCAL_OUTPUT_DIR}:/outputs \
   ${IMAGE} \
   ${CMD}
-cat stdout
+$ cat stdout
 ```
 
 This snippet results in:
 
-```bash
+```
 ...file listing...
 do something useful
 ```
@@ -142,28 +142,28 @@ The following guides explain how to store data on the IPFS network.
 
 To run your workload using input data stored in IPFS, run the following command:
 
-```bash
-bacalhau docker run --inputs ${CID} ${IMAGE} ${CMD}
+```shell
+$ bacalhau docker run --inputs ${CID} ${IMAGE} ${CMD}
 
-bacalhau list 
+$ bacalhau list 
 
-bacalhau get JOB_ID
+$ bacalhau get JOB_ID
 ```
 
 For example, running:
 
-```bash
-job_id=$(bacalhau docker run ubuntu echo hello)
-bacalhau list --id-filter $job_id
-sleep 5
-bacalhau list --id-filter $job_id
-bacalhau get $job_id
-ls shards
+```shell
+$ job_id=$(bacalhau docker run ubuntu echo hello)
+$ bacalhau list --id-filter $job_id
+$ sleep 5
+$ bacalhau list --id-filter $job_id
+$ bacalhau get $job_id
+$ ls shards
 ```
 
 outputs:
 
-```bash
+```
  CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
  10:26:00  24440f0d  Docker ubuntu echo h...  Verifying                      
  CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
@@ -182,13 +182,13 @@ The `--inputs` flag does not support CID subpaths.
 
 Alternatively, you can run your workload with a publicly accessible http(s) URL, which will download the data temporarily into IPFS:
 
-```bash
-export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
-bacalhau docker run --input-urls ${URL}:/inputs ${IMAGE} ${CMD}
+```shell
+$ export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
+$ bacalhau docker run --input-urls ${URL}:/inputs ${IMAGE} ${CMD}
 
-bacalhau list 
+$ bacalhau list 
 
-bacalhau get JOB_ID
+$ bacalhau get JOB_ID
 ```
 
 :::caution
@@ -209,7 +209,7 @@ We have video tutorial examples on how to onboarded workload to Bacalhau:
 ## Troubleshooting
 If you run into this compute error while running your docker image 
 
-```bash
+```
 Creating job for submission ... done ✅
 Finding node(s) for the job ... done ✅
 Node accepted the job ... done ✅

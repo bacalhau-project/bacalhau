@@ -13,10 +13,11 @@ The Bacalhau client is a command-line interface (CLI) that allows you to submit 
 
 ### Installing the Bacalhau CLI Locally
 
-You can install or update the Bacalhau CLI by running the following command in a terminal:
+You can install or update the Bacalhau CLI by running the following command in a terminal.
+It will prompt for the root password to copy the Bacalhau binary to `/usr/local/bin`:
 
-```
-curl -sL https://get.bacalhau.org/install.sh | bash
+```bash
+$ curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
 :::tip
@@ -27,8 +28,8 @@ Windows users can download the [latest release tarball from Github](https://gith
 
 Instead of installing the client, you can use the [Bacalhau Docker image](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau) to run the client. There's also a [comprehensive example](../examples/workload-onboarding/bacalhau-docker-image/index.md). To pull the latest image run the following command:
 
-```bash
-docker pull ghcr.io/bacalhau-project/bacalhau:latest
+```shell
+$ docker pull ghcr.io/bacalhau-project/bacalhau:latest
 ```
 
 :::warning
@@ -37,8 +38,8 @@ Remember that the "latest" tag is just a string. It doesn't refer to the latest 
 
 Now you can run any Bacalhau client command by prefixing it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`. For example, to run the `version` command, you can run:
 
-```bash
-docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
+```shell
+$ docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
 ```
 
 :::tip
@@ -49,11 +50,8 @@ If you want to pass files between the Docker Bacalhau CLI and your desktop, don'
 
 Once your Bacalhau client is installed, it will show the client and server version. Your client and server versions must be aligned before you can run a job with Bacalhau client. You can use the code below to check this:
 
-```
-❯ bacalhau version
-
-Client Version: v0.x.y
-Server Version: v0.x.y
+```shell
+$ bacalhau version
 ```
 
 If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](https://docs.bacalhau.org/#our-vision) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
@@ -68,11 +66,15 @@ The easiest way to submit a job is using the `docker run` verb. Let's take a qui
 
 While the command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [available flags (see CLI Reference)](../all-flags#docker-run) to support its computing model.
 
-The code snippet below submits a job that runs an `echo` program within an [Ubuntu container](https://hub.docker.com/_/ubuntu). When a job is sumbitted, Bacalhau prints out the related job id:
+The command below submits a job that runs an `echo` program within an [Ubuntu container](https://hub.docker.com/_/ubuntu):
 
-```zsh
-❯ bacalhau docker run ubuntu echo Hello World
+```shell
+$ bacalhau docker run ubuntu echo Hello World
+```
 
+When a job is sumbitted, Bacalhau prints out the related job id:
+
+```
 Job successfully submitted. Job ID: 3b39baee-5714-4f17-aa71-1f5824665ad6
 Checking job status...
 ```
@@ -81,22 +83,20 @@ The job id above is shown in its full form. For convenience, you can use the sho
 
 After the above command is run, a job is submitted to the public network, which processes the job as described in the [Job Lifecycle page](../about-bacalhau/architecture#job-lifecycle). To check the current job's state, we can use the `list` verb as shown below.
 
+```shell
+$ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
+
+$ bacalhau list --id-filter=${JOB_ID}
 ```
-❯ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
 
-❯ bacalhau list --id-filter=${JOB_ID}
+The list command prints out the following text:
 
- CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
+```
+ CREATED   ID        JOB                      STATE      VERIFIED  COMPLETED
  07:20:32  3b39baee  Docker ubuntu echo H...  Published            /ipfs/bafybeidu4zm6w...
 ```
 
-:::info
-
-Replace with your own generated `JOB-ID`
-
-:::
-
-A `Published/Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.  
+A `Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.  
 
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 
@@ -107,24 +107,21 @@ After the job has finished processing, its outputs are stored on IPFS. To downlo
 
 First, we'll create a directory that will store our job outputs.
 
-```
-❯ mkdir -p /tmp/myfolder
-❯ cd /tmp/myfolder
+```shell
+$ mkdir -p /tmp/myfolder
+$ cd /tmp/myfolder
 ```
 
 Next, we use the `get` verb to download the job outputs into the current directory.
 
+```shell
+$ bacalhau get ${JOB_ID}
 ```
-❯ bacalhau get ${JOB_ID}
 
-15:44:12.278 | INF bacalhau/get.go:67 > Fetching results of job '3b39baee'...
-15:44:18.463 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
-15:44:21.17 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/tmp/myfolder'
-```
 
 :::info
 
-This command prints out a number of verbose logs- these are meant for Bacalhau developers. You can safely ignore them, per [issue #614](https://github.com/filecoin-project/bacalhau/issues/614))
+The `get` command may be slow at times, please be patient or retry upon failure.
 
 :::
 
@@ -132,12 +129,11 @@ At this point, the outputs have been downloaded locally and we are ready to insp
 
 For the scope this of this guide, we will only look at the **stdout** file. To inspect the content of the file, use the code below:
 
-```
-❯ cat /tmp/myfolder/job-id/combined_results/stdout
-
-Hello World
+```shell
+$ cat /tmp/myfolder/job-id/combined_results/stdout
 ```
 
+That should print out the string `Hello World`.
 With that, you have just sucessfully run a job on the Bacalhau network! :fish:
 
 ## Where to go next?

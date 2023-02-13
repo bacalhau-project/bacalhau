@@ -77,8 +77,8 @@ The `--input-urls` flag can only be used once, and will make the contents of the
 
 You can give the WASM program arguments by specifying them after the program path or CID. 
 
-```sh
-bacalhau wasm run echo.wasm hello world
+```shell
+$ bacalhau wasm run echo.wasm hello world
 ```
 
 :::tip
@@ -87,8 +87,8 @@ Write your program to use program arguments to specify input and output paths. T
 
 For example, instead of hard-coding your program to read from `/inputs/data.txt`, accept a program argument that should contain the path and then specify the path as an argument to `bacalhau wasm run`:
 
-```sh
-bacalhau wasm run prog.wasm /inputs/data.txt
+```shell
+$ bacalhau wasm run prog.wasm /inputs/data.txt
 ```
 
 Your language of choice should contain a standard way of reading program arguments that will work with WASI.
@@ -98,8 +98,8 @@ Your language of choice should contain a standard way of reading program argumen
 
 You can also specify environment variables using the `-e` flag.
 
-```sh
-bacalhau wasm run prog.wasm -e HELLO=world
+```shell
+$ bacalhau wasm run prog.wasm -e HELLO=world
 ```
 
 ## Examples
