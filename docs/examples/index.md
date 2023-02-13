@@ -6,12 +6,6 @@ sidebar_position: 20
 
 Bacalhau comes pre-loaded with exciting examples to showcase its abilities and help get you started.
 
-:::tip
-
-Use the navigation bar on the left to browse through the examples. You can also view the raw codebase by visiting our [examples repository](https://github.com/bacalhau-project/examples).
-
-:::
-
 ## Organisation
 
 Examples are organised by task. Each task has a number of examples that showcase different ways to solve the same problem.
@@ -24,9 +18,16 @@ We're adding examples all the time. Check back soon for more!
 
 ## Usage
 
-Each example is a self-contained Jupyter notebook that can be run locally or on your favourite jupyter host.
+Each example is a self-contained [Jupyter notebook](https://docs.jupyter.org/en/latest/) that can be run locally or on your favourite Jupyter host (Google Colab or binder). The main advantage of Jupiter notebooks is that user can run examples by pressing 'Run All' button; it contains desciptive text next to each code block with output in a single static page.
 
-Data is typically stored externally in GCS (for remote data examples) or IPFS (for local data examples).
+Instead of `bash` Jupiter notebooks use [iPython magic links](https://ipython.readthedocs.io/en/stable/interactive/magics.html#cell-magics), where command starts with `%%`.
+
+In order:  
+* To run on the free cloud, use Collab/binder buttons on the top of each example. 
+
+* To run locally, you need to install [jupiter](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html). The `.ipynb` file is where the source code lives in each of our [examples](https://github.com/bacalhau-project/examples). 
+
+Data is typically stored externally in [GCS](https://cloud.google.com/docs) (for remote data examples) or [IPFS](https://docs.ipfs.tech/) (for local data examples).
 
 The examples execute on the Bacalhau public network (a.k.a. `mainnet`).
 
