@@ -8,14 +8,15 @@ sidebar_position: 3
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-ingestion/s3-to-ipfs/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/s3-to-ipfs/index.ipynb)
 
-## Introduction
 
 In this tutorial, to copy Data from S3 to IPFS, we will scrape all the links from a public AWS S3 buckets and then copy the data to IPFS using Bacalhau. 
 
+## Prerequiste
+Install the [Bacalhau client](https://docs.bacalhau.org/getting-started/installation)
+
 ## Getting the URLs from AWS S3 bucket
 
-- Install [Bacalhau](https://docs.bacalhau.org/getting-started/installation/). 
-- If your bucket has more than 1000 files, with the command below, you can submit a Bacalhau job to extract the URL list of the files.
+If your bucket has more than 1000 files, with the command below, you can submit a Bacalhau job to extract the URL list of the files.
 
 ```bash
 bacalhau docker run \
@@ -27,13 +28,13 @@ python \
 -- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'
 ```
 
-- Before running the command above, replace the following:
+Before running the command above, replace the following:
 
-    - `-u  https://noaa-goes16.s3.amazonaws.com/`: we replace the placeholders with `noaa-goes16` which is the name of the bucket we want to extract URLs from
+- `-u  https://noaa-goes16.s3.amazonaws.com/`: we replace the placeholders with `noaa-goes16` which is the name of the bucket we want to extract URLs from
 
-    - `-v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \`: Mounting the scrapper script, this script extracts the links from the XML document tree
+-  `-v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \`: Mounting the scrapper script, this script extracts the links from the XML document tree
 
-    - `-- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'`: Executing the scrapper script
+ - `-- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'`: Executing the scrapper script
 
 The command above extracts the path of the file in the bucket, we added the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/`  then provided the path where the XML document tree of the URL is mounted which is `/inputs`
 
