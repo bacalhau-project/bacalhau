@@ -48,7 +48,7 @@ func NewAPIClient(baseURI string) *APIClient {
 
 // Alive calls the node's API server health check.
 func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Alive")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Alive")
 	defer span.End()
 
 	var body io.Reader
@@ -66,7 +66,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Version")
 	defer span.End()
 
 	req := VersionRequest{
@@ -82,7 +82,7 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 }
 
 func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resData interface{}) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Post")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Post")
 	defer span.End()
 
 	var body bytes.Buffer

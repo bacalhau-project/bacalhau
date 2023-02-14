@@ -1,4 +1,4 @@
-package system
+package eventhandler
 
 import (
 	"context"
@@ -6,8 +6,9 @@ import (
 
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 // Interface for a context provider that can be used to generate a context to be used to handle
@@ -24,7 +25,7 @@ func NewNoopContextProvider() *NoopContextProvider {
 	return &NoopContextProvider{}
 }
 
-func (t *NoopContextProvider) GetContext(ctx context.Context, jobID string) context.Context {
+func (t *NoopContextProvider) GetContext(ctx context.Context, _ string) context.Context {
 	return ctx
 }
 
@@ -53,10 +54,9 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	t.contextMutex.Lock()
 	defer t.contextMutex.Unlock()
 
-	jobCtx, _ := Span(ctx, "tracer",
-		"JobLifecycle-"+t.nodeID[:model.ShortIDLength],
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
+	jobCtx, _ := system.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
+		oteltrace.WithSpanKind(oteltrace.SpanKindInternal),
+		oteltrace.WithAttributes(
 			attribute.String(model.TracerAttributeNameNodeID, t.nodeID),
 			attribute.String(model.TracerAttributeNameJobID, jobID),
 		),
@@ -81,7 +81,7 @@ func (t *TracerContextProvider) Shutdown() error {
 	defer t.contextMutex.RUnlock()
 
 	for _, ctx := range t.jobNodeContexts {
-		trace.SpanFromContext(ctx).End()
+		oteltrace.SpanFromContext(ctx).End()
 	}
 
 	// clear the maps
@@ -92,7 +92,7 @@ func (t *TracerContextProvider) Shutdown() error {
 
 // endJobNodeContext ends the local lifecycle context for a job.
 func (t *TracerContextProvider) endJobNodeContext(ctx context.Context, jobID string) {
-	trace.SpanFromContext(ctx).End()
+	oteltrace.SpanFromContext(ctx).End()
 	t.contextMutex.Lock()
 	defer t.contextMutex.Unlock()
 	delete(t.jobNodeContexts, jobID)

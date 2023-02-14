@@ -79,9 +79,6 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (ui
 //
 //nolint:funlen,gocyclo // TODO: refactor this function
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
-	defer span.End()
-
 	u, err := IsURLSupported(storageSpec.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -202,9 +199,6 @@ func (sp *StorageProvider) CleanupStorage(
 	_ model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
-	defer span.End()
-
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)

@@ -16,10 +16,10 @@ import (
 // TODO: use generics when they are available instead of two separate types for local and job event handlers.
 type ChainedLocalEventHandler struct {
 	eventHandlers   []LocalEventHandler
-	contextProvider system.ContextProvider
+	contextProvider ContextProvider
 }
 
-func NewChainedLocalEventHandler(contextProvider system.ContextProvider) *ChainedLocalEventHandler {
+func NewChainedLocalEventHandler(contextProvider ContextProvider) *ChainedLocalEventHandler {
 	return &ChainedLocalEventHandler{contextProvider: contextProvider}
 }
 
@@ -46,10 +46,10 @@ func (r *ChainedLocalEventHandler) HandleLocalEvent(ctx context.Context, event m
 // Job event handler chain
 type ChainedJobEventHandler struct {
 	eventHandlers   []JobEventHandler
-	contextProvider system.ContextProvider
+	contextProvider ContextProvider
 }
 
-func NewChainedJobEventHandler(contextProvider system.ContextProvider) *ChainedJobEventHandler {
+func NewChainedJobEventHandler(contextProvider ContextProvider) *ChainedJobEventHandler {
 	return &ChainedJobEventHandler{contextProvider: contextProvider}
 }
 

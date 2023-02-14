@@ -17,7 +17,7 @@ type IPFSPublisher struct {
 
 func NewIPFSPublisher(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	_ *system.CleanupManager,
 	cl ipfs.Client,
 ) (*IPFSPublisher, error) {
 	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", cl.APIAddress())
@@ -37,8 +37,6 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
-	defer span.End()
 	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err

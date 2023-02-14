@@ -90,7 +90,7 @@ func (cl Client) WaitUntilAvailable(ctx context.Context) error {
 
 // ID returns the node's ipfs ID.
 func (cl Client) ID(ctx context.Context) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.ID")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.ID")
 	defer span.End()
 
 	key, err := cl.API.Key().Self(ctx)
@@ -107,7 +107,7 @@ func (cl Client) APIAddress() string {
 }
 
 func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmMultiAddresses")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.SwarmMultiAddresses")
 	defer span.End()
 
 	id, err := cl.API.Key().Self(ctx)
@@ -148,7 +148,7 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 
 // Get fetches a file or directory from the ipfs network.
 func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Get")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.Get")
 	defer span.End()
 
 	// Output path is required to not exist yet:
@@ -175,7 +175,7 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 // Put uploads and pins a file or directory to the ipfs network. Timeouts and
 // cancellation should be handled by passing an appropriate context value.
 func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Put")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.Put")
 	defer span.End()
 
 	st, err := os.Stat(inputPath)
@@ -216,7 +216,7 @@ type StatResult struct {
 
 // Stat returns information about an IPLD CID on the ipfs network.
 func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Stat")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.Stat")
 	defer span.End()
 
 	node, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
@@ -235,7 +235,7 @@ func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 }
 
 func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetCidSize")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.GetCidSize")
 	defer span.End()
 
 	stat, err := cl.API.Object().Stat(ctx, icorepath.New(cid))
@@ -248,7 +248,7 @@ func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
 func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.NodesWithCID")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.NodesWithCID")
 	defer span.End()
 
 	ch, err := cl.API.Dht().FindProviders(ctx, icorepath.New(cid))
@@ -266,7 +266,7 @@ func (cl Client) NodesWithCID(ctx context.Context, cid string) ([]string, error)
 
 // HasCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.HasCID")
 	defer span.End()
 
 	id, err := cl.ID(ctx)
@@ -289,7 +289,7 @@ func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
 }
 
 func (cl Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetTreeNode")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/ipfs.Client.GetTreeNode")
 	defer span.End()
 
 	ipldNode, err := cl.API.ResolveNode(ctx, icorepath.New(cid))

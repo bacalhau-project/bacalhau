@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
+	"github.com/filecoin-project/bacalhau/pkg/storage/tracing"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
@@ -33,7 +34,7 @@ type StandardExecutorOptions struct {
 }
 
 func NewStandardStorageProvider(
-	ctx context.Context,
+	_ context.Context,
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
@@ -92,10 +93,10 @@ func NewStandardStorageProvider(
 	}
 
 	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             useIPFSDriver,
-		model.StorageSourceURLDownload:      urlDownloadStorage,
-		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
-		model.StorageSourceInline:           inlineStorage,
+		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
+		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
+		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
+		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
 	}), nil
 }
 

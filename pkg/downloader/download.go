@@ -42,7 +42,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	downloadProvider DownloaderProvider,
 	settings *model.DownloaderSettings,
 ) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadJob")
 	defer span.End()
 
 	if len(publishedShardResults) == 0 {

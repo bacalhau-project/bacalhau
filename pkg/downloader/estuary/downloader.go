@@ -32,7 +32,7 @@ func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (downloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.estuary.FetchResult")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
 	// fallback to ipfs download for old results without URL

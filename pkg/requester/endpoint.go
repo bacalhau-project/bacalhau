@@ -62,7 +62,16 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	jobCtx, span := node.newRootSpanForJob(ctx, jobID)
+	jobCtx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
+		// job lifecycle spans go in their own, dedicated trace
+		trace.WithNewRoot(),
+		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(model.TracerAttributeNameNodeID, node.id),
+			attribute.String(model.TracerAttributeNameJobID, jobID),
+		),
+	)
 	defer span.End()
 
 	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
@@ -107,23 +116,9 @@ func (node *BaseEndpoint) UpdateDeal(ctx context.Context, jobID string, deal mod
 	return node.jobStore.UpdateJobDeal(ctx, jobID, deal)
 }
 
-func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
+func (node *BaseEndpoint) CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error) {
 	//TODO implement me
 	panic("implement me")
-}
-
-func (node *BaseEndpoint) newRootSpanForJob(ctx context.Context, jobID string) (context.Context, trace.Span) {
-	return system.Span(ctx, "requester", "JobLifecycle",
-		// job lifecycle spans go in their own, dedicated trace
-		trace.WithNewRoot(),
-
-		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
-			attribute.String(model.TracerAttributeNameNodeID, node.id),
-			attribute.String(model.TracerAttributeNameJobID, jobID),
-		),
-	)
 }
 
 // Compile-time interface check:

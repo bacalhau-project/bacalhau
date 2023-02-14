@@ -201,7 +201,7 @@ func (deterministicVerifier *DeterministicVerifier) VerifyShard(
 	ctx context.Context,
 	shard model.JobShard,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/deterministic.VerifyShard")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.DeterministicVerifier.VerifyShard")
 	defer span.End()
 
 	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, shard.Job.Metadata.ID)

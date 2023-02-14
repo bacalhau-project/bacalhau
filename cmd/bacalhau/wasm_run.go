@@ -162,7 +162,7 @@ func runWasm(
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.runWasmCommand")
+	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau.runWasm")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
@@ -258,7 +258,7 @@ func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
+	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau.validateWasm")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 

@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
@@ -66,14 +65,9 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	tmpDir := s.T().TempDir()
 
@@ -167,14 +161,9 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
@@ -211,14 +200,9 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	tmpDir := s.T().TempDir()
 

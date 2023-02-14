@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -72,11 +71,6 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
 	require.NoError(suite.T(), err)
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/explodecid")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	node := stack.IPFSClients[0]
 
@@ -203,7 +197,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	const nodeCount = 1
 	ctx := context.Background()
 
-	stack, cm := testutils.SetupTest(
+	stack, _ := testutils.SetupTest(
 		ctx,
 		suite.T(),
 
@@ -213,11 +207,6 @@ func (suite *ShardingSuite) TestNoShards() {
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testnoshards")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	dirPath := prepareFolderWithFiles(suite.T(), 0)
 	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)

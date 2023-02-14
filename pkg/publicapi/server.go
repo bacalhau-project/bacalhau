@@ -214,7 +214,12 @@ func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
 	handler := config.Handler
 	if !config.Raw {
 		// otel handler
-		handler = otelhttp.NewHandler(config.Handler, fmt.Sprintf("pkg/publicapi%s", config.URI))
+		handler = otelhttp.NewHandler(config.Handler, config.URI,
+			otelhttp.WithPublicEndpoint(),
+			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+				return fmt.Sprintf("%s %s", r.Method, operation)
+			}),
+		)
 
 		// throttling handler
 		handler = tollbooth.LimitHandler(

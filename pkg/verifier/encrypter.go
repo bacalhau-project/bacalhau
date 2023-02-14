@@ -23,8 +23,7 @@ func NewEncrypter(privateKey crypto.PrivKey) Encrypter {
 }
 
 func (e Encrypter) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.Encrypter.Encrypt")
 	defer span.End()
 
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
@@ -53,7 +52,7 @@ func (e Encrypter) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]
 }
 
 func (e Encrypter) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.Encrypter.Decrypt")
 	defer span.End()
 
 	privateKeyBytes, err := e.privateKey.Raw()

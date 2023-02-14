@@ -66,9 +66,6 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Storag
 }
 
 func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.PrepareStorage")
-	defer span.End()
-
 	stat, err := s.ipfsClient.Stat(ctx, storageSpec.CID)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.CID, err)
@@ -92,9 +89,6 @@ func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.St
 }
 
 func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Upload")
-	defer span.End()
-
 	cid, err := s.ipfsClient.Put(ctx, localPath)
 	if err != nil {
 		return model.StorageSpec{}, err
@@ -106,9 +100,6 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.S
 }
 
 func (s *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Explode")
-	defer span.End()
-
 	treeNode, err := s.ipfsClient.GetTreeNode(ctx, spec.CID)
 	if err != nil {
 		return []model.StorageSpec{}, err
@@ -142,9 +133,6 @@ func (s *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) (
 }
 
 func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.copyFile")
-	defer span.End()
-
 	outputPath := filepath.Join(s.localDir, storageSpec.CID)
 
 	// If the output path already exists, we already have the data, as

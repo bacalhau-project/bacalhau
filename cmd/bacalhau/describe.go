@@ -86,7 +86,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		Fatal(cmd, fmt.Sprintf("Failed to parse flags: %v\n", err), 1)
 	}
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.describe")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
