@@ -31,6 +31,8 @@ print("hello world")
     Overwriting hello.R
 
 
+Run the script:
+
 
 ```bash
 Rscript hello.R
@@ -79,7 +81,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 
 
-Where it says "`Published `", that means the job is done, and we can get the results.
+Where it says `Published`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
