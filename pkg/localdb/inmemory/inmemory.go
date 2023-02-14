@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"

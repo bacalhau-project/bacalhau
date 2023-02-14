@@ -13,10 +13,6 @@ executors:
       image: ubuntu-2204:2022.07.1
       resource_class: arm.xlarge
   darwin-amd64:
-    macos:
-      xcode: 13.4.1
-    resource_class: large
-  darwin-arm64:
     # Note - not an actual ARM macOS machine (https://circleci.canny.io/cloud-feature-requests/p/support-new-m1-arm-based-macs)
     macos:
       xcode: 13.4.1
@@ -40,16 +36,22 @@ jobs:
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
-    executor: << parameters.target_os >>-<< parameters.target_arch >>
+    executor: << parameters.executor >>
     parameters:
+      executor:
+        type: enum
+        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "windows-amd64"]
       target_arch:
-        type: string
+        type: enum
+        enum: ["amd64", "arm64", "armv6", "armv7"]
       target_os:
-        type: string
+        type: enum
+        enum: ["linux", "darwin", "windows"]
       run_tests:
         type: boolean
       build_tags:
         type: string
+        default: ""
     steps:
       - checkout
 
@@ -66,31 +68,19 @@ jobs:
                 name: Install Go
                 command: |
                   rm -rf /c/Program\ Files/Go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
 
       - when:
           condition:
             or:
+              - equal: ["darwin", << parameters.target_os >>]
               - equal: ["linux", << parameters.target_os >>]
           steps:
             - run:
                 name: Install Go
                 command: |
                   sudo rm -fr /usr/local/go /usr/local/bin/go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-
-      - when:
-          condition:
-            or:
-              - equal: ["darwin", << parameters.target_os >>]
-          steps:
-            - run:
-                name: Install Go
-                # Currently don't have a _real_ arm64 macOS box, so always download amd64 version of Go
-                command: |
-                  sudo rm -fr /usr/local/go /usr/local/bin/go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
                   sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 
       - run:
@@ -133,12 +123,7 @@ jobs:
 
       - when:
           condition:
-            and:
-              - not:
-                  and:
-                    - equal: ["darwin", << parameters.target_os >>]
-                    - equal: ["arm64", << parameters.target_arch >>]
-              - equal: [true, << parameters.run_tests >>]
+            equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test Go
@@ -209,7 +194,6 @@ jobs:
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            rm dist/.keep           # Need to remove this file so it's not persisted to github
             make build-bacalhau-tgz
 
       - when:
@@ -391,6 +375,13 @@ jobs:
       GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
     steps:
       - checkout
+      - attach_workspace:
+          at: dist/
+      - run:
+          name: Unpack build
+          command: |
+            mkdir -p bin/linux_amd64
+            tar -C bin/linux_amd64 -xf dist/*.tar.gz
       - run:
           name: Run performance test
           command: |
@@ -643,6 +634,7 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
               target_os: [ "linux" ]
@@ -669,6 +661,7 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
               target_os: [ "linux" ]
@@ -681,10 +674,39 @@ workflows:
             tags:
               ignore: /.*/
 
+  test_linux_armv6:
+    jobs:
+      - build:
+          name: test-linux-armv6
+          executor: linux-arm64
+          target_os: linux
+          target_arch: armv6
+          run_tests: false
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
+  test_linux_armv7:
+    jobs:
+      - build:
+          name: test-linux-armv7
+          executor: linux-arm64
+          target_os: linux
+          target_arch: armv7
+          run_tests: false
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+
   test_darwin_amd64:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
               target_os: [ "darwin" ]
@@ -700,13 +722,11 @@ workflows:
   test_darwin_arm64:
     jobs:
       - build:
-          name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-          matrix:
-            parameters:
-              target_os: [ "darwin" ]
-              target_arch: [ "arm64" ]
-              run_tests: [ true ]
-              build_tags: [ "unit", "integration" ]
+          name: test-darwin-arm64
+          executor: darwin-amd64
+          target_os: darwin
+          target_arch: arm64
+          run_tests: false
           filters:
             branches:
               ignore: main
@@ -717,6 +737,7 @@ workflows:
     jobs:
       - build:
           name: test-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
               target_os: [ "windows" ]
@@ -733,18 +754,20 @@ workflows:
     jobs:
       - build:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
+            alias: build-generic
             parameters:
-              target_os: ["linux", "darwin", "windows"]
+              target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
               build_tags: ["unit", "integration"]
             exclude:
-              - target_os: "windows"
+              - target_os: "darwin"
                 target_arch: "arm64"
                 run_tests: true
                 build_tags: "unit"
-              - target_os: "windows"
+              - target_os: "darwin"
                 target_arch: "arm64"
                 run_tests: true
                 build_tags: "integration"
@@ -754,6 +777,34 @@ workflows:
               only: main
             tags:
               ignore: /.*/
+      - build:
+          name: build-darwin-arm64
+          executor: darwin-amd64
+          target_os: darwin
+          target_arch: arm64
+          run_tests: false
+          filters: *filters_main_only
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            alias: build-windows
+            parameters:
+              target_os: ["windows"]
+              target_arch: ["amd64"]
+              run_tests: [true]
+              build_tags: ["unit", "integration"]
+          filters: *filters_main_only
+      - build:
+          name: build-linux-<< matrix.target_arch >>
+          executor: linux-arm64
+          target_os: linux
+          run_tests: false
+          matrix:
+            alias: build-arm
+            parameters:
+              target_arch: ["armv6", "armv7"]
+          filters: *filters_main_only
       - update_metadata:
           name: Update metadata for main test runs
           requires:
@@ -763,15 +814,10 @@ workflows:
       - coverage:
           name: Build coverage report
           requires:
-            - build
-      # - deploy:
-      #     name: deploy-staging-cluster
-      #     requires:
-      #       - build-linux-amd64-unit
-      #     rollout_stage: staging
-      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
-      #     filters:
-      #       <<: *filters_main_only # this is calling the previously set yaml anchor
+            - build-generic
+            - build-darwin-arm64
+            - build-windows
+            - build-arm
 
   build_swagger: # This workflow will only run on 'main' and will not run on tags
     jobs:
@@ -784,13 +830,11 @@ workflows:
   build_jsonschema: # Runs on new tags starting with 'v.'
     jobs:
       - build:
-          name: build-linux-amd64-<< pipeline.git.branch >>
-          matrix:
-            parameters:
-              target_os: ["linux"]
-              target_arch: ["amd64"]
-              run_tests: [false]
-              build_tags: [""]
+          name: build-linux-amd64
+          executor: linux-amd64
+          target_os: linux
+          target_arch: amd64
+          run_tests: false
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -801,50 +845,65 @@ workflows:
       - build_jsonschema_job:
           name: run-jsonschema-gen-<< pipeline.git.branch >>
           requires:
-            - build
+            - build-linux-amd64
           filters:
             <<: *filters_tags_only
-
-
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          executor: << matrix.target_os >>-<< matrix.target_arch >>
           matrix:
+            alias: build-generic
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [false]
-              build_tags: [""]
             exclude:
-              - target_os: "windows"
-                target_arch: "arm64"
+              - target_os: windows
+                target_arch: arm64
                 run_tests: false
-                build_tags: ""
-          filters:
-            <<: *filters_tags_only
+              - target_os: darwin
+                target_arch: arm64
+                run_tests: false
+          filters: *filters_tags_only
+      - build:
+          name: build-darwin-arm64
+          executor: darwin-amd64
+          target_os: darwin
+          target_arch: arm64
+          run_tests: false
+          filters: *filters_main_only
+      - build:
+          name: build-linux-<< matrix.target_arch >>
+          executor: linux-arm64
+          target_os: linux
+          run_tests: false
+          matrix:
+            alias: build-arm
+            parameters:
+              target_arch: ["armv6", "armv7"]
+          filters: *filters_tags_only
       - release:
           name: release-all-binaries
           requires:
-            - build
-          filters:
-            <<: *filters_tags_only
+            - build-generic
+            - build-darwin-arm64
+            - build-arm
+          filters: *filters_tags_only
       - docker:
-          filters:
-            <<: *filters_tags_only
+          filters: *filters_tags_only
 
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-          matrix:
-            parameters:
-              target_os: ["linux"]
-              target_arch: ["amd64"]
-              run_tests: [false]
-              build_tags: ["unit"]
+          name: Build
+          executor: linux-amd64
+          target_os: linux
+          target_arch: amd64
+          run_tests: false
       - performance_job:
           name: Running Performance
           requires:
-            - build-linux-amd64-unit
+            - Build

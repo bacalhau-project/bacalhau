@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
