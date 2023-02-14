@@ -133,9 +133,7 @@ After you have built the container successfully, the next step is to test it loc
 
 ### Fitting a Prophet Model on Bacalhau
 
-[Bacalhau](https://www.bacalhau.org/) is a distributed computing platform that allows you to run jobs on a network of computers. It is designed to be easy to use and to run on a variety of hardware. In this example, we will use it to run the Prophet library to generate a model on a CPU.
-
-To submit a job, you can use the Bacalhau CLI. The following command passes a prompt to the model and generates the results in the outputs directory. It takes approximately 2 minutes to run.
+The following command passes a prompt to the model and generates the results in the outputs directory. It takes approximately 2 minutes to run.
 
 
 ```bash
@@ -159,7 +157,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 
 
-Where it says "`Completed `", that means the job is done, and we can get the results.
+Where it says `Completed`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
