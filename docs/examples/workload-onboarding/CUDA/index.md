@@ -261,23 +261,19 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 You can easily execute the same program we ran locally using bacalhau
 
-The program is mounted by using the -u flag you can specify the link there
--u < Link-To-The-Program >
+* The program is mounted by using the `-u` flag you can specify the link there
+`-u < Link-To-The-Program >`
 
 
-Docker container:  nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04
+* Docker container `nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04`
 for executing CUDA programs you need to choose the right CUDA docker container the container should have the tag of devel in them
 
-Running the program
--- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello '
+* Running program consists of two parts:
+  * Compilation using the nvcc compiler and save it to the outputs directory as hello: `nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu`
+  * Execution hello binary:  `./outputs/hello`
+  * You can combine compilation and execution commands. Note that there is `;` between the commands:
+`-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello `
 
-we first compile the program using the nvcc compiler and save it to the outputs directory as hello
-nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu
-
-then we execute the hello binary
- ./outputs/hello
-
- Note that there is ';' between the commands
 
 
 ```bash
