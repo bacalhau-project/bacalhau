@@ -10,7 +10,7 @@ sidebar_position: 3
 
 ## Introduction
 
-In this tutorial, we will first scrape all the links from a public AWS S3 buckets and then copy the data to IPFS using Bacalhau. 
+In this tutorial, to copy Data from S3 to IPFS, we will scrape all the links from a public AWS S3 buckets and then copy the data to IPFS using Bacalhau. 
 
 ## Getting the URLs from AWS S3 bucket
 
