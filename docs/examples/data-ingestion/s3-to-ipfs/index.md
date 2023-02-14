@@ -69,7 +69,7 @@ bacalhau describe ${JOB_ID}
 ```
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. 
 
-In the command below, we created a directory and downloaded our job output to be stored in that directory
+In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 ```bash
 rm -rf results && mkdir -p results
@@ -95,7 +95,7 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,****per_shard files**, and the **raw** directory.
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory.
 
 In each of these sub_folders, you'll find the **studout** and **stderr** file.
 
