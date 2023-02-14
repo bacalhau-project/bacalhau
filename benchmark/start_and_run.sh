@@ -22,15 +22,11 @@ function cleanup {
 		kill -2 "${BACALHAU_PID}" || true
 	fi
 	rm -f /tmp/bacalhau-devstack.p*
-	exit 0 
+	exit 0
 }
 
 trap cleanup EXIT
 
-cd ..
-make build-ci
-
-cd benchmark
 export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
 export PREDICTABLE_API_PORT=1
 
@@ -51,7 +47,6 @@ while : ; do
 	sleep 2
 	CURRENT_STATE=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost list -n 10000 2>&1 | grep -c -E 'Running|Waiting')
 	(( CURRENT_STATE > 0 )) || break
-done 
+done
 
 echo "Finished. Cleaning up..."
-

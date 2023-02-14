@@ -3,13 +3,13 @@ package publicapi
 import (
 	"net/http"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/gorilla/websocket"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
 const APIPrefix = "requester/"
