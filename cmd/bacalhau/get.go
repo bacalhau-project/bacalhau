@@ -64,7 +64,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
+	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.get")
 	defer span.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 

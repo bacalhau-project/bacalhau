@@ -23,9 +23,9 @@ import (
 
 // so we can pass *sql.DB and *sql.Tx to the same functions
 type SQLClient interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	QueryRow(query string, args ...any) *sql.Row
-	Query(query string, args ...any) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
 type GenericSQLDatastore struct {
@@ -57,14 +57,14 @@ func (d *GenericSQLDatastore) GetDB() *sql.DB {
 }
 
 func (d *GenericSQLDatastore) GetSpan(ctx context.Context, methodName string) (context.Context, trace.Span) {
-	return system.GetTracer().Start(ctx, fmt.Sprintf("pkg/localdb/sqlite/GenericSQLDatastore[%s].%s", d.name, methodName))
+	return system.GetTracer().Start(ctx, fmt.Sprintf("pkg/localdb/shared/GenericSQLDatastore[%s].%s", d.name, methodName))
 }
 
 func getJob(db SQLClient, ctx context.Context, id string) (*model.Job, error) {
 	var apiversion string
 	var jobdata string
 	var statedata string
-	row := db.QueryRow(`select apiversion, jobdata, statedata from job where id like $1 || '%'`, strings.ToLower(id))
+	row := db.QueryRowContext(ctx, `select apiversion, jobdata, statedata from job where id like $1 || '%'`, strings.ToLower(id))
 	err := row.Scan(&apiversion, &jobdata, &statedata)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -206,7 +206,7 @@ func getJobs(db SQLClient, ctx context.Context, query localdb.JobQuery) ([]*mode
 		return nil, err
 	}
 
-	rows, err := db.Query(sql, args...)
+	rows, err := db.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func getJobEvents(db SQLClient, ctx context.Context, id string) ([]model.JobEven
 	var args []interface{}
 	args = append(args, id)
 
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(ctx, `
 select
 	apiversion,
 	eventdata
@@ -325,7 +325,7 @@ func getJobLocalEvents(db SQLClient, ctx context.Context, id string) ([]model.Jo
 	var args []interface{}
 	args = append(args, id)
 
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(ctx, `
 select
 	apiversion,
 	eventdata
@@ -521,7 +521,7 @@ func (d *GenericSQLDatastore) UpdateJobDeal(ctx context.Context, jobID string, d
 func getJobState(db SQLClient, ctx context.Context, jobID string) (model.JobState, error) {
 	var apiversion string
 	var statedata string
-	row := db.QueryRow("select apiversion, statedata from job where id = $1 limit 1", jobID)
+	row := db.QueryRowContext(ctx, "select apiversion, statedata from job where id = $1 limit 1", jobID)
 
 	err := row.Scan(&apiversion, &statedata)
 	if err != nil {

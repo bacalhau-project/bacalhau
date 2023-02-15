@@ -3,8 +3,6 @@ package publicapi
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 // nodeInfo godoc
@@ -17,8 +15,6 @@ import (
 //	@Failure	500	{object}	string
 //	@Router		/node_info [get]
 func (apiServer *APIServer) nodeInfo(res http.ResponseWriter, req *http.Request) {
-	_, span := system.GetSpanFromRequest(req, "apiServer/node_info")
-	defer span.End()
 	res.WriteHeader(http.StatusOK)
 	err := json.NewEncoder(res).Encode(apiServer.nodeInfoProvider.GetNodeInfo(req.Context()))
 	if err != nil {

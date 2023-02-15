@@ -59,9 +59,8 @@ func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]m
 }
 
 func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.StateSummary")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.StateSummary")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
@@ -79,9 +78,8 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 }
 
 func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.VerifiedSummary")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.VerifiedSummary")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	j, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
@@ -103,9 +101,8 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.ResultSummary")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.ResultSummary")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
@@ -207,9 +204,8 @@ func (resolver *StateResolver) WaitWithOptions(
 // this is an auto wait where we auto calculate how many shard
 // states we expect to see and we use that to pass to WaitForJobStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.WaitUntilComplete")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.WaitUntilComplete")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
@@ -230,9 +226,8 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]model.PublishedResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.GetResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.GetResults")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	results := []model.PublishedResult{}
 	jobState, err := resolver.stateLoader(ctx, jobID)
@@ -265,9 +260,8 @@ func (resolver *StateResolver) CheckShardStates(
 	shard model.JobShard,
 	shardStateChecker ShardStateChecker,
 ) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/job.CheckShardStates")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.CheckShardStates")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	jobState, err := resolver.stateLoader(ctx, shard.Job.Metadata.ID)
 	if err != nil {
@@ -343,44 +337,6 @@ func GetCompletedVerifiedShardStates(jobState model.JobState) []model.JobShardSt
 		if shardState.VerificationResult.Complete && shardState.VerificationResult.Result && shardState.PublishedResult.CID != "" {
 			ret = append(ret, shardState)
 		}
-	}
-	return ret
-}
-
-func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.JobState, shardIndex int) bool {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.HasShardReachedCapacity")
-	defer span.End()
-
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-
-	allShards := GroupShardStates(FlattenShardStates(jobState))
-	shardStates, ok := allShards[shardIndex]
-	if !ok {
-		return false
-	}
-
-	acceptedBidsSeen := 0
-
-	for _, shardState := range shardStates { //nolint:gocritic
-		if shardState.State.HasPassedBidAcceptedStage() {
-			acceptedBidsSeen++
-		}
-	}
-
-	return acceptedBidsSeen >= j.Spec.Deal.Concurrency
-}
-
-// group states by shard index so we can easily iterate over a whole set of them
-func GroupShardStates(flatShards []model.JobShardState) map[int][]model.JobShardState {
-	ret := map[int][]model.JobShardState{}
-	for _, shardState := range flatShards { //nolint:gocritic
-		arr, ok := ret[shardState.ShardIndex]
-		if !ok {
-			arr = []model.JobShardState{}
-		}
-		arr = append(arr, shardState)
-		ret[shardState.ShardIndex] = arr
 	}
 	return ret
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -48,9 +47,7 @@ type ListResponse = listResponse
 //
 //nolint:lll
 func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
-	defer span.End()
-
+	ctx := req.Context()
 	var listReq ListRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -87,9 +84,6 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
-	defer span.End()
-
 	list, err := s.localDB.GetJobs(ctx, localdb.JobQuery{
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
@@ -107,9 +101,6 @@ func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListReques
 }
 
 func (s *RequesterAPIServer) getJobStates(ctx context.Context, jobList []*model.Job) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.getJobStates")
-	defer span.End()
-
 	var err error
 	for k := range jobList {
 		jobList[k].Status.State, err = s.localDB.GetJobState(ctx, jobList[k].Metadata.ID)

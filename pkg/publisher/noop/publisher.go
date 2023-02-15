@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type NoopPublisher struct{}
@@ -18,16 +17,7 @@ func (publisher *NoopPublisher) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (publisher *NoopPublisher) PublishShardResult(
-	ctx context.Context,
-	_ model.JobShard,
-	_ string,
-	_ string,
-) (model.StorageSpec, error) {
-	//nolint:staticcheck,ineffassign
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.PublishShardResult")
-	defer span.End()
-
+func (publisher *NoopPublisher) PublishShardResult(context.Context, model.JobShard, string, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, nil
 }
 

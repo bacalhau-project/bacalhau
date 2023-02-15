@@ -51,7 +51,7 @@ func (apiClient *RequesterAPIClient) List(
 	sortReverse bool,
 ) (
 	[]*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.List")
 	defer span.End()
 
 	req := listRequest{
@@ -76,7 +76,7 @@ func (apiClient *RequesterAPIClient) List(
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
 	defer span.End()
 
 	if jobID == "" {
@@ -96,7 +96,7 @@ func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*mo
 }
 
 func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetJobState")
 	defer span.End()
 
 	if jobID == "" {
@@ -140,7 +140,7 @@ func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
 }
 
 func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobEvent, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetEvents")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
 	defer span.End()
 
 	if jobID == "" {
@@ -174,7 +174,7 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 }
 
 func (apiClient *RequesterAPIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetLocalEvents")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetLocalEvents")
 	defer span.End()
 
 	if jobID == "" {
@@ -195,7 +195,7 @@ func (apiClient *RequesterAPIClient) GetLocalEvents(ctx context.Context, jobID s
 }
 
 func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID string) (results []model.PublishedResult, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetResults")
 	defer span.End()
 
 	if jobID == "" {
@@ -220,7 +220,7 @@ func (apiClient *RequesterAPIClient) Submit(
 	ctx context.Context,
 	j *model.Job,
 ) (*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Submit")
 	defer span.End()
 
 	data := model.JobCreatePayload{
@@ -259,7 +259,7 @@ func (apiClient *RequesterAPIClient) Submit(
 }
 
 func (apiClient *RequesterAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Debug")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

@@ -157,79 +157,79 @@ type api struct {
 }
 
 func (a *api) ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientDealPieceCID")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientDealPieceCID")
 	defer span.End()
 	return a.internal.ClientDealPieceCID(ctx, root)
 }
 
 func (a *api) ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientExport")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientExport")
 	defer span.End()
 	return a.internal.ClientExport(ctx, exportRef, fileRef)
 }
 
 func (a *api) ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientGetDealUpdates")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientGetDealUpdates")
 	defer span.End()
 	return a.internal.ClientGetDealUpdates(ctx)
 }
 
 func (a *api) ClientListImports(ctx context.Context) ([]Import, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientListImports")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientListImports")
 	defer span.End()
 	return a.internal.ClientListImports(ctx)
 }
 
 func (a *api) ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientImport")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientImport")
 	defer span.End()
 	return a.internal.ClientImport(ctx, ref)
 }
 
 func (a *api) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*StorageAsk, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientQueryAsk")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientQueryAsk")
 	defer span.End()
 	return a.internal.ClientQueryAsk(ctx, p, miner)
 }
 
 func (a *api) ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/ClientStartDeal")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.ClientStartDeal")
 	defer span.End()
 	return a.internal.ClientStartDeal(ctx, params)
 }
 
 func (a *api) StateGetNetworkParams(ctx context.Context) (*NetworkParams, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/StateGetNetworkParams")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.StateGetNetworkParams")
 	defer span.End()
 	return a.internal.StateGetNetworkParams(ctx)
 }
 
 func (a *api) StateListMiners(ctx context.Context, key TipSetKey) ([]address.Address, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/StateListMiners")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.StateListMiners")
 	defer span.End()
 	return a.internal.StateListMiners(ctx, key)
 }
 
 func (a *api) StateMinerInfo(ctx context.Context, a2 address.Address, key TipSetKey) (MinerInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/StateMinerInfo")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.StateMinerInfo")
 	defer span.End()
 	return a.internal.StateMinerInfo(ctx, a2, key)
 }
 
 func (a *api) StateMinerPower(ctx context.Context, a2 address.Address, key TipSetKey) (*MinerPower, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/StateMinerPower")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.StateMinerPower")
 	defer span.End()
 	return a.internal.StateMinerPower(ctx, a2, key)
 }
 
 func (a *api) Version(ctx context.Context) (APIVersion, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/Version")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.Version")
 	defer span.End()
 	return a.internal.Version(ctx)
 }
 
 func (a *api) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/api/WalletDefaultAddress")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publisher/filecoin_lotus/api.api.WalletDefaultAddress")
 	defer span.End()
 	return a.internal.WalletDefaultAddress(ctx)
 }

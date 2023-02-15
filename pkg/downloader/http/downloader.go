@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,7 +29,7 @@ func (httpDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
 }
 
 func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
 	defer span.End()
 
 	err := func() error {
@@ -55,21 +56,25 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 }
 
 func fetch(ctx context.Context, url string, filepath string) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/downloader.http.fetchHttp")
-	defer span.End()
 	// Create a new file at the specified filepath
 	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer closer.CloseWithLogOnError("file", out)
 
 	// Make an HTTP GET request to the URL
-	response, err := http.Get(url) //nolint
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+
+	response, err := http.DefaultClient.Do(req) //nolint
+	if err != nil {
+		return err
+	}
+
+	defer closer.DrainAndCloseWithLogOnError(ctx, "http response", response.Body)
 
 	// Write the contents of the response body to the file
 	_, err = io.Copy(out, response.Body)

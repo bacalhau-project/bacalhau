@@ -293,8 +293,6 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings model.DownloaderSettings,
 ) error {
 	var apiClient *publicapi.RequesterAPIClient
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
-	defer span.End()
 
 	if runtimeSettings.IsLocal {
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
@@ -497,9 +495,6 @@ func submitJob(ctx context.Context,
 	apiClient *publicapi.RequesterAPIClient,
 	j *model.Job,
 ) (*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
-	defer span.End()
-
 	j, err := apiClient.Submit(ctx, j)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")

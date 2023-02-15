@@ -32,14 +32,12 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
+	_ context.Context,
 	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
-	executor := &Executor{
+	return &Executor{
 		StorageProvider: storageProvider,
-	}
-
-	return executor, nil
+	}, nil
 }
 
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
@@ -48,7 +46,7 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.HasStorageLocally")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
 	defer span.End()
 
 	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -60,7 +58,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.GetVolumeSize")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
 
 	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -139,7 +137,7 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.RunShard")
 	defer span.End()
 
 	engineConfig := wazero.NewRuntimeConfig()

@@ -54,7 +54,7 @@ func NewRequesterNode(
 	nodeInfoStore routing.NodeInfoStore,
 ) (*Requester, error) {
 	// prepare event handlers
-	tracerContextProvider := system.NewTracerContextProvider(host.ID().String())
+	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
 	// compute proxy
@@ -215,7 +215,7 @@ func NewRequesterNode(
 	)
 
 	// register consumers of job events publishes over gossipSub
-	networkJobEventConsumer := eventhandler.NewChainedJobEventHandler(system.NewNoopContextProvider())
+	networkJobEventConsumer := eventhandler.NewChainedJobEventHandler(eventhandler.NewNoopContextProvider())
 	networkJobEventConsumer.AddHandlers(
 		// update the job state in the local DB
 		localDBEventHandler,
