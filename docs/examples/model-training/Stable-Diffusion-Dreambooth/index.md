@@ -245,6 +245,7 @@ Now you can push this repository to the registry designated by its name or tag.
 
 
 ```bash
+%%bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -344,6 +345,7 @@ Replacing the placeholders would result in the following command
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -418,6 +420,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -432,6 +435,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -467,6 +471,7 @@ Extract the CID portion of the link  which in this case is QmdpsqZn9BZx9XxzCsyPc
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -493,6 +498,7 @@ jsacex/stable-diffusion-ckpt \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -507,11 +513,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```

@@ -47,6 +47,7 @@ One final additional hack that we have to do is move the weights file to a locat
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -64,6 +65,7 @@ This should output a UUID (like `59c59bfb-4ef8-45ac-9f4b-f0e9afd26e70`). This is
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -76,6 +78,7 @@ Where it says `Completed`, that means the job is done, and we can get the result
 
 
 ```bash
+%%bash
 rm -rf results && mkdir results
 bacalhau get ${JOB_ID} --output-dir results
 ```
@@ -117,6 +120,7 @@ Let's run a the same job again, but this time use the images above.
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -131,6 +135,7 @@ ultralytics/yolov5:v6.2 \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -140,6 +145,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 
 ```bash
+%%bash
 rm -rf custom-results && mkdir custom-results
 bacalhau get ${JOB_ID} --output-dir custom-results
 ```

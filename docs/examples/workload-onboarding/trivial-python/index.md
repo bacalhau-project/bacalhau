@@ -43,6 +43,7 @@ To submit a workload to Bacalhau you can use the `bacalhau docker run` command. 
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
   --id-only \
   --input-urls https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
@@ -65,6 +66,7 @@ You can run the `bacalhau get` directly as shown below
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -163,6 +165,7 @@ Alternatively, you can create a directory that will store our job outputs.
 
 
 ```bash
+%%bash
 rm -rf results && mkdir results
 bacalhau get ${JOB_ID} --output-dir results
 ```
@@ -182,6 +185,7 @@ For the scope this of this guide, we will only look at the **stdout** file. You 
 
 ```bash
 
+%%bash
 cat results/combined_results/stdout
 
 ```

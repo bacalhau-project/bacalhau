@@ -35,6 +35,7 @@ Run the script:
 
 
 ```bash
+%%bash
 Rscript hello.R
 ```
 
@@ -51,6 +52,7 @@ Now it's time to run the script on the Bacalhau network. Bacalhau is a decentral
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --wait \
 --id-only \
@@ -73,6 +75,7 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -87,6 +90,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe  ${JOB_ID}
 ```
 
@@ -164,6 +168,7 @@ we create a temporary directory to save our results
 
 
 ```bash
+%%bash
 rm -rf results && mkdir results
 ```
 
@@ -171,6 +176,7 @@ To Download the results of your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau get ${JOB_ID} --output-dir results
 ```
 
@@ -184,6 +190,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/
 ```
 
@@ -196,6 +203,7 @@ Viewing the result
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 
@@ -208,11 +216,13 @@ You can generate the the job request with the following command. This will allow
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID} --spec > job.yaml
 ```
 
 
 ```bash
+%%bash
 cat job.yaml
 ```
 

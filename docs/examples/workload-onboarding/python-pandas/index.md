@@ -23,6 +23,7 @@ The goal of this section is to show you how to develop a script to perform a tas
 
 
 ```bash
+%%bash
 pip install pandas
 ```
 
@@ -41,12 +42,14 @@ print(pd.read_csv("transactions.csv"))
 
 
 ```bash
+%%bash
 # Downloading the dataset
 wget https://cloudflare-ipfs.com/ipfs/QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz/transactions.csv
 ```
 
 
 ```bash
+%%bash
 cat transactions.csv
 ```
 
@@ -62,6 +65,7 @@ Now let's run the script to read in the CSV file. The output will be a DataFrame
 
 
 ```bash
+%%bash
 python3 read_csv.py
 ```
 
@@ -88,6 +92,7 @@ Now we're ready to run a Bacalhau job, whilst mounting the Pandas script and dat
 
 
 ```bash
+%%bash --out job_id
  bacalhau docker run \
 --wait \
 --id-only \
@@ -103,6 +108,7 @@ Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf0
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -117,6 +123,7 @@ If there is an error you can view the error using the following command bacalhau
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -199,6 +206,7 @@ The describe command will display the logs and error messages from your job. The
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 ```
 
@@ -206,6 +214,7 @@ To Download the results of your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau get ${JOB_ID}  --output-dir results
 ```
 
@@ -219,6 +228,7 @@ see the following contents in pandas-results directory
 
 
 ```bash
+%%bash
 ls results/combined_results/
 ```
 
@@ -262,6 +272,7 @@ Because your script is printed to stdout, the output will appear in the stdout f
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 

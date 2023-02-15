@@ -20,6 +20,7 @@ Installing dependecies like Whisper, torch, pandas
 
 
 ```bash
+%%bash
 pip install git+https://github.com/openai/whisper.git
 pip install torch==1.10.1
 pip install pandas
@@ -36,6 +37,7 @@ for that we Download a sample audio clip
 
 
 ```bash
+%%bash
 wget https://github.com/js-ts/hello/raw/main/hello.mp3
 ```
 
@@ -224,6 +226,7 @@ Then run the script with the default parameters
 
 
 ```bash
+%%bash
 python openai-whisper.py
 ```
 
@@ -823,6 +826,7 @@ Viewing the outputs
 
 
 ```bash
+%%bash
 cat hello.srt
 ```
 
@@ -936,6 +940,7 @@ Insalling bacalhau
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \ 
 --wait \
 --id-only \
@@ -952,6 +957,7 @@ jsacex/whisper \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -966,6 +972,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -1103,6 +1110,7 @@ the following command:
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -1115,6 +1123,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/
 ```
 
@@ -1129,6 +1138,7 @@ ls results/
 
 
 ```bash
+%%bash
 cat results/combined_results/outputs/Apollo_11_moonwalk_montage_720p.vtt
 ```
 

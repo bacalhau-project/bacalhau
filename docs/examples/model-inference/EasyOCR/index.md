@@ -27,6 +27,7 @@ Installing dependencies
 
 
 ```bash
+%%bash
 pip install easyocr
 ```
 
@@ -62,6 +63,7 @@ load example images
 
 
 ```bash
+%%bash
 npx degit JaidedAI/EasyOCR/examples -f
 ```
 
@@ -74,6 +76,7 @@ list them
 
 
 ```bash
+%%bash
 ls -l
 ```
 
@@ -224,6 +227,7 @@ choose the model you want to use in this case we will be using the zh_sim_g2 mod
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 -v bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth  \
 -u https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg \
@@ -266,6 +270,7 @@ The easyocr command
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -280,11 +285,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -301,6 +308,7 @@ After the download has finished you should see the following contents in results
 
 
 ```bash
+%%bash
 ls results/
 ```
 

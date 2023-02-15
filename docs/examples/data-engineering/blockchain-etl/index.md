@@ -37,6 +37,7 @@ First let's download one of the IPFS files and inspect it locally. You can see t
 
 
 ```bash
+%%bash
 wget -q -O file.tar.gz https://w3s.link/ipfs/bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq
 tar -xvf file.tar.gz
 ```
@@ -75,6 +76,7 @@ tar -xvf file.tar.gz
 
 
 ```bash
+%%bash
 pip install pandas
 ```
 
@@ -214,6 +216,7 @@ Next, let's make sure the file works as expected...
 
 
 ```bash
+%%bash
 python main.py . outputs/
 ```
 
@@ -254,6 +257,7 @@ To submit a job, you can use the Bacalhau CLI. The following command will run th
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --id-only \
     --input-volumes bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
@@ -274,6 +278,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -288,6 +293,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -363,6 +369,7 @@ And let's inspect the results.
 
 
 ```bash
+%%bash
 rm -rf ./results && mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
@@ -376,6 +383,7 @@ The docker run command above used the `outputs` volume as a results folder so wh
 
 
 ```bash
+%%bash
 ls -lah results/combined_results/outputs
 ```
 
@@ -417,6 +425,7 @@ See the appendix for the `hashes.txt` file.
 
 
 ```bash
+%%bash
 printf "" > job_ids.txt
 for h in $(cat hashes.txt); do \
     bacalhau docker run \
@@ -431,6 +440,7 @@ Now take a look at the job id's. You can use these to check the status of the jo
 
 
 ```bash
+%%bash
 cat job_ids.txt
 ```
 
@@ -494,6 +504,7 @@ Wait until all of these jobs have completed:
 
 
 ```bash
+%%bash
 bacalhau list -n 50
 ```
 
@@ -554,6 +565,7 @@ And then download all the results and merge them into a single directory. This m
 
 
 ```bash
+%%bash
 for id in $(cat job_ids.txt); do \
     rm -rf results_$id && mkdir results_$id
     bacalhau get --output-dir results_$id $id &
@@ -600,6 +612,7 @@ That's it! There is several years of Ethereum transaction volume data.
 
 
 ```bash
+%%bash
 rm -rf results_* output_* outputs results combined_results temp # Remove temporary results
 ```
 

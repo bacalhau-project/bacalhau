@@ -147,6 +147,7 @@ The following command mounts the model from IPFS to the docker container and the
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -200,6 +201,7 @@ The output generated on the same prompt will always be the same for different ou
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -214,6 +216,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -221,6 +224,7 @@ bacalhau describe ${JOB_ID}
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```

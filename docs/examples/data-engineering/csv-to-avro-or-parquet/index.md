@@ -23,6 +23,7 @@ Installing dependencies
 
 
 ```bash
+%%bash
 git clone https://github.com/js-ts/csv_to_avro_or_parquet/
 pip3 install -r csv_to_avro_or_parquet/requirements.txt
 ```
@@ -54,6 +55,7 @@ Running the script
 
 
 ```bash
+%%bash
 python3 src/converter.py ./movies.csv  ./movies.parquet parquet
 ```
 
@@ -129,6 +131,7 @@ we will show you how you can mount the script from a IPFS as we as from an URL
 
 
 ```bash
+%%bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -150,6 +153,7 @@ Mounting the csv file from IPFS
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 -i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W  \
 --wait \
@@ -178,6 +182,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -192,6 +197,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -199,6 +205,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -216,6 +223,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/combined_results/outputs
 ```
 

@@ -35,6 +35,7 @@ You can find out more about the [helper container in the examples repository](ht
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --id-only \
     --wait \
@@ -49,6 +50,7 @@ Just to be safe, double check that the job succeeded by running the describe com
 
 
 ```bash
+%%bash
 bacalhau list $JOB_ID --output=json | jq '.[0].Status.JobState.Nodes[] | .Shards."0" | select(.RunOutput)'
 ```
 
@@ -81,6 +83,7 @@ The job will upload the CID to the Filecoin network via Estuary. Let's get the C
 
 
 ```bash
+%%bash --out cid
 bacalhau list $JOB_ID --output=json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID'
 ```
 
@@ -101,6 +104,7 @@ In this case my "job" is just to list the contents of the `/inputs` directory an
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --id-only \
     --wait \
@@ -114,6 +118,7 @@ bacalhau docker run \
 
 
 ```bash
+%%bash
 rm -rf results && mkdir ./results
 bacalhau get --output-dir ./results $JOB_ID 
 ```
@@ -128,6 +133,7 @@ bacalhau get --output-dir ./results $JOB_ID
 
 
 ```bash
+%%bash
 head -n 15 ./results/combined_results/stdout
 ```
 

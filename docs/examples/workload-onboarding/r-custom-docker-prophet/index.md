@@ -33,6 +33,7 @@ Prophet is a CRAN package so you can use install.packages to install the prophet
 
 
 ```bash
+%%bash
 R -e "install.packages('prophet',dependencies=TRUE, repos='http://cran.rstudio.com/')"
 ```
 
@@ -41,6 +42,7 @@ After installation is finished, you can download the example data that is stored
 
 
 ```bash
+%%bash
 wget https://w3s.link/ipfs/QmZiwZz7fXAvQANKYnt7ya838VPpj4agJt5EDvRYp3Deeo/example_wp_log_R.csv
 ```
 
@@ -48,6 +50,7 @@ The code below instantiates the library and fits a model to the data.
 
 
 ```bash
+%%bash
 mkdir -p outputs
 mkdir -p R
 ```
@@ -101,6 +104,7 @@ dev.off()
 
 
 ```bash
+%%bash
 Rscript Saturating-Forecasts.R "example_wp_log_R.csv" "outputs/output0.pdf" "outputs/output1.pdf"
 ```
 
@@ -137,6 +141,7 @@ The following command passes a prompt to the model and generates the results in 
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --wait \
     --id-only \
@@ -149,6 +154,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -163,6 +169,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -244,6 +251,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -258,6 +266,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/combined_results/outputs
 ```
 

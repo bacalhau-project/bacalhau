@@ -25,6 +25,7 @@ Cloning the pytorch examples
 
 
 ```bash
+%%bash
 git clone https://github.com/pytorch/examples
 ```
 
@@ -43,6 +44,7 @@ we add the --save-model flag to save the model
 
 
 ```bash
+%%bash
 python ./examples/mnist_rnn/main.py --save-model
 ```
 
@@ -1418,6 +1420,7 @@ we can download the dataset using pytorch datasets in this case we need to downl
 
 
 ```bash
+%%bash
 mkdir ./data
 ```
 
@@ -1545,6 +1548,7 @@ You can view you uploaded dataset by clicking on the Gateway URL
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -1580,6 +1584,7 @@ we will execute that script but since our working directory is /outputs we provi
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -1594,11 +1599,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -1613,6 +1620,7 @@ bacalhau get $JOB_ID --output-dir results
 
 
 ```bash
+%%bash
 ls results/
 ```
 
@@ -1623,6 +1631,7 @@ ls results/
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 
@@ -2990,6 +2999,7 @@ The model has successfully trained and downloaded
 
 
 ```bash
+%%bash
 ls results/combined_results/outputs/
 ```
 

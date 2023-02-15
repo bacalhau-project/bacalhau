@@ -22,6 +22,7 @@ To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
@@ -51,6 +52,7 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 
 
 ```bash
+%%bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
@@ -64,6 +66,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -71,6 +74,7 @@ bacalhau describe ${JOB_ID}
 
 
 ```bash
+%%bash
 rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
@@ -88,6 +92,7 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 
 ```bash
+%%bash
 ls -lah results/combined_results/outputs
 ```
 

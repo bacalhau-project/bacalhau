@@ -20,6 +20,7 @@ You're probably used to running docker commands to run a container.
 
 
 ```bash
+%%bash
 docker run docker/whalesay cowsay sup old fashioned container run
 ```
 
@@ -50,11 +51,13 @@ Another difference is that by default Bacalhau overwrites the default entrypoint
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run --wait --id-only docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 ```
 
@@ -62,6 +65,7 @@ To Download the results of your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau get ${JOB_ID}  --output-dir results
 ```
 
@@ -75,6 +79,7 @@ bacalhau get ${JOB_ID}  --output-dir results
 
 
 ```bash
+%%bash
 cat ./results/combined_results/stdout
 ```
 
@@ -147,11 +152,13 @@ Now let's build and test the container locally.
 
 
 ```bash
+%%bash
 docker build -t ghcr.io/bacalhau-project/examples/codsay:latest . 2> /dev/null
 ```
 
 
 ```bash
+%%bash
 docker run --rm ghcr.io/bacalhau-project/examples/codsay:latest codsay I like swimming in data
 ```
 
@@ -180,6 +187,7 @@ Once your container is working as expected then you should push it to a public c
 
 
 ```bash
+%%bash
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/codsay:latest .
 ```
 
@@ -193,6 +201,7 @@ The `bacalhau docker run` command strips the default entrypoint, so don't forget
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --wait \
     --id-only \
@@ -202,6 +211,7 @@ bacalhau docker run \
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 ```
 
@@ -209,6 +219,7 @@ To Download the results of your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau get ${JOB_ID}  --output-dir results
 ```
 
@@ -222,6 +233,7 @@ bacalhau get ${JOB_ID}  --output-dir results
 
 
 ```bash
+%%bash
 cat ./results/combined_results/stdout
 ```
 

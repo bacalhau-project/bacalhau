@@ -20,6 +20,7 @@ To run StyleGAN3 locally, you'll need to clone the repo, install dependencies an
 
 
 ```bash
+%%bash
 git clone https://github.com/NVlabs/stylegan3
 cd stylegan3
 conda env create -f environment.yml
@@ -32,6 +33,7 @@ Generate an image using pre-trained `AFHQv2` model
 
 
 ```bash
+%%bash
 python gen_images.py --outdir=out --trunc=1 --seeds=2 --network=stylegan3-r-afhqv2-512x512.pkl
 ```
 
@@ -142,6 +144,7 @@ Command to get your job ID
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --wait \
 --id-only \
@@ -157,6 +160,7 @@ jsacex/stylegan3 \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -171,6 +175,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -181,6 +186,7 @@ To download the results of your job, run the following command:
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -196,6 +202,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/
 ```
 

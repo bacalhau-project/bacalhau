@@ -26,6 +26,7 @@ To run Sparkov locally, you'll need to clone the repo and install dependencies.
 
 
 ```bash
+%%bash
 git clone https://github.com/js-ts/Sparkov_Data_Generation/
 pip3 install -r Sparkov_Data_Generation/requirements.txt
 ```
@@ -56,6 +57,7 @@ Creating a temporary directory to store the outputs
 
 
 ```bash
+%%bash
 mkdir ../outputs
 ```
 
@@ -75,6 +77,7 @@ To see the full list of options, use:
 
 
 ```bash
+%%bash
 python datagen.py -h
 ```
 
@@ -104,6 +107,7 @@ python datagen.py -h
 
 
 ```bash
+%%bash
 python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
 ```
 
@@ -229,6 +233,7 @@ Copy and paste the following code to your terminal
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --id-only \
 --wait \
@@ -248,6 +253,7 @@ Running the commands above will output a `UUID` that represents the job that was
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -262,6 +268,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -269,6 +276,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -286,6 +294,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/combined_results/outputs
 ```
 

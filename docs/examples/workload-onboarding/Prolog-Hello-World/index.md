@@ -22,6 +22,7 @@ Install swipl
 
 
 ```bash
+%%bash
 sudo add-apt-repository ppa:swi-prolog/stable
 sudo apt-get update
 sudo apt-get install swi-prolog
@@ -91,6 +92,7 @@ Running the script
 
 
 ```bash
+%%bash
 swipl -q -s helloworld.pl -g hello_world
 ```
 
@@ -217,6 +219,7 @@ Command
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 -v QmYq9ipYf3vsj7iLv5C67BXZcpLHxZbvFAJbtj7aKN5qii:/helloworld.pl \
 --wait \
@@ -240,6 +243,7 @@ Swipl flag
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -254,11 +258,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -275,6 +281,7 @@ Viewing the outputs
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 

@@ -54,6 +54,7 @@ Downloading the programs
 
 
 ```bash
+%%bash
 mkdir inputs outputs
 wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/00-hello-world.cu
 wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu
@@ -87,6 +88,7 @@ wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/mas
 
 
 ```bash
+%%bash
 cat inputs/00-hello-world.cu
 ```
 
@@ -242,6 +244,7 @@ Installing bacalhau
 
 
 ```bash
+%%bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -277,6 +280,7 @@ for executing CUDA programs you need to choose the right CUDA docker container t
 
 
 ```bash
+%%bash --out job_id
  bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
@@ -290,6 +294,7 @@ for executing CUDA programs you need to choose the right CUDA docker container t
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -304,11 +309,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -325,6 +332,7 @@ Viewing the outputs
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 

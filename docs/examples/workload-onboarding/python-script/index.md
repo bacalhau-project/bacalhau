@@ -230,6 +230,7 @@ Let's run it!
 
 
 ```bash
+%%bash
 python bacalhau.py
 ```
 
@@ -305,6 +306,7 @@ Hopefully the results directory contains all the combined results from the jobs 
 
 
 ```bash
+%%bash
 ls -l results
 ```
 

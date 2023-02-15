@@ -20,6 +20,7 @@ To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
@@ -58,6 +59,7 @@ We will create 72px wide video thumbnails for all the videos in the `inputs` dir
 
 
 ```bash
+%%bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
@@ -67,6 +69,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -74,6 +77,7 @@ bacalhau describe ${JOB_ID}
 
 
 ```bash
+%%bash
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```

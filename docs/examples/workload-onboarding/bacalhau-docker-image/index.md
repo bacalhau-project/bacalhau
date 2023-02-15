@@ -20,6 +20,7 @@ The first step is to pull the Bacalhau Docker image from the [Github container r
 
 
 ```bash
+%%bash
 docker pull ghcr.io/bacalhau-project/bacalhau:latest
 ```
 
@@ -49,6 +50,7 @@ It's always a good idea to check the version of the client you're using. Mismatc
 
 
 ```bash
+%%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest version
 ```
 
@@ -64,6 +66,7 @@ In this example, I run an ubuntu-based job that echo's some stuff.
 
 
 ```bash
+%%bash --out job_id
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     docker run \
         --id-only \
@@ -77,6 +80,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 
 ```bash
+%%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     describe $JOB_ID \
         | grep -A 2 "stdout: |"
@@ -95,6 +99,7 @@ The first part of the example should look familiar, except for the Docker comman
 
 
 ```bash
+%%bash --out job_id
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     docker run \
         --id-only \
@@ -111,6 +116,7 @@ This is where things get a bit more spicy. We need to mount a directory into the
 
 
 ```bash
+%%bash
 docker run -t -v $(pwd)/results:/results ghcr.io/bacalhau-project/bacalhau:latest \
     get $JOB_ID --output-dir /results
 ```

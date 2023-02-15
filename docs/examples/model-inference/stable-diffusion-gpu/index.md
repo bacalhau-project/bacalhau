@@ -35,6 +35,7 @@ In order to run this example you need:
 
 
 ```bash
+%%bash
 pip install git+https://github.com/fchollet/stable-diffusion-tensorflow --upgrade --quiet
 pip install tensorflow tensorflow_addons ftfy --upgrade --quiet
 pip install tqdm
@@ -135,6 +136,7 @@ For now, let's ignore this and clear the GPU memory with numba so it works again
 
 
 ```bash
+%%bash
 pip install numba
 ```
 
@@ -215,6 +217,7 @@ You should test that your script works! Let's run it again.
 
 
 ```bash
+%%bash
 python main.py
 ```
 
@@ -350,6 +353,7 @@ Furthermore, the container itself is about 10GB, so it might take a while to dow
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run --id-only --gpu 1 ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 -- python main.py --o ./outputs --p "meme about tensorflow"
 ```
 
@@ -365,6 +369,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -379,6 +384,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -471,6 +477,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -485,6 +492,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/volumes/outputs
 ```
 

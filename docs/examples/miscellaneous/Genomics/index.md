@@ -69,6 +69,7 @@ Insalling bacalhau
 
 
 ```bash
+%%bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -88,6 +89,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --id-only \
 --wait \ 
@@ -111,6 +113,7 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -125,6 +128,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -225,6 +229,7 @@ the following command:
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -240,6 +245,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/
 ```
 
@@ -250,6 +256,7 @@ ls results/
 
 
 ```bash
+%%bash
 cat results/combined_results/outputs/output.tsv | head -n 10
 ```
 

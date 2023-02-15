@@ -22,6 +22,7 @@ If your bucket has more than 1000 files, with the command below, you can submit 
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 -u https://noaa-goes16.s3.amazonaws.com/ \
 -v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \
@@ -54,6 +55,7 @@ There are certain limitations to this step, as this only works with datasets tha
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -67,6 +69,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -74,6 +77,7 @@ bacalhau describe ${JOB_ID}
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results # Temporary directory to store the results
 bacalhau get $JOB_ID --output-dir results # Download the results
 ```
@@ -94,6 +98,7 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 
 
 ```bash
+%%bash
 head -10 results/combined_results/stdout
 ```
 
@@ -117,6 +122,7 @@ Selecting the first ten links
 
 
 ```bash
+%%bash
 head -10 results/combined_results/stdout > links.txt
 ```
 
@@ -147,6 +153,7 @@ Running the script
 
 
 ```bash
+%%bash
 bash move.sh
 ```
 
@@ -168,6 +175,7 @@ In this case, we will move the first 10 URLs and set the no of jobs to 10 `-n 10
 
 
 ```bash
+%%bash
 bacalhau list -n 10 --output json > output.json
 ```
 
@@ -175,6 +183,7 @@ Installing jq to extract CID from the results
 
 
 ```bash
+%%bash
 sudo apt update
 sudo apt install jq
 ```
@@ -183,6 +192,7 @@ Extracting the CIDs from output json
 
 
 ```bash
+%%bash
 jq '.[] ."JobState" ."Nodes"' output.json > output-shards.json
 jq '.[]."Shards"."0"."PublishedResults"."CID" | select( . != null )'  output-shards.json
 ```

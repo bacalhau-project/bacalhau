@@ -116,6 +116,7 @@ To install the dependencies run the command
 
 
 ```bash
+%%bash
 pip install -r requirements.txt
 ```
 
@@ -327,6 +328,7 @@ Command to run the container on bacalhau
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --id-only \
 --wait \
@@ -352,6 +354,7 @@ jsace/python-similar-movies \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -366,6 +369,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -373,6 +377,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```

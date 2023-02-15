@@ -106,6 +106,7 @@ To test whether the same command that we ran locally runs on bacalhau we run the
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
      --workdir /inputs/ \
      --wait \
@@ -123,6 +124,7 @@ bacalhau docker run \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -137,6 +139,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -144,6 +147,7 @@ Downloading the outputs
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -160,6 +164,7 @@ Viewing the outputs
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 
@@ -179,6 +184,7 @@ cat results/combined_results/stdout
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
  -i bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \
   --workdir /inputs \
@@ -191,6 +197,7 @@ bacalhau docker run \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -205,11 +212,13 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -226,6 +235,7 @@ Viewing the outputs
 
 
 ```bash
+%%bash
 cat results/combined_results/stdout
 ```
 

@@ -43,6 +43,7 @@ Among other things, we can see it contains a number of ATOM records. These descr
 
 
 ```bash
+%%bash
 head ./dataset/2dri-processed.pdb
 ```
 
@@ -224,6 +225,7 @@ CMD ["python","run_openmm_simulation.py"]
 
 
 ```bash
+%%bash
 #docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/examples/openmm:0.3 .
 ```
 
@@ -233,6 +235,7 @@ Before we upload the container to the Bacalhau network, we should test it locall
 
 
 ```bash
+%%bash
 docker run \
     -v $(pwd)/dataset:/inputs/ \
     -v $(pwd)/output:/output \
@@ -247,6 +250,7 @@ I find it useful to first run a simple test with a known working container to en
 
 
 ```bash
+%%bash
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
         --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
@@ -288,6 +292,7 @@ Let's switch to our custom container image.
 
 
 ```bash
+%%bash
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
     --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
@@ -327,6 +332,7 @@ And finally let's run the full job. This time I will not download the data immed
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
     --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
     --wait \
@@ -344,6 +350,7 @@ bacalhau docker run \
 
 
 ```bash
+%%bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
@@ -357,6 +364,7 @@ Now let's download and display the result from the results directory. We can use
 
 
 ```bash
+%%bash
 rm -rf stdout stderr volumes shards
 bacalhau get ${JOB_ID} # Download the results
 ```
@@ -365,6 +373,7 @@ bacalhau get ${JOB_ID} # Download the results
 
 
 ```bash
+%%bash
 ls -l volumes/outputs
 ```
 

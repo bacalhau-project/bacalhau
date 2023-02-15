@@ -24,6 +24,7 @@ Clone the repo which contains the code
 
 
 ```bash
+%%bash
 git clone https://github.com/js-ts/Coreset
 ```
 
@@ -37,6 +38,7 @@ Open Street Map, which is a public repository that aims to generate and distribu
 
 
 ```bash
+%%bash
 wget https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf -o liechtenstein-latest.osm.pbf
 ```
 
@@ -46,6 +48,7 @@ Installing the Linux dependencies
 
 
 ```bash
+%%bash
 sudo apt-get -y update \
 sudo apt-get -y install osmium-tool \
 sudo apt update \
@@ -57,6 +60,7 @@ Installing Python Dependencies
 
 
 ```bash
+%%bash
 pip3 install -r Coreset/requirements.txt
 ```
 
@@ -66,6 +70,7 @@ Convert from compressed pbf format to geojson format
 
 
 ```bash
+%%bash
 osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 ```
 
@@ -73,6 +78,7 @@ osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 
 
 ```bash
+%%bash
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson
 ```
 
@@ -183,11 +189,13 @@ Insalling bacalhau
 
 
 ```bash
+%%bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
 
 ```bash
+%%bash --out job_id
 bacalhau docker run \
 --id-only \
 --wait \
@@ -209,6 +217,7 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
+%%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -219,6 +228,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+%%bash
 bacalhau describe ${JOB_ID}
 ```
 
@@ -234,6 +244,7 @@ the following command:
 
 
 ```bash
+%%bash
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -243,6 +254,7 @@ see the following contents in results directory
 
 
 ```bash
+%%bash
 ls results/
 ```
 
@@ -250,16 +262,19 @@ ls results/
 
 
 ```bash
+%%bash
 cat results/combined_results/outputs/centers.csv | head -n 10
 ```
 
 
 ```bash
+%%bash
 cat results/combined_results/outputs/coreset-values-liechtenstein-latest.csv | head -n 10
 ```
 
 
 ```bash
+%%bash
 cat results/combined_results/outputs/coreset-weights-liechtenstein-latest.csv | head -n 10
 ```
 
