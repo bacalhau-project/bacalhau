@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/server"
+	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -36,6 +37,7 @@ func NewServeOptions() *ServeOptions {
 			Host: getDefaultServeOptionString("HOST", "0.0.0.0"),
 			//nolint:gomnd
 			Port:      getDefaultServeOptionInt("PORT", 80),
+			SwarmPort: getDefaultServeOptionInt("SWARM_PORT", 1236),
 			JWTSecret: getDefaultServeOptionString("JWT_SECRET", ""),
 		},
 		ModelOptions: newModelOptions(),
@@ -62,6 +64,14 @@ func newServeCmd() *cobra.Command {
 	serveCmd.PersistentFlags().IntVar(
 		&serveOptions.ServerOptions.Port, "port", serveOptions.ServerOptions.Port,
 		`The host to bind the dashboard server to.`,
+	)
+	serveCmd.PersistentFlags().IntVar(
+		&serveOptions.ServerOptions.SwarmPort, "swarm-port", serveOptions.ServerOptions.SwarmPort,
+		`The port to listen on for swarm connections and GossipSub messages.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&serveOptions.ServerOptions.PeerConnect, "peer", serveOptions.ServerOptions.PeerConnect,
+		`The libp2p multiaddress to connect to.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&serveOptions.ServerOptions.JWTSecret, "jwt-secret", serveOptions.ServerOptions.JWTSecret,
@@ -91,12 +101,33 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "dashboard/api/cmd/dashboard.serve")
 	defer rootSpan.End()
 
+	peers, err := getPeers(options.ServerOptions.PeerConnect)
+	if err != nil {
+		return err
+	}
+	log.Debug().Msgf("libp2p connecting to: %s", peers)
+
+	libp2pHost, err := libp2p.NewHost(options.ServerOptions.SwarmPort)
+	if err != nil {
+		return fmt.Errorf("error creating libp2p host: %w", err)
+	}
+	options.ModelOptions.Host = libp2pHost
 	model, err := model.NewModelAPI(options.ModelOptions)
 	if err != nil {
 		return err
 	}
 
-	model.Start(ctx)
+	err = model.Start(ctx)
+	if err != nil {
+		return err
+	}
+	cm.RegisterCallback(model.Stop)
+
+	// Start transport layer
+	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
+	if err != nil {
+		return err
+	}
 
 	server, err := server.NewServer(
 		options.ServerOptions,
