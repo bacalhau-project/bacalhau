@@ -146,9 +146,6 @@ while read URL; do
 done < links.txt
 ```
 
-    Overwriting move.sh
-
-
 Running the script
 
 

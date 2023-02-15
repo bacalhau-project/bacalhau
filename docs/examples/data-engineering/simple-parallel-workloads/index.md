@@ -86,7 +86,7 @@ After the download has finished you should see the following contents in results
 
 Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
-### Viewing videos
+### Display the videos
 
 To view the videos, we will use **glob** to return all file paths that match a specific pattern. 
 

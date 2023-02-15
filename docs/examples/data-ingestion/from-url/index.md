@@ -70,9 +70,6 @@ bacalhau list $JOB_ID --output=json | jq -r '.[0].Status.JobState.Nodes[] | .Sha
 
 We will store the _cid_ that in an environment variable so that we can reuse it later on.
 
-    env: CID=QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H
-
-
 ### Use the CID in a New Bacalhau Job
 
 Now that we have the CID, we can use it in a new job. This time we will use the `--inputs` parameter to tell Bacalhau to use the CID we just uploaded.
@@ -91,9 +88,6 @@ bacalhau docker run \
 ```
 
 The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
-
-    env: JOB_ID=37e3c424-072a-4ea5-bc3a-76909dce17ee
-
 
 **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 

@@ -107,7 +107,7 @@ ls -lah results/combined_results/outputs
     -rw-r--r-- 3 gitpod gitpod  16K Dec 14 13:22 sulphursprings_oli_2019254_lrg.jpg
 
 
-### Viewing image
+### Display the image
 
 To view the images, we will use **glob** to return all file paths that match a specific pattern. 
 

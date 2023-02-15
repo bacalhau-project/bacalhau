@@ -28,14 +28,6 @@ curl --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.soca
 curl --output ./inputs/sst.mnmean.nc https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc
 ```
 
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100 35.5M  100 35.5M    0     0  34.6M      0  0:00:01  0:00:01 --:--:-- 34.6M
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100 60.8M  100 60.8M    0     0  14.6M      0  0:00:04  0:00:04 --:--:-- 14.6M
-
-
 Next let's write the `requirements.txt` and install the dependencies. This file will also be used by the Dockerfile to install the dependencies.
 
 
@@ -53,9 +45,6 @@ scipy==1.7.3
 xarray==0.20.2
 zarr>=2.0.0
 ```
-
-    Writing requirements.txt
-
 
 Installing dependencies
 
@@ -92,11 +81,11 @@ To convert the data from fugacity of CO2 (fCO2) to partial pressure of CO2 (pCO2
 
 To execute this workload on the Bacalhau network we need to perform three steps:
 
-1. Upload the data to IPFS
-2. Create a docker image with the code and dependencies
-3. Run the docker image on the Bacalhau network using the IPFS data
+- Upload the data to IPFS
+- Create a docker image with the code and dependencies
+- Run a Bacalhau job with the docker image using the IPFS data
 
-### Upload the Data to IPFS
+## Upload the Data to IPFS
 
 The first step is to upload the data to IPFS. The simplest way to do this is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
 
@@ -228,7 +217,7 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -263,7 +252,7 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%env JOB_ID={job_id}
+%%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -287,7 +276,6 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 bacalhau describe ${JOB_ID}
 ```
 
-## Get Results
 
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
