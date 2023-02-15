@@ -8,23 +8,17 @@ description: How to run a Python file hosted on Bacalhau
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/trivial-python/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/trivial-python/index.ipynb)
 
-This example serves as an introduction to Bacalhau. Here, you'll be running a Python file hosted on a website on Bacalhau.
+This example tutorial serves as an introduction to Bacalhau. Here, you'll be running a Python file hosted on a website on Bacalhau.
 
-:::tip
-You can run this code on your command line interface (CLI), or you can use the **[Google Colab](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/trivial-python/index.ipynb)** or **[Binder](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/trivial-python/index.ipynb)** notebooks provided at the top of this example to test the code.
-:::
+
 
 ## Prerequisites
 
-* [Install the Bacalhau client](https://docs.bacalhau.org/getting-started/installation).
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-:::tip
-If you are running this as a notebook the hidden cell below will install the Bacalhau client.
-:::
+## Creating a Hello World File
 
-## Hello, world
-
-For this example, we'll be using a very simple Python script which displays the [traditional first greeting](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program).
+We'll be using a very simple Python script which displays the [traditional first greeting](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program).
 
 
 ```python
@@ -35,11 +29,7 @@ For this example, we'll be using a very simple Python script which displays the 
 
 ## Submit the workload
 
-To submit a workload to Bacalhau you can use the `bacalhau docker run` command. While you'll mainly be passing input data into the container using [content identifier (CID)](https://github.com/multiformats/cid) volumes, we will be using the `-u URL:path` [argument](https://docs.bacalhau.org/all-flags#docker-run) for simplicity. This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
-
-:::info
-[Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64), so we must run the full command after the `--` argument.
-:::
+To submit a workload to Bacalhau you can use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -50,11 +40,7 @@ bacalhau docker run \
   python:3.10-slim -- python3 /inputs/hello-world.py
 ```
 
-## Get Results
-
-After the job has finished processing, the next step is to use the `get` verb to download your outputs locally. 
-
-You can run the `bacalhau get` directly as shown below
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
@@ -63,6 +49,26 @@ You can run the `bacalhau get` directly as shown below
 
     env: JOB_ID=c2f245d6-43a6-43ec-9a3b-7ce9b6242c88
 
+
+The `bacalhau docker run` command allows to pass input data into the container using [content identifier (CID)](https://github.com/multiformats/cid) volumes, we will be using the `-u URL:path` [argument](https://docs.bacalhau.org/all-flags#docker-run) for simplicity. This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+
+:::info
+[Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64), so we must run the full command after the `--` argument.
+:::
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
+
+
+```bash
+%%bash
+bacalhau list --id-filter=${JOB_ID} --no-style
+```
+
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
+
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -161,7 +167,7 @@ bacalhau describe ${JOB_ID}
         RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
 
 
-Alternatively, you can create a directory that will store our job outputs.
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -178,9 +184,9 @@ bacalhau get ${JOB_ID} --output-dir results
     2023/01/20 13:25:06 CleanupManager.fnsMutex violation CRITICAL section took 43.424ms 43424000 (threshold 10ms)
 
 
-At this point, the outputs will be downloaded locally. Each job creates 3 sub_folders: the *combined_results*, *per_shard* files, and the *raw* directory. In each of this sub_folders, you'll find the *stdout* and *stderr*
+## Viewing your Job Output
 
-For the scope this of this guide, we will only look at the **stdout** file. You can go directly to the file folder to inspect the content of the file or use the code belolow
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
@@ -195,5 +201,4 @@ cat results/combined_results/stdout
 
 ## Need Support?
 
-For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
-
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
