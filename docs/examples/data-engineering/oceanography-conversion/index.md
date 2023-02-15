@@ -14,8 +14,6 @@ In this example tutorial, we will investigate the data and convert the workload 
 
 ## Prerequisites
 
-## Prerequisites
-
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 ## The Sample Data
@@ -88,7 +86,7 @@ res.plot() # plot the result
 
 We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have travelled.
 
-## Large Scale Data Conversion
+### Data Conversion
 
 To convert the data from fugacity of CO2 (fCO2) to partial pressure of CO2 (pCO2) we will combine the measurements of the surface temperature and fugacity. The conversion is performed by the [pyseaflux](https://seaflux.readthedocs.io/en/latest/api.html?highlight=fCO2_to_pCO2#pyseaflux.fco2_pco2_conversion.fCO2_to_pCO2) package.
 
@@ -109,16 +107,6 @@ For the purposes of this example:
 
 This resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
 
-
-### Create a Docker Image to Process the Data
-
-Next, we will create the docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated with these two repositories [bacalhau_socat_test1](https://github.com/lgloege/bacalhau_socat_test) via [bacalhau_socat_test2](https://github.com/wesfloyd/bacalhau_socat_test/). Thank you! 🤗
-
-:::tip
-For more information about working with custom containers, see the [custom containers example](../../workload-onboarding/custom-containers/).
-:::
-
-The key thing to watch out for here is the paths to the data. I'm using the default bacalhau output directory `/outputs` to write my data to. And the input data is mounted to the `/inputs` directory. But as you will see in a moment, web3.storage has added another `input` directory that we need to account for.
 
 
 ```python
@@ -246,14 +234,16 @@ Before running the command replace;
 
 - **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
 
 Now you can push this repository to the registry designated by its name or tag.
 
+```
+docker push <hub-user>/<repo-name>:<tag>
+```
 
-```
- docker push <hub-user>/<repo-name>:<tag>
-```
+:::tip
+For more information about working with custom containers, see the [custom containers example](../../workload-onboarding/custom-containers/).
+:::
 
 ## Running a Bacalhau Job
 
@@ -311,10 +301,14 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
 %%bash
 cat results/combined_results/stdout
 ```
+
+## Need Support?
+
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

@@ -114,7 +114,7 @@ head -10 results/combined_results/stdout
     https://noaa-goes16.s3.amazonaws.com/ABI-L1b-RadC/2000/001/12/OR_ABI-L1b-RadC-M3C01_G16_s20000011200000_e20000011200000_c20171061215161.nc
 
 
-## Copying the data from AWS S3 to IPFS
+### Extracting Links from Job Output
 
 From the output of the job we ran above, we extracted the links that we want.next is to save them to IPFS using Bacalhau.
 
@@ -169,7 +169,7 @@ bash move.sh
     9c1acb25-6fec-4d14-a91a-4a1f60f985b9
 
 
-### List the outputs of the jobs in json format
+### List the Outputs of the Jobs in JSON Format
 
 In this case, we will move the first 10 URLs and set the no of jobs to 10 `-n 10`. If you have submitted the whole list you can set `-n` to 1000
 

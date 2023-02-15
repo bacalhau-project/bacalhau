@@ -27,7 +27,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Building Docker container
 
-:::Info
+:::info
 You can skip this entirely and directly go to running on Bacalhau.
 :::
 
@@ -66,7 +66,7 @@ docker build -t <hub-user>/<repo-name>:<tag>
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -101,9 +101,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %%env JOB_ID={job_id}
 ```
-
-    env: JOB_ID=eb72c5f5-599b-464e-af93-3ecb9247e9af
-
 
 ## Checking the State of your Jobs
 
@@ -237,3 +234,7 @@ cat results/combined_results/stdout
     │ 24648499     │
     └──────────────┘
 
+
+## Need Support?
+
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

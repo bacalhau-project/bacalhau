@@ -34,9 +34,6 @@ bacalhau docker run \
 
 The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
 
-    env: JOB_ID=418f5335-8023-42ca-b65f-7844614151f0
-
-
 The `bacalhau docker run` command takes advantage of the `--input-urls` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to Filecoin via Estuary.
 
 :::tip
@@ -61,7 +58,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 All Bacalhau jobs are published to a Filecoin contract via Estuary. All data that is located in the `/outputs` directory is published.
 
 
-## Get the CID From the Completed Job
+### Get the CID From the Completed Job
 
 The job will upload the CID to the Filecoin network via Estuary. Let's get the CID from the output.
 
@@ -76,7 +73,7 @@ We will store the _cid_ that in an environment variable so that we can reuse it 
     env: CID=QmYT1RuLmhqh6xdXLG62kLjn2G513nHiWmuy6j6vm5QT5H
 
 
-## Use the CID in a New Bacalhau Job
+### Use the CID in a New Bacalhau Job
 
 Now that we have the CID, we can use it in a new job. This time we will use the `--inputs` parameter to tell Bacalhau to use the CID we just uploaded.
 
@@ -117,7 +114,7 @@ bacalhau get --output-dir ./results $JOB_ID
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash

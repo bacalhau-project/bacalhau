@@ -64,7 +64,7 @@ pd.read_parquet('./movies.parquet').head()
 
 ## Setting up your Docker Container 
 
-:::Info
+:::info
 You can skip this section entirely and directly go to running on bacalhau
 :::
 
@@ -92,13 +92,11 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
 - **tag** this is not required but you can use the latest tag
-
-After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
 
 
 Now you can push this repository to the registry designated by its name or tag.
@@ -113,11 +111,9 @@ After the repo image has been pushed to docker hub, we can now use the container
 
 ## Running a Bacalhau Job
 
-There are two ways to do this either by mounting the script from a IPFS or from an URL
+Using the `bacalhau docker run` command you can either mount the script from a IPFS or from an URL.
 
 ### Mounting the CSV File from IPFS
-
-Using the `bacalhau docker run` command.
 
 
 ```bash
@@ -144,9 +140,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 ```python
 %env JOB_ID={job_id}
 ```
-
-    env: JOB_ID=94774248-1d07-4121-aac8-451aca4a636e
-
 
 ## Checking the State of your Jobs
 
@@ -192,7 +185,7 @@ bacalhau get $JOB_ID --output-dir results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
@@ -208,3 +201,7 @@ import pandas as pd
 import os
 pd.read_parquet('results/combined_results/stdout/transactions.parquet')
 ```
+
+## Need Support?
+
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

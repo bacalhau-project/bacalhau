@@ -39,9 +39,6 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=0e4119fd-12f9-42f5-8cd2-54a0d270541e
-
-
 The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
@@ -88,7 +85,7 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash

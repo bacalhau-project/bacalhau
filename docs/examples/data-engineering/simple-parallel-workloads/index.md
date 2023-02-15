@@ -34,19 +34,17 @@ bacalhau docker run \
 
 ```
 
-To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
+The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
 
 The `bacalhau docker run` command allows one to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
-Bacalhau also mounts a data volume to store output data. By default `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. See below for an example.
-
-And to shard across files in the input directory, we need to pass three (optional) arguments to the command:
+To shard across files in the input directory, we need to pass three (optional) arguments to the command:
 
 - `sharding-base-path` - the path to the directory you want to shard over
 - `sharding-glob-pattern` - the pattern to match files in the directory
 - `sharding-batch-size` - the number of files to pass into each job
 
-We will create 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
+We created a 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
 
 :::tip
 [Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
@@ -88,9 +86,9 @@ After the download has finished you should see the following contents in results
 
 Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
-### Viewing image
+### Viewing videos
 
-To view the images, we will use **glob** to return all file paths that match a specific pattern. 
+To view the videos, we will use **glob** to return all file paths that match a specific pattern. 
 
 <!-- This is for the benefit of the documentation -->
 <video src={require('./scaled_Bird_flying_over_the_lake.mp4').default} controls  >
