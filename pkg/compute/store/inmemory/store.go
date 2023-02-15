@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
 const newExecutionComment = "Execution created"
