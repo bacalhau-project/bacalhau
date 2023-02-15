@@ -17,7 +17,7 @@ FILES=$(git diff --cached --name-only "${against}")
 
 if [[ -n "${FILES}" ]]; then
     KEY_ID=$(grep -E --line-number '([^A-Z0-9]|^)[A-Z0-9]{20}([^A-Z0-9]|$)' "${FILES}")
-    KEY=$(grep -E --line-number '([^A-Za-z0-9/+=]|^)[A-Za-z0-9/+=]{40}([^A-Za-z0-9/+=]|$)' "${FILES}")
+    KEY=$(grep -E --line-number '^(?!github)([^A-Za-z0-9/+=]|^)[A-Za-z0-9/+=]{40}([^A-Za-z0-9/+=]|$)' "${FILES}")
 
     if [[ -n "${KEY_ID}" ]] || [[ -n "${KEY}" ]]; then
         echo "=========== Possible AWS Access Key IDs ==========="
