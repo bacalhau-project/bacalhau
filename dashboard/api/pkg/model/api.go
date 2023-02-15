@@ -148,6 +148,8 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	api.jobEventHandler.startBufferGC(ctx)
 	api.cleanupFunc = func(ctx context.Context) {
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
 		if cleanupErr != nil {
@@ -303,8 +305,8 @@ func (api *ModelAPI) GetTotalExecutorCount(
 	return api.store.GetTotalExecutorCount(ctx)
 }
 
-func (api *ModelAPI) AddEvent(event bacalhau_model.JobEvent) {
-	api.jobEventHandler.readEvent(context.Background(), event)
+func (api *ModelAPI) AddEvent(event bacalhau_model.JobEvent) error {
+	return api.jobEventHandler.readEvent(context.Background(), event)
 }
 
 func (api *ModelAPI) AddUser(

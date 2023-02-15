@@ -32,6 +32,21 @@ func newJobEventHandler(localDB localdb.LocalDB) *jobEventHandler {
 	}
 }
 
+func (handler *jobEventHandler) startBufferGC(ctx context.Context) {
+	// reap the event buffer so we don't accumulate memory forever
+	ticker := time.NewTicker(1 * time.Minute)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				handler.cleanEventBuffer()
+			}
+		}
+	}()
+}
+
 func (handler *jobEventHandler) writeEventToDatabase(ctx context.Context, event bacalhau_model.JobEvent) error {
 	return handler.eventHandler.HandleJobEvent(ctx, event)
 }
