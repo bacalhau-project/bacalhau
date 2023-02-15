@@ -178,5 +178,4 @@ for imageName in glob.glob('results/combined_results/outputs/*.jpg'):
 
 ## Need Support?
 
-For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
-
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

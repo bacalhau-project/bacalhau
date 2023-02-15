@@ -211,5 +211,4 @@ jq '.[]."Shards"."0"."PublishedResults"."CID" | select( . != null )'  output-sha
 
 ## Need Support?
 
-For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
-
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
