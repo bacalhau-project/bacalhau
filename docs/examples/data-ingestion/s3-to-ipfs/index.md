@@ -45,7 +45,7 @@ The command above extracts the path of the file in the bucket, we added the URL 
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-:::note
+:::tip
 There are certain limitations to this step, as this only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.
 :::
 
