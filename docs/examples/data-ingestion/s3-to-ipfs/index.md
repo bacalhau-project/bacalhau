@@ -42,17 +42,15 @@ Before running the command above, replace the following:
 
 The command above extracts the path of the file in the bucket, we added the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/`  then provided the path where the XML document tree of the URL is mounted which is `/inputs`
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`:
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 :::note
 There are certain limitations to this step, as this only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.
 :::
 
 ## Checking the State of your Jobs
- 
-Now we're ready to submit a Bacalhau job. Below is the command with the place holders that should replaced.
 
-- **Job status**: You can check the status of the job using `bacalhau list`. The command shows the status of our job with the with the output we  with the following command. 
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -205,4 +203,9 @@ jq '.[]."Shards"."0"."PublishedResults"."CID" | select( . != null )'  output-sha
     "Qme3kw2tbNfmFPHXydDK9dKLzwfry8b2dxD5s4L1ij9QAL"
     "QmYki5KZQHroo1zzYWfPYrnNRDec8MVjkrvSRBCQqMzvHY"
     "QmNjarM2oxMPwN4cpQcy6NhuNbe4opHyfdce149oYkasjG"
+
+
+## Need Support?
+
+For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
 

@@ -8,44 +8,17 @@ description: "How to process images stored in IPFS with Bacalhau"
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
 
-In this example, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/).
+In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). However, before we do that, this notebook shows you how to use Bacalhau to process images using a [much smaller subset](https://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is useful for testing and debugging your code.
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
-However, before we do that, this notebook shows you how to use Bacalhau to process images using a [much smaller subset](https://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is useful for testing and debugging your code.
+## Prerequiste
 
-For a live walk-through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
-
-[![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
-
-## Prerequistes
-
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation), or using the installation command below (which installs Bacalhau local to the notebook).
-
-
-```python
-!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
-path=!echo $PATH
-%env PATH=./:{path[0]}
-```
-
-    env: PATH=./:./:./:/home/gitpod/.pyenv/versions/3.8.13/bin:/home/gitpod/.pyenv/libexec:/home/gitpod/.pyenv/plugins/python-build/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/bin:/home/gitpod/.pyenv/plugins/pyenv-update/bin:/home/gitpod/.pyenv/plugins/pyenv-installer/bin:/home/gitpod/.pyenv/plugins/pyenv-doctor/bin:/home/gitpod/.pyenv/shims:/ide/bin/remote-cli:/home/gitpod/.nix-profile/bin:/home/gitpod/.local/bin:/home/gitpod/.sdkman/candidates/maven/current/bin:/home/gitpod/.sdkman/candidates/java/current/bin:/home/gitpod/.sdkman/candidates/gradle/current/bin:/workspace/.cargo/bin:/home/gitpod/.rvm/gems/ruby-3.1.2/bin:/home/gitpod/.rvm/gems/ruby-3.1.2@global/bin:/home/gitpod/.rvm/rubies/ruby-3.1.2/bin:/home/gitpod/.pyenv/plugins/pyenv-virtualenv/shims:/home/gitpod/.pyenv/shims:/workspace/go/bin:/home/gitpod/.nix-profile/bin:/ide/bin/remote-cli:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.nvm/versions/node/v16.18.1/bin:/home/gitpod/.yarn/bin:/home/gitpod/.pnpm:/home/gitpod/.pyenv/bin:/workspace/.rvm/bin:/home/gitpod/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin/:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gitpod/.nvm/versions/node/v16.18.1/bin:/home/gitpod/.rvm/bin
-
-
-
-```bash
-bacalhau version
-```
-
-    Client Version: v0.3.15
-    Server Version: v0.3.15
-
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 ## Submit the workload
 
-To submit a workload to Bacalhau you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
-
-Bacalhau also mounts a data volume to store output data. By default `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. See below for an example.
+To submit a workload to Bacalhau you can use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -58,6 +31,8 @@ bacalhau docker run \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
 
+The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
+
 
 ```python
 %env JOB_ID={job_id}
@@ -66,8 +41,13 @@ bacalhau docker run \
     env: JOB_ID=0e4119fd-12f9-42f5-8cd2-54a0d270541e
 
 
-The job has been submitted and Bacalhau has printed out the related job id.
-We store that in an environment variable so that we can reuse it later on.
+The `bacalhau docker run` command allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+
+Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -78,13 +58,18 @@ bacalhau list --id-filter=${JOB_ID} --no-style
      13:17:34  0e4119fd  Docker dpokidov/imag...  Completed            /ipfs/QmQnern37ueHrs... 
 
 
-Since the job state is published/complete, the job is ready to be downloaded.
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-## Get results
+- **Job information**: To find out more information about your job, run the following command:
 
-First, let us create a new directory that will store our job outputs.
-Second, use the `get` verb to download the job outputs into the directory specified by the `--output-dir` argument.
 
+```bash
+bacalhau describe ${JOB_ID}
+```
+
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. 
+
+In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -97,7 +82,15 @@ bacalhau get ${JOB_ID} --output-dir results
     results
 
 
-The docker run command above used the `outputs` volume as a results folder so when we download them they will be stored in a  folder within `volumes/outputs`.
+After the download has finished you should see the following contents in results directory.
+
+## Viewing your Job Output
+
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory.
+
+In each of these sub_folders, you'll find the **studout** and **stderr** file.
+
+To view the file in the stdout folder, run the following command:
 
 
 ```bash
@@ -118,6 +111,10 @@ ls -lah results/combined_results/outputs
     -rw-r--r-- 3 gitpod gitpod  16K Dec 14 13:22 sulphursprings_oli_2019254_lrg.jpg
 
 
+### Viewing image
+
+To view the images, we will use **glob** to return all file paths that match a specific pattern. 
+
 
 ```python
 import glob
@@ -128,64 +125,59 @@ for imageName in glob.glob('results/combined_results/outputs/*.jpg'):
 
 
     
-![jpeg](index_files/index_15_0.jpg)
+![jpeg](index_files/index_20_0.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_1.jpg)
+![jpeg](index_files/index_20_1.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_2.jpg)
+![jpeg](index_files/index_20_2.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_3.jpg)
+![jpeg](index_files/index_20_3.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_4.jpg)
+![jpeg](index_files/index_20_4.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_5.jpg)
+![jpeg](index_files/index_20_5.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_6.jpg)
+![jpeg](index_files/index_20_6.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_7.jpg)
+![jpeg](index_files/index_20_7.jpg)
     
 
 
 
     
-![jpeg](index_files/index_15_8.jpg)
+![jpeg](index_files/index_20_8.jpg)
     
 
 
-## Where to go next?
+## Need Support?
 
-* [Take a look at other examples](https://docs.bacalhau.org/examples/)
-* [How to run an existing workload on Bacalhau](https://docs.bacalhau.org/getting-started/docker-workload-onboarding)
-* [Check out the Bacalhau CLI Reference page](https://docs.bacalhau.org/all-flags)
+For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
 
-## Support
-
-Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) to seek help or in case of any issues.

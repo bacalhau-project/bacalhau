@@ -191,5 +191,5 @@ cat results/combined_results/stdout
 
 ## Need Support?
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
+For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
 
