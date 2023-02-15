@@ -629,6 +629,7 @@ To get more information at any time, run:
 	}()
 
 	finishedRunning := false
+	cmdShuttingDown := false
 	var returnError error
 	returnError = nil
 
@@ -658,6 +659,13 @@ To get more information at any time, run:
 		case s := <-signalChan: // first signal, cancel context
 			log.Debug().Msgf("Captured %v. Exiting...", s)
 			if s == os.Interrupt {
+				// Stop the spinner and let the rest of WaitAndPrintResultsToUser
+				// know that we're going to shut down so that it doesn't try to
+				// restart the spinner after it's displayed the last line of
+				// output.
+				_ = spin.Stop()
+				cmdShuttingDown = true
+
 				// If finishedRunning is true, then we go term signal
 				// because the loop finished normally.
 				if !finishedRunning {
@@ -677,7 +685,7 @@ To get more information at any time, run:
 	}()
 
 	for {
-		if !quiet {
+		if !quiet && !cmdShuttingDown {
 			if spin.Status().String() != "running" {
 				err = spin.Start()
 				if err != nil {
