@@ -70,7 +70,7 @@ func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/version")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.version")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 

@@ -504,7 +504,7 @@ func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
 	log.Ctx(ctx).Error().Msgf(errMessage)
 
-	ctx, span := system.GetTracer().Start(ctx, "pkg/requesterNode/ShardFSM.errorState")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.errorState")
 	defer span.End()
 	ctx = system.AddJobIDToBaggage(ctx, m.shard.Job.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)

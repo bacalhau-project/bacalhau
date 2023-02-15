@@ -16,7 +16,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
@@ -37,9 +36,6 @@ type LotusNode struct {
 }
 
 func newLotusNode(ctx context.Context) (*LotusNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newlotusnode")
-	defer span.End()
-
 	image := defaultImage
 	if e, ok := os.LookupEnv("LOTUS_TEST_IMAGE"); ok {
 		image = e
@@ -64,9 +60,6 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 // start performs the work of actually starting the Lotus container. This is separated from the constructor so the user
 // can cancel and still have the container, which may not be healthy yet, cleaned up via Close.
 func (l *LotusNode) start(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.start")
-	defer span.End()
-
 	uploadDir, err := os.MkdirTemp("", "bacalhau-lotus-upload-dir")
 	if err != nil {
 		return err
@@ -129,9 +122,6 @@ func (l *LotusNode) start(ctx context.Context) error {
 }
 
 func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.waitforlotustobehealthy")
-	defer span.End()
-
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:gomnd
 	defer cancel()
 

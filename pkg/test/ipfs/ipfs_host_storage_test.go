@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -73,11 +72,6 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	stack, cm := SetupTest(ctx, t, 1)
 	defer TeardownTest(stack, cm)
 
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
-
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
 	fileCid, err := ipfs.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), stack.IPFSClients[0])
@@ -117,11 +111,6 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
 	defer TeardownTest(stack, cm)
-
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	dir := t.TempDir()
 

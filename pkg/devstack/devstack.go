@@ -106,7 +106,7 @@ func NewDevStack(
 	injector node.NodeDependencyInjector,
 	nodeOverrides ...node.NodeConfig,
 ) (*DevStack, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
 	defer span.End()
 
 	var nodes []*node.Node
@@ -346,7 +346,7 @@ func createIPFSNode(ctx context.Context,
 	cm *system.CleanupManager,
 	publicIPFSMode bool,
 	ipfsSwarmAddrs []string) (*ipfs.Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.createipfsnode")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
 	defer span.End()
 	//////////////////////////////////////
 	// IPFS

@@ -314,7 +314,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
 	defer cancel()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.serve")
 	defer rootSpan.End()
 
 	isComputeNode, isRequesterNode := false, false

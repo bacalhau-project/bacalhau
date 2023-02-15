@@ -81,7 +81,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/docker/Executor.HasStorageLocally")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.HasStorageLocally")
 	defer span.End()
 
 	s, err := e.getStorage(ctx, volume.StorageSource)
@@ -107,10 +107,8 @@ func (e *Executor) RunShard(
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/docker.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.RunShard")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
 	defer e.cleanupJob(ctx, shard)
 
 	shardStorageSpec, err := jobutils.GetShardStorageSpec(ctx, shard, e.StorageProvider)

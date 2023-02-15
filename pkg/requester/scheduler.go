@@ -105,16 +105,23 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	//  as it the context would be canceled the request returns
 	s.shardStateManager.startShardsState(logger.ContextWithNodeIDLogger(context.Background(), s.id), &req.Job, s)
 	for _, nodeRank := range rankedNodes[:min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
-		// create a new space linked to request context, but call noitfyAskForBid with a new context
+		// create a new space linked to request context, but call notifyAskForBid with a new context
 		// as the request context will be canceled the request returns
-		_, span := s.newSpan(ctx, "askForBid", req.Job.Metadata.ID)
-		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), span, &req.Job, nodeRank.NodeInfo)
+		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), trace.LinkFromContext(ctx), &req.Job, nodeRank.NodeInfo)
 	}
 
 	return nil
 }
 
-func (s *Scheduler) notifyAskForBid(ctx context.Context, span trace.Span, job *model.Job, nodeInfo model.NodeInfo) {
+func (s *Scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodeInfo model.NodeInfo) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.Scheduler.StartJob",
+		trace.WithLinks(link), // link to any api traces
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(model.TracerAttributeNameNodeID, s.id),
+			attribute.String(model.TracerAttributeNameJobID, job.Metadata.ID),
+		),
+	)
 	defer span.End()
 	// TODO: ask to bid on certain shards rather than asking all compute nodes to bid on all shards
 	shardIndexes := make([]int, job.Spec.ExecutionPlan.TotalShards)
@@ -365,17 +372,6 @@ func (s *Scheduler) getShardState(ctx context.Context, resultInfo compute.Execut
 			shard, resultInfo.ExecutionID)
 	}
 	return shardState
-}
-
-func (s *Scheduler) newSpan(ctx context.Context, name, jobID string) (context.Context, trace.Span) {
-	return system.Span(ctx, "requester", name,
-		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
-			attribute.String(model.TracerAttributeNameNodeID, s.id),
-			attribute.String(model.TracerAttributeNameJobID, jobID),
-		),
-	)
 }
 
 func max(a, b int) int {

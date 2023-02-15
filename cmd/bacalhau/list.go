@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -153,7 +152,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.list")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
@@ -203,7 +202,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 		var rows []table.Row
 		for _, j := range jobs {
 			var summaryRow table.Row
-			summaryRow, err = summarizeJob(ctx, j, OL)
+			summaryRow, err = summarizeJob(j, OL)
 			if err != nil {
 				Fatal(cmd, fmt.Sprintf("Error summarizing job: %s", err), 1)
 			}
@@ -241,11 +240,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 }
 
 // Renders job details into a table row
-func summarizeJob(ctx context.Context, j *model.Job, OL *ListOptions) (table.Row, error) {
-	//nolint:ineffassign,staticcheck // For tracing
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.summarizeJob")
-	defer span.End()
-
+func summarizeJob(j *model.Job, OL *ListOptions) (table.Row, error) {
 	jobDesc := []string{
 		j.Spec.Engine.String(),
 	}

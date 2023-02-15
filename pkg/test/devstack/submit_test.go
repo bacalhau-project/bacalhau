@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -39,7 +38,7 @@ func (suite *DevstackSubmitSuite) SetupTest() {
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack, cm := testutils.SetupTest(
+	stack, _ := testutils.SetupTest(
 		ctx,
 		suite.T(),
 
@@ -49,11 +48,6 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewRequesterAPIClient(apiUri)

@@ -88,7 +88,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "dashboard/api/cmd/dashboard/serve")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "dashboard/api/cmd/dashboard.serve")
 	defer rootSpan.End()
 
 	model, err := model.NewModelAPI(options.ModelOptions)

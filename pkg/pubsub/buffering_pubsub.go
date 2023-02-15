@@ -66,7 +66,7 @@ func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T]
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.Publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)
@@ -161,7 +161,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 
 // flush the buffer to the delegate pubsub
 func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context, envelope BufferingEnvelope, oldestMessageTime time.Time) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
 	defer span.End()
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",

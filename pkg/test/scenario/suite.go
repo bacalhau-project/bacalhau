@@ -21,7 +21,6 @@ import (
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type ScenarioTestSuite interface {
@@ -42,23 +41,15 @@ type ScenarioTestSuite interface {
 // their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
-	Ctx  context.Context
-	Span trace.Span
+	Ctx context.Context
 }
 
 func (s *ScenarioRunner) SetupTest() {
 	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(context.Background(), t, s.T().Name())
-	s.Ctx = ctx
-	s.Span = rootSpan
+	s.Ctx = context.Background()
 
 	s.T().Cleanup(func() { _ = telemetry.Cleanup() })
-}
-
-func (s *ScenarioRunner) TearDownTest() {
-	s.Span.End()
 }
 
 func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []model.StorageSpec {
