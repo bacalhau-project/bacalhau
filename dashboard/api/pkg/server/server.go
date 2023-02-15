@@ -19,9 +19,11 @@ import (
 )
 
 type ServerOptions struct {
-	Host      string
-	Port      int
-	JWTSecret string
+	Host        string
+	Port        int
+	SwarmPort   int
+	PeerConnect string
+	JWTSecret   string
 }
 
 type DashboardAPIServer struct {

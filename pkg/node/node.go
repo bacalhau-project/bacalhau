@@ -227,8 +227,6 @@ func NewNode(
 			gossipSubCancel()
 			return nil, err
 		}
-		// subscribe additional consumers of node info published over gossipSub
-		nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](requesterNode.requesterAPIServer.PushNodeInfoToWebsocket))
 	}
 
 	if config.IsComputeNode {

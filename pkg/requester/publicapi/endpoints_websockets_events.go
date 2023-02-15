@@ -15,13 +15,13 @@ var upgrader = websocket.Upgrader{
 }
 
 // TODO: Godoc
-func (s *RequesterAPIServer) websocket(res http.ResponseWriter, req *http.Request) {
+func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(res, req, nil)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debug().Msgf("New websocket connection.")
+	log.Debug().Msgf("New websocketJobEvents connection.")
 	defer conn.Close()
 
 	// NB: jobId == "" is the case for subscriptions to "all events"

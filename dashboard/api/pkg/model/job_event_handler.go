@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -19,36 +18,23 @@ type jobEventBuffer struct {
 }
 
 type jobEventHandler struct {
-	eventChan    chan bacalhau_model.JobEvent
-	firehose     *EventFirehose[bacalhau_model.JobEvent]
 	localDB      localdb.LocalDB
 	eventHandler *localdb.LocalDBEventHandler
 	eventBuffers map[string]*jobEventBuffer
 	eventMutex   sync.Mutex
 }
 
-func newJobEventHandler(
-	host string,
-	port int,
-	localDB localdb.LocalDB,
-) (*jobEventHandler, error) {
-	eventChan := make(chan bacalhau_model.JobEvent)
-	url := fmt.Sprintf("ws://%s:%d/requester/websocket", host, port)
-	firehose := NewEventFirehose(url, eventChan)
-	eventHandler := &jobEventHandler{
-		eventChan:    eventChan,
-		firehose:     firehose,
+func newJobEventHandler(localDB localdb.LocalDB) *jobEventHandler {
+	return &jobEventHandler{
 		localDB:      localDB,
 		eventHandler: localdb.NewLocalDBEventHandler(localDB),
 		eventBuffers: map[string]*jobEventBuffer{},
 	}
-	return eventHandler, nil
 }
 
-func (handler *jobEventHandler) start(ctx context.Context) {
+func (handler *jobEventHandler) startBufferGC(ctx context.Context) {
 	// reap the event buffer so we don't accumulate memory forever
 	ticker := time.NewTicker(1 * time.Minute)
-	go handler.firehose.Start(ctx)
 	go func() {
 		for {
 			select {
@@ -56,8 +42,6 @@ func (handler *jobEventHandler) start(ctx context.Context) {
 				return
 			case <-ticker.C:
 				handler.cleanEventBuffer()
-			case ev := <-handler.eventChan:
-				handler.readEvent(ctx, ev)
 			}
 		}
 	}()
@@ -70,7 +54,7 @@ func (handler *jobEventHandler) writeEventToDatabase(ctx context.Context, event 
 // sometimes events can be out of order and we need the job to exist
 // before we record events against the job - it's OK if we hear about
 // out of order events once the job exists in db (they have timestamps)
-func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_model.JobEvent) {
+func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_model.JobEvent) error {
 	handler.eventMutex.Lock()
 	defer handler.eventMutex.Unlock()
 	eventBuffer, ok := handler.eventBuffers[event.JobID]
@@ -103,7 +87,7 @@ func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_mo
 		}
 		if isCanary {
 			eventBuffer.ignore = true
-			return
+			return nil
 		}
 		eventBuffer.exists = true
 		err := handler.writeEventToDatabase(ctx, event)
@@ -124,6 +108,7 @@ func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_mo
 			log.Error().Msgf("error writing event to database: %s", err.Error())
 		}
 	}
+	return nil
 }
 
 func (handler *jobEventHandler) cleanEventBuffer() {
