@@ -11,18 +11,15 @@ sidebar_position: 3
 ## **Introduction**
 
 
+In this tutorial example, we will walk you through building your own docker container and running the container on the bacalhau network.
 
-This example will walk you through building your own docker container and running the container on the bacalhau network and viewing the results
+## Prerequisites
 
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-For that we will build a Simple Recommender Script that when Given a movie ID
+## Sample Recommedation Dataset
 
-
-will recommend other movies based on user ratings.
-
-
-Suppose if you want recommendations for the movie Toy Story (1995) it will recommend movies from similar categories
-
+We will using a simple recommendation script that when given a movie ID will recommend other movies based on user ratings. Assuming you want if recommendations for the movie Toy Story (1995) it will recommend movies from similar categories:
 
 ```
 Recommendations for Toy Story (1995):
@@ -40,44 +37,24 @@ Recommendations for Toy Story (1995):
 
 
 
-
-### 
-**Downloading the dataset**
-
+### Downloading the dataset
 
 Download Movielens1M dataset from this link [https://files.grouplens.org/datasets/movielens/ml-1m.zip](https://files.grouplens.org/datasets/movielens/ml-1m.zip)
-
-
-In this example we’ll be using 2 files from the MovieLens 1M dataset: ratings.dat and movies.dat. After the dataset is downloaded extract the zip and place ratings.dat and movies.dat into a folder called input
-
-The structure of input directory should be
-
-
-```
-input
-├── movies.dat
-└── ratings.dat
-```
-
-
 
 
 ```python
 !wget https://files.grouplens.org/datasets/movielens/ml-1m.zip
 ```
 
-    --2022-09-18 11:01:58--  https://files.grouplens.org/datasets/movielens/ml-1m.zip
-    Resolving files.grouplens.org (files.grouplens.org)... 128.101.65.152
-    Connecting to files.grouplens.org (files.grouplens.org)|128.101.65.152|:443... connected.
-    HTTP request sent, awaiting response... 200 OK
-    Length: 5917549 (5.6M) [application/zip]
-    Saving to: ‘ml-1m.zip’
-    
-    ml-1m.zip           100%[===================>]   5.64M  28.7MB/s    in 0.2s    
-    
-    2022-09-18 11:01:59 (28.7 MB/s) - ‘ml-1m.zip’ saved [5917549/5917549]
-    
+In this example we’ll be using 2 files from the MovieLens 1M dataset: ratings.dat and movies.dat. After the dataset is downloaded extract the zip and place ratings.dat and movies.dat into a folder called input
 
+The structure of input directory should be
+
+```
+input
+├── movies.dat
+└── ratings.dat
+```
 
 
 ```python
@@ -100,9 +77,9 @@ input
 ```
 
 
-### **Installing Dependencies**
+### Installing Dependencies
 
-Create a requirements.txt for the Python libraries we’ll be using:
+Create a `requirements.txt` for the Python libraries we’ll be using:
 
 
 ```python
@@ -120,9 +97,9 @@ To install the dependencies run the command
 pip install -r requirements.txt
 ```
 
-### **Writing the Script**
+### Writing the Script
 
-Create a new file called <code><em>similar-movies.py</em></code> and in it paste the following script
+Create a new file called `similar-movies.py` and in it paste the following script
 
 
 ```python
@@ -213,10 +190,9 @@ What the similar-movies.py script does
 For further reading on how the script works, go to [Simple Movie Recommender Using SVD | Alyssa](https://alyssaq.github.io/2015/20150426-simple-movie-recommender-using-svd/)
 
 
+## Running the script
 
-### **Running the script**
-
-Running the script  similar-movies.py using the default values you can also use other flags to set your own values
+Running the script similar-movies.py using the default values you can also use other flags to set your own values
 
 
 
@@ -224,16 +200,9 @@ Running the script  similar-movies.py using the default values you can also use 
 ! python similar-movies.py
 ```
 
+## Setting Up Docker
 
-
-**Setting Up Docker**
-
-In this step you will create a  `Dockerfile` to create your Docker deployment. The `Dockerfile` is a text document that contains the commands used to assemble the image.
-
-First, create the `Dockerfile`.
-
-Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
-
+In this step, we will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
 
 
 ```python
@@ -261,25 +230,23 @@ The final folder structure will look like this:
 ```
 
 
+### Build the container
 
-Build the container
+We will run `docker build` command to build the container;
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
+Before running the command replace;
 
-Please replace
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-&lt;hub-user> with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **repo-name*** with the name of the container, you can name it anything you want
 
-&lt;repo-name> This is the name of the container, you can name it anything you want
+- **tag** this is not required but you can use the latest tag
 
-&lt;tag> This is not required but you can use the latest tag
-
-After you have build the container, the next step is to test it locally and then push it docker hub
-
-Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
+After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
 
 Now you can push this repository to the registry designated by its name or tag.
 
@@ -288,7 +255,6 @@ Now you can push this repository to the registry designated by its name or tag.
  docker push <hub-user>/<repo-name>:<tag>
 ```
 
-
 After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
 
 
@@ -296,33 +262,11 @@ After the repo image has been pushed to docker hub, we can now use the container
 bacalhau docker run <hub-user>/<repo-name>:<tag> -- python similar-movies.py
 ```
 
-## **Running the container on bacalhau**
+## Running the container on bacalhau
 
 You can either run the container on bacalhau with default or custom parameters
 
-Running the container with default parameters
-
-
-Insalling bacalhau
-
-
-```python
-!curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.2.3 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.2.3
-    Server Version: v0.2.3
-
+### Running the container with default parameters
 
 Command to run the container on bacalhau
 
@@ -339,18 +283,24 @@ jsace/python-similar-movies \
     7523cbaf-7a17-4f52-8c6d-2fcc91df653e
 
 
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
 
 Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34b3e`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
-Running the container with custom 
-parameters (Optional)
+### Running the container with custom parameters
+
 
 ```
 bacalhau docker run \
 jsace/python-similar-movies \
 -- python similar-movies.py --k 50 --id 10 --n 10
 ```
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -362,10 +312,9 @@ bacalhau list --id-filter ${JOB_ID}
     [97;40m 12:14:59 [0m[97;40m ab354ccc [0m[97;40m Docker jsace/python-... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeihybfivi... [0m
 
 
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-Where it says "`Completed `", that means the job is done, and we can get the results.
-
-To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -373,7 +322,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-If you see that the job has completed and there are no errors, then you can download the results with the following command:
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -390,33 +339,13 @@ bacalhau get $JOB_ID --output-dir results
     2022/11/12 10:20:09 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
 
 
-The structure of the files and directories will look like this:
-```
-├── shards
-│   └── job-940c7fd7-c15a-4d00-8170-0d138cdca7eb-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-│       ├── exitCode
-│       ├── stderr
-│       └── stdout
-├── stderr
-├── stdout
-└── volumes
-    └── outputs
-```
+## Viewing your Job Output
 
-* stdout contains things printed to the console like outputs, etc.
-
-* stderr contains any errors. In this case, since there are no errors, it's will be empty
-
-* Volumes folder contain the volumes you named when you started the job with the `-o` flag. In addition, you will always have a `outputs` volume, which is provided by default.
-
-Because your script is printed to stdout, the output will appear in the stdout file. You can read this by typing the following command:
-
-
-
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```python
-!cat  results/combined_results/outputs
+!cat  results/combined_results/stdout
 ```
 
     Recommendations for GoldenEye (1995): 
