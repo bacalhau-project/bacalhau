@@ -63,21 +63,19 @@ bacalhau list --id-filter ${JOB_ID} --wide
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. 
-
-In the command below, we created a directory and downloaded our job output to be stored in that directory.
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
-rm -rf results && mkdir -p results
-bacalhau get $JOB_ID --output-dir results
+rm -rf results && mkdir -p results # Temporary directory to store the results
+bacalhau get $JOB_ID --output-dir results # Download the results
 ```
 
     Fetching results of job '12e1b4d9-00b0-4824-bbd1-6d75083dcae0'...
@@ -92,11 +90,7 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory.
-
-In each of these sub_folders, you'll find the **studout** and **stderr** file.
-
-To view the file in the stdout folder, run the following command:
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view your file, run the following command:
 
 
 ```bash

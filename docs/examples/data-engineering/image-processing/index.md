@@ -8,7 +8,7 @@ description: "How to process images stored in IPFS with Bacalhau"
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
 
-In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). However, before we do that, this notebook shows you how to use Bacalhau to process images using a [much smaller subset](https://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is useful for testing and debugging your code.
+In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). 
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
@@ -18,7 +18,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Submit the workload
 
-To submit a workload to Bacalhau you can use the `bacalhau docker run` command. 
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -41,7 +41,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
     env: JOB_ID=0e4119fd-12f9-42f5-8cd2-54a0d270541e
 
 
-The `bacalhau docker run` command allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows one to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
 
@@ -60,21 +60,19 @@ bacalhau list --id-filter=${JOB_ID} --no-style
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
 bacalhau describe ${JOB_ID}
 ```
 
-- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. 
-
-In the command below, we created a directory and downloaded our job output to be stored in that directory.
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
-rm -rf results && mkdir results
-bacalhau get ${JOB_ID} --output-dir results
+rm -rf results && mkdir results # Temporary directory to store the results
+bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
     Fetching results of job '0e4119fd-12f9-42f5-8cd2-54a0d270541e'...
@@ -86,11 +84,7 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory.
-
-In each of these sub_folders, you'll find the **studout** and **stderr** file.
-
-To view the file in the stdout folder, run the following command:
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash

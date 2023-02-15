@@ -8,31 +8,15 @@ description: "Parallel Video Resizing via File Sharding"
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/simple-parallel-workloads/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fsimple-parallel-workloads%2Findex.ipynb)
 
-Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this notebook, we will use the [Sharding](https://docs.bacalhau.org/getting-started/parallel-workloads) functionality in Bacalhau to run a simple video filter on a large number of video files.
+Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this example tutorial, we will use the [Bacalhau Sharding](https://docs.bacalhau.org/next-steps/parallel-workloads) to run a simple video filter on a large number of video files.
 
-> Although you would normally you would use your own container and script to make your workloads reproducible, in this example we will use a pre-built container and CLI arguments to allow you to make changes. You can find the container [on docker hub](https://hub.docker.com/r/linuxserver/ffmpeg).
+## Prerequisite
 
-## Prerequistes
-
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the installation command below (which installs Bacalhau local to the notebook).
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 ## Submit the workload
 
-To submit a workload to Bacalhau you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
-
-Bacalhau also mounts a data volume to store output data. By default `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. See below for an example.
-
-And to shard across files in the input directory, we need to pass three (optional) arguments to the command:
-
-* `sharding-base-path` - the path to the directory you want to shard over
-* `sharding-glob-pattern` - the pattern to match files in the directory
-* `sharding-batch-size` - the number of files to pass into each job
-
-### A Simple Video Resize Example
-
-In this example, you will create 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
-
-Note that [Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -49,15 +33,60 @@ bacalhau docker run \
 
 ```
 
-## Get Results
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
 
-Now let's download and display the result from the results directory. We can use the `bacalhau results` command to download the results from the output data volume. The `--output-dir` argument specifies the directory to download the results to.
+The `bacalhau docker run` command allows one to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+
+Bacalhau also mounts a data volume to store output data. By default `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. See below for an example.
+
+And to shard across files in the input directory, we need to pass three (optional) arguments to the command:
+
+- `sharding-base-path` - the path to the directory you want to shard over
+- `sharding-glob-pattern` - the pattern to match files in the directory
+- `sharding-batch-size` - the number of files to pass into each job
+
+We will create 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
+
+:::note
+[Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
+:::
+
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
+
+
+```bash
+bacalhau list --id-filter=${JOB_ID} --no-style
+```
+
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
+
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+
+
+```bash
+bacalhau describe ${JOB_ID}
+```
+
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
+
+After the download has finished you should see the following contents in results directory.
+
+## Viewing your Job Output
+
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+
+### Viewing image
+
+To view the images, we will use **glob** to return all file paths that match a specific pattern. 
 
 <!-- This is for the benefit of the documentation -->
 <video src={require('./scaled_Bird_flying_over_the_lake.mp4').default} controls  >
@@ -69,3 +98,7 @@ Your browser does not support the <code>video</code> element.
 <video src={require('./scaled_Prominent_Late_Gothic_styled_architecture.mp4').default} controls  >
 Your browser does not support the <code>video</code> element.
 </video>
+
+## Need Support?
+
+For questions, give feedback or answer questions that will help other user product, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
