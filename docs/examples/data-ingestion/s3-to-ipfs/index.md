@@ -16,7 +16,7 @@ In this tutorial, to copy Data from S3 to IPFS, we will scrape all the links fro
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Getting the URLs from AWS S3 bucket
+## Running a Bacalhau Job
 
 If your bucket has more than 1000 files, with the command below, you can submit a Bacalhau job to extract the URL list of the files.
 

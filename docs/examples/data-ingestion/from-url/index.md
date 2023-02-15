@@ -18,7 +18,7 @@ The goal of the Bacalhau project is to make it easy to perform distributed, dece
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Uploading A File From a URL
+## Running a Bacalhau Job 
 
 To upload a file from a URL we will use the `bacalhau docker run`.
 

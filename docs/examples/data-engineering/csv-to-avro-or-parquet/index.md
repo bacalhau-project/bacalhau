@@ -2,20 +2,23 @@
 sidebar_label: "csv-to-avro-or-parquet"
 sidebar_position: 10
 ---
-# Convert CSV To Parquet Or Arrow
+# Convert CSV To Parquet Or Avro
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/csv-to-avro-or-parquet/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering/csv-to-avro-or-parquet/index.ipynb)
 
 ## Introduction
 
-Converting from csv to parquet or avro reduces the size of file and allows for faster read and write speeds, using bacalhau you can convert your csv files stored on ipfs or on the web without
-The need to download files and install dependencies locally
+Converting from csv to parquet or avro reduces the size of file and allows for faster read and write speeds. With Bacalhau, you can convert your csv files stored on ipfs or on the web without the need to download files and install dependencies locally.
 
-In this example we will convert a csv file from a url to parquet format and save the converted parquet file to IPFS
+In this example tutorial we will convert a csv file from a url to parquet format and save the converted parquet file to IPFS
 
 
-## Running Locally​
+## Prerequisites
+
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+
+## Running CSV to Arvo or Parquet Locally​
 
 
 Installing dependencies
@@ -30,7 +33,7 @@ pip3 install -r csv_to_avro_or_parquet/requirements.txt
 
 
 ```python
-%cd csv_to_avro_or_parquet
+%%cd csv_to_avro_or_parquet
 ```
 
 Downloading the test dataset
@@ -41,25 +44,17 @@ Downloading the test dataset
 !wget https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv  
 ```
 
-Running the conversion script
-
-arguments
-```
-python converter.py path_to_csv path_to_result_file extension
-```
-
-Running the script
-
-
-
+Running the conversion script arguments
 
 
 ```bash
 %%bash
 python3 src/converter.py ./movies.csv  ./movies.parquet parquet
+
+# python converter.py path_to_csv path_to_result_file extension
 ```
 
-viewing the parquet file
+Viewing the parquet file
 
 
 ```python
@@ -67,22 +62,13 @@ import pandas as pd
 pd.read_parquet('./movies.parquet').head()
 ```
 
+## Setting up your Docker Container 
 
-title	rating	year	runtime
-0	Almost Famous	R	2000	122
-1	American Pie	R	1999	95
-2	Back to the Future	PG	1985	116
-3	Blade Runner	R	1982	117
-4	Blood for Dracula	R	1974	106
+:::Info
+You can skip this section entirely and directly go to running on bacalhau
+:::
 
-### Building a Docker container (Optional)
-Note* you can skip this section entirely and directly go to running on bacalhau
-
-To use Bacalhau, you need to package your code in an appropriate format. The developers have already pushed a container for you to use, but if you want to build your own, you can follow the steps below. You can view a [dedicated container example](https://docs.bacalhau.org/examples/workload-onboarding/custom-containers/) in the documentation.
-
-### Dockerfile
-
-In this step, you will create a `Dockerfile` to create an image. The `Dockerfile` is a text document that contains the commands used to assemble the image. First, create the `Dockerfile`.
+To build your own docker container, create a `Dockerfile`, which contains instructions to build your image.
 
 ```
 FROM python:3.8
@@ -96,60 +82,42 @@ WORKDIR /Sparkov_Data_Generation/
 RUN pip3 install -r requirements.txt
 ```
 
-To Build the docker container run the docker build command
+### Building your Docker Container
+
+We will run `docker build` command to build the container;
 
 ```
-docker build -t hub-user/repo-name:tag .
+docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
-Please replace
+Before running the command replace;
 
-hub-user with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-repo-name This is the name of the container, you can name it anything you want
+- **repo-name** with the name of the container, you can name it anything you want
 
-tag This is not required but you can use the latest tag
+- **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub
+After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
+
 
 Now you can push this repository to the registry designated by its name or tag.
 
+
 ```
- docker push hub-user/repo-name:tag
-```
-
-
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
-
-## Running on Bacalhau
-
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
-
-This command is similar to what we have run locally but we change the output directory to the outputs folder so that the results are saved to IPFS
-
-we will show you how you can mount the script from a IPFS as we as from an URL
-
-
-```bash
-%%bash
-curl -sL https://get.bacalhau.org/install.sh | bash
+ docker push <hub-user>/<repo-name>:<tag>
 ```
 
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.3.11 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.3.11
-    Server Version: v0.3.11
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau.
 
 
-Mounting the csv file from IPFS
+## Running a Bacalhau Job
+
+There are two ways to do this either by mounting the script from a IPFS or from an URL
+
+### Mounting the CSV File from IPFS
+
+Using the `bacalhau docker run` command.
 
 
 ```bash
@@ -162,13 +130,15 @@ bacalhau docker run \
 -- python3 src/converter.py ../inputs/transactions.csv  ../outputs/transactions.parquet parquet
 ```
 
-Mounting the csv file from an URL
+### Mounting the CSV File from an URL
 
 ```
 bacalhau docker run \
 -u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
+
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
@@ -178,7 +148,9 @@ bacalhau docker run \
     env: JOB_ID=94774248-1d07-4121-aac8-451aca4a636e
 
 
-Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -191,9 +163,9 @@ bacalhau list --id-filter ${JOB_ID}
 
 
 
-Where it says "`Completed `", that means the job is done, and we can get the results.
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -201,7 +173,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-If you see that the job has completed and there are no errors, then you can download the results with the following command:
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -218,23 +190,21 @@ bacalhau get $JOB_ID --output-dir results
     2022/11/12 10:20:09 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
 
 
-After the download has finished you should 
-see the following contents in results directory
+## Viewing your Job Output
+
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/combined_results/outputs
+ls results/combined_results/stdout
 ```
 
-    transactions.parquet
-
-
-Viewing the output
+Alternatively, you can do this.
 
 
 ```python
 import pandas as pd
 import os
-pd.read_parquet('results/combined_results/outputs/transactions.parquet')
+pd.read_parquet('results/combined_results/stdout/transactions.parquet')
 ```

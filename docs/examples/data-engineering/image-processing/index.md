@@ -16,7 +16,7 @@ Bacalhau has the unique capability of operating at a massive scale in a distribu
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Submit the workload
+## Running a Bacalhau Job
 
 To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
 

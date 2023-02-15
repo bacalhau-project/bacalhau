@@ -190,7 +190,7 @@ What the similar-movies.py script does
 For further reading on how the script works, go to [Simple Movie Recommender Using SVD | Alyssa](https://alyssaq.github.io/2015/20150426-simple-movie-recommender-using-svd/)
 
 
-## Running the script
+### Running the Script
 
 Running the script similar-movies.py using the default values you can also use other flags to set your own values
 
@@ -202,7 +202,7 @@ Running the script similar-movies.py using the default values you can also use o
 
 ## Setting Up Docker
 
-In this step, we will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
+We will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
 
 
 ```python
@@ -242,7 +242,7 @@ Before running the command replace;
 
 - **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-- **repo-name*** with the name of the container, you can name it anything you want
+- **repo-name** with the name of the container, you can name it anything you want
 
 - **tag** this is not required but you can use the latest tag
 
@@ -255,20 +255,21 @@ Now you can push this repository to the registry designated by its name or tag.
  docker push <hub-user>/<repo-name>:<tag>
 ```
 
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau.
 
+In this case:
 
 ```
 bacalhau docker run <hub-user>/<repo-name>:<tag> -- python similar-movies.py
 ```
 
-## Running the container on bacalhau
+## Running a Bacalhau Job
 
 You can either run the container on bacalhau with default or custom parameters
 
 ### Running the container with default parameters
 
-Command to run the container on bacalhau
+To run the container on Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
@@ -285,11 +286,7 @@ jsace/python-similar-movies \
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-
-Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34b3e`). This is the ID of the job that was created. You can check the status of the job with the following command:
-
-
-### Running the container with custom parameters
+### Running the Container with Custom Parameters
 
 
 ```
@@ -345,7 +342,7 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 
 ```python
-!cat  results/combined_results/stdout
+!cat results/combined_results/stdout
 ```
 
     Recommendations for GoldenEye (1995): 
