@@ -63,6 +63,7 @@ jobs:
                 name: Install GNU Make
                 command: |
                   choco install -y make
+                  choco install -y jq
                 shell: powershell.exe
             - run:
                 name: Install Go
