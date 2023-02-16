@@ -75,28 +75,20 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	apiClient := GetAPIClient()
 
-	// Retrieve information about the job with the matching Job ID. No checks are
-	// made here about ownership of the job as that responsibility sits with the
-	// requester, and it will decide whether we get the job info or not, and
-	// eventually whether we can cancel the job or not.
-	_, foundJob, err := apiClient.Get(ctx, requestedJobID)
+	// Submit a request to cancel the specified job. It is the responsibility of the
+	// requester to decide if we are allowed to do that or not.
+	job, err := apiClient.Cancel(ctx, requestedJobID)
 	if err != nil {
 		if er, ok := err.(*bacerrors.ErrorResponse); ok {
 			Fatal(cmd, er.Message, 1)
 			return nil
 		} else {
-			Fatal(cmd, fmt.Sprintf("Unknown error trying to retrieve job info (ID: %s): %+v", requestedJobID, err), 1)
+			Fatal(cmd, fmt.Sprintf("Unknown error trying to cancel job (ID: %s): %+v", requestedJobID, err), 1)
 			return nil
 		}
 	}
 
-	if !foundJob {
-		cmd.Printf(err.Error() + "\n")
-		Fatal(cmd, "", 1)
-	}
-
-	// Check actual status of job (no need to cancel if complete) and then
-	// submit request to cancel.
+	cmd.Printf("Jobstate: %s", job.State.State.String())
 
 	return nil
 }
