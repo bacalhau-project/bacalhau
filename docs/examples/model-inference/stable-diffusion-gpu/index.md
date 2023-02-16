@@ -49,7 +49,7 @@ apt install --allow-change-held-packages libcudnn8=8.1.0.77-1+cuda11.2
 ```
 
 ### Testing the Code
-Quite often libraries aren't pinned, or code gets updated and breaks the docs, and even the simplest examples don't work. To derisk this, first I will try the code in the README to double check that the code is working as the author expected.
+Quite often libraries aren't pinned, or code gets updated and breaks the docs, and even the simplest examples don't work. To derisk this, first we will try the code in this [README](https://github.com/fchollet/stable-diffusion-tensorflow) to double check that the code is working as the author expected.
 
 
 ```python
