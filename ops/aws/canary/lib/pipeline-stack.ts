@@ -129,6 +129,7 @@ export class PipelineStack extends cdk.Stack {
                     install: {
                         commands: [
                             'goenv install 1.19.3',
+                            'goenv global 1.19.3',
                         ],
                     },
                     build: {
