@@ -2,10 +2,6 @@
 sidebar_label: "Examples"
 sidebar_position: 20
 ---
----
-sidebar_label: "Examples"
-sidebar_position: 20
----
 # Examples
 
 Bacalhau comes pre-loaded with exciting examples to showcase its abilities and help get you started.
