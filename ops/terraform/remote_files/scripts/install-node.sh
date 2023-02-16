@@ -5,6 +5,14 @@ IFS=$'\n\t'
 
 source /terraform_node/variables
 
+function install-go() {
+  echo "Installing Go..."
+  rm -fr /usr/local/go /usr/local/bin/go
+  curl --silent --show-error --location --fail https://go.dev/dl/go1.19.6.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  go version
+}
+
 function install-docker() {
   echo "Installing Docker"
   sudo apt-get install -y \
@@ -88,7 +96,7 @@ function install-bacalhau-from-release() {
 
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
-  sudo apt-get -y install --no-install-recommends golang-go jq
+  sudo apt-get -y install --no-install-recommends jq
   git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/filecoin-project/bacalhau.git
   cd bacalhau
   GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
@@ -368,6 +376,7 @@ function start-services() {
 }
 
 function install() {
+  install-go
   install-docker
   install-gpu
   install-healthcheck
