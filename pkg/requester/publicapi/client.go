@@ -76,26 +76,27 @@ func (apiClient *RequesterAPIClient) List(
 
 // Cancel will request that the job with the specified ID is stopped. The JobInfo will be returned if the cancel
 // was submitted. If no match is found, Cancel returns false with a nil error.
-func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string) (*model.JobWithInfo, error) {
+func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, reason string) (*model.JobState, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Cancel")
 	defer span.End()
 
 	if jobID == "" {
-		return &model.JobWithInfo{}, fmt.Errorf("jobID must be non-empty in a Cancel call")
+		return &model.JobState{}, fmt.Errorf("jobID must be non-empty in a Cancel call")
 	}
 
 	req := cancelRequest{
 		ClientID: system.GetClientID(),
+		Reason:   reason,
 		JobID:    jobID,
 	}
 
 	var res cancelResponse
 	if err := apiClient.Post(ctx, APIPrefix+"cancel", req, &res); err != nil {
 		e := err
-		return &model.JobWithInfo{}, e
+		return &model.JobState{}, e
 	}
 
-	return res.Job, nil
+	return res.State, nil
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.

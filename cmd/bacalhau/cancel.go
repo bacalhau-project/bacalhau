@@ -77,7 +77,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	// Submit a request to cancel the specified job. It is the responsibility of the
 	// requester to decide if we are allowed to do that or not.
-	job, err := apiClient.Cancel(ctx, requestedJobID)
+	jobState, err := apiClient.Cancel(ctx, requestedJobID, "Canceled at user request")
 	if err != nil {
 		if er, ok := err.(*bacerrors.ErrorResponse); ok {
 			Fatal(cmd, er.Message, 1)
@@ -88,7 +88,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 		}
 	}
 
-	cmd.Printf("Jobstate: %s", job.State.State.String())
+	cmd.Printf("Jobstate: %s", jobState.State.String())
 
 	return nil
 }
