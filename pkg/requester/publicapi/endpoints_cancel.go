@@ -48,8 +48,9 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	ctx = system.AddJobIDToBaggage(ctx, cancelReq.JobID)
 
 	_, err := s.requester.CancelJob(ctx, requester.CancelJobRequest{
-		JobID:  cancelReq.JobID,
-		Reason: cancelReq.Reason,
+		JobID:         cancelReq.JobID,
+		Reason:        cancelReq.Reason,
+		UserTriggered: true,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

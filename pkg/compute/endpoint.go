@@ -244,7 +244,7 @@ func (s BaseEndpoint) ResultRejected(ctx context.Context, request ResultRejected
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("canceling execution: %s", request.ExecutionID)
+	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return CancelExecutionResponse{}, err
