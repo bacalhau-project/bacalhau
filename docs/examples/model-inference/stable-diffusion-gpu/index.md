@@ -49,7 +49,12 @@ apt install --allow-change-held-packages libcudnn8=8.1.0.77-1+cuda11.2
 ```
 
 ### Testing the Code
-Quite often libraries aren't pinned, or code gets updated and breaks the docs, and even the simplest examples don't work. To derisk this, first we will try the code in this [README](https://github.com/fchollet/stable-diffusion-tensorflow) to double check that the code is working as the author expected.
+
+We will try the code in the [Stable Diffusion in TensorFlow/Keras README](https://github.com/fchollet/stable-diffusion-tensorflow) to check if the code is working as expected. Our output for this code will be a _DSLR photograph of an astronaut riding a horse_.
+
+:::tip
+When you run this code for the first time, it will download the pretrained weights, which may add a short delay.
+:::
 
 
 ```python
@@ -71,8 +76,6 @@ img = generator.generate(
 pil_img = Image.fromarray(img[0])
 display(pil_img)
 ```
-
-This will work as expected, however it will use up all the GPU RAM.
 
 :::tip
 If you're interested, check the GPU RAM usage now you've run the code. You'll see that it's sucked up many GBs and depending on what GPU you're running, it may OOM if you run this again.
@@ -154,7 +157,7 @@ You should test that your script works! Let's run it again.
 python main.py
 ```
 
-### Viewing the Outputted Image
+### Viewing the Output Image
 
 
 ```python
@@ -181,18 +184,18 @@ The following presents some examples that you can try.
 
 #### Prompt
 ```
-python stable-diffusion.py --p "cat with three eyes"
+python main.py --p "cat with three eyes"
 ```
 
 #### Number of iterations
 
 ```
-python stable-diffusion.py --p "cat with three eyes" --n 100
+python main.py --p "cat with three eyes" --n 100
 ```
 #### Batch Size (No of images to generate)
 
 ```
-python stable-diffusion.py --p "cat with three eyes" --b 2
+python main.py --p "cat with three eyes" --b 2
 ```
 
 
@@ -253,7 +256,7 @@ Now you can push this repository to the registry designated by its name or tag.
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-### Running a Bacalhau Job to Generate an Image 
+## Running a Bacalhau Job to Generate an Image 
 
 To run a Bacalhau job to generate an image Using Stable Diffusion on a GPU, we will use the `bacalhau docker run` command. 
 
@@ -329,9 +332,6 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 %%bash
 ls results/combined_results/outputs
 ```
-
-    image0.png
-
 
 ### Display image
 
