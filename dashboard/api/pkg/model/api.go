@@ -8,10 +8,11 @@ import (
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
+	bacalhau_model_beta "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
@@ -37,7 +38,7 @@ type ModelAPI struct {
 	localDB         localdb.LocalDB
 	nodeDB          routing.NodeInfoStore
 	store           *store.PostgresStore
-	stateResolver   *jobutils.StateResolver
+	stateResolver   *localdb.StateResolver
 	jobEventHandler *jobEventHandler
 	cleanupFunc     func(context.Context)
 }
@@ -140,11 +141,11 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 		return err
 	}
 
-	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[bacalhau_model.JobEvent](pubsub.BufferingPubSubParams{
+	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[bacalhau_model_beta.JobEvent](pubsub.BufferingPubSubParams{
 		DelegatePubSub: libp2p2JobEventPubSub,
 		MaxBufferAge:   5 * time.Minute, //nolint:gomnd // required, but we don't publish events in the dashboard
 	})
-	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model.JobEvent](api.jobEventHandler.readEvent))
+	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model_beta.JobEvent](api.jobEventHandler.readEvent))
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.No
 	return nodesMap, nil
 }
 
-func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model.Job, error) {
+func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model_beta.Job, error) {
 	return api.localDB.GetJobs(context.Background(), query)
 }
 
@@ -197,7 +198,7 @@ func (api *ModelAPI) GetJobsCount(ctx context.Context, query localdb.JobQuery) (
 	return api.localDB.GetJobsCount(context.Background(), query)
 }
 
-func (api *ModelAPI) GetJob(ctx context.Context, id string) (*bacalhau_model.Job, error) {
+func (api *ModelAPI) GetJob(ctx context.Context, id string) (*bacalhau_model_beta.Job, error) {
 	return api.localDB.GetJob(ctx, id)
 }
 
@@ -305,7 +306,7 @@ func (api *ModelAPI) GetTotalExecutorCount(
 	return api.store.GetTotalExecutorCount(ctx)
 }
 
-func (api *ModelAPI) AddEvent(event bacalhau_model.JobEvent) error {
+func (api *ModelAPI) AddEvent(event bacalhau_model_beta.JobEvent) error {
 	return api.jobEventHandler.readEvent(context.Background(), event)
 }
 

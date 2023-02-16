@@ -2,6 +2,5 @@ go 1.19
 
 use (
 	.
-	./dashboard
 	./ops/aws/canary/lambda
 )

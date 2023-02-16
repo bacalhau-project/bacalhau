@@ -34,10 +34,11 @@ type ServeOptions struct {
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
 		ServerOptions: server.ServerOptions{
-			Host:      getDefaultServeOptionString("HOST", "0.0.0.0"),
-			Port:      getDefaultServeOptionInt("PORT", 80),         //nolint:gomnd
-			SwarmPort: getDefaultServeOptionInt("SWARM_PORT", 1236), //nolint:gomnd
-			JWTSecret: getDefaultServeOptionString("JWT_SECRET", ""),
+			Host:        getDefaultServeOptionString("HOST", "0.0.0.0"),
+			Port:        getDefaultServeOptionInt("PORT", 80),         //nolint:gomnd
+			SwarmPort:   getDefaultServeOptionInt("SWARM_PORT", 1236), //nolint:gomnd
+			PeerConnect: getDefaultServeOptionString("PEER_CONNECT", "none"),
+			JWTSecret:   getDefaultServeOptionString("JWT_SECRET", ""),
 		},
 		ModelOptions: newModelOptions(),
 	}
