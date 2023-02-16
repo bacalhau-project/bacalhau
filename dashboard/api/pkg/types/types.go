@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
+	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 )
 
 type LoginRequest struct {

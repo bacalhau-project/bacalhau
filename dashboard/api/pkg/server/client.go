@@ -82,9 +82,7 @@ func runGenericJob(s model.Spec) (string, error) {
 	resolver := client.GetJobStateResolver()
 	resolver.SetWaitTime(maxWaitTime, time.Second)
 
-	err = resolver.Wait(context.Background(), submittedJob.Metadata.ID, 1, job.WaitForJobStates(map[model.JobStateType]int{
-		model.JobStateCompleted: 1,
-	}))
+	err = resolver.Wait(context.Background(), submittedJob.Metadata.ID, job.WaitForSuccessfulCompletion())
 	if err != nil {
 		return err.Error(), err
 	}
