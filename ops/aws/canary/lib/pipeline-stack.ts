@@ -128,10 +128,7 @@ export class PipelineStack extends cdk.Stack {
                 phases: {
                     install: {
                         commands: [
-                            'rm -fr /usr/local/go',
-                            'wget https://go.dev/dl/go1.19.6.linux-amd64.tar.gz',
-                            'tar -C /usr/local -xzf go1.19.6.linux-amd64.tar.gz',
-                            'export PATH=$PATH:/usr/local/go/bin,'
+                            'goenv install 1.19.3',
                         ],
                     },
                     build: {
