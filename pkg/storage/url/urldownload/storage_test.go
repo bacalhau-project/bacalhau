@@ -5,19 +5,16 @@ package urldownload
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,35 +33,28 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	s.Require().NoError(system.InitConfigForTesting(s.T()))
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {
 	cm := system.NewCleanupManager()
 
 	sp, err := NewStorage(cm)
-	require.NoError(s.T(), err, "failed to create storage provider")
+	s.Require().NoError(err, "failed to create storage provider")
 
 	// is dir writable?
-	fmt.Println(sp.LocalDir)
-	f, err := os.Create(filepath.Join(sp.LocalDir, "data.txt"))
-	require.NoError(s.T(), err, "failed to create file")
+	f, err := os.Create(filepath.Join(sp.localDir, "data.txt"))
+	s.Require().NoError(err, "failed to create file")
 
 	_, err = f.WriteString("test\n")
-	require.NoError(s.T(), err, "failed to write to file")
+	s.Require().NoError(err, "failed to write to file")
 
-	f.Close()
-	if sp.HTTPClient == nil {
-		require.Fail(s.T(), "HTTPClient is nil")
-	}
+	s.NoError(f.Close())
+	s.Require().NotNil(sp.client, "HTTPClient is nil")
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	cm := system.NewCleanupManager()
-	ctx := context.Background()
-
-	sp, err := NewStorage(cm)
-	require.NoError(s.T(), err, "failed to create storage provider")
+	sp := newStorage(s.T().TempDir())
 
 	spec := model.StorageSpec{
 		StorageSource: model.StorageSourceURLDownload,
@@ -72,236 +62,180 @@ func (s *StorageSuite) TestHasStorageLocally() {
 		Path:          "foo",
 	}
 	// files are not cached thus shall never return true
-	locally, err := sp.HasStorageLocally(ctx, spec)
-	require.NoError(s.T(), err, "failed to check if storage is locally available")
+	locally, err := sp.HasStorageLocally(context.Background(), spec)
+	s.Require().NoError(err, "failed to check if storage is locally available")
 
-	if locally != false {
-		require.Fail(s.T(), "storage should not be locally available")
-	}
+	s.False(locally, "storage should not be locally available")
 }
 
 func (s *StorageSuite) TestPrepareStorageURL() {
-	fileName := "testfile.py"
-	_ = fileName
-	testString := "Here's your data"
-
-	redirectCases := map[string]struct {
-		redirect bool
+	type dummyRequest struct {
+		path    string
+		code    int
+		content string
+	}
+	tests := []struct {
+		name             string
+		requests         []dummyRequest
+		expectedContent  string
+		expectedFilename string
 	}{
-		"No-redirect": {
-			redirect: false,
+		{
+			name: "follows-redirect",
+			requests: []dummyRequest{
+				{
+					path:    "/initial",
+					code:    302,
+					content: "/second.png",
+				},
+				{
+					path:    "/second.png",
+					code:    302,
+					content: "/third.txt",
+				},
+				{
+					path:    "/third.txt",
+					code:    200,
+					content: "this is from the final redirect",
+				},
+			},
+			expectedContent:  "this is from the final redirect",
+			expectedFilename: "third.txt",
 		},
-		"Redirect": {
-			redirect: true,
+		{
+			name: "retries",
+			requests: []dummyRequest{
+				{
+					path:    "/initial",
+					code:    500,
+					content: "",
+				},
+				{
+					path:    "/initial",
+					code:    500,
+					content: "",
+				},
+				{
+					path:    "/initial",
+					code:    200,
+					content: "got there eventually",
+				},
+			},
+			expectedContent:  "got there eventually",
+			expectedFilename: "initial",
+		},
+		{
+			name: "retry-anything",
+			requests: []dummyRequest{
+				{
+					path:    "/initial",
+					code:    401,
+					content: "not allowed",
+				},
+				{
+					path:    "/initial",
+					code:    401,
+					content: "not allowed",
+				},
+				{
+					path:    "/initial",
+					code:    200,
+					content: "changed my mind",
+				},
+			},
+			expectedContent:  "changed my mind",
+			expectedFilename: "initial",
+		},
+		{
+			name: "generates-name",
+			requests: []dummyRequest{
+				{
+					path:    "/",
+					code:    200,
+					content: "name should be a UUID",
+				},
+			},
+			expectedContent:  "name should be a UUID",
+			expectedFilename: "",
+		},
+		{
+			name: "no-content",
+			requests: []dummyRequest{
+				{
+					path:    "/nothing.txt",
+					code:    204,
+					content: "",
+				},
+			},
+			expectedContent:  "",
+			expectedFilename: "nothing.txt",
+		},
+		{
+			name: "picsum.photos",
+			requests: []dummyRequest{
+				{
+					path:    "/200/300",
+					code:    302,
+					content: "/id/568/200/300.jpg",
+				},
+				{
+					path:    "/id/568/200/300.jpg",
+					code:    200,
+					content: "i'm not putting an image here",
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
 		},
 	}
 
-	filetypeCases := map[string]struct {
-		fileName      string
-		content       string
-		valid         bool
-		errorContains string
-		errorMsg      string
-	}{
-		"Test-Valid": {fileName: fileName,
-			content:       testString,
-			valid:         true,
-			errorContains: "",
-			errorMsg:      "TYPE: Valid"},
-		"Test-No Filename": {fileName: "",
-			content:       testString,
-			valid:         true,
-			errorContains: "",
-			errorMsg:      "TYPE: Valid (create file with random name)"},
-		"Test-No Content": {fileName: fileName,
-			content:       "",
-			valid:         false,
-			errorContains: "no bytes written",
-			errorMsg:      "TYPE: Invalid (no content)"},
-	}
+	for _, test := range tests {
+		s.Run(test.name, func() {
+			responseCount := 0
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				response := test.requests[responseCount]
+				responseCount++
 
-	for redirectName, rc := range redirectCases {
-		for filetypeName, ftc := range filetypeCases {
-			name := fmt.Sprintf("%s-%s", redirectName, filetypeName)
-
-			content, err := func() (string, error) {
-				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if rc.redirect && r.URL.Path == "/redirect" {
-						http.Redirect(w, r, "/"+ftc.fileName, http.StatusFound)
-					} else {
-						if r.URL.String() == ("/" + ftc.fileName) {
-							w.Write([]byte(ftc.content))
-						}
-					}
-				}))
-				defer ts.Close()
-
-				cm := system.NewCleanupManager()
-				ctx := context.Background()
-				sp, err := NewStorage(cm)
-				if err != nil {
-					return "", fmt.Errorf("%s: failed to create storage provider", name)
+				if r.URL.Path != response.path {
+					http.Error(w, fmt.Sprintf("invalid path: %s should be %s", r.URL.Path, response.path), 999)
+					return
 				}
 
-				serverURL := ts.URL
-				finalURL := ""
-				if rc.redirect {
-					finalURL = ts.URL + "/redirect"
-				} else {
-					finalURL = serverURL + "/" + ftc.fileName
+				if response.code == http.StatusFound {
+					http.Redirect(w, r, response.content, http.StatusFound)
+					return
 				}
 
-				spec := model.StorageSpec{
-					StorageSource: model.StorageSourceURLDownload,
-					URL:           finalURL,
-					Path:          "/inputs",
-				}
+				w.WriteHeader(response.code)
+				_, err := w.Write([]byte(response.content))
+				s.NoError(err)
+			}))
+			s.T().Cleanup(ts.Close)
 
-				volume, err := sp.PrepareStorage(ctx, spec)
-				if err != nil {
-					return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
-				}
+			subject := newStorage(s.T().TempDir())
 
-				// If we have a filename, it should exist in the spec
-				if ftc.fileName != "" {
-					require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
-				} else {
-					// The spec should end with a UUID after /inputs
-					re := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`)
-					require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with <UUID>. Actual ending: ", name, volume.Target)
-				}
+			vol, err := subject.PrepareStorage(context.Background(), model.StorageSpec{
+				URL:  fmt.Sprintf("%s%s", ts.URL, test.requests[0].path),
+				Path: "/inputs",
+			})
+			s.Require().NoError(err)
 
-				file, err := os.Open(volume.Source)
-				if err != nil {
-					return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
-				}
-
-				defer func() {
-					if err = file.Close(); err != nil {
-						require.Fail(s.T(), "failed to close file: %s", name)
-					}
-				}()
-
-				content, err := ioutil.ReadAll(file)
-				if err != nil {
-					return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
-				}
-
-				if len(content) == 0 {
-					return "", fmt.Errorf("%s: file is empty", name)
-				}
-
-				return string(content), nil
-			}()
-
-			if ftc.valid {
-				text := string(content)
-				require.Equal(s.T(), ftc.content, text, "%s: content of file does not match", name)
+			actualFilename := filepath.Base(vol.Source)
+			if test.expectedFilename == "" {
+				s.Regexp(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`, actualFilename,
+					"Filename should be a UUID if it can't come from the HTTP response ")
+				s.Regexp(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`, filepath.Base(vol.Target))
+				s.Equal(fmt.Sprintf("%s%s", string(os.PathSeparator), "inputs"), filepath.Dir(vol.Target))
 			} else {
-				require.Error(s.T(), err, "%s: expected error", name)
-				require.Contains(s.T(),
-					err.Error(),
-					ftc.errorContains,
-					"%s: error does not contain expected string",
-					name)
-			}
-		}
-	}
-}
-
-func (s *StorageSuite) TestImageDownloaderLiveRedirectURL() {
-	// This test will fail when offline - we should build a checker to see if someone
-	// is connected to the internet and skip this test if they are not.
-	// This test will also fail if the URL is not reachable.
-	// Using -test.short flag for now
-	if testing.Short() {
-		s.T().Skip("Skipping test that requires internet connection")
-	}
-
-	filetypeCases := map[string]struct {
-		URL           string
-		fileName      string
-		content       string
-		valid         bool
-		errorContains string
-		errorMsg      string
-	}{
-		"PicSum": {URL: "https://picsum.photos/200/300",
-			fileName:      "300.jpg",
-			content:       "",
-			valid:         true,
-			errorContains: "",
-			errorMsg:      "TYPE: Valid"},
-	}
-
-	for filetypeName, ftc := range filetypeCases {
-		name := fmt.Sprintf("%s-%s", filetypeName, ftc.URL)
-
-		content, err := func() (string, error) {
-			cm := system.NewCleanupManager()
-			ctx := context.Background()
-			sp, err := NewStorage(cm)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to create storage provider", name)
+				s.Equal(test.expectedFilename, actualFilename)
+				s.Equal(filepath.Join("/inputs", test.expectedFilename), vol.Target)
 			}
 
-			spec := model.StorageSpec{
-				StorageSource: model.StorageSourceURLDownload,
-				URL:           ftc.URL,
-				Path:          "/inputs",
-			}
+			s.FileExists(vol.Source)
+			actualContent, err := os.ReadFile(vol.Source)
+			s.Require().NoError(err)
 
-			volume, err := sp.PrepareStorage(ctx, spec)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
-			}
-
-			// If we have a filename, it should exist in the spec
-			if ftc.fileName != "" {
-				require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
-			} else {
-				// The spec should end with a UUID after /inputs
-				re := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`)
-				require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with <UUID>. Actual ending: ", name, volume.Target)
-			}
-
-			file, err := os.Open(volume.Source)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
-			}
-
-			defer func() {
-				if err = file.Close(); err != nil {
-					require.Fail(s.T(), "failed to close file: %s", name)
-				}
-			}()
-
-			content, err := ioutil.ReadAll(file)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
-			}
-
-			if len(content) == 0 {
-				return "", fmt.Errorf("%s: file is empty", name)
-			}
-
-			return string(content), nil
-		}()
-
-		if ftc.valid {
-			// For non-deterministic files (eg from live, changing URLs), we won't know what the content
-			// is, so we'll just skip the content check - we've gotten enough tests until now
-			if ftc.content != "" {
-				text := string(content)
-				require.Equal(s.T(), ftc.content, text, "%s: content of file does not match", name)
-			}
-		} else {
-			require.Error(s.T(), err, "%s: expected error", name)
-			require.Contains(s.T(),
-				err.Error(),
-				ftc.errorContains,
-				"%s: error does not contain expected string",
-				name)
-		}
+			s.Equal(test.expectedContent, string(actualContent))
+		})
 	}
 }
