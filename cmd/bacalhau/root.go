@@ -80,6 +80,9 @@ func NewRootCmd() *cobra.Command {
 	// Get the results of a job
 	RootCmd.AddCommand(newGetCmd())
 
+	// Cancel a job
+	RootCmd.AddCommand(newCancelCmd())
+
 	// List jobs
 	RootCmd.AddCommand(newListCmd())
 
