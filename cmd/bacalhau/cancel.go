@@ -27,9 +27,7 @@ var (
 `))
 )
 
-type CancelOptions struct {
-	JobID string
-}
+type CancelOptions struct{}
 
 func NewCancelOptions() *CancelOptions {
 	return &CancelOptions{}
