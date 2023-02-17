@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -189,22 +191,28 @@ func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
 func ensureConfigDir() (string, error) {
 	configDir := os.Getenv("BACALHAU_DIR")
+	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
+	//and not a generic environment variable set by the user
+	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
+		configDir = os.Getenv("ROOT_DIR")
+	}
 	if configDir == "" {
 		log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
 
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", fmt.Errorf("failed to get user home dir: %w", err)
+			return "", errors.Wrap(err, "failed to get user home dir")
 		}
 
-		configDir = fmt.Sprintf("%s/.bacalhau", home)
+		configDir = filepath.Join(home, ".bacalhau")
 		if err = os.MkdirAll(configDir, util.OS_USER_RWX); err != nil {
-			return "", fmt.Errorf("failed to create config dir: %w", err)
+			return "", errors.Wrap(err, "failed to create config dir")
 		}
 	} else {
-		if _, err := os.Stat(configDir); err != nil {
-			return "", fmt.Errorf("failed to stat config dir '%s': %w",
-				configDir, err)
+		if fileinf, err := os.Stat(configDir); err != nil {
+			return "", errors.Wrapf(err, "failed to stat config dir %q", configDir)
+		} else if !fileinf.IsDir() {
+			return "", fmt.Errorf("%q is not a directory", configDir)
 		}
 	}
 

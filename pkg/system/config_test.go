@@ -3,10 +3,12 @@
 package system
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,19 +33,19 @@ func (s *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	require.NoError(s.T(), InitConfigForTesting(s.T()))
+	s.NoError(InitConfigForTesting(s.T()))
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
-	require.NoError(s.T(), err)
+	s.NoError(err)
 
 	ok, err := VerifyForClient(msg, sig)
-	require.NoError(s.T(), err)
-	require.True(s.T(), ok)
+	s.NoError(err)
+	s.True(ok)
 
 	publicKey := GetClientPublicKey()
 	err = Verify(msg, sig, publicKey)
-	require.NoError(s.T(), err)
+	s.NoError(err)
 }
 
 func (s *SystemConfigSuite) TestGetClientID() {
@@ -72,11 +74,41 @@ func (s *SystemConfigSuite) TestGetClientID() {
 }
 
 func (s *SystemConfigSuite) TestPublicKeyMatchesID() {
-	require.NoError(s.T(), InitConfigForTesting(s.T()))
+	s.NoError(InitConfigForTesting(s.T()))
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()
 	ok, err := PublicKeyMatchesID(publicKey, id)
-	require.NoError(s.T(), err)
-	require.True(s.T(), ok)
+	s.NoError(err)
+	s.True(ok)
+}
+
+func (s *SystemConfigSuite) TestEnsureConfigDir() {
+	tempDir := s.T().TempDir()
+	home, err := os.UserHomeDir()
+	s.NoError(err)
+	default_dir := filepath.Join(home, ".bacalhau")
+	s.T().Setenv("FIL_WALLET_ADDRESS", "placeholder_address")
+	tests := []struct {
+		root_dir     string
+		bacalhau_dir string
+		exp          string
+	}{
+		{"", "", default_dir},
+		{tempDir, "", tempDir},
+		{"", tempDir, tempDir},
+		{tempDir, default_dir, default_dir},
+	}
+	for _, test := range tests {
+		s.Run(
+			fmt.Sprintf("root_dir_%t/bacalhau_dir_%t", test.root_dir != "", test.bacalhau_dir != ""),
+			func() {
+				s.T().Setenv("ROOT_DIR", test.root_dir)
+				s.T().Setenv("BACALHAU_DIR", test.bacalhau_dir)
+				configDir, err := ensureConfigDir()
+				s.DirExists(configDir)
+				s.Equal(configDir, test.exp)
+				s.NoError(err)
+			})
+	}
 }
