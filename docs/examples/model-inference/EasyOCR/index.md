@@ -9,21 +9,14 @@ sidebar_position: 10
 
 ## Introduction
 
-EasyOCR is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. it is developed by https://www.jaided.ai/
+In this example tutorial, we use Bacalhau and Easy OCR to digitalize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pretrained models or use your own fine tuned model.
 
+## Prerequisite
 
-![](https://github.com/JaidedAI/EasyOCR/raw/master/examples/example2.png)
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-
-EasyOCR is leveraging recent works in academic and other open source projects to create a ready-to-use product with state-of-the-art performance. 
-with easy OCR you use the pretrained models or use your own fine tuned model 
-
-It can be used to digitalize paper records or for recognizing characters in images stored on IPFS/Filecoin or on the web
-
-## Running Locally​
-
-
-Installing dependencies
+## Running Easy OCR Locally​
+Installing the required dependencies
 
 
 ```bash
@@ -31,35 +24,7 @@ Installing dependencies
 pip install easyocr
 ```
 
-    Collecting easyocr
-    [?25l  Downloading https://files.pythonhosted.org/packages/9d/b4/6a402a7ec3890e94313a7d2804190713e2c942371b39c7ccd9070280bc36/easyocr-1.3.2-py3-none-any.whl (63.2MB)
-    [K     |████████████████████████████████| 63.2MB 114kB/s 
-    [?25hRequirement already satisfied: torchvision>=0.5 in /usr/local/lib/python3.7/dist-packages (from easyocr) (0.10.0+cu102)
-    Requirement already satisfied: numpy in /usr/local/lib/python3.7/dist-packages (from easyocr) (1.19.5)
-    Requirement already satisfied: scikit-image in /usr/local/lib/python3.7/dist-packages (from easyocr) (0.16.2)
-    Collecting python-bidi
-      Downloading https://files.pythonhosted.org/packages/33/b0/f942d146a2f457233baaafd6bdf624eba8e0f665045b4abd69d1b62d097d/python_bidi-0.4.2-py2.py3-none-any.whl
-    Requirement already satisfied: torch in /usr/local/lib/python3.7/dist-packages (from easyocr) (1.9.0+cu102)
-    Requirement already satisfied: scipy in /usr/local/lib/python3.7/dist-packages (from easyocr) (1.4.1)
-    Requirement already satisfied: PyYAML in /usr/local/lib/python3.7/dist-packages (from easyocr) (3.13)
-    Requirement already satisfied: opencv-python in /usr/local/lib/python3.7/dist-packages (from easyocr) (4.1.2.30)
-    Requirement already satisfied: Pillow in /usr/local/lib/python3.7/dist-packages (from easyocr) (7.1.2)
-    Requirement already satisfied: matplotlib!=3.0.0,>=2.0.0 in /usr/local/lib/python3.7/dist-packages (from scikit-image->easyocr) (3.2.2)
-    Requirement already satisfied: imageio>=2.3.0 in /usr/local/lib/python3.7/dist-packages (from scikit-image->easyocr) (2.4.1)
-    Requirement already satisfied: PyWavelets>=0.4.0 in /usr/local/lib/python3.7/dist-packages (from scikit-image->easyocr) (1.1.1)
-    Requirement already satisfied: networkx>=2.0 in /usr/local/lib/python3.7/dist-packages (from scikit-image->easyocr) (2.5.1)
-    Requirement already satisfied: six in /usr/local/lib/python3.7/dist-packages (from python-bidi->easyocr) (1.15.0)
-    Requirement already satisfied: typing-extensions in /usr/local/lib/python3.7/dist-packages (from torch->easyocr) (3.7.4.3)
-    Requirement already satisfied: python-dateutil>=2.1 in /usr/local/lib/python3.7/dist-packages (from matplotlib!=3.0.0,>=2.0.0->scikit-image->easyocr) (2.8.1)
-    Requirement already satisfied: cycler>=0.10 in /usr/local/lib/python3.7/dist-packages (from matplotlib!=3.0.0,>=2.0.0->scikit-image->easyocr) (0.10.0)
-    Requirement already satisfied: pyparsing!=2.0.4,!=2.1.2,!=2.1.6,>=2.0.1 in /usr/local/lib/python3.7/dist-packages (from matplotlib!=3.0.0,>=2.0.0->scikit-image->easyocr) (2.4.7)
-    Requirement already satisfied: kiwisolver>=1.0.1 in /usr/local/lib/python3.7/dist-packages (from matplotlib!=3.0.0,>=2.0.0->scikit-image->easyocr) (1.3.1)
-    Requirement already satisfied: decorator<5,>=4.3 in /usr/local/lib/python3.7/dist-packages (from networkx>=2.0->scikit-image->easyocr) (4.4.2)
-    Installing collected packages: python-bidi, easyocr
-    Successfully installed easyocr-1.3.2 python-bidi-0.4.2
-
-
-load example images
+Loading the example images
 
 
 ```bash
@@ -67,12 +32,7 @@ load example images
 npx degit JaidedAI/EasyOCR/examples -f
 ```
 
-    [K[?25hnpx: installed 1 in 2.792s
-    [36m> destination directory is not empty. Using --force, continuing[39m
-    [36m> cloned [1mJaidedAI/EasyOCR[22m#[1mHEAD[22m[39m
-
-
-list them
+Listing the images
 
 
 ```bash
@@ -95,6 +55,8 @@ ls -l
     -rw-r--r-- 1 root root   34706 Jun 16 22:36 width_ths.png
 
 
+Displaying an image from the list
+
 
 ```python
 # show an image
@@ -104,126 +66,63 @@ im = PIL.Image.open("thai.jpg")
 im
 ```
 
-
-
-
-    
-![png](index_files/index_12_0.png)
-    
-
-
+Create a reader to do OCR.
 
 
 ```python
-# Create a reader to do OCR.
 # If you change to GPU instance, it will be faster. But CPU is enough.
 # (by MENU > Runtime > Change runtime type > GPU, then redo from beginning )
 import easyocr
 reader = easyocr.Reader(['th','en'])
-```
-
-    CUDA not available - defaulting to CPU. Note: This module is much faster with a GPU.
-    Downloading detection model, please wait. This may take several minutes depending upon your network connection.
-
-
-    
-
-    Downloading recognition model, please wait. This may take several minutes depending upon your network connection.
-
-
-    
-
-
-```python
 # Doing OCR. Get bounding boxes.
 bounds = reader.readtext('thai.jpg')
 bounds
 ```
 
-we get cordinates which represent a rectangle containing text and the text itself
+We get cordinates which represent a rectangle containing text and the text itself
 
 After that we will build a DOCKERFILE to containernize this script and then run it on bacalhau
 
-# Building docker container (Optional)
-Note* you can directly skip to running on bacalhau ands use the prebuild docker image
+## Containerize your Script using Docker
 
+:::tip
+You can skip this step and go straight to running a Bacalhau job
+:::
 
+We will use the `Dockerfile` that is already created in the [Easy OCR repo](https://github.com/JaidedAI/EasyOCR). Use the command below to clone the repo
 
-
-
-
-In this step you will create docker container using the dockerfile in the Easy OCR repo
-
-Steps to build the container
-
-clone the repo
 ```
 git clone https://github.com/JaidedAI/EasyOCR
 cd EasyOCR
 ```
-Builing the container
 
+### Build the Container
 
-To Build the docker container run the docker build command
+The `docker build` command builds Docker images from a Dockerfile. 
 
 ```
 docker build -t hub-user/repo-name:tag .
 ```
 
-Please replace
+Before running the command replace;
 
-hub-user with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-repo-name This is the name of the container, you can name it anything you want
+- **repo-name** with the name of the container, you can name it anything you want
 
-tag This is not required but you can use the latest tag
+- **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub
+### Push the container
 
-Now you can push this repository to the registry designated by its name or tag.
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
 
 ```
- docker push hub-user/repo-name:tag
+docker push <hub-user>/<repo-name>:<tag>
 ```
 
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
+## Running a Bacalhau Job to Generate Easy OCR output
 
-## **Running the container on bacalhau**
-
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
-
-
-This command is similar to what we have run locally but we change the output directory to the outputs folder so that the results are saved to IPFS
-
-
-We use the --gpu flag to denote the no of GPU we are going to use
-
-Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS
-
-you can find models to download from here
-https://www.jaided.ai/easyocr/modelhub/
-
-choose the model you want to use in this case we will be using the zh_sim_g2 model
-
-
-
-```python
-!curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.3.11 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.3.11
-    Server Version: v0.3.11
-
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -243,30 +142,34 @@ jsacex/easyocr \
 
 Structure of the command
 
-Mounting the model from IPFS
--v bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth 
+- **Mounting the model from IPFS**: -v bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth 
 
-Mounting the Input Image from a URL
--u https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg
+- **Mounting the Input Image from a URL**: -u https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg
 
-Specifying the no of GPUs
---gpu 1
+- **Specifying the no of GPUs**: --gpu 1
 
-Name of the Docker Image
-jsacex/easyocr
+- **Name of the Docker image**: jsacex/easyocr
 
-The easyocr command
+Breaking up the easyocr command
 
---  easyocr -l ch_sim  en -f ./inputs/chinese.jpg --detail=1 --gpu=True
+`--  easyocr -l ch_sim  en -f ./inputs/chinese.jpg --detail=1 --gpu=True`
 
--l the name of the model which is ch_sim
+- `-l`: the name of the model which is ch_sim
 
--f path to the input Image or directory
+- `-f`: path to the input Image or directory
 
---detail=1 level of detail
+- `--detail=1`:  level of detail
 
---gpu=True we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false 
+- `--gpu=True`: we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false 
 
+
+Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS ou can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
+
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -274,20 +177,17 @@ The easyocr command
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 14:27:53 [0m[97;40m b8267063 [0m[97;40m Docker jsacex/easyoc... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmaDS3cmVCoUsC... [0m
+When it says `Completed`, that means the job is done, and we can get the results.
 
-
-Where it says "Completed", that means the job is done, and we can get the results.
-
-To find out more information about your job, run the following command:
-
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
 %%bash
 bacalhau describe ${JOB_ID}
 ```
+
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -296,29 +196,15 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job 'b8267063-37af-4aec-a65d-201a449dec89'...
-    Results for job 'b8267063-37af-4aec-a65d-201a449dec89' have been written to...
-    results
-
-
-    2022/11/11 14:28:48 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 After the download has finished you should see the following contents in results directory
+
+## Viewing your Job Output
+
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/
-```
-
-    combined_results
-    per_shard
-    raw
-
-
-To view the results run the command
-
-```
-cat results/combined_results/stdout
+ls results/ # list the contents of the current directory 
+cat results/combined_results/stdout # list the contents of the current directory 
 ```
