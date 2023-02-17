@@ -1,14 +1,12 @@
-
-
 from datetime import datetime
+
 from airflow import DAG
 from bacalhau.operators import BacalhauSubmitJobOperator
 
-
-with DAG('run-me', start_date=datetime(2021, 1, 1)) as dag:
+with DAG("run-me", start_date=datetime(2021, 1, 1)) as dag:
     op1 = BacalhauSubmitJobOperator(
-        task_id='run-1',
-        api_version='V1beta1',
+        task_id="run-1",
+        api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
             verifier="Noop",
@@ -18,12 +16,12 @@ with DAG('run-me', start_date=datetime(2021, 1, 1)) as dag:
                 entrypoint=["echo", "Hello"],
             ),
             deal=dict(concurrency=1, confidence=0, min_bids=0),
-        )
+        ),
     )
 
     op2 = BacalhauSubmitJobOperator(
-        task_id='run-2',
-        api_version='V1beta1',
+        task_id="run-2",
+        api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
             verifier="Noop",
@@ -39,11 +37,11 @@ with DAG('run-me', start_date=datetime(2021, 1, 1)) as dag:
                     path="/another-dataset",
                     storagesource="ipfs",
                 )
-            ]
+            ],
         ),
         input_volumes=[
             "{{ task_instance.xcom_pull(task_ids='run-1', key='cids') }}:/datasets",
-        ]
+        ],
     )
 
     op1 >> op2
