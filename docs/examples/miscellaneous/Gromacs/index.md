@@ -14,20 +14,15 @@ In this example we will make use of [gmx pdb2gmx](https://manual.gromacs.org/doc
 
 
 
-## **Downloading datasets**
+### **Downloading datasets**
 
-Datasets can be found here [https://www.rcsb.org](https://www.rcsb.org), In this example we use 
-
-[RCSB PDB - 1AKI](https://www.rcsb.org/structure/1AKI) dataset
-
-After downloading place it in a folder called “input”
+Datasets can be found here [https://www.rcsb.org](https://www.rcsb.org), In this example we use [RCSB PDB - 1AKI](https://www.rcsb.org/structure/1AKI) dataset. After downloading place it in a folder called “input”
 
 
 ```
 input
 └── 1AKI.pdb
 ```
-
 
 
 ### **Uploading the datasets to IPFS**
@@ -42,7 +37,6 @@ added QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9 input
  113.59 KiB / 113.59 KiB [============================================================================================] 100.00%
 ```
 
-
 Copy the CID in the end which is `QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9 `
 
 Upload the directory to IPFS using [Pinata](https://app.pinata.cloud/) (Recommended)
@@ -56,26 +50,9 @@ After the Upload has finished copy the CID (highlighted part)
 
 
 
-#### **Running the command on bacalhau**
+#### **Running the command on Bacalhau**
 
-This command converts coordinate files to topology and FF-compliant coordinate files
-
-`bacalhau docker run` using the docker backend
-
-`-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
-
-`gromacs/gromacs` We’ll use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs) 
-
--f `input/1AKI.pdb` input file
-
--o `output/1AKI_processed.gro` output file
-
--water Water model to use in this case we use spc
-
-Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html) 
-
- (similar tutorial you can try yourself [KALP-15 in DPPC - GROMACS Tutorial](http://www.mdtutorials.com/gmx/membrane_protein/01_pdb2gmx.html) )
-
+This command converts coordinate files to topology and FF-compliant coordinate files:
 
 ```
 bacalhau docker run \
@@ -83,8 +60,26 @@ bacalhau docker run \
 gromacs/gromacs \
 -- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
 ```
+Lets look at the command above more closely:
 
-Insalling bacalhau
+* `bacalhau docker run` using the docker backend
+
+* `-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
+
+* `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs) 
+
+* `-f input/1AKI.pdb` input file
+
+* `-o output/1AKI_processed.gro` output file
+
+* `-water` Water model to use in this case we use spc
+
+Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html) 
+
+(similar tutorial you can try yourself [KALP-15 in DPPC - GROMACS Tutorial](http://www.mdtutorials.com/gmx/membrane_protein/01_pdb2gmx.html) )
+
+
+Installing Bacalhau
 
 
 ```bash
@@ -125,7 +120,7 @@ gromacs/gromacs
 ```
 
 
-Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34b3e`). This is the ID of the job that was created. You can check the status of the job with the following command:
+Running the commands will output a UUID. This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
 
@@ -135,7 +130,7 @@ bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Completed `", that means the job is done, and we can get the results.
+Where it says `Completed`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
@@ -145,15 +140,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
-we can download the results!
-we create a temporary directory to save our results
-
-To Download the results of your job, run 
-
----
-
-the following command:
+To Download the results of your job, run the following command:
 
 
 ```bash
@@ -180,24 +167,4 @@ ls results/
     shards	stderr	stdout	volumes
 
 
-
-The structure of the files and directories will look like this:
-
-
-```
-.
-├── shards
-│   └── job-11940c6f-31b2-4def-952c-1b5f9eb09e4e-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-│       ├── exitCode
-│       ├── stderr
-│       └── stdout
-├── stderr
-├── stdout
-└── volumes
-    └── outputs
-        └── 1AKI_processed.gro
-```
-
-
-You can see your the processed ‘`1AKI_processed`’ file in combined_results/outputs
-
+Rach repository contains selfexplanatory results.
