@@ -9,13 +9,13 @@ sidebar_position: 1
 
 ## Introduction
 
-Stable diffusion has revolutionalized text2image models by producing high quality images based on a prompt. Dreambooth is a approachfor personalization  of text-to-image diffusion models. Given as input just a few images of a subject, we fine-tune a pretrained text-to-image model
+Stable diffusion has revolutionalized text2image models by producing high quality images based on a prompt. Dreambooth is a approach for personalization of text-to-image diffusion models. With images as input subject, we can fine-tune a pretrained text-to-image model
 
-Althought the [dreambooth paper](https://arxiv.org/abs/2208.12242) used Imagen to finetune the pre-trained model since both the Imagen model and Dreambooth code are closed source, several opensource projects have emerged using stable diffusion
+Although the [dreambooth paper](https://arxiv.org/abs/2208.12242) used [Imagen](https://imagen.research.google/) to finetune the pre-trained model since both the Imagen model and Dreambooth code are closed source, several opensource projects have emerged using stable diffusion.
 
-Dreambooth makes stable-diffusion even more powered the ability to generate realistic looking Pictures of a particular Human, Animal or any other object by just training them on 20-30 Images of the subject is gamechanging. 
+Dreambooth makes stable-diffusion even more powered with the ability to generate realistic looking pictures of humans, animals or any other object by just training them on 20-30 images. 
 
-In this example tutorial, we will be fine tuning a pretrained stable diffusion using images of David Aronchick and generating images of him drinking coffee but before that let's see a quick test.
+In this example tutorial, we will be fine-tuning a pretrained stable diffusion using images of a human and generating images of him drinking coffee.
 
 ## Prerequisite
 
@@ -53,12 +53,13 @@ Output:
 ## Setting up Docker Container
 
 :::info
-You can skip this section entirely and directly go to running on bacalhau
+You can skip this section entirely and directly go to running a job on bacalhau
 :::
 
-Building this container requires you have have a supported GPU which needs to have 16gb+ of memory, since it can be resource intensive it's recommended that you should skip this section and move to running on bacalhau
+Building this container requires you to have a supported GPU which needs to have 16gb+ of memory, since it can be resource intensive.
 
-There are two main parts of the containerization process in this example are writting the `Dockerfile` and writting the shell script
+We will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
+
 
 ```Dockerfile
 FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel
@@ -87,7 +88,7 @@ RUN unzip -j man.zip -d man
 RUN unzip -j mix.zip -d mix
 ```
 
-This container is using the `pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel` image and the working directory is set. Next the Dockerfile installs the same dependencies from earlier in this notebook. Then we add our custom code and pull the dependent repositories.
+This container is using the `pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel` image and the working directory is set. Next, we add our custom code and pull the dependent repositories.
 
 ```finetune.sh
 python clear_mem.py
@@ -223,7 +224,7 @@ python convert_diffusers_to_original_stable_diffusion.py --model_path $2  --chec
 echo model saved at $2/model.ckpt
 ```
 
-### Build th container 
+### Build the Docker container 
 
 We will run `docker build` command to build the container;
 
@@ -246,15 +247,11 @@ Now you can push this repository to the registry designated by its name or tag.
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-## Running on Bacalhau Job
+### Create the Subject Dataset
 
-First we will need to: 
+The optimal dataset size is between 20-30 images. You can choose the images of the subject in different positions, full body images, half body, pictures of the face etc.
 
-### Create the subject dataset
-The optimal dataset size is between 20-30 Images
-you can choose the images of the subject in different positions, full body  images, Half body, pictures of the face etc.
-
-Only the subject should appear in the image you can crop the image to just fit the subject. Make sure that the images are of 512x512 size and are named in the following pattern since the subject name is David Aronchick we name the images in the following pattern
+Only the subject should appear in the image so you can crop the image to just fit the subject. Make sure that the images are of 512x512 size and are named in the following pattern since the subject name is David Aronchick we name the images in the following pattern
 
 ```
 David Aronchick.jpg, David Aronchick (2).jpg ... David Aronchick (n).jpg
@@ -264,7 +261,7 @@ You can view the [Subject Image dataset of David Aronchick](https://bafybeidqbup
 
 After the Subject dataset is created we upload it to IPFS
 
-### uploading the subject images to IPFS
+## Uploading the Subject Images to IPFS
 
 In this case we will be using [NFT.Storage](https://nft.storage/) (Recommneded Option) to upload files and directories with [NFTUp](https://nft.storage/docs/how-to/nftup/) 
 
@@ -272,12 +269,12 @@ To upload your dataset using NFTup just drag and drop your directory it will upl
 
 ![](https://i.imgur.com/g3VM2Kp.png)
 
-After the checkpoint file has been uploaded copy its CID
-bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a
+After the checkpoint file has been uploaded copy its CID `bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a`
 
-Since there are a lot of combinations that you can try, and process of finetuning taking almost 1hr+ to complete, we will highlight few approaches that you can try based upon your requirements
+## Approaches to run a Bacalhau Job on a Finetuned Model
 
-In this example we will try Case0 only
+Since there are a lot of combinations that you can try, processing of finetuned model can take almost 1hr+ to complete. Here are some few approaches that you can try based upon your requirements
+
 
 ### Case0 If the subject is of class male
 ```
@@ -357,7 +354,7 @@ bacalhau docker run \
 -- bash finetune.sh /inputs /outputs "a photo of <name-of-the-subject> woman" "a photo of woman" 3000 "/woman"  "/model"
 ```
 
-### Case3 If the subject is of class mix 
+### Case2 If the subject is of class mix 
 provide your own regularization images or use the mix class
 
 Use the `/mix` class images if the class of the subject is mix
@@ -372,7 +369,7 @@ bacalhau docker run \
 -- bash finetune.sh /inputs /outputs "a photo of <name-of-the-subject> mix" "a photo of mix" 3000 "/mix"  "/model"
 ```
 
-### Case4 If you want to a different tokenizer, model and a different shell script with custom parameters
+### Case3 If you want to a different tokenizer, model and a different shell script with custom parameters
 
 You can upload the model to IPFS and then create a gist and mount the model and script to the lightweight container
 
@@ -392,7 +389,7 @@ bacalhau docker run \
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-## Checking the State of your Jobs
+### Checking the State of your Jobs
 
 - **Job status**: You can check the status of the job using `bacalhau list`. 
 
@@ -425,17 +422,18 @@ In the next steps, we will be doing inference on the finetuned model
 Refer https://docs.bacalhau.org/examples/model-inference/Stable-Diffusion-CKPT-Inference on details of how to build a SD inference container
 :::
 
-Bacalhau currently doesn't support mounting subpaths of the CID,so instead of just mounting the model.ckpt file we need to mount the whole output CID which is of 6.4GB, which might results in errors like FAILED TO COPY /inputs. So you have to manually copy the CID of the _model.ckpt_ which is of 2GB
+Bacalhau currently doesn't support mounting subpaths of the CID, so instead of just mounting the _model.ckpt_ file we need to mount the whole output CID which is of 6.4GB, which might results in errors like FAILED TO COPY /inputs. So you have to manually copy the CID of the _model.ckpt_ which is of 2GB
 
 To get the CID of the _model.ckpt_ file go to https://gateway.ipfs.io/ipfs/< YOUR-OUTPUT-CID >/outputs/
 
 https://gateway.ipfs.io/ipfs/QmcmD7M7pYLP8QgwjqpbP4dojRLiLuEBdhevuCD9kFmbdV/outputs/
 
-if you use the brave browser
+If you use the Brave browser
 
+```
 ipfs://QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg/outputs
-
-using IPFS CLI
+```
+Using IPFS CLI
 
 ```
 ipfs ls QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg/outputs
@@ -443,11 +441,13 @@ ipfs ls QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg/outputs
 
 ![image](https://imgur.com/S2WSZTA.png)
 
-Copy the link of model.ckpt highlighted in the box https://gateway.ipfs.io/ipfs/QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg?filename=model.ckpt
+Copy the link of _model.ckpt_ highlighted in the box https://gateway.ipfs.io/ipfs/QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg?filename=model.ckpt
 
 Extract the CID portion of the link and copy it
 
-Run the Bacalhau Job on the fine tuned model
+### Run the Bacalhau Job on the Fine-Tuned Model
+
+To run a Bacalhau Job on the fine-tuned model, we will use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -464,6 +464,7 @@ jsacex/stable-diffusion-ckpt \
 ```
 
 If you are facing difficulties using the above method you can mount the whole output CID
+
 ```
 bacalhau docker run \
 --gpu 1 \
@@ -478,6 +479,7 @@ jsacex/stable-diffusion-ckpt \
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
+### Checking the State of your Jobs
 - **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
@@ -538,7 +540,7 @@ display.Image("results/combined_results/outputs/samples/00001.png")
 
 
     
-![png](index_files/index_32_0.png)
+![png](index_files/index_31_0.png)
     
 
 

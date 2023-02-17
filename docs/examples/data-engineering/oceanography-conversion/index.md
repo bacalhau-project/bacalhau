@@ -182,7 +182,7 @@ if __name__ == "__main__":
     main()
 ```
 
-## Setting up Docker
+## Setting up Docker Container
 
 We will create a  `Dockerfile` and add the desired configuration to the file. These commands specify how the image will be built, and what extra requirements will be included.
 
@@ -236,7 +236,7 @@ For more information about working with custom containers, see the [custom conta
 
 ## Running a Bacalhau Job
 
-Now that we have the data in IPFS and the docker image pushed, next is to run a job using the `bacalhau docker run` command
+Now that we have the data in IPFS and the Docker image pushed, next is to run a job using the `bacalhau docker run` command
 
 
 ```bash
