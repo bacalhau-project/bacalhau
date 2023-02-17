@@ -25,7 +25,6 @@ data
 
 
 
-
 ### **Uploading the datasets to IPFS**
 
 Upload the directory to IPFS using IPFS CLI ([Installation Instructions](https://docs.ipfs.tech/install/command-line/#official-distributions))
@@ -55,7 +54,6 @@ Click on the upload folder button and select the bids datasets folder that you w
 After the Upload has finished copy the CID (highlighted part)
 
 ![](https://i.imgur.com/rETHXXz.png)
-
 
 
 
@@ -128,28 +126,7 @@ After the Upload has finished copy the CID (highlighted part)
 ```
 
 
-**Running the command on bacalhau**
-
-The command can be broken down into 4 pieces
-
-`bacalhau docker run` using the docker backend
-
-`-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
-
-`nipreps/mriqc:latest` the name and the tag of the docker image we are using
-
-
-```
-mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
-```
-
-
-This is the command that we run where we specify path to the `../data/ds005` input dataset
-
-`../outputs` path where we want to save our outputs,
-
-`participant --participant_label 01 02 03` Run the participant level in subjects 001 002 003
-
+**Running on Bacalhau** 
 
 ```
 bacalhau docker run \
@@ -158,8 +135,23 @@ nipreps/mriqc:latest \
 -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
 ```
 
+Let's look closely at the command above:
 
-Insalling bacalhau
+* `bacalhau docker run`: call to bacalhau 
+  
+* `-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
+
+* `nipreps/mriqc:latest`: the name and the tag of the docker image we are using
+
+* `../data/ds005`: path to input dataset
+
+* `../outputs`: path to output
+
+* `participant --participant_label 01 02 03`: run the participant level in subjects 001 002 003
+
+
+
+Installing Bacalhau
 
 
 ```python
@@ -199,7 +191,7 @@ nipreps/mriqc:latest
 ```
 
 
-Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34b3e`). This is the ID of the job that was created. You can check the status of the job with the following command:
+Running the commands will output a UUID. This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
 
@@ -209,7 +201,7 @@ bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Completed`", that means the job is done, and we can get the results.
+Where it says `Completed`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
@@ -219,11 +211,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-To Download the results of your job, run 
-
----
-
-the following command:
+To download results of your job, run the following command:
 
 
 ```bash
@@ -250,54 +238,4 @@ ls results/
     shards	stderr	stdout	volumes
 
 
-
-The structure of the files and directories will look like this:
-
-
-```
-.
-├── shards
-│   └── job-8e89eb2f-1ae7-4b92-ba72-8abfade02a23-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-│       ├── exitCode
-│       ├── stderr
-│       └── stdout
-├── stderr
-├── stdout
-└── volumes
-    └── outputs
-        ├── dataset_description.json
-        ├── sub-01_T1w.html
-        ├── sub-01_T1w.json
-        ├── sub-01_task-mixedgamblestask_run-01_bold.html
-        ├── sub-01_task-mixedgamblestask_run-01_bold.json
-        ├── sub-01_task-mixedgamblestask_run-02_bold.html
-        ├── sub-01_task-mixedgamblestask_run-02_bold.json
-        ├── sub-01_task-mixedgamblestask_run-03_bold.html
-        ├── sub-01_task-mixedgamblestask_run-03_bold.json
-        ├── sub-02_T1w.html
-        ├── sub-02_T1w.json
-        ├── sub-02_task-mixedgamblestask_run-01_bold.html
-        ├── sub-02_task-mixedgamblestask_run-01_bold.json
-        ├── sub-02_task-mixedgamblestask_run-02_bold.html
-        ├── sub-02_task-mixedgamblestask_run-02_bold.json
-        ├── sub-02_task-mixedgamblestask_run-03_bold.html
-        ├── sub-02_task-mixedgamblestask_run-03_bold.json
-        ├── sub-03_T1w.html
-        ├── sub-03_T1w.json
-        ├── sub-03_task-mixedgamblestask_run-01_bold.html
-        ├── sub-03_task-mixedgamblestask_run-01_bold.json
-        ├── sub-03_task-mixedgamblestask_run-02_bold.html
-        ├── sub-03_task-mixedgamblestask_run-02_bold.json
-        ├── sub-03_task-mixedgamblestask_run-03_bold.html
-        └── sub-03_task-mixedgamblestask_run-03_bold.json
-```
-
-
-
-    The outputs of your job is in volumes/outputs
-
-
-
-* Volumes folder contains the outputs of our job
-* stdout contains things printed to the console like outputs, etc.
-* stderr contains any errors. In this case, since there are no errors, it's will be empty
+Each directory contains selfexplanatory outputs.
