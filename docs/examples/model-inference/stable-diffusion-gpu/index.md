@@ -22,7 +22,7 @@ bacalhau docker run --gpu 1 ghcr.io/bacalhau-project/examples/stable-diffusion-g
 ```
 ![](./image0.png)
 
-## Sample Model - Development
+## Development
 
 This stable diffusion example is based on the [Keras/Tensorflow implementation](https://github.com/fchollet/stable-diffusion-tensorflow). You might also be interested in the Pytorch oriented [diffusers library](https://github.com/huggingface/diffusers).
 
@@ -181,10 +181,9 @@ The following presents additional parameters you can try:
 -  `python stable-diffusion.py --p "cat with three eyes" --b 2` to set batch size to 2 (No of images to generate)
 
 
+## Containerize Stable Diffusion Script using Docker
 
-## Running Stable Diffusion on Bacalhau with a GPU
-
-Now we have a working example, we can convert it into a format that allows us to perform inference in a distributed environment. First we will create a `Dockerfile` to containerize the inference code. 
+Docker is the easiest way to run TensorFlow on a GPU since the host machine only requires the [NVIDIA® driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver). To containerize the inference code, we we will create a `Dockerfile`. The Dockerfile is a text document that contains the commands that specify how the image will be built.
 
 ```Dockerfile
 FROM tensorflow/tensorflow:2.10.0-gpu
@@ -230,7 +229,9 @@ In our case
 docker build -t ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 .
 ```
 
-Now you can push this repository to the registry designated by its name or tag.
+### Push the container
+
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
 
 ```
 docker push <hub-user>/<repo-name>:<tag>
