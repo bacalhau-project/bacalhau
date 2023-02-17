@@ -84,8 +84,6 @@ First, create the `Dockerfile`.
 
 Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
 
-Dockerfile
-
 
 ```
 FROM python:3.8
@@ -174,7 +172,7 @@ Additional parameters:
 
 * `-o`: the output folder
 
-Let's instal Bacalhau:
+Let's install Bacalhau:
 
 
 ```bash
@@ -225,7 +223,7 @@ Since there is no error we can’t see any error instead we see the state of our
 we can download the results!
 we create a temporary directory to save our results
 
-To Download the results of your job, run the following command:
+To download the results of your job, run the following command:
 
 
 ```bash
