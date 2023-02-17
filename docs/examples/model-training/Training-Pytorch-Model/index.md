@@ -58,7 +58,7 @@ test_data = datasets.MNIST(
 )
 ```
 
-### Uploading the dataset to IPFS
+## Uploading the dataset to IPFS
 
 Since Container running on bacalhau has no network we need to manually upload the dateset to IPFS
 
@@ -116,13 +116,13 @@ pytorch/pytorch \
 
 ### Sturucture of the command
 
-- `--gpu 1`: Request 1 GPU to train the model --gpu 1
+- `--gpu 1`: Request 1 GPU to train the model
 
-- `pytorch/pytorch`: Using the official pytorch docker Image pytorch/pytorch
+- `pytorch/pytorch`: Using the official pytorch Docker image
 
-- `-v QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path /data -v QmdeQjz1HQQd......
+- `-v QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
 
-- `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example]](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
+- `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
 
 - `-w /outputs:` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
 
