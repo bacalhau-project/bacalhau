@@ -13,37 +13,49 @@ Kipoi _(pronounce: kípi; from the Greek κήποι: gardens)_ is an API and a r
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Running Genomics on Bacalhau using Docker
+## Containerize your Script using Docker
 
-To run Genomics on Bacalhau we need to set up a Docker container. To do this, you'll need to:
-- Create a `Dockerfile`. The Dockerfile is a text document that contains the commands used to assemble the image.
-- Add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
+To run Genomics on Bacalhau we need to set up a Docker container. To do this, you'll need to create a `Dockerfile` and add your desired configuaration. The Dockerfile is a text document that contains the commands that specify how the image will be built.
 
 ```
 FROM kipoi/kipoi-veff2:py37
 
 RUN kipoi_veff2_predict ./examples/input/test.vcf ./examples/input/test.fa ./output.tsv -m "DeepSEA/predict" -s "diff" -s "logit"
 ```
-- Next, we will use the `python:3.8` docker image to build the docker container to download the models and weights. Before running the command below, replace:
-    - `hub-user` with your docker hub username. If you don’t have a docker hub account follow these [instructions](https://docs.docker.com/docker-id/) to create docker account and use the username of the account you created
 
-    - `repo-name` with the name of the container, you can name it anything you want
+### Build the container
 
-    - `tag` with the latest tag (optional)
+The `docker build` command builds Docker images from a Dockerfile. 
 
 ```
-docker build -t <hub-user>/<repo-name>:<tag>
+docker build -t <hub-user>/<repo-name>:<tag> .
 ```
-- Push the repository to the designated registry in Docker hub by using its name or tag.
+
+Before running the command replace;
+
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+
+- **repo-name** with the name of the container, you can name it anything you want
+
+- **tag** this is not required but you can use the latest tag
+
+In our case
+
+```bash
+docker build -t ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 .
+```
+
+### Push the container
+
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
 
 ```
- docker push <hub-user>/<repo-name>:<tag>
+docker push <hub-user>/<repo-name>:<tag>
 ```
-After the repo image has been pushed to docker hub, we can now use run the container on Bacalhau
 
 ### Running a Bacalhau job to Generate Genomics Data
 
-To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 
@@ -114,6 +126,6 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 
 ```bash
 %%bash
-ls results/ # list the contents of the current directory ("
-cat results/combined_results/outputs/output.tsv | head -n 10 #display the contents of the file given to it as a parameter.
+ls results/ # list the contents of the current directory 
+cat results/combined_results/outputs/output.tsv | head -n 10 # list the contents of the current directory 
 ```
