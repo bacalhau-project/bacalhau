@@ -6,7 +6,7 @@
 
 ## **Introduction**
 
-[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method, Since the uncompressed datasets involved can get very big when compressed it becomes much harder to train them as training time increases with the dataset size, to reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets
+[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets
 
 Coresets similar functionality as same as the whole dataset
 
@@ -29,9 +29,7 @@ git clone https://github.com/js-ts/Coreset
 ```
 
 
-Downloading the dataset
-
-Open Street Map, which is a public repository that aims to generate and distribute accessible geographic data for the whole world. Basically, it supplies detailed position information, including the longitude and latitude of the places around the world. 
+To download the dataset you should open Street Map, which is a public repository that aims to generate and distribute accessible geographic data for the whole world. Basically, it supplies detailed position information, including the longitude and latitude of the places around the world. 
 
  The dataset is a osm.pbf (compressed format for .osm file), the file can be downloaded from [Geofabrik Download Server](https://download.geofabrik.de/) 
 
@@ -43,7 +41,7 @@ wget https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf -o liecht
 ```
 
 
-Installing the Linux dependencies
+The following command is installing Linux dependencies:
 
 
 
@@ -55,7 +53,7 @@ sudo apt update \
 sudo apt-get -y install libpq-dev gdal-bin libgdal-dev libxml2-dev libxslt-dev
 ```
 
-Installing Python Dependencies
+The following command is installing Python dependencies:
 
 
 
@@ -64,9 +62,7 @@ Installing Python Dependencies
 pip3 install -r Coreset/requirements.txt
 ```
 
-Running coreset locally
-
-Convert from compressed pbf format to geojson format
+To run coreset locally, you need to convert from compressed pbf format to geojson format:
 
 
 ```bash
@@ -74,7 +70,7 @@ Convert from compressed pbf format to geojson format
 osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 ```
 
- Running the python script to generate the coreset
+The following command is to run the python script to generate the coreset:
 
 
 ```bash
@@ -82,9 +78,7 @@ osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson
 ```
 
-Building the docker container
-
-In this step you will create a  `Dockerfile` to create your Docker deployment. The `Dockerfile` is a text document that contains the commands used to assemble the image.
+Now, lets build the Docker container. Let's create a  `Dockerfile` to create your Docker deployment. The `Dockerfile` is a text document that contains the commands used to assemble the image.
 
 First, create the `Dockerfile`.
 
@@ -116,15 +110,15 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
 
-Please replace
+You need to replace
 
-&lt;hub-user> with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+* `<hub-user>` with your Docker hub username. If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created.
 
-&lt;repo-name> This is the name of the container, you can name it anything you want
+* `<repo-name>` with the name of the container, you can name it anything you want
 
-&lt;tag> This is not required but you can use the latest tag
+* `<tag>`: this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub
+After you have build the container, the next step is to test it locally and then push it Docker hub.
 
 Now you can push this repository to the registry designated by its name or tag.
 
@@ -139,8 +133,7 @@ After the repo image has been pushed to docker hub, we can now use the container
 
 ## Running on Bacalhau
 
-COMMAND
-
+The following command let you to run the example on Bacalhau:
 
 ```
 bacalhau docker run \
@@ -159,18 +152,13 @@ we mount it to the folder inside the container so it can be used by the script
 
 Image: custom docker Image (it has osmium, python and the requirements for the script installed )
 
-Command:
-
-Convert the osm.pbf dataset to geojson (the dataset is stored in the input volume folder)
-
+The following command converts the osm.pbf dataset to geojson (the dataset is stored in the input volume folder):
 
 ```
 osmium export input/.osm.pbf -o liechtenstein-latest.geojson
 ```
 
-
-Run the script ‘-f’ path of the output geojson file from the above step
-
+Let's run the script, we use flag `-f` to determine the path of the output geojson file from the step above.
 
 ```
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs
@@ -179,13 +167,14 @@ python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs
 
 We get the output in stdout
 
-Additional parameters: -k amount of initialized centers (default=5)
+Additional parameters: 
+* `-k`: amount of initialized centers (default=5)
 
--n: size of coreset (default=50)
+* `-n`: size of coreset (default=50)
 
--o the folder where you want to store you outputs
+* `-o`: the output folder
 
-Insalling bacalhau
+Let's instal Bacalhau:
 
 
 ```bash
@@ -212,7 +201,7 @@ jsace/coreset
 ```
 
 
-Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34b3e`). This is the ID of the job that was created. You can check the status of the job with the following command:
+Running the commands will output a UUID. This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
 
@@ -222,7 +211,7 @@ bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Completed`", that means the job is done, and we can get the results.
+Where it says `Completed`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
@@ -236,11 +225,7 @@ Since there is no error we can’t see any error instead we see the state of our
 we can download the results!
 we create a temporary directory to save our results
 
-To Download the results of your job, run 
-
----
-
-the following command:
+To Download the results of your job, run the following command:
 
 
 ```bash
@@ -249,8 +234,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should 
-see the following contents in results directory
+After the download has finishe, you should see the following contents in results directory
 
 
 ```bash
@@ -258,7 +242,7 @@ see the following contents in results directory
 ls results/
 ```
 
-### VIEWING THE OUTPUT CSV FILES
+To view the output csv file run:
 
 
 ```bash
