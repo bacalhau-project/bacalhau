@@ -15,7 +15,6 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -42,7 +41,7 @@ type Executor struct {
 	// the storage providers we can implement for a job
 	StorageProvider storage.StorageProvider
 
-	Client *dockerclient.Client
+	client *docker.Client
 }
 
 func NewExecutor(
@@ -59,7 +58,7 @@ func NewExecutor(
 	de := &Executor{
 		ID:              id,
 		StorageProvider: storageProvider,
-		Client:          dockerClient,
+		client:          dockerClient,
 	}
 
 	cm.RegisterCallback(func() error {
@@ -76,7 +75,7 @@ func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceTyp
 
 // IsInstalled checks if docker itself is installed.
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
-	return docker.IsInstalled(ctx, e.Client), nil
+	return e.client.IsInstalled(ctx), nil
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
@@ -182,7 +181,7 @@ func (e *Executor) RunShard(
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		if err := docker.PullImage(ctx, e.Client, shard.Job.Spec.Docker.Image); err != nil { //nolint:govet // ignore err shadowing
+		if err := e.client.PullImage(ctx, shard.Job.Spec.Docker.Image); err != nil { //nolint:govet // ignore err shadowing
 			err = errors.Wrapf(err, `Could not pull image %q - could be due to repo/image not existing,
  or registry needing authorization`, shard.Job.Spec.Docker.Image)
 			return executor.FailResult(err)
@@ -243,7 +242,7 @@ func (e *Executor) RunShard(
 		return executor.FailResult(err)
 	}
 
-	jobContainer, err := e.Client.ContainerCreate(
+	jobContainer, err := e.client.ContainerCreate(
 		ctx,
 		containerConfig,
 		hostConfig,
@@ -257,7 +256,7 @@ func (e *Executor) RunShard(
 
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
-	containerStartError := e.Client.ContainerStart(
+	containerStartError := e.client.ContainerStart(
 		ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
@@ -276,7 +275,7 @@ func (e *Executor) RunShard(
 	// we want to capture stdout, stderr and feed it back to the user
 	var containerError error
 	var containerExitStatusCode int64
-	statusCh, errCh := e.Client.ContainerWait(
+	statusCh, errCh := e.client.ContainerWait(
 		ctx,
 		jobContainer.ID,
 		container.WaitConditionNotRunning,
@@ -294,8 +293,8 @@ func (e *Executor) RunShard(
 	// Can't use the original context as it may have already been timed out
 	detachedContext, cancel := context.WithTimeout(detachedContext{ctx}, 3*time.Second)
 	defer cancel()
-	log.Ctx(detachedContext).Debug().Msg("Capturing stdout/stderr for container")
-	stdoutPipe, stderrPipe, logsErr := docker.FollowLogs(detachedContext, e.Client, jobContainer.ID)
+	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
+	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
 	return executor.WriteJobResults(
 		jobResultsDir,
@@ -310,11 +309,11 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	// Use a separate context in case the current one has already been canceled
 	separateCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	if config.ShouldKeepStack() || !docker.IsInstalled(separateCtx, e.Client) {
+	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
 		return
 	}
 
-	err := docker.RemoveObjectsWithLabel(separateCtx, e.Client, labelJobName, e.labelJobValue(shard))
+	err := e.client.RemoveObjectsWithLabel(separateCtx, labelJobName, e.labelJobValue(shard))
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
@@ -323,11 +322,11 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := context.Background()
-	if config.ShouldKeepStack() || !docker.IsInstalled(safeCtx, e.Client) {
+	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
 		return
 	}
 
-	err := docker.RemoveObjectsWithLabel(safeCtx, e.Client, labelExecutorName, e.ID)
+	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
 }
