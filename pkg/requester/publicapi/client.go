@@ -97,10 +97,32 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 	// to use the longer version.
 	jobID = jobInfo.State.JobID
 
-	req := cancelRequest{
+	// Create a payload before signing it with our local key (for verification on the
+	// server).
+	payload := model.JobCancelPayload{
 		ClientID: system.GetClientID(),
-		Reason:   reason,
 		JobID:    jobID,
+		Reason:   reason,
+	}
+
+	jsonData, err := model.JSONMarshalWithMax(payload)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	rawPayloadJSON := json.RawMessage(jsonData)
+	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
+
+	// sign the raw bytes representation of model.JobCreatePayload
+	signature, err := system.SignForClient(rawPayloadJSON)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
+
+	req := cancelRequest{
+		JobCancelPayload: &rawPayloadJSON,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
 	}
 
 	var res cancelResponse

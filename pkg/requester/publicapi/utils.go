@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -8,9 +9,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func verifyRequestSignature(req *submitRequest) error {
-	// Check that the signature is valid:
-	err := system.Verify(*req.JobCreatePayload, req.ClientSignature, req.ClientPublicKey)
+func verifyRequestSignature(msg json.RawMessage, clientSignature string, clientPubKey string) error {
+	err := system.Verify(msg, clientSignature, clientPubKey)
 	if err != nil {
 		return fmt.Errorf("client's signature is invalid: %w", err)
 	}

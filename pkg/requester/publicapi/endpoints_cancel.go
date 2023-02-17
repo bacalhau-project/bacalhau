@@ -5,16 +5,23 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 type cancelRequest struct {
-	JobID    string `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	Reason   string `json:"reason" example:"Canceled at user request"`
+	// The data needed to cancel a running job on the network
+	JobCancelPayload *json.RawMessage `json:"job_cancel_payload" validate:"required"`
+
+	// A base64-encoded signature of the data, signed by the client:
+	ClientSignature string `json:"signature" validate:"required"`
+
+	// The base64-encoded public key of the client:
+	ClientPublicKey string `json:"client_public_key" validate:"required"`
 }
 
 type CancelRequest = cancelRequest
@@ -40,16 +47,42 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	ctx := req.Context()
 	var cancelReq CancelRequest
 	if err := json.NewDecoder(req.Body).Decode(&cancelReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Ctx(ctx).Debug().Msgf("====> Decode cancelRequest error: %s", err)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
-	res.Header().Set(handlerwrapper.HTTPHeaderClientID, cancelReq.ClientID)
-	res.Header().Set(handlerwrapper.HTTPHeaderJobID, cancelReq.JobID)
-	ctx = system.AddJobIDToBaggage(ctx, cancelReq.JobID)
 
-	_, err := s.requester.CancelJob(ctx, requester.CancelJobRequest{
-		JobID:         cancelReq.JobID,
-		Reason:        cancelReq.Reason,
+	// first verify the signature on the raw bytes
+	if err := verifyRequestSignature(*cancelReq.JobCancelPayload, cancelReq.ClientSignature, cancelReq.ClientPublicKey); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> VerifyRequestSignature error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
+		return
+	}
+
+	// then decode the job create payload
+	var jobCancelPayload model.JobCancelPayload
+	if err := json.Unmarshal(*cancelReq.JobCancelPayload, &jobCancelPayload); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> Decode JobCancelPayload error: %s", err)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+		return
+	}
+
+	ctx = system.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
+
+	// Get the job, check it exists and check it belongs to the same client
+	job, err := s.jobStore.GetJob(ctx, jobCancelPayload.JobID)
+	if err != nil {
+		log.Ctx(ctx).Debug().Msgf("Missing job: %s", err)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+		return
+	}
+
+	_ = job.Metadata.ClientID
+
+	_, err = s.requester.CancelJob(ctx, requester.CancelJobRequest{
+		JobID:         jobCancelPayload.JobID,
+		Reason:        jobCancelPayload.Reason,
 		UserTriggered: true,
 	})
 	if err != nil {
@@ -57,14 +90,14 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	// Stuff
-
-	jobState, err := getJobStateFromJobID(ctx, s, cancelReq.JobID)
+	jobState, err := getJobStateFromJobID(ctx, s, jobCancelPayload.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCancelPayload.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, jobCancelPayload.JobID)
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(cancelResponse{
 		State: &jobState,

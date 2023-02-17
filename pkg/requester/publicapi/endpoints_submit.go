@@ -59,7 +59,7 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 	}
 
 	// first verify the signature on the raw bytes
-	if err := verifyRequestSignature(&submitReq); err != nil {
+	if err := verifyRequestSignature(*submitReq.JobCreatePayload, submitReq.ClientSignature, submitReq.ClientPublicKey); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyRequestSignature error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
