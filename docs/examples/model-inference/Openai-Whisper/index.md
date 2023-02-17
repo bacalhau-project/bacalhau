@@ -60,16 +60,18 @@ wget https://github.com/js-ts/hello/raw/main/hello.mp3
 
 
 
-We will create a script that accepts parameters like input file path, output file path, temperature etc. and set the default parameters, if provided a mp4 file convert it to a .wav file
-
-and also save the transcript in various formats, after that we load the large model
-
-then pass it the required parameters, this model is not only limited to english and transcription
-
-It supports a lots of other languages and also does translation, to 
+We will create a script that accepts parameters (input file path, output file path, temperature etc.) and set the default parameters. Also:
+* If input file is in mp4 format, than the script converts it to wav format. 
+* Save the transcript in various formats, 
+* We load the large model
+* Then pass it the required parameters.
+This model is not only limited to english and transcription, it supports other languages and also does translation, to the following languages:
 
 ![](https://i.imgur.com/ALFe4qJ.png)
 
+The graph above is sorted in [Word Error Rate (WER)](https://huggingface.co/spaces/evaluate-metric/wer) order.
+
+Next, lets create a openai-whisper script:
 
 
 ```python
@@ -219,8 +221,7 @@ else:
 
 
 
-
-Then run the script with the default parameters
+Let's run the script with the default parameters:
 
 
 
@@ -833,19 +834,13 @@ cat hello.srt
     Hello!
 
 
-After that we will write a DOCKERFILE to containernize this script and then run it on bacalhau
-
 # Building and Running on docker
 
 
 
-In this step you will create a  `Dockerfile` to create your Docker deployment. The `Dockerfile` is a text document that contains the commands used to assemble the image.
-
-First, create the `Dockerfile`.
+In this step we will create a `Dockerfile` to create your Docker deployment. 
 
 Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
-
- Dockerfile
 
 
 ```
@@ -871,53 +866,52 @@ RUN python openai-whisper.py
 ```
 
 
-We choose pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime as our base image
+We choose `pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime` as our base image
 
 And then install all the dependencies, after that we will add the test audio file and our openai-whisper script to the container, we will also run a test command to check whether our script works inside the container and if the container builds successfully
 
 
 
-# Running whisper on bacalhau
+```python
+
+```
+
+
+# Running whisper on Bacalhau
 
 We will transcribe the moon landing video, which can be found here
 
 https://www.nasa.gov/multimedia/hd/apollo11_hdpage.html
 
-Since the downloaded video is of .mov format we convert the video to .mp4 and then upload it to IPFS
-
- Uploading a sample dataset to IPFS
+Since the downloaded video is in mov format we convert the video to mp4 format, and then upload it to IPFS.
 
 To upload the video we will be using [https://nft.storage/docs/how-to/nftup/](https://nft.storage/docs/how-to/nftup/)
 
 ![](https://i.imgur.com/xwZT3Pi.png)
 
-After the dataset has been uploaded, copy the CID
+After the dataset has been uploaded, copy the CID:
 
-bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu 
+`bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu` 
 
-## **Running the container on bacalhau**
-
-We use the --gpu flag to denote the no of GPU we are going to use
+Let's run the container on Bacalhau. We use the `--gpu` flag to denote the no of GPU we are going to use:
 
 
 ```
 bacalhau docker run \
- jsacex/whisper \
- --gpu 1 \
+jsacex/whisper \
+--gpu 1 \
 -i bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu \
 -- python openai-whisper.py -p inputs/Apollo_11_moonwalk_montage_720p.mp4 -o outputs
 ```
--i bafybeielf6z4cd2nuey5arckect5bjmelhouvn5r
-here we use the -i flag to mount the CID
-which contains our file to the container
-at the path /inputs
 
-python openai-whisper.py -p inputs/Apollo_11_moonwalk_montage_720p.mp4 -o outputs
+In the command above we use:
 
--p we provide it the input path of our file and then in -o we provide the path where to store the outputs
+* `-i bafybeielf6z4cd2nuey5arckect5bjmelhouvn5r` flag to mount the CID which contains our file to the container at the path `/inputs`
+* `-p` we provide it the input path of our file
+* `-o` we provide the path where to store the outputs
 
 
-Insalling bacalhau
+Let's install Bacalhau:
 
 
 ```python
@@ -966,7 +960,7 @@ bacalhau list --id-filter ${JOB_ID} --wide
 
 
 
-Where it says "`Completed `", that means the job is done, and we can get the results.
+Where it says `Completed `, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
@@ -1098,15 +1092,7 @@ bacalhau describe ${JOB_ID}
         path: /outputs
 
 
-Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
-we can download the results!
-we create a temporary directory to save our results
-
-To Download the results of your job, run 
-
----
-
-the following command:
+To download the results of your job, run the following command:
 
 
 ```bash
@@ -1118,8 +1104,7 @@ bacalhau get $JOB_ID --output-dir results
     Fetching results of job '215dc3ca-e59a-4a06-9272-0be8304f1e1d'...2022/10/28 08:13:02 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
 
 
-After the download has finished you should 
-see the following contents in results directory
+After the download has finished we can see the following contents in results directory:
 
 
 ```bash
@@ -1134,7 +1119,7 @@ ls results/
     volumes
 
 
-## Viewing the Outputs
+We can view the outputs:
 
 
 ```bash
