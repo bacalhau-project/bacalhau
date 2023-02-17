@@ -17,10 +17,10 @@ Dreambooth makes stable-diffusion even more powered with the ability to generate
 
 In this example tutorial, we will be fine-tuning a pretrained stable diffusion using images of a human and generating images of him drinking coffee.
 
-## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
+## Prerequisite
 
 ### Quick Test
 The following command generates the following:

@@ -16,7 +16,8 @@ In this example tutorial, we use Bacalhau and Easy OCR to digitalize paper recor
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 ## Running Easy OCR Locally​
-Installing the required dependencies
+
+Install the required dependencies
 
 
 ```bash
@@ -24,7 +25,7 @@ Installing the required dependencies
 pip install easyocr
 ```
 
-Loading the example images
+Load the different example images
 
 
 ```bash
@@ -32,7 +33,7 @@ Loading the example images
 npx degit JaidedAI/EasyOCR/examples -f
 ```
 
-Listing the images
+List all the images
 
 
 ```bash
@@ -55,7 +56,7 @@ ls -l
     -rw-r--r-- 1 root root   34706 Jun 16 22:36 width_ths.png
 
 
-Displaying an image from the list
+To displaying an image from the list
 
 
 ```python
@@ -63,10 +64,9 @@ Displaying an image from the list
 import PIL
 from PIL import ImageDraw
 im = PIL.Image.open("thai.jpg")
-im
 ```
 
-Create a reader to do OCR.
+Next, we create a reader to do OCR to get cordinates which represent a rectangle containing text and the text itself 
 
 
 ```python
@@ -78,10 +78,6 @@ reader = easyocr.Reader(['th','en'])
 bounds = reader.readtext('thai.jpg')
 bounds
 ```
-
-We get cordinates which represent a rectangle containing text and the text itself
-
-After that we will build a DOCKERFILE to containernize this script and then run it on bacalhau
 
 ## Containerize your Script using Docker
 
@@ -140,19 +136,20 @@ jsacex/easyocr \
 
 ```
 
+Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS ou can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
+
 Structure of the command
 
-- **Mounting the model from IPFS**: -v bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth 
+-  `-v bafybeibvc......`: Mounting the model from IPFS
 
-- **Mounting the Input Image from a URL**: -u https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg
+- `-u https://raw.githubusercontent.com.........` Mounting the Input Image from a URL
+- `--gpu 1`: Specifying the no of GPUs
 
-- **Specifying the no of GPUs**: --gpu 1
-
-- **Name of the Docker image**: jsacex/easyocr
+- `jsacex/easyocr`: Name of the Docker image
 
 Breaking up the easyocr command
 
-`--  easyocr -l ch_sim  en -f ./inputs/chinese.jpg --detail=1 --gpu=True`
+**--  easyocr -l ch_sim  en -f ./inputs/chinese.jpg --detail=1 --gpu=True**
 
 - `-l`: the name of the model which is ch_sim
 
@@ -162,8 +159,6 @@ Breaking up the easyocr command
 
 - `--gpu=True`: we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false 
 
-
-Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS ou can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
