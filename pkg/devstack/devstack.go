@@ -430,6 +430,14 @@ export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
 	}
 
+	if config.DevstackShouldWriteEnvFile() {
+		err := os.WriteFile(config.DevstackEnvFile(), []byte(summaryShellVariablesString), 0600) //nolint:gomnd
+		if err != nil {
+			log.Err(err).Msgf("Failed to write file %s", config.DevstackEnvFile())
+			return "", err
+		}
+	}
+
 	if !stack.PublicIPFSMode {
 		summaryShellVariablesString += `
 

@@ -57,15 +57,28 @@ export BACALHAU_API_HOST=0.0.0.0
 export BACALHAU_API_PORT=39763
 
 By default devstack is not running on public IPFS network.
-If you wish to connect devstack to public IPFS network consider running new IPFS node daemon localy
-and then connecting it to bacalhau using command bellow or by adding --public-ipfs flag:
+If you wish to connect devstack to public IPFS network consider running new IPFS node daemon locally
+and then connecting it to bacalhau using the command below or by adding --public-ipfs flag:
 
 ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
 ```
 
-Message contains environment variables you need for a new window.
+The message above contains the environment variables you need for a new window. 
+You can paste these into a new terminal so that bacalhau will use your local devstack.
+
+Alternatively, to remove the need to copy and paste, you can set `DEVSTACK_ENV_FILE` 
+environment variable to the name of a .env file that devstack will write to,
+and bacalhau commands will read from, before launching the devstack e.g.: 
+
+```bash
+DEVSTACK_ENV_FILE=.devstack.env bacalhau devstack
+```
+
+When the devstack is shut down, the local env file (if configured) will be removed.
+It is suggested you use `.devstack.env` to avoid clashing with longer lived `.env` files.
 
 ## New Terminal Window
+
 * Open an additional terminal window to be used for submitting jobs.
 * Copy and paste environment variables from previous message into this window. EG:
 

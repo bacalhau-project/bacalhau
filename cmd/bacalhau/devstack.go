@@ -134,6 +134,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.runDevstack")
 	defer rootSpan.End()
 
+	if config.DevstackShouldWriteEnvFile() {
+		cm.RegisterCallback(cleanupDevstackDotEnv)
+	}
 	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
@@ -214,5 +217,12 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	<-ctx.Done() // block until killed
 
 	cmd.Println("Shutting down devstack")
+	return nil
+}
+
+func cleanupDevstackDotEnv() error {
+	if _, err := os.Stat(config.DevstackEnvFile()); err == nil {
+		return os.Remove(config.DevstackEnvFile())
+	}
 	return nil
 }

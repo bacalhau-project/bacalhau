@@ -15,6 +15,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func DevstackShouldWriteEnvFile() bool {
+	return DevstackEnvFile() != ""
+}
+
+func DevstackEnvFile() string {
+	return os.Getenv("DEVSTACK_ENV_FILE")
+}
+
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }
