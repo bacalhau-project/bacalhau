@@ -68,11 +68,7 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 
 func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	err := checkGitLFS()
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
+	return err == nil, err
 }
 
 func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
