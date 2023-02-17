@@ -1,4 +1,4 @@
-# Running Genomics on bacalhau
+# Running Genomics on Bacalhau
 
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/Genomics/BIDS/index.ipynb)
