@@ -172,28 +172,17 @@ display.Image("image0.png")
 
 
 
-### Further Examples
+The following presents additional parameters you can try:
 
-The following presents some examples that you can try.
+- `python main.py --p "cat with three eyes`  - to set prompt
 
-#### Prompt
-```
-python main.py --p "cat with three eyes"
-```
+- `python main.py --p "cat with three eyes` --n 100 - to set number of iterations to 100
 
-#### Number of iterations
-
-```
-python main.py --p "cat with three eyes" --n 100
-```
-#### Batch Size (No of images to generate)
-
-```
-python main.py --p "cat with three eyes" --b 2
-```
+-  `python stable-diffusion.py --p "cat with three eyes" --b 2` to set batch size to 2 (No of images to generate)
 
 
-## Setting up Docker Container
+
+## Running Stable Diffusion on Bacalhau with a GPU
 
 Now we have a working example, we can convert it into a format that allows us to perform inference in a distributed environment. First we will create a `Dockerfile` to containerize the inference code. 
 
@@ -247,9 +236,9 @@ Now you can push this repository to the registry designated by its name or tag.
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-## Running a Bacalhau Job to Generate an Image 
+### Running a Bacalhau Job to Generate an Image 
 
-To run a Bacalhau job to generate an image using Stable Diffusion on a GPU, we will use the `bacalhau docker run` command. 
+To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -264,7 +253,7 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 %%env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
+The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
 
 :::tip
 This will take about 5 minutes to complete and is mainly due to the cold-start GPU setup time. This is faster than the CPU version, but you might still want to grab some fruit or plan your lunchtime run.
@@ -286,7 +275,7 @@ bacalhau list --id-filter ${JOB_ID}
     [97;40m 10:36:05 [0m[97;40m f126c9a5 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmatWywziRqxTh... [0m
 
 
-When it says `Published` or `Completed`, that means the job is done, and we can get the results.
+When it says `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
@@ -295,8 +284,6 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 %%bash
 bacalhau describe ${JOB_ID}
 ```
-
-If you see that the job has completed and there are no errors, then you can download the results with the following command:
 
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
@@ -338,7 +325,7 @@ display.Image("results/combined_results/outputs/image0.png")
 
 
     
-![png](index_files/index_36_0.png)
+![png](index_files/index_35_0.png)
     
 
 
