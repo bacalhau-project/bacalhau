@@ -252,7 +252,7 @@ ls /outputs/
 
 ### Converting the notebook into a python script
 
-you can use tool like nbconvert to convert your python notebook into a script
+You can use tool like `nbconvert` to convert your python notebook into a script.
 
 After that you can create a gist of the training script at gist.github.com
 copy the raw link of the gist
@@ -339,19 +339,21 @@ tensorflow/tensorflow \
 -- python train.py
 ```
 
-Structure the of the command 
+Structure the of the command:
 
-Mounting the training script -u  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py
+* `-u  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
 
-Mounting the dataset -u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
+* `-u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz`: mount the dataset
 
-The docker image tensorflow/tensorflow \
+* `tensorflow/tensorflow`: specify the Docker image
+
+* `python train.py`: execute the script
 
 By default whatever URL you mount using the -u flag gets mounted at the path
-/inputs so we choose that as our input directory -w /inputs
+/inputs so we choose that as our input directory `-w /inputs`
 
 
-Executing the script python train.py
+ 
 
 
 ```bash
@@ -363,7 +365,7 @@ bacalhau list --id-filter ${JOB_ID}
     [97;40m 19:11:21 [0m[97;40m a90542f4 [0m[97;40m Docker tensorflow/te... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmSnDQHbTWTwd4... [0m
 
 
-Where it says "Completed", that means the job is done, and we can get the results.
+Where it says `Completed`, that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
