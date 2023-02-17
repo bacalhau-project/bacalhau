@@ -32,7 +32,7 @@ func TestPostgresSuite(t *testing.T) {
 		assert.NoError(t, client.Close())
 	})
 
-	require.NoError(t, docker.PullImage(ctx, client, "postgres"))
+	require.NoError(t, client.PullImage(ctx, "postgres"))
 	c, err := client.ContainerCreate(ctx, &container.Config{
 		Image:        "postgres",
 		ExposedPorts: map[nat.Port]struct{}{},
@@ -45,7 +45,7 @@ func TestPostgresSuite(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		assert.NoError(t, docker.RemoveContainer(context.Background(), client, c.ID))
+		assert.NoError(t, client.RemoveContainer(context.Background(), c.ID))
 	})
 
 	require.NoError(t, client.ContainerStart(ctx, c.ID, dockertypes.ContainerStartOptions{}))

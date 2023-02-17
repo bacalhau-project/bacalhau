@@ -4,21 +4,20 @@ import (
 	"context"
 	"os"
 	"runtime"
-	"testing"
 
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 )
 
-// If the test is running in an environment that cannot support cross-platform
-// Docker images, the test is skipped.
-func MustHaveDocker(t *testing.T) {
+// MustHaveDocker will skip the test if the test is running in an environment that cannot support cross-platform
+// Docker images.
+func MustHaveDocker(t testingT) {
 	MaybeNeedDocker(t, true)
 }
 
-// If the test is running in an environment that cannot support cross-platform
-// Docker images, and the passed boolean flag is true, the test is skipped.
-func MaybeNeedDocker(t *testing.T, needDocker bool) {
+// MaybeNeedDocker will skip the test if the test is running in an environment that cannot support cross-platform
+// Docker images, and the passed boolean flag is true.
+func MaybeNeedDocker(t testingT, needDocker bool) {
 	_, isCI := os.LookupEnv("CI")
 	if needDocker && isCI && (runtime.GOOS == "windows" || runtime.GOOS == "darwin") {
 		t.Skip("Cannot run this test in a", runtime.GOOS, "runtime on a CI environment because it requires Docker")
@@ -33,4 +32,11 @@ func MaybeNeedDocker(t *testing.T, needDocker bool) {
 			t.Fatalf("Docker is not running")
 		}
 	}
+}
+
+type testingT interface {
+	Errorf(format string, args ...interface{})
+	FailNow()
+	Fatalf(format string, args ...any)
+	Skip(args ...any)
 }

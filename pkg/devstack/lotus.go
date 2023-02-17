@@ -12,7 +12,6 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -25,7 +24,7 @@ import (
 const defaultImage = "ghcr.io/bacalhau-project/lotus-filecoin-image:v0.0.2"
 
 type LotusNode struct {
-	client    *dockerclient.Client
+	client    *docker.Client
 	image     string
 	container string
 
@@ -46,7 +45,7 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 		return nil, err
 	}
 
-	if err := docker.PullImage(ctx, dockerClient, image); err != nil {
+	if err := dockerClient.PullImage(ctx, image); err != nil {
 		closer.CloseWithLogOnError("docker", dockerClient)
 		return nil, err
 	}
@@ -202,7 +201,7 @@ func (l *LotusNode) Close() error {
 
 	defer closer.CloseWithLogOnError("Docker client", l.client)
 	if l.container != "" {
-		if err := docker.RemoveContainer(context.Background(), l.client, l.container); err != nil {
+		if err := l.client.RemoveContainer(context.Background(), l.container); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}
