@@ -129,7 +129,7 @@ func (s *Scheduler) CancelJob(ctx context.Context, request CancelJobRequest) (Ca
 		}
 	}
 	if len(shardIDs) == 0 {
-		return CancelJobResult{}, fmt.Errorf("job %s is already in a terminal state", request.JobID)
+		return CancelJobResult{}, NewErrJobAlreadyTerminal(request.JobID)
 	}
 
 	s.mu.Lock()

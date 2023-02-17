@@ -84,6 +84,19 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 		return &model.JobState{}, fmt.Errorf("jobID must be non-empty in a Cancel call")
 	}
 
+	// Check the existence of a job with the provided ID, whether it is a short or long ID.
+	jobInfo, found, err := apiClient.Get(ctx, jobID)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	if !found {
+		return &model.JobState{}, bacerrors.NewJobNotFound(jobID)
+	}
+
+	// We potentially used the short jobID which `Get` supports and so let's switch
+	// to use the longer version.
+	jobID = jobInfo.State.JobID
+
 	req := cancelRequest{
 		ClientID: system.GetClientID(),
 		Reason:   reason,
@@ -92,8 +105,7 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 
 	var res cancelResponse
 	if err := apiClient.Post(ctx, APIPrefix+"cancel", req, &res); err != nil {
-		e := err
-		return &model.JobState{}, e
+		return &model.JobState{}, err
 	}
 
 	return res.State, nil

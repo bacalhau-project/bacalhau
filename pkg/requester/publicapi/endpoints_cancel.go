@@ -25,7 +25,7 @@ type cancelResponse struct {
 
 // cancel godoc
 //
-//	@ID						pkg/requester/publicapi/states
+//	@ID						pkg/requester/publicapi/cancel
 //	@Summary				Cancels the job with the job-id specified in the body payload.
 //	@Description.markdown	endpoints_cancel
 //	@Tags					Job
