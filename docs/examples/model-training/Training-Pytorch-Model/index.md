@@ -16,7 +16,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Training the Model Locally
 
-Cloning the Pytorch examples
+To train our model locally, we will start by cloning the Pytorch examples [repo](https://github.com/pytorch/examples)
 
 
 ```bash
@@ -24,7 +24,7 @@ Cloning the Pytorch examples
 git clone https://github.com/pytorch/examples
 ```
 
-Next we run the command below to begin training of the mnist_rnn model. We added the --save-model flag to save the model
+Next, we run the command below to begin training of the _mnist_rnn_ model. We added the `--save-model` flag to save the model
 
 
 ```bash
@@ -32,69 +32,57 @@ Next we run the command below to begin training of the mnist_rnn model. We added
 python ./examples/mnist_rnn/main.py --save-model
 ```
 
+Next, we will download the MNIST dataset by creating a folder `data` where we will save the downloaded dataset
+
 
 ```bash
 %%bash
-mkdir ./data
+mkdir ../data
 ```
+
+If you inspect the code [here](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) you'll see the folder referenced in the code. Here is the a small section of the code that references the folder
 
 
 ```python
-from torchvision import datasets
-from torchvision.transforms import ToTensor
-
-training_data = datasets.MNIST(
-    root="./data",
-    train=True,
-    download=True,
-    transform=ToTensor()
-)
-
-test_data = datasets.MNIST(
-    root="./data",
-    train=False,
-    download=True,
-    transform=ToTensor()
-)
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../data', train=True, download=True,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.1307,), (0.3081,))
+                       ])),
+        batch_size=args.batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../data', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])),
+        batch_size=args.test_batch_size, shuffle=True, **kwargs)
 ```
 
 ## Uploading the dataset to IPFS
 
-Since Container running on bacalhau has no network we need to manually upload the dateset to IPFS
+Now that we have downloaded our dataset, the next step is to upload it to IPFS. This can be done using the IPFS CLI
 
-we can download the dataset using pytorch datasets in this case we need to download the MNIST dataset we create a folder data where we will download the dataset
 
-Using the IPFS cli
 ```
 ipfs add -r data
 ```
-
 
 Since the data Uploaded To IPFS using IPFS CLI isn’t pinned or will be garbage collected. The data needs to be **pinned**. Pinning is the mechanism that allows you to tell IPFS to always keep a given object somewhere, the default being your local node, though this can be different if you use a third-party remote pinning service.
 
 There a different pinning services available you can you any one of them
 
-### [Pinata](https://app.pinata.cloud/)
+### Pinata
 
-Click on the upload folder button
-
-![](https://i.imgur.com/crnkrwy.png)
-
-After the upload has finished copy the CID
+You can use [Pinata](https://app.pinata.cloud/) to save data on IPFS node. Once you have uploaded your data to Pinata, you'll finished copy the CID
 
 ### [NFT.Storage](https://nft.storage/) (Recommneded Option)
 
-[Upload files and directories with NFTUp](https://nft.storage/docs/how-to/nftup/) 
+[NFT.Storage](https://nft.storage/) is a recommneded option. To upload your dataset using NFTup just drag and drop your directory it will upload it to IPFS. See more information [here](https://nft.storage/docs/how-to/nftup/) 
 
-To upload your dataset using NFTup just drag and drop your directory it will upload it to IPFS
+You can view you uploaded dataset by clicking on the Gateway URL [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
 
-![](https://i.imgur.com/03NEonV.png)
-
-You can view you uploaded dataset by clicking on the Gateway URL
-
-[https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
-
-## Running a Bacalhau Job to Generate Easy OCR output
+## Running a Bacalhau Job to Generate a Trained Model
 
 After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
