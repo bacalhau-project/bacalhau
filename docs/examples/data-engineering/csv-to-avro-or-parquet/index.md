@@ -62,7 +62,7 @@ import pandas as pd
 pd.read_parquet('./movies.parquet').head()
 ```
 
-## Setting up your Docker Container 
+## Containerize your Script
 
 :::info
 You can skip this section entirely and directly go to running on bacalhau

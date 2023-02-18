@@ -59,28 +59,12 @@ If you inspect the code [here](https://github.com/pytorch/examples/blob/main/mni
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 ```
 
-## Uploading the dataset to IPFS
+## Uploading Dataset to IPFS
 
-Now that we have downloaded our dataset, the next step is to upload it to IPFS. This can be done using the IPFS CLI
+Now that we have downloaded our dataset, the next step is to upload it to IPFS. The simplest way to upload the data to IPFS is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or [NFT.Storage](https://nft.storage/). Once registered you can use their UI or API or SDKs to upload files.
 
+Once you have uploaded your data, you'll finished copy the CID. Here is the dataset we have uploaded [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
 
-```
-ipfs add -r data
-```
-
-Since the data Uploaded To IPFS using IPFS CLI isn’t pinned or will be garbage collected. The data needs to be **pinned**. Pinning is the mechanism that allows you to tell IPFS to always keep a given object somewhere, the default being your local node, though this can be different if you use a third-party remote pinning service.
-
-There a different pinning services available you can you any one of them
-
-### Pinata
-
-You can use [Pinata](https://app.pinata.cloud/) to save data on IPFS node. Once you have uploaded your data to Pinata, you'll finished copy the CID
-
-### [NFT.Storage](https://nft.storage/) (Recommneded Option)
-
-[NFT.Storage](https://nft.storage/) is a recommneded option. To upload your dataset using NFTup just drag and drop your directory it will upload it to IPFS. See more information [here](https://nft.storage/docs/how-to/nftup/) 
-
-You can view you uploaded dataset by clicking on the Gateway URL [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
 
 ## Running a Bacalhau Job to Generate a Trained Model
 

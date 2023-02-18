@@ -181,7 +181,7 @@ The following presents additional parameters you can try:
 -  `python stable-diffusion.py --p "cat with three eyes" --b 2` to set batch size to 2 (No of images to generate)
 
 
-## Containerize Stable Diffusion Script using Docker
+## Containerize Script using Docker
 
 Docker is the easiest way to run TensorFlow on a GPU since the host machine only requires the [NVIDIA® driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver). To containerize the inference code, we we will create a `Dockerfile`. The Dockerfile is a text document that contains the commands that specify how the image will be built.
 
@@ -272,10 +272,6 @@ Furthermore, the container itself is about 10GB, so it might take a while to dow
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 10:36:05 [0m[97;40m f126c9a5 [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmatWywziRqxTh... [0m
-
-
 When it says `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -295,11 +291,6 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job 'f126c9a5-0fd6-41c5-88e2-2d66a64a1317'...
-
-    2022/10/19 10:40:30 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 After the download has finished you should see the following contents in results directory
 
 ## Viewing your Job Output
@@ -309,7 +300,7 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 
 ```bash
 %%bash
-ls results/combined_results/outputs
+ls results/job-id/combined_results/outputs
 ```
 
 ### Display image
@@ -319,7 +310,7 @@ To display and view your image run the code below:
 
 ```python
 import IPython.display as display
-display.Image("results/combined_results/outputs/image0.png")
+display.Image("results/job-id/combined_results/outputs/image0.png")
 ```
 
 
