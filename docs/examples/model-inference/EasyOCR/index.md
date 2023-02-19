@@ -138,7 +138,7 @@ jsacex/easyocr \
 
 Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS ou can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
 
-Structure of the command
+### Structure of the command
 
 -  `-v bafybeibvc......`: Mounting the model from IPFS
 
@@ -201,5 +201,5 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 ```bash
 %%bash
 ls results/ # list the contents of the current directory 
-cat results/combined_results/stdout # list the contents of the current directory 
+cat results/combined_results/stdout # displays the contents of the current directory 
 ```

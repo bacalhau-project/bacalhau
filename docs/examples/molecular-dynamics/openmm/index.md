@@ -7,7 +7,7 @@ sidebar_position: 1
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/molecular-dynamics/openmm/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=molecular-dynamics/openmm/index.ipynb)
 
-In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. Physic based libraries like OpenMM are then useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
+In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. It is a physic based libraries that is useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
 
 
 ## Prerequisite
@@ -25,12 +25,7 @@ Protein data can be stored in a `.pdb` file, this is a human readable format. It
 See more information about PDB format [here](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html).
 
 ## Write the script
-Let us sneak peak into the dataset by printing the first 10 lines of the file.
-Among other things, we can see it contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
-
-:::tip
 To run the script above all we need is a Python environment with the [OpenMM library](http://docs.openmm.org/latest/userguide/application/01_getting_started.html) installed.
-:::
 
 
 ```python
@@ -120,6 +115,8 @@ with open(output_path, mode="w+") as file:
 print('Simulation complete, file written to disk at: {}'.format(output_path))
 ```
 
+We are printing the first 10 lines of the file. The output contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
+
 
 ```bash
 %%bash
@@ -136,14 +133,6 @@ head ./dataset/2dri-processed.pdb
     ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C  
     ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H  
     ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H  
-
-
-## Prepare & Run the task
-
-
-1. Upload the data to IPFS
-1. Create a docker image with the code and dependencies
-1. Run the docker image on the Bacalhau network using the IPFS data
 
 
 ## Upload the Data to IPFS
@@ -205,7 +194,7 @@ Next, upload the image to the registry. This can be done by using the Docker hub
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-### Run a Bacalhau Job
+## Run a Bacalhau Job
 
 Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
 
@@ -266,7 +255,3 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 %%bash
 ls -l results/combined_results/studout/
 ```
-
-    total 6656
-    -rw-r--r-- 1 phil staff 6578336 Oct 10 13:11 final_state.pdbx
-

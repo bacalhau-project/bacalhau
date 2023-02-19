@@ -53,7 +53,7 @@ Next, upload the image to the registry. This can be done by using the Docker hub
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-### Running a Bacalhau job to Generate Genomics Data
+## Running a Bacalhau job to Generate Genomics Data
 
 After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
@@ -110,12 +110,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
-
-    [90m11:03:34.094 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'cf10a68c-9fb7-41fa-991b-a736cbf6277f'...
-    2022/10/02 11:03:35 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-    [90m11:03:45.277 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m11:09:55.538 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/content/results'
-
 
 After the download has finished you should see the following contents in results directory
 
