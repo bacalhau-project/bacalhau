@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/pubsub"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -48,10 +49,15 @@ func (n *NodeInfoPublisher) publishBackgroundTask() {
 	for {
 		select {
 		case <-ticker.C:
-			err := n.Publish(ctx)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("failed to publish node info")
-			}
+			func() {
+				ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoPublisher.publishBackgroundTask") //nolint:govet
+				defer span.End()
+
+				err := n.Publish(ctx)
+				if err != nil {
+					log.Ctx(ctx).Err(err).Msg("failed to publish node info")
+				}
+			}()
 		case <-n.stopChannel:
 			log.Ctx(ctx).Info().Msg("stopped publishing node info")
 			ticker.Stop()

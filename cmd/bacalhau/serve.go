@@ -500,7 +500,7 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		return client, nil
 	}
 
-	client, err := ipfs.NewClientUsingRemoteHandler(OS.IPFSConnect)
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
 	}

@@ -33,7 +33,7 @@ type Client struct {
 
 // NewClientUsingRemoteHandler creates an API client for the given ipfs node API multiaddress.
 // NOTE: the API address is _not_ the same as the swarm address
-func NewClientUsingRemoteHandler(apiAddr string) (Client, error) {
+func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)
@@ -62,7 +62,7 @@ func NewClientUsingRemoteHandler(apiAddr string) (Client, error) {
 		addr: apiAddr,
 	}
 
-	id, err := client.ID(context.Background())
+	id, err := client.ID(ctx)
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
