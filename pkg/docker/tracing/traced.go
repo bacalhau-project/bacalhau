@@ -186,6 +186,7 @@ func (c TracedClient) span(ctx context.Context, name string) (context.Context, t
 		ctx,
 		system.GetTracer(),
 		fmt.Sprintf("docker.%s", name),
-		trace.WithAttributes(semconv.HostName(c.hostname)),
+		trace.WithAttributes(semconv.HostName(c.hostname), semconv.PeerService("docker")),
+		trace.WithSpanKind(trace.SpanKindClient),
 	)
 }

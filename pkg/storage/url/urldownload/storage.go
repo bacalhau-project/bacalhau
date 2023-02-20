@@ -22,6 +22,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -59,7 +61,7 @@ func newStorage(dir string) *StorageProvider {
 		Timeout: config.GetDownloadURLRequestTimeout(),
 		Transport: otelhttp.NewTransport(nil, otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-		})),
+		}), otelhttp.WithSpanOptions(trace.WithAttributes(semconv.PeerService("url-download")))),
 	}
 	client.RetryMax = config.GetDownloadURLRequestRetries()
 	client.RetryWaitMax = time.Second * 1
