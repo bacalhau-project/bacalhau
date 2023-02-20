@@ -101,6 +101,9 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/node.NewNode")
+	defer span.End()
+
 	identify.ActivationThresh = 2
 
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)

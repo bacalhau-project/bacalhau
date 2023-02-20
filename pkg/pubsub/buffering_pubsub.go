@@ -183,6 +183,8 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
 				func() {
+					ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
+					defer span.End()
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()
 					go p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
@@ -191,6 +193,7 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 			}
 		case <-p.antiStarvationStop:
 			// do nothing as Close() will flush the buffer
+			p.antiStarvationTicker.Stop()
 			return
 		}
 	}
