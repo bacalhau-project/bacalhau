@@ -23,7 +23,7 @@ func NewPostgresDatastore(
 	db, err := otelsql.Open(
 		"postgres",
 		connectionString,
-		otelsql.WithAttributes(semconv.DBSystemPostgreSQL, semconv.HostName(host)),
+		otelsql.WithAttributes(semconv.DBSystemPostgreSQL, semconv.HostName(host), semconv.PeerService("postgres")),
 	)
 	if err != nil {
 		return nil, err

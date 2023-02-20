@@ -8,13 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/pkg/errors"
-	"go.uber.org/multierr"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -23,8 +20,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/telemetry"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 )
 
 const NanoCPUCoefficient = 1000000000
@@ -291,7 +291,7 @@ func (e *Executor) RunShard(
 	}
 
 	// Can't use the original context as it may have already been timed out
-	detachedContext, cancel := context.WithTimeout(detachedContext{ctx}, 3*time.Second)
+	detachedContext, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 3*time.Second)
 	defer cancel()
 	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
@@ -306,8 +306,8 @@ func (e *Executor) RunShard(
 }
 
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
-	// Use a separate context in case the current one has already been canceled
-	separateCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	// Use a detached context in case the current one has already been canceled
+	separateCtx, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 1*time.Minute)
 	defer cancel()
 	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
 		return
@@ -319,9 +319,9 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 }
 
 func (e *Executor) cleanupAll(ctx context.Context) {
-	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
-	safeCtx := context.Background()
+	safeCtx := telemetry.NewDetachedContext(ctx)
 	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
 		return
 	}
@@ -354,25 +354,3 @@ func (e *Executor) labelJobValue(shard model.JobShard) string {
 
 // Compile-time interface check:
 var _ executor.Executor = (*Executor)(nil)
-
-var _ context.Context = detachedContext{}
-
-type detachedContext struct {
-	parent context.Context
-}
-
-func (d detachedContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Time{}, false
-}
-
-func (d detachedContext) Done() <-chan struct{} {
-	return nil
-}
-
-func (d detachedContext) Err() error {
-	return nil
-}
-
-func (d detachedContext) Value(key any) any {
-	return d.parent.Value(key)
-}

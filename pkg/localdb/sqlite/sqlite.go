@@ -12,7 +12,11 @@ import (
 )
 
 func NewSQLiteDatastore(filename string) (*shared.GenericSQLDatastore, error) {
-	db, err := otelsql.Open("sqlite", filename, otelsql.WithAttributes(semconv.DBSystemSqlite))
+	db, err := otelsql.Open(
+		"sqlite",
+		filename,
+		otelsql.WithAttributes(semconv.DBSystemSqlite, semconv.PeerService("sqlite")),
+	)
 	if err != nil {
 		return nil, err
 	}

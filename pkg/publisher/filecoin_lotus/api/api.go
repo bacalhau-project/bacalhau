@@ -251,7 +251,8 @@ func (a *api) span(ctx context.Context, method string) (context.Context, trace.S
 		ctx,
 		system.GetTracer(),
 		fmt.Sprintf("pkg/publisher/filecoin_lotus/api.api.%s", method),
-		trace.WithAttributes(semconv.HostName(a.hostname)),
+		trace.WithAttributes(semconv.HostName(a.hostname), semconv.PeerService("lotus")),
+		trace.WithSpanKind(trace.SpanKindClient),
 	)
 }
 
