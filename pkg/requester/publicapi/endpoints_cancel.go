@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/requester"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -78,7 +79,14 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	_ = job.Metadata.ClientID
+	if job.Metadata.ClientID != jobCancelPayload.ClientID {
+		log.Ctx(ctx).Debug().Msgf("Mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
+			job.Metadata.ClientID, jobCancelPayload.ClientID)
+
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("mismatched client id: %s", jobCancelPayload.ClientID))
+		http.Error(res, errorResponse, http.StatusForbidden)
+		return
+	}
 
 	_, err = s.requester.CancelJob(ctx, requester.CancelJobRequest{
 		JobID:         jobCancelPayload.JobID,
