@@ -3,7 +3,7 @@
     "Spec": {
         "Engine": "docker",
         "Verifier": "noop",
-        "Publisher": "ipfs",
+        "Publisher": "noop",
         "Docker": {
             "Image": "ubuntu:latest",
             "Entrypoint": [
@@ -19,16 +19,8 @@
             "Memory": "",
             "Disk": ""
         },
-        "Inputs": [
-        ],
-        "Outputs": [
-            {
-                "StorageSource": "ipfs",
-                "Name": "output_custom",
-                "CID": "",
-                "Path": "/output_custom"
-            }
-        ],
+        "Inputs": [],
+        "Outputs": [],
         "Annotations": []
     }
 }
