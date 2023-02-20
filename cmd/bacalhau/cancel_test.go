@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -23,6 +24,8 @@ type CancelSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestCancelSuite(t *testing.T) {
+	docker.MustHaveDocker(t)
+
 	suite.Run(t, new(CancelSuite))
 }
 
