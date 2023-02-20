@@ -70,10 +70,10 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCancelPayload.ClientID)
 
-	if err := verifyCancelRequest(&cancelReq, &jobCancelPayload); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> VerifyCancelRequest error: %s", err)
+	if err := verifySignedJobRequest(jobCancelPayload.ClientID, cancelReq.ClientSignature, cancelReq.ClientSignature); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> verifySignedJobRequest error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusBadRequest)
+		http.Error(res, errorResponse, http.StatusUnauthorized)
 		return
 	}
 
