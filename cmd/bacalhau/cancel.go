@@ -88,7 +88,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 		}
 	}
 
-	cmd.Printf("Job successfully canceled Job ID: %s\n", jobState.JobID)
+	cmd.Printf("Job successfully canceled. Job ID: %s\n", jobState.JobID)
 
 	return nil
 }

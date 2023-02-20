@@ -1,0 +1,34 @@
+{
+    "APIVersion": "v1beta1",
+    "Spec": {
+        "Engine": "docker",
+        "Verifier": "noop",
+        "Publisher": "ipfs",
+        "Docker": {
+            "Image": "ubuntu:latest",
+            "Entrypoint": [
+                "/bin/bash",
+                "-c",
+                "sleep 1000"
+            ],
+            "EnvironmentVariables": []
+        },
+        "Resources": {
+            "CPU": "",
+            "GPU": "",
+            "Memory": "",
+            "Disk": ""
+        },
+        "Inputs": [
+        ],
+        "Outputs": [
+            {
+                "StorageSource": "ipfs",
+                "Name": "output_custom",
+                "CID": "",
+                "Path": "/output_custom"
+            }
+        ],
+        "Annotations": []
+    }
+}
