@@ -18,6 +18,28 @@ func verifyRequestSignature(msg json.RawMessage, clientSignature string, clientP
 	return nil
 }
 
+func verifyCancelRequest(req *cancelRequest, payload *model.JobCancelPayload) error {
+	if payload.ClientID == "" {
+		return errors.New("job create payload must contain a client ID")
+	}
+	if req.ClientSignature == "" {
+		return errors.New("client's signature is required")
+	}
+	if req.ClientPublicKey == "" {
+		return errors.New("client's public key is required")
+	}
+
+	// Check that the client's public key matches the client ID:
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, payload.ClientID)
+	if err != nil {
+		return fmt.Errorf("error verifying client ID: %w", err)
+	}
+	if !ok {
+		return errors.New("client's public key does not match client ID")
+	}
+	return nil
+}
+
 func verifySubmitRequest(req *submitRequest, payload *model.JobCreatePayload) error {
 	if payload.ClientID == "" {
 		return errors.New("job create payload must contain a client ID")

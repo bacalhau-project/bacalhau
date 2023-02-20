@@ -68,6 +68,14 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCancelPayload.ClientID)
+
+	if err := verifyCancelRequest(&cancelReq, &jobCancelPayload); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> VerifyCancelRequest error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
+		return
+	}
 
 	ctx = system.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
 
@@ -79,6 +87,9 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	// We can compare the payload's client ID against the existing job's metadata
+	// as we have confirmed the public key that the request was signed with matches
+	// the client ID the request claims.
 	if job.Metadata.ClientID != jobCancelPayload.ClientID {
 		log.Ctx(ctx).Debug().Msgf("Mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
 			job.Metadata.ClientID, jobCancelPayload.ClientID)
