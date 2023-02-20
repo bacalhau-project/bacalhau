@@ -121,5 +121,5 @@ Each job creates 3 subfolders: the **combined_results**, **per_shard files**, an
 ```bash
 %%bash
 ls results/ # list the contents of the current directory 
-cat results/combined_results/outputs/output.tsv | head -n 10 # list the contents of the current directory 
+cat results/combined_results/outputs/output.tsv | head -n 10 # display the contents of the current directory 
 ```

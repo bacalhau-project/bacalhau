@@ -62,7 +62,7 @@ import pandas as pd
 pd.read_parquet('./movies.parquet').head()
 ```
 
-## Containerize your Script
+## Containerize Script with Docker
 
 :::info
 You can skip this section entirely and directly go to running on bacalhau
@@ -82,7 +82,12 @@ WORKDIR /Sparkov_Data_Generation/
 RUN pip3 install -r requirements.txt
 ```
 
-### Building your Docker Container
+:::info
+See more information on how to containerize your script/app[here](https://docs.docker.com/get-started/02_our_app/)
+:::
+
+
+### Build the container
 
 We will run `docker build` command to build the container;
 
@@ -98,22 +103,33 @@ Before running the command replace;
 
 - **tag** this is not required but you can use the latest tag
 
-
-Now you can push this repository to the registry designated by its name or tag.
-
+In our case:
 
 ```
- docker push <hub-user>/<repo-name>:<tag>
+docker build -t jsacex/csv-to-arrow-or-parquet
 ```
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau.
+### Push the container
 
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+
+```
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case:
+
+```
+docker push jsacex/csv-to-arrow-or-parquet
+```
 
 ## Running a Bacalhau Job
 
-Using the `bacalhau docker run` command you can either mount the script from a IPFS or from an URL.
+To submit a job, we are going to either mount the script from a IPFS or from an URL.
 
 ### Mounting the CSV File from IPFS
+
+With the command below, we are gmounting the CSV file for transactions from IPFS
 
 
 ```bash
@@ -122,23 +138,56 @@ bacalhau docker run \
 -i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W  \
 --wait \
 --id-only \
- jsacex/csv-to-arrow-or-parquet \
+jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/transactions.csv  ../outputs/transactions.parquet parquet
 ```
+
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+  
+* `-i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+
+* `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
+
+* `../inputs/movies.csv `: path to input dataset
+
+* `../outputs/movies.parquet parquet`: path to output
+
+* `python3 src/converter.py`: execute the script
 
 ### Mounting the CSV File from an URL
 
 ```
 bacalhau docker run \
--u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   jsacex/csv-to-arrow-or-parquet \
+-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
+jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
+
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+  
+* `-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
+
+* `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
+
+* `../inputs/movies.csv `: path to input dataset
+
+* `../outputs/movies.parquet parquet`: path to output
+
+* `python3 src/converter.py`: execute the script
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
-%env JOB_ID={job_id}
+%%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -150,10 +199,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 10:19:19 [0m[97;40m 94774248 [0m[97;40m Docker jsacex/csv-to... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmdHJaMmQHs9fE... [0m
-
 
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
@@ -174,14 +219,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
-
-    Fetching results of job '94774248-1d07-4121-aac8-451aca4a636e'...
-    Results for job '94774248-1d07-4121-aac8-451aca4a636e' have been written to...
-    results
-
-
-    2022/11/12 10:20:09 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
 
 ## Viewing your Job Output
 

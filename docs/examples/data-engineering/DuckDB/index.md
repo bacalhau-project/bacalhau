@@ -25,7 +25,7 @@ already there on IPFS or on the web.
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Building Docker container
+## Containerize Script using Docker
 
 :::info
 You can skip this entirely and directly go to running on Bacalhau.
@@ -56,12 +56,17 @@ WORKDIR /workspaces/datadex
 
 ```
 
-### Building the container
+:::info
+See more information on how to containerize your script/app[here](https://docs.docker.com/get-started/02_our_app/)
+:::
+
+
+### Build the container
 
 We will run `docker build` command to build the container;
 
 ```
-docker build -t <hub-user>/<repo-name>:<tag>
+docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
 Before running the command replace;
@@ -72,13 +77,24 @@ Before running the command replace;
 
 - **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
+In our case
 
+```bash
+docker build -t davidgasquez/datadex:v0.2.0
+```
 
-Now you can push this repository to the registry designated by its name or tag.
+### Push the container
+
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
 
 ```
- docker push <hub-user>/<repo-name>:<tag>
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case
+
+```bash
+docker push davidgasquez/datadex:v0.2.0
 ```
 
 ## Running a Bacalhau Job
@@ -89,11 +105,24 @@ To run the container on Bacalhau, we will use the `bacalhau docker run` command.
 ```bash
 %%bash --out job_id
 bacalhau docker run \
-     --workdir /inputs/ \
-     --wait \
-     --id-only \
-     davidgasquez/datadex:v0.2.0 -- /bin/bash -c 'duckdb -s "select 1"'
+--workdir /inputs/ \
+--wait \
+--id-only \
+davidgasquez/datadex:v0.2.0 -- /bin/bash -c 'duckdb -s "select 1"'
 ```
+
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+
+* `davidgasquez/datadex:v0.2.0 `: the name and the tag of the docker image we are using
+
+* `/inputs/`: path to input dataset
+
+* `'duckdb -s "select 1"'`: execute DuckDB
+
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
@@ -111,10 +140,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 15:50:12 [0m[97;40m eb72c5f5 [0m[97;40m Docker davidgasquez/... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmXcsqrT1SvYZH... [0m
-
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
@@ -135,14 +160,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
-
-    Fetching results of job 'eb72c5f5-599b-464e-af93-3ecb9247e9af'...
-    Results for job 'eb72c5f5-599b-464e-af93-3ecb9247e9af' have been written to...
-    results
-
-
-    2022/11/11 15:52:13 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
 
 ## Viewing your Job Output
 
@@ -178,6 +195,21 @@ bacalhau docker run \
 
 ```
 
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+  
+* `-i bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+
+* `davidgasquez/duckdb:latest`: the name and the tag of the docker image we are using
+
+* `/inputs`: path to input dataset
+
+* `duckdb -s`: exceute DuckDB
+
+
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 - **Job status**: You can check the status of the job using `bacalhau list`. 
@@ -187,10 +219,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 %%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
-
-    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                                                                            [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED                                            [0m
-    [97;40m 22-11-12-07:15:50 [0m[97;40m cced3685-2d50-4297-9739-6c692af8c60b [0m[97;40m Docker davidgasquez/duckdb:latest duckdb -s select count(*) from '0_yellow_taxi_trips.parquet' [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qmd3QYstyjEVkLrRRyEWVmhtEvmNMbjHcQ5a1o2zJy1JnJ [0m
-
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
@@ -209,14 +237,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
-
-    Fetching results of job 'cced3685-2d50-4297-9739-6c692af8c60b'...
-    Results for job 'cced3685-2d50-4297-9739-6c692af8c60b' have been written to...
-    results
-
-
-    2022/11/12 07:19:32 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
 
 ## Viewing your Job Output
 

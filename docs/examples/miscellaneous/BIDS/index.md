@@ -46,7 +46,7 @@ nipreps/mriqc:latest
 -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
 ```
 
-### Structure of the command:
+### Structure of the command
 
 Let's look closely at the command above:
 

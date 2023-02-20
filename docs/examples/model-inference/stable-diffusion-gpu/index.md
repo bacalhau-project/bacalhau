@@ -207,6 +207,11 @@ RUN python main.py --n 1
 The dockerfile leverages the latest official tensorflow GPU image and then installs other dependencies like `git`, `CUDA` packages and other image related necessities. See [the original repository](https://github.com/fchollet/stable-diffusion-tensorflow/blob/master/requirements.txt) for the expected requirements.
 
 
+:::info
+See more information on how to containerize your script/app[here](https://docs.docker.com/get-started/02_our_app/)
+:::
+
+
 ### Build the container
 
 We will run `docker build` command to build the container;
@@ -237,7 +242,13 @@ Next, upload the image to the registry. This can be done by using the Docker hub
 docker push <hub-user>/<repo-name>:<tag>
 ```
 
-### Running a Bacalhau Job to Generate an Image 
+In our case
+
+```bash
+docker push ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 .
+```
+
+## Running a Bacalhau Job
 
 To submit a job, run the following Bacalhau command:
 
@@ -247,12 +258,20 @@ To submit a job, run the following Bacalhau command:
 bacalhau docker run --id-only --gpu 1 ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 -- python main.py --o ./outputs --p "meme about tensorflow"
 ```
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+### Structure of the command
 
+Let's look closely at the command above:
 
-```python
-%%env JOB_ID={job_id}
-```
+* `bacalhau docker run`: call to bacalhau 
+
+* `--gpu 1`: No of GPUs
+
+* `ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1`: the name and the tag of the docker image we are using
+
+* `../outputs`: path to output
+
+* `python main.py`: exceute script
+
 
 The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
 
@@ -261,6 +280,13 @@ This will take about 5 minutes to complete and is mainly due to the cold-start G
 
 Furthermore, the container itself is about 10GB, so it might take a while to download on the node if it isn't cached.
 :::
+
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+
+```python
+%%env JOB_ID={job_id}
+```
 
 ## Checking the State of your Jobs
 

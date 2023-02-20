@@ -33,20 +33,26 @@ python \
 ```
 
 
-Before running the command above, replace the following:
+### Structure of the Command
 
-- `-u  https://noaa-goes16.s3.amazonaws.com/`: we replace the placeholders with `noaa-goes16` which is the name of the bucket we want to extract URLs from
+Let's look closely at the command above:
 
--  `-v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \`: Mounting the scrapper script, this script extracts the links from the XML document tree
+- `bacalhau docker run`: call to bacalhau 
 
- - `-- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'`: Executing the scrapper script
+- `-u  https://noaa-goes16.s3.amazonaws.com/`: the name of the bucket we want to extract URLs from. Repeplace the placeholders with `noaa-goes16` which your own name.
+
+-  `-v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \`: Mounting the scrapper script CID, this script extracts the links from the XML document tree
+
+- `-- /bin/bash -c 'python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs'`: Executing the scrapper script path to input dataset
+
 
 The command above extracts the path of the file in the bucket, we added the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/`  then provided the path where the XML document tree of the URL is mounted which is `/inputs`
+
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 :::tip
-There are certain limitations to this step, as this only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.
+This only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.
 :::
 
 ## Checking the State of your Jobs
@@ -58,10 +64,6 @@ There are certain limitations to this step, as this only works with datasets tha
 %%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
-
-    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                                                                          [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED                                            [0m
-    [97;40m 22-11-13-13:52:12 [0m[97;40m 12e1b4d9-00b0-4824-bbd1-6d75083dcae0 [0m[97;40m Docker python /bin/bash -c python3 extract.py https://noaa-goes16.s3.amazonaws.com/  /inputs [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmaxiCCJ5vuwEfA2x7VVvMUXHxHN6iYNPhmvFhXSyUyNYx [0m
-
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
@@ -81,14 +83,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir -p results # Temporary directory to store the results
 bacalhau get $JOB_ID --output-dir results # Download the results
 ```
-
-    Fetching results of job '12e1b4d9-00b0-4824-bbd1-6d75083dcae0'...
-    Results for job '12e1b4d9-00b0-4824-bbd1-6d75083dcae0' have been written to...
-    results
-
-
-    2022/11/13 13:53:09 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
 
 After the download has finished you should see the following contents in results directory.
 
