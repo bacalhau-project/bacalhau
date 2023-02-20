@@ -42,6 +42,8 @@ type cancelResponse struct {
 //	@Param					cancelRequest	body		cancelRequest	true	" "
 //	@Success				200				{object}	cancelResponse
 //	@Failure				400				{object}	string
+//	@Failure				401				{object}	string
+//	@Failure				403				{object}	string
 //	@Failure				500				{object}	string
 //	@Router					/requester/cancel [post]
 func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) {
