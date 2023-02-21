@@ -37,7 +37,7 @@ func NewServeOptions() *ServeOptions {
 			Host:        getDefaultServeOptionString("HOST", "0.0.0.0"),
 			Port:        getDefaultServeOptionInt("PORT", 80),         //nolint:gomnd
 			SwarmPort:   getDefaultServeOptionInt("SWARM_PORT", 1236), //nolint:gomnd
-			PeerConnect: getDefaultServeOptionString("PEER_CONNECT", "none"),
+			PeerConnect: getDefaultServeOptionString("PEER_CONNECT", ""),
 			JWTSecret:   getDefaultServeOptionString("JWT_SECRET", ""),
 		},
 		ModelOptions: newModelOptions(),

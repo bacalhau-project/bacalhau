@@ -11,6 +11,7 @@ export BACALHAU_DASHBOARD_POSTGRES_DATABASE=postgres
 export BACALHAU_DASHBOARD_POSTGRES_USER=postgres
 export BACALHAU_DASHBOARD_POSTGRES_PASSWORD=postgres
 export BACALHAU_DASHBOARD_JWT_SECRET=apples
+export LOG_LEVEL=DEBUG
 
 function start() {
   if tmux has-session -t "$SESSION" 2>/dev/null; then
