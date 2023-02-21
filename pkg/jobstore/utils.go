@@ -34,29 +34,35 @@ func CompleteShard(ctx context.Context, db Store, shardID model.ShardID) error {
 	}
 
 	// update job state
-	return updateJobState(ctx, db, shardID)
+	return updateJobState(ctx, db, shardID, "")
 }
 
-// FailShard a helper function to fail a shard, update the job state if all other shards are failed, and fail all executions.
-func FailShard(ctx context.Context, db Store, shardID model.ShardID, failure error) ([]model.ExecutionState, error) {
+// StopShard a helper function to fail a shard, update the job state if all other shards are failed, and fail all executions.
+func StopShard(ctx context.Context, db Store, shardID model.ShardID, reason string, userRequested bool) ([]model.ExecutionState, error) {
 	// update shard state
+	newShardState := model.ShardStateError
+	unexpectedShardState := model.ShardStateCancelled
+	if userRequested {
+		newShardState = model.ShardStateCancelled
+		unexpectedShardState = model.ShardStateError
+	}
 	err := db.UpdateShardState(ctx, UpdateShardStateRequest{
 		ShardID: shardID,
 		Condition: UpdateShardCondition{
 			UnexpectedStates: []model.ShardStateType{
 				model.ShardStateCompleted,
-				model.ShardStateCancelled,
+				unexpectedShardState,
 			},
 		},
-		NewState: model.ShardStateError,
-		Comment:  failure.Error(),
+		NewState: newShardState,
+		Comment:  reason,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// update job state
-	err = updateJobState(ctx, db, shardID)
+	err = updateJobState(ctx, db, shardID, reason)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +85,8 @@ func FailShard(ctx context.Context, db Store, shardID model.ShardID, failure err
 					},
 				},
 				NewValues: model.ExecutionState{
-					State: model.ExecutionStateCanceled,
+					State:  model.ExecutionStateCanceled,
+					Status: reason,
 				},
 			})
 			if err != nil {
@@ -93,30 +100,39 @@ func FailShard(ctx context.Context, db Store, shardID model.ShardID, failure err
 	return cancelledExecutions, nil
 }
 
-func updateJobState(ctx context.Context, db Store, shardID model.ShardID) error {
+func updateJobState(ctx context.Context, db Store, shardID model.ShardID, reason string) error {
 	// update job state
 	jobState, err := db.GetJobState(ctx, shardID.JobID)
 	if err != nil {
 		return err
 	}
+	cancelCount := 0
 	errorCount := 0
 	completedCount := 0
 	totalCount := len(jobState.Shards)
 	for _, shard := range jobState.Shards {
+		if !shard.State.IsTerminal() {
+			// if some shards are still running, don't update the job state
+			return nil
+		}
 		if shard.State == model.ShardStateError {
 			errorCount++
 		} else if shard.State == model.ShardStateCompleted {
 			completedCount++
+		} else if shard.State == model.ShardStateCancelled {
+			cancelCount++
 		}
 	}
-	// if some shards are still running, don't update the job state
-	if errorCount+completedCount < totalCount {
-		return nil
-	}
+
 	newJobState := model.JobStateCompleted
-	if errorCount >= totalCount {
+	if cancelCount > 0 {
+		// if a single shard was canceled by the user, then the job is canceled
+		newJobState = model.JobStateCancelled
+	} else if errorCount >= totalCount {
+		// if all shards failed, then the job failed
 		newJobState = model.JobStateError
 	} else if errorCount > 0 {
+		// if some shards failed, then the job is partially completed
 		newJobState = model.JobStatePartialError
 	}
 
@@ -125,6 +141,7 @@ func updateJobState(ctx context.Context, db Store, shardID model.ShardID) error 
 			JobID:     shardID.JobID,
 			Condition: UpdateJobCondition{ExpectedState: jobState.State},
 			NewState:  newJobState,
+			Comment:   reason,
 		})
 		return err
 	}

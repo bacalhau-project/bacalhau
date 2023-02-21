@@ -203,15 +203,6 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (e
 		cancel()
 	}
 
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID: execution.ID,
-		NewState:    store.ExecutionStateCancelled,
-		Comment:     "Canceled after execution accepted",
-	})
-	if err != nil {
-		return
-	}
-
 	e.callback.OnCancelComplete(ctx, CancelResult{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{

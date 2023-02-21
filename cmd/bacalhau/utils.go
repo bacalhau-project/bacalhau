@@ -62,6 +62,9 @@ var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
 	model.ExecutionStateResultRejected: {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
 	model.ExecutionStateResultAccepted: {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
 	model.ExecutionStateCompleted:      {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
+
+	// Job is canceled by the user
+	model.ExecutionStateCanceled: {Message: "Job canceled by the user.", IsTerminal: true, PrintDownload: false, IsError: true},
 }
 
 // Struct for tracking what's been printedEvents

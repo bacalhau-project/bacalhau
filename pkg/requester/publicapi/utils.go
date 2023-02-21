@@ -1,16 +1,15 @@
 package publicapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func verifyRequestSignature(req *submitRequest) error {
-	// Check that the signature is valid:
-	err := system.Verify(*req.JobCreatePayload, req.ClientSignature, req.ClientPublicKey)
+func verifyRequestSignature(msg json.RawMessage, clientSignature string, clientPubKey string) error {
+	err := system.Verify(msg, clientSignature, clientPubKey)
 	if err != nil {
 		return fmt.Errorf("client's signature is invalid: %w", err)
 	}
@@ -18,19 +17,19 @@ func verifyRequestSignature(req *submitRequest) error {
 	return nil
 }
 
-func verifySubmitRequest(req *submitRequest, payload *model.JobCreatePayload) error {
-	if payload.ClientID == "" {
+func verifySignedJobRequest(reqClientID string, clientSig string, clientPubKey string) error {
+	if reqClientID == "" {
 		return errors.New("job create payload must contain a client ID")
 	}
-	if req.ClientSignature == "" {
+	if clientSig == "" {
 		return errors.New("client's signature is required")
 	}
-	if req.ClientPublicKey == "" {
+	if clientPubKey == "" {
 		return errors.New("client's public key is required")
 	}
 
 	// Check that the client's public key matches the client ID:
-	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, payload.ClientID)
+	ok, err := system.PublicKeyMatchesID(clientPubKey, reqClientID)
 	if err != nil {
 		return fmt.Errorf("error verifying client ID: %w", err)
 	}
