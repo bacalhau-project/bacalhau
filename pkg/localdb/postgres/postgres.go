@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/XSAM/otelsql"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/rs/zerolog/log"
 )
 

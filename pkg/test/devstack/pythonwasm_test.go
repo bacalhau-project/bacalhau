@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
-	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	cmd "github.com/bacalhau-project/bacalhau/cmd/bacalhau"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	nodeCount := 1
@@ -157,7 +157,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	require.Equal(s.T(), fileContents, strings.TrimSpace(string(outputData)))
 }
 func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
@@ -196,7 +196,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 // TODO: test that > 10MB context is rejected
 
 func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()

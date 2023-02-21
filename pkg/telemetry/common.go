@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
-	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"

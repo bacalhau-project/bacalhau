@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1alpha1"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )

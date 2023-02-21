@@ -1,4 +1,4 @@
-module github.com/filecoin-project/bacalhau
+module github.com/bacalhau-project/bacalhau
 
 go 1.19
 

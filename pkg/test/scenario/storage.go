@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"github.com/vincent-petithory/dataurl"
 )

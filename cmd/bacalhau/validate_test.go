@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

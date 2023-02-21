@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-jwt/jwt"
 )
 

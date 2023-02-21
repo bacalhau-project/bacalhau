@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 // A ProviderKey will usually be some lookup value implemented as an enum member

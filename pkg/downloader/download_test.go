@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	ipfs2 "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

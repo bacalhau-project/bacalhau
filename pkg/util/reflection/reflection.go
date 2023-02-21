@@ -8,7 +8,7 @@ import (
 
 func StructName(a any) string {
 	delegateType := reflect.Indirect(reflect.ValueOf(a)).Type()
-	path := strings.TrimPrefix(delegateType.PkgPath(), "github.com/filecoin-project/bacalhau/")
+	path := strings.TrimPrefix(delegateType.PkgPath(), "github.com/bacalhau-project/bacalhau/")
 	if path == "" {
 		return delegateType.Name()
 	}

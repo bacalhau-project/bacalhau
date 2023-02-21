@@ -3,7 +3,7 @@ package scenarios
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/selection"
 )

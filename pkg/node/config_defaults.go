@@ -3,8 +3,8 @@ package node
 import (
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 var DefaultComputeConfig = ComputeConfigParams{

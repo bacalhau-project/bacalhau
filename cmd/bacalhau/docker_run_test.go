@@ -15,22 +15,22 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/google/uuid"
 
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	devstack_tests "github.com/bacalhau-project/bacalhau/pkg/test/devstack"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -292,8 +292,8 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		testURLs := []struct {
 			inputURL InputURL
 		}{
-			{inputURL: InputURL{url: "https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md", pathInContainer: "/inputs", filename: "README.md", flag: "-u"}},
-			{inputURL: InputURL{url: "https://raw.githubusercontent.com/filecoin-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-u"}},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/README.md", pathInContainer: "/inputs", filename: "README.md", flag: "-u"}},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-u"}},
 		}
 
 		for _, turls := range testURLs {

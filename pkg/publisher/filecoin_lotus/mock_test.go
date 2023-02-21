@@ -7,7 +7,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	api "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	api "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
 	address "github.com/filecoin-project/go-address"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"

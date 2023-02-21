@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type TimeoutStrategyParams struct {

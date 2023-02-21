@@ -8,7 +8,7 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 
 > _Note: You only need to create a CLI release if you want to release new Bacalhau functionality. You don't need to cut a release if you are only updating the infrastructure, like altering VM sizes, for example._
 
-1. [Draft a new release](https://github.com/filecoin-project/bacalhau/releases/new)
+1. [Draft a new release](https://github.com/bacalhau-project/bacalhau/releases/new)
 2. Create a new tag using semantic versioning, prefixed with a v. E.g. `v0.1.37`
 3. Make the title of the release the same as the tag
 4. Click on the `Generate Release Notes` button to auto-populate the notes. Add anything else.

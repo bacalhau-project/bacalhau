@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 )

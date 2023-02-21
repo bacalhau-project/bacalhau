@@ -3,7 +3,7 @@ package capacity
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Tracker keeps track of the current resource usage of the compute node.

@@ -39,7 +39,7 @@
         "region": "eu-west-1",
         "suffix": "",
         "bacalhauSourceConnection": {
-          "owner": "filecoin-project",
+          "owner": "bacalhau-project",
           "repo": "bacalhau",
           "branch": "main",
           "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/3e52f80b-f440-4195-8a4b-5cda27e8d46f"

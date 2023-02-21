@@ -3,8 +3,8 @@ package publicapi
 import (
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 

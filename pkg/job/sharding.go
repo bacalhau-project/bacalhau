@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	doublestar "github.com/bmatcuk/doublestar/v4"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 func prependSlash(st string) string {

@@ -17,7 +17,7 @@ Method | HTTP request | Description
 
 Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
 
-Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job. 
+Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.
 
 ### Example
 ```python
@@ -43,7 +43,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **events_request** | [**EventsRequest**](EventsRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. | 
+ **events_request** | [**EventsRequest**](EventsRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. |
 
 ### Return type
 
@@ -91,7 +91,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **list_request** | [**ListRequest**](ListRequest.md)| Set &#x60;return_all&#x60; to &#x60;true&#x60; to return all jobs on the network (may degrade performance, use with care!). | 
+ **list_request** | [**ListRequest**](ListRequest.md)| Set &#x60;return_all&#x60; to &#x60;true&#x60; to return all jobs on the network (may degrade performance, use with care!). |
 
 ### Return type
 
@@ -125,7 +125,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-local_events_request = bacalhau_apiclient.LocalEventsRequest() # LocalEventsRequest |  
+local_events_request = bacalhau_apiclient.LocalEventsRequest() # LocalEventsRequest |
 
 try:
     # Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
@@ -139,7 +139,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **local_events_request** | [**LocalEventsRequest**](LocalEventsRequest.md)|   | 
+ **local_events_request** | [**LocalEventsRequest**](LocalEventsRequest.md)|   |
 
 ### Return type
 
@@ -173,7 +173,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-state_request = bacalhau_apiclient.StateRequest() # StateRequest |  
+state_request = bacalhau_apiclient.StateRequest() # StateRequest |
 
 try:
     # Returns the results of the job-id specified in the body payload.
@@ -187,7 +187,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **state_request** | [**StateRequest**](StateRequest.md)|   | 
+ **state_request** | [**StateRequest**](StateRequest.md)|   |
 
 ### Return type
 
@@ -221,7 +221,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-state_request = bacalhau_apiclient.StateRequest() # StateRequest |  
+state_request = bacalhau_apiclient.StateRequest() # StateRequest |
 
 try:
     # Returns the state of the job-id specified in the body payload.
@@ -235,7 +235,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **state_request** | [**StateRequest**](StateRequest.md)|   | 
+ **state_request** | [**StateRequest**](StateRequest.md)|   |
 
 ### Return type
 
@@ -257,7 +257,7 @@ No authorization required
 
 Submits a new job to the network.
 
-Description:  * `client_public_key`: The base64-encoded public key of the client. * `signature`: A base64-encoded signature of the `data` attribute, signed by the client. * `job_create_payload`:     * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.  * `APIVersion`: e.g. `\"V1beta1\"`.     * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/job.go 
+Description:  * `client_public_key`: The base64-encoded public key of the client. * `signature`: A base64-encoded signature of the `data` attribute, signed by the client. * `job_create_payload`:     * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.  * `APIVersion`: e.g. `\"V1beta1\"`.     * `Spec`: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/job.go
 
 ### Example
 ```python
@@ -269,7 +269,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-submit_request = bacalhau_apiclient.SubmitRequest() # SubmitRequest |  
+submit_request = bacalhau_apiclient.SubmitRequest() # SubmitRequest |
 
 try:
     # Submits a new job to the network.
@@ -283,7 +283,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **submit_request** | [**SubmitRequest**](SubmitRequest.md)|   | 
+ **submit_request** | [**SubmitRequest**](SubmitRequest.md)|   |
 
 ### Return type
 
@@ -299,4 +299,3 @@ No authorization required
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

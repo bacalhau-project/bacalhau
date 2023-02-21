@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // StorageProvider returns a storage that can be used by the job to store data.

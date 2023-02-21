@@ -7,8 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

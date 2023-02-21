@@ -3,7 +3,7 @@ package jobtransform
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func NewRequesterInfo(requesterNodeID string, requesterPubKey model.PublicKey) Transformer {

@@ -32,10 +32,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/vincent-petithory/dataurl"
 	"go.uber.org/multierr"
 )

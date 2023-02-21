@@ -3,7 +3,7 @@ package requester
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 )
 
 type startJobHandler func(context.Context, StartJobRequest) error

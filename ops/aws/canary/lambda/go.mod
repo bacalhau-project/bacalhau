@@ -1,11 +1,11 @@
-module github.com/filecoin-project/bacalhau/ops/aws/canary
+module github.com/bacalhau-project/bacalhau/ops/aws/canary
 
 go 1.19
 
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/filecoin-project/bacalhau v0.3.22
+	github.com/bacalhau-project/bacalhau v0.3.23-0.20230223152157-7294b8c2a157
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5

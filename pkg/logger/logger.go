@@ -16,7 +16,7 @@ import (
 
 	"github.com/rs/zerolog/pkgerrors"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
