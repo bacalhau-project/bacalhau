@@ -74,6 +74,65 @@ func (apiClient *RequesterAPIClient) List(
 	return res.Jobs, nil
 }
 
+// Cancel will request that the job with the specified ID is stopped. The JobInfo will be returned if the cancel
+// was submitted. If no match is found, Cancel returns false with a nil error.
+func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, reason string) (*model.JobState, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Cancel")
+	defer span.End()
+
+	if jobID == "" {
+		return &model.JobState{}, fmt.Errorf("jobID must be non-empty in a Cancel call")
+	}
+
+	// Check the existence of a job with the provided ID, whether it is a short or long ID.
+	jobInfo, found, err := apiClient.Get(ctx, jobID)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	if !found {
+		return &model.JobState{}, bacerrors.NewJobNotFound(jobID)
+	}
+
+	// We potentially used the short jobID which `Get` supports and so let's switch
+	// to use the longer version.
+	jobID = jobInfo.State.JobID
+
+	// Create a payload before signing it with our local key (for verification on the
+	// server).
+	payload := model.JobCancelPayload{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+		Reason:   reason,
+	}
+
+	jsonData, err := model.JSONMarshalWithMax(payload)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	rawPayloadJSON := json.RawMessage(jsonData)
+	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
+
+	// sign the raw bytes representation of model.JobCreatePayload
+	signature, err := system.SignForClient(rawPayloadJSON)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
+
+	req := cancelRequest{
+		JobCancelPayload: &rawPayloadJSON,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
+	}
+
+	var res cancelResponse
+	if err := apiClient.Post(ctx, APIPrefix+"cancel", req, &res); err != nil {
+		return &model.JobState{}, err
+	}
+
+	return res.State, nil
+}
+
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobWithInfo, bool, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
@@ -118,7 +177,7 @@ func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID stri
 		if err == nil {
 			return res.State, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read state error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read state error")
 			outerErr = err
 		}
 	}
@@ -163,7 +222,7 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 		if err == nil {
 			return res.Events, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read events error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read events error")
 			outerErr = err
 			if strings.Contains(err.Error(), "context canceled") {
 				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())

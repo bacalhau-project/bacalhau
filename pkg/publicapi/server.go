@@ -172,7 +172,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		}
 	}
 
-	log.Debug().Msgf(
+	log.Ctx(ctx).Debug().Msgf(
 		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
 
 	// Cleanup resources when system is done:

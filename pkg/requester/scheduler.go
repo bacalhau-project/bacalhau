@@ -89,7 +89,7 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 		}
 	}
 	rankedNodes = filteredNodes
-	log.Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
+	log.Ctx(ctx).Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
 
 	minBids := system.Max(req.Job.Spec.Deal.MinBids, req.Job.Spec.Deal.Concurrency)
 	if len(rankedNodes) < minBids {
@@ -129,13 +129,13 @@ func (s *Scheduler) CancelJob(ctx context.Context, request CancelJobRequest) (Ca
 		}
 	}
 	if len(shardIDs) == 0 {
-		return CancelJobResult{}, fmt.Errorf("job %s is already in a terminal state", request.JobID)
+		return CancelJobResult{}, NewErrJobAlreadyTerminal(request.JobID)
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, shardID := range shardIDs {
-		s.handleFailure(ctx, shardID, errors.New(request.Reason))
+		s.stopShard(ctx, shardID, request.Reason, request.UserTriggered)
 	}
 	return CancelJobResult{}, nil
 }
@@ -328,44 +328,24 @@ func (s *Scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 	}
 }
 
+// notifyCancel only notifies compute nodes and doesn't update the execution state in the job store. This is because
+// the execution state is updated when stopping/failing the shard itself.
 func (s *Scheduler) notifyCancel(ctx context.Context, message string, execution model.ExecutionState) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s canceling%s due to %s", s.id, execution.ComputeReference, message)
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
-			JobID:       execution.JobID,
-			ShardIndex:  execution.ShardIndex,
-			NodeID:      execution.NodeID,
-			ExecutionID: execution.ComputeReference,
-		},
-		Condition: jobstore.UpdateExecutionCondition{
-			UnexpectedStates: []model.ExecutionStateType{
-				model.ExecutionStateFailed,
-				model.ExecutionStateCompleted,
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, execution.ComputeReference)
+	go func() {
+		request := compute.CancelExecutionRequest{
+			ExecutionID:   execution.ComputeReference,
+			Justification: message,
+			RoutingMetadata: compute.RoutingMetadata{
+				SourcePeerID: s.id,
+				TargetPeerID: execution.NodeID,
 			},
-		},
-		NewValues: model.ExecutionState{
-			State: model.ExecutionStateCanceled,
-		},
-	})
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Canceled. %s:%d",
-			execution.JobID, execution.ShardIndex)
-	} else {
-		go func() {
-			request := compute.CancelExecutionRequest{
-				ExecutionID:   execution.ComputeReference,
-				Justification: message,
-				RoutingMetadata: compute.RoutingMetadata{
-					SourcePeerID: s.id,
-					TargetPeerID: execution.NodeID,
-				},
-			}
-			_, err = s.computeService.CancelExecution(ctx, request)
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("failed to notify cancellation for execution: %s", execution.ComputeReference)
-			}
-		}()
-	}
+		}
+		_, err := s.computeService.CancelExecution(ctx, request)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to notify cancellation for execution: %s", execution.ComputeReference)
+		}
+	}()
 }
 
 // called for both JobEventShardCompleted and JobEventShardError
@@ -660,7 +640,7 @@ func (s *Scheduler) OnComputeFailure(ctx context.Context, result compute.Compute
 // make sure to call this function with the lock held
 func (s *Scheduler) failIfRecoveryIsNotPossible(ctx context.Context, shardID model.ShardID, failure error) {
 	if !s.isRecoveryStillPossible(ctx, shardID) {
-		s.handleFailure(ctx, shardID, failure)
+		s.stopShard(ctx, shardID, failure.Error(), false)
 	}
 }
 
@@ -687,23 +667,31 @@ func (s *Scheduler) isRecoveryStillPossible(ctx context.Context, shardID model.S
 }
 
 // make sure to call this function with the lock held
-func (s *Scheduler) handleFailure(ctx context.Context, shardID model.ShardID, failure error) {
-	log.Ctx(ctx).Error().Err(failure).Msgf("error completing shard %s", shardID)
+func (s *Scheduler) stopShard(ctx context.Context, shardID model.ShardID, reason string, userRequested bool) {
+	if userRequested {
+		log.Ctx(ctx).Info().Msgf("stopping shard %s because the user requested it", shardID)
+	} else {
+		log.Ctx(ctx).Error().Err(errors.New(reason)).Msgf("error completing shard %s", shardID)
+	}
 
-	cancelledExecutions, err := jobstore.FailShard(ctx, s.jobStore, shardID, failure)
+	cancelledExecutions, err := jobstore.StopShard(ctx, s.jobStore, shardID, reason, userRequested)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[handleFailure] failed to fail shard")
+		log.Ctx(ctx).Error().Err(err).Msgf("[stopShard] failed to stop shard")
 	}
 
 	for _, execution := range cancelledExecutions {
-		s.notifyCancel(ctx, failure.Error(), execution)
+		s.notifyCancel(ctx, reason, execution)
+	}
+	eventName := model.JobEventError
+	if userRequested {
+		eventName = model.JobEventCanceled
 	}
 	s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 		SourceNodeID: s.id,
 		JobID:        shardID.JobID,
 		ShardIndex:   shardID.Index,
-		Status:       failure.Error(),
-		EventName:    model.JobEventError,
+		Status:       reason,
+		EventName:    eventName,
 		EventTime:    time.Now(),
 	})
 }

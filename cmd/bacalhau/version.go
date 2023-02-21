@@ -113,7 +113,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	if !oV.ClientOnly {
 		serverVersion, err := GetAPIClient().Version(ctx)
 		if err != nil {
-			log.Error().Err(err).Msgf("could not get server version")
+			log.Ctx(cmd.Context()).Error().Err(err).Msgf("could not get server version")
 			return err
 		}
 

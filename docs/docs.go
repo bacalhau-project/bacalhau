@@ -208,6 +208,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/requester/cancel": {
+            "post": {
+                "description": "Cancels a job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nReturns the current jobstate after the cancel request has been processed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Cancels the job with the job-id specified in the body payload.",
+                "operationId": "pkg/requester/publicapi/cancel",
+                "parameters": [
+                    {
+                        "description": " ",
+                        "name": "cancelRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/requester/debug": {
             "get": {
                 "produces": [
@@ -1577,6 +1636,39 @@ const docTemplate = `{
             "properties": {
                 "build_version_info": {
                     "$ref": "#/definitions/model.BuildVersionInfo"
+                }
+            }
+        },
+        "publicapi.cancelRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "job_cancel_payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "job_cancel_payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "publicapi.cancelResponse": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "$ref": "#/definitions/model.JobState"
                 }
             }
         },

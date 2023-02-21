@@ -156,15 +156,15 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
-	log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
-	log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
-	log.Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
-	log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
-	log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
-	log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
-	log.Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
-	log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
-	log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
+	log.Ctx(ctx).Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
+	log.Ctx(ctx).Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
+	log.Ctx(ctx).Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
+	log.Ctx(ctx).Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
+	log.Ctx(ctx).Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
+	log.Ctx(ctx).Debug().Msgf("Found sort flag: %s", OL.SortBy)
+	log.Ctx(ctx).Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
+	log.Ctx(ctx).Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
+	log.Ctx(ctx).Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
 	jobs, err := GetAPIClient().List(
 		ctx,
@@ -181,7 +181,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	}
 
 	numberInTable := system.Min(OL.MaxJobs, len(jobs))
-	log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
+	log.Ctx(ctx).Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 	var msgBytes []byte
 	if OL.OutputFormat == JSONFormat {

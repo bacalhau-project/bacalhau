@@ -62,6 +62,9 @@ var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
 	model.ExecutionStateResultRejected: {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
 	model.ExecutionStateResultAccepted: {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
 	model.ExecutionStateCompleted:      {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
+
+	// Job is canceled by the user
+	model.ExecutionStateCanceled: {Message: "Job canceled by the user.", IsTerminal: true, PrintDownload: false, IsError: true},
 }
 
 // Struct for tracking what's been printedEvents
@@ -114,31 +117,31 @@ func GetAPIClient() *publicapi.RequesterAPIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(_ context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
 	if clientVersion == nil {
-		log.Warn().Msg("Unable to parse nil client version, skipping version check")
+		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
 	}
 	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Debug().Msg("Development client version, skipping version check")
+		log.Ctx(ctx).Debug().Msg("Development client version, skipping version check")
 		return nil
 	}
 	if serverVersion == nil {
-		log.Warn().Msg("Unable to parse nil server version, skipping version check")
+		log.Ctx(ctx).Warn().Msg("Unable to parse nil server version, skipping version check")
 		return nil
 	}
 	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Debug().Msg("Development server version, skipping version check")
+		log.Ctx(ctx).Debug().Msg("Development server version, skipping version check")
 		return nil
 	}
 	c, err := semver.NewVersion(clientVersion.GitVersion)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to parse client version, skipping version check")
+		log.Ctx(ctx).Warn().Err(err).Msg("Unable to parse client version, skipping version check")
 		return nil
 	}
 	s, err := semver.NewVersion(serverVersion.GitVersion)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to parse server version, skipping version check")
+		log.Ctx(ctx).Warn().Err(err).Msg("Unable to parse server version, skipping version check")
 		return nil
 	}
 	if s.GreaterThan(c) {
@@ -295,7 +298,7 @@ func ExecuteJob(ctx context.Context,
 
 	err := job.VerifyJob(ctx, j)
 	if err != nil {
-		log.Err(err).Msg("Job failed to validate.")
+		log.Ctx(ctx).Err(err).Msg("Job failed to validate.")
 		return err
 	}
 
@@ -635,12 +638,12 @@ To get more information at any time, run:
 
 	go func() {
 		for {
-			log.Trace().Msgf("Ticker goreturn")
+			log.Ctx(ctx).Trace().Msgf("Ticker goreturn")
 
 			select {
 			case <-tickerDone:
 				ticker.Stop()
-				log.Trace().Msgf("Ticker goreturn done")
+				log.Ctx(ctx).Trace().Msgf("Ticker goreturn done")
 				return
 			case t := <-ticker.C:
 				if !quiet {
@@ -653,11 +656,11 @@ To get more information at any time, run:
 	}()
 
 	go func() {
-		log.Trace().Msgf("Signal goreturn")
+		log.Ctx(ctx).Trace().Msgf("Signal goreturn")
 
 		select {
 		case s := <-signalChan: // first signal, cancel context
-			log.Debug().Msgf("Captured %v. Exiting...", s)
+			log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
 			if s == os.Interrupt {
 				// Stop the spinner and let the rest of WaitAndPrintResultsToUser
 				// know that we're going to shut down so that it doesn't try to
@@ -694,14 +697,14 @@ To get more information at any time, run:
 			}
 		}
 
-		log.Trace().Msgf("Job Events:")
+		log.Ctx(ctx).Trace().Msgf("Job Events:")
 		for i := range jobEvents {
-			log.Trace().Msgf("\t%s - %s - %s",
+			log.Ctx(ctx).Trace().Msgf("\t%s - %s - %s",
 				jobEvents[i].NewState,
 				jobEvents[i].Time.UTC().String(),
 				jobEvents[i].Comment)
 		}
-		log.Trace().Msgf("\n")
+		log.Ctx(ctx).Trace().Msgf("\n")
 
 		if err != nil {
 			if _, ok := err.(*bacerrors.JobNotFound); ok {

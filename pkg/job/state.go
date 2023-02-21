@@ -181,7 +181,7 @@ func (resolver *StateResolver) WaitWithOptions(
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
 			if allTerminal && !options.AllowAllTerminal {
-				log.Error().Msgf("all executions are in terminal state, but not all expected states are met: %+v", jobState)
+				log.Ctx(ctx).Error().Msgf("all executions are in terminal state, but not all expected states are met: %+v", jobState)
 				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
 			}
 			return false, nil

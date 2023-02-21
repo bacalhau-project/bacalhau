@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -73,7 +72,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		},
 	})
 	if err != nil {
-		log.Err(err).Msg("failed to merge sane defaults into job")
 		return nil, err
 	}
 	return j, nil

@@ -875,7 +875,7 @@ workflows:
           target_os: darwin
           target_arch: arm64
           run_tests: false
-          filters: *filters_main_only
+          filters: *filters_tags_only
       - build:
           name: build-linux-<< matrix.target_arch >>
           executor: linux-arm64

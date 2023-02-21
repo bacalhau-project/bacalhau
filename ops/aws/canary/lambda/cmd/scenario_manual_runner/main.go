@@ -46,7 +46,7 @@ func main() {
 }
 
 func run(ctx context.Context, action string, rate float32) {
-	log.Info().Msgf("Starting scenario: %s", action)
+	log.Ctx(ctx).Info().Msgf("Starting scenario: %s", action)
 	for {
 		select {
 		case <-ctx.Done():
@@ -54,7 +54,7 @@ func run(ctx context.Context, action string, rate float32) {
 		default:
 			err := router.Route(ctx, models.Event{Action: action})
 			if err != nil {
-				log.Error().Msg(err.Error())
+				log.Ctx(ctx).Error().Msg(err.Error())
 			}
 		}
 		jitter := rand.Intn(100) - 100 // +- 100ms sleep jitter

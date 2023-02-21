@@ -36,7 +36,7 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 			if selector.Matches(labels.Set(node.Labels)) {
 				rank = 1
 			} else {
-				log.Trace().Msgf("filtering node %s with labels %s doesn't match selectors %+v",
+				log.Ctx(ctx).Trace().Msgf("filtering node %s with labels %s doesn't match selectors %+v",
 					node.PeerInfo.ID, node.Labels, job.Spec.NodeSelectors)
 				rank = -1
 			}

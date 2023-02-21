@@ -66,7 +66,7 @@ func NewClientUsingRemoteHandler(ctx context.Context, apiAddr string) (Client, e
 	if err != nil {
 		return Client{}, fmt.Errorf("failed to connect to '%s': %w", apiAddr, err)
 	}
-	log.Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
+	log.Ctx(ctx).Debug().Msgf("Created remote IPFS client for node API address: %s, with id: %s", apiAddr, id)
 	return client, nil
 }
 

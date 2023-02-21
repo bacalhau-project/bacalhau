@@ -85,12 +85,12 @@ func addFieldToBaggage(ctx context.Context, key, value string) context.Context {
 	b := baggage.FromContext(ctx)
 	m, err := baggage.NewMember(key, value)
 	if err != nil {
-		log.Warn().Msgf("failed to add key %s to baggage: %s", key, err)
+		log.Ctx(ctx).Warn().Msgf("failed to add key %s to baggage: %s", key, err)
 	}
 
 	b, err = b.SetMember(m)
 	if err != nil {
-		log.Warn().Msgf("failed to add baggage member to baggage: %s", err)
+		log.Ctx(ctx).Warn().Msgf("failed to add baggage member to baggage: %s", err)
 	}
 
 	return baggage.ContextWithBaggage(ctx, b)
@@ -102,12 +102,12 @@ func AddJobIDFromBaggageToSpan(ctx context.Context, span oteltrace.Span) {
 
 func addAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, name string) {
 	b := baggage.FromContext(ctx)
-	log.Trace().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
+	log.Ctx(ctx).Trace().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
 	m := b.Member(name)
 	if m.Value() != "" {
 		span.SetAttributes(attribute.String(name, m.Value()))
 	} else {
-		log.Trace().Err(errors.WithStack(errors.New("missing value"))).
+		log.Ctx(ctx).Trace().Err(errors.WithStack(errors.New("missing value"))).
 			Str("baggage_key", name).Msg("No value found for baggage key")
 	}
 }

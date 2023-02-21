@@ -224,6 +224,8 @@ var _ storage.Storage = (*StorageProvider)(nil)
 
 var _ retryablehttp.LeveledLogger = retryLogger{}
 
+// This logger needs to change to fetch the logger from the context once
+// https://github.com/hashicorp/go-retryablehttp/issues/182 is implemented and released.
 type retryLogger struct {
 }
 
