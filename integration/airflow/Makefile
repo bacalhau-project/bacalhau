@@ -48,9 +48,9 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint/flake8: ## check style with flake8
-	flake8 bacalhau-airflow tests
+	flake8 bacalhau_airflow tests
 lint/black: ## check style with black
-	black --check bacalhau-airflow tests
+	black --check bacalhau_airflow tests
 
 lint: lint/flake8 lint/black ## check style
 

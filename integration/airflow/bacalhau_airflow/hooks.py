@@ -29,7 +29,7 @@ class BacalhauHook(BaseHook):
 
         Returns:
             str: The job ID. Example: "3b39baee-5714-4f17-aa71-1f5824665ad6".
-        """        
+        """
 
         response = submit(
             dict(
@@ -49,7 +49,7 @@ class BacalhauHook(BaseHook):
 
         Returns:
             list: A list of dictionaries with the results, one entry per node & shard pair. A nested field contains a CID pointer to the result data.
-        """        
+        """
         response = results(job_id)
         # TODO check if response is not empty
         return response.to_dict()["results"]
