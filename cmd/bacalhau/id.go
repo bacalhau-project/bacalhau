@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/spf13/cobra"
 )
 

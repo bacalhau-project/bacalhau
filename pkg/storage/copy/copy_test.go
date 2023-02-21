@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 

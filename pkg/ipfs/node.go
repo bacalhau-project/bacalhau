@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p/core/peer"

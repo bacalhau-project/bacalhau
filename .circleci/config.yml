@@ -376,7 +376,7 @@ jobs:
   #                               terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
   performance_job:
-    resource_class: filecoin-project/self-hosted-bacalhau
+    resource_class: bacalhau-project/self-hosted-bacalhau
     machine: true
     parallelism: 1
     environment:
@@ -532,7 +532,7 @@ jobs:
                     git commit -m "[circleci] $COMMIT_MSG [skip ci]"
                     git push --set-upstream origin $GH_BRANCH_NAME
                     # Note: if you close the PR below manually, you should delete the `ci-build-swagger-docs_*` branch as well
-                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+                    PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
                     echo "Pull request: $PR_URL"
                     sleep 3
                     gh pr merge --auto --delete-branch -r $PR_URL
@@ -587,7 +587,7 @@ jobs:
               git commit -m "[circleci] $COMMIT_MSG [skip ci]"
               git push --set-upstream origin $GH_BRANCH_NAME
               # Note: if you close the PR below manually, you should delete the `ci-build-jsonschema_*` branch as well
-              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo filecoin-project/bacalhau)
+              PR_URL=$(gh pr create --fill --head $(git rev-parse --abbrev-ref HEAD) --base main --label schema --repo bacalhau-project/bacalhau)
               echo "Pull request: $PR_URL"
               sleep 3
               gh pr merge --auto --delete-branch -r $PR_URL
@@ -596,7 +596,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer ${GH_PAGES_TOKEN}"\
                 -H "X-GitHub-Api-Version: 2022-11-28" \
-                https://api.github.com/repos/filecoin-project/bacalhau/dispatches \
+                https://api.github.com/repos/bacalhau-project/bacalhau/dispatches \
                 -d '{"event_type":"build-schema-pages"}'
             fi
 

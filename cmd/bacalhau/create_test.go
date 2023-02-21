@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"

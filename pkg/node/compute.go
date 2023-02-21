@@ -3,25 +3,25 @@ package node
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	compute_bidstrategies "github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
-	compute_publicapi "github.com/filecoin-project/bacalhau/pkg/compute/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/compute/sensors"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	compute_bidstrategies "github.com/bacalhau-project/bacalhau/pkg/compute/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
+	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/libp2p/go-libp2p/core/host"
 )
 
@@ -139,7 +139,7 @@ func NewComputeNode(
 			EnqueuedCapacityTracker: enqueuedCapacityTracker,
 		}),
 		// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-		//  libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
+		//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
 		bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
 			NetworkSize: 1,
 		}),

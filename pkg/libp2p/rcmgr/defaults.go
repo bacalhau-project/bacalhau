@@ -1,7 +1,7 @@
 package rcmgr
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"

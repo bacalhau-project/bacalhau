@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"

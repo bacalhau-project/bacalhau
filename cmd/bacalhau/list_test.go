@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

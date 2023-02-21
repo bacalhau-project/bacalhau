@@ -7,16 +7,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/docs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
 	"github.com/didip/tollbooth/v7/limiter"
-	"github.com/filecoin-project/bacalhau/docs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -120,12 +120,12 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 //	@title			Bacalhau API
-//	@description	This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
+//	@description	This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.
 //	@contact.name	Bacalhau Team
-//	@contact.url	https://github.com/filecoin-project/bacalhau
+//	@contact.url	https://github.com/bacalhau-project/bacalhau
 //	@contact.email	team@bacalhau.org
 //	@license.name	Apache 2.0
-//	@license.url	https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
+//	@license.url	https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE
 //	@host			bootstrap.production.bacalhau.org:1234
 //	@BasePath		/
 //	@schemes		http

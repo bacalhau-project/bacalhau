@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"

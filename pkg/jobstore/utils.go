@@ -3,8 +3,8 @@ package jobstore
 import (
 	"context"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 

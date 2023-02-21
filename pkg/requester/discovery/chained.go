@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 )

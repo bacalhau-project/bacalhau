@@ -2,9 +2,14 @@ package filecoinlotus
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/filecoin-project/go-address"
 	abi2 "github.com/filecoin-project/go-state-types/abi"
 	big2 "github.com/filecoin-project/go-state-types/big"
@@ -12,10 +17,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 type PublisherTestSuite struct {

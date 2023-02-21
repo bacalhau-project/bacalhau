@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/jobstore/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	requester_publicapi "github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )

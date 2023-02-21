@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/stretchr/testify/suite"
 )

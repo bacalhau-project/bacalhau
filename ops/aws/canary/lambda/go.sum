@@ -105,6 +105,8 @@ github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN
 github.com/aws/aws-sdk-go v1.44.96 h1:S9paaqnJ0AJ95t5AB+iK8RM6YNZN0W0Lek1gOVJsEr8=
 github.com/aws/aws-sdk-go v1.44.96/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
+github.com/bacalhau-project/bacalhau v0.3.23-0.20230223152157-7294b8c2a157 h1:tY78oJuq/4BQAsQhwYNgCcS4EbCWlIRhqtbW/CpRR+k=
+github.com/bacalhau-project/bacalhau v0.3.23-0.20230223152157-7294b8c2a157/go.mod h1:QYAnvkRyStsM58ZFqXib8YM/jFA7aqLrk3j/aw7BM2c=
 github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46 h1:i5Gk78Ro4ErhY8EO1E7/ddrEo9dUS1dkqeiV/ssdbaI=
 github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46/go.mod h1:sIou/i7OdHnqTfcXr7/aJmEl+6kd/FVT+ajQbjeR+MM=
 github.com/benbjohnson/clock v1.0.2/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
@@ -269,8 +271,6 @@ github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/filecoin-project/bacalhau v0.3.22 h1:Xkj+qGnEmVHBr87InYQIvCgsBxR8XSjn7NYquNpLDO4=
-github.com/filecoin-project/bacalhau v0.3.22/go.mod h1:LhSfZSrRup27T/KXQLq5uBQkpDjPqBgzQl5eiIJyKFc=
 github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f/go.mod h1:+If3s2VxyjZn+KGGZIoRXBDSFQ9xL404JBJGf4WhEj0=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=

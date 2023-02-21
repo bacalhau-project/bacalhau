@@ -3,8 +3,8 @@ package bidstrategy
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type MaxCapacityStrategyParams struct {

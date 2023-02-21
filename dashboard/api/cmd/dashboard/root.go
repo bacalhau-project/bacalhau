@@ -3,7 +3,7 @@ package dashboard
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 

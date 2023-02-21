@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 )

@@ -3,9 +3,9 @@ package jobtransform
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/pkg/errors"
 )
 

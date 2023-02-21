@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 

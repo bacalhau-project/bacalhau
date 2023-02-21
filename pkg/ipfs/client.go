@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ipld "github.com/ipfs/go-ipld-format"

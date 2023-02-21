@@ -6,10 +6,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -107,7 +107,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	})
 	require.Error(s.T(), err)
 
-	// https://github.com/filecoin-project/bacalhau/issues/495
+	// https://github.com/bacalhau-project/bacalhau/issues/495
 	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v0.1.37",
 	}, &model.BuildVersionInfo{

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -25,7 +25,7 @@ var (
 		bacalhau describe 47805f5c
 
 		# Describe a job and include all server and local events
-		bacalhau describe --include-events b6ad164a 
+		bacalhau describe --include-events b6ad164a
 `))
 )
 

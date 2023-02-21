@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Sets a default timeout value if one is not passed or below an acceptable value

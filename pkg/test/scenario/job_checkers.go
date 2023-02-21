@@ -1,9 +1,9 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // WaitUntilSuccessful returns a set of job.CheckStatesFunctions that will wait

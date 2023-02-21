@@ -5,12 +5,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/server"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/server"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"

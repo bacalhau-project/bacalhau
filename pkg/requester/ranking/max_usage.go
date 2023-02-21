@@ -3,9 +3,9 @@ package ranking
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/rs/zerolog/log"
 )
 

@@ -10,14 +10,14 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
     * Ubuntu 20.0+ has most often been used for development and testing
  * Go >= 1.19
  * [Docker Engine](https://docs.docker.com/get-docker/)
- * (Optional) A build of the [latest Bacalhau release](https://github.com/filecoin-project/bacalhau/releases/)
+ * (Optional) A build of the [latest Bacalhau release](https://github.com/bacalhau-project/bacalhau/releases/)
 
 ## (Optional) Building Bacalhau from source
 
 ```bash
 sudo apt-get update && sudo apt-get install -y make gcc zip
 sudo snap install go --classic
-wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
+wget https://github.com/bacalhau-project/bacalhau/archive/refs/heads/main.zip
 unzip main.zip
 cd bacalhau-main
 go build
@@ -63,12 +63,12 @@ and then connecting it to bacalhau using the command below or by adding --public
 ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES
 ```
 
-The message above contains the environment variables you need for a new window. 
+The message above contains the environment variables you need for a new window.
 You can paste these into a new terminal so that bacalhau will use your local devstack.
 
-Alternatively, to remove the need to copy and paste, you can set `DEVSTACK_ENV_FILE` 
+Alternatively, to remove the need to copy and paste, you can set `DEVSTACK_ENV_FILE`
 environment variable to the name of a .env file that devstack will write to,
-and bacalhau commands will read from, before launching the devstack e.g.: 
+and bacalhau commands will read from, before launching the devstack e.g.:
 
 ```bash
 DEVSTACK_ENV_FILE=.devstack.env bacalhau devstack

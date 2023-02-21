@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 

@@ -6,12 +6,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 

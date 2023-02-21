@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ComputeConfigParams struct {

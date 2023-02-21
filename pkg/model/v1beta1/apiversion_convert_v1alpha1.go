@@ -1,7 +1,7 @@
 package v1beta1
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1alpha1"
 )
 
 func ConvertV1alpha1StorageSpec(data v1alpha1.StorageSpec) StorageSpec {

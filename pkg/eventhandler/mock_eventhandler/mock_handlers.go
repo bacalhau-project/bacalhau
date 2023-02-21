@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	gomock "github.com/golang/mock/gomock"
 )
 

@@ -1,8 +1,8 @@
 package devstack
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 func ToIPFSClients(nodes []*node.Node) []ipfs.Client {

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 

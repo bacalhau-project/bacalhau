@@ -3,7 +3,7 @@
 """
     Bacalhau API
 
-    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.  # noqa: E501
+    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.  # noqa: E501
 
     OpenAPI spec version: 0.3.18.post4
     Contact: team@bacalhau.org
@@ -36,7 +36,7 @@ class MiscApi(object):
     def api_serverversion(self, version_request, **kwargs):  # noqa: E501
         """Returns the build version running on the server.  # noqa: E501
 
-        See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.  # noqa: E501
+        See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.api_serverversion(version_request, async_req=True)
@@ -58,7 +58,7 @@ class MiscApi(object):
     def api_serverversion_with_http_info(self, version_request, **kwargs):  # noqa: E501
         """Returns the build version running on the server.  # noqa: E501
 
-        See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.  # noqa: E501
+        See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.  # noqa: E501
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
         >>> thread = api.api_serverversion_with_http_info(version_request, async_req=True)

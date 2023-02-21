@@ -22,7 +22,7 @@ tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy
 [[package]]
 name = "bacalhau-apiclient"
 version = "0.3.18.post4"
-description = "A Python client for the Bacalhau public API - https://github.com/filecoin-project/bacalhau/tree/main/clients/python"
+description = "A Python client for the Bacalhau public API - https://github.com/bacalhau-project/bacalhau/tree/main/clients/python"
 category = "main"
 optional = false
 python-versions = ">=3.6.2"

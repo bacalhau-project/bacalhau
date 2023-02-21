@@ -8,10 +8,10 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 

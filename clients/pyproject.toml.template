@@ -8,7 +8,7 @@ version = "VERSION"
 authors = [
 { name="Enrico Rotundo", email="enrico.rotundo@gmail.com" },
 ]
-description = "A Python client for the Bacalhau public API - https://github.com/filecoin-project/bacalhau/tree/main/clients/python"
+description = "A Python client for the Bacalhau public API - https://github.com/bacalhau-project/bacalhau/tree/main/clients/python"
 readme = "README.md"
 requires-python = ">=3.6.2"
 classifiers = [
@@ -17,5 +17,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/filecoin-project/bacalhau/"
-"Bug Tracker" = "https://github.com/filecoin-project/bacalhau/issues"
+"Homepage" = "https://github.com/bacalhau-project/bacalhau/"
+"Bug Tracker" = "https://github.com/bacalhau-project/bacalhau/issues"

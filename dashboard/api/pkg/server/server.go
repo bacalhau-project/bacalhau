@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	bacmodel "github.com/filecoin-project/bacalhau/pkg/model"
+	bacmodel "github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/mux"
 )
 
