@@ -19,9 +19,11 @@ import (
 )
 
 type ServerOptions struct {
-	Host      string
-	Port      int
-	JWTSecret string
+	Host        string
+	Port        int
+	SwarmPort   int
+	PeerConnect string
+	JWTSecret   string
 }
 
 type DashboardAPIServer struct {
@@ -99,10 +101,10 @@ func (apiServer *DashboardAPIServer) run(res http.ResponseWriter, req *http.Requ
 
 	cid, err := runGenericJob(spec)
 	if err != nil {
-		log.Error().Err(err).Send()
+		log.Ctx(req.Context()).Error().Err(err).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 	} else {
-		log.Info().Str("CID", cid).Send()
+		log.Ctx(req.Context()).Info().Str("CID", cid).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
 	}
 }
@@ -122,14 +124,14 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 	// user can pass ?testing=1 to bypass GPU and just return the prompt
 	testing := len(req.URL.Query()["testing"]) > 0
 
-	log.Info().Msgf("--> testing=%t", testing)
+	log.Ctx(req.Context()).Info().Msgf("--> testing=%t", testing)
 
 	cid, err := runStableDiffusion(prompt, testing)
 	if err != nil {
-		log.Error().Err(err).Send()
+		log.Ctx(req.Context()).Error().Err(err).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"error": "%s"}`, strings.Trim(err.Error(), "\n"))))
 	} else {
-		log.Info().Str("CID", cid).Send()
+		log.Ctx(req.Context()).Info().Str("CID", cid).Send()
 		_, _ = res.Write([]byte(fmt.Sprintf(`{"cid": "%s"}`, strings.Trim(cid, "\n"))))
 	}
 }
@@ -137,13 +139,13 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 func (apiServer *DashboardAPIServer) annotations(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetAnnotationSummary(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for annotations route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for annotations route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for annotations route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for annotations route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -152,13 +154,13 @@ func (apiServer *DashboardAPIServer) annotations(res http.ResponseWriter, req *h
 func (apiServer *DashboardAPIServer) jobmonths(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetJobMonthSummary(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job months route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job months route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job months route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job months route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -167,13 +169,13 @@ func (apiServer *DashboardAPIServer) jobmonths(res http.ResponseWriter, req *htt
 func (apiServer *DashboardAPIServer) jobexecutors(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetJobExecutorSummary(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job executors route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job executors route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job executors route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job executors route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -182,13 +184,13 @@ func (apiServer *DashboardAPIServer) jobexecutors(res http.ResponseWriter, req *
 func (apiServer *DashboardAPIServer) totaljobs(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetTotalJobsCount(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -197,13 +199,13 @@ func (apiServer *DashboardAPIServer) totaljobs(res http.ResponseWriter, req *htt
 func (apiServer *DashboardAPIServer) totaljobevents(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetTotalEventCount(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job event totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job event totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job event totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job event totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -212,13 +214,13 @@ func (apiServer *DashboardAPIServer) totaljobevents(res http.ResponseWriter, req
 func (apiServer *DashboardAPIServer) totalusers(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetTotalUserCount(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job user totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job user totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job user totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job user totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -227,13 +229,13 @@ func (apiServer *DashboardAPIServer) totalusers(res http.ResponseWriter, req *ht
 func (apiServer *DashboardAPIServer) totalexecutors(res http.ResponseWriter, req *http.Request) {
 	data, err := apiServer.API.GetTotalExecutorCount(context.Background())
 	if err != nil {
-		log.Error().Msgf("error for job executors totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job executors totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job executors totals route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job executors totals route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -245,7 +247,7 @@ func (apiServer *DashboardAPIServer) nodes(res http.ResponseWriter, req *http.Re
 		err = json.NewEncoder(res).Encode(nodes)
 	}
 	if err != nil {
-		log.Error().Msgf("error for nodes route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for nodes route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -254,21 +256,21 @@ func (apiServer *DashboardAPIServer) nodes(res http.ResponseWriter, req *http.Re
 func (apiServer *DashboardAPIServer) jobs(res http.ResponseWriter, req *http.Request) {
 	query, err := GetRequestBody[localdb.JobQuery](res, req)
 	if err != nil {
-		log.Error().Msgf("error for jobs route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	results, err := apiServer.API.GetJobs(context.Background(), *query)
 	if err != nil {
-		log.Error().Msgf("error for jobs route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(res).Encode(results)
 	if err != nil {
-		log.Error().Msgf("error for jobs route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -281,14 +283,14 @@ type jobsCountResponse struct {
 func (apiServer *DashboardAPIServer) jobsCount(res http.ResponseWriter, req *http.Request) {
 	query, err := GetRequestBody[localdb.JobQuery](res, req)
 	if err != nil {
-		log.Error().Msgf("error for jobs route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	count, err := apiServer.API.GetJobsCount(context.Background(), *query)
 	if err != nil {
-		log.Error().Msgf("error for jobsCount route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobsCount route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -297,7 +299,7 @@ func (apiServer *DashboardAPIServer) jobsCount(res http.ResponseWriter, req *htt
 		Count: count,
 	})
 	if err != nil {
-		log.Error().Msgf("error for jobsCount route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobsCount route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -309,14 +311,14 @@ func (apiServer *DashboardAPIServer) job(res http.ResponseWriter, req *http.Requ
 
 	data, err := apiServer.API.GetJob(context.Background(), id)
 	if err != nil {
-		log.Error().Msgf("error for job route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for job route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for job route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -328,14 +330,14 @@ func (apiServer *DashboardAPIServer) jobInfo(res http.ResponseWriter, req *http.
 
 	data, err := apiServer.API.GetJobInfo(context.Background(), id)
 	if err != nil {
-		log.Error().Msgf("error for jobInfo route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobInfo route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(res).Encode(data)
 	if err != nil {
-		log.Error().Msgf("error for jobInfo route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for jobInfo route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -350,19 +352,19 @@ func (apiServer *DashboardAPIServer) adminlogin(res http.ResponseWriter, req *ht
 	var loginRequest types.LoginRequest
 	err := json.NewDecoder(req.Body).Decode(&loginRequest)
 	if err != nil {
-		log.Error().Msgf("error for login route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	user, err := apiServer.API.Login(context.Background(), loginRequest)
 	if err != nil {
-		log.Error().Msgf("error for login route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	token, err := generateJWT(apiServer.Options.JWTSecret, user.Username)
 	if err != nil {
-		log.Error().Msgf("error for login route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -370,7 +372,7 @@ func (apiServer *DashboardAPIServer) adminlogin(res http.ResponseWriter, req *ht
 		Token: token,
 	})
 	if err != nil {
-		log.Error().Msgf("error for login route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -379,13 +381,13 @@ func (apiServer *DashboardAPIServer) adminlogin(res http.ResponseWriter, req *ht
 func (apiServer *DashboardAPIServer) adminstatus(res http.ResponseWriter, req *http.Request) {
 	user, err := getUserFromRequest(apiServer.API, req, apiServer.Options.JWTSecret)
 	if err != nil {
-		log.Error().Msgf("error for adminstatus route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for adminstatus route: %s", err.Error())
 		http.Error(res, fmt.Sprintf("error for adminstatus route: %s", err.Error()), http.StatusUnauthorized)
 		return
 	}
 	err = json.NewEncoder(res).Encode(user)
 	if err != nil {
-		log.Error().Msgf("error for status route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for status route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -394,19 +396,19 @@ func (apiServer *DashboardAPIServer) adminstatus(res http.ResponseWriter, req *h
 func (apiServer *DashboardAPIServer) adminmoderate(res http.ResponseWriter, req *http.Request) {
 	user, err := getUserFromRequest(apiServer.API, req, apiServer.Options.JWTSecret)
 	if err != nil || user == nil {
-		log.Error().Msgf("access denied: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("access denied: %s", err.Error())
 		http.Error(res, fmt.Sprintf("access denied: %s", err.Error()), http.StatusUnauthorized)
 		return
 	}
 	data, err := GetRequestBody[types.JobModeration](res, req)
 	if err != nil {
-		log.Error().Msgf("error for adminmoderate route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	err = apiServer.API.CreateJobModeration(context.Background(), *data)
 	if err != nil {
-		log.Error().Msgf("error for adminmoderate route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -417,7 +419,7 @@ func (apiServer *DashboardAPIServer) adminmoderate(res http.ResponseWriter, req 
 		Success: true,
 	})
 	if err != nil {
-		log.Error().Msgf("error for adminmoderate route: %s", err.Error())
+		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

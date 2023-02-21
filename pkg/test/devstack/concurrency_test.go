@@ -35,12 +35,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		"Hello, world!\nHello, world!\n",
 	)
 	testCase.JobCheckers = []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: 2,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	}
 
 	suite.RunScenario(testCase)

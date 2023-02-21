@@ -10,8 +10,6 @@ import (
 type Endpoint interface {
 	// SubmitJob submits a new job to the network.
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
-	// UpdateDeal updates an existing job.
-	UpdateDeal(context.Context, string, model.Deal) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
 }
@@ -39,7 +37,9 @@ type StartJobRequest struct {
 }
 
 type CancelJobRequest struct {
-	JobID string
+	JobID         string
+	Reason        string
+	UserTriggered bool
 }
 
 type CancelJobResult struct {

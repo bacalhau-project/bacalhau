@@ -46,7 +46,7 @@ func (s BaseEndpoint) GetNodeID() string {
 }
 
 func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
-	ctx, span := s.newSpan(ctx, "AskForBid")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.BaseEndpoint.AskForBid", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)
@@ -244,7 +244,7 @@ func (s BaseEndpoint) ResultRejected(ctx context.Context, request ResultRejected
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("canceling execution: %s", request.ExecutionID)
+	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return CancelExecutionResponse{}, err
@@ -271,12 +271,6 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	return CancelExecutionResponse{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 	}, nil
-}
-
-func (s BaseEndpoint) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return system.Span(ctx, "pkg/compute/node", name,
-		trace.WithSpanKind(trace.SpanKindInternal),
-	)
 }
 
 // Compile-time interface check:

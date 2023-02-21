@@ -21,8 +21,6 @@ type ComboDriverSuite struct {
 	scenario.ScenarioRunner
 }
 
-var _ scenario.ScenarioTestSuite = (*ComboDriverSuite)(nil)
-
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestComboDriverSuite(t *testing.T) {
@@ -31,7 +29,7 @@ func TestComboDriverSuite(t *testing.T) {
 
 const exampleText = "hello world"
 
-var testcase scenario.Scenario = scenario.Scenario{
+var testcase = scenario.Scenario{
 	ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
 	Spec: model.Spec{
 		Engine:    model.EngineWasm,
@@ -52,12 +50,7 @@ var testcase scenario.Scenario = scenario.Scenario{
 		},
 	},
 	JobCheckers: []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	},
 }
 

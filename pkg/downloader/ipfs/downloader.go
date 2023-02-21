@@ -25,12 +25,12 @@ func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSett
 	}
 }
 
-func (ipfsDownloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
+func (ipfsDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
 func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloadClient.ipfs.FetchResult")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/ipfs.Downloader.FetchResult")
 	defer span.End()
 
 	// NOTE: we have to spin up a temporary IPFS node as we don't
@@ -76,9 +76,6 @@ func spinUpIPFSNode(
 	cm *system.CleanupManager,
 	ipfsSwarmAddrs string,
 ) (*ipfs.Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
-	defer span.End()
-
 	log.Ctx(ctx).Debug().Msg("Spinning up IPFS node...")
 	n, err := ipfs.NewNode(ctx, cm, strings.Split(ipfsSwarmAddrs, ","))
 	if err != nil {

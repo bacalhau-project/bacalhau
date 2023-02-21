@@ -42,9 +42,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		},
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: 1,
-			}),
+			job.WaitForSuccessfulCompletion(),
 		},
 	}
 

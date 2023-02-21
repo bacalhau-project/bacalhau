@@ -18,7 +18,7 @@ type DevStackIPFS struct {
 func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
 	var clients []ipfs.Client
 	for i := 0; i < count; i++ {
-		log.Debug().Msgf(`Creating Node #%d`, i)
+		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d`, i)
 
 		//////////////////////////////////////
 		// IPFS

@@ -87,7 +87,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/create")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.create")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
@@ -208,29 +208,17 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		unusedFieldList = append(unusedFieldList, "Verification")
 		j.Spec.ExecutionPlan = model.JobExecutionPlan{}
 	}
-	if len(j.Status.Events) != 0 {
-		unusedFieldList = append(unusedFieldList, "Events")
-		j.Status.Events = nil
-	}
 	if j.Metadata.ID != "" {
 		unusedFieldList = append(unusedFieldList, "ID")
 		j.Metadata.ID = ""
 	}
-	if len(j.Status.LocalEvents) != 0 {
-		unusedFieldList = append(unusedFieldList, "LocalEvents")
-		j.Status.LocalEvents = nil
-	}
-	if j.Status.Requester.RequesterNodeID != "" {
+	if j.Metadata.Requester.RequesterNodeID != "" {
 		unusedFieldList = append(unusedFieldList, "RequesterNodeID")
-		j.Status.Requester.RequesterNodeID = ""
+		j.Metadata.Requester.RequesterNodeID = ""
 	}
-	if len(j.Status.Requester.RequesterPublicKey) != 0 {
+	if len(j.Metadata.Requester.RequesterPublicKey) != 0 {
 		unusedFieldList = append(unusedFieldList, "RequesterPublicKey")
-		j.Status.Requester.RequesterPublicKey = nil
-	}
-	if !reflect.DeepEqual(j.Status.State, model.JobState{}) {
-		unusedFieldList = append(unusedFieldList, "State")
-		j.Status.State = model.JobState{}
+		j.Metadata.Requester.RequesterPublicKey = nil
 	}
 
 	// Warn on fields with data that will be ignored

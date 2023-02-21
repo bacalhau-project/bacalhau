@@ -104,7 +104,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	}
 
 	return &model.DownloaderSettings{
-		Timeout:        300 * time.Second,
+		Timeout:        50 * time.Second,
 		OutputDir:      dir,
 		IPFSSwarmAddrs: IPFSSwarmAddrs,
 	}, nil
@@ -112,14 +112,10 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 
 func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
-	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(
 		ctx,
 		submittedJob.Metadata.ID,
-		totalShards,
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: totalShards,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	)
 }
 

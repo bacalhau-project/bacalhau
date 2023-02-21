@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	bacalhau_model_v1beta1 "github.com/filecoin-project/bacalhau/pkg/model"
 	bacalhau_model_v1alpha1 "github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
+	bacalhau_model_v1beta1 "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/spf13/cobra"
 )
 
@@ -88,7 +88,7 @@ func importLogs(cmd *cobra.Command, modelOptions model.ModelOptions, opts import
 		text := scanner.Text()
 		if strings.Contains(text, `"APIVersion":"V1beta1"`) {
 			var line LogLineBeta
-			err := json.Unmarshal([]byte(text), &line)
+			err = json.Unmarshal([]byte(text), &line)
 			if err != nil {
 				return err
 			}
@@ -98,7 +98,7 @@ func importLogs(cmd *cobra.Command, modelOptions model.ModelOptions, opts import
 			event = line.Event
 		} else {
 			var line LogLineAlpha
-			err := json.Unmarshal([]byte(text), &line)
+			err = json.Unmarshal([]byte(text), &line)
 			if err != nil {
 				return err
 			}
@@ -108,7 +108,10 @@ func importLogs(cmd *cobra.Command, modelOptions model.ModelOptions, opts import
 			event = bacalhau_model_v1beta1.ConvertV1alpha1JobEvent(line.Event)
 		}
 		fmt.Printf("%d / %d event %s %s\n", counter, TotalLogLines, event.JobID, event.EventName.String())
-		model.AddEvent(event)
+		err = model.AddEvent(event)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := scanner.Err(); err != nil {

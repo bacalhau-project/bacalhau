@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
 	"github.com/didip/tollbooth/v7/limiter"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/libp2p/go-libp2p/core/host"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -172,7 +172,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		}
 	}
 
-	log.Debug().Msgf(
+	log.Ctx(ctx).Debug().Msgf(
 		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
 
 	// Cleanup resources when system is done:
@@ -214,7 +214,12 @@ func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
 	handler := config.Handler
 	if !config.Raw {
 		// otel handler
-		handler = otelhttp.NewHandler(config.Handler, fmt.Sprintf("pkg/publicapi%s", config.URI))
+		handler = otelhttp.NewHandler(config.Handler, config.URI,
+			otelhttp.WithPublicEndpoint(),
+			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+				return fmt.Sprintf("%s %s", r.Method, operation)
+			}),
+		)
 
 		// throttling handler
 		handler = tollbooth.LimitHandler(

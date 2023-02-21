@@ -178,7 +178,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	}()
 
 	if err = connectToPeers(ctx, api, ipfsNode, cfg.getPeerAddrs()); err != nil {
-		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
+		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
 	if err = serveAPI(cm, ipfsNode, repoPath); err != nil {
@@ -221,7 +221,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	})
 
 	// Log details so that user can connect to the new node:
-	log.Trace().Msgf("IPFS node created with ID: %s", ipfsNode.Identity)
+	log.Ctx(ctx).Trace().Msgf("IPFS node created with ID: %s", ipfsNode.Identity)
 	n.LogDetails()
 
 	return &n, nil
@@ -316,7 +316,7 @@ func (n *Node) Close() error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
+func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
@@ -409,8 +409,8 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
 // event though we have Peering enabled, some test scenarios relies on the node being eagerly connected to the peers
 func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, peerAddrs []string) error {
-	log.Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
-	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, peerAddrs)
+	log.Ctx(ctx).Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
+	log.Ctx(ctx).Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, peerAddrs)
 
 	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
 	peerInfos, err := ParsePeersString(peerAddrs)
@@ -427,7 +427,7 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 			defer wg.Done()
 			if err := api.Swarm().Connect(ctx, peerInfo); err != nil {
 				anyErr = err
-				log.Debug().Msgf(
+				log.Ctx(ctx).Debug().Msgf(
 					"failed to connect to ipfs peer %s, skipping: %s",
 					peerInfo.ID, err)
 			}

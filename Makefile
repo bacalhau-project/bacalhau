@@ -1,18 +1,20 @@
-RUSTFLAGS="-C target-feature=+crt-static"
+export GO = go
+export GOOS ?= $(shell $(GO) env GOOS)
+export GOARCH ?= $(shell $(GO) env GOARCH)
 
-ifeq ($(GOOS),)
-GOOS = $(shell $(GO) env GOOS)
+ifeq ($(GOARCH),armv6)
+export GOARCH = arm
+export GOARM = 6
 endif
 
-ifeq ($(GOARCH),)
-GOARCH = $(shell $(GO) env GOARCH)
+ifeq ($(GOARCH),armv7)
+export GOARCH = arm
+export GOARM = 7
 endif
 
 # Env Variables
 export GO111MODULE = on
-export GO = go
 export CGO_ENABLED = 0
-export PYTHON = python3ƒ
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau
@@ -23,14 +25,14 @@ BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
 endif
 
-BINARY_PATH = bin/${GOOS}_${GOARCH}/${BINARY_NAME}
+BINARY_PATH = bin/${GOOS}_${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
+PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
@@ -138,8 +140,8 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
-	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} main.go
+	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
 # Target: build-docker-images
@@ -187,10 +189,13 @@ push-docker-images: build-http-gateway-image
 .PHONY: build-bacalhau-tgz
 build-bacalhau-tgz: dist/${PACKAGE}.tar.gz dist/${PACKAGE}.tar.gz.signature.sha256
 
-dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
+dist/:
+	mkdir -p $@
+
+dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 	tar cvzf $@ -C $(dir $(BINARY_PATH)) $(notdir ${BINARY_PATH})
 
-dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
+dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
 

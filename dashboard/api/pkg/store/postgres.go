@@ -9,10 +9,10 @@ import (
 
 	"database/sql"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
 type PostgresStore struct {
@@ -183,7 +183,7 @@ select
 		'-',
 		extract(month from created)
 	) as month,
-	count(*) as count 
+	count(*) as count
 from
 	job
 group by
@@ -222,7 +222,7 @@ func (d *PostgresStore) GetJobExecutorSummary(
 	sqlStatement := `
 select
 	executor,
-	count(*) as count 
+	count(*) as count
 from
 	job
 group by

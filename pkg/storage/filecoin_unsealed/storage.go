@@ -20,7 +20,7 @@ type StorageProvider struct {
 	localPathTemplate       *template.Template
 }
 
-func NewStorage(cm *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
+func NewStorage(_ *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
 	t := template.New("bacalhau-storage-filecoin-unsealed-path")
 	t, err := t.Parse(localPathTemplate)
 	if err != nil {
@@ -34,15 +34,12 @@ func NewStorage(cm *system.CleanupManager, localPathTemplate string) (*StoragePr
 	return storageHandler, nil
 }
 
-func (driver *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.HasStorageLocally")
-	defer span.End()
-
-	localPath, err := driver.getPathToVolume(ctx, volume)
+func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model.StorageSpec) (bool, error) {
+	localPath, err := driver.getPathToVolume(volume)
 	if err != nil {
 		return false, err
 	}
@@ -52,10 +49,8 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume mod
 	return true, nil
 }
 
-func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.GetVolumeSize")
-	defer span.End()
-	localPath, err := driver.getPathToVolume(ctx, volume)
+func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.StorageSpec) (uint64, error) {
+	localPath, err := driver.getPathToVolume(volume)
 	if err != nil {
 		return 0, err
 	}
@@ -63,13 +58,10 @@ func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume model.S
 }
 
 func (driver *StorageProvider) PrepareStorage(
-	ctx context.Context,
+	_ context.Context,
 	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/filecoin_unsealed.PrepareStorage")
-	defer span.End()
-
-	localPath, err := driver.getPathToVolume(ctx, storageSpec)
+	localPath, err := driver.getPathToVolume(storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -80,28 +72,21 @@ func (driver *StorageProvider) PrepareStorage(
 	}, nil
 }
 
-func (driver *StorageProvider) CleanupStorage(
-	ctx context.Context,
-	storageSpec model.StorageSpec,
-	volume storage.StorageVolume,
-) error {
+func (driver *StorageProvider) CleanupStorage(context.Context, model.StorageSpec, storage.StorageVolume) error {
 	return nil
 }
 
-func (driver *StorageProvider) Upload(
-	ctx context.Context,
-	localPath string,
-) (model.StorageSpec, error) {
+func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+func (driver *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{
 		spec,
 	}, nil
 }
 
-func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume model.StorageSpec) (string, error) {
+func (driver *StorageProvider) getPathToVolume(volume model.StorageSpec) (string, error) {
 	var buffer bytes.Buffer
 	err := driver.localPathTemplate.Execute(&buffer, volume)
 	if err != nil {

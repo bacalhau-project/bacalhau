@@ -75,12 +75,11 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	err = resolver.Wait(
 		ctx,
 		submittedJob.Metadata.ID,
-		len(nodeIDs),
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
+		job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+			model.ExecutionStateFailed,
 		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: len(nodeIDs),
+		job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+			model.ExecutionStateCompleted: len(nodeIDs),
 		}),
 	)
 	require.NoError(s.T(), err)

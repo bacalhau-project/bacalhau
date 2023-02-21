@@ -50,8 +50,8 @@ func (apiClient *RequesterAPIClient) List(
 	sortBy string,
 	sortReverse bool,
 ) (
-	[]*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
+	[]*model.JobWithInfo, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.List")
 	defer span.End()
 
 	req := listRequest{
@@ -74,29 +74,88 @@ func (apiClient *RequesterAPIClient) List(
 	return res.Jobs, nil
 }
 
-// Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
+// Cancel will request that the job with the specified ID is stopped. The JobInfo will be returned if the cancel
+// was submitted. If no match is found, Cancel returns false with a nil error.
+func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, reason string) (*model.JobState, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Cancel")
 	defer span.End()
 
 	if jobID == "" {
-		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return &model.JobState{}, fmt.Errorf("jobID must be non-empty in a Cancel call")
+	}
+
+	// Check the existence of a job with the provided ID, whether it is a short or long ID.
+	jobInfo, found, err := apiClient.Get(ctx, jobID)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	if !found {
+		return &model.JobState{}, bacerrors.NewJobNotFound(jobID)
+	}
+
+	// We potentially used the short jobID which `Get` supports and so let's switch
+	// to use the longer version.
+	jobID = jobInfo.State.JobID
+
+	// Create a payload before signing it with our local key (for verification on the
+	// server).
+	payload := model.JobCancelPayload{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+		Reason:   reason,
+	}
+
+	jsonData, err := model.JSONMarshalWithMax(payload)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	rawPayloadJSON := json.RawMessage(jsonData)
+	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
+
+	// sign the raw bytes representation of model.JobCreatePayload
+	signature, err := system.SignForClient(rawPayloadJSON)
+	if err != nil {
+		return &model.JobState{}, err
+	}
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
+
+	req := cancelRequest{
+		JobCancelPayload: &rawPayloadJSON,
+		ClientSignature:  signature,
+		ClientPublicKey:  system.GetClientPublicKey(),
+	}
+
+	var res cancelResponse
+	if err := apiClient.Post(ctx, APIPrefix+"cancel", req, &res); err != nil {
+		return &model.JobState{}, err
+	}
+
+	return res.State, nil
+}
+
+// Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
+func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobWithInfo, bool, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
+	defer span.End()
+
+	if jobID == "" {
+		return &model.JobWithInfo{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
 	jobsList, err := apiClient.List(ctx, jobID, model.IncludeAny, model.ExcludeNone, 1, false, "created_at", true)
 	if err != nil {
-		return &model.Job{}, false, err
+		return &model.JobWithInfo{}, false, err
 	}
 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.Job{}, false, bacerrors.NewJobNotFound(jobID)
+		return &model.JobWithInfo{}, false, bacerrors.NewJobNotFound(jobID)
 	}
 }
 
 func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetJobState")
 	defer span.End()
 
 	if jobID == "" {
@@ -118,7 +177,7 @@ func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID stri
 		if err == nil {
 			return res.State, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read state error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read state error")
 			outerErr = err
 		}
 	}
@@ -126,12 +185,12 @@ func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID stri
 }
 
 func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
-	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
+	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
 		j, _, err := apiClient.Get(ctx, jobID)
 		if err != nil {
-			return &model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
+			return model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
 		}
-		return j, err
+		return j.Job, err
 	}
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
@@ -139,8 +198,8 @@ func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
 	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
-func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobEvent, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetEvents")
+func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobHistory, err error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
 	defer span.End()
 
 	if jobID == "" {
@@ -163,7 +222,7 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 		if err == nil {
 			return res.Events, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read events error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read events error")
 			outerErr = err
 			if strings.Contains(err.Error(), "context canceled") {
 				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())
@@ -173,29 +232,8 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 	return nil, outerErr
 }
 
-func (apiClient *RequesterAPIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetLocalEvents")
-	defer span.End()
-
-	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetLocalEvents call")
-	}
-
-	req := localEventsRequest{
-		ClientID: system.GetClientID(),
-		JobID:    jobID,
-	}
-
-	var res localEventsResponse
-	if err := apiClient.Post(ctx, APIPrefix+"local_events", req, &res); err != nil {
-		return nil, err
-	}
-
-	return res.LocalEvents, nil
-}
-
 func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID string) (results []model.PublishedResult, err error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetResults")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetResults")
 	defer span.End()
 
 	if jobID == "" {
@@ -220,7 +258,7 @@ func (apiClient *RequesterAPIClient) Submit(
 	ctx context.Context,
 	j *model.Job,
 ) (*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Submit")
 	defer span.End()
 
 	data := model.JobCreatePayload{
@@ -234,14 +272,14 @@ func (apiClient *RequesterAPIClient) Submit(
 		return &model.Job{}, err
 	}
 	jsonRaw := json.RawMessage(jsonData)
-	log.Ctx(ctx).Debug().RawJSON("json", jsonRaw).Msgf("jsonRaw")
+	log.Ctx(ctx).Trace().RawJSON("json", jsonRaw).Msgf("jsonRaw")
 
 	// sign the raw bytes representation of model.JobCreatePayload
 	signature, err := system.SignForClient(jsonRaw)
 	if err != nil {
 		return &model.Job{}, err
 	}
-	log.Ctx(ctx).Debug().Str("signature", signature).Msgf("signature")
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
 
 	var res submitResponse
 	req := submitRequest{
@@ -259,7 +297,7 @@ func (apiClient *RequesterAPIClient) Submit(
 }
 
 func (apiClient *RequesterAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Debug")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

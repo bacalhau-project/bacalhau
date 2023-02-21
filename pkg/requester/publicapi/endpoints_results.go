@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/jobstore"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type resultsRequest struct {
@@ -33,9 +34,7 @@ type resultsResponse struct {
 //	@Failure				500				{object}	string
 //	@Router					/requester/results [post]
 func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.results")
-	defer span.End()
-
+	ctx := req.Context()
 	var stateReq stateRequest
 	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -45,9 +44,9 @@ func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
+	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
-	stateResolver := localdb.GetStateResolver(s.localDB)
+	stateResolver := jobstore.GetStateResolver(s.jobStore)
 	results, err := stateResolver.GetResults(ctx, stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

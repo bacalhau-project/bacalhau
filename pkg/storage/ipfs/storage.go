@@ -21,8 +21,8 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	LocalDir   string
-	IPFSClient ipfs.Client
+	localDir   string
+	ipfsClient ipfs.Client
 }
 
 func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
@@ -40,40 +40,33 @@ func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, er
 	})
 
 	storageHandler := &StorageProvider{
-		IPFSClient: cl,
-		LocalDir:   dir,
+		ipfsClient: cl,
+		localDir:   dir,
 	}
 
 	log.Trace().Msgf("IPFS API Copy driver created with address: %s", cl.APIAddress())
 	return storageHandler, nil
 }
 
-func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	_, err := dockerIPFS.IPFSClient.ID(ctx)
+func (s *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+	_, err := s.ipfsClient.ID(ctx)
 	return err == nil, err
 }
 
-func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	return dockerIPFS.IPFSClient.HasCID(ctx, volume.CID)
+func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+	return s.ipfsClient.HasCID(ctx, volume.CID)
 }
 
-// we wrap this in a timeout because if the CID is not present on the network this seems to hang
-func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
 	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
 	defer cancel()
 
-	return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.CID)
+	return s.ipfsClient.GetCidSize(ctx, volume.CID)
 }
 
-func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.PrepareStorage")
-	defer span.End()
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, config.GetDownloadCidRequestTimeout(ctx))
-	defer cancel()
-
-	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.CID)
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+	stat, err := s.ipfsClient.Stat(ctx, storageSpec.CID)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.CID, err)
 	}
@@ -83,7 +76,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	}
 
 	var volume storage.StorageVolume
-	volume, err = dockerIPFS.getFileFromIPFS(ctx, storageSpec)
+	volume, err = s.getFileFromIPFS(ctx, storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
 	}
@@ -91,16 +84,12 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	return volume, nil
 }
 
-//nolint:lll // Exception to the long rule
-func (dockerIPFS *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.StorageSpec, _ storage.StorageVolume) error {
-	return os.RemoveAll(filepath.Join(dockerIPFS.LocalDir, storageSpec.CID))
+func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.StorageSpec, _ storage.StorageVolume) error {
+	return os.RemoveAll(filepath.Join(s.localDir, storageSpec.CID))
 }
 
-func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Upload")
-	defer span.End()
-
-	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
+func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+	cid, err := s.ipfsClient.Put(ctx, localPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -110,11 +99,8 @@ func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string)
 	}, nil
 }
 
-func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.Explode")
-	defer span.End()
-
-	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.CID)
+func (s *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	treeNode, err := s.ipfsClient.GetTreeNode(ctx, spec.CID)
 	if err != nil {
 		return []model.StorageSpec{}, err
 	}
@@ -124,7 +110,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 	}
 	basePath := strings.TrimPrefix(spec.Path, "/")
 	basePath = strings.TrimSuffix(basePath, "/")
-	specs := []model.StorageSpec{}
+	var specs []model.StorageSpec
 	seenPaths := map[string]bool{}
 	for _, node := range flatNodes {
 		prepend := basePath
@@ -146,11 +132,8 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 	return specs, nil
 }
 
-func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/StorageProvider.copyFile")
-	defer span.End()
-
-	outputPath := filepath.Join(dockerIPFS.LocalDir, storageSpec.CID)
+func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+	outputPath := filepath.Join(s.localDir, storageSpec.CID)
 
 	// If the output path already exists, we already have the data, as
 	// ipfsClient.Get(...) renames the result path atomically after it has
@@ -160,7 +143,7 @@ func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageS
 		return storage.StorageVolume{}, err
 	}
 	if !ok {
-		err = dockerIPFS.IPFSClient.Get(ctx, storageSpec.CID, outputPath)
+		err = s.ipfsClient.Get(ctx, storageSpec.CID, outputPath)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}

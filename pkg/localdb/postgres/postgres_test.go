@@ -3,38 +3,71 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
-	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
+	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
-//	docker run -d \
-//	  --name some-postgres \
-//	  -p 5432:5432 \
-//	  -e POSTGRES_DB=postgres \
-//	  -e POSTGRES_USER=postgres \
-//	  -e POSTGRES_PASSWORD=postgres \
-//	  postgres
-
 func TestPostgresSuite(t *testing.T) {
-	port, err := freeport.GetFreePort()
+	docker.MustHaveDocker(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	client, err := docker.NewDockerClient()
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, client.Close())
+	})
+
+	require.NoError(t, client.PullImage(ctx, "postgres"))
+	c, err := client.ContainerCreate(ctx, &container.Config{
+		Image:        "postgres",
+		ExposedPorts: map[nat.Port]struct{}{},
+		Env:          []string{"POSTGRES_DB=postgres", "POSTGRES_USER=postgres", "POSTGRES_PASSWORD=postgres"},
+	}, &container.HostConfig{
+		PortBindings: map[nat.Port][]nat.PortBinding{
+			"5432/tcp": {{}},
+		},
+	}, nil, nil, fmt.Sprintf("postgres-%s", t.Name()))
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		assert.NoError(t, client.RemoveContainer(context.Background(), c.ID))
+	})
+
+	require.NoError(t, client.ContainerStart(ctx, c.ID, dockertypes.ContainerStartOptions{}))
+
+	var status dockertypes.ContainerJSON
+	for {
+		status, err = client.ContainerInspect(ctx, c.ID)
+		require.NoError(t, err)
+
+		if status.State.Status == "running" {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	port, err := strconv.Atoi(status.NetworkSettings.Ports["5432/tcp"][0].HostPort)
+	require.NoError(t, err)
+
 	var datastore *shared.GenericSQLDatastore
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
-		if runtime.GOOS != "linux" {
-			return nil
-		}
 		if datastore == nil {
-			system.Shellout(fmt.Sprintf("docker run -d --name postgres%d -p %d:5432 -e POSTGRES_DB=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres", port, port))
 			for {
 				datastore, err = NewPostgresDatastore(
 					"localhost",
@@ -58,11 +91,6 @@ func TestPostgresSuite(t *testing.T) {
 		}
 		return datastore
 	}
-	testingSuite.TeardownHandler = func() {
-		if runtime.GOOS != "linux" {
-			return
-		}
-		system.Shellout(fmt.Sprintf("docker rm -f postgres%d || true", port))
-	}
+
 	suite.Run(t, testingSuite)
 }

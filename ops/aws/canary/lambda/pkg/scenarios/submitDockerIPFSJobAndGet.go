@@ -35,7 +35,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
+	log.Ctx(ctx).Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
@@ -62,7 +62,9 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = 100 * time.Second
+	// canary is running every 5 minutes with a 5 minutes timeout. It should be safe to allow the download to take up to 4 minutes and leave
+	// 1 minute for the rest of the test
+	downloadSettings.Timeout = 240 * time.Second
 
 	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
@@ -79,7 +81,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	}
 
 	for _, file := range files {
-		log.Debug().Msgf("downloaded files: %s", file.Name())
+		log.Ctx(ctx).Debug().Msgf("downloaded files: %s", file.Name())
 	}
 	if len(files) != 3 {
 		return fmt.Errorf("expected 3 files in output dir, got %d", len(files))

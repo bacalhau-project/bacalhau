@@ -7,7 +7,7 @@ import (
 	realsync "sync"
 	"time"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -66,7 +66,7 @@ func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T]
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.Publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)
@@ -141,8 +141,10 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 
 func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 	p.closeOnce.Do(func() {
-		// stop the anti-starvation background task
-		p.antiStarvationStop <- struct{}{}
+		if p.antiStarvationTicker != nil {
+			// stop the anti-starvation background task
+			p.antiStarvationStop <- struct{}{}
+		}
 
 		// flush the buffer before closing
 		if p.currentBuffer.Size() > 0 {
@@ -161,7 +163,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 
 // flush the buffer to the delegate pubsub
 func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context, envelope BufferingEnvelope, oldestMessageTime time.Time) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/Buffering.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
 	defer span.End()
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",
@@ -181,6 +183,8 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
 				func() {
+					ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
+					defer span.End()
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()
 					go p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
@@ -189,6 +193,7 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 			}
 		case <-p.antiStarvationStop:
 			// do nothing as Close() will flush the buffer
+			p.antiStarvationTicker.Stop()
 			return
 		}
 	}

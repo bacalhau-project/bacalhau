@@ -208,6 +208,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/requester/cancel": {
+            "post": {
+                "description": "Cancels a job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nReturns the current jobstate after the cancel request has been processed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Cancels the job with the job-id specified in the body payload.",
+                "operationId": "pkg/requester/publicapi/cancel",
+                "parameters": [
+                    {
+                        "description": " ",
+                        "name": "cancelRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/requester/debug": {
             "get": {
                 "produces": [
@@ -311,53 +370,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/publicapi.listResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/requester/local_events": {
-            "post": {
-                "description": "Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/requester/publicapi/localEvents",
-                "parameters": [
-                    {
-                        "description": " ",
-                        "name": "localEventsRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsResponse"
                         }
                     },
                     "400": {
@@ -690,266 +702,23 @@ const docTemplate = `{
                 "engineDone"
             ]
         },
-        "model.Job": {
+        "model.ExecutionState": {
             "type": "object",
             "properties": {
-                "APIVersion": {
-                    "type": "string",
-                    "example": "V1beta1"
-                },
-                "Metadata": {
-                    "$ref": "#/definitions/model.Metadata"
-                },
-                "Spec": {
-                    "description": "The specification of this job.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Spec"
-                        }
-                    ]
-                },
-                "Status": {
-                    "description": "The status of the job: where are the nodes at, what are the events",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobStatus"
-                        }
-                    ]
-                }
-            }
-        },
-        "model.JobEvent": {
-            "type": "object",
-            "properties": {
-                "APIVersion": {
-                    "description": "APIVersion of the Job",
-                    "type": "string",
-                    "example": "V1beta1"
-                },
-                "ClientID": {
-                    "description": "optional clientID if this is an externally triggered event (like create job)",
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                },
-                "Deal": {
-                    "description": "this is only defined in \"update_deal\" events",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Deal"
-                        }
-                    ]
-                },
-                "EventName": {
-                    "$ref": "#/definitions/model.JobEventType"
-                },
-                "EventTime": {
-                    "type": "string",
-                    "example": "2022-11-17T13:32:55.756658941Z"
-                },
-                "ExecutionID": {
-                    "description": "compute execution identifier",
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "JobExecutionPlan": {
-                    "description": "this is only defined in \"create\" events",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobExecutionPlan"
-                        }
-                    ]
-                },
-                "JobID": {
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "PublishedResult": {
-                    "$ref": "#/definitions/model.StorageSpec"
-                },
-                "RunOutput": {
-                    "description": "RunOutput of the job",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.RunCommandResult"
-                        }
-                    ]
-                },
-                "SenderPublicKey": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ShardIndex": {
-                    "description": "what shard is this event for",
-                    "type": "integer"
-                },
-                "SourceNodeID": {
-                    "description": "the node that emitted this event",
-                    "type": "string",
-                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
-                },
-                "Spec": {
-                    "description": "this is only defined in \"create\" events",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.Spec"
-                        }
-                    ]
-                },
-                "Status": {
-                    "type": "string",
-                    "example": "Got results proposal of length: 0"
-                },
-                "TargetNodeID": {
-                    "description": "the node that this event is for\ne.g. \"AcceptJobBid\" was emitted by Requester but it targeting compute node",
-                    "type": "string",
-                    "example": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
-                },
-                "VerificationProposal": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "VerificationResult": {
-                    "$ref": "#/definitions/model.VerificationResult"
-                }
-            }
-        },
-        "model.JobEventType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-                11,
-                12,
-                13,
-                14,
-                15,
-                16
-            ],
-            "x-enum-comments": {
-                "jobEventDone": "must be last",
-                "jobEventUnknown": "must be first"
-            },
-            "x-enum-varnames": [
-                "jobEventUnknown",
-                "JobEventInitialSubmission",
-                "JobEventCreated",
-                "JobEventDealUpdated",
-                "JobEventBid",
-                "JobEventBidAccepted",
-                "JobEventBidRejected",
-                "JobEventBidCancelled",
-                "JobEventRunning",
-                "JobEventComputeError",
-                "JobEventResultsProposed",
-                "JobEventResultsAccepted",
-                "JobEventResultsRejected",
-                "JobEventResultsPublished",
-                "JobEventError",
-                "JobEventInvalidRequest",
-                "jobEventDone"
-            ]
-        },
-        "model.JobExecutionPlan": {
-            "type": "object",
-            "properties": {
-                "ShardsTotal": {
-                    "description": "how many shards are there in total for this job\nwe are expecting this number x concurrency total\nJobShardState objects for this job",
-                    "type": "integer"
-                }
-            }
-        },
-        "model.JobLocalEvent": {
-            "type": "object",
-            "properties": {
-                "EventName": {
-                    "$ref": "#/definitions/model.JobLocalEventType"
-                },
-                "JobID": {
-                    "type": "string"
-                },
-                "ShardIndex": {
-                    "type": "integer"
-                },
-                "TargetNodeID": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobLocalEventType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4,
-                5,
-                6
-            ],
-            "x-enum-comments": {
-                "jobLocalEventDone": "must be last",
-                "jobLocalEventUnknown": "must be first"
-            },
-            "x-enum-varnames": [
-                "jobLocalEventUnknown",
-                "JobLocalEventSelected",
-                "JobLocalEventBid",
-                "JobLocalEventBidAccepted",
-                "JobLocalEventBidRejected",
-                "JobLocalEventVerified",
-                "jobLocalEventDone"
-            ]
-        },
-        "model.JobNodeState": {
-            "type": "object",
-            "properties": {
-                "Shards": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/model.JobShardState"
-                    }
-                }
-            }
-        },
-        "model.JobRequester": {
-            "type": "object",
-            "properties": {
-                "RequesterNodeID": {
-                    "description": "The ID of the requester node that owns this job.",
-                    "type": "string",
-                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
-                },
-                "RequesterPublicKey": {
-                    "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "model.JobShardState": {
-            "type": "object",
-            "properties": {
-                "ExecutionId": {
+                "ComputeReference": {
                     "description": "Compute node reference for this shard execution",
                     "type": "string"
                 },
+                "CreateTime": {
+                    "description": "CreateTime is the time when the job was created.",
+                    "type": "string"
+                },
+                "JobID": {
+                    "description": "JobID the job id",
+                    "type": "string"
+                },
                 "NodeId": {
-                    "description": "which node is running this shard",
+                    "description": "which node is running this execution",
                     "type": "string"
                 },
                 "PublishedResults": {
@@ -968,10 +737,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "State": {
-                    "description": "what is the state of the shard on this node",
+                    "description": "State is the current state of the execution",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/model.JobStateType"
+                            "$ref": "#/definitions/model.ExecutionStateType"
                         }
                     ]
                 },
@@ -979,8 +748,12 @@ const docTemplate = `{
                     "description": "an arbitrary status message",
                     "type": "string"
                 },
+                "UpdateTime": {
+                    "description": "UpdateTime is the time when the job state was last updated.",
+                    "type": "string"
+                },
                 "VerificationProposal": {
-                    "description": "the proposed results for this shard\nthis will be resolved by the verifier somehow",
+                    "description": "the proposed results for this execution\nthis will be resolved by the verifier somehow",
                     "type": "array",
                     "items": {
                         "type": "integer"
@@ -988,6 +761,149 @@ const docTemplate = `{
                 },
                 "VerificationResult": {
                     "$ref": "#/definitions/model.VerificationResult"
+                },
+                "Version": {
+                    "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ExecutionStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+            ],
+            "x-enum-comments": {
+                "ExecutionStateBidAccepted": "aka running",
+                "ExecutionStateResultAccepted": "aka publishing"
+            },
+            "x-enum-varnames": [
+                "ExecutionStateNew",
+                "ExecutionStateAskForBid",
+                "ExecutionStateAskForBidAccepted",
+                "ExecutionStateAskForBidRejected",
+                "ExecutionStateBidAccepted",
+                "ExecutionStateBidRejected",
+                "ExecutionStateResultProposed",
+                "ExecutionStateResultAccepted",
+                "ExecutionStateResultRejected",
+                "ExecutionStateCompleted",
+                "ExecutionStateFailed",
+                "ExecutionStateCanceled"
+            ]
+        },
+        "model.Job": {
+            "type": "object",
+            "properties": {
+                "APIVersion": {
+                    "type": "string",
+                    "example": "V1beta1"
+                },
+                "Metadata": {
+                    "$ref": "#/definitions/model.Metadata"
+                },
+                "Spec": {
+                    "description": "The specification of this job.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
+                }
+            }
+        },
+        "model.JobExecutionPlan": {
+            "type": "object",
+            "properties": {
+                "ShardsTotal": {
+                    "description": "how many shards are there in total for this job\nwe are expecting this number x concurrency total\nShardState objects for this job",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.JobHistory": {
+            "type": "object",
+            "properties": {
+                "Comment": {
+                    "type": "string"
+                },
+                "ComputeReference": {
+                    "type": "string"
+                },
+                "JobID": {
+                    "type": "string"
+                },
+                "NewState": {
+                    "type": "string"
+                },
+                "NewStateType": {
+                    "description": "only present for execution level events",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ExecutionStateType"
+                        }
+                    ]
+                },
+                "NewVersion": {
+                    "type": "integer"
+                },
+                "NodeID": {
+                    "type": "string"
+                },
+                "PreviousState": {
+                    "type": "string"
+                },
+                "ShardIndex": {
+                    "type": "integer"
+                },
+                "Time": {
+                    "type": "string"
+                },
+                "Type": {
+                    "$ref": "#/definitions/model.JobHistoryType"
+                }
+            }
+        },
+        "model.JobHistoryType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "jobHistoryTypeUndefined",
+                "JobHistoryTypeJobLevel",
+                "JobHistoryTypeShardLevel",
+                "JobHistoryTypeExecutionLevel"
+            ]
+        },
+        "model.JobRequester": {
+            "type": "object",
+            "properties": {
+                "RequesterNodeID": {
+                    "description": "The ID of the requester node that owns this job.",
+                    "type": "string",
+                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
+                },
+                "RequesterPublicKey": {
+                    "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -1113,11 +1029,40 @@ const docTemplate = `{
         "model.JobState": {
             "type": "object",
             "properties": {
-                "Nodes": {
+                "CreateTime": {
+                    "description": "CreateTime is the time when the job was created.",
+                    "type": "string"
+                },
+                "JobID": {
+                    "description": "JobID is the unique identifier for the job",
+                    "type": "string"
+                },
+                "Shards": {
+                    "description": "Shards is a map of shard index to shard state.\nThe number of shards are fixed at the time of job creation.",
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/definitions/model.JobNodeState"
+                        "$ref": "#/definitions/model.ShardState"
                     }
+                },
+                "State": {
+                    "description": "State is the current state of the job",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStateType"
+                        }
+                    ]
+                },
+                "TimeoutAt": {
+                    "description": "TimeoutAt is the time when the job will be timed out if it is not completed.",
+                    "type": "string"
+                },
+                "UpdateTime": {
+                    "description": "UpdateTime is the time when the job state was last updated.",
+                    "type": "string"
+                },
+                "Version": {
+                    "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
+                    "type": "integer"
                 }
             }
         },
@@ -1129,54 +1074,45 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6,
-                7,
-                8
+                5
             ],
             "x-enum-comments": {
-                "jobStateDone": "must be last",
-                "jobStateUnknown": "must be first"
+                "JobStateNew": "must be first"
             },
             "x-enum-varnames": [
-                "jobStateUnknown",
-                "JobStateBidding",
-                "JobStateWaiting",
-                "JobStateRunning",
-                "JobStateVerifying",
+                "JobStateNew",
+                "JobStateInProgress",
                 "JobStateCancelled",
                 "JobStateError",
-                "JobStateCompleted",
-                "jobStateDone"
+                "JobStatePartialError",
+                "JobStateCompleted"
             ]
         },
-        "model.JobStatus": {
+        "model.JobWithInfo": {
             "type": "object",
             "properties": {
-                "JobEvents": {
-                    "description": "All events associated with the job",
+                "History": {
+                    "description": "History of changes to the job state. Not always populated in the job description",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.JobEvent"
+                        "$ref": "#/definitions/model.JobHistory"
                     }
                 },
-                "JobState": {
+                "Job": {
+                    "description": "Job info",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Job"
+                        }
+                    ]
+                },
+                "State": {
                     "description": "The current state of the job",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.JobState"
                         }
                     ]
-                },
-                "LocalJobEvents": {
-                    "description": "All local events associated with the job",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobLocalEvent"
-                    }
-                },
-                "Requester": {
-                    "$ref": "#/definitions/model.JobRequester"
                 }
             }
         },
@@ -1221,6 +1157,9 @@ const docTemplate = `{
                     "description": "The unique global ID of this job in the bacalhau network.",
                     "type": "string",
                     "example": "92d5d4ee-3765-4f78-8353-623f5f26df08"
+                },
+                "Requester": {
+                    "$ref": "#/definitions/model.JobRequester"
                 }
             }
         },
@@ -1391,6 +1330,63 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "model.ShardState": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "description": "CreateTime is the time when the shard was created, which is the same as the job creation time.",
+                    "type": "string"
+                },
+                "Executions": {
+                    "description": "Executions is a list of executions of the shard across the nodes.\nA new execution is created when a node is selected to execute the shard, and a node can have multiple executions for the same\nshard due to retries, but there can only be a single active execution per node at any given time.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ExecutionState"
+                    }
+                },
+                "JobID": {
+                    "description": "JobID is the unique identifier for the job",
+                    "type": "string"
+                },
+                "ShardIndex": {
+                    "description": "ShardIndex is the index of the shard in the job",
+                    "type": "integer"
+                },
+                "State": {
+                    "description": "State is the current state of the shard",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ShardStateType"
+                        }
+                    ]
+                },
+                "UpdateTime": {
+                    "description": "UpdateTime is the time when the shard state was last updated.",
+                    "type": "string"
+                },
+                "Version": {
+                    "description": "Version is the version of the shard state. It is incremented every time the shard state is updated.",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ShardStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4
+            ],
+            "x-enum-varnames": [
+                "ShardStateNew",
+                "ShardStateInProgress",
+                "ShardStateCancelled",
+                "ShardStateError",
+                "ShardStateCompleted"
+            ]
         },
         "model.Spec": {
             "type": "object",
@@ -1643,6 +1639,39 @@ const docTemplate = `{
                 }
             }
         },
+        "publicapi.cancelRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "job_cancel_payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "job_cancel_payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "publicapi.cancelResponse": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "$ref": "#/definitions/model.JobState"
+                }
+            }
+        },
         "publicapi.eventsRequest": {
             "type": "object",
             "properties": {
@@ -1662,7 +1691,7 @@ const docTemplate = `{
                 "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.JobEvent"
+                        "$ref": "#/definitions/model.JobHistory"
                     }
                 }
             }
@@ -1718,29 +1747,7 @@ const docTemplate = `{
                 "jobs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Job"
-                    }
-                }
-            }
-        },
-        "publicapi.localEventsRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "job_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "publicapi.localEventsResponse": {
-            "type": "object",
-            "properties": {
-                "localEvents": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobLocalEvent"
+                        "$ref": "#/definitions/model.JobWithInfo"
                     }
                 }
             }

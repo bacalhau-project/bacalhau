@@ -33,9 +33,7 @@ type stateResponse struct {
 //	@Failure				500				{object}	string
 //	@Router					/requester/states [post]
 func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/states")
-	defer span.End()
-
+	ctx := req.Context()
 	var stateReq stateRequest
 	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -62,8 +60,5 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 }
 
 func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (model.JobState, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getJobStateFromRequest")
-	defer span.End()
-
-	return apiServer.localDB.GetJobState(ctx, stateReq.JobID)
+	return apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
 }

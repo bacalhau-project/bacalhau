@@ -155,8 +155,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	err = resolver.Wait(
 		ctx,
 		jobID,
-		args.NodeCount*args.ShardCount,
-		job.WaitForTerminalStates(args.NodeCount*args.ShardCount),
+		job.WaitForTerminalStates(),
 	)
 	require.NoError(t, err)
 
@@ -166,10 +165,10 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	verifiedCount := 0
 	failedCount := 0
 
-	for _, state := range state.Nodes {
-		for _, shard := range state.Shards { //nolint:gocritic
-			require.True(t, shard.VerificationResult.Complete)
-			if shard.VerificationResult.Result {
+	for _, shard := range state.Shards {
+		for _, execution := range shard.Executions { //nolint:gocritic
+			require.True(t, execution.VerificationResult.Complete)
+			if execution.VerificationResult.Result {
 				verifiedCount++
 			} else {
 				failedCount++

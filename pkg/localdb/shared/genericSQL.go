@@ -1,36 +1,32 @@
 package shared
 
 import (
-	"fmt"
-
 	"context"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"database/sql"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
-	"go.opentelemetry.io/otel/trace"
 )
 
-// so we can pass *sql.DB and *sql.Tx to the same functions
+// SQLClient is so we can pass *sql.DB and *sql.Tx to the same functions
 type SQLClient interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	QueryRow(query string, args ...any) *sql.Row
-	Query(query string, args ...any) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
 type GenericSQLDatastore struct {
 	mtx              sync.RWMutex
-	name             string
 	connectionString string
 	db               *sql.DB
 }
@@ -41,7 +37,6 @@ func NewGenericSQLDatastore(
 	connectionString string,
 ) (*GenericSQLDatastore, error) {
 	datastore := &GenericSQLDatastore{
-		name:             name,
 		connectionString: connectionString,
 		db:               db,
 	}
@@ -56,15 +51,11 @@ func (d *GenericSQLDatastore) GetDB() *sql.DB {
 	return d.db
 }
 
-func (d *GenericSQLDatastore) GetSpan(ctx context.Context, methodName string) (context.Context, trace.Span) {
-	return system.GetTracer().Start(ctx, fmt.Sprintf("pkg/localdb/sqlite/GenericSQLDatastore[%s].%s", d.name, methodName))
-}
-
 func getJob(db SQLClient, ctx context.Context, id string) (*model.Job, error) {
 	var apiversion string
 	var jobdata string
 	var statedata string
-	row := db.QueryRow(`select apiversion, jobdata, statedata from job where id like $1 || '%'`, strings.ToLower(id))
+	row := db.QueryRowContext(ctx, `select apiversion, jobdata, statedata from job where id like $1 || '%'`, strings.ToLower(id))
 	err := row.Scan(&apiversion, &jobdata, &statedata)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -88,9 +79,6 @@ func getJob(db SQLClient, ctx context.Context, id string) (*model.Job, error) {
 func (d *GenericSQLDatastore) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	//nolint:ineffassign,staticcheck
-	ctx, span := d.GetSpan(ctx, "GetJob")
-	defer span.End()
 	return getJob(d.db, ctx, id)
 }
 
@@ -206,7 +194,7 @@ func getJobs(db SQLClient, ctx context.Context, query localdb.JobQuery) ([]*mode
 		return nil, err
 	}
 
-	rows, err := db.Query(sql, args...)
+	rows, err := db.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -241,8 +229,6 @@ func getJobs(db SQLClient, ctx context.Context, query localdb.JobQuery) ([]*mode
 func (d *GenericSQLDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	ctx, span := d.GetSpan(ctx, "GetJobs")
-	defer span.End()
 	return getJobs(d.db, ctx, query)
 }
 
@@ -278,7 +264,7 @@ func getJobEvents(db SQLClient, ctx context.Context, id string) ([]model.JobEven
 	var args []interface{}
 	args = append(args, id)
 
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(ctx, `
 select
 	apiversion,
 	eventdata
@@ -316,8 +302,6 @@ order by
 func (d *GenericSQLDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	ctx, span := d.GetSpan(ctx, "GetJobEvents")
-	defer span.End()
 	return getJobEvents(d.db, ctx, id)
 }
 
@@ -325,7 +309,7 @@ func getJobLocalEvents(db SQLClient, ctx context.Context, id string) ([]model.Jo
 	var args []interface{}
 	args = append(args, id)
 
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(ctx, `
 select
 	apiversion,
 	eventdata
@@ -363,8 +347,6 @@ order by
 func (d *GenericSQLDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	ctx, span := d.GetSpan(ctx, "GetJobLocalEvents")
-	defer span.End()
 	return getJobLocalEvents(d.db, ctx, id)
 }
 
@@ -386,8 +368,6 @@ func (d *GenericSQLDatastore) HasLocalEvent(ctx context.Context, jobID string, e
 func (d *GenericSQLDatastore) AddJob(ctx context.Context, j *model.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	_, span := d.GetSpan(ctx, "AddJob")
-	defer span.End()
 
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -403,7 +383,8 @@ VALUES ($1, $2, $3, $4, $5, $6)`
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
+		ctx,
 		sqlStatement,
 		j.Metadata.ID,
 		j.Metadata.CreatedAt.UTC().Format(time.RFC3339),
@@ -419,7 +400,8 @@ VALUES ($1, $2, $3, $4, $5, $6)`
 		sqlStatement := `
 INSERT INTO job_annotation (job_id, annotation)
 VALUES ($1, $2)`
-		_, err = tx.Exec(
+		_, err = tx.ExecContext(
+			ctx,
 			sqlStatement,
 			j.Metadata.ID,
 			annotation,
@@ -435,8 +417,6 @@ func (d *GenericSQLDatastore) AddEvent(ctx context.Context, jobID string, ev mod
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	//nolint:ineffassign,staticcheck
-	ctx, span := d.GetSpan(ctx, "AddEvent")
-	defer span.End()
 	sqlStatement := `
 INSERT INTO job_event (job_id, created, apiversion, eventdata)
 VALUES ($1, $2, $3, $4)`
@@ -444,7 +424,8 @@ VALUES ($1, $2, $3, $4)`
 	if err != nil {
 		return err
 	}
-	_, err = d.db.Exec(
+	_, err = d.db.ExecContext(
+		ctx,
 		sqlStatement,
 		jobID,
 		ev.EventTime.UTC().Format(time.RFC3339),
@@ -461,8 +442,6 @@ func (d *GenericSQLDatastore) AddLocalEvent(ctx context.Context, jobID string, e
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	//nolint:ineffassign,staticcheck
-	ctx, span := d.GetSpan(ctx, "AddLocalEvent")
-	defer span.End()
 	sqlStatement := `
 INSERT INTO local_event (job_id, created, apiversion, eventdata)
 VALUES ($1, $2, $3, $4)`
@@ -470,7 +449,8 @@ VALUES ($1, $2, $3, $4)`
 	if err != nil {
 		return err
 	}
-	_, err = d.db.Exec(
+	_, err = d.db.ExecContext(
+		ctx,
 		sqlStatement,
 		jobID,
 		time.Now().UTC().Format(time.RFC3339),
@@ -487,8 +467,6 @@ func (d *GenericSQLDatastore) UpdateJobDeal(ctx context.Context, jobID string, d
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	//nolint:ineffassign,staticcheck
-	ctx, span := d.GetSpan(ctx, "UpdateJobDeal")
-	defer span.End()
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -506,7 +484,8 @@ func (d *GenericSQLDatastore) UpdateJobDeal(ctx context.Context, jobID string, d
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
+		ctx,
 		sqlStatement,
 		string(jobData),
 		model.APIVersionLatest().String(),
@@ -521,7 +500,7 @@ func (d *GenericSQLDatastore) UpdateJobDeal(ctx context.Context, jobID string, d
 func getJobState(db SQLClient, ctx context.Context, jobID string) (model.JobState, error) {
 	var apiversion string
 	var statedata string
-	row := db.QueryRow("select apiversion, statedata from job where id = $1 limit 1", jobID)
+	row := db.QueryRowContext(ctx, "select apiversion, statedata from job where id = $1 limit 1", jobID)
 
 	err := row.Scan(&apiversion, &statedata)
 	if err != nil {
@@ -543,8 +522,6 @@ func getJobState(db SQLClient, ctx context.Context, jobID string) (model.JobStat
 func (d *GenericSQLDatastore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	ctx, span := d.GetSpan(ctx, "GetJobState")
-	defer span.End()
 	return getJobState(d.db, ctx, jobID)
 }
 
@@ -556,8 +533,6 @@ func (d *GenericSQLDatastore) UpdateShardState(
 ) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	ctx, span := d.GetSpan(ctx, "UpdateShardState")
-	defer span.End()
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -578,7 +553,8 @@ func (d *GenericSQLDatastore) UpdateShardState(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
+		ctx,
 		sqlStatement,
 		string(stateData),
 		model.APIVersionLatest().String(),

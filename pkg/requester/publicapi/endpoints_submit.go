@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type submitRequest struct {
@@ -43,9 +43,7 @@ type submitResponse struct {
 //	@Failure				500				{object}	string
 //	@Router					/requester/submit [post]
 func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
-	defer span.End()
-
+	ctx := req.Context()
 	if otherJobID := req.Header.Get("X-Bacalhau-Job-ID"); otherJobID != "" {
 		err := fmt.Errorf("rejecting job because HTTP header X-Bacalhau-Job-ID was set")
 		log.Ctx(ctx).Info().Str("X-Bacalhau-Job-ID", otherJobID).Err(err).Send()
@@ -61,7 +59,7 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 	}
 
 	// first verify the signature on the raw bytes
-	if err := verifyRequestSignature(&submitReq); err != nil {
+	if err := verifyRequestSignature(*submitReq.JobCreatePayload, submitReq.ClientSignature, submitReq.ClientPublicKey); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyRequestSignature error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
@@ -77,8 +75,8 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCreatePayload.ClientID)
 
-	if err := verifySubmitRequest(&submitReq, &jobCreatePayload); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
+	if err := verifySignedJobRequest(jobCreatePayload.ClientID, submitReq.ClientSignature, submitReq.ClientPublicKey); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> verifySignedJobRequest error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
@@ -96,7 +94,8 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 		jobCreatePayload,
 	)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
-	span.SetAttributes(attribute.String(model.TracerAttributeNameJobID, j.Metadata.ID))
+	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

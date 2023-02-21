@@ -5,7 +5,6 @@ import (
 	"time"
 
 	ipfsClient "github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/combo"
@@ -13,6 +12,7 @@ import (
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/tracing"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -53,17 +53,16 @@ func NewIPFSPublishers(
 	}
 
 	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:     noopPublisher,
-		model.PublisherIpfs:     ipfsPublisher,
-		model.PublisherEstuary:  estuaryPublisher,
-		model.PublisherFilecoin: combo.NewPiggybackedPublisher(ipfsPublisher, lotus),
+		model.PublisherNoop:     tracing.Wrap(noopPublisher),
+		model.PublisherIpfs:     tracing.Wrap(ipfsPublisher),
+		model.PublisherEstuary:  tracing.Wrap(estuaryPublisher),
+		model.PublisherFilecoin: combo.NewPiggybackedPublisher(tracing.Wrap(ipfsPublisher), tracing.Wrap(lotus)),
 	}), nil
 }
 
 func NewNoopPublishers(
 	_ context.Context,
 	_ *system.CleanupManager,
-	_ *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher := noop.NewNoopPublisher()
 	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil

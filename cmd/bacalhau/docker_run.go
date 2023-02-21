@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -285,11 +284,11 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
+	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.dockerRun")
 	defer rootSpan.End()
 	cm.RegisterCallback(telemetry.Cleanup)
 
-	j, err := CreateJob(ctx, cmdArgs, ODR)
+	j, err := CreateJob(cmdArgs, ODR)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating job: %s", err), 1)
 		return nil
@@ -335,13 +334,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context,
-	cmdArgs []string,
-	odr *DockerRunOptions) (*model.Job, error) {
-	//nolint:ineffassign,staticcheck
-	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
-	defer span.End()
-
+func CreateJob(cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 

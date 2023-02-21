@@ -26,7 +26,7 @@ func NewComputeAPIClientFromClient(baseClient *publicapi.APIClient) *ComputeAPIC
 }
 
 func (apiClient *ComputeAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Debug")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute/publicapi.ComputeAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

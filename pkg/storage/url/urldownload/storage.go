@@ -16,9 +16,14 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/go-resty/resty/v2"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-retryablehttp"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -27,8 +32,8 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type StorageProvider struct {
-	LocalDir   string
-	HTTPClient *resty.Client
+	localDir string
+	client   *retryablehttp.Client
 }
 
 func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
@@ -45,21 +50,42 @@ func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 		return nil
 	})
 
-	client := resty.New()
-	// Setting output directory path, If directory not exists then resty creates one
-	client.SetOutputDirectory(dir)
-	// Setting the number of times to try downloading the URL
-	client.SetRetryCount(config.GetDownloadURLRequestRetries())
-	client.SetRetryWaitTime(time.Second * 1)
-	client.AddRetryAfterErrorCondition()
+	log.Debug().Str("dir", dir).Msg("URL download driver created with output dir")
 
-	storageHandler := &StorageProvider{
-		HTTPClient: client,
-		LocalDir:   dir,
+	return newStorage(dir), nil
+}
+
+func newStorage(dir string) *StorageProvider {
+	client := retryablehttp.NewClient()
+	client.HTTPClient = &http.Client{
+		Timeout: config.GetDownloadURLRequestTimeout(),
+		Transport: otelhttp.NewTransport(nil, otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+		}), otelhttp.WithSpanOptions(trace.WithAttributes(semconv.PeerService("url-download")))),
+	}
+	client.RetryMax = config.GetDownloadURLRequestRetries()
+	client.RetryWaitMax = time.Second * 1
+	client.Logger = retryLogger{}
+	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if err := ctx.Err(); err != nil { //nolint:govet
+			return false, err
+		}
+		if err == nil {
+			// Existing behavior around retrying is to retry on _all_ non 2xx status codes. This includes codes that would have no
+			// realistic hope of succeeding like `Unauthorized` or `Gone`
+			if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusBadRequest {
+				return false, nil
+			}
+			return true, nil
+		}
+
+		return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 	}
 
-	log.Debug().Msgf("URL download driver created with output dir: %s", dir)
-	return storageHandler, nil
+	return &StorageProvider{
+		localDir: dir,
+		client:   client,
+	}
 }
 
 func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
@@ -70,51 +96,38 @@ func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec)
 	return false, nil
 }
 
-// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
+	// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 	return 0, nil
 }
 
-// For the urldownload storage provider, PrepareStorage will download the file from the URL
-//
-//nolint:funlen,gocyclo // TODO: refactor this function
+// PrepareStorage will download the file from the URL
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
-	defer span.End()
-
 	u, err := IsURLSupported(storageSpec.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
+	outputPath, err := os.MkdirTemp(sp.localDir, "*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	sp.HTTPClient.SetTimeout(config.GetDownloadURLRequestTimeout())
-	sp.HTTPClient.SetOutputDirectory(outputPath)
-	sp.HTTPClient.SetDoNotParseResponse(true) // We want to stream the response to disk directly
-
-	// Trying a check for head - just trying to fail quickly if the site is clearly wrong.
-	// This MAY fail with 405 (method not allowed) if the server doesn't support HEAD which is generally
-	// OK because we will fail if the server is down - so it is a best effort.
-	req := sp.HTTPClient.R().SetContext(ctx)
-	req = req.SetContext(ctx)
-	r, err := req.Head(u.String())
-	log.Debug().Msgf("HEAD request to %s returned status code %d", u.String(), r.StatusCode())
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to get headers from url (%s): %s", u.String(), err)
+		return storage.StorageVolume{}, err
+	}
+	res, err := sp.client.Do(req) //nolint:bodyclose // this is being closed - golangci-lint is wrong again
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to begin download from url %s: %w", u, err)
+	}
+	defer closer.DrainAndCloseWithLogOnError(ctx, "response", res.Body)
+
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, res.Status)
 	}
 
-	// Checking to see about redirect here (does not 100% work because could have rejected the HEAD request)
-	finalURL := r.RawResponse.Request.URL
-	if finalURL != u {
-		log.Debug().Msgf("URL %s redirected to %s", u.String(), finalURL.String())
-	}
-
-	// Create a new file based on the URL
-	baseName := path.Base(finalURL.Path)
+	baseName := path.Base(res.Request.URL.Path)
 	var fileName string
 	if baseName == "." || baseName == "/" {
 		// There is no filename in the URL, so we need to a temp one
@@ -123,70 +136,31 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		fileName = baseName
 	}
 
-	log.Trace().Msgf("Beginning get %s to %s", finalURL, outputPath)
-	r, err = req.Get(finalURL.String())
-	if err != nil {
-		return storage.StorageVolume{},
-			fmt.Errorf("failed to begin download from url %s: %s", finalURL, err)
-	}
-
-	if r.StatusCode() != http.StatusOK {
-		return storage.StorageVolume{},
-			fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, r.Status())
-	}
-
 	filePath := filepath.Join(outputPath, fileName)
-	targetPath := filepath.Join(storageSpec.Path, fileName)
 	w, err := os.Create(filePath)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to create file %s: %s", filePath, err)
 	}
 
+	defer closer.CloseWithLogOnError("file", w)
+
 	// stream the body to the client without fully loading it into memory
-	n, err := io.Copy(w, r.RawBody())
-	if err != nil {
+	if _, err := io.Copy(w, res.Body); err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to write to file %s: %s", filePath, err)
 	}
 
-	if n == 0 {
-		return storage.StorageVolume{}, fmt.Errorf("no bytes written to file %s", filePath)
+	if err := w.Sync(); err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %w", filePath, err)
 	}
 
-	log.Trace().Msgf("Wrote %d bytes to %s", n, filePath)
+	targetPath := filepath.Join(storageSpec.Path, fileName)
 
-	// Closing everything
-	err = w.Sync()
-	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %s", filePath, err)
-	}
-
-	// If path.Base isn't empty, we'll see if it got redirected to a different file name
-	// and if so, we'll rename it to the original file name from the URL
-	// Otherwise, we'll just use the filename we created
-	var finalFileName string
-	if baseName != "." && baseName != "/" {
-		finalFileName = filepath.Join(outputPath, path.Base(r.RawResponse.Request.URL.Path))
-	} else {
-		finalFileName = filePath
-	}
-
-	fileWriteName := w.Name()
-	log.Debug().Msgf("Final file name based on URL: %s", finalFileName)
-	log.Debug().Msgf("Final written name: %s", fileWriteName)
-	if finalFileName != fileWriteName {
-		log.Debug().Msgf("Downloaded file has different name than final name - renaming: %s to %s", w.Name(), finalFileName)
-		err = os.Rename(w.Name(), finalFileName)
-		if err != nil {
-			return storage.StorageVolume{}, fmt.Errorf("failed to rename file %s to %s: %s", w.Name(), finalFileName, err)
-		}
-
-		// Need to update filePath and targetPath to accommodate the rename
-		filePath = filepath.Join(outputPath, filepath.Base(finalFileName))
-		targetPath = filepath.Join(storageSpec.Path, filepath.Base(finalFileName))
-	}
-
-	r.RawBody().Close()
-	w.Close()
+	log.Ctx(ctx).Debug().
+		Stringer("url", u).
+		Stringer("final-url", res.Request.URL).
+		Str("file", filePath).
+		Str("targetFile", targetPath).
+		Msg("Downloaded file")
 
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
@@ -202,22 +176,19 @@ func (sp *StorageProvider) CleanupStorage(
 	_ model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
-	defer span.End()
-
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
 }
 
-// we don't "upload" anything to a URL
 func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
+	// we don't "upload" anything to a URL
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-// for the url download - explode will always result in a single item
-// mounted at the path specified in the spec
 func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	// for the url download - explode will always result in a single item
+	// mounted at the path specified in the spec
 	return []model.StorageSpec{
 		{
 			Name:          spec.Name,
@@ -249,5 +220,46 @@ func IsURLSupported(rawURL string) (*url.URL, error) {
 	return u, nil
 }
 
-// Compile time interface check:
 var _ storage.Storage = (*StorageProvider)(nil)
+
+var _ retryablehttp.LeveledLogger = retryLogger{}
+
+// This logger needs to change to fetch the logger from the context once
+// https://github.com/hashicorp/go-retryablehttp/issues/182 is implemented and released.
+type retryLogger struct {
+}
+
+func (r retryLogger) Error(msg string, keysAndValues ...interface{}) {
+	parseKeysAndValues(log.Error(), keysAndValues...).Msg(msg)
+}
+
+func (r retryLogger) Info(msg string, keysAndValues ...interface{}) {
+	parseKeysAndValues(log.Info(), keysAndValues...).Msg(msg)
+}
+
+func (r retryLogger) Debug(msg string, keysAndValues ...interface{}) {
+	parseKeysAndValues(log.Debug(), keysAndValues...).Msg(msg)
+}
+
+func (r retryLogger) Warn(msg string, keysAndValues ...interface{}) {
+	parseKeysAndValues(log.Warn(), keysAndValues...).Msg(msg)
+}
+
+func parseKeysAndValues(e *zerolog.Event, keysAndValues ...interface{}) *zerolog.Event {
+	for i := 0; i < len(keysAndValues); i = i + 2 {
+		name := keysAndValues[i].(string)
+		value := keysAndValues[i+1]
+		if v, ok := value.(string); ok {
+			e = e.Str(name, v)
+		} else if v, ok := value.(error); ok {
+			e = e.AnErr(name, v)
+		} else if v, ok := value.(fmt.Stringer); ok {
+			e = e.Stringer(name, v)
+		} else if v, ok := value.(int); ok {
+			e = e.Int(name, v)
+		} else {
+			e = e.Interface(name, value)
+		}
+	}
+	return e
+}

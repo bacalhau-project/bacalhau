@@ -3,7 +3,7 @@ package localdb
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 )
 
 type JobQuery struct {

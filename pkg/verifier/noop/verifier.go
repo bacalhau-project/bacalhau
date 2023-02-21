@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -12,13 +11,11 @@ import (
 )
 
 type NoopVerifier struct {
-	stateResolver *job.StateResolver
-	results       *results.Results
+	results *results.Results
 }
 
 func NewNoopVerifier(
 	_ context.Context, cm *system.CleanupManager,
-	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
 	results, err := results.NewResults()
 	if err != nil {
@@ -32,8 +29,7 @@ func NewNoopVerifier(
 		return nil
 	})
 	return &NoopVerifier{
-		stateResolver: resolver,
-		results:       results,
+		results: results,
 	}, nil
 }
 
@@ -56,50 +52,27 @@ func (noopVerifier *NoopVerifier) GetShardProposal(
 	return []byte{}, nil
 }
 
-// each shard must have >= concurrency states
-// and they must be either JobStateError or JobStateVerifying
-func (noopVerifier *NoopVerifier) IsExecutionComplete(
-	ctx context.Context,
-	shard model.JobShard,
-) (bool, error) {
-	return noopVerifier.stateResolver.CheckShardStates(ctx, shard, func(
-		shardStates []model.JobShardState,
-		concurrency int,
-	) (bool, error) {
-		return noopVerifier.results.CheckShardStates(shardStates, concurrency)
-	})
-}
-
 func (noopVerifier *NoopVerifier) VerifyShard(
 	ctx context.Context,
 	shard model.JobShard,
+	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyShard")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.NoopVerifier.VerifyShard")
 	defer span.End()
 
-	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, shard.Job.Metadata.ID)
+	err := verifier.ValidateExecutions(shard, executionStates)
 	if err != nil {
-		return results, err
-	}
-	shardStates := job.GetStatesForShardIndex(jobState, shard.Index)
-	if len(shardStates) == 0 {
-		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
+		return nil, err
 	}
 
-	for _, shardState := range shardStates { //nolint:gocritic
-		if shardState.State != model.JobStateVerifying {
-			continue
-		}
-		results = append(results, verifier.VerifierResult{
-			JobID:       shard.Job.Metadata.ID,
-			NodeID:      shardState.NodeID,
-			ExecutionID: shardState.ExecutionID,
-			ShardIndex:  shardState.ShardIndex,
-			Verified:    true,
+	var verifierResults []verifier.VerifierResult
+	for _, execution := range executionStates { //nolint:gocritic
+		verifierResults = append(verifierResults, verifier.VerifierResult{
+			Execution: execution,
+			Verified:  true,
 		})
 	}
-	return results, nil
+	return verifierResults, nil
 }
 
 // Compile-time check that NoopVerifier implements the correct interface:

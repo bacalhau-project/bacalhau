@@ -6,8 +6,10 @@ require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/Masterminds/semver v1.5.0
+	github.com/XSAM/otelsql v0.19.0
 	github.com/antihax/optional v1.0.0
 	github.com/application-research/estuary-clients/go v0.0.0-20221129102826-8a9f3452ad5a
+	github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
@@ -18,7 +20,6 @@ require (
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-jsonrpc v0.1.9
 	github.com/filecoin-project/go-state-types v0.9.9
-	github.com/go-resty/resty/v2 v2.7.0
 	github.com/go-test/deep v1.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
@@ -27,6 +28,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/imdario/mergo v0.3.13
 	github.com/invopop/jsonschema v0.7.0
 	github.com/ipfs/go-cid v0.3.2
@@ -48,13 +50,13 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/libp2p/go-libp2p v0.23.4
 	github.com/libp2p/go-libp2p-pubsub v0.8.2
-	github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/multiformats/go-multicodec v0.8.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
+	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pelletier/go-toml/v2 v2.0.6
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -68,24 +70,24 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.10
-	github.com/tetratelabs/wazero v1.0.0-pre.4
+	github.com/tetratelabs/wazero v1.0.0-pre.8
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opencensus.io v0.24.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.38.0
-	go.opentelemetry.io/otel v1.12.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.39.0
+	go.opentelemetry.io/otel v1.13.0
 	go.opentelemetry.io/otel/bridge/opencensus v0.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.12.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.12.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.7.0
-	go.opentelemetry.io/otel/metric v0.35.0
-	go.opentelemetry.io/otel/sdk v1.12.0
-	go.opentelemetry.io/otel/sdk/metric v0.35.0
-	go.opentelemetry.io/otel/trace v1.12.0
+	go.opentelemetry.io/otel/metric v0.36.0
+	go.opentelemetry.io/otel/sdk v1.13.0
+	go.opentelemetry.io/otel/sdk/metric v0.36.0
+	go.opentelemetry.io/otel/trace v1.13.0
 	go.ptx.dk/multierrgroup v0.0.2
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
@@ -161,6 +163,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
@@ -280,7 +283,6 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openzipkin/zipkin-go v0.4.0 // indirect

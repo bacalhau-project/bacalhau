@@ -55,7 +55,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
 				}
-				returnedJob := &model.Job{}
+				returnedJobDescription := &model.JobWithInfo{}
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), "describe",
@@ -72,12 +72,13 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
+				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
+
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -88,12 +89,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
+				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
@@ -104,12 +105,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
+				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -195,7 +196,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}
 
-				var returnedJob = model.NewJob()
+				var returnedJobDescription = &model.JobWithInfo{}
 				var err error
 				var out string
 				var jobID string
@@ -215,12 +216,12 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				if tc.describeIDEdgecase == "" {
 					require.NoError(s.T(), err, "Error in describing job: %+v", err)
 
-					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
+					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJob.Metadata.ID, "IDs do not match.")
+					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
 						submittedJob.Spec.Docker.Entrypoint[0],
-						returnedJob.Spec.Docker.Entrypoint[0],
+						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}

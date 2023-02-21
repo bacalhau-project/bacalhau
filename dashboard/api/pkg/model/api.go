@@ -8,18 +8,24 @@ import (
 
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
+	bacalhau_model_beta "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+
+	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub"
+	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type ModelOptions struct {
-	UpstreamHost     string
-	UpstreamPort     int
+	Host             host.Host
 	PostgresHost     string
 	PostgresPort     int
 	PostgresDatabase string
@@ -28,22 +34,16 @@ type ModelOptions struct {
 }
 
 type ModelAPI struct {
-	options          ModelOptions
-	localDB          localdb.LocalDB
-	nodeDB           routing.NodeInfoStore
-	store            *store.PostgresStore
-	stateResolver    *jobutils.StateResolver
-	jobEventHandler  *jobEventHandler
-	nodeEventHandler *nodeEventHandler
+	options         ModelOptions
+	localDB         localdb.LocalDB
+	nodeDB          routing.NodeInfoStore
+	store           *store.PostgresStore
+	stateResolver   *localdb.StateResolver
+	jobEventHandler *jobEventHandler
+	cleanupFunc     func(context.Context)
 }
 
 func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
-	if options.UpstreamHost == "" {
-		return nil, fmt.Errorf("upstream host is required")
-	}
-	if options.UpstreamPort == 0 {
-		return nil, fmt.Errorf("upstream port is required")
-	}
 	if options.PostgresHost == "" {
 		return nil, fmt.Errorf("postgres host is required")
 	}
@@ -87,41 +87,93 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 		TTL: 2 * time.Minute,
 	})
 
-	jobEventHandler, err := newJobEventHandler(
-		options.UpstreamHost,
-		options.UpstreamPort,
-		postgresDB,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeEventHandler, err := newNodeEventHandler(
-		options.UpstreamHost,
-		options.UpstreamPort,
-		nodeDB,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	stateResolver := localdb.GetStateResolver(postgresDB)
 
 	api := &ModelAPI{
-		options:          options,
-		localDB:          postgresDB,
-		nodeDB:           nodeDB,
-		store:            dashboardstore,
-		stateResolver:    stateResolver,
-		jobEventHandler:  jobEventHandler,
-		nodeEventHandler: nodeEventHandler,
+		options:         options,
+		localDB:         postgresDB,
+		nodeDB:          nodeDB,
+		store:           dashboardstore,
+		stateResolver:   stateResolver,
+		jobEventHandler: newJobEventHandler(postgresDB),
 	}
 	return api, nil
 }
 
-func (api *ModelAPI) Start(ctx context.Context) {
-	api.jobEventHandler.start(ctx)
-	api.nodeEventHandler.start(ctx)
+func (api *ModelAPI) Start(ctx context.Context) error {
+	if api.options.Host == nil {
+		return fmt.Errorf("libp2p host is required")
+	}
+	var err error
+	ctx, cancel := context.WithCancel(ctx)
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
+
+	gossipSub, err := libp2p_pubsub.NewGossipSub(ctx, api.options.Host)
+	if err != nil {
+		return err
+	}
+
+	// PubSub to read node info from the network
+	nodeInfoPubSub, err := libp2p.NewPubSub[bacalhau_model.NodeInfo](libp2p.PubSubParams{
+		Host:      api.options.Host,
+		TopicName: node.NodeInfoTopic,
+		PubSub:    gossipSub,
+	})
+	if err != nil {
+		return err
+	}
+	err = nodeInfoPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model.NodeInfo](api.nodeDB.Add))
+	if err != nil {
+		return err
+	}
+
+	// PubSub to read job events from the network
+	libp2p2JobEventPubSub, err := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
+		Host:      api.options.Host,
+		TopicName: node.JobEventsTopic,
+		PubSub:    gossipSub,
+	})
+	if err != nil {
+		return err
+	}
+
+	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[bacalhau_model_beta.JobEvent](pubsub.BufferingPubSubParams{
+		DelegatePubSub: libp2p2JobEventPubSub,
+		MaxBufferAge:   5 * time.Minute, //nolint:gomnd // required, but we don't publish events in the dashboard
+	})
+	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model_beta.JobEvent](api.jobEventHandler.readEvent))
+	if err != nil {
+		return err
+	}
+
+	api.jobEventHandler.startBufferGC(ctx)
+	api.cleanupFunc = func(ctx context.Context) {
+		cleanupErr := bufferedJobEventPubSub.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close job event pubsub")
+		}
+		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
+		}
+		cleanupErr = nodeInfoPubSub.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
+		}
+		cancel()
+	}
+	return nil
+}
+
+func (api *ModelAPI) Stop() error {
+	if api.cleanupFunc != nil {
+		api.cleanupFunc(context.Background())
+	}
+	return nil
 }
 
 func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.NodeInfo, error) {
@@ -138,15 +190,15 @@ func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.No
 	return nodesMap, nil
 }
 
-func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model.Job, error) {
-	return api.localDB.GetJobs(context.Background(), query)
+func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model_beta.Job, error) {
+	return api.localDB.GetJobs(ctx, query)
 }
 
 func (api *ModelAPI) GetJobsCount(ctx context.Context, query localdb.JobQuery) (int, error) {
-	return api.localDB.GetJobsCount(context.Background(), query)
+	return api.localDB.GetJobsCount(ctx, query)
 }
 
-func (api *ModelAPI) GetJob(ctx context.Context, id string) (*bacalhau_model.Job, error) {
+func (api *ModelAPI) GetJob(ctx context.Context, id string) (*bacalhau_model_beta.Job, error) {
 	return api.localDB.GetJob(ctx, id)
 }
 
@@ -254,8 +306,8 @@ func (api *ModelAPI) GetTotalExecutorCount(
 	return api.store.GetTotalExecutorCount(ctx)
 }
 
-func (api *ModelAPI) AddEvent(event bacalhau_model.JobEvent) {
-	api.jobEventHandler.readEvent(context.Background(), event)
+func (api *ModelAPI) AddEvent(event bacalhau_model_beta.JobEvent) error {
+	return api.jobEventHandler.readEvent(context.Background(), event)
 }
 
 func (api *ModelAPI) AddUser(

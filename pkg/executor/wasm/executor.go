@@ -32,14 +32,12 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
+	_ context.Context,
 	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
-	executor := &Executor{
+	return &Executor{
 		StorageProvider: storageProvider,
-	}
-
-	return executor, nil
+	}, nil
 }
 
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
@@ -48,7 +46,7 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.HasStorageLocally")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
 	defer span.End()
 
 	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -60,7 +58,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.GetVolumeSize")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
 
 	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -139,10 +137,11 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.RunShard")
 	defer span.End()
 
-	engineConfig := wazero.NewRuntimeConfig()
+	cache := wazero.NewCompilationCache()
+	engineConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
@@ -188,7 +187,6 @@ func (e *Executor) RunShard(
 	args := []string{module.Name()}
 	args = append(args, wasmSpec.Parameters...)
 
-	namespace := engine.NewNamespace(ctx)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
@@ -214,7 +212,7 @@ func (e *Executor) RunShard(
 		}
 		importedModules = append(importedModules, importedWasi)
 
-		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
+		_, instantiateErr := engine.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
 			return executor.FailResult(instantiateErr)
 		}
@@ -226,13 +224,13 @@ func (e *Executor) RunShard(
 	}
 	defer wasi.Close(ctx)
 
-	_, err = namespace.InstantiateModule(ctx, wasi, config)
+	_, err = engine.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	instance, err := namespace.InstantiateModule(ctx, module, config)
+	instance, err := engine.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -261,11 +259,6 @@ func (e *Executor) RunShard(
 	}
 
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
-}
-
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	// TODO: Implement CancelShard for WASM executor #1060
-	return nil
 }
 
 // Compile-time check that Executor implements the Executor interface.

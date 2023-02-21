@@ -7,7 +7,7 @@ import (
 
 	realsync "sync"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 
 	"github.com/rs/zerolog/log"
 )

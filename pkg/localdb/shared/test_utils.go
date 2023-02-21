@@ -6,28 +6,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"runtime"
-	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-const linuxRuntime = "linux"
-
-func skipIfNotLinux(t *testing.T) {
-	if runtime.GOOS != linuxRuntime {
-		t.Skip("Test does not pass natively on non linux")
-	}
-}
-
-func TestExampleTestSuite(t *testing.T) {
-	suite.Run(t, new(GenericSQLSuite))
-}
 
 type GenericSQLSuite struct {
 	suite.Suite
@@ -38,25 +26,20 @@ type GenericSQLSuite struct {
 }
 
 func (suite *GenericSQLSuite) SetupTest() {
-	if runtime.GOOS != linuxRuntime {
-		return
-	}
+	suite.Require().NoError(system.InitConfigForTesting(suite.T()))
+	logger.ConfigureTestLogging(suite.T())
 	datastore := suite.SetupHandler()
 	suite.datastore = datastore
 	suite.db = datastore.GetDB()
 }
 
 func (suite *GenericSQLSuite) TearDownSuite() {
-	if runtime.GOOS != linuxRuntime {
-		return
-	}
 	if suite.TeardownHandler != nil {
 		suite.TeardownHandler()
 	}
 }
 
 func (suite *GenericSQLSuite) TestSQLiteMigrations() {
-	skipIfNotLinux(suite.T())
 	_, err := suite.db.Exec(`
 insert into job (id) values ('123');
 `)
@@ -80,7 +63,6 @@ select id from job;
 }
 
 func (suite *GenericSQLSuite) TestRoundtripJob() {
-	skipIfNotLinux(suite.T())
 	job := &model.Job{
 		Metadata: model.Metadata{
 			ID: "hellojob",
@@ -94,7 +76,6 @@ func (suite *GenericSQLSuite) TestRoundtripJob() {
 }
 
 func (suite *GenericSQLSuite) TestAddingTwoJobs() {
-	skipIfNotLinux(suite.T())
 	err := suite.datastore.AddJob(context.Background(), &model.Job{
 		Metadata: model.Metadata{
 			ID: "hellojob1",
@@ -111,7 +92,6 @@ func (suite *GenericSQLSuite) TestAddingTwoJobs() {
 
 //nolint:funlen
 func (suite *GenericSQLSuite) TestGetJobs() {
-	skipIfNotLinux(suite.T())
 	jobCount := 100
 	dateString := "2021-11-22"
 	date, err := time.Parse("2006-01-02", dateString)
@@ -253,7 +233,6 @@ func (suite *GenericSQLSuite) TestGetJobs() {
 }
 
 func (suite *GenericSQLSuite) TestJobEvents() {
-	skipIfNotLinux(suite.T())
 	eventCount := 5
 	job := &model.Job{
 		Metadata: model.Metadata{
@@ -305,7 +284,6 @@ func (suite *GenericSQLSuite) TestJobEvents() {
 }
 
 func (suite *GenericSQLSuite) TestJobState() {
-	skipIfNotLinux(suite.T())
 	job := &model.Job{
 		Metadata: model.Metadata{
 			ID: "hellojob",
@@ -336,7 +314,6 @@ func (suite *GenericSQLSuite) TestJobState() {
 }
 
 func (suite *GenericSQLSuite) TestUpdateDeal() {
-	skipIfNotLinux(suite.T())
 	job := &model.Job{
 		Metadata: model.Metadata{
 			ID: "hellojob",

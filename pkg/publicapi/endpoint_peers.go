@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -18,9 +17,7 @@ import (
 //	@Success				200	{object}	[]peer.AddrInfo
 //	@Failure				500	{object}	string
 //	@Router					/peers [get]
-func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
-	_, span := system.GetSpanFromRequest(req, "apiServer/peers")
-	defer span.End()
+func (apiServer *APIServer) peers(res http.ResponseWriter, _ *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	var peerInfos []peer.AddrInfo
 	for _, p := range apiServer.host.Peerstore().Peers() {

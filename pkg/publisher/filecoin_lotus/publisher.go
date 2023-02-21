@@ -44,9 +44,6 @@ func NewPublisher(
 	cm *system.CleanupManager,
 	config PublisherConfig,
 ) (*Publisher, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewPublisher")
-	defer span.End()
-
 	if config.StorageDuration == time.Duration(0) {
 		return nil, errors.New("StorageDuration is required")
 	}
