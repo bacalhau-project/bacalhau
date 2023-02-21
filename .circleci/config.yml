@@ -184,7 +184,7 @@ jobs:
                 name: Test Python Airflow Provider
                 command: |
                   cd integration/airflow
-                  pip install -r dev-requirements.txt
+                  pip3 install -r dev-requirements.txt
                   tox
                   cd ../..
             - run:
