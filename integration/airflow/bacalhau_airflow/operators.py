@@ -1,3 +1,6 @@
+"""
+Airflow operators for Bacalhau.
+"""
 import time
 
 from airflow.compat.functools import cached_property
@@ -9,9 +12,12 @@ from bacalhau_airflow.hooks import BacalhauHook
 
 
 class BacalhauLink(BaseOperatorLink):
+    """Link to the Bacalhau service."""
+
     name = "Bacalhau"
 
     def get_link(self, operator: BaseOperator, *, ti_key: TaskInstanceKey):
+        """Get the URL of the Bacalhau public service."""
         return "https://docs.bacalhau.org/"
 
 
@@ -29,9 +35,28 @@ class BacalhauSubmitJobOperator(BaseOperator):
         api_version: str,
         job_spec: dict,
         #  inputs: dict = None,
-        input_volumes: dict = {},
+        input_volumes: list = [],
         **kwargs
     ) -> None:
+        """Constructor of the operator to submit a Bacalhau job.
+
+        Args:
+            api_version (str): The API version to use. Example: "V1beta1".
+            job_spec (dict): A dictionary with the job specification. See example dags for more details.
+            input_volumes (list, optional):
+                Use this parameter to pipe an upstream's output into a Bacalhau task.
+
+                This makes use of Airflow's XComs to support communication between tasks.
+                Please learn more about XComs here: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html
+
+                Every task of `BacalhauSubmitJobOperator` stores an XCom key-value named `cids` (type `str`), a CID comma-separated list of the output shards.
+                That way, a downstream task can use the `input_volumes` parameter to mount the upstream's output shards into its own input volumes.
+
+                The format of this parameter is a list of strings, where each string is a pair of `cid` and `mount_point` separated by a colon.
+                Defaults to [].
+
+                For example, the list `[ "{{ task_instance.xcom_pull(task_ids='run-1', key='cids') }}:/datasets" ]` takes all shards created by task "run-1" and mounts them at "/datasets".
+        """
         super().__init__(**kwargs)
         self.api_version = api_version
         # inject inputs and input_volumes into job_spec
@@ -40,7 +65,16 @@ class BacalhauSubmitJobOperator(BaseOperator):
         # self.inputs = inputs
         self.input_volumes = input_volumes
 
-    def execute(self, context: Context) -> dict:
+    def execute(self, context: Context) -> str:
+        """Execute the operator.
+
+        Args:
+            context (Context):
+
+        Returns:
+            str: The job ID created.
+        """
+
         # TODO do the same for inputs?
 
         # TODO manage the case when 1+ cids are passed in input_volumes and must be mounted in children mount points
