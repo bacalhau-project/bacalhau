@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from airflow import DAG
-from bacalhau.operators import BacalhauSubmitJobOperator
+from bacalhau-airflow.operators import BacalhauSubmitJobOperator
 
 with DAG("run-me", start_date=datetime(2021, 1, 1)) as dag:
     op1 = BacalhauSubmitJobOperator(

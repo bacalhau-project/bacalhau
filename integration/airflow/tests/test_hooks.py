@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-"""Tests for `bacalhau.hooks` package."""
+"""Tests for `bacalhau-airflow.hooks` package."""
 
 
 import unittest
 
-from bacalhau.hooks import BacalhauHook
+from bacalhau_airflow.hooks import BacalhauHook
 
 
 class TestBacalhauHook(unittest.TestCase):
-    # """Tests for `bacalhau.hooks` package."""
+    # """Tests for `bacalhau-airflow.hooks` package."""
 
     def setUp(self):
         """Set up test fixtures, if any."""

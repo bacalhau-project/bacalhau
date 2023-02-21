@@ -1,11 +1,11 @@
-"""Tests for `bacalhau.operators` package."""
+"""Tests for `bacalhau-airflow.operators` package."""
 
 import unittest
 from datetime import datetime
 import pendulum
 
-from bacalhau.operators import BacalhauSubmitJobOperator
-from bacalhau.hooks import BacalhauHook
+from bacalhau_airflow.operators import BacalhauSubmitJobOperator
+from bacalhau_airflow.hooks import BacalhauHook
 
 from airflow.models.dag import DAG
 from airflow.utils.types import DagRunType
