@@ -11,13 +11,13 @@ export IMAGE_FRONTEND=$DOCKER_REGISTRY/$GCP_PROJECT_ID/dashboard-frontend:$CI_CO
 export IMAGE_API=$DOCKER_REGISTRY/$GCP_PROJECT_ID/dashboard-api:$CI_COMMIT_SHA
 
 function build:api() {
-  docker build -t $IMAGE_API -f Dockerfile.dashboard .
+  docker build --platform linux/amd64 -t $IMAGE_API -f Dockerfile.dashboard .
   docker save $IMAGE_API | bzip2 | gcloud compute ssh dashboard-vm-default-0 -- sudo docker load
   echo $IMAGE_API
 }
 
 function build:frontend() {
-  docker build -t $IMAGE_FRONTEND dashboard/frontend
+  docker build --platform linux/amd64 -t $IMAGE_FRONTEND dashboard/frontend
   docker save $IMAGE_FRONTEND | bzip2 | gcloud compute ssh dashboard-vm-default-0 -- sudo docker load
   echo $IMAGE_FRONTEND
 }
