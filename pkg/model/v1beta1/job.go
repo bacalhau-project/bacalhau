@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -75,7 +74,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		},
 	})
 	if err != nil {
-		log.Err(err).Msg("failed to merge sane defaults into job")
 		return nil, err
 	}
 	return j, nil

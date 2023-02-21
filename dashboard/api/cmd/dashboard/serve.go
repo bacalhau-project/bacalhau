@@ -105,7 +105,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("libp2p connecting to: %s", peers)
+	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
 	libp2pHost, err := libp2p.NewHost(options.ServerOptions.SwarmPort)
 	if err != nil {
@@ -144,7 +144,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 		}
 	}()
 
-	log.Info().Msgf("Dashboard server listening on %s:%d", options.ServerOptions.Host, options.ServerOptions.Port)
+	log.Ctx(ctx).Info().Msgf("Dashboard server listening on %s:%d", options.ServerOptions.Host, options.ServerOptions.Port)
 
 	<-ctx.Done() // block until killed
 	return nil

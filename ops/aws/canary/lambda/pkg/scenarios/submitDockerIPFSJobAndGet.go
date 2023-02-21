@@ -35,7 +35,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
+	log.Ctx(ctx).Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
@@ -81,7 +81,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	}
 
 	for _, file := range files {
-		log.Debug().Msgf("downloaded files: %s", file.Name())
+		log.Ctx(ctx).Debug().Msgf("downloaded files: %s", file.Name())
 	}
 	if len(files) != 3 {
 		return fmt.Errorf("expected 3 files in output dir, got %d", len(files))

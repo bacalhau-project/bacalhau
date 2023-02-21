@@ -118,7 +118,7 @@ func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID stri
 		if err == nil {
 			return res.State, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read state error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read state error")
 			outerErr = err
 		}
 	}
@@ -163,7 +163,7 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 		if err == nil {
 			return res.Events, nil
 		} else {
-			log.Debug().Err(err).Msg("apiclient read events error")
+			log.Ctx(ctx).Debug().Err(err).Msg("apiclient read events error")
 			outerErr = err
 			if strings.Contains(err.Error(), "context canceled") {
 				outerErr = bacerrors.NewContextCanceledError(ctx.Err().Error())

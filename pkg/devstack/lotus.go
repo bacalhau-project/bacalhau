@@ -99,7 +99,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 
 	l.container = c.ID
 
-	log.Debug().
+	log.Ctx(ctx).Debug().
 		Str("image", l.image).
 		Str("UploadDir", l.UploadDir).
 		Str("PathDir", l.PathDir).
@@ -112,7 +112,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 
 	if err := l.waitForLotusToBeHealthy(ctx); err != nil {
 		if err := l.Close(); err != nil { //nolint:govet
-			log.Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
+			log.Ctx(ctx).Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
 		}
 		return err
 	}
@@ -141,7 +141,7 @@ func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
 			break
 		}
 
-		e := log.Debug()
+		e := log.Ctx(ctx).Debug()
 		if len(state.State.Health.Log) != 0 {
 			e = e.Str("last-health-check", strings.TrimSpace(state.State.Health.Log[len(state.State.Health.Log)-1].Output))
 		}

@@ -28,7 +28,7 @@ func NewLoggingSensor(params LoggingSensorParams) *LoggingSensor {
 }
 
 func (s LoggingSensor) Start(ctx context.Context) {
-	log.Debug().Msgf("starting new logging sensor with interval %s", s.interval)
+	log.Ctx(ctx).Debug().Msgf("starting new logging sensor with interval %s", s.interval)
 	ticker := time.NewTicker(s.interval)
 
 	for {
@@ -47,6 +47,6 @@ func (s LoggingSensor) sense(ctx context.Context) {
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to marshal execution summaries")
 	} else {
-		log.Info().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
+		log.Ctx(ctx).Info().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
 	}
 }

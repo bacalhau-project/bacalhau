@@ -133,7 +133,7 @@ func NewNode(
 
 	var simulatorRequestHandler *simulator.RequestHandler
 	if config.SimulatorNodeID == config.Host.ID().String() {
-		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
+		log.Ctx(ctx).Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
 		simulatorRequestHandler = simulator.NewRequestHandler()
 	}
 
@@ -266,13 +266,13 @@ func NewNode(
 		nodeInfoPublisher.Stop()
 		cleanupErr := nodeInfoPubSub.Close(cleanupCtx)
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
 		}
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close host")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close host")
 		}
 		return cleanupErr
 	})

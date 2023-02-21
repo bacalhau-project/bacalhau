@@ -21,7 +21,7 @@ func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *ht
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Debug().Msgf("New websocketJobEvents connection.")
+	log.Ctx(req.Context()).Debug().Msgf("New websocketJobEvents connection.")
 	defer conn.Close()
 
 	// NB: jobId == "" is the case for subscriptions to "all events"
@@ -45,13 +45,13 @@ func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *ht
 		// list events for job out of localDB and send them to the client
 		events, err := s.jobStore.GetJobHistory(context.Background(), jobID)
 		if err != nil {
-			log.Error().Msgf("error listing job events: %s\n", err.Error())
+			log.Ctx(req.Context()).Error().Msgf("error listing job events: %s\n", err.Error())
 			return
 		}
 		for _, event := range events {
 			err := conn.WriteJSON(event)
 			if err != nil {
-				log.Error().Msgf("error writing event JSON: %s\n", err.Error())
+				log.Ctx(req.Context()).Error().Msgf("error writing event JSON: %s\n", err.Error())
 			}
 		}
 	}
@@ -81,7 +81,7 @@ func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event model.Job
 			// reader slowing all the others down.
 			err := connection.WriteJSON(event)
 			if err != nil {
-				log.Error().Msgf(
+				log.Ctx(ctx).Error().Msgf(
 					"error writing event to subscriber '%s'/%d: %s, closing ws\n",
 					jobId, idx, err.Error(),
 				)

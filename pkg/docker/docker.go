@@ -163,7 +163,7 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 		return err
 	}
 
-	log.Debug().Str("image", image).Msg("Pulling image as it wasn't found")
+	log.Ctx(ctx).Debug().Str("image", image).Msg("Pulling image as it wasn't found")
 
 	output, err := c.ImagePull(ctx, image, types.ImagePullOptions{})
 	if err != nil {
@@ -186,7 +186,7 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 			case <-stop:
 				return
 			case <-t.C:
-				logImagePullStatus(layers)
+				logImagePullStatus(ctx, layers)
 			}
 		}
 	}()
@@ -210,7 +210,7 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 	}
 }
 
-func logImagePullStatus(m *sync.Map) {
+func logImagePullStatus(ctx context.Context, m *sync.Map) {
 	withUnits := map[string]*zerolog.Event{}
 	withoutUnits := map[string][]string{}
 	m.Range(func(_, value any) bool {
@@ -235,7 +235,7 @@ func logImagePullStatus(m *sync.Map) {
 
 		return true
 	})
-	e := log.Debug()
+	e := log.Ctx(ctx).Debug()
 	for s, l := range withUnits {
 		e = e.Dict(s, l)
 	}

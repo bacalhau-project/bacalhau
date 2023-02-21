@@ -89,7 +89,7 @@ func (s *Scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 		}
 	}
 	rankedNodes = filteredNodes
-	log.Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
+	log.Ctx(ctx).Debug().Msgf("ranked %d nodes for job %s", len(rankedNodes), req.Job.Metadata.ID)
 
 	minBids := system.Max(req.Job.Spec.Deal.MinBids, req.Job.Spec.Deal.Concurrency)
 	if len(rankedNodes) < minBids {
