@@ -12,12 +12,12 @@ This section will show you how to configure and run a bacalhau node and start ac
 
 To bootstrap your node and join the network as a CP you can leap right into the [Ubuntu 22.04 quick start](#quick-start-ubuntu-2204) below, or find for more setup details in these guides:
 
-* [Networking](networking)
-* [Storage Providers](storage-providers)
-* [Job Selection Policy](job-selection)
-* [Resource Limits](resource-limits)
-* [GPU Support](gpu)
-* [Windows Support](windows-support) (with limitations)
+* [Networking](https://docs.bacalhau.org/running-node/networking)
+* [Storage Providers](https://docs.bacalhau.org/running-node/storage-providers)
+* [Job Selection Policy](https://docs.bacalhau.org/running-node/job-selection)
+* [Resource Limits](https://docs.bacalhau.org/running-node/resource-limits)
+* [GPU Support](https://docs.bacalhau.org/running-node/gpu)
+* [Windows Support](https://docs.bacalhau.org/running-node/windows-support) (with limitations)
 
 :::info
 
