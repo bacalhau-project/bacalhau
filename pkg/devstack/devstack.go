@@ -363,6 +363,7 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
+//nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
@@ -372,6 +373,7 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
+	var devstackPeerAddrs []string
 
 	logString += `
 -----------------------------------------
@@ -390,15 +392,32 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}
 
+		var libp2pPeer []string
+		for _, addrs := range node.Host.Addrs() {
+			p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + node.Host.ID().String())
+			if p2pAddrErr != nil {
+				return "", p2pAddrErr
+			}
+			libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr).String())
+		}
+		devstackPeerAddr := strings.Join(libp2pPeer, ",")
+		if len(libp2pPeer) > 0 {
+			// only add one of the addrs for this peer
+			devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+		}
+
 		logString += fmt.Sprintf(`
 export BACALHAU_IPFS_%d=%s
 export BACALHAU_IPFS_SWARM_ADDRESSES_%d=%s
+export BACALHAU_PEER_CONNECT_%d=%s
 export BACALHAU_API_HOST_%d=%s
 export BACALHAU_API_PORT_%d=%d`,
 			nodeIndex,
 			node.IPFSClient.APIAddress(),
 			nodeIndex,
 			swarmAddrrs,
+			nodeIndex,
+			devstackPeerAddr,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
@@ -418,10 +437,12 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryShellVariablesString := fmt.Sprintf(`
 export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%s`,
+export BACALHAU_API_PORT=%s
+export BACALHAU_PEER_CONNECT=%s`,
 		devStackIPFSSwarmAddress,
 		devStackAPIHost,
 		devStackAPIPort,
+		strings.Join(devstackPeerAddrs, ","),
 	)
 
 	if stack.Lotus != nil {
