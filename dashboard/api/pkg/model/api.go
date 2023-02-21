@@ -154,15 +154,15 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	api.cleanupFunc = func(ctx context.Context) {
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close job event pubsub")
 		}
 		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
 		}
 		cleanupErr = nodeInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
 		}
 		cancel()
 	}
@@ -191,11 +191,11 @@ func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.No
 }
 
 func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model_beta.Job, error) {
-	return api.localDB.GetJobs(context.Background(), query)
+	return api.localDB.GetJobs(ctx, query)
 }
 
 func (api *ModelAPI) GetJobsCount(ctx context.Context, query localdb.JobQuery) (int, error) {
-	return api.localDB.GetJobsCount(context.Background(), query)
+	return api.localDB.GetJobsCount(ctx, query)
 }
 
 func (api *ModelAPI) GetJob(ctx context.Context, id string) (*bacalhau_model_beta.Job, error) {

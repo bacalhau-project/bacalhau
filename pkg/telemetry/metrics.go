@@ -25,7 +25,7 @@ func newMeterProvider() {
 	ctx := context.Background()
 	exp, err := getMetricsClient(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize OLTP metric exporter")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP metric exporter")
 		return
 	}
 

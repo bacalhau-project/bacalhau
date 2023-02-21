@@ -11,6 +11,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRecordErrorOnSpan(t *testing.T) {
@@ -216,7 +217,9 @@ func TestRecordErrorOnSpanTwoChannels_withoutError(t *testing.T) {
 	assert.False(t, span.ended, "span should only be closed once the channel has received a response")
 	paramChan <- expectedParam
 	actualParam := <-actualParamChan
-	assert.True(t, span.ended, "span should only be closed once the channel has received a response")
+	assert.Eventually(t, func() bool {
+		return span.ended
+	}, 1*time.Second, 5*time.Millisecond, "span should only be closed once the channel has received a response")
 
 	assert.Empty(t, span.err)
 	assert.Empty(t, span.statusCode)

@@ -92,12 +92,12 @@ func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_mo
 		eventBuffer.exists = true
 		err := handler.writeEventToDatabase(ctx, event)
 		if err != nil {
-			log.Error().Msgf("error writing event to database: %s", err.Error())
+			log.Ctx(ctx).Error().Msgf("error writing event to database: %s", err.Error())
 		}
 		for _, bufferedEvent := range eventBuffer.events {
 			err := handler.writeEventToDatabase(ctx, bufferedEvent)
 			if err != nil {
-				log.Error().Msgf("error writing event to database: %s", err.Error())
+				log.Ctx(ctx).Error().Msgf("error writing event to database: %s", err.Error())
 			}
 		}
 	} else if !eventBuffer.exists {
@@ -105,7 +105,7 @@ func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_mo
 	} else {
 		err := handler.writeEventToDatabase(ctx, event)
 		if err != nil {
-			log.Error().Msgf("error writing event to database: %s", err.Error())
+			log.Ctx(ctx).Error().Msgf("error writing event to database: %s", err.Error())
 		}
 	}
 	return nil

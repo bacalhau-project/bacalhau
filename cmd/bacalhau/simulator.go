@@ -44,8 +44,8 @@ func runSimulator(cmd *cobra.Command) error {
 		Fatal(cmd, fmt.Sprintf("Error creating p2p multiaddr: %s", err), 1)
 	}
 	fullAddr := libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
-	log.Info().Msgf("Simulator reachable at: %s", fullAddr)
-	log.Info().Msgf("You can run: bacalhau devstack --simulator-addr \"%s\"", fullAddr)
+	log.Ctx(ctx).Info().Msgf("Simulator reachable at: %s", fullAddr)
+	log.Ctx(ctx).Info().Msgf("You can run: bacalhau devstack --simulator-addr \"%s\"", fullAddr)
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{

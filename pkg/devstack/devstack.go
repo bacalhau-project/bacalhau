@@ -148,7 +148,7 @@ func NewDevStack(
 	for i := 0; i < totalNodeCount; i++ {
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
-		log.Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
+		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
 		// -------------------------------------
 		// IPFS
@@ -189,7 +189,7 @@ func NewDevStack(
 		if i == 0 {
 			if options.Peer != "" {
 				// connect 0'th node to external peer if specified
-				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
 				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
 				if addrErr != nil {
 					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
@@ -207,7 +207,7 @@ func NewDevStack(
 			if err != nil {
 				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
 			}
-			log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
+			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
 		libp2pHost, err = libp2p.NewHost(libp2pPort)
@@ -454,7 +454,7 @@ export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
 	if config.DevstackShouldWriteEnvFile() {
 		err := os.WriteFile(config.DevstackEnvFile(), []byte(summaryShellVariablesString), 0600) //nolint:gomnd
 		if err != nil {
-			log.Err(err).Msgf("Failed to write file %s", config.DevstackEnvFile())
+			log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", config.DevstackEnvFile())
 			return "", err
 		}
 	}
@@ -469,7 +469,7 @@ You can also run a new IPFS daemon locally and connect it to Bacalhau using:
 ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
-	log.Debug().Msg(logString)
+	log.Ctx(ctx).Debug().Msg(logString)
 
 	returnString := fmt.Sprintf(`
 Devstack is ready!

@@ -32,7 +32,7 @@ func (s *EnginesNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes 
 			}
 			// engine wasn't found
 			if rank == 0 {
-				log.Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.Engine)
+				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.Engine)
 				rank = -1
 			}
 		}

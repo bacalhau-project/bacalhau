@@ -344,7 +344,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("libp2p connecting to: %s", peers)
+	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {

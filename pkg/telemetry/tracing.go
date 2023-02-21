@@ -28,13 +28,13 @@ func newTraceProvider() {
 	ctx := context.Background()
 	client, err := getTraceClient()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize OLTP trace client")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP trace client")
 		return
 	}
 
 	exp, err := otlptrace.New(ctx, client)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize OLTP trace exporter")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP trace exporter")
 		return
 	}
 
@@ -44,7 +44,7 @@ func newTraceProvider() {
 	)
 
 	// set the global trace provider
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(loggingTracerProvider{tp})
 
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
@@ -80,13 +80,14 @@ func isTracingEnabled() bool {
 }
 
 func cleanupTraceProvider() error {
-	type shutdown interface {
-		oteltrace.TracerProvider
-		Shutdown(ctx context.Context) error
-	}
-	tracer, ok := otel.GetTracerProvider().(shutdown)
+	tracer, ok := otel.GetTracerProvider().(shutdownTracerProvider)
 	if ok {
 		return tracer.Shutdown(context.Background())
 	}
 	return nil
+}
+
+type shutdownTracerProvider interface {
+	oteltrace.TracerProvider
+	Shutdown(ctx context.Context) error
 }
