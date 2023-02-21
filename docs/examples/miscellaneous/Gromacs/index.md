@@ -66,7 +66,7 @@ Lets look at the command above more closely:
 
 * `-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
 
-* `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs) 
+* `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs)
 
 * `-f input/1AKI.pdb` input file
 
@@ -74,7 +74,7 @@ Lets look at the command above more closely:
 
 * `-water` Water model to use in this case we use spc
 
-Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html) 
+Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html)
 
 (similar tutorial you can try yourself [KALP-15 in DPPC - GROMACS Tutorial](http://www.mdtutorials.com/gmx/membrane_protein/01_pdb2gmx.html) )
 
@@ -91,8 +91,8 @@ curl -sL https://get.bacalhau.org/install.sh | bash
     No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
     Installing v0.2.3 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz.signature.sha256 ...
+    Downloading https://github.com/bacalhau-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/bacalhau-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
@@ -106,7 +106,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 %%bash --out job_id
 bacalhau docker run \
 --id-only \
---wait \ 
+--wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 -v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
@@ -155,7 +155,7 @@ bacalhau get $JOB_ID --output-dir results
     [90m12:19:51.091 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/content/results'
 
 
-After the download has finished you should 
+After the download has finished you should
 see the following contents in results directory
 
 

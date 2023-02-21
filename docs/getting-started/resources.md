@@ -16,15 +16,15 @@ The following table describes how to specify hardware requirements for the Docke
 
 Flag | Default | Description
 ---------|----------|---------
- `--cpu` | 0.1 ([source](https://github.com/filecoin-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L9)) | Job CPU cores (e.g. 500m, 2, 8)
- `--memory` | 100MB ([source](https://github.com/filecoin-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L10)) | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
- `--gpu` | 0 ([source](https://github.com/filecoin-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L11)) | Job GPU requirement (e.g. 1).
+ `--cpu` | 0.1 ([source](https://github.com/bacalhau-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L9)) | Job CPU cores (e.g. 500m, 2, 8)
+ `--memory` | 100MB ([source](https://github.com/bacalhau-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L10)) | Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
+ `--gpu` | 0 ([source](https://github.com/bacalhau-project/bacalhau/blob/main/pkg/capacitymanager/capacitymanager.go#L11)) | Job GPU requirement (e.g. 1).
 
 ### How it Works
 
 When you specify hardware requirements, the job will be offered out to the network to see if there are any nodes that can satisfy the requirements. If there are, the job will be scheduled on the node and the executor will be started.
 
-If there are no nodes that can satisfy the requirements, the job will wait for a node to become available, until it times out [after 3 minutes](https://github.com/filecoin-project/bacalhau/blob/main/pkg/computenode/config.go#L12).
+If there are no nodes that can satisfy the requirements, the job will wait for a node to become available, until it times out [after 3 minutes](https://github.com/bacalhau-project/bacalhau/blob/main/pkg/computenode/config.go#L12).
 
 ### Limitations
 

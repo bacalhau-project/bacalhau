@@ -8,7 +8,7 @@ description: "How to process images stored in IPFS with Bacalhau"
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
 
-In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). 
+In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/).
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
@@ -18,7 +18,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Running a Bacalhau Job
 
-To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
@@ -41,11 +41,11 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 
 The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
-Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
+Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -53,8 +53,8 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     13:17:34  0e4119fd  Docker dpokidov/imag...  Completed            /ipfs/QmQnern37ueHrs... 
+     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED
+     13:17:34  0e4119fd  Docker dpokidov/imag...  Completed            /ipfs/QmQnern37ueHrs...
 
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
@@ -109,7 +109,7 @@ ls -lah results/combined_results/outputs
 
 ### Display the image
 
-To view the images, we will use **glob** to return all file paths that match a specific pattern. 
+To view the images, we will use **glob** to return all file paths that match a specific pattern.
 
 
 ```python
@@ -120,59 +120,59 @@ for imageName in glob.glob('results/combined_results/outputs/*.jpg'):
 ```
 
 
-    
+
 ![jpeg](index_files/index_20_0.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_1.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_2.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_3.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_4.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_5.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_6.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_7.jpg)
-    
 
 
 
-    
+
+
 ![jpeg](index_files/index_20_8.jpg)
-    
+
 
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)

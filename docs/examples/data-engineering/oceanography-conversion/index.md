@@ -268,7 +268,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`. 
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -299,4 +299,4 @@ cat results/combined_results/stdout
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)

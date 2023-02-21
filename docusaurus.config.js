@@ -59,7 +59,7 @@ const config = {
           },
           // { to: "/blog", label: "Blog", position: "left" },
           {
-            href: "https://github.com/filecoin-project/bacalhau",
+            href: "https://github.com/bacalhau-project/bacalhau",
             label: "GitHub",
             position: "right",
           },
@@ -96,7 +96,7 @@ const config = {
             items: [
               {
                 label: "Discussions",
-                href: "https://github.com/filecoin-project/bacalhau/discussions",
+                href: "https://github.com/bacalhau-project/bacalhau/discussions",
               },
               {
                 label: "Slack",
@@ -109,11 +109,11 @@ const config = {
             items: [
               {
                 label: "GitHub",
-                href: "https://github.com/filecoin-project/bacalhau",
+                href: "https://github.com/bacalhau-project/bacalhau",
               },
               {
                 label: "Changelog",
-                href: "https://github.com/filecoin-project/bacalhau/releases/",
+                href: "https://github.com/bacalhau-project/bacalhau/releases/",
               },
               {
                 label: "Ways To Contribute",

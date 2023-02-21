@@ -47,7 +47,7 @@ Use "bacalhau [command] --help" for more information about a command.
 
 ## Create
 
-Submit a job to the network in a declarative way by writing a jobspec instead of writing a command. 
+Submit a job to the network in a declarative way by writing a jobspec instead of writing a command.
 JSON and YAML formats are accepted.
 
 ```
@@ -103,7 +103,7 @@ deal:
 
 ### UCAN Invocation format
 
-You can also specify a job to run using a [UCAN Invocation](https://github.com/ucan-wg/invocation) object in JSON format. For the fields supported by Bacalhau, see the [IPLD schema](https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/schemas/bacalhau.ipldsch). 
+You can also specify a job to run using a [UCAN Invocation](https://github.com/ucan-wg/invocation) object in JSON format. For the fields supported by Bacalhau, see the [IPLD schema](https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/schemas/bacalhau.ipldsch).
 
 There is no support for sharding, concurrency or minimum bidding for these jobs.
 
@@ -167,7 +167,7 @@ Full description of a job, in yaml format. Use 'bacalhau list' to get a list of 
 
 Usage:
   bacalhau describe [id] [flags]
-  
+
 Flags:
   -h, --help             help for describe
       --include-events   Include events in the description (could be noisy)

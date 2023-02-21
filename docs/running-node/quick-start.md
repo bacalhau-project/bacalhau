@@ -133,7 +133,7 @@ ipfs daemon
 
 :::info
 
-If you want to run the IPFS daemon as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/filecoin-project/bacalhau/blob/main/ops/terraform/remote_files/configs/ipfs-daemon.service).
+If you want to run the IPFS daemon as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/ipfs-daemon.service).
 
 :::
 
@@ -186,7 +186,7 @@ Firewall configuration is very specific to your network and we can't provide gen
 
 :::info
 
-If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/filecoin-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau-daemon.service).
+If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau-daemon.service).
 
 :::
 

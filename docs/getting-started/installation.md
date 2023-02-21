@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Getting Started with Bacalhau
 
-In this tutorial, you'll learn how to install and run a job with the Bacalhau client. 
+In this tutorial, you'll learn how to install and run a job with the Bacalhau client.
 
 ## Install the Bacalhau Client
 
@@ -21,7 +21,7 @@ $ curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
 :::tip
-Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
+Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
 :::
 
 ### Running The Bacalhau CLI Via Docker
@@ -60,9 +60,9 @@ Going further, we will look at some commands to run a simple job. For a complete
 
 ## Submit a "Hello World" job
 
-The easiest way to submit a job is using the `docker run` verb. Let's take a quick look at its syntax: 
+The easiest way to submit a job is using the `docker run` verb. Let's take a quick look at its syntax:
 
-`bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]` 
+`bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]`
 
 While the command is designed to resemble Docker's run command which you may be familiar with, Bacalhau introduces a whole new set of [available flags (see CLI Reference)](../all-flags#docker-run) to support its computing model.
 
@@ -96,7 +96,7 @@ The list command prints out the following text:
  07:20:32  3b39baee  Docker ubuntu echo H...  Published            /ipfs/bafybeidu4zm6w...
 ```
 
-A `Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.  
+A `Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.
 
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 
@@ -138,7 +138,7 @@ With that, you have just sucessfully run a job on the Bacalhau network! :fish:
 
 ## Where to go next?
 
-Here are a few resources that provides a deeper dive into running jobs with Bacalhau: 
+Here are a few resources that provides a deeper dive into running jobs with Bacalhau:
 
 * [How to run an existing workload on Bacalhau](../getting-started/docker-workload-onboarding.md)
 * [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)

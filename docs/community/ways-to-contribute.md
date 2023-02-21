@@ -14,7 +14,7 @@ We welcome your contributions ❤️. If what you want to do is not listed here 
 
 ## Code
 
-You are always welcome to make code contribution to Bacalhau. This can be done by fixing open issues or opening PRs. You can start by cloning the [Bacalhau code repository](https://github.com/filecoin-project/bacalhau).
+You are always welcome to make code contribution to Bacalhau. This can be done by fixing open issues or opening PRs. You can start by cloning the [Bacalhau code repository](https://github.com/bacalhau-project/bacalhau).
 
 ## Documentation
 
@@ -24,14 +24,14 @@ Before contributing to the Bacalhau docs, please read through our Style guide an
 
 ## Community
 
-For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions).
+For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions).
 
 
 ### Build with Bacalhau
 
 Bacalhau has an extensive list of examples and tutorial that showcase it's abilities.
 
-However this is just the tip of the iceberg, there are more usecases where Bacalhau can be implemented, if you have a specific idea you want to try out with Bacalhau, we encourage you to do that and build anything that you think is missing. 
+However this is just the tip of the iceberg, there are more usecases where Bacalhau can be implemented, if you have a specific idea you want to try out with Bacalhau, we encourage you to do that and build anything that you think is missing.
 
 ## Research
 

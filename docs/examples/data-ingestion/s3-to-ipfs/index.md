@@ -9,7 +9,7 @@ sidebar_position: 3
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/s3-to-ipfs/index.ipynb)
 
 
-In this tutorial, to copy Data from S3 to IPFS, we will scrape all the links from a public AWS S3 buckets and then copy the data to IPFS using Bacalhau. 
+In this tutorial, to copy Data from S3 to IPFS, we will scrape all the links from a public AWS S3 buckets and then copy the data to IPFS using Bacalhau.
 
 
 ## Prerequisite
@@ -37,7 +37,7 @@ python \
 
 Let's look closely at the command above:
 
-- `bacalhau docker run`: call to bacalhau 
+- `bacalhau docker run`: call to bacalhau
 
 - `-u  https://noaa-goes16.s3.amazonaws.com/`: the name of the bucket we want to extract URLs from. Repeplace the placeholders with `noaa-goes16` which your own name.
 
@@ -57,7 +57,7 @@ This only works with datasets that are publicly accessible and don't require an 
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -202,4 +202,4 @@ jq '.[]."Shards"."0"."PublishedResults"."CID" | select( . != null )'  output-sha
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)

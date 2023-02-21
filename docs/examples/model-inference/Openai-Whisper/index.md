@@ -7,10 +7,10 @@
 
 Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of multilingual and multitask supervised data collected from the web. We show that the use of such a large and diverse dataset leads to improved robustness to accents, background noise and technical language. Moreover, it enables transcription in multiple languages, as well as translation from those languages into English. We are open-sourcing models and inference code to serve as a foundation for building useful applications and for further research on robust speech processing.
 
-In this example we will transcribe an audio clip locally, containerize the script and then 
+In this example we will transcribe an audio clip locally, containerize the script and then
 Run the container on bacalhau
 
-The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of Videos, Audio for automatic speech recognition, Using our sharding feature you can do distributed inference very easily and if you have the data stored on IPFS you don't need to move the data you can do compute where the data is located, and the cost of compute is much cheaper than managed services 
+The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of Videos, Audio for automatic speech recognition, Using our sharding feature you can do distributed inference very easily and if you have the data stored on IPFS you don't need to move the data you can do compute where the data is located, and the cost of compute is much cheaper than managed services
 
 
 
@@ -52,17 +52,17 @@ wget https://github.com/js-ts/hello/raw/main/hello.mp3
     HTTP request sent, awaiting response... 200 OK
     Length: 10063 (9.8K) [audio/mpeg]
     Saving to: ‘hello.mp3’
-    
+
          0K .........                                             100% 52.3M=0s
-    
+
     2022-10-10 03:16:19 (52.3 MB/s) - ‘hello.mp3’ saved [10063/10063]
-    
+
 
 
 
 We will create a script that accepts parameters (input file path, output file path, temperature etc.) and set the default parameters. Also:
-* If input file is in mp4 format, than the script converts it to wav format. 
-* Save the transcript in various formats, 
+* If input file is in mp4 format, than the script converts it to wav format.
+* Save the transcript in various formats,
 * We load the large model
 * Then pass it the required parameters.
 This model is not only limited to english and transcription, it supports other languages and also does translation, to the following languages:
@@ -235,7 +235,7 @@ python openai-whisper.py
 
 
     Using device: cuda:0
-    
+
       0%|                                              | 0.00/2.87G [00:00<?, ?iB/s]
       0%|                                     | 4.75M/2.87G [00:00<01:03, 48.7MiB/s]
       0%|                                     | 9.40M/2.87G [00:00<01:04, 48.0MiB/s]
@@ -765,7 +765,7 @@ python openai-whisper.py
     100%|████████████████████████████████████▊| 2.86G/2.87G [00:57<00:00, 54.9MiB/s]
     100%|████████████████████████████████████▉| 2.87G/2.87G [00:57<00:00, 62.2MiB/s]
     100%|█████████████████████████████████████| 2.87G/2.87G [00:57<00:00, 53.9MiB/s]tcmalloc: large alloc 3087007744 bytes == 0x708a000 @  0x7fb7d179e1e7 0x4b2150 0x5ac2ec 0x5dc6af 0x58ee9b 0x5901a3 0x5e3f6b 0x4d18aa 0x51b31c 0x58f2a7 0x51740e 0x5b41c5 0x58f49e 0x51b221 0x5b41c5 0x604133 0x606e06 0x606ecc 0x609aa6 0x64d332 0x64d4de 0x7fb7d139bc87 0x5b561a
-    
+
 
 
 ```
@@ -838,7 +838,7 @@ cat hello.srt
 
 
 
-In this step we will create a `Dockerfile` to create your Docker deployment. 
+In this step we will create a `Dockerfile` to create your Docker deployment.
 
 Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
 
@@ -891,7 +891,7 @@ To upload the video we will be using [https://nft.storage/docs/how-to/nftup/](ht
 
 After the dataset has been uploaded, copy the CID:
 
-`bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu` 
+`bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu`
 
 Let's run the container on Bacalhau. We use the `--gpu` flag to denote the no of GPU we are going to use:
 
@@ -922,8 +922,8 @@ Let's install Bacalhau:
     No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
     Installing v0.3.8 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz.signature.sha256 ...
+    Downloading https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
@@ -935,7 +935,7 @@ Let's install Bacalhau:
 
 ```bash
 %%bash --out job_id
-bacalhau docker run \ 
+bacalhau docker run \
 --wait \
 --id-only \
 --gpu 1 \
@@ -1128,56 +1128,54 @@ cat results/combined_results/outputs/Apollo_11_moonwalk_montage_720p.vtt
 ```
 
     WEBVTT
-    
+
     00:00.000 --> 00:07.000
     As the foot of the ladder, the lamb foot beds are only depressed in the surface about one
-    
+
     00:14.760 --> 00:21.760
     or two inches, although the surface appears to be very, very fine grained as you get close
-    
+
     00:23.360 --> 00:28.360
     to it. It's almost like a powder. The ground mass is very fine.
-    
+
     00:28.360 --> 00:35.360
     Okay, I'm going to leave that one foot up there and both hands down about the fourth
-    
+
     00:47.760 --> 00:48.760
     rung up.
-    
+
     00:48.760 --> 00:49.760
     There you go.
-    
+
     00:49.760 --> 00:52.760
     Okay, now I think I'll do the same.
-    
+
     00:52.760 --> 00:59.760
     For those who haven't read the plaque, we'll read the plaque that's on the front landing
-    
+
     01:06.840 --> 01:13.840
     gear of this lamb. There's two hemispheres, one showing each of the two hemispheres of
-    
+
     01:13.840 --> 01:20.840
     Earth. Underneath it says, Airman from the planet Earth, first set foot upon the moon
-    
+
     01:25.280 --> 01:28.280
     July 1969, D.C. We came in deep.
-    
+
     01:28.280 --> 01:35.280
     I guess you're about the only person around that doesn't have TV coverage of the scene.
-    
+
     01:35.280 --> 01:42.280
     That's all right. I don't mind a bit.
-    
+
     01:42.280 --> 01:47.280
     How is the quality of the TV?
-    
+
     01:47.280 --> 01:50.280
     Oh, it's beautiful, Mike. It really is.
-    
+
     01:50.280 --> 01:55.280
     Oh, geez, that's great. Is the lighting halfway decent?
-    
+
     01:55.280 --> 02:00.280
     Yes, indeed. They've got the flag up now, and you can see the stars and stripes on the
-    
-

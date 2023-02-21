@@ -41,7 +41,7 @@ Downloading the test dataset
 
 
 ```python
-!wget https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv  
+!wget https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv
 ```
 
 Running the conversion script arguments
@@ -146,8 +146,8 @@ jsacex/csv-to-arrow-or-parquet \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
@@ -162,7 +162,7 @@ Let's look closely at the command above:
 
 ```
 bacalhau docker run \
--u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
+-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv
 jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
@@ -171,8 +171,8 @@ jsacex/csv-to-arrow-or-parquet \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
@@ -241,4 +241,4 @@ pd.read_parquet('results/combined_results/stdout/transactions.parquet')
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)

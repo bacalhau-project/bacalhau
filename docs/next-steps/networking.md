@@ -47,6 +47,6 @@ Bacalhau has support for *describing* jobs that can access the internet during j
 
 Compute nodes that join the Bacalhau network do not accept networked jobs by default (i.e. they only accept jobs that specify `--network=none`, which is also the default).
 
-The public compute nodes provided by the Bacalhau network will accept jobs that require HTTP networking as long as the domains are from [this allowlist](https://github.com/filecoin-project/bacalhau/blob/main/ops/terraform/remote_files/scripts/http-domain-allowlist.txt).
+The public compute nodes provided by the Bacalhau network will accept jobs that require HTTP networking as long as the domains are from [this allowlist](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/scripts/http-domain-allowlist.txt).
 
-If you need to access a domain that isn't on the allowlist, you can make a request to the [Bacalhau Project team](https://github.com/filecoin-project/bacalhau/discussions) to include your required domains. You can also set up your own compute node that implements the allowlist you need.
+If you need to access a domain that isn't on the allowlist, you can make a request to the [Bacalhau Project team](https://github.com/bacalhau-project/bacalhau/discussions) to include your required domains. You can also set up your own compute node that implements the allowlist you need.

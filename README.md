@@ -42,18 +42,18 @@ The rendered site will be accessible at http://localhost:3000/
 **Note**: All [code examples](https://docs.bacalhau.org/examples/) live in a dedicated repository https://github.com/bacalhau-project/examples and they are automagically rendered into the [./docs/examples/](https://github.com/bacalhau-project/docs.bacalhau.org/tree/main/docs/examples) folder by github actions.
 
 ## Contributing
-We would **love ❤️ your help** to improve existing items or make new ones even better! 
+We would **love ❤️ your help** to improve existing items or make new ones even better!
 
 ### Issues and Pull requests
 If you find any inconsistencies in the docs, please raise an issue [here →](https://github.com/bacalhau-project/docs.bacalhau.org/issues). Feel free to also submit a pull request with any changes you'd like to see to this repo. Every contribution is more than welcome! 🎈
 
-## Be Part of the community 
+## Be Part of the community
 If you have any questions you can join our [Slack Community](https://filecoin.io/slack) go to **#bacalhau** channel - its open to anyone!
 
 
 ## Resources
 - [Bacalhau Website](https://www.bacalhau.org/)
-- [Bacalhau Core Code Repository](https://github.com/filecoin-project/bacalhau)
+- [Bacalhau Core Code Repository](https://github.com/bacalhau-project/bacalhau)
 - [Bacalhau Twitter](https://twitter.com/BacalhauProject)
 - [Bacalhau YouTube channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNCUn4vi0A)
 - [Bacalhau Newsletter and blog](https://bacalhau.substack.com/)

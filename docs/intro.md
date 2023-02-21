@@ -11,16 +11,16 @@ hide_title: true
 
 ## Overview
 
-Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your exisiting workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_.  **At the moment we are free volunteer network, enjoy;)** 
+Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your exisiting workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_.  **At the moment we are free volunteer network, enjoy;)**
 
 ## Why Bacalhau?
 
 ⚡️ **Process jobs fast**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
- 
+
 💸 **Low cost:** Reduce (or eliminate) ingress/egress costs since jobs are processed closer to the source. Take advantage of as well idle computation capabilities at the edge.
 
 🔐 **Secure**: Data scrubbing and security can before migration to reduce the chance of leaking private information, and with a far more granular, code-based permission model.
- 
+
 📚 **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau you can batch process petabytes (quadrillion bytes) of data.
 
 ## Our Vision
@@ -31,13 +31,13 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ## Roadmap
 
-Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/filecoin-project/bacalhau/issues/1151)!
+Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)!
 
 ## Community
 
 Bacalhau has a very friendly community and we are always happy to help you get started:
 
-- [GitHub Discussions](https://github.com/filecoin-project/bacalhau/discussions) – ask anything about the project, give feedback or answer questions that will help other users.
+- [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions) – ask anything about the project, give feedback or answer questions that will help other users.
 - [Join the Slack Community](https://filecoin.io/slack) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
 - [Contributing](https://docs.bacalhau.org/community/ways-to-contribute) – learn how to contribute to the Bacalhau project.
 

@@ -18,7 +18,7 @@ The goal of the Bacalhau project is to make it easy to perform distributed, dece
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Running a Bacalhau Job 
+## Running a Bacalhau Job
 
 To upload a file from a URL we will use the `bacalhau docker run`.
 
@@ -95,7 +95,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 ```bash
 %%bash
 rm -rf results && mkdir ./results
-bacalhau get --output-dir ./results $JOB_ID 
+bacalhau get --output-dir ./results $JOB_ID
 ```
 
     Fetching results of job '37e3c424-072a-4ea5-bc3a-76909dce17ee'...
@@ -118,4 +118,4 @@ head -n 15 ./results/combined_results/stdout
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)
