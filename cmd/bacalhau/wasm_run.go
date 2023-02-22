@@ -8,14 +8,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -44,18 +41,9 @@ func defaultWasmJobSpec() *model.Job {
 
 func newWasmCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
-		Use:   "wasm",
-		Short: "Run and prepare WASM jobs on the network",
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			// Check that the server version is compatible with the client version
-			serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
-			if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-				Fatal(cmd, fmt.Sprintf("version validation failed: %s", err), 1)
-				return err
-			}
-
-			return nil
-		},
+		Use:               "wasm",
+		Short:             "Run and prepare WASM jobs on the network",
+		PersistentPreRunE: checkVersion,
 	}
 
 	wasmCmd.AddCommand(
@@ -159,12 +147,8 @@ func runWasm(
 	downloadSettings *model.DownloaderSettings,
 	nodeSelector string,
 ) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
-
-	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau.runWasm")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	ctx := cmd.Context()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	wasmCidOrPath := args[0]
 	wasmJob.Spec.Wasm.Parameters = args[1:]
@@ -255,12 +239,7 @@ func newValidateWasmCmd() *cobra.Command {
 }
 
 func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
-
-	ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau.validateWasm")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	ctx := cmd.Context()
 
 	programPath := args[0]
 	entryPoint := wasmJob.Spec.Wasm.EntryPoint

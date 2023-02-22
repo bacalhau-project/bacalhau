@@ -4,9 +4,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -52,13 +49,7 @@ func newCancelCmd() *cobra.Command {
 }
 
 func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
-
-	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.cancel")
-	defer span.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	var err error
 

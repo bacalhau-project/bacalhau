@@ -8,10 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -83,13 +81,9 @@ func newCreateCmd() *cobra.Command {
 }
 
 func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.create")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
 
 	// Custom unmarshaller
 	// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1

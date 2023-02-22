@@ -127,12 +127,9 @@ func newDevStackCmd() *cobra.Command {
 }
 
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOptions, IsNoop bool) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.runDevstack")
-	defer rootSpan.End()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	if config.DevstackShouldWriteEnvFile() {
 		cm.RegisterCallback(cleanupDevstackDotEnv)

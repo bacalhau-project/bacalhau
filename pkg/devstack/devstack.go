@@ -214,9 +214,7 @@ func NewDevStack(
 		if err != nil {
 			return nil, err
 		}
-		cm.RegisterCallback(func() error {
-			return libp2pHost.Close()
-		})
+		cm.RegisterCallback(libp2pHost.Close)
 
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())

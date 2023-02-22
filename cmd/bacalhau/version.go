@@ -23,8 +23,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -66,13 +64,7 @@ func newVersionCmd() *cobra.Command {
 }
 
 func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.version")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
 

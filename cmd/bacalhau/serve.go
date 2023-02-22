@@ -10,16 +10,14 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/multiformats/go-multiaddr"
@@ -304,17 +302,12 @@ func newServeCmd() *cobra.Command {
 
 //nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
-	// Cleanup manager ensures that resources are freed before exiting:
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(telemetry.Cleanup)
-	defer cm.Cleanup()
+	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
 
+	// TODO this should be for all commands
 	// Context ensures main goroutine waits until killed with ctrl+c:
 	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
 	defer cancel()
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.serve")
-	defer rootSpan.End()
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
