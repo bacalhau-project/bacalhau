@@ -61,13 +61,13 @@ test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source bacalhau-airflow setup.py test
+	coverage run --source bacalhau_airflow setup.py test
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/bacalhau-airflow.rst
+	rm -f docs/bacalhau_airflow.rst
 	rm -f docs/modules.rst
 	sphinx-apidoc -o docs/ bacalhau_airflow
 	$(MAKE) -C docs clean
@@ -85,5 +85,5 @@ dist: clean ## builds source and wheel package
 	python setup.py bdist_wheel
 	ls -l dist
 
-install: clean ## install the package to the active Python's site-packages
-	python setup.py install
+# install: clean ## install the package to the active Python's site-packages
+# 	python setup.py install
