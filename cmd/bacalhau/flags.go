@@ -228,11 +228,11 @@ func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	}
 }
 
-func LoggingFlag(value *logger.Logmode) *ValueFlag[logger.Logmode] {
-	return &ValueFlag[logger.Logmode]{
+func LoggingFlag(value *logger.LogMode) *ValueFlag[logger.LogMode] {
+	return &ValueFlag[logger.LogMode]{
 		value:    value,
-		parser:   logger.ParseLogmode,
-		stringer: func(p *logger.Logmode) string { return string(*p) },
+		parser:   logger.ParseLogMode,
+		stringer: func(p *logger.LogMode) string { return string(*p) },
 		typeStr:  "logging-mode",
 	}
 }
