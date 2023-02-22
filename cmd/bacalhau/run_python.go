@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -165,13 +163,9 @@ func newRunPythonCmd() *cobra.Command {
 }
 
 func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.runPython")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
 
 	// error if determinism is false
 	if !OLR.Deterministic {
