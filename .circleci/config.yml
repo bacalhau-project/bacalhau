@@ -167,6 +167,13 @@ jobs:
                   cd ..
                   make test-python
             - run:
+                name: Test Python Airflow Provider
+                command: |
+                  cd integration/airflow
+                  pip3 install -r dev-requirements.txt
+                  tox
+                  cd ../..
+            - run:
                 name: Upload results
                 command: |
                   export DEBIAN_FRONTEND=noninteractive

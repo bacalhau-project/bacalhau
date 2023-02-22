@@ -5,6 +5,7 @@ import json
 from bacalhau_apiclient.api import job_api
 from bacalhau_apiclient.models.list_request import ListRequest
 from bacalhau_apiclient.models.state_request import StateRequest
+from bacalhau_apiclient.models.events_request import EventsRequest
 from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.rest import ApiException
 
@@ -77,4 +78,19 @@ def states(job_id: str):
         api_response = api_instance.states(state_request)
     except ApiException as e:
         print("Exception when calling JobApi->states: %s\n" % e)
+    return api_response
+
+
+def events(job_id: str):
+    """Get events."""
+    # TODO - add tests
+    try:
+        # Returns the events of the job-id specified in the body payload.
+        state_request = EventsRequest(
+            client_id=get_client_id(),
+            job_id=job_id,
+        )
+        api_response = api_instance.events(state_request)
+    except ApiException as e:
+        print("Exception when calling JobApi->events: %s\n" % e)
     return api_response
