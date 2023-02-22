@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/downloader"
 	"github.com/filecoin-project/bacalhau/pkg/downloader/estuary"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfslite"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
@@ -29,11 +29,11 @@ func NewDownloadSettings() *model.DownloaderSettings {
 func NewStandardDownloaders(
 	cm *system.CleanupManager,
 	settings *model.DownloaderSettings) downloader.DownloaderProvider {
-	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
+	liteDownloader := ipfslite.NewIPFSLiteDownloader(cm, settings)
 	estuaryDownloader := estuary.NewEstuaryDownloader(cm, settings)
 
 	return model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-		model.StorageSourceIPFS:    ipfsDownloader,
+		model.StorageSourceIPFS:    liteDownloader,
 		model.StorageSourceEstuary: estuaryDownloader,
 	})
 }

@@ -31,7 +31,11 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/imdario/mergo v0.3.13
 	github.com/invopop/jsonschema v0.7.0
+	github.com/ipfs/go-bitswap v0.11.0
+	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
+	github.com/ipfs/go-datastore v0.6.0
+	github.com/ipfs/go-ipfs-blockstore v1.2.0
 	github.com/ipfs/go-ipfs-files v0.2.0
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/go-ipld-format v0.4.0
@@ -49,7 +53,9 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/libp2p/go-libp2p v0.23.4
+	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.2
+	github.com/libp2p/go-libp2p-routing-helpers v0.4.0
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.8.0
@@ -170,11 +176,8 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.0.0 // indirect
-	github.com/ipfs/go-bitswap v0.11.0 // indirect
 	github.com/ipfs/go-block-format v0.1.1 // indirect
-	github.com/ipfs/go-blockservice v0.5.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
-	github.com/ipfs/go-datastore v0.6.0 // indirect
 	github.com/ipfs/go-delegated-routing v0.7.0 // indirect
 	github.com/ipfs/go-ds-badger v0.3.0 // indirect
 	github.com/ipfs/go-ds-flatfs v0.5.1 // indirect
@@ -184,7 +187,6 @@ require (
 	github.com/ipfs/go-filestore v1.2.0 // indirect
 	github.com/ipfs/go-fs-lock v0.0.7 // indirect
 	github.com/ipfs/go-graphsync v0.13.1 // indirect
-	github.com/ipfs/go-ipfs-blockstore v1.2.0 // indirect
 	github.com/ipfs/go-ipfs-chunker v0.0.5 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.8.1 // indirect
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
@@ -232,11 +234,9 @@ require (
 	github.com/libp2p/go-libp2p-core v0.20.1 // indirect
 	github.com/libp2p/go-libp2p-gostream v0.3.0 // indirect
 	github.com/libp2p/go-libp2p-http v0.2.1 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.18.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
 	github.com/libp2p/go-libp2p-pubsub-router v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
-	github.com/libp2p/go-libp2p-routing-helpers v0.4.0 // indirect
 	github.com/libp2p/go-libp2p-xor v0.1.0 // indirect
 	github.com/libp2p/go-mplex v0.7.0 // indirect
 	github.com/libp2p/go-msgio v0.2.0 // indirect
