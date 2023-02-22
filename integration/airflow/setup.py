@@ -20,7 +20,7 @@ test_requirements = []
 
 setup(
     author="Enrico Rotundo",
-    author_email="team@bacalhau-airflow.org",
+    author_email="team@bacalhau.org",
     python_requires=">=3.7",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -30,17 +30,17 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
     ],
-    description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
+    description="An Apache Airflow provider for Bacalhau.",
     install_requires=requirements,
     license="Apache Software License 2.0",
     long_description=readme,
     include_package_data=True,
     keywords="bacalhau",
-    name="bacalhau-airflow",
-    packages=find_packages(include=["bacalhau", "bacalhau-airflow.*"]),
+    name="bacalhau_airflow",
+    packages=find_packages(include=["bacalhau", "bacalhau_airflow.*"]),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/enricorotundo/bacalhau-airflow",
+    url="https://github.com/filecoin-project/bacalhau/tree/main/integration/airflow",
     version="0.0.1",
     zip_safe=False,
 )
