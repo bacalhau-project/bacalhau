@@ -21,36 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SetupTest(
-	ctx context.Context,
-	t *testing.T,
-	nodes int, badActors int,
-	lotusNode bool,
-	//nolint:gocritic
-	computeConfig node.ComputeConfig,
-	requesterConfig node.RequesterConfig,
-) (*devstack.DevStack, *system.CleanupManager) {
-	require.NoError(t, system.InitConfigForTesting(t))
-
-	cm := system.NewCleanupManager()
-
-	options := devstack.DevStackOptions{
-		NumberOfHybridNodes:      nodes,
-		NumberOfBadComputeActors: badActors,
-		LocalNetworkLotus:        lotusNode,
-	}
-
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterConfig)
-	require.NoError(t, err)
-
-	t.Cleanup(cm.Cleanup)
-
-	// important to give the pubsub network time to connect
-	time.Sleep(time.Second)
-
-	return stack, cm
-}
-
 func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
 	basePath := t.TempDir()
 	for i := 0; i < fileCount; i++ {
@@ -83,7 +53,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	args DeterministicVerifierTestArgs,
 ) {
 	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
+	defer cm.Cleanup(ctx)
 
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      args.NodeCount,

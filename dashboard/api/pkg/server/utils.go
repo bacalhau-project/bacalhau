@@ -34,21 +34,6 @@ func GetRequestBody[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 	return &requestBody, nil
 }
 
-func HTTPGet[T any](url string) (T, error) {
-	var data T
-	//nolint:gosec
-	resp, err := http.Get(url)
-	if err != nil {
-		return data, err
-	}
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return data, err
-	}
-	resp.Body.Close()
-	return data, nil
-}
-
 func generateJWT(
 	secret string,
 	username string,

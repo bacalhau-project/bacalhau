@@ -45,7 +45,7 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
+	_ context.Context,
 	cm *system.CleanupManager,
 	id string,
 	storageProvider storage.StorageProvider,
@@ -61,10 +61,7 @@ func NewExecutor(
 		client:          dockerClient,
 	}
 
-	cm.RegisterCallback(func() error {
-		de.cleanupAll(ctx)
-		return nil
-	})
+	cm.RegisterCallbackWithContext(de.cleanupAll)
 
 	return de, nil
 }
@@ -318,17 +315,19 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
 
-func (e *Executor) cleanupAll(ctx context.Context) {
+func (e *Executor) cleanupAll(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := telemetry.NewDetachedContext(ctx)
 	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
-		return
+		return nil
 	}
 
 	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
+
+	return nil
 }
 
 func (e *Executor) dockerObjectName(shard model.JobShard, parts ...string) string {

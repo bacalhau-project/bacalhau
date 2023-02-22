@@ -41,7 +41,7 @@ func (s *ServerSuite) SetupTest() {
 
 // After each test
 func (s *ServerSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
+	s.node.CleanupManager.Cleanup(context.Background())
 }
 
 func (s *ServerSuite) TestList() {

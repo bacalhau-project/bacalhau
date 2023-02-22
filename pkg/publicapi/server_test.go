@@ -4,7 +4,7 @@ package publicapi
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -42,7 +42,7 @@ func (s *ServerSuite) SetupTest() {
 
 // After each test
 func (s *ServerSuite) TearDownTest() {
-	s.cleanupManager.Cleanup()
+	s.cleanupManager.Cleanup(context.Background())
 }
 
 func (s *ServerSuite) TestHealthz() {
@@ -95,7 +95,7 @@ func (s *ServerSuite) TestTimeout() {
 	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
 
 	// validate response body
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	require.NoError(s.T(), err, "Could not read %s response body", endpoint)
 	require.Equal(s.T(), body, []byte("Server Timeout!"))
 
@@ -154,7 +154,7 @@ func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck
 	defer res.Body.Close()
 
 	require.Equal(t, res.StatusCode, http.StatusOK)
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "Could not read %s response body", endpoint)
 	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
 	return body

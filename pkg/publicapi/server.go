@@ -176,11 +176,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		"API server listening for host %s on %s...", apiServer.Address, listener.Addr().String())
 
 	// Cleanup resources when system is done:
-	cm.RegisterCallback(func() error {
-		// We have to use a separate context, rather than the one passed in, as it may have already been
-		// canceled and so would prevent us from performing any cleanup work.
-		return srv.Shutdown(context.Background())
-	})
+	cm.RegisterCallbackWithContext(srv.Shutdown)
 
 	err = srv.Serve(listener)
 	if err == http.ErrServerClosed {

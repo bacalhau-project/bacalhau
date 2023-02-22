@@ -15,7 +15,7 @@ import (
 func TestGet(t *testing.T) {
 	logger.ConfigureTestLogging(t)
 	n, c := setupNodeForTest(t)
-	defer n.CleanupManager.Cleanup()
+	defer n.CleanupManager.Cleanup(context.Background())
 
 	ctx := context.Background()
 

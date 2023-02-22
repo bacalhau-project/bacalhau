@@ -131,7 +131,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		cm.RegisterCallback(lotus.Close)
+		cm.RegisterCallbackWithContext(lotus.Close)
 
 		if err := lotus.start(ctx); err != nil { //nolint:govet
 			return nil, err
@@ -323,9 +323,9 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling(options.CPUProfilingFile, options.MemoryProfilingFile)
+	profiler := StartProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
-		cm.RegisterCallback(profiler.Close)
+		cm.RegisterCallbackWithContext(profiler.Close)
 	}
 
 	return &DevStack{

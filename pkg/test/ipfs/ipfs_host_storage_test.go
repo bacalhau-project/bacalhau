@@ -70,7 +70,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
+	defer TeardownTest(cm)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
@@ -110,7 +110,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
+	defer TeardownTest(cm)
 
 	dir := t.TempDir()
 

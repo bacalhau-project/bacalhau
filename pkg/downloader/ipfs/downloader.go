@@ -40,7 +40,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 		return err
 	}
 	defer func() {
-		if closeErr := n.Close(); closeErr != nil {
+		if closeErr := n.Close(ctx); closeErr != nil {
 			log.Ctx(ctx).Error().Err(closeErr).Msg("Failed to close IPFS node")
 		}
 	}()

@@ -87,7 +87,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(telemetry.Cleanup)
-	defer cm.Cleanup()
+	defer cm.Cleanup(cmd.Context())
 	ctx := cmd.Context()
 
 	if options.ServerOptions.JWTSecret == "" {
@@ -121,7 +121,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	if err != nil {
 		return err
 	}
-	cm.RegisterCallback(model.Stop)
+	cm.RegisterCallbackWithContext(model.Stop)
 
 	// Start transport layer
 	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)

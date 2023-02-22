@@ -216,9 +216,7 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		SwarmPort: swarmPort,
 	}
 
-	cm.RegisterCallback(func() error {
-		return n.Close()
-	})
+	cm.RegisterCallbackWithContext(n.Close)
 
 	// Log details so that user can connect to the new node:
 	log.Ctx(ctx).Trace().Msgf("IPFS node created with ID: %s", ipfsNode.Identity)
@@ -290,8 +288,8 @@ func (n *Node) Client() Client {
 	return NewClient(n.api)
 }
 
-func (n *Node) Close() error {
-	log.Debug().Msgf("Closing IPFS node %s", n.ID())
+func (n *Node) Close(ctx context.Context) error {
+	log.Ctx(ctx).Debug().Msgf("Closing IPFS node %s", n.ID())
 	var errs *multierror.Error
 	if n.ipfsNode != nil {
 		errs = multierror.Append(errs, n.ipfsNode.Close())
@@ -537,9 +535,7 @@ func loadPlugins(cm *system.CleanupManager) error {
 
 	// Set the global cache so we can use it in the ipfs daemon:
 	pluginLoader = plugins
-	cm.RegisterCallback(func() error {
-		return plugins.Close()
-	})
+	cm.RegisterCallback(plugins.Close)
 	return nil
 }
 

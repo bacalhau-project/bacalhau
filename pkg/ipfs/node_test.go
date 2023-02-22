@@ -35,7 +35,9 @@ func (s *NodeSuite) TestFunctionality() {
 	defer cancel()
 
 	cm := system.NewCleanupManager()
-	s.T().Cleanup(cm.Cleanup)
+	s.T().Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	n1, err := NewLocalNode(ctx, cm, nil)
 	s.Require().NoError(err)

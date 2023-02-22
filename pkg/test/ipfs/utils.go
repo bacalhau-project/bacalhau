@@ -1,12 +1,12 @@
 package ipfs
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func SetupTest(ctx context.Context, t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
@@ -16,7 +16,6 @@ func SetupTest(ctx context.Context, t *testing.T, nodes int) (*devstack.DevStack
 	return stack, cm
 }
 
-func TeardownTest(stack *devstack.DevStackIPFS, cm *system.CleanupManager) {
-	stack.PrintNodeInfo()
-	cm.Cleanup()
+func TeardownTest(cm *system.CleanupManager) {
+	cm.Cleanup(context.Background())
 }

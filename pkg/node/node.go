@@ -255,16 +255,15 @@ func NewNode(
 	}
 
 	// cleanup libp2p resources in the desired order
-	config.CleanupManager.RegisterCallback(func() error {
-		cleanupCtx := context.Background()
+	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(cleanupCtx)
+			computeNode.cleanup(ctx)
 		}
 		if requesterNode != nil {
-			requesterNode.cleanup(cleanupCtx)
+			requesterNode.cleanup(ctx)
 		}
-		nodeInfoPublisher.Stop()
-		cleanupErr := nodeInfoPubSub.Close(cleanupCtx)
+		nodeInfoPublisher.Stop(ctx)
+		cleanupErr := nodeInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
 		}

@@ -41,7 +41,9 @@ func (ds *DownloaderSuite) SetupSuite() {
 // Before each test
 func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = system.NewCleanupManager()
-	ds.T().Cleanup(ds.cm.Cleanup)
+	ds.T().Cleanup(func() {
+		ds.cm.Cleanup(context.Background())
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
