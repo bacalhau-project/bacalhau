@@ -21,7 +21,9 @@ const IpfsMetadataSize uint64 = 8
 func getIpfsStorage(t *testing.T) *StorageProvider {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
 	require.NoError(t, err)

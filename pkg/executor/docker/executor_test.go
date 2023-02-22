@@ -39,7 +39,9 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	var err error
 	s.cm = system.NewCleanupManager()
-	s.T().Cleanup(s.cm.Cleanup)
+	s.T().Cleanup(func() {
+		s.cm.Cleanup(context.Background())
+	})
 
 	s.executor, err = NewExecutor(
 		context.Background(),

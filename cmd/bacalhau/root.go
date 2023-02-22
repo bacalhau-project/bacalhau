@@ -80,7 +80,7 @@ func NewRootCmd() *cobra.Command {
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
 			ctx.Value(spanKey).(trace.Span).End()
-			ctx.Value(systemManagerKey).(*system.CleanupManager).Cleanup()
+			ctx.Value(systemManagerKey).(*system.CleanupManager).Cleanup(cmd.Context())
 		},
 	}
 	// ====== Start a job
@@ -154,12 +154,12 @@ func Execute() {
 
 	err := viper.BindEnv("API_HOST")
 	if err != nil {
-		log.Fatal().Msgf("API_HOST was set, but could not bind.")
+		log.Ctx(RootCmd.Context()).Fatal().Msgf("API_HOST was set, but could not bind.")
 	}
 
 	err = viper.BindEnv("API_PORT")
 	if err != nil {
-		log.Fatal().Msgf("API_PORT was set, but could not bind.")
+		log.Ctx(RootCmd.Context()).Fatal().Msgf("API_PORT was set, but could not bind.")
 	}
 
 	viper.AutomaticEnv()
@@ -174,7 +174,7 @@ func Execute() {
 		var parseErr error
 		apiPort, parseErr = strconv.Atoi(envAPIPort.(string))
 		if parseErr != nil {
-			log.Fatal().Msgf("could not parse API_PORT into an int. %s", envAPIPort)
+			log.Ctx(RootCmd.Context()).Fatal().Msgf("could not parse API_PORT into an int. %s", envAPIPort)
 		}
 	}
 

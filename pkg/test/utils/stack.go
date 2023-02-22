@@ -25,7 +25,9 @@ func SetupTest(
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      nodes,
@@ -88,7 +90,9 @@ func SetupTestWithNoopExecutor(
 	}
 
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector, nodeOverrides...)
 	require.NoError(t, err)

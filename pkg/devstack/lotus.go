@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/context"
 )
 
 const defaultImage = "ghcr.io/bacalhau-project/lotus-filecoin-image:v0.0.2"
@@ -111,7 +111,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 	}
 
 	if err := l.waitForLotusToBeHealthy(ctx); err != nil {
-		if err := l.Close(); err != nil { //nolint:govet
+		if err := l.Close(ctx); err != nil { //nolint:govet
 			log.Ctx(ctx).Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
 		}
 		return err
@@ -196,12 +196,12 @@ ListenAddress = "/ip4/0.0.0.0/tcp/%s/http"
 	return nil
 }
 
-func (l *LotusNode) Close() error {
+func (l *LotusNode) Close(ctx context.Context) error {
 	var errs error
 
 	defer closer.CloseWithLogOnError("Docker client", l.client)
 	if l.container != "" {
-		if err := l.client.RemoveContainer(context.Background(), l.container); err != nil {
+		if err := l.client.RemoveContainer(ctx, l.container); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

@@ -1,7 +1,7 @@
 package devstack
 
 import (
-	"io"
+	"context"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -15,23 +15,23 @@ type profiler struct {
 	memoryFile string
 }
 
-func StartProfiling(cpuFile, memoryFile string) io.Closer {
+func StartProfiling(ctx context.Context, cpuFile, memoryFile string) CloserWithContext {
 	// do a GC before we start profiling
 	runtime.GC()
 
-	log.Trace().Msg("============= STARTING PROFILING ============")
+	log.Ctx(ctx).Trace().Msg("============= STARTING PROFILING ============")
 
 	var f *os.File
 	if cpuFile != "" {
 		var err error
 		f, err = os.Create(cpuFile)
 		if err != nil {
-			log.Debug().Err(err).Str("Path", cpuFile).Msg("could not create CPU profile")
+			log.Ctx(ctx).Debug().Err(err).Str("Path", cpuFile).Msg("could not create CPU profile")
 			return nil
 		}
 		if err := pprof.StartCPUProfile(f); err != nil {
 			closer.CloseWithLogOnError(cpuFile, f)
-			log.Debug().Err(err).Msg("could not start CPU profile")
+			log.Ctx(ctx).Debug().Err(err).Msg("could not start CPU profile")
 			return nil
 		}
 	}
@@ -39,7 +39,7 @@ func StartProfiling(cpuFile, memoryFile string) io.Closer {
 	return &profiler{cpuFile: f, memoryFile: memoryFile}
 }
 
-func (p *profiler) Close() error {
+func (p *profiler) Close(ctx context.Context) error {
 	// stop profiling now, just before we clean up, if we're profiling.
 	log.Trace().Msg("============= STOPPING PROFILING ============")
 	if p.cpuFile != nil {
@@ -50,18 +50,23 @@ func (p *profiler) Close() error {
 	if p.memoryFile != "" {
 		f, err := os.Create(p.memoryFile)
 		if err != nil {
-			log.Debug().Err(err).Str("Path", p.memoryFile).Msg("could not create memory profile")
+			log.Ctx(ctx).Debug().Err(err).Str("Path", p.memoryFile).Msg("could not create memory profile")
 			return nil
 		}
 		defer closer.CloseWithLogOnError(p.memoryFile, f) // error handling omitted for example
 
 		runtime.GC() // get up-to-date statistics
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Debug().Err(err).Msg("could not write memory profile")
+			log.Ctx(ctx).Debug().Err(err).Msg("could not write memory profile")
 		}
 	}
 
 	return nil
 }
 
-var _ io.Closer = (*profiler)(nil)
+var _ CloserWithContext = (*profiler)(nil)
+
+type CloserWithContext interface {
+	// Close closes the resource.
+	Close(context.Context) error
+}

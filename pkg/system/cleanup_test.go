@@ -3,6 +3,7 @@
 package system
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -14,27 +15,35 @@ type SystemCleanupSuite struct {
 	suite.Suite
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestSystemCleanupSuite(t *testing.T) {
 	suite.Run(t, new(SystemCleanupSuite))
 }
 
-// Before each test
-func (suite *SystemCleanupSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
+func (s *SystemCleanupSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
+	require.NoError(s.T(), InitConfigForTesting(s.T()))
 }
 
-func (suite *SystemCleanupSuite) TestCleanupManager() {
+func (s *SystemCleanupSuite) TestCleanupManager() {
 	clean := false
+	cleanWithContext := false
 
 	cm := NewCleanupManager()
+
 	cm.RegisterCallback(func() error {
 		clean = true
 		return nil
 	})
+	cm.RegisterCallbackWithContext(func(ctx context.Context) error {
+		s.NoError(ctx.Err())
+		cleanWithContext = true
+		return nil
+	})
 
-	cm.Cleanup()
-	require.True(suite.T(), clean, "cleanup handler failed to run registered functions")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	cm.Cleanup(ctx)
+	s.True(clean, "cleanup handler failed to run registered functions")
+	s.True(cleanWithContext)
 }

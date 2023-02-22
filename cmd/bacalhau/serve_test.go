@@ -44,7 +44,9 @@ func (s *ServeSuite) SetupTest() {
 	s.Require().NoError(system.InitConfigForTesting(s.T()))
 
 	cm := system.NewCleanupManager()
-	s.T().Cleanup(cm.Cleanup)
+	s.T().Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	node, err := ipfs.NewLocalNode(context.Background(), cm, []string{})
 	s.NoError(err)

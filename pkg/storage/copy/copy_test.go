@@ -84,7 +84,9 @@ func TestCopyOversize(t *testing.T) {
 	for _, testCase := range copyOversizeTestCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			cm := system.NewCleanupManager()
-			t.Cleanup(cm.Cleanup)
+			t.Cleanup(func() {
+				cm.Cleanup(context.Background())
+			})
 
 			originals := preserveSlice(testCase.specs)
 

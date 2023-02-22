@@ -38,7 +38,7 @@ func StoredText(
 				Path:          mountPath,
 			},
 		}
-		log.Debug().Msgf("Added file with cid %s", fileCid)
+		log.Ctx(ctx).Debug().Msgf("Added file with cid %s", fileCid)
 		return inputStorageSpecs, nil
 	}
 }

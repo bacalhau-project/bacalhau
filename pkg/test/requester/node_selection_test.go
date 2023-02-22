@@ -88,10 +88,10 @@ func (s *NodeSelectionSuite) SetupSuite() {
 
 func (s *NodeSelectionSuite) TearDownSuite() {
 	if s.requester != nil {
-		s.requester.CleanupManager.Cleanup()
+		s.requester.CleanupManager.Cleanup(context.Background())
 	}
 	for _, n := range s.computeNodes {
-		n.CleanupManager.Cleanup()
+		n.CleanupManager.Cleanup(context.Background())
 	}
 }
 

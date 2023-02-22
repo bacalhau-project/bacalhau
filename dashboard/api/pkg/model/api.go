@@ -169,9 +169,9 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	return nil
 }
 
-func (api *ModelAPI) Stop() error {
+func (api *ModelAPI) Stop(ctx context.Context) error {
 	if api.cleanupFunc != nil {
-		api.cleanupFunc(context.Background())
+		api.cleanupFunc(ctx)
 	}
 	return nil
 }

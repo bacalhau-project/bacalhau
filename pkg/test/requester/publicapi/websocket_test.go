@@ -42,7 +42,7 @@ func (s *WebsocketSuite) SetupTest() {
 
 // After each test
 func (s *WebsocketSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
+	s.node.CleanupManager.Cleanup(context.Background())
 }
 
 func (s *WebsocketSuite) TestWebsocketEverything() {

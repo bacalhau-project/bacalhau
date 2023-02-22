@@ -52,6 +52,6 @@ func (s *BaseSuite) SetupTest() {
 func (s *BaseSuite) TearDownTest() {
 	Fatal = FatalErrorHandler
 	if s.node != nil {
-		s.node.CleanupManager.Cleanup()
+		s.node.CleanupManager.Cleanup(context.Background())
 	}
 }
