@@ -5,8 +5,6 @@ import (
 	"github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
-	"github.com/rs/zerolog/log"
-	"go.opencensus.io/stats/view"
 )
 
 func SetDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
@@ -49,12 +47,15 @@ var DefaultResourceManager = func(cfg *libp2p.Config) error {
 	libp2p.SetDefaultServiceLimits(&limits)
 	SetDefaultServiceLimits(&limits)
 
-	// Hook up the trace reporter metrics. This will expose all opencensus
-	// stats via the default prometheus registry. See https://opencensus.io/exporters/supported-exporters/go/prometheus/ for other options.
-	err := view.Register(obs.DefaultViews...)
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to register resource manager metrics")
-	}
+	// TODO: libp2p removed open census and replaced with prometheus metrics. But we only use
+	// opentelemetry. Somebody needs to figure out how to map or convert the prom metrics to
+	// oltp metrics.
+	// // Hook up the trace reporter metrics. This will expose all opencensus
+	// // stats via the default prometheus registry. See https://opencensus.io/exporters/supported-exporters/go/prometheus/ for other options.
+	// err := view.Register(obs.DefaultViews...)
+	// if err != nil {
+	// 	log.Warn().Err(err).Msg("failed to register resource manager metrics")
+	// }
 
 	str, err := obs.NewStatsTraceReporter()
 	if err != nil {
