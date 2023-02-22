@@ -8,12 +8,18 @@ import (
 
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	defer func() {
+		// Make sure any buffered logs are written if something failed before logging was configured.
+		logger.LogBufferedLogs(nil)
+	}()
+
 	_ = godotenv.Load()
 
 	devstackEnvFile := config.DevstackEnvFile()
