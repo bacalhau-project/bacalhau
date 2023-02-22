@@ -119,6 +119,7 @@ func (f *fanoutPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
+	var err error
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishShardResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
@@ -160,8 +161,8 @@ loop:
 
 		case <-timeoutChannel:
 			break loop
-		case err := <-errorChannel:
-			return model.StorageSpec{}, err
+		case err = <-errorChannel:
+			break loop
 		}
 	}
 
@@ -173,7 +174,7 @@ loop:
 		}
 	}
 
-	return model.StorageSpec{}, nil
+	return model.StorageSpec{}, err
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)
