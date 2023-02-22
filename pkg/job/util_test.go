@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -92,5 +93,70 @@ func (s *JobUtilSuite) TestRun_URLs() {
 				}
 			}()
 		}
+	}
+}
+
+func (s *JobUtilSuite) TestStateSummary() {
+
+	tc := []struct {
+		name     string
+		states   []model.ExecutionStateType
+		expected string
+	}{
+		{
+			name: "All Rejected",
+			states: []model.ExecutionStateType{
+				model.ExecutionStateBidRejected,
+				model.ExecutionStateBidRejected,
+				model.ExecutionStateBidRejected,
+			},
+			expected: "BidRejected",
+		},
+		{
+			name: "Accepted Bid in minority report",
+			states: []model.ExecutionStateType{
+				model.ExecutionStateBidAccepted,
+				model.ExecutionStateBidRejected,
+				model.ExecutionStateBidRejected,
+			},
+			expected: "BidAccepted",
+		},
+		{
+			name: "Completed wins out against rejected bids",
+			states: []model.ExecutionStateType{
+				model.ExecutionStateCompleted,
+				model.ExecutionStateAskForBidAccepted,
+				model.ExecutionStateAskForBidRejected,
+			},
+			expected: "Completed",
+		},
+		{
+			name: "Canceled wins out against Bid Accepted and Rejected",
+			states: []model.ExecutionStateType{
+				model.ExecutionStateCanceled,
+				model.ExecutionStateAskForBidAccepted,
+				model.ExecutionStateAskForBidRejected,
+			},
+			expected: "Cancelled",
+		},
+	}
+
+	for _, testCase := range tc {
+		s.Run(testCase.name, func() {
+			j := model.JobState{
+				Shards: map[int]model.ShardState{
+					0: {
+						Executions: []model.ExecutionState{
+							{State: testCase.states[0]},
+							{State: testCase.states[1]},
+							{State: testCase.states[2]},
+						},
+					},
+				},
+			}
+
+			summary := ComputeStateSummary(j)
+			require.Equal(s.T(), testCase.expected, summary)
+		})
 	}
 }

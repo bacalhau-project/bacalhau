@@ -125,10 +125,19 @@ func ComputeStateSummary(j model.JobState) string {
 	var currentJobState model.ExecutionStateType
 	jobShardStates := FlattenExecutionStates(j)
 	for i := range jobShardStates {
+		// If any of the shards are reporting completion, or an active state then
+		// we should use that as the summary. Without this we will continue to
+		// return BidRejected even when an execution has BidAccepted based on the
+		// ordering of the ExecutionStateType enum.
+		if jobShardStates[i].State.IsActive() || jobShardStates[i].State == model.ExecutionStateCompleted {
+			return jobShardStates[i].State.String()
+		}
+
 		if jobShardStates[i].State > currentJobState {
 			currentJobState = jobShardStates[i].State
 		}
 	}
+
 	stateSummary := currentJobState.String()
 	return stateSummary
 }
