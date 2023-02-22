@@ -18,7 +18,7 @@ var apiHost string
 var apiPort int
 var doNotTrack bool
 
-var loggingMode logger.Logmode = logger.LogModeDefault
+var loggingMode = logger.LogModeDefault
 
 var Fatal = FatalErrorHandler
 
@@ -41,7 +41,7 @@ func init() { //nolint:gochecknoinits
 	}
 
 	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
-		loggingMode = logger.Logmode(strings.ToLower(logtype))
+		loggingMode = logger.LogMode(strings.ToLower(logtype))
 	}
 
 	// Force cobra to set apiHost & apiPort
@@ -154,7 +154,9 @@ func Execute() {
 
 	// Use stdout, not stderr for cmd.Print output, so that
 	// e.g. ID=$(bacalhau run) works
-	RootCmd.SetOutput(system.Stdout)
+	RootCmd.SetOut(system.Stdout)
+	// TODO this is from fixing a deprecation warning for SetOutput. Shouldn't this be system.Stderr?
+	RootCmd.SetErr(system.Stdout)
 
 	if err := RootCmd.Execute(); err != nil {
 		Fatal(RootCmd, err.Error(), 1)

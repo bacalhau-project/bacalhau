@@ -3,6 +3,7 @@ package logger
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"math"
@@ -23,32 +24,43 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type Logmode string
+type LogMode string
 
 // Available logging modes
 const (
-	LogModeDefault  Logmode = "default"
-	LogModeStation  Logmode = "station"
-	LogModeJSON     Logmode = "json"
-	LogModeCombined Logmode = "combined"
-	LogModeEvent    Logmode = "event"
+	LogModeDefault  LogMode = "default"
+	LogModeStation  LogMode = "station"
+	LogModeJSON     LogMode = "json"
+	LogModeCombined LogMode = "combined"
+	LogModeEvent    LogMode = "event"
 )
 
-func ParseLogmode(s string) (Logmode, error) {
-	lm := []Logmode{LogModeDefault, LogModeStation, LogModeJSON, LogModeCombined, LogModeEvent}
-	for _, logmode := range lm {
-		if s == string(logmode) {
-			return logmode, nil
+func ParseLogMode(s string) (LogMode, error) {
+	lm := []LogMode{LogModeDefault, LogModeStation, LogModeJSON, LogModeCombined, LogModeEvent}
+	for _, logMode := range lm {
+		if s == string(logMode) {
+			return logMode, nil
 		}
 	}
-	return Logmode("Error"), fmt.Errorf("%q is an invalid log-mode (valid modes: %q)",
+	return "Error", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)",
 		s, lm)
 }
 
 var nodeIDFieldName = "NodeID"
 
-func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
-	ConfigureLogging(LogModeDefault)
+func init() { //nolint:gochecknoinits
+	// logging needs to be automatically configured when running as a test.
+	// Buffer the log messages till logging has been configured when not running as a test, so they can be outputted
+	// in the correct format.
+	if strings.Contains(os.Args[0], "/_test/") ||
+		strings.HasSuffix(os.Args[0], ".test") ||
+		flag.Lookup("test.v") != nil ||
+		flag.Lookup("test.run") != nil {
+		configureLogging(defaultLogging())
+		return
+	}
+
+	configureLogging(bufferLogs())
 }
 
 type tTesting interface {
@@ -68,7 +80,7 @@ func ConfigureTestLogging(t tTesting) {
 	})
 }
 
-func ConfigureLogging(mode Logmode) {
+func ConfigureLogging(mode LogMode) {
 	logModeConfig := defaultLogging()
 	switch mode {
 	case LogModeDefault:
@@ -83,6 +95,8 @@ func ConfigureLogging(mode Logmode) {
 		logModeConfig = combinedLogging()
 	}
 	configureLogging(logModeConfig)
+
+	LogBufferedLogs(logModeConfig)
 }
 
 func configureLogging(logWriter io.Writer) {

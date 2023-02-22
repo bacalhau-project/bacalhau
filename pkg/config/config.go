@@ -185,7 +185,7 @@ func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
 		if err := keyOut.Close(); err != nil {
 			return nil, fmt.Errorf("error closing key file: %v", err)
 		}
-		log.Printf("wrote %s", privKeyPath)
+		log.Debug().Msgf("wrote %s", privKeyPath)
 	}
 
 	// Now that we've ensured the private key is written to disk, read it! This

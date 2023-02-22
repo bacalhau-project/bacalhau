@@ -17,7 +17,7 @@ var meterProvider *sdkmetric.MeterProvider
 
 func newMeterProvider() {
 	if !isMetricsEnabled() {
-		log.Debug().Msgf("OLTP metrics endpoints are not defined. Not metrics will be exported")
+		log.Debug().Msgf("OLTP metrics endpoints are not defined. No metrics will be exported")
 		return
 	}
 
