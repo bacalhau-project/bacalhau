@@ -66,12 +66,12 @@ func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStr
 		}, nil
 	}
 
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 func (s *EnginesInstalledStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 // Compile-time check of interface implementation

@@ -3,8 +3,9 @@ package node
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
+	compute_bidstrategies "github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/disk"
 	compute_publicapi "github.com/filecoin-project/bacalhau/pkg/compute/publicapi"
@@ -129,11 +130,11 @@ func NewComputeNode(
 	})
 
 	biddingStrategy := bidstrategy.NewChainedBidStrategy(
-		bidstrategy.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-		bidstrategy.NewMaxCapacityStrategy(bidstrategy.MaxCapacityStrategyParams{
+		bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy),
+		compute_bidstrategies.NewMaxCapacityStrategy(compute_bidstrategies.MaxCapacityStrategyParams{
 			MaxJobRequirements: config.JobResourceLimits,
 		}),
-		bidstrategy.NewAvailableCapacityStrategy(ctx, bidstrategy.AvailableCapacityStrategyParams{
+		compute_bidstrategies.NewAvailableCapacityStrategy(ctx, compute_bidstrategies.AvailableCapacityStrategyParams{
 			RunningCapacityTracker:  runningCapacityTracker,
 			EnqueuedCapacityTracker: enqueuedCapacityTracker,
 		}),
@@ -148,18 +149,9 @@ func NewComputeNode(
 			Verifiers:  verifiers,
 			Publishers: publishers,
 		}),
-		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
-			Command: config.JobSelectionPolicy.ProbeExec,
-		}),
-		bidstrategy.NewExternalHTTPStrategy(bidstrategy.ExternalHTTPStrategyParams{
-			URL: config.JobSelectionPolicy.ProbeHTTP,
-		}),
 		bidstrategy.NewInputLocalityStrategy(bidstrategy.InputLocalityStrategyParams{
 			Locality:  config.JobSelectionPolicy.Locality,
 			Executors: executors,
-		}),
-		bidstrategy.NewStatelessJobStrategy(bidstrategy.StatelessJobStrategyParams{
-			RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
 		}),
 		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
 			MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,

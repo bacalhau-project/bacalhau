@@ -29,7 +29,7 @@ func NewExternalCommandStrategy(params ExternalCommandStrategyParams) *ExternalC
 
 func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	if s.command == "" {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 
 	// TODO: Use context to trace exec call
@@ -59,7 +59,7 @@ func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request BidStra
 
 	exitCode := cmd.ProcessState.ExitCode()
 	if exitCode == 0 {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 	return BidStrategyResponse{
 		ShouldBid: false,
@@ -69,5 +69,5 @@ func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request BidStra
 
 func (s *ExternalCommandStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }

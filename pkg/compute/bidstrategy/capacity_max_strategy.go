@@ -3,6 +3,7 @@ package bidstrategy
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
@@ -20,19 +21,19 @@ func NewMaxCapacityStrategy(params MaxCapacityStrategyParams) *MaxCapacityStrate
 	}
 }
 
-func (s *MaxCapacityStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+func (s *MaxCapacityStrategy) ShouldBid(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+	return bidstrategy.NewShouldBidResponse(), nil
 }
 
 func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
-	ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
+	ctx context.Context, request bidstrategy.BidStrategyRequest, usage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
 	if !usage.LessThanEq(s.maxJobRequirements) {
-		return BidStrategyResponse{
+		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    "job requirements exceed max allowed per job",
 		}, nil
 	}
 
-	return newShouldBidResponse(), nil
+	return bidstrategy.NewShouldBidResponse(), nil
 }

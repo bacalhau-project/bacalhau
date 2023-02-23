@@ -16,7 +16,7 @@ type BidStrategyResponse struct {
 	Reason    string
 }
 
-func newShouldBidResponse() BidStrategyResponse {
+func NewShouldBidResponse() BidStrategyResponse {
 	return BidStrategyResponse{
 		ShouldBid: true,
 	}
