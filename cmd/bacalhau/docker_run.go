@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -272,9 +273,9 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
 	ctx := cmd.Context()
 
-	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
-	j, err := CreateJob(cmdArgs, ODR)
+	j, err := CreateJob(ctx, cmdArgs, ODR)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating job: %s", err), 1)
 		return nil
@@ -320,7 +321,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 }
 
 // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
+func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
@@ -370,6 +371,7 @@ func CreateJob(cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	}
 
 	j, err := jobutils.ConstructDockerJob(
+		ctx,
 		model.APIVersionLatest(),
 		engineType,
 		verifierType,

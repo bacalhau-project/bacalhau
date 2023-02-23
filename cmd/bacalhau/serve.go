@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"sort"
 	"strings"
 	"time"
@@ -302,12 +301,8 @@ func newServeCmd() *cobra.Command {
 
 //nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
-	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
-
-	// TODO this should be for all commands
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
-	defer cancel()
+	ctx := cmd.Context()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {

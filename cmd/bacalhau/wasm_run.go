@@ -191,7 +191,7 @@ func runWasm(
 		time.Sleep(1 * time.Second)
 
 		storage := inline.NewStorage()
-		inlineData, err := storage.Upload(cmd.Context(), info.Name())
+		inlineData, err := storage.Upload(ctx, info.Name())
 		if err != nil {
 			return err
 		}
