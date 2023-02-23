@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 
@@ -148,10 +147,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		Fatal(cmd, fmt.Sprintf("You cannot have more bad requester actors (%d) than there are nodes (%d).",
 			ODs.NumberOfBadRequesterActors, totalRequesterNodes), 1)
 	}
-
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := signal.NotifyContext(ctx, ShutdownSignals...)
-	defer cancel()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")

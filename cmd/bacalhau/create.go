@@ -83,7 +83,7 @@ func newCreateCmd() *cobra.Command {
 func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
-	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// Custom unmarshaller
 	// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1

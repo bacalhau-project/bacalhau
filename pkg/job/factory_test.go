@@ -3,6 +3,7 @@
 package job
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -68,6 +69,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 				}
 
 				j, err := ConstructDockerJob( //nolint:funlen
+					context.Background(),
 					model.APIVersionLatest(),
 					model.EngineNoop,
 					model.VerifierNoop,

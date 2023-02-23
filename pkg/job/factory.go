@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -12,6 +13,7 @@ import (
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
+	ctx context.Context,
 	a model.APIVersion,
 	e model.Engine,
 	v model.Verifier,
@@ -48,7 +50,7 @@ func ConstructDockerJob( //nolint:funlen
 	if err != nil {
 		return &model.Job{}, err
 	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -64,7 +66,7 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}
@@ -77,7 +79,6 @@ func ConstructDockerJob( //nolint:funlen
 	if len(workingDir) > 0 {
 		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
-			log.Error().Msg(err.Error())
 			return &model.Job{}, err
 		}
 	}
@@ -136,10 +137,10 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
+	ctx context.Context,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
-	env []string,
 	concurrency int,
 	confidence int,
 	minBids int,
@@ -150,7 +151,6 @@ func ConstructLanguageJob(
 	command string,
 	programPath string,
 	requirementsPath string,
-	contextPath string, // we have to tar this up and POST it to the Requester node
 	deterministic bool,
 	annotations []string,
 	doNotTrack bool,
@@ -162,7 +162,7 @@ func ConstructLanguageJob(
 	if err != nil {
 		return &model.Job{}, err
 	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -178,7 +178,7 @@ func ConstructLanguageJob(
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}

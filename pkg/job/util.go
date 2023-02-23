@@ -42,22 +42,8 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
-func NewNoopJobLoader() JobLoader {
-	jobLoader := func(ctx context.Context, id string) (model.Job, error) {
-		return model.Job{}, nil
-	}
-	return jobLoader
-}
-
-func NewNoopStateLoader() StateLoader {
-	stateLoader := func(ctx context.Context, id string) (model.JobState, error) {
-		return model.JobState{}, nil
-	}
-	return stateLoader
-}
-
 func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
-	jobInputs := []model.StorageSpec{}
+	var jobInputs []model.StorageSpec
 
 	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
 	for _, inputURL := range inputUrls {
@@ -89,7 +75,7 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 	return jobInputs, nil
 }
 
-func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
+func buildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
 	outputVolumesMap := make(map[string]model.StorageSpec)
 	outputVolumes = append(outputVolumes, "outputs:/outputs")
 
@@ -97,12 +83,12 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 		slices := strings.Split(outputVolume, ":")
 		if len(slices) != 2 || slices[0] == "" || slices[1] == "" {
 			msg := fmt.Sprintf("invalid output volume: %s", outputVolume)
-			log.Error().Msgf(msg)
+			log.Ctx(ctx).Error().Msg(msg)
 			return nil, errors.New(msg)
 		}
 
 		if _, containsKey := outputVolumesMap[slices[1]]; containsKey {
-			log.Warn().Msgf("Output volumes already contain a mapping to '%s:%s'. Replacing it with '%s:%s'.",
+			log.Ctx(ctx).Warn().Msgf("Output volumes already contain a mapping to '%s:%s'. Replacing it with '%s:%s'.",
 				outputVolumesMap[slices[1]].Name,
 				outputVolumesMap[slices[1]].Path,
 				slices[0],
@@ -119,7 +105,7 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 		}
 	}
 
-	returnOutputVolumes := []model.StorageSpec{}
+	var returnOutputVolumes []model.StorageSpec
 	for _, storageSpec := range outputVolumesMap {
 		returnOutputVolumes = append(returnOutputVolumes, storageSpec)
 	}
@@ -127,7 +113,7 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 	return returnOutputVolumes, nil
 }
 
-// Shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
+// ShortID shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
 func ShortID(id string) string {
 	if len(id) < model.ShortIDLength {
 		return id

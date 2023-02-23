@@ -41,7 +41,7 @@ func StartProfiling(ctx context.Context, cpuFile, memoryFile string) CloserWithC
 
 func (p *profiler) Close(ctx context.Context) error {
 	// stop profiling now, just before we clean up, if we're profiling.
-	log.Trace().Msg("============= STOPPING PROFILING ============")
+	log.Ctx(ctx).Trace().Msg("============= STOPPING PROFILING ============")
 	if p.cpuFile != nil {
 		pprof.StopCPUProfile()
 		closer.CloseWithLogOnError(p.cpuFile.Name(), p.cpuFile)

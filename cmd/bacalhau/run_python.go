@@ -78,7 +78,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
 // that the compute node can verify the job knowing that it was run properly,
 // rather than doing the translation in, and thereby trusting, the client (to
-// set up the wasm environment to be determinstic)
+// set up the wasm environment to be deterministic)
 
 func newRunPythonCmd() *cobra.Command {
 	OLR := NewLanguageRunOptions()
@@ -165,7 +165,7 @@ func newRunPythonCmd() *cobra.Command {
 func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) error {
 	ctx := cmd.Context()
 
-	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// error if determinism is false
 	if !OLR.Deterministic {
@@ -193,10 +193,10 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 	// have ConstructLanguageJob and ConstructDockerJob as separate means
 	// manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
+		ctx,
 		OLR.InputVolumes,
 		OLR.InputUrls,
 		OLR.OutputVolumes,
-		[]string{}, // no env vars (yet)
 		OLR.Concurrency,
 		OLR.Confidence,
 		OLR.MinBids,
@@ -206,7 +206,6 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		OLR.Command,
 		programPath,
 		OLR.RequirementsPath,
-		OLR.ContextPath,
 		OLR.Deterministic,
 		OLR.Labels,
 		doNotTrack,
