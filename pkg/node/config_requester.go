@@ -14,6 +14,7 @@ type RequesterConfigParams struct {
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
+	JobSelectionPolicy                 model.JobSelectionPolicy
 	SimulatorConfig                    model.SimulatorConfigRequester
 }
 
@@ -29,6 +30,7 @@ type RequesterConfig struct {
 	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
+	JobSelectionPolicy      model.JobSelectionPolicy
 	SimulatorConfig         model.SimulatorConfigRequester
 }
 
@@ -59,13 +61,12 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 	}
 
 	config = RequesterConfig{
-		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-
+		MinJobExecutionTimeout:             params.MinJobExecutionTimeout,
+		DefaultJobExecutionTimeout:         params.DefaultJobExecutionTimeout,
 		HousekeepingBackgroundTaskInterval: params.HousekeepingBackgroundTaskInterval,
-
-		NodeRankRandomnessRange: params.NodeRankRandomnessRange,
-		SimulatorConfig:         params.SimulatorConfig,
+		JobSelectionPolicy:                 params.JobSelectionPolicy,
+		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
+		SimulatorConfig:                    params.SimulatorConfig,
 	}
 
 	return config

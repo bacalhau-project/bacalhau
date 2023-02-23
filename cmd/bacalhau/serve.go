@@ -231,6 +231,12 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 	})
 }
 
+func getRequesterConfig(OS *ServeOptions) node.RequesterConfig {
+	return node.NewRequesterConfigWith(node.RequesterConfigParams{
+		JobSelectionPolicy: getJobSelectionConfig(OS),
+	})
+}
+
 func newServeCmd() *cobra.Command {
 	OS := NewServeOptions()
 
@@ -365,7 +371,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
 		ComputeConfig:        getComputeConfig(OS),
-		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
+		RequesterNodeConfig:  getRequesterConfig(OS),
 		IsComputeNode:        isComputeNode,
 		IsRequesterNode:      isRequesterNode,
 		Labels:               OS.Labels,

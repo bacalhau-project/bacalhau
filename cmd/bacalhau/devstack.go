@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -25,13 +24,13 @@ var (
 	//nolint:lll // Documentation
 	devstackExample = templates.Examples(i18n.T(`
 		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
-		bacalhau devstack 
+		bacalhau devstack
 
 		# Create a devstack cluster with a two requester nodes and 10 compute nodes
 		bacalhau devstack  --requester-nodes 2 --compute-nodes 10
 
 		# Create a devstack cluster with a single hybrid (requester and compute) nodes
-		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1 
+		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 `))
 )
 
@@ -163,6 +162,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 
 	computeConfig := getComputeConfig(OS)
+	requestorConfig := getRequesterConfig(OS)
 	if ODs.LocalNetworkLotus {
 		cmd.Println("Note that starting up the Lotus node can take many minutes!")
 	}
@@ -170,9 +170,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	var stack *devstack.DevStack
 	var stackErr error
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	}
 	if stackErr != nil {
 		return stackErr

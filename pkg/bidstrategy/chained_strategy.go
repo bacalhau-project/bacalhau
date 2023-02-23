@@ -58,7 +58,7 @@ func (c *ChainedBidStrategy) delegate(
 		}
 	}
 
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 // Compile-time check to ensure ChainedBidStrategy implements the BidStrategy interface.

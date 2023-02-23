@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -18,7 +19,8 @@ import (
 type BaseEndpointParams struct {
 	ID                         string
 	PublicKey                  []byte
-	Scheduler                  *Scheduler
+	Scheduler                  Scheduler
+	Selector                   bidstrategy.BidStrategy
 	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
@@ -28,7 +30,8 @@ type BaseEndpointParams struct {
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
 	id         string
-	scheduler  *Scheduler
+	selector   bidstrategy.BidStrategy
+	scheduler  Scheduler
 	transforms []jobtransform.Transformer
 }
 
@@ -42,6 +45,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 
 	return &BaseEndpoint{
 		id:         params.ID,
+		selector:   params.Selector,
 		scheduler:  params.Scheduler,
 		transforms: transforms,
 	}
@@ -89,6 +93,13 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 		if err != nil {
 			return job, err
 		}
+	}
+
+	request := bidstrategy.BidStrategyRequest{NodeID: node.id, Job: *job}
+	if choice, bidErr := node.selector.ShouldBid(ctx, request); bidErr != nil {
+		return job, bidErr
+	} else if !choice.ShouldBid {
+		return job, fmt.Errorf("job is unacceptable: %s", choice.Reason)
 	}
 
 	err = node.scheduler.StartJob(jobCtx, StartJobRequest{

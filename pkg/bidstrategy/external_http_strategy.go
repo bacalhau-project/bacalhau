@@ -26,7 +26,7 @@ func NewExternalHTTPStrategy(params ExternalHTTPStrategyParams) *ExternalHTTPStr
 
 func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	if s.url == "" {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 
 	data := getJobSelectionPolicyProbeData(request)
@@ -51,7 +51,7 @@ func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request BidStrateg
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 	return BidStrategyResponse{
 		ShouldBid: false,
@@ -61,5 +61,5 @@ func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request BidStrateg
 
 func (s *ExternalHTTPStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }

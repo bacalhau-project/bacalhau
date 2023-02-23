@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bidstrategy"
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/jobstore"
@@ -33,7 +34,7 @@ type Requester struct {
 	Endpoint           requester.Endpoint
 	JobStore           jobstore.Store
 	computeProxy       *bprotocol.ComputeProxy
-	localCallback      *requester.Scheduler
+	localCallback      requester.Scheduler
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
 	cleanupFunc        func(ctx context.Context)
 }
@@ -121,13 +122,16 @@ func NewRequesterNode(
 
 	publicKey := host.Peerstore().PubKey(host.ID())
 	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
-
 	if err != nil {
 		return nil, err
 	}
+
+	selectionStrategy := bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy)
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
+		Selector:                   selectionStrategy,
 		Scheduler:                  scheduler,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
