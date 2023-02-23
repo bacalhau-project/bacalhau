@@ -32,10 +32,10 @@ require (
 	github.com/imdario/mergo v0.3.13
 	github.com/invopop/jsonschema v0.7.0
 	github.com/ipfs/go-cid v0.3.2
-	github.com/ipfs/go-ipfs-files v0.2.0
+	github.com/ipfs/go-ipfs-files v0.3.0
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/go-ipld-format v0.4.0
-	github.com/ipfs/go-libipfs v0.3.0
+	github.com/ipfs/go-libipfs v0.4.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.9.0
 	github.com/ipfs/go-unixfs v0.4.1
