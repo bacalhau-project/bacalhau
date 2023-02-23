@@ -884,28 +884,6 @@ func createSpinner(w io.Writer, startingMessage string) (*yacspin.Spinner, error
 	return s, nil
 }
 
-func spinnerFmtDuration(d time.Duration) string {
-	d = d.Round(time.Millisecond)
-
-	min := (d % time.Hour) / time.Minute
-	sec := (d % time.Minute) / time.Second
-	ms := (d % time.Second) / time.Millisecond / 100
-
-	minString, secString, msString := "", "", ""
-	if min > 0 {
-		minString = fmt.Sprintf("%02dm", min)
-		secString = fmt.Sprintf("%02d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else if sec > 0 {
-		secString = fmt.Sprintf("%01d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else {
-		msString = fmt.Sprintf("0.%01ds", ms)
-	}
-	// If hour string exists, set it
-	return fmt.Sprintf("%s%s%s", minString, secString, msString)
-}
-
 func formatMessage(msg string) string {
 	maxLength := 0
 	for _, v := range eventsWorthPrinting {
