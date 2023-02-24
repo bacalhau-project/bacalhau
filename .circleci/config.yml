@@ -526,7 +526,7 @@ jobs:
                   # Note: we delete this branch after the PR is merged
                   GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
                   git checkout -b $GH_BRANCH_NAME
-                  if test -n "$(git ls-files --modified)"; then
+                  if test -n "$(git ls-files --modified |grep -v go.work.sum)"; then
                     git add --verbose -- ./docs
                     COMMIT_MSG="Build swagger reference - this is an automatic commit"
                     git commit -m "[circleci] $COMMIT_MSG [skip ci]"
