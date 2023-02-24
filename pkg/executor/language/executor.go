@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -52,6 +53,10 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {
 	return 0, nil
+}
+
+func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
 func (e *Executor) RunShard(

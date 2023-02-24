@@ -1,11 +1,12 @@
 //go:build unit || !integration
 
-package bidstrategy
+package util
 
 import (
 	"context"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -14,13 +15,24 @@ import (
 
 type InputLocalityStrategySuite struct {
 	suite.Suite
-	statelessJob BidStrategyRequest
-	statefulJob  BidStrategyRequest
+	statelessJob bidstrategy.BidStrategyRequest
+	statefulJob  bidstrategy.BidStrategyRequest
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
-	s.statelessJob = getBidStrategyRequest()
-	s.statefulJob = getBidStrategyRequestWithInput()
+	s.statelessJob = bidstrategy.BidStrategyRequest{}
+	s.statefulJob = bidstrategy.BidStrategyRequest{
+		Job: model.Job{
+			Spec: model.Spec{
+				Inputs: []model.StorageSpec{
+					{
+						StorageSource: model.StorageSourceIPFS,
+						CID:           "volume-id",
+					},
+				},
+			},
+		},
+	}
 }
 
 func (s *InputLocalityStrategySuite) TestInputLocality() {
@@ -29,7 +41,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		policy            model.JobSelectionDataLocality
 		hasStorageLocally bool
 		expectedShouldBid bool
-		request           BidStrategyRequest
+		request           bidstrategy.BidStrategyRequest
 	}{
 		// we are local - we do have the file - we should accept
 		{

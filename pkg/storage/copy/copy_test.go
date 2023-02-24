@@ -91,7 +91,7 @@ func TestCopyOversize(t *testing.T) {
 			originals := preserveSlice(testCase.specs)
 
 			didUpload := false
-			noopStorage, err := noop.NewNoopStorageWithConfig(context.Background(), cm, noop.StorageConfig{
+			noopStorage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
 					GetVolumeSize: func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 						return uint64(len(volume.URL)), nil
@@ -102,7 +102,6 @@ func TestCopyOversize(t *testing.T) {
 					},
 				},
 			})
-			require.NoError(t, err)
 
 			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage)
 			modified, err := CopyOversize(
