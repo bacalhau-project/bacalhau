@@ -78,7 +78,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 
 // GetBidStrategy implements executor.Executor
 func (e *Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
-	return bidstrategy.NewChainedBidStrategy(), nil
+	return NewBidStrategy(e.client), nil
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
@@ -183,11 +183,10 @@ func (e *Executor) RunShard(
 		})
 	}
 
-	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		if err := e.client.PullImage(ctx, shard.Job.Spec.Docker.Image); err != nil { //nolint:govet // ignore err shadowing
-			err = errors.Wrapf(err, `Could not pull image %q - could be due to repo/image not existing,
- or registry needing authorization`, shard.Job.Spec.Docker.Image)
-			return executor.FailResult(err)
+	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
+		if pullErr := e.client.PullImage(ctx, shard.Job.Spec.Docker.Image); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, shard.Job.Spec.Docker.Image)
+			return executor.FailResult(pullErr)
 		}
 	}
 
