@@ -8,9 +8,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ipld "github.com/ipfs/go-ipld-format"
+	files "github.com/ipfs/go-libipfs/files"
 	dag "github.com/ipfs/go-merkledag"
 	ft "github.com/ipfs/go-unixfs"
 	icore "github.com/ipfs/interface-go-ipfs-core"
