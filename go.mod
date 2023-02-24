@@ -41,7 +41,7 @@ require (
 	github.com/ipfs/go-unixfsnode v1.5.1
 	github.com/ipfs/interface-go-ipfs-core v0.11.1
 	github.com/ipfs/kubo v0.18.2-0.20230214211946-0ff406170dd9
-	github.com/ipld/go-car/v2 v2.5.1
+	github.com/ipld/go-car/v2 v2.7.0
 	github.com/ipld/go-codec-dagpb v1.5.0
 	github.com/ipld/go-ipld-prime v0.19.0
 	github.com/jedib0t/go-pretty/v6 v6.4.4
@@ -90,7 +90,7 @@ require (
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.6.0
-	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
+	golang.org/x/exp v0.0.0-20230129154200-a960b3787bd2
 	golang.org/x/mod v0.7.0
 	k8s.io/apimachinery v0.26.1
 	k8s.io/kubectl v0.26.1
@@ -309,7 +309,7 @@ require (
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
-	github.com/whyrusleeping/cbor-gen v0.0.0-20221220214510-0333c149dec0 // indirect
+	github.com/whyrusleeping/cbor-gen v0.0.0-20230126041949-52956bd4c9aa // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1 // indirect
