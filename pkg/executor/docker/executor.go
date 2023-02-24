@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -73,6 +74,11 @@ func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceTyp
 // IsInstalled checks if docker itself is installed.
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return e.client.IsInstalled(ctx), nil
+}
+
+// GetBidStrategy implements executor.Executor
+func (e *Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {

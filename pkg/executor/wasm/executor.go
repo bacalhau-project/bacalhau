@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/c2h5oh/datasize"
 	"golang.org/x/exp/maps"
@@ -66,6 +67,11 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 		return 0, err
 	}
 	return storageProvider.GetVolumeSize(ctx, volume)
+}
+
+// GetBidStrategy implements executor.Executor
+func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that

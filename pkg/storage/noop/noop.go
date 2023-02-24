@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type StroageHandlerIsInstalled func(ctx context.Context) (bool, error)
@@ -39,18 +38,18 @@ type NoopStorage struct {
 	Config StorageConfig
 }
 
-func NewNoopStorage(_ context.Context, _ *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorage(config StorageConfig) *NoopStorage {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}
-	return storageHandler, nil
+	return storageHandler
 }
 
-func NewNoopStorageWithConfig(_ context.Context, _ *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorageWithConfig(config StorageConfig) *NoopStorage {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}
-	return storageHandler, nil
+	return storageHandler
 }
 
 func (s *NoopStorage) IsInstalled(ctx context.Context) (bool, error) {
