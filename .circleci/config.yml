@@ -903,15 +903,17 @@ workflows:
       - docker:
           filters: *filters_tags_only
 
-  performance: # This workflow will run on all branches except 'main' and will not run on tags
-    jobs:
-      - build:
-          name: Build
-          executor: linux-amd64
-          target_os: linux
-          target_arch: amd64
-          run_tests: false
-      - performance_job:
-          name: Running Performance
-          requires:
-            - Build
+  # TODO: Disabling performance until we get a runner up and running again
+  # 
+  # performance: # This workflow will run on all branches except 'main' and will not run on tags
+  #   jobs:
+  #     - build:
+  #         name: Build
+  #         executor: linux-amd64
+  #         target_os: linux
+  #         target_arch: amd64
+  #         run_tests: false
+  #     - performance_job:
+  #         name: Running Performance
+  #         requires:
+  #           - Build
