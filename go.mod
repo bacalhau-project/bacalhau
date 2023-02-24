@@ -34,7 +34,7 @@ require (
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-ipfs-http-client v0.5.0
 	github.com/ipfs/go-ipld-format v0.4.0
-	github.com/ipfs/go-libipfs v0.5.0
+	github.com/ipfs/go-libipfs v0.6.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.9.0
 	github.com/ipfs/go-unixfs v0.4.2
@@ -90,7 +90,7 @@ require (
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.6.0
-	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
+	golang.org/x/exp v0.0.0-20230129154200-a960b3787bd2
 	golang.org/x/mod v0.7.0
 	k8s.io/apimachinery v0.26.1
 	k8s.io/kubectl v0.26.1
@@ -194,7 +194,7 @@ require (
 	github.com/ipfs/go-ipfs-keystore v0.1.0 // indirect
 	github.com/ipfs/go-ipfs-pinner v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
-	github.com/ipfs/go-ipfs-pq v0.0.2 // indirect
+	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-provider v0.8.1 // indirect
 	github.com/ipfs/go-ipfs-redirects-file v0.1.1 // indirect
 	github.com/ipfs/go-ipfs-routing v0.3.0 // indirect
@@ -208,7 +208,7 @@ require (
 	github.com/ipfs/go-mfs v0.2.1 // indirect
 	github.com/ipfs/go-namesys v0.7.0 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
-	github.com/ipfs/go-peertaskqueue v0.8.0 // indirect
+	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
 	github.com/ipfs/go-pinning-service-http-client v0.1.2 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
 	github.com/ipld/edelweiss v0.2.0 // indirect
@@ -309,7 +309,7 @@ require (
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
-	github.com/whyrusleeping/cbor-gen v0.0.0-20221220214510-0333c149dec0 // indirect
+	github.com/whyrusleeping/cbor-gen v0.0.0-20230126041949-52956bd4c9aa // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1 // indirect
