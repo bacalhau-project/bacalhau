@@ -316,6 +316,9 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
 	})
-	s.ErrorIs(err, context.DeadlineExceeded)
+	// The Docker client has changed so that it prioritizes container error message
+	// and not the error message from the context. It does error upon timeout, but not
+	// with a context.DeadlineExceeded error.
+	s.Error(err)
 	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
 }
