@@ -31,7 +31,7 @@ func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job model.Job, nod
 	for i, node := range nodes {
 		rank := 10
 		if !s.isCompatibleVersion(node.BacalhauVersion) {
-			log.Ctx(ctx).Trace().Msgf("filtering node %s with old bacalhau version %+v", node.PeerInfo.ID, node.BacalhauVersion)
+			log.Ctx(ctx).Debug().Msgf("filtering node %s with old bacalhau version %+v", node.PeerInfo.ID, node.BacalhauVersion)
 			rank = -1
 		}
 		ranks[i] = requester.NodeRank{
