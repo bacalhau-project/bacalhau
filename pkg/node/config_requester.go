@@ -16,6 +16,9 @@ type RequesterConfigParams struct {
 	NodeRankRandomnessRange            int
 	JobSelectionPolicy                 model.JobSelectionPolicy
 	SimulatorConfig                    model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 type RequesterConfig struct {
@@ -32,6 +35,9 @@ type RequesterConfig struct {
 	NodeRankRandomnessRange int
 	JobSelectionPolicy      model.JobSelectionPolicy
 	SimulatorConfig         model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -59,6 +65,9 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 	if params.NodeRankRandomnessRange == 0 {
 		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
 	}
+	if params.MinBacalhauVersion == (model.BuildVersionInfo{}) {
+		params.MinBacalhauVersion = DefaultRequesterConfig.MinBacalhauVersion
+	}
 
 	config = RequesterConfig{
 		MinJobExecutionTimeout:             params.MinJobExecutionTimeout,
@@ -67,6 +76,7 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		JobSelectionPolicy:                 params.JobSelectionPolicy,
 		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
 		SimulatorConfig:                    params.SimulatorConfig,
+		MinBacalhauVersion:                 params.MinBacalhauVersion,
 	}
 
 	return config

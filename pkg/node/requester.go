@@ -99,6 +99,7 @@ func NewRequesterNode(
 		ranking.NewEnginesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
 
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{

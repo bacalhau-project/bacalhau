@@ -17,6 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const DevelopmentGitVersion = "v0.0.0-xxxxxxx"
+
 var (
 	// GITVERSION is the Git tag that Bacalhau was built from. This is expected to be populated via the `ldflags` flag,
 	// at least until https://github.com/golang/go/issues/50603 is fixed. The value shown here will be used when the
@@ -24,7 +26,7 @@ var (
 	//
 	// A good article on how to use buildflags is
 	// https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications.
-	GITVERSION = "v0.0.0-xxxxxxx"
+	GITVERSION = DevelopmentGitVersion
 )
 
 // Get returns the overall codebase version. It's for detecting what code a binary was built from.
