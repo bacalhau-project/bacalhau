@@ -66,7 +66,7 @@ Now that we have downloaded our dataset, the next step is to upload it to IPFS. 
 Once you have uploaded your data, you'll finished copy the CID. Here is the dataset we have uploaded [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
 
 
-## Running a Bacalhau Job to Generate a Trained Model
+## Running a Bacalhau Job
 
 After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
@@ -87,6 +87,8 @@ pytorch/pytorch \
 ```
 
 ### Sturucture of the command
+
+- `bacalhau docker run`: call to bacalhau 
 
 - `--gpu 1`: Request 1 GPU to train the model
 
