@@ -43,7 +43,7 @@ func (s LoggingSensor) Start(ctx context.Context) {
 }
 
 func (s LoggingSensor) sense(ctx context.Context) {
-	debugInfo, err := s.infoProvider.GetDebugInfo()
+	debugInfo, err := s.infoProvider.GetDebugInfo(ctx)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to marshal execution summaries")
 	} else {

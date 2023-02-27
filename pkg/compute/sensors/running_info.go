@@ -1,6 +1,8 @@
 package sensors
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/compute"
 	"github.com/filecoin-project/bacalhau/pkg/compute/store"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -25,7 +27,7 @@ func NewRunningExecutionsInfoProvider(params RunningExecutionsInfoProviderParams
 	}
 }
 
-func (r RunningExecutionsInfoProvider) GetDebugInfo() (model.DebugInfo, error) {
+func (r RunningExecutionsInfoProvider) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
 	executions := r.backendBuffer.RunningExecutions()
 	summaries := make([]store.ExecutionSummary, 0, len(executions))
 	for _, execution := range executions {

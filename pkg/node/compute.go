@@ -200,6 +200,7 @@ func NewComputeNode(
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
 		runningInfoProvider,
+		sensors.NewCompletedJobs(executionStore),
 	}
 
 	// register compute public http apis
