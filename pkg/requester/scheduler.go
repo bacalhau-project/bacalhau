@@ -106,11 +106,8 @@ func (s *scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 	}
 	s.eventEmitter.EmitJobCreated(ctx, req.Job)
 
-	for _, nodeRank := range rankedNodes[:system.Min(len(rankedNodes), minBids*OverAskForBidsFactor)] {
-		// create a new space linked to request context, but call noitfyAskForBid with a new context
-		// as the request context will be canceled the request returns
-		go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), trace.LinkFromContext(ctx), &req.Job, nodeRank.NodeInfo)
-	}
+	selectedNodes := rankedNodes[:system.Min(len(rankedNodes), minBids*OverAskForBidsFactor)]
+	go s.notifyAskForBid(logger.ContextWithNodeIDLogger(context.Background(), s.id), trace.LinkFromContext(ctx), &req.Job, selectedNodes)
 	return nil
 }
 
@@ -144,7 +141,7 @@ func (s *scheduler) CancelJob(ctx context.Context, request CancelJobRequest) (Ca
 //    Shard fsm handlers    //
 //////////////////////////////
 
-func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodeInfo model.NodeInfo) {
+func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodes []NodeRank) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.Scheduler.StartJob",
 		trace.WithLinks(link), // link to any api traces
 		trace.WithSpanKind(trace.SpanKindInternal),
@@ -160,21 +157,30 @@ func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *m
 		shardIndexes[i] = i
 	}
 
-	// persist the intent to ask the node for a bid, which is helpful to avoid asking an unresponsive node again during retries
-	for _, shardIndex := range shardIndexes {
-		err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
-			JobID:      job.Metadata.ID,
-			ShardIndex: shardIndex,
-			NodeID:     nodeInfo.PeerInfo.ID.String(),
-			State:      model.ExecutionStateAskForBid,
-		})
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
-			return
+	// persist the intent to ask the node for a bid, which is helpful to avoid asking an unresponsive node again during retries.
+	// we persist the intent for all nodes before asking any node to bid, so that we don't fail the job if the first node we ask rejects the
+	// the bid before we persist the intent to ask the other nodes.
+	for _, node := range nodes {
+		for _, shardIndex := range shardIndexes {
+			err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
+				JobID:      job.Metadata.ID,
+				ShardIndex: shardIndex,
+				NodeID:     node.NodeInfo.PeerInfo.ID.String(),
+				State:      model.ExecutionStateAskForBid,
+			})
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
+				return
+			}
 		}
 	}
 
-	// do ask for bid
+	for _, node := range nodes {
+		go s.doNotifyAskForBid(ctx, link, job, node.NodeInfo, shardIndexes)
+	}
+}
+
+func (s *scheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodeInfo model.NodeInfo, shardIndexes []int) {
 	request := compute.AskForBidRequest{
 		Job:          *job,
 		ShardIndexes: shardIndexes,
