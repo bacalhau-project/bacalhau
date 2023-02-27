@@ -6,7 +6,7 @@ import (
 	realsync "sync"
 	"time"
 
-	util "github.com/bacalhau-project/bacalhau/pkg/util/context"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
