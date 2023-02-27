@@ -1,9 +1,10 @@
-package telemetry
+package util
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDetachedContext_Value_valuesPassedThrough(t *testing.T) {

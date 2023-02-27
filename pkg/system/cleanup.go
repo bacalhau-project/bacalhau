@@ -6,7 +6,7 @@ import (
 	realsync "sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
@@ -66,7 +66,7 @@ func (cm *CleanupManager) Cleanup(ctx context.Context) {
 	var wg realsync.WaitGroup
 	wg.Add(len(cm.fns))
 
-	detachedContext := telemetry.NewDetachedContext(ctx)
+	detachedContext := util.NewDetachedContext(ctx)
 
 	for i := 0; i < len(cm.fns); i++ {
 		go func(fn any) {
