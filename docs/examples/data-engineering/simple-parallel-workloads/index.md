@@ -16,7 +16,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Submit the workload
 
-To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -47,13 +47,13 @@ To shard across files in the input directory, we need to pass three (optional) a
 We created a 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
 
 :::tip
-[Bacalhau overwrites the default entrypoint](https://github.com/bacalhau-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
+[Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
 :::
 
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -88,7 +88,7 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 ### Display the videos
 
-To view the videos, we will use **glob** to return all file paths that match a specific pattern.
+To view the videos, we will use **glob** to return all file paths that match a specific pattern. 
 
 <!-- This is for the benefit of the documentation -->
 <video src={require('./scaled_Bird_flying_over_the_lake.mp4').default} controls  >
@@ -103,4 +103,4 @@ Your browser does not support the <code>video</code> element.
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

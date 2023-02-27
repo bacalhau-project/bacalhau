@@ -57,7 +57,7 @@ WORKDIR /workspaces/datadex
 ```
 
 :::info
-See more information on how to containerize your script/app[here](https://docs.docker.com/get-started/02_our_app/)
+See more information on how to containerize your script/app [here](https://docs.docker.com/get-started/02_our_app/)
 :::
 
 
@@ -99,7 +99,7 @@ docker push davidgasquez/datadex:v0.2.0
 
 ## Running a Bacalhau Job
 
-To run the container on Bacalhau, we will use the `bacalhau docker run` command.
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -115,7 +115,7 @@ davidgasquez/datadex:v0.2.0 -- /bin/bash -c 'duckdb -s "select 1"'
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau
+* `bacalhau docker run`: call to bacalhau 
 
 * `davidgasquez/datadex:v0.2.0 `: the name and the tag of the docker image we are using
 
@@ -133,7 +133,7 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -168,7 +168,7 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 ```bash
 %%bash
-cat results/combined_results/stdout
+cat results/combined_results/stdout  # displays the contents of the file
 ```
 
     ┌───┐
@@ -199,8 +199,8 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau
-
+* `bacalhau docker run`: call to bacalhau 
+  
 * `-i bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `davidgasquez/duckdb:latest`: the name and the tag of the docker image we are using
@@ -212,7 +212,7 @@ Let's look closely at the command above:
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -257,4 +257,4 @@ cat results/combined_results/stdout
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/bacalhau-project/bacalhau/discussions)
+For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

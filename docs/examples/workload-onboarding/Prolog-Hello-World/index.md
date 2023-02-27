@@ -17,7 +17,7 @@ In this example we will run a hello world prolog script on bacalhau
 ## Running Locally​
 
 
-Install swipl
+Install swipl 
 
 
 
@@ -29,7 +29,7 @@ sudo apt-get install swi-prolog
 ```
 
      Comprehensive Prolog implementation with extensive libraries and development tools.   Primarily targetted at teaching, RDF processing and web-related tasks, such as creating web services or analysing web content.
-
+    
     Official PPAs for SWI-Prolog. See https://www.swi-prolog.org for further information.
      More info: https://launchpad.net/~swi-prolog/+archive/ubuntu/stable
     Hit:1 https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/ InRelease
@@ -72,7 +72,7 @@ sudo apt-get install swi-prolog
     0 upgraded, 0 newly installed, 0 to remove and 5 not upgraded.
 
 
-Create a file called helloworld.pl
+Create a file called helloworld.pl 
 
 The following script prints ‘Hello World’ to the stdout
 
@@ -80,7 +80,7 @@ The following script prints ‘Hello World’ to the stdout
 
 ```python
 %%writefile helloworld.pl
-hello_world :- write('Hello World'), nl,
+hello_world :- write('Hello World'), nl, 
                halt.
 ```
 
@@ -125,11 +125,11 @@ Using IPFS cli
     HTTP request sent, awaiting response... 200 OK
     Length: 7642422 (7.3M) [application/gzip]
     Saving to: ‘go-ipfs_v0.4.2_linux-amd64.tar.gz.4’
-
-    go-ipfs_v0.4.2_linu 100%[===================>]   7.29M  --.-KB/s    in 0.04s
-
+    
+    go-ipfs_v0.4.2_linu 100%[===================>]   7.29M  --.-KB/s    in 0.04s   
+    
     2022-11-12 08:44:36 (206 MB/s) - ‘go-ipfs_v0.4.2_linux-amd64.tar.gz.4’ saved [7642422/7642422]
-
+    
     go-ipfs/build-log
     go-ipfs/install.sh
     go-ipfs/ipfs
@@ -138,26 +138,26 @@ Using IPFS cli
     Error: ipfs daemon is running. please stop it to run this command
     Use 'ipfs init --help' for information about this command
     Hello and Welcome to IPFS!
-
+    
     ██╗██████╗ ███████╗███████╗
     ██║██╔══██╗██╔════╝██╔════╝
     ██║██████╔╝█████╗  ███████╗
     ██║██╔═══╝ ██╔══╝  ╚════██║
     ██║██║     ██║     ███████║
     ╚═╝╚═╝     ╚═╝     ╚══════╝
-
+    
     If you're seeing this, you have successfully installed
     IPFS and are now interfacing with the ipfs merkledag!
-
+    
      -------------------------------------------------------
     | Warning:                                              |
     |   This is alpha software. Use at your own discretion! |
     |   Much is missing or lacking polish. There are bugs.  |
     |   Not yet secure. Read the security notes for more.   |
      -------------------------------------------------------
-
+    
     Check out some of the other files in this directory:
-
+    
       ./about
       ./help
       ./quick-start     <-- usage examples
@@ -184,7 +184,7 @@ Using NFTup
 
 ### [NFT.Storage](https://nft.storage/) (Recommneded Option)
 
-[Upload files and directories with NFTUp](https://nft.storage/docs/how-to/nftup/)
+[Upload files and directories with NFTUp](https://nft.storage/docs/how-to/nftup/) 
 
 To upload your dataset using NFTup just drag and drop your directory it will upload it to IPFS
 
@@ -204,8 +204,8 @@ We will use the official [swipl docker image](https://hub.docker.com/_/swipl/)
     No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
     Installing v0.3.11 BACALHAU CLI...
-    Downloading https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz.signature.sha256 ...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.11/bacalhau_v0.3.11_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
@@ -286,3 +286,4 @@ cat results/combined_results/stdout
 ```
 
     Hello World
+

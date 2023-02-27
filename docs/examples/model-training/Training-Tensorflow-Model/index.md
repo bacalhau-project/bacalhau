@@ -4,7 +4,7 @@ sidebar_position: 3
 ---
 # Training Tensorflow Model
 
-Tensorflow is an open-source machine learning software library, TensorFlow is used to train neural networks. Expressed in the form of stateful dataflow graphs, each node in the graph
+Tensorflow is an open-source machine learning software library, TensorFlow is used to train neural networks. Expressed in the form of stateful dataflow graphs, each node in the graph 
 represents the operations performed by neural networks on multi-dimensional arrays. These multi-dimensional arrays are commonly known as “tensors,” hence the name TensorFlow.
 
 In this example we will be training a MNIST model
@@ -13,7 +13,7 @@ In this example we will be training a MNIST model
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/model-training/Training-Tensorflow-Model/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=model-training/Training-Tensorflow-Model/index.ipynb)
 
-## Training Tensorflow models Locally
+## Training Tensorflow models Locally 
 This section is from  [TensorFlow 2 quickstart for beginners]( https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/quickstart/beginner.ipynb)
 
 ### TensorFlow 2 quickstart for beginners
@@ -47,11 +47,11 @@ wget https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz -O /i
     HTTP request sent, awaiting response... 200 OK
     Length: 11490434 (11M) [application/octet-stream]
     Saving to: ‘/inputs/mnist.npz’
-
-    /inputs/mnist.npz   100%[===================>]  10.96M  --.-KB/s    in 0.06s
-
+    
+    /inputs/mnist.npz   100%[===================>]  10.96M  --.-KB/s    in 0.06s   
+    
     2022-11-20 16:22:30 (197 MB/s) - ‘/inputs/mnist.npz’ saved [11490434/11490434]
-
+    
 
 
 
@@ -94,7 +94,7 @@ predictions
 
 
 
-The `tf.nn.softmax` function converts these logits to *probabilities* for each class:
+The `tf.nn.softmax` function converts these logits to *probabilities* for each class: 
 
 
 ```python
@@ -110,7 +110,7 @@ tf.nn.softmax(predictions).numpy()
 
 
 
-Note: It is possible to bake the `tf.nn.softmax` function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output.
+Note: It is possible to bake the `tf.nn.softmax` function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output. 
 
 Define a loss function for training using `losses.SparseCategoricalCrossentropy`, which takes a vector of logits and a `True` index and returns a scalar loss for each example.
 
@@ -146,7 +146,7 @@ model.compile(optimizer='adam',
 
 ### Train and evaluate your model
 
-Use the `Model.fit` method to adjust your model parameters and minimize the loss:
+Use the `Model.fit` method to adjust your model parameters and minimize the loss: 
 
 
 ```python
@@ -272,11 +272,11 @@ wget https://gist.githubusercontent.com/js-ts/0ce4d671ced642fbe807e65f5186ae87/r
     HTTP request sent, awaiting response... 200 OK
     Length: 7100 (6.9K) [text/plain]
     Saving to: ‘train.py’
-
-    train.py            100%[===================>]   6.93K  --.-KB/s    in 0s
-
+    
+    train.py            100%[===================>]   6.93K  --.-KB/s    in 0s      
+    
     2022-11-20 16:31:05 (81.3 MB/s) - ‘train.py’ saved [7100/7100]
-
+    
 
 
 Testing whether the script works
@@ -313,8 +313,8 @@ python train.py
     No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
     Installing v0.3.13 BACALHAU CLI...
-    Downloading https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz.signature.sha256 ...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
@@ -353,7 +353,7 @@ By default whatever URL you mount using the -u flag gets mounted at the path
 /inputs so we choose that as our input directory `-w /inputs`
 
 
-
+ 
 
 
 ```bash
@@ -429,3 +429,4 @@ ls results/combined_results/outputs/
 ```
 
     checkpoints
+
