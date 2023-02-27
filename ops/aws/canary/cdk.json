@@ -42,7 +42,7 @@
           "owner": "bacalhau-project",
           "repo": "bacalhau",
           "branch": "main",
-          "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/3e52f80b-f440-4195-8a4b-5cda27e8d46f"
+          "connectionArn": "arn:aws:codestar-connections:eu-west-1:284305717835:connection/da1428c1-439e-4669-8a58-f1898be26f47"
         }
       }
     },
