@@ -17,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -166,6 +167,7 @@ func NewNode(
 		Host:            basicHost,
 		IdentityService: basicHost.IDService(),
 		Labels:          config.Labels,
+		BacalhauVersion: *version.Get(),
 	})
 
 	// node info publisher

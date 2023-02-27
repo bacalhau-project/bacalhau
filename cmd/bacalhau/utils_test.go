@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -77,7 +78,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 
 	// OK: development version
 	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
-		GitVersion: "v0.0.0-xxxxxxx",
+		GitVersion: version.DevelopmentGitVersion,
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
@@ -87,7 +88,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	}, &model.BuildVersionInfo{
-		GitVersion: "v0.0.0-xxxxxxx",
+		GitVersion: version.DevelopmentGitVersion,
 	})
 	require.NoError(s.T(), err)
 

@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -121,7 +122,7 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
 	}
-	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
+	if clientVersion.GitVersion == version.DevelopmentGitVersion {
 		log.Ctx(ctx).Debug().Msg("Development client version, skipping version check")
 		return nil
 	}
@@ -129,7 +130,7 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil server version, skipping version check")
 		return nil
 	}
-	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
+	if serverVersion.GitVersion == version.DevelopmentGitVersion {
 		log.Ctx(ctx).Debug().Msg("Development server version, skipping version check")
 		return nil
 	}
