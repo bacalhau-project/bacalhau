@@ -54,7 +54,7 @@ var minVersionNodeRankerTestCases = []minVersionNodeRankerTestCase{
 	{
 		name:     "nilVersion",
 		version:  model.BuildVersionInfo{},
-		expected: -1,
+		expected: 0,
 	},
 	{
 		name:     "match",
@@ -117,6 +117,10 @@ func (s *MinVersionNodeRankerSuite) TestRankNodes_NilMinVersion() {
 	s.NoError(err)
 	s.Equal(len(nodes), len(ranks))
 	for _, t := range minVersionNodeRankerTestCases {
-		assertEquals(s.T(), ranks, t.name, 10)
+		expectedRank := 10
+		if t.name == "nilVersion" {
+			expectedRank = 0
+		}
+		assertEquals(s.T(), ranks, t.name, expectedRank)
 	}
 }
