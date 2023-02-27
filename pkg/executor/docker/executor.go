@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -288,7 +288,7 @@ func (e *Executor) RunShard(
 	}
 
 	// Can't use the original context as it may have already been timed out
-	detachedContext, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 3*time.Second)
+	detachedContext, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 3*time.Second)
 	defer cancel()
 	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
@@ -304,7 +304,7 @@ func (e *Executor) RunShard(
 
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	// Use a detached context in case the current one has already been canceled
-	separateCtx, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 1*time.Minute)
+	separateCtx, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 1*time.Minute)
 	defer cancel()
 	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
 		return
@@ -318,7 +318,7 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 func (e *Executor) cleanupAll(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
-	safeCtx := telemetry.NewDetachedContext(ctx)
+	safeCtx := pkgUtil.NewDetachedContext(ctx)
 	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
 		return nil
 	}
