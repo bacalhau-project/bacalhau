@@ -62,14 +62,6 @@ input
 !unzip ml-1m.zip
 ```
 
-    Archive:  ml-1m.zip
-       creating: ml-1m/
-      inflating: ml-1m/movies.dat        
-      inflating: ml-1m/ratings.dat       
-      inflating: ml-1m/README            
-      inflating: ml-1m/users.dat         
-
-
 
 ```python
 #moving  ratings.dat and movies.dat into a folder called 'input'
@@ -230,6 +222,10 @@ The final folder structure will look like this:
 ```
 
 
+:::info
+See more information on how to containerize your script/app [here](https://docs.docker.com/get-started/02_our_app/)
+:::
+
 ### Build the container
 
 We will run `docker build` command to build the container;
@@ -240,36 +236,39 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
 - **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub. Before pushing you first need to create a repo which you can create by following the instructions here [https://docs.docker.com/docker-hub/repos/](https://docs.docker.com/docker-hub/repos/)
+In our case
 
-Now you can push this repository to the registry designated by its name or tag.
-
-
-```
- docker push <hub-user>/<repo-name>:<tag>
+```bash
+docker build -t jsace/python-similar-movies
 ```
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau.
+### Push the container
 
-In this case:
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
 
 ```
-bacalhau docker run <hub-user>/<repo-name>:<tag> -- python similar-movies.py
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case
+
+```bash
+docker push jsace/python-similar-movies
 ```
 
 ## Running a Bacalhau Job
 
-You can either run the container on bacalhau with default or custom parameters
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. You can submit a Bacalhau job using by running your container on bacalhau with default or custom parameters
 
-### Running the container with default parameters
+### Running the Container with Default Parameters
 
-To run the container on Bacalhau, we will use the `bacalhau docker run` command.
+To submit a Bacalhau job by running your container on bacalhau with default parameters, run the following Bacalhau command:
 
 
 ```bash
@@ -278,15 +277,24 @@ bacalhau docker run \
 --id-only \
 --wait \
 jsace/python-similar-movies \
- -- python similar-movies.py
+-- python similar-movies.py
 ```
 
-    7523cbaf-7a17-4f52-8c6d-2fcc91df653e
+### Structure of the command
 
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+
+* `jsace/python-similar-movies`: the name and the tag of the docker image we are using
+
+* `-- python similar-movies.py`: execute the python script
 
 When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ### Running the Container with Custom Parameters
+
+To submit a Bacalhau job by running your container on bacalhau with custom parameters, run the following Bacalhau command:
 
 
 ```
@@ -294,6 +302,16 @@ bacalhau docker run \
 jsace/python-similar-movies \
 -- python similar-movies.py --k 50 --id 10 --n 10
 ```
+
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+
+* `jsace/python-similar-movies`: the name and the tag of the docker image we are using
+
+* `-- python similar-movies.py --k 50 --id 10 --n 10`: execute the python script
 
 ## Checking the State of your Jobs
 
@@ -304,10 +322,6 @@ jsace/python-similar-movies \
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 12:14:59 [0m[97;40m ab354ccc [0m[97;40m Docker jsace/python-... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeihybfivi... [0m
-
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
@@ -328,21 +342,13 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job '94774248-1d07-4121-aac8-451aca4a636e'...
-    Results for job '94774248-1d07-4121-aac8-451aca4a636e' have been written to...
-    results
-
-
-    2022/11/12 10:20:09 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 ## Viewing your Job Output
 
 Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```python
-!cat results/combined_results/stdout
+!cat results/combined_results/stdout # displays the contents of the file
 ```
 
     Recommendations for GoldenEye (1995): 
