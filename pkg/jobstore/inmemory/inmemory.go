@@ -400,27 +400,31 @@ func (d *JobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExe
 
 func (d *JobStore) appendJobHistory(updateJob model.JobState, previousState model.JobStateType, comment string) {
 	historyEntry := model.JobHistory{
-		Type:          model.JobHistoryTypeJobLevel,
-		JobID:         updateJob.JobID,
-		PreviousState: previousState.String(),
-		NewState:      updateJob.State.String(),
-		NewVersion:    updateJob.Version,
-		Comment:       comment,
-		Time:          updateJob.UpdateTime,
+		Type:  model.JobHistoryTypeJobLevel,
+		JobID: updateJob.JobID,
+		JobState: &model.StateChange[model.JobStateType]{
+			Previous: previousState,
+			New:      updateJob.State,
+		},
+		NewVersion: updateJob.Version,
+		Comment:    comment,
+		Time:       updateJob.UpdateTime,
 	}
 	d.history[updateJob.JobID] = append(d.history[updateJob.JobID], historyEntry)
 }
 
 func (d *JobStore) appendShardHistory(updatedShard model.ShardState, previousState model.ShardStateType, comment string) {
 	historyEntry := model.JobHistory{
-		Type:          model.JobHistoryTypeShardLevel,
-		JobID:         updatedShard.JobID,
-		ShardIndex:    updatedShard.ShardIndex,
-		PreviousState: previousState.String(),
-		NewState:      updatedShard.State.String(),
-		NewVersion:    updatedShard.Version,
-		Comment:       comment,
-		Time:          updatedShard.UpdateTime,
+		Type:       model.JobHistoryTypeShardLevel,
+		JobID:      updatedShard.JobID,
+		ShardIndex: updatedShard.ShardIndex,
+		ShardState: &model.StateChange[model.ShardStateType]{
+			Previous: previousState,
+			New:      updatedShard.State,
+		},
+		NewVersion: updatedShard.Version,
+		Comment:    comment,
+		Time:       updatedShard.UpdateTime,
 	}
 	d.history[updatedShard.JobID] = append(d.history[updatedShard.JobID], historyEntry)
 }
@@ -432,12 +436,13 @@ func (d *JobStore) appendExecutionHistory(updatedExecution model.ExecutionState,
 		ShardIndex:       updatedExecution.ShardIndex,
 		NodeID:           updatedExecution.NodeID,
 		ComputeReference: updatedExecution.ComputeReference,
-		PreviousState:    previousState.String(),
-		NewState:         updatedExecution.State.String(),
-		NewStateType:     updatedExecution.State,
-		NewVersion:       updatedExecution.Version,
-		Comment:          comment,
-		Time:             updatedExecution.UpdateTime,
+		ExecutionState: &model.StateChange[model.ExecutionStateType]{
+			Previous: previousState,
+			New:      updatedExecution.State,
+		},
+		NewVersion: updatedExecution.Version,
+		Comment:    comment,
+		Time:       updatedExecution.UpdateTime,
 	}
 	d.history[updatedExecution.JobID] = append(d.history[updatedExecution.JobID], historyEntry)
 }

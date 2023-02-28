@@ -1,9 +1,10 @@
-package bidstrategy
+package util
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -25,17 +26,20 @@ func NewInputLocalityStrategy(params InputLocalityStrategyParams) *InputLocality
 	}
 }
 
-func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+func (s *InputLocalityStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+) (bidstrategy.BidStrategyResponse, error) {
 	// if we have an "anywhere" policy for the data then we accept the job
 	if s.locality == model.Anywhere {
-		return NewShouldBidResponse(), nil
+		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
 	// otherwise we are checking that all of the named inputs in the job
 	// are local to us
 	e, err := s.executors.Get(ctx, request.Job.Spec.Engine)
 	if err != nil {
-		return BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to get executor %s: %w", request.Job.Spec.Engine, err)
+		return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to get executor %s: %w", request.Job.Spec.Engine, err)
 	}
 
 	foundInputs := 0
@@ -44,7 +48,7 @@ func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrate
 		// see if the storage engine reports that we have the resource locally
 		hasStorage, err := e.HasStorageLocally(ctx, input)
 		if err != nil {
-			return BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
+			return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
 		}
 		if hasStorage {
 			foundInputs++
@@ -52,12 +56,12 @@ func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrate
 	}
 
 	if foundInputs >= len(request.Job.Spec.Inputs) {
-		return NewShouldBidResponse(), nil
+		return bidstrategy.NewShouldBidResponse(), nil
 	}
-	return BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil
+	return bidstrategy.BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil
 }
 
 func (s *InputLocalityStrategy) ShouldBidBasedOnUsage(
-	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return NewShouldBidResponse(), nil
+	_ context.Context, _ bidstrategy.BidStrategyRequest, _ model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+	return bidstrategy.NewShouldBidResponse(), nil
 }

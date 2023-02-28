@@ -34,7 +34,7 @@ func TestEndpointAppliesJobSelectionPolicy(t *testing.T) {
 	cm := system.NewCleanupManager()
 	verifier_mock, err := noop_verifier.NewNoopVerifier(context.Background(), cm)
 	require.NoError(t, err)
-	storage_mock, err := noop_storage.NewNoopStorage(context.Background(), cm, noop_storage.StorageConfig{})
+	storage_mock := noop_storage.NewNoopStorage(noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	runTest := func(shouldBid bool, check errRequire) {

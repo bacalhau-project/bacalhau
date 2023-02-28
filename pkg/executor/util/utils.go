@@ -105,10 +105,7 @@ func NewNoopStorageProvider(
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewNoopStorage(ctx, cm, config)
-	if err != nil {
-		return nil, err
-	}
+	noopStorage := noop_storage.NewNoopStorage(config)
 	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
 }
 

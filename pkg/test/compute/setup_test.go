@@ -69,7 +69,7 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	noopstorage, err := noop_storage.NewNoopStorage(nil, nil, noop_storage.StorageConfig{})
+	noopstorage := noop_storage.NewNoopStorage(noop_storage.StorageConfig{})
 	s.Require().NoError(err)
 
 	s.node, err = node.NewComputeNode(
