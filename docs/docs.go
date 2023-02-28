@@ -1193,6 +1193,9 @@ const docTemplate = `{
         "model.NodeInfo": {
             "type": "object",
             "properties": {
+                "BacalhauVersion": {
+                    "$ref": "#/definitions/model.BuildVersionInfo"
+                },
                 "ComputeNodeInfo": {
                     "$ref": "#/definitions/model.ComputeNodeInfo"
                 },
