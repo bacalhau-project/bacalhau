@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -159,33 +158,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 		)
 	}
 	return nil
-}
-
-func ExecuteTestCobraCommand(t *testing.T, args ...string) (c *cobra.Command, output string, err error) {
-	return ExecuteTestCobraCommandWithStdin(t, nil, args...)
-}
-
-func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...string) (
-	c *cobra.Command, output string, err error,
-) { //nolint:unparam // use of t is valuable here
-	buf := new(bytes.Buffer)
-	root := NewRootCmd()
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetIn(stdin)
-	root.SetArgs(args)
-
-	// Need to check if we're running in debug mode for VSCode
-	// Empty them if they exist
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
-
-	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
-
-	c, err = root.ExecuteC()
-	return c, buf.String(), err
 }
 
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {

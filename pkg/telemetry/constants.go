@@ -2,6 +2,9 @@ package telemetry
 
 // Environment Variables
 const (
+	// environment variable to disable all local tracing
+	disableTracing = "DO_NOT_TRACK"
+
 	// environment variable that defines the endpoint for the oltp collector
 	// e.g. http://localhost:4318 for an insecure local collector
 	otlpEndpoint = "OTEL_EXPORTER_OTLP_ENDPOINT"

@@ -75,9 +75,17 @@ func getTraceClient() (client otlptrace.Client, err error) {
 }
 
 func isTracingEnabled() bool {
-	_, endpointDefined := os.LookupEnv(otlpEndpoint)
-	_, tracingEndpointDefined := os.LookupEnv(otlpTracesEndpoint)
-	return endpointDefined || tracingEndpointDefined
+	if v, ok := os.LookupEnv(disableTracing); ok && v == "1" {
+		return false
+	}
+	if _, ok := os.LookupEnv(otlpEndpoint); ok {
+		return true
+	}
+	if _, ok := os.LookupEnv(otlpTracesEndpoint); ok {
+		return true
+	}
+
+	return false
 }
 
 func cleanupTraceProvider() error {

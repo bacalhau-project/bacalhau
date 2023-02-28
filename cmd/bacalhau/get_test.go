@@ -5,6 +5,7 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +39,7 @@ func (s *GetSuite) SetupTest() {
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
-	files := []string{}
+	var files []string
 	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
 		if usePath != "" {
@@ -112,7 +113,7 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 	newTempDir, err := os.Getwd()
 	require.NoError(t, err)
 	return newTempDir, func() {
-		os.Chdir(originalWd)
+		assert.NoError(t, os.Chdir(originalWd))
 	}
 }
 
@@ -148,7 +149,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 		"--wait",
 		"--download",
 	})
-	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
+	_, runOutput, err := ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.node.Host.ID().String()
@@ -169,7 +170,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 		"--download",
 		"--output-dir", tempDir,
 	})
-	_, runOutput, err := ExecuteTestCobraCommand(s.T(), args...)
+	_, runOutput, err := ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.node.Host.ID().String()
@@ -189,12 +190,12 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
+	_, out, err := ExecuteTestCobraCommand(args...)
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.node.Host.ID().String()
 
-	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
+	_, getOutput, err := ExecuteTestCobraCommand("get",
 		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -219,13 +220,13 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
-	_, out, err := ExecuteTestCobraCommand(s.T(), args...)
+	_, out, err := ExecuteTestCobraCommand(args...)
 
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.node.Host.ID().String()
 
-	_, getOutput, err := ExecuteTestCobraCommand(s.T(), "get",
+	_, getOutput, err := ExecuteTestCobraCommand("get",
 		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),

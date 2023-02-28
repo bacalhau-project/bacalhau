@@ -208,7 +208,6 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		OLR.RequirementsPath,
 		OLR.Deterministic,
 		OLR.Labels,
-		doNotTrack,
 	)
 	if err != nil {
 		return err

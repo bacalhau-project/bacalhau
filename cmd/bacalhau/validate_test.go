@@ -32,7 +32,7 @@ func (s *ValidateSuite) TestValidate() {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), "validate",
+			_, out, err := ExecuteTestCobraCommand("validate",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				test.testFile,
