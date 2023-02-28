@@ -213,7 +213,14 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
-		_ = s.delegateService.Cancel(ctx, execution)
+
+		err := s.delegateService.Cancel(ctx, execution)
+		if err == nil {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			delete(s.running, execution.ID)
+		}
 	}()
 	return nil
 }
