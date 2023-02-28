@@ -868,7 +868,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "badimage", // Bad image
 			executable:        "ls",       // Good executable
 			isValid:           false,
-			errStringContains: "Error while executing the job",
+			errStringContains: "Error submitting job",
 		},
 		"good-image-bad-executable": {
 			imageName:         "ubuntu",        // Good image
@@ -880,7 +880,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "badimage",      // Bad image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Error while executing the job",
+			errStringContains: "Error submitting job",
 		},
 	}
 
@@ -929,7 +929,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 
 	s.Len(info.State.Shards, 1)
 	s.Len(info.State.Shards[0].Executions, 1)
-	s.Equal(model.ExecutionStateFailed, info.State.Shards[0].Executions[0].State)
+	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Shards[0].Executions[0].State)
 	s.Contains(info.State.Shards[0].Executions[0].Status, `Could not pull image "@" - could be due to repo/image not existing`)
 }
 

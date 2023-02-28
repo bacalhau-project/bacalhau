@@ -678,15 +678,6 @@ To get more information at any time, run:
 			}
 		}
 
-		log.Ctx(ctx).Trace().Msgf("Job Events:")
-		for i := range jobEvents {
-			log.Ctx(ctx).Trace().Msgf("\t%s - %s - %s",
-				jobEvents[i].NewState,
-				jobEvents[i].Time.UTC().String(),
-				jobEvents[i].Comment)
-		}
-		log.Ctx(ctx).Trace().Msgf("\n")
-
 		if err != nil {
 			if _, ok := err.(*bacerrors.JobNotFound); ok {
 				Fatal(cmd, fmt.Sprintf(`Somehow even though we submitted a job successfully,
@@ -701,7 +692,7 @@ To get more information at any time, run:
 				if jobEvents[i].Type == model.JobHistoryTypeExecutionLevel {
 					printingUpdateForEvent(cmd,
 						&printedEventsTracker,
-						jobEvents[i].NewStateType,
+						jobEvents[i].ExecutionState.New,
 						spin)
 				}
 			}
@@ -709,11 +700,16 @@ To get more information at any time, run:
 
 		// TODO: #1070 We should really streamline these two loops - when we get to a client side statemachine, that should take care of lots
 		// Look for any terminal event in all the events. If it's done, we're done.
-		for i := range jobEvents {
+		for _, event := range jobEvents {
 			// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
-			if eventsWorthPrinting[jobEvents[i].NewStateType].IsTerminal {
+			if event.Type == model.JobHistoryTypeJobLevel && event.JobState.New.IsTerminal() {
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
+
+				if event.JobState.New == model.JobStateError {
+					err = errors.New(event.Comment)
+					spin.StopMessage(fullLineMessage.PrintError())
+				}
 
 				_ = spin.Stop()
 				tickerDone <- true
