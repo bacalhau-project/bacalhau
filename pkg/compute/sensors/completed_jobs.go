@@ -7,23 +7,23 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-type CompletedJobs struct {
+type CompletedJobProvider struct {
 	ExecutionStore store.ExecutionStore
 }
 
-func NewCompletedJobs(e store.ExecutionStore) *CompletedJobs {
-	return &CompletedJobs{ExecutionStore: e}
+func NewCompletedJobs(e store.ExecutionStore) *CompletedJobProvider {
+	return &CompletedJobProvider{ExecutionStore: e}
 }
 
 // GetDebugInfo implements model.DebugInfoProvider
-func (c *CompletedJobs) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
+func (c *CompletedJobProvider) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
 	jobcounts := c.ExecutionStore.GetExecutionCount(ctx)
 	return model.DebugInfo{
-		Component: "completed jobs:",
+		Component: "jobsCompleted",
 		Info:      jobcounts,
 	}, nil
 }
 
-var _ model.DebugInfoProvider = (*CompletedJobs)(nil)
+var _ model.DebugInfoProvider = (*CompletedJobProvider)(nil)
 
 // add a method to Execution store interface to return an execution count for a given state.

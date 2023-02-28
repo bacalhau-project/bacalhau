@@ -93,5 +93,5 @@ type ExecutionStore interface {
 	DeleteExecution(ctx context.Context, id string) error
 	// GetExecutionCount returns a count of all executions that completed
 	// successfully on this compute node
-	GetExecutionCount(ctx context.Context) int
+	GetExecutionCount(ctx context.Context) uint
 }
