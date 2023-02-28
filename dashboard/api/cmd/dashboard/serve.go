@@ -5,12 +5,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/server"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/server"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
@@ -87,7 +87,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	// Cleanup manager ensures that resources are freed before exiting:
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(telemetry.Cleanup)
-	defer cm.Cleanup()
+	defer cm.Cleanup(cmd.Context())
 	ctx := cmd.Context()
 
 	if options.ServerOptions.JWTSecret == "" {
@@ -121,7 +121,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	if err != nil {
 		return err
 	}
-	cm.RegisterCallback(model.Stop)
+	cm.RegisterCallbackWithContext(model.Stop)
 
 	// Start transport layer
 	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)

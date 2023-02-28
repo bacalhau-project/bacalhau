@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
 // An event handler that listens to both job and local events, and updates the LocalDB instance accordingly

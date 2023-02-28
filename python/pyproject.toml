@@ -2,8 +2,8 @@
 [tool.poetry]
 name = "bacalhau-sdk"
 version = "0.1.2"
-homepage = "https://github.com/filecoin-project/bacalhau/"
-repository = "https://github.com/filecoin-project/bacalhau/"
+homepage = "https://github.com/bacalhau-project/bacalhau/"
+repository = "https://github.com/bacalhau-project/bacalhau/"
 documentation = "https://docs.bacalhau.org/"
 keywords = ["bacalhau", "Filecoin", "IPFS", "cod", "compute over data", "verifiable computation"]
 description = "Compute over Data framework for public, transparent, and optionally verifiable computation using IPFS & Filecoin."
@@ -103,7 +103,7 @@ skip_gitignore = true
 #skip_glob = docs/conf.py
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/filecoin-project/bacalhau/issues"
+"Bug Tracker" = "https://github.com/bacalhau-project/bacalhau/issues"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

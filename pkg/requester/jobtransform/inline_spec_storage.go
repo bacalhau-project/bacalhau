@@ -3,10 +3,10 @@ package jobtransform
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/copy"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/copy"
 )
 
 // The maximum size that an individual inline storage spec and all inline

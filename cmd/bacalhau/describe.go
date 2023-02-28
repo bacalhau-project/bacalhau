@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -27,7 +25,7 @@ var (
 		bacalhau describe 47805f5c
 
 		# Describe a job and include all server and local events
-		bacalhau describe --include-events b6ad164a 
+		bacalhau describe --include-events b6ad164a
 `))
 )
 
@@ -78,17 +76,11 @@ func newDescribeCmd() *cobra.Command {
 }
 
 func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
 	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
 		Fatal(cmd, fmt.Sprintf("Failed to parse flags: %v\n", err), 1)
 	}
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.describe")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	var err error
 	inputJobID := cmdArgs[0]

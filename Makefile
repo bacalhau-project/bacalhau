@@ -41,7 +41,7 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 define BUILD_FLAGS
--X github.com/filecoin-project/bacalhau/pkg/version.GITVERSION=$(TAG)
+-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
 all: build
@@ -283,21 +283,21 @@ grc-test-debug:
 
 .PHONY: test-one
 test-one:
-	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
 test-devstack:
-	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/pkg/test/devstack/
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/pkg/test/devstack/
 
 .PHONY: test-commands
 test-commands:
-	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 # .PHONY: test-pythonwasm
 # test-pythonwasm:
 # # TestSimplestPythonWasmDashC
-# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
-# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
+# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
 
 ################################################################################
 # Target: devstack

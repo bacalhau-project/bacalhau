@@ -3,7 +3,7 @@ package jobstore
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // ErrJobNotFound is returned when the job is not found

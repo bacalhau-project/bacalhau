@@ -1,15 +1,14 @@
 package rcmgr
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	"github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
-	"github.com/rs/zerolog/log"
-	"go.opencensus.io/stats/view"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
-func SetDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
+func setDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
 	// Requester -> Compute nodes
 	// reasoning behind these limits:
 	// - Requester nodes should have a high number of outbound streams to compute nodes
@@ -43,30 +42,30 @@ func SetDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
 	)
 }
 
-var DefaultResourceManager = func(cfg *libp2p.Config) error {
-	// Default memory limit: 1/8th of total memory, minimum 128MB, maximum 1GB
-	limits := libp2p_rcmgr.DefaultLimits
-	libp2p.SetDefaultServiceLimits(&limits)
-	SetDefaultServiceLimits(&limits)
+func DefaultResourceManager(cfg *libp2p.Config) error {
+	return resourceManagerWithMetricsProvider(global.MeterProvider())(cfg)
+}
 
-	// Hook up the trace reporter metrics. This will expose all opencensus
-	// stats via the default prometheus registry. See https://opencensus.io/exporters/supported-exporters/go/prometheus/ for other options.
-	err := view.Register(obs.DefaultViews...)
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to register resource manager metrics")
-	}
+func resourceManagerWithMetricsProvider(provider metric.MeterProvider) func(cfg *libp2p.Config) error {
+	return func(cfg *libp2p.Config) error {
+		// Default memory limit: 1/8th of total memory, minimum 128MB, maximum 1GB
+		limits := libp2p_rcmgr.DefaultLimits
+		libp2p.SetDefaultServiceLimits(&limits)
+		setDefaultServiceLimits(&limits)
 
-	str, err := obs.NewStatsTraceReporter()
-	if err != nil {
-		return err
-	}
-	mgr, err := libp2p_rcmgr.NewResourceManager(
-		libp2p_rcmgr.NewFixedLimiter(limits.AutoScale()),
-		libp2p_rcmgr.WithTraceReporter(str),
-	)
-	if err != nil {
-		return err
-	}
+		metricReporter, err := metricsReporter(provider)
+		if err != nil {
+			return err
+		}
 
-	return cfg.Apply(libp2p.ResourceManager(mgr))
+		mgr, err := libp2p_rcmgr.NewResourceManager(
+			libp2p_rcmgr.NewFixedLimiter(limits.AutoScale()),
+			libp2p_rcmgr.WithTraceReporter(metricReporter),
+		)
+		if err != nil {
+			return err
+		}
+
+		return cfg.Apply(libp2p.ResourceManager(mgr))
+	}
 }

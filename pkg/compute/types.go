@@ -3,8 +3,8 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do

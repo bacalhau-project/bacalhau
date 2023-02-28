@@ -11,21 +11,19 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-
 	"github.com/Masterminds/semver"
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -40,9 +38,10 @@ const (
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// AutoDownloadFolderPerm is what permissions we give to a folder we create when downloading results
-	AutoDownloadFolderPerm      = 0755
-	HowFrequentlyToUpdateTicker = 50 * time.Millisecond
-	DefaultTimeout              = 30 * time.Minute
+	AutoDownloadFolderPerm       = 0755
+	HowFrequentlyToUpdateTicker  = 50 * time.Millisecond
+	DefaultSpinnerFormatDuration = 30 * time.Millisecond
+	DefaultTimeout               = 30 * time.Minute
 )
 
 var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
@@ -122,7 +121,7 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
 	}
-	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
+	if clientVersion.GitVersion == version.DevelopmentGitVersion {
 		log.Ctx(ctx).Debug().Msg("Development client version, skipping version check")
 		return nil
 	}
@@ -130,7 +129,7 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		log.Ctx(ctx).Warn().Msg("Unable to parse nil server version, skipping version check")
 		return nil
 	}
-	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
+	if serverVersion.GitVersion == version.DevelopmentGitVersion {
 		log.Ctx(ctx).Debug().Msg("Development server version, skipping version check")
 		return nil
 	}
@@ -159,33 +158,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 		)
 	}
 	return nil
-}
-
-func ExecuteTestCobraCommand(t *testing.T, args ...string) (c *cobra.Command, output string, err error) {
-	return ExecuteTestCobraCommandWithStdin(t, nil, args...)
-}
-
-func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...string) (
-	c *cobra.Command, output string, err error,
-) { //nolint:unparam // use of t is valuable here
-	buf := new(bytes.Buffer)
-	root := NewRootCmd()
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetIn(stdin)
-	root.SetArgs(args)
-
-	// Need to check if we're running in debug mode for VSCode
-	// Empty them if they exist
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
-
-	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
-
-	c, err = root.ExecuteC()
-	return c, buf.String(), err
 }
 
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
@@ -309,7 +281,7 @@ func ExecuteJob(ctx context.Context,
 
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
-	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
+	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
 	if !runtimeSettings.WaitForJobToFinish {
 		cmd.Print(j.Metadata.ID + "\n")
 		return nil
@@ -324,7 +296,7 @@ func ExecuteJob(ctx context.Context,
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	err = WaitAndPrintResultsToUser(ctx, cmd, j, quiet)
+	err = WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal(cmd, "", 0)
@@ -571,8 +543,12 @@ const spacerText = " ... "
 var ticker *time.Ticker
 var tickerDone = make(chan bool)
 
-//nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
-func WaitAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
+// WaitForJobAndPrintResultsToUser uses events to decide what to output to the terminal
+// using a spinner to show long-running tasks. When the job is complete (or the user
+// triggers SIGINT) then the function will complete and stop outputting to the terminal.
+//
+//nolint:gocyclo,funlen
+func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
 	fullLineMessage = FullLineMessage{
 		Message:     "",
 		TimerString: "",
@@ -611,7 +587,7 @@ To get more information at any time, run:
 	// Inject "Job Initiated Event" to start - should we do this on the server?
 	// TODO: #1068 Should jobs auto add a "start event" on the client at creation?
 	// Faking an initial time (sometimes it happens too fast to see)
-	fullLineMessage.TimerString = spinnerFmtDuration(30 * time.Millisecond) //nolint:gomnd // 30ms is just a default
+	fullLineMessage.TimerString = spinnerFmtDuration(DefaultSpinnerFormatDuration)
 	fullLineMessage.Message = formatMessage("Communicating with the network")
 
 	// Create a spinner var that will span all printouts
@@ -636,6 +612,7 @@ To get more information at any time, run:
 	var returnError error
 	returnError = nil
 
+	// goroutine for handling spinner ticks and spinner completion messages
 	go func() {
 		for {
 			log.Ctx(ctx).Trace().Msgf("Ticker goreturn")
@@ -655,6 +632,8 @@ To get more information at any time, run:
 		}
 	}()
 
+	// goroutine for handling SIGINT from the signal channel, or context
+	// completion messages.
 	go func() {
 		log.Ctx(ctx).Trace().Msgf("Signal goreturn")
 
@@ -662,7 +641,7 @@ To get more information at any time, run:
 		case s := <-signalChan: // first signal, cancel context
 			log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
 			if s == os.Interrupt {
-				// Stop the spinner and let the rest of WaitAndPrintResultsToUser
+				// Stop the spinner and let the rest of WaitForJobAndPrintResultsToUser
 				// know that we're going to shut down so that it doesn't try to
 				// restart the spinner after it's displayed the last line of
 				// output.
@@ -687,6 +666,8 @@ To get more information at any time, run:
 		}
 	}()
 
+	// Loop through the events, printing those that are interesting, and then
+	// shutting down when a this job reaches a terminal state.
 	for {
 		if !quiet && !cmdShuttingDown {
 			if spin.Status().String() != "running" {
@@ -873,28 +854,6 @@ func createSpinner(w io.Writer, startingMessage string) (*yacspin.Spinner, error
 	}
 
 	return s, nil
-}
-
-func spinnerFmtDuration(d time.Duration) string {
-	d = d.Round(time.Millisecond)
-
-	min := (d % time.Hour) / time.Minute
-	sec := (d % time.Minute) / time.Second
-	ms := (d % time.Second) / time.Millisecond / 100
-
-	minString, secString, msString := "", "", ""
-	if min > 0 {
-		minString = fmt.Sprintf("%02dm", min)
-		secString = fmt.Sprintf("%02d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else if sec > 0 {
-		secString = fmt.Sprintf("%01d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else {
-		msString = fmt.Sprintf("0.%01ds", ms)
-	}
-	// If hour string exists, set it
-	return fmt.Sprintf("%s%s%s", minString, secString, msString)
 }
 
 func formatMessage(msg string) string {

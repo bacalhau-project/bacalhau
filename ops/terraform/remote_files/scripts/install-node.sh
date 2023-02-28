@@ -89,7 +89,7 @@ function install-bacalhau() {
 function install-bacalhau-from-release() {
   echo "Installing Bacalhau from release ${BACALHAU_VERSION}"
   sudo apt-get -y install --no-install-recommends jq
-  wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
+  wget "https://github.com/bacalhau-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }
@@ -97,7 +97,7 @@ function install-bacalhau-from-release() {
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
   sudo apt-get -y install --no-install-recommends jq
-  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/filecoin-project/bacalhau.git
+  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
   cd bacalhau
   GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
   sudo mv ./bacalhau /usr/local/bin/bacalhau
@@ -243,10 +243,10 @@ function install-promtail() {
     gunzip -S ".zip" promtail-linux-amd64.zip
     sudo chmod a+x "promtail-linux-amd64"
     sudo mv promtail-linux-amd64 /usr/local/bin/
-    
+
     # config file
     HOSTNAME=$(hostname)
-    
+
     sudo tee /terraform_node/promtail.yml > /dev/null <<EOF
 server:
   http_listen_port: 0
@@ -287,7 +287,7 @@ EOF
   fi
 }
 
-function mount-disk() { 
+function mount-disk() {
   echo "Mounting disk"
   # wait for /dev/sdb to exist
   while [[ ! -e /dev/sdb ]]; do

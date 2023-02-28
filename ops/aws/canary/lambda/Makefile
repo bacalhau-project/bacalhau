@@ -6,7 +6,7 @@ TEST_BUILD_TAGS ?= unit,integration
 
 .PHONY: update
 update:
-	go get github.com/filecoin-project/bacalhau@${TARGET_COMMIT} && go mod tidy
+	go get github.com/bacalhau-project/bacalhau@${TARGET_COMMIT} && go mod tidy
 
 
 CMD_TARGETS := $(wildcard ./cmd/*)

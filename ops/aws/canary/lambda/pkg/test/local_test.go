@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 

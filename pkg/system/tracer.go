@@ -3,8 +3,8 @@ package system
 import (
 	"context"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"

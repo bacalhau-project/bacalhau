@@ -12,12 +12,12 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "contact": {
             "name": "Bacalhau Team",
-            "url": "https://github.com/filecoin-project/bacalhau",
+            "url": "https://github.com/bacalhau-project/bacalhau",
             "email": "team@bacalhau.org"
         },
         "license": {
             "name": "Apache 2.0",
-            "url": "https://github.com/filecoin-project/bacalhau/blob/main/LICENSE"
+            "url": "https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE"
         },
         "version": "{{.Version}}"
     },
@@ -483,7 +483,7 @@ const docTemplate = `{
         },
         "/requester/submit": {
             "post": {
-                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `job_create_payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n",
+                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `job_create_payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -552,7 +552,7 @@ const docTemplate = `{
         },
         "/version": {
             "post": {
-                "description": "See https://github.com/filecoin-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
+                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1888,7 +1888,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{"http"},
 	Title:            "Bacalhau API",
-	Description:      "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.",
+	Description:      "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 }

@@ -16,11 +16,11 @@ features without needing to invent a real job.
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 // A Scenario represents a repeatable test case of submitting a job against a

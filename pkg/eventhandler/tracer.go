@@ -6,8 +6,8 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

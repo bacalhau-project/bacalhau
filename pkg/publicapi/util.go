@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
 )

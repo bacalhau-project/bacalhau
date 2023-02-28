@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/rs/zerolog/log"
 )
 

@@ -3,8 +3,8 @@ package node
 import (
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 var DefaultComputeConfig = ComputeConfigParams{
@@ -29,4 +29,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            10,
+
+	MinBacalhauVersion: model.BuildVersionInfo{
+		Major: "0", Minor: "3", GitVersion: "v0.3.20",
+	},
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/filecoin-project/bacalhau/pkg/model/job",
+  "$id": "https://github.com/bacalhau-project/bacalhau/pkg/model/job",
   "$ref": "#/$defs/Job",
   "$defs": {
     "Deal": {

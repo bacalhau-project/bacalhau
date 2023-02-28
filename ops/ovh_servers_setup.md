@@ -1,8 +1,8 @@
 # OVH Bare Metal Preparation
 
-## Context 
+## Context
 
-We have 4 high-spec `ubuntu-2204-lts` nodes on OVH US @ Hillsboro (HIL1) - United States. 
+We have 4 high-spec `ubuntu-2204-lts` nodes on OVH US @ Hillsboro (HIL1) - United States.
 They are HGR-HCI-5 machines, check [this page](https://us.ovhcloud.com/bare-metal/high-grade/hgr-hci-5/) for more details.
 These are their IP addresses:
 
@@ -38,7 +38,7 @@ Go brew one or two ☕ because this step takes really a long time...
 
 <img width="609" alt="Screenshot 2022-10-11 at 18 08 52" src="https://user-images.githubusercontent.com/4340327/195143814-978f5f54-deb5-4d25-a911-9f286920a8c1.png">
 
-After it completes you can finally ssh into the machines with the `ubuntu` user: `ssh ubuntu@51.81.184.xx` 
+After it completes you can finally ssh into the machines with the `ubuntu` user: `ssh ubuntu@51.81.184.xx`
 
 ## 2) Configure RAID for data disks
 
@@ -61,7 +61,7 @@ nvme5n1       3.5T                   disk
 
 ### Partition disks
 
-Create a partition on the first disk. 
+Create a partition on the first disk.
 
 ```bash
 > sudo fdisk /dev/nvme0n1
@@ -218,7 +218,7 @@ Ref. https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-w
 ## 4) Add team's ssh pub keys
 
 First we need the GitHub usernames of the team members whose ssh key we'd like to add.
-The [Bacalhau's contributors](https://github.com/filecoin-project/bacalhau/graphs/contributors) is a good starting point.
+The [Bacalhau's contributors](https://github.com/bacalhau-project/bacalhau/graphs/contributors) is a good starting point.
 
 ```bash
 > wget -q --output-document - github.com/enricorotundo.keys >> ~/.ssh/authorized_keys
@@ -232,6 +232,6 @@ The [Bacalhau's contributors](https://github.com/filecoin-project/bacalhau/graph
 
 Confirm that worked with `cat ~/.ssh/authorized_keys`.
 
---- 
+---
 
 That's all folks 🥳

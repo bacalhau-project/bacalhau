@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 

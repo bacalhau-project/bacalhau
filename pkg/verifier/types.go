@@ -3,7 +3,7 @@ package verifier
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type EncrypterFunction func(ctx context.Context, data []byte, publicKeyBytes []byte) ([]byte, error)

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1alpha1"
 )
 
 //go:generate stringer -type=APIVersion

@@ -3,9 +3,9 @@ package sensors
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type RunningExecutionsInfoProviderParams struct {

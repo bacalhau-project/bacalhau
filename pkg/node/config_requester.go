@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type RequesterConfigParams struct {
@@ -14,7 +14,11 @@ type RequesterConfigParams struct {
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
+	JobSelectionPolicy                 model.JobSelectionPolicy
 	SimulatorConfig                    model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 type RequesterConfig struct {
@@ -29,7 +33,11 @@ type RequesterConfig struct {
 	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
+	JobSelectionPolicy      model.JobSelectionPolicy
 	SimulatorConfig         model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -57,15 +65,18 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 	if params.NodeRankRandomnessRange == 0 {
 		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
 	}
+	if params.MinBacalhauVersion == (model.BuildVersionInfo{}) {
+		params.MinBacalhauVersion = DefaultRequesterConfig.MinBacalhauVersion
+	}
 
 	config = RequesterConfig{
-		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-
+		MinJobExecutionTimeout:             params.MinJobExecutionTimeout,
+		DefaultJobExecutionTimeout:         params.DefaultJobExecutionTimeout,
 		HousekeepingBackgroundTaskInterval: params.HousekeepingBackgroundTaskInterval,
-
-		NodeRankRandomnessRange: params.NodeRankRandomnessRange,
-		SimulatorConfig:         params.SimulatorConfig,
+		JobSelectionPolicy:                 params.JobSelectionPolicy,
+		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
+		SimulatorConfig:                    params.SimulatorConfig,
+		MinBacalhauVersion:                 params.MinBacalhauVersion,
 	}
 
 	return config

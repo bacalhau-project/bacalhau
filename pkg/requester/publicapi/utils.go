@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func verifyRequestSignature(msg json.RawMessage, clientSignature string, clientPubKey string) error {

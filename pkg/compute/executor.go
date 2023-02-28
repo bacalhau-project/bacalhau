@@ -3,12 +3,12 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -54,18 +54,18 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		Str("ExecutionID", execution.ID).
 		Logger().WithContext(ctx)
 
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, execution, err, "Running")
-		}
-	}()
-
 	ctx, cancel := context.WithCancel(ctx)
 	e.cancellers.Put(execution, cancel)
 	defer func() {
 		if cancel, found := e.cancellers.Get(execution); found {
 			e.cancellers.Delete(execution)
 			cancel()
+		}
+	}()
+
+	defer func() {
+		if err != nil {
+			e.handleFailure(ctx, execution, err, "Running")
 		}
 	}()
 

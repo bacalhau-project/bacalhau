@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

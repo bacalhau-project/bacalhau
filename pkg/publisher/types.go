@@ -3,7 +3,7 @@ package publisher
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // PublisherProvider returns a publisher for the given publisher type

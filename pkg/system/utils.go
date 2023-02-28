@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"golang.org/x/exp/constraints"
 )
 

@@ -3,7 +3,8 @@ package requester
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
@@ -42,5 +43,11 @@ type CancelJobRequest struct {
 	UserTriggered bool
 }
 
-type CancelJobResult struct {
+type CancelJobResult struct{}
+
+type Scheduler interface {
+	compute.Callback
+
+	StartJob(context.Context, StartJobRequest) error
+	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
 }

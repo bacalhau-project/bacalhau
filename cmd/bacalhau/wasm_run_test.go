@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,7 +19,7 @@ func TestWasmRunSuite(t *testing.T) {
 
 func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	ctx := context.Background()
-	_, out, err := ExecuteTestCobraCommand(s.T(), "wasm", "run",
+	_, out, err := ExecuteTestCobraCommand("wasm", "run",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		"../../testdata/wasm/noop/main.wasm",

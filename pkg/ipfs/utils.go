@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"

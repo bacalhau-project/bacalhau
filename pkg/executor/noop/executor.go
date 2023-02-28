@@ -3,8 +3,8 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)

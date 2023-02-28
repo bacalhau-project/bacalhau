@@ -20,7 +20,7 @@ The latter is listed as a dependency of this SDK and will be installed automatic
 Clone the public repository:
 
 ``` console
-$ git clone https://github.com/filecoin-project/bacalhau/
+$ git clone https://github.com/bacalhau-project/bacalhau/
 ```
 
 Once you have a copy of the source, you can install it with:
@@ -41,7 +41,7 @@ If a key pair is not found there, it will create one for you.
 Let's submit a Hello World job and then fetch its output data's CID.
 We start by importing this sdk, namely `bacalhau_sdk`, used to create and submit a job create request.
 Then we import `bacalhau_apiclient` (installed automatically with this sdk), it provides various object models that compose a job create request.
-These are used to populate a simple python dictionary that will be passed over to the `submit` util method. 
+These are used to populate a simple python dictionary that will be passed over to the `submit` util method.
 
 ```python
 import pprint

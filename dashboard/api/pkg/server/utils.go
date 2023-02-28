@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -32,21 +32,6 @@ func GetRequestBody[T any](w http.ResponseWriter, r *http.Request) (*T, error) {
 		return nil, err
 	}
 	return &requestBody, nil
-}
-
-func HTTPGet[T any](url string) (T, error) {
-	var data T
-	//nolint:gosec
-	resp, err := http.Get(url)
-	if err != nil {
-		return data, err
-	}
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return data, err
-	}
-	resp.Body.Close()
-	return data, nil
 }
 
 func generateJWT(

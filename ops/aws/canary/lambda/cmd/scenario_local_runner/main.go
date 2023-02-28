@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
+
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
 	"github.com/rs/zerolog/log"
 	flag "github.com/spf13/pflag"
 )

@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -53,7 +53,7 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 			}
 			s.Run(name, func() {
 				ctx := context.Background()
-				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
+				_, out, err := ExecuteTestCobraCommand("create",
 					"--api-host", s.host,
 					"--api-port", s.port,
 					testFile,
@@ -72,7 +72,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(testSpec, "create",
 		"--api-host", s.host,
 		"--api-port", s.port,
 	)
@@ -81,7 +81,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
-	_, _, err = ExecuteTestCobraCommand(s.T(), "describe",
+	_, _, err = ExecuteTestCobraCommand("describe",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		job.Metadata.ID,
@@ -104,7 +104,7 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), "create")
+		c, out, err := ExecuteTestCobraCommand("create")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
@@ -142,7 +142,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), "create", "../../testdata/empty.yaml")
+		c, out, err := ExecuteTestCobraCommand("create", "../../testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

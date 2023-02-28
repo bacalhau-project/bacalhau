@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
 

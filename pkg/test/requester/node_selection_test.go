@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -88,10 +88,10 @@ func (s *NodeSelectionSuite) SetupSuite() {
 
 func (s *NodeSelectionSuite) TearDownSuite() {
 	if s.requester != nil {
-		s.requester.CleanupManager.Cleanup()
+		s.requester.CleanupManager.Cleanup(context.Background())
 	}
 	for _, n := range s.computeNodes {
-		n.CleanupManager.Cleanup()
+		n.CleanupManager.Cleanup(context.Background())
 	}
 }
 

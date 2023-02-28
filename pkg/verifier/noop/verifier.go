@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/results"
 )
 
 type NoopVerifier struct {

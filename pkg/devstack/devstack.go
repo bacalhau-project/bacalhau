@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/jobstore/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p/core/host"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -131,7 +131,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		cm.RegisterCallback(lotus.Close)
+		cm.RegisterCallbackWithContext(lotus.Close)
 
 		if err := lotus.start(ctx); err != nil { //nolint:govet
 			return nil, err
@@ -214,9 +214,7 @@ func NewDevStack(
 		if err != nil {
 			return nil, err
 		}
-		cm.RegisterCallback(func() error {
-			return libp2pHost.Close()
-		})
+		cm.RegisterCallback(libp2pHost.Close)
 
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
@@ -325,9 +323,9 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling(options.CPUProfilingFile, options.MemoryProfilingFile)
+	profiler := StartProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
-		cm.RegisterCallback(profiler.Close)
+		cm.RegisterCallbackWithContext(profiler.Close)
 	}
 
 	return &DevStack{

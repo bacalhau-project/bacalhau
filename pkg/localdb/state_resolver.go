@@ -6,8 +6,8 @@ package localdb
 import (
 	"context"
 
-	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type JobLoader func(ctx context.Context, id string) (*model.Job, error)

@@ -6,12 +6,12 @@ import (
 	"io"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
@@ -44,11 +44,11 @@ func (c TracedClient) ContainerCreate(
 	networkingConfig *network.NetworkingConfig,
 	platform *v1.Platform,
 	name string,
-) (container.ContainerCreateCreatedBody, error) {
+) (container.CreateResponse, error) {
 	ctx, span := c.span(ctx, "container.create")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[container.ContainerCreateCreatedBody](span)(
+	return telemetry.RecordErrorOnSpanTwo[container.CreateResponse](span)(
 		c.client.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, name),
 	)
 }
@@ -92,18 +92,21 @@ func (c TracedClient) ContainerStop(ctx context.Context, containerID string, tim
 	ctx, span := c.span(ctx, "container.stop")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpan(span)(c.client.ContainerStop(ctx, containerID, timeout))
+	timeoutHelper := int(timeout.Seconds())
+	return telemetry.RecordErrorOnSpan(span)(c.client.ContainerStop(ctx, containerID, container.StopOptions{
+		Timeout: &timeoutHelper,
+	}))
 }
 
 func (c TracedClient) ContainerWait(
 	ctx context.Context,
 	containerID string,
 	condition container.WaitCondition,
-) (<-chan container.ContainerWaitOKBody, <-chan error) {
+) (<-chan container.WaitResponse, <-chan error) {
 	ctx, span := c.span(ctx, "container.wait")
 	// span ends when one of the channels sends a message
 
-	return telemetry.RecordErrorOnSpanTwoChannels[container.ContainerWaitOKBody](span)(c.client.ContainerWait(ctx, containerID, condition))
+	return telemetry.RecordErrorOnSpanTwoChannels[container.WaitResponse](span)(c.client.ContainerWait(ctx, containerID, condition))
 }
 
 func (c TracedClient) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error) {

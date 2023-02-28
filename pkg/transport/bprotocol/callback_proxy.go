@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -83,35 +85,35 @@ func proxyCallbackRequest(
 		targetPeerID := resultInfo.TargetPeerID
 		peerID, err := peer.Decode(targetPeerID)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to decode peer ID %s", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to decode peer ID %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}
 
 		// deserialize the request object
 		data, err := json.Marshal(request)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to marshal request", reflect.TypeOf(request))
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to marshal request", reflect.TypeOf(request))
 			return
 		}
 
 		// opening a stream to the destination peer
 		stream, err := p.host.NewStream(ctx, peerID, protocolID)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Err(errors.WithStack(err)).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}
-		defer stream.Close() //nolint:errcheck
+		defer closer.CloseWithLogOnError("stream", stream)
 		if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
-			log.Ctx(ctx).Error().Err(scopingErr).Msg("error attaching stream to requester service")
-			stream.Reset() //nolint:errcheck
+			log.Ctx(ctx).Error().Err(errors.WithStack(scopingErr)).Msg("error attaching stream to requester service")
+			_ = stream.Reset() //nolint:errcheck
 			return
 		}
 
 		// write the request to the stream
 		_, err = stream.Write(data)
 		if err != nil {
-			stream.Reset() //nolint:errcheck
-			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
+			_ = stream.Reset() //nolint:errcheck
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}
 	}

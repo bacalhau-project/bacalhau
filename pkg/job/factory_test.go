@@ -3,11 +3,12 @@
 package job
 
 import (
+	"context"
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -62,12 +63,13 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 
 		for _, tcids := range testCids {
 			func() {
-				outputVolumes := []string{}
+				var outputVolumes []string
 				for _, tcidOV := range tcids.outputVolumes {
 					outputVolumes = append(outputVolumes, strings.Join([]string{tcidOV.name, tcidOV.path}, ":"))
 				}
 
 				j, err := ConstructDockerJob( //nolint:funlen
+					context.Background(),
 					model.APIVersionLatest(),
 					model.EngineNoop,
 					model.VerifierNoop,
@@ -93,7 +95,6 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					"",         // sharding base path
 					"",         // sharding glob pattern
 					1,          // sharding batch size
-					true,       // do not track
 				)
 
 				if tcids.err != "" {
