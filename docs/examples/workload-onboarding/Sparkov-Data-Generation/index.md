@@ -15,9 +15,9 @@ The advantage of using bacalhau is that you can generate terabytes of synthetic 
 
 In this example we will generate synthetic credit card transaction data using the Sparkov program and store the results to IPFS
 
-## Prerequisite 
+## Prerequiste
 
-- The Bacalhau client - [Installation instructions](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 ## Running Sparkov Locally​
 
@@ -31,27 +31,12 @@ git clone https://github.com/js-ts/Sparkov_Data_Generation/
 pip3 install -r Sparkov_Data_Generation/requirements.txt
 ```
 
-    Looking in indexes: https://pypi.org/simple, https://us-python.pkg.dev/colab-wheels/public/simple/
-    Collecting Faker==13.12.0
-      Downloading Faker-13.12.0-py3-none-any.whl (1.6 MB)
-    Requirement already satisfied: numpy==1.21.6 in /usr/local/lib/python3.7/dist-packages (from -r Sparkov_Data_Generation/requirements.txt (line 2)) (1.21.6)
-    Requirement already satisfied: typing-extensions>=3.10.0.2 in /usr/local/lib/python3.7/dist-packages (from Faker==13.12.0->-r Sparkov_Data_Generation/requirements.txt (line 1)) (4.1.1)
-    Requirement already satisfied: python-dateutil>=2.4 in /usr/local/lib/python3.7/dist-packages (from Faker==13.12.0->-r Sparkov_Data_Generation/requirements.txt (line 1)) (2.8.2)
-    Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.7/dist-packages (from python-dateutil>=2.4->Faker==13.12.0->-r Sparkov_Data_Generation/requirements.txt (line 1)) (1.15.0)
-    Installing collected packages: Faker
-    Successfully installed Faker-13.12.0
-
-
-    Cloning into 'Sparkov_Data_Generation'...
-
+Go to the Sparkov_Data_Generation directory
 
 
 ```python
 %cd Sparkov_Data_Generation
 ```
-
-    /content/Sparkov_Data_Generation
-
 
 Creating a temporary directory to store the outputs
 
@@ -63,15 +48,23 @@ mkdir ../outputs
 
 ## Running the script
 
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+
+
+```bash
+%%bash
+python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
+```
+
 Below are some of the parameters you need before running the script
 
 - `-n`:  Number of customers to generate
 
 - `-o`: path to store the outputs
 
-- Start date: "01-01-2022" 
+- `Start date`: "01-01-2022" 
  
-- End date: "10-01-2022"
+- `End date`: "10-01-2022"
 
 To see the full list of options, use:
 
@@ -81,112 +74,16 @@ To see the full list of options, use:
 python datagen.py -h
 ```
 
-    usage: datagen.py [-h] [-n NB_CUSTOMERS] [-seed [SEED]] [-config [CONFIG]]
-                      [-c CUSTOMER_FILE] [-o OUTPUT]
-                      start_date end_date
-    
-    Customer Generator
-    
-    positional arguments:
-      start_date            Transactions start date
-      end_date              Transactions start date
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      -n NB_CUSTOMERS, --nb_customers NB_CUSTOMERS
-                            Number of customers to generate
-      -seed [SEED]          Random generator seed
-      -config [CONFIG]      Profile config file (typically
-                            profiles/main_config.json")
-      -c CUSTOMER_FILE, --customer_file CUSTOMER_FILE
-                            Customer file generated with the datagen_customer
-                            script
-      -o OUTPUT, --output OUTPUT
-                            Output Folder path
+## Containerize Script using Docker
 
-
-
-```bash
-%%bash
-python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
-```
-
-    Num CPUs: 2
-    profile: adults_50up_male_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_50up_male_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_50up_male_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_50up_male_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_50up_male_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_50up_female_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_50up_female_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_50up_female_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_50up_female_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_50up_female_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_50up_male_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_50up_male_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_50up_male_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_50up_male_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_50up_male_rural.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_50up_female_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_50up_female_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_50up_female_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_50up_female_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_50up_female_rural.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_2550_male_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_2550_male_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_2550_male_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_2550_male_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_2550_male_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_2550_female_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_2550_female_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_2550_female_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_2550_female_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_2550_female_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_2550_male_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_2550_male_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_2550_male_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_2550_male_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_2550_male_rural.json, chunk size: 200,                 chunk: 800-999
-    profile: adults_2550_female_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: adults_2550_female_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: adults_2550_female_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: adults_2550_female_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: adults_2550_female_rural.json, chunk size: 200,                 chunk: 800-999
-    profile: young_adults_male_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: young_adults_male_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: young_adults_male_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: young_adults_male_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: young_adults_male_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: young_adults_female_urban.json, chunk size: 200,                 chunk: 0-199
-    profile: young_adults_female_urban.json, chunk size: 200,                 chunk: 200-399
-    profile: young_adults_female_urban.json, chunk size: 200,                 chunk: 400-599
-    profile: young_adults_female_urban.json, chunk size: 200,                 chunk: 600-799
-    profile: young_adults_female_urban.json, chunk size: 200,                 chunk: 800-999
-    profile: young_adults_male_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: young_adults_male_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: young_adults_male_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: young_adults_male_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: young_adults_male_rural.json, chunk size: 200,                 chunk: 800-999
-    profile: young_adults_female_rural.json, chunk size: 200,                 chunk: 0-199
-    profile: young_adults_female_rural.json, chunk size: 200,                 chunk: 200-399
-    profile: young_adults_female_rural.json, chunk size: 200,                 chunk: 400-599
-    profile: young_adults_female_rural.json, chunk size: 200,                 chunk: 600-799
-    profile: young_adults_female_rural.json, chunk size: 200,                 chunk: 800-999
-
-
-## Building a Docker container (Optional)
-
-To use Bacalhau, you need to package your code in an appropriate format. We have already pushed a container for you to use, but if you want to build your own, you can follow the steps below. You can view a [dedicated container example](../custom-containers/index.md) in the documentation.
-
-:::tip
-You can skip this section entirely and directly go to running on bacalhau
+:::info
+You can skip this entirely and directly go to running on Bacalhau.
 :::
 
-### Dockerfile
+If you want any additional dependencies to be installed along with DuckDB, you need to build your own container.
 
-In this step, you will create a `Dockerfile` to create an image. `Dockerfile` is a text document that contains the commands used to assemble the image. 
+To build your own docker container, create a `Dockerfile`, which contains instructions to build your DuckDB docker container.
 
-Copy and paste the following in your `Dockerfile`.
 
 ```
 FROM python:3.8
@@ -200,32 +97,52 @@ WORKDIR /Sparkov_Data_Generation/
 RUN pip3 install -r requirements.txt
 ```
 
-To build the docker container, run the docker build command
+:::info
+See more information on how to containerize your script/app [here](https://docs.docker.com/get-started/02_our_app/)
+:::
+
+
+### Build the container
+
+We will run `docker build` command to build the container;
 
 ```
-docker build -t hub-user/repo-name:tag .
+docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
-Replace the following:
+Before running the command replace;
 
-- `&lt;hub-user>`: with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-- `&lt;repo-name>`: This is the name of the container, you can name it anything you want
+- **repo-name** with the name of the container, you can name it anything you want
 
-- `&lt;tag>`: This is not required but you can use the latest tag
+- **tag** this is not required but you can use the latest tag
 
-After you have build the container, the next step is to test it locally and then push it docker hub
-
-You'll need to push this repository to the registry designated by its name or tag.
+In our case:
 
 ```
- docker push hub-user/repo-name:tag
+docker build -t jsacex/sparkov-data-generation
+```
+
+### Push the container
+
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+
+```
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case:
+
+```
+docker push jsacex/sparkov-data-generation
 ```
 
 
 After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
 
-## Running on Bacalhau
+## Running a Bacalhau Job
+
 
 Now we're ready to run a Bacalhau job. This code runs a job, downloads the results and prints the stdout.
 
@@ -241,15 +158,28 @@ jsacex/sparkov-data-generation \
 --  python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
 ```
 
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+
+* `jsacex/sparkov-data-generation`: the name and the tag of the docker image we are using
+
+* `-o ../outputs "01-01-2022" "10-01-2022`:  path to store the outputs, start date and end-date.
+
+* `python3 datagen.py -n 1000`: execute Sparktov
+
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
 
 ```python
-%env JOB_ID={job_id}
+%%env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=d986b432-9af6-4463-93d2-362dbccb8379
+## Checking the State of your Jobs
 
-
-Running the commands above will output a `UUID` that represents the job that was created. You can check the status of the job with the following command:
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 ```bash
@@ -257,14 +187,10 @@ Running the commands above will output a `UUID` that represents the job that was
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 12:03:03 [0m[97;40m d986b432 [0m[97;40m Docker jsacex/sparko... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmQSfVLAZGoy8K... [0m
+When it says `Completed`, that means the job is done, and we can get the results.
 
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
-
-Where it says "`Completed`", that means the job is done, and we can get the results.
-
-To find out more information about your job, run the following command:
 
 
 ```bash
@@ -272,7 +198,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-If you see that the job has completed and there are no errors, then you can download the results with the following command:
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -281,82 +207,14 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job 'd986b432-9af6-4463-93d2-362dbccb8379'...
-    Results for job 'd986b432-9af6-4463-93d2-362dbccb8379' have been written to...
-    results
+After the download has finished you should see the following contents in results directory
 
+## Viewing your Job Output
 
-    2022/11/12 12:05:30 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
-After the download has finished you should 
-see the following contents in results directory
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/combined_results/outputs
+ls results/combined_results/outputs # list the contents of the current directory 
 ```
-
-    adults_2550_female_rural_000-199.csv
-    adults_2550_female_rural_200-399.csv
-    adults_2550_female_rural_400-599.csv
-    adults_2550_female_rural_600-799.csv
-    adults_2550_female_rural_800-999.csv
-    adults_2550_female_urban_000-199.csv
-    adults_2550_female_urban_200-399.csv
-    adults_2550_female_urban_400-599.csv
-    adults_2550_female_urban_600-799.csv
-    adults_2550_female_urban_800-999.csv
-    adults_2550_male_rural_000-199.csv
-    adults_2550_male_rural_200-399.csv
-    adults_2550_male_rural_400-599.csv
-    adults_2550_male_rural_600-799.csv
-    adults_2550_male_rural_800-999.csv
-    adults_2550_male_urban_000-199.csv
-    adults_2550_male_urban_200-399.csv
-    adults_2550_male_urban_400-599.csv
-    adults_2550_male_urban_600-799.csv
-    adults_2550_male_urban_800-999.csv
-    adults_50up_female_rural_000-199.csv
-    adults_50up_female_rural_200-399.csv
-    adults_50up_female_rural_400-599.csv
-    adults_50up_female_rural_600-799.csv
-    adults_50up_female_rural_800-999.csv
-    adults_50up_female_urban_000-199.csv
-    adults_50up_female_urban_200-399.csv
-    adults_50up_female_urban_400-599.csv
-    adults_50up_female_urban_600-799.csv
-    adults_50up_female_urban_800-999.csv
-    adults_50up_male_rural_000-199.csv
-    adults_50up_male_rural_200-399.csv
-    adults_50up_male_rural_400-599.csv
-    adults_50up_male_rural_600-799.csv
-    adults_50up_male_rural_800-999.csv
-    adults_50up_male_urban_000-199.csv
-    adults_50up_male_urban_200-399.csv
-    adults_50up_male_urban_400-599.csv
-    adults_50up_male_urban_600-799.csv
-    adults_50up_male_urban_800-999.csv
-    customers.csv
-    young_adults_female_rural_000-199.csv
-    young_adults_female_rural_200-399.csv
-    young_adults_female_rural_400-599.csv
-    young_adults_female_rural_600-799.csv
-    young_adults_female_rural_800-999.csv
-    young_adults_female_urban_000-199.csv
-    young_adults_female_urban_200-399.csv
-    young_adults_female_urban_400-599.csv
-    young_adults_female_urban_600-799.csv
-    young_adults_female_urban_800-999.csv
-    young_adults_male_rural_000-199.csv
-    young_adults_male_rural_200-399.csv
-    young_adults_male_rural_400-599.csv
-    young_adults_male_rural_600-799.csv
-    young_adults_male_rural_800-999.csv
-    young_adults_male_urban_000-199.csv
-    young_adults_male_urban_200-399.csv
-    young_adults_male_urban_400-599.csv
-    young_adults_male_urban_600-799.csv
-    young_adults_male_urban_800-999.csv
-
