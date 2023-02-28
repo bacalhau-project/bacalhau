@@ -17,6 +17,8 @@ The latter is listed as a dependency of this SDK and will be installed automatic
 * Generate a key pair used to sign requests stored in the path specified by the `BACALHAU_DIR` env var (default: `~/.bacalhau`)
 ## Install
 
+### From source:
+
 Clone the public repository:
 
 ``` console
