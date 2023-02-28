@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,7 +40,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 		return err
 	}
 	defer func() {
-		if closeErr := n.Close(); closeErr != nil {
+		if closeErr := n.Close(ctx); closeErr != nil {
 			log.Ctx(ctx).Error().Err(closeErr).Msg("Failed to close IPFS node")
 		}
 	}()

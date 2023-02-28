@@ -3,12 +3,11 @@ package system
 import (
 	"context"
 	"errors"
+	realsync "sync"
 	"time"
 
-	realsync "sync"
-
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,10 +15,8 @@ import (
 // clean up their resources before the main goroutine exits. Can be used to
 // register callbacks for long-running system processes.
 type CleanupManager struct {
-	wg realsync.WaitGroup
-
 	fnsMutex sync.Mutex
-	fns      []func() error
+	fns      []any
 	fnsDone  bool
 }
 
@@ -34,7 +31,16 @@ func NewCleanupManager() *CleanupManager {
 }
 
 // RegisterCallback registers a clean-up function.
-func (cm *CleanupManager) RegisterCallback(fn func() error) {
+func (cm *CleanupManager) RegisterCallback(fn cleanUpWithoutContext) {
+	cm.registerCallback(fn)
+}
+
+// RegisterCallbackWithContext registers a clean-up function. The context passed is guaranteed not to be already canceled.
+func (cm *CleanupManager) RegisterCallbackWithContext(fn cleanUpWithContext) {
+	cm.registerCallback(fn)
+}
+
+func (cm *CleanupManager) registerCallback(fn any) {
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()
 
@@ -43,33 +49,48 @@ func (cm *CleanupManager) RegisterCallback(fn func() error) {
 		return
 	}
 
-	cm.wg.Add(1)
 	cm.fns = append(cm.fns, fn)
 }
 
 // Cleanup runs all registered clean-up functions in sub-goroutines and
 // waits for them all to complete before exiting.
-func (cm *CleanupManager) Cleanup() {
+func (cm *CleanupManager) Cleanup(ctx context.Context) {
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()
 
 	if cm.fnsDone {
-		log.Warn().Msg("CleanupManager: Cleanup called again after already called")
+		log.Ctx(ctx).Warn().Msg("CleanupManager: Cleanup called again after already called")
 		return
 	}
 
-	for i := 0; i < len(cm.fns); i++ {
-		go func(fn func() error) {
-			defer cm.wg.Done()
+	var wg realsync.WaitGroup
+	wg.Add(len(cm.fns))
 
-			if err := fn(); err != nil {
+	detachedContext := util.NewDetachedContext(ctx)
+
+	for i := 0; i < len(cm.fns); i++ {
+		go func(fn any) {
+			defer wg.Done()
+
+			var err error
+			switch f := fn.(type) {
+			case cleanUpWithContext:
+				err = f(detachedContext)
+			case cleanUpWithoutContext:
+				err = f()
+			}
+
+			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					log.Error().Err(err).Msg("Error during clean-up callback")
+					log.Ctx(detachedContext).Error().Err(err).Msg("Error during clean-up callback")
 				}
 			}
 		}(cm.fns[i])
 	}
 
-	cm.wg.Wait()
+	wg.Wait()
 	cm.fnsDone = true
 }
+
+type cleanUpWithoutContext func() error
+type cleanUpWithContext func(context.Context) error

@@ -2,7 +2,7 @@
 """
     Bacalhau API
 
-    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.  # noqa: E501
+    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.  # noqa: E501
 
     OpenAPI spec version: 0.3.18.post4
     Contact: team@bacalhau.org

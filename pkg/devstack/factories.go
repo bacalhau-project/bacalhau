@@ -3,16 +3,16 @@ package devstack
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Noop implementations of node factories used to mock certain components, which is useful for testing.

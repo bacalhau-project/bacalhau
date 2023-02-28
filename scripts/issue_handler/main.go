@@ -99,7 +99,7 @@ func main() {
 	fmt.Println("CreatedAt:", query.Viewer.CreatedAt)
 
 	variables := map[string]interface{}{
-		"repositoryOwner": githubv4.String("filecoin-project"),
+		"repositoryOwner": githubv4.String("bacalhau-project"),
 		"repositoryName":  githubv4.String("bacalhau"),
 		"issueCursor":     (*githubv4.String)(nil), // Null after argument to get first page.
 	}

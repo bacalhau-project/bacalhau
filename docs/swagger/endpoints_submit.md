@@ -5,4 +5,4 @@ Description:
 * `job_create_payload`:
     * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
 	* `APIVersion`: e.g. `"V1beta1"`.
-    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go
+    * `Spec`: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go

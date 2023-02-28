@@ -2,7 +2,7 @@
 
 package bidstrategy
 
-import "github.com/filecoin-project/bacalhau/pkg/model"
+import "github.com/bacalhau-project/bacalhau/pkg/model"
 
 func getBidStrategyRequest() BidStrategyRequest {
 	return BidStrategyRequest{

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )

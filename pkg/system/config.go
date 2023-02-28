@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

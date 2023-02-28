@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +32,7 @@ func (s *ValidateSuite) TestValidate() {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), "validate",
+			_, out, err := ExecuteTestCobraCommand("validate",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				test.testFile,

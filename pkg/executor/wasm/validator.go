@@ -3,7 +3,7 @@ package wasm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"golang.org/x/exp/maps"

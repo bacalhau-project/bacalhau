@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type TimeoutStrategyParams struct {
@@ -33,7 +33,7 @@ func NewTimeoutStrategy(params TimeoutStrategyParams) *TimeoutStrategy {
 
 func (s *TimeoutStrategy) ShouldBid(_ context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	if request.Job.Spec.Timeout <= 0 {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 
 	// Timeout will be multiplied by 1000000000 (time.Second) when it gets converted to a time.Duration (which is an int64 underneath),
@@ -48,7 +48,7 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request BidStrategyReques
 
 	for _, clientID := range s.jobExecutionTimeoutClientIDBypassList {
 		if request.Job.Metadata.ClientID == clientID {
-			return newShouldBidResponse(), nil
+			return NewShouldBidResponse(), nil
 		}
 	}
 
@@ -65,11 +65,11 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request BidStrategyReques
 			Reason:    fmt.Sprintf("job timeout %s below minimum allowed %s", request.Job.Spec.GetTimeout(), s.minJobExecutionTimeout),
 		}, nil
 	}
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 func (s *TimeoutStrategy) ShouldBidBasedOnUsage(context.Context, BidStrategyRequest, model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 const sixtyFourBitFloat = 64

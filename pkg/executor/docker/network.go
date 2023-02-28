@@ -7,10 +7,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"

@@ -3,9 +3,9 @@ package discovery
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 type StoreNodeDiscovererParams struct {

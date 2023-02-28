@@ -6,18 +6,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/store"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/postgres"
-	bacalhau_model "github.com/filecoin-project/bacalhau/pkg/model"
-	bacalhau_model_beta "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
+	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
+	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/routing"
-	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
@@ -169,9 +169,9 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	return nil
 }
 
-func (api *ModelAPI) Stop() error {
+func (api *ModelAPI) Stop(ctx context.Context) error {
 	if api.cleanupFunc != nil {
-		api.cleanupFunc(context.Background())
+		api.cleanupFunc(ctx)
 	}
 	return nil
 }

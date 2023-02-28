@@ -31,4 +31,4 @@ sudo apt-get update
 
 # Install go
 brew install go gcc@5 gcc make hyperfine
-gh repo clone filecoin-project/bacalhau
+gh repo clone bacalhau-project/bacalhau

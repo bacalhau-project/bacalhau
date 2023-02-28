@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/libp2p/go-libp2p/core/crypto"
 )
 

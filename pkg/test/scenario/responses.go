@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // A CheckSubmitResponse is a function that will examine and validate submitJob response.

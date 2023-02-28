@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -46,21 +46,4 @@ func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) 
 	}
 
 	return stack, nil
-}
-
-func (stack *DevStackIPFS) PrintNodeInfo() {
-	logString := `
--------------------------------
-ipfs
--------------------------------
-
-command="add -q testdata/grep_file.txt"
-	`
-	for _, node := range stack.IPFSClients {
-		logString += fmt.Sprintf(`
-cid=$(ipfs --api %s ipfs $command)
-curl -XPOST %s`, node.APIAddress(), node.APIAddress())
-	}
-
-	log.Trace().Msg(logString + "\n")
 }

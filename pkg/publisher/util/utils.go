@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	ipfsClient "github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/combo"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/estuary"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/tracing"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/combo"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func NewIPFSPublishers(

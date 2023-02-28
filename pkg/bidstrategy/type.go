@@ -3,7 +3,7 @@ package bidstrategy
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type BidStrategyRequest struct {
@@ -16,7 +16,7 @@ type BidStrategyResponse struct {
 	Reason    string
 }
 
-func newShouldBidResponse() BidStrategyResponse {
+func NewShouldBidResponse() BidStrategyResponse {
 	return BidStrategyResponse{
 		ShouldBid: true,
 	}

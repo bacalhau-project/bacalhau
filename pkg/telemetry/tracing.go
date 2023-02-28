@@ -19,13 +19,14 @@ import (
 // Tracer Setup and Teardown
 // ----------------------------------------
 func newTraceProvider() {
+	// The context passed in to the exporter is only passed to the client and used when connecting to the endpoint
+	ctx := context.Background()
+
 	if !isTracingEnabled() {
-		log.Debug().Msgf("OLTP tracing endpoints are not defined. No traces will be exported")
+		log.Ctx(ctx).Debug().Msgf("OLTP tracing endpoints are not defined. No traces will be exported")
 		return
 	}
 
-	// The context passed in to the exporter is only passed to the client and used when connecting to the endpoint
-	ctx := context.Background()
 	client, err := getTraceClient()
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP trace client")
@@ -74,9 +75,17 @@ func getTraceClient() (client otlptrace.Client, err error) {
 }
 
 func isTracingEnabled() bool {
-	_, endpointDefined := os.LookupEnv(otlpEndpoint)
-	_, tracingEndpointDefined := os.LookupEnv(otlpTracesEndpoint)
-	return endpointDefined || tracingEndpointDefined
+	if v, ok := os.LookupEnv(disableTracing); ok && v == "1" {
+		return false
+	}
+	if _, ok := os.LookupEnv(otlpEndpoint); ok {
+		return true
+	}
+	if _, ok := os.LookupEnv(otlpTracesEndpoint); ok {
+		return true
+	}
+
+	return false
 }
 
 func cleanupTraceProvider() error {

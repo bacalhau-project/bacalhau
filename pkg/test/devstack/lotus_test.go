@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,8 +41,8 @@ func (s *lotusNodeSuite) SetupTest() {
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
-	s.T().Skip("Test is flaky", "https://github.com/filecoin-project/bacalhau/issues/1705", "pkg/publisher/filecoin_lotus/publisher_test.go")
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
+	s.T().Skip("Test is flaky", "https://github.com/bacalhau-project/bacalhau/issues/1705", "pkg/publisher/filecoin_lotus/publisher_test.go")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 

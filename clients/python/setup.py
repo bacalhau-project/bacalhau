@@ -3,7 +3,7 @@
 """
     Bacalhau API
 
-    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.  # noqa: E501
+    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.  # noqa: E501
 
     OpenAPI spec version: 0.3.18.post4
     Contact: team@bacalhau.org
@@ -28,19 +28,19 @@ REQUIRES = [
     "six>=1.10",
     "urllib3>=1.23"
 ]
-    
+
 
 setup(
     name=NAME,
     version=VERSION,
     description="Bacalhau API",
     author_email="team@bacalhau.org",
-    url="https://github.com/filecoin-project/bacalhau/",
+    url="https://github.com/bacalhau-project/bacalhau/",
     keywords=["Swagger", "Bacalhau API"],
     install_requires=REQUIRES,
     packages=find_packages(),
     include_package_data=True,
     long_description="""\
-    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.  # noqa: E501
+    This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.  # noqa: E501
     """
 )

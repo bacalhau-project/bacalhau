@@ -10,10 +10,10 @@ import (
 
 	"database/sql"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	model "github.com/filecoin-project/bacalhau/pkg/model/v1beta1"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )

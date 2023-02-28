@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -33,7 +33,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	testFile := "../../pkg/model/tasks/docker_task.json"
 
 	ctx := context.Background()
-	_, stdout, err := ExecuteTestCobraCommand(suite.T(), "create",
+	_, stdout, err := ExecuteTestCobraCommand("create",
 		"--api-host", suite.host,
 		"--api-port", suite.port,
 		testFile,
@@ -43,7 +43,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	job := testutils.GetJobFromTestOutput(ctx, suite.T(), suite.client, stdout)
 	suite.T().Logf("Created job %s", job.Metadata.ID)
 
-	_, stdout, err = ExecuteTestCobraCommand(suite.T(), "cancel",
+	_, stdout, err = ExecuteTestCobraCommand("cancel",
 		job.Metadata.ID,
 		"--api-host", suite.host,
 		"--api-port", suite.port,
@@ -57,7 +57,7 @@ func (suite *CancelSuite) TestCancelJob() {
 
 	ctx := context.Background()
 
-	_, stdout, err := ExecuteTestCobraCommand(suite.T(), "create",
+	_, stdout, err := ExecuteTestCobraCommand("create",
 		"--wait=false",
 		"--api-host", suite.host,
 		"--api-port", suite.port,
@@ -72,7 +72,7 @@ func (suite *CancelSuite) TestCancelJob() {
 	jobInfo, _, err := suite.client.Get(ctx, stdout)
 	require.NoError(suite.T(), err, "Error finding newly created job")
 
-	_, stdout, err = ExecuteTestCobraCommand(suite.T(), "cancel",
+	_, stdout, err = ExecuteTestCobraCommand("cancel",
 		jobInfo.Job.Metadata.ID,
 		"--api-host", suite.host,
 		"--api-port", suite.port,

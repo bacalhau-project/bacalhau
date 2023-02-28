@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	"github.com/antihax/optional"
 	estuary_client "github.com/application-research/estuary-clients/go"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )

@@ -7,21 +7,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/phayes/freeport"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 )
+
+const maxTestTime time.Duration = 750 * time.Millisecond
 
 // Define the suite, and absorb the built-in basic suite
 // functionality from testify - including a T() method which
@@ -30,6 +30,8 @@ type ServeSuite struct {
 	suite.Suite
 
 	ipfsPort int
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -43,43 +45,60 @@ func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	s.Require().NoError(system.InitConfigForTesting(s.T()))
 
-	cm := system.NewCleanupManager()
-	s.T().Cleanup(cm.Cleanup)
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), maxTestTime)
 
-	node, err := ipfs.NewLocalNode(context.Background(), cm, []string{})
+	cm := system.NewCleanupManager()
+	s.T().Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
+
+	node, err := ipfs.NewLocalNode(s.ctx, cm, []string{})
 	s.NoError(err)
 	s.ipfsPort = node.APIPort
 }
 
-func (s *ServeSuite) writeToServeChannel(rootCmd *cobra.Command, port int) {
-	s.T().Log("Starting")
+func (s *ServeSuite) TearDownTest() {
+	s.cancel()
+}
 
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
+func (s *ServeSuite) Serve(extraArgs ...string) int {
+	port, err := freeport.GetFreePort()
+	s.NoError(err)
+
+	cmd := NewRootCmd()
 
 	// peer set to none to avoid accidentally talking to production endpoints
 	args := []string{
 		"serve",
 		"--peer", "none",
 		"--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", s.ipfsPort),
-		"--api-port", fmt.Sprintf("%d", port),
+		"--api-port", fmt.Sprint(port),
 	}
+	args = append(args, extraArgs...)
 
-	rootCmd.SetArgs(args)
+	cmd.SetArgs(args)
+	s.T().Logf("Command to execute: %q", cmd.CalledAs())
 
-	log.Trace().Msgf("Command to execute: %v", rootCmd.CalledAs())
+	go func() {
+		_, err := cmd.ExecuteContextC(s.ctx)
+		s.NoError(err)
+	}()
 
-	_, err := rootCmd.ExecuteC()
-	s.Require().NoError(err)
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.FailNow("Server did not start in time")
+		default:
+			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
+			if string(livezText) == "OK" {
+				return port
+			}
+		}
+	}
 }
 
-func curlEndpoint(URL string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, "GET", URL, nil)
+func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(s.ctx, "GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +108,7 @@ func curlEndpoint(URL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer closer.DrainAndCloseWithLogOnError(ctx, "test", resp.Body)
+	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -99,30 +118,36 @@ func curlEndpoint(URL string) ([]byte, error) {
 	return responseText, nil
 }
 
-func (s *ServeSuite) TestRun_GenericServe() {
-	port, err := freeport.GetFreePort()
-	s.Require().NoError(err, "Error getting free port.")
+func (s *ServeSuite) TestHealthcheck() {
+	port := s.Serve()
+	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
+	s.NoError(err)
+	var healthzJSON types.HealthInfo
+	s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
+	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
+}
 
-	go s.writeToServeChannel(NewRootCmd(), port)
+func (s *ServeSuite) TestCanSubmitJob() {
+	port := s.Serve("--node-type", "requester", "--node-type", "compute")
+	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://localhost:%d", port))
 
-	timeout := time.NewTicker(20 * time.Second)
-	defer timeout.Stop()
+	job, err := model.NewJobWithSaneProductionDefaults()
+	s.NoError(err)
 
-	for {
-		time.Sleep(100 * time.Millisecond)
-		select {
-		case <-timeout.C:
-			s.Require().Fail("Server did not start in time")
-		default:
-			livezText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
-			if string(livezText) == "OK" {
-				healthzText, err := curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
-				s.NoError(err)
-				var healthzJSON types.HealthInfo
-				s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
-				s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
-				return
-			}
-		}
-	}
+	_, err = client.Submit(s.ctx, job)
+	s.NoError(err)
+}
+
+func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
+	// Networking is disabled by default so we try to submit a networked job and
+	// expect it to be rejected.
+	port := s.Serve("--node-type", "requester")
+	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://localhost:%d", port))
+
+	job, err := model.NewJobWithSaneProductionDefaults()
+	s.NoError(err)
+
+	job.Spec.Network.Type = model.NetworkHTTP
+	_, err = client.Submit(s.ctx, job)
+	s.ErrorContains(err, "job is unacceptable")
 }

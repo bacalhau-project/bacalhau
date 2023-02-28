@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -148,13 +147,7 @@ func (c *ColumnEnum) Set(v string) error {
 }
 
 func list(cmd *cobra.Command, OL *ListOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau.list")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
 
 	log.Ctx(ctx).Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
 	log.Ctx(ctx).Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)

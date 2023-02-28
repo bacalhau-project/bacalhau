@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -67,9 +67,9 @@ func (n *NodeInfoPublisher) publishBackgroundTask() {
 }
 
 // Stop stops the background task that publishes the node info periodically
-func (n *NodeInfoPublisher) Stop() {
+func (n *NodeInfoPublisher) Stop(ctx context.Context) {
 	n.stopOnce.Do(func() {
 		n.stopChannel <- struct{}{}
 	})
-	log.Info().Msg("done stopping compute node info publisher")
+	log.Ctx(ctx).Info().Msg("done stopping compute node info publisher")
 }

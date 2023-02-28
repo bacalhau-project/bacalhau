@@ -18,7 +18,7 @@ package bacalhau
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,18 +34,18 @@ type VersionSuite struct {
 }
 
 func (suite *VersionSuite) Test_Version() {
-	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
+	_, out, err := ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
 		"--api-port", suite.port,
 	)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), string(out), "Client Version", "Client version not in output")
-	require.Contains(suite.T(), string(out), "Server Version", "Server version not in output")
+	require.Contains(suite.T(), out, "Client Version", "Client version not in output")
+	require.Contains(suite.T(), out, "Server Version", "Server version not in output")
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
-	_, out, err := ExecuteTestCobraCommand(suite.T(), "version",
+	_, out, err := ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
 		"--api-port", suite.port,
 		"--output", JSONFormat,
@@ -57,7 +57,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 
-	_, out, err = ExecuteTestCobraCommand(suite.T(), "version",
+	_, out, err = ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
 		"--api-port", suite.port,
 		"--output", YAMLFormat,

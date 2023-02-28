@@ -8,19 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -45,7 +45,7 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
+	_ context.Context,
 	cm *system.CleanupManager,
 	id string,
 	storageProvider storage.StorageProvider,
@@ -61,10 +61,7 @@ func NewExecutor(
 		client:          dockerClient,
 	}
 
-	cm.RegisterCallback(func() error {
-		de.cleanupAll(ctx)
-		return nil
-	})
+	cm.RegisterCallbackWithContext(de.cleanupAll)
 
 	return de, nil
 }
@@ -291,7 +288,7 @@ func (e *Executor) RunShard(
 	}
 
 	// Can't use the original context as it may have already been timed out
-	detachedContext, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 3*time.Second)
+	detachedContext, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 3*time.Second)
 	defer cancel()
 	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
@@ -307,7 +304,7 @@ func (e *Executor) RunShard(
 
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	// Use a detached context in case the current one has already been canceled
-	separateCtx, cancel := context.WithTimeout(telemetry.NewDetachedContext(ctx), 1*time.Minute)
+	separateCtx, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 1*time.Minute)
 	defer cancel()
 	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
 		return
@@ -318,17 +315,19 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
 
-func (e *Executor) cleanupAll(ctx context.Context) {
+func (e *Executor) cleanupAll(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
-	safeCtx := telemetry.NewDetachedContext(ctx)
+	safeCtx := pkgUtil.NewDetachedContext(ctx)
 	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
-		return
+		return nil
 	}
 
 	err := e.client.RemoveObjectsWithLabel(safeCtx, labelExecutorName, e.ID)
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
+
+	return nil
 }
 
 func (e *Executor) dockerObjectName(shard model.JobShard, parts ...string) string {

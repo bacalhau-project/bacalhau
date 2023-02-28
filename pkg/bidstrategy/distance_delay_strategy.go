@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,12 +40,12 @@ func (s DistanceDelayStrategy) ShouldBid(ctx context.Context, request BidStrateg
 		time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
 	}
 
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 func (s DistanceDelayStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context, request BidStrategyRequest) (int, bool) {

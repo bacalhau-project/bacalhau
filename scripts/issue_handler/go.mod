@@ -1,4 +1,4 @@
-module github.com/filecoin-project/bacalhau/issue_handler
+module github.com/bacalhau-project/bacalhau/issue_handler
 
 go 1.19
 

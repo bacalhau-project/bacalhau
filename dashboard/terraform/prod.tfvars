@@ -8,3 +8,4 @@ volume_size_gb             = 500
 boot_disk_size_gb          = 500
 ingress_cidrs              = ["0.0.0.0/0"]
 ssh_access_cidrs           = ["0.0.0.0/0"]
+postgres_access_cidrs      = ["0.0.0.0/0"]

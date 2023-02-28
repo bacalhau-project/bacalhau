@@ -3,7 +3,7 @@ package eventhandler
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // A job event handler is a component that is notified of events related to jobs.

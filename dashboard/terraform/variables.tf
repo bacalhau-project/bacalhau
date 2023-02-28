@@ -32,3 +32,7 @@ variable "ssh_access_cidrs" {
   type    = set(string)
   default = []
 }
+variable "postgres_access_cidrs" {
+  type    = set(string)
+  default = []
+}

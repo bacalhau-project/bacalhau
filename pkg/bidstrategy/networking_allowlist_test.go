@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +44,7 @@ func TestNetworkAllowlistStrategyFiltersDomains(t *testing.T) {
 	require.NoError(t, exec.Command("jq", "--help").Run(), "Requires `jq` to be installed.")
 
 	strategy := NewExternalCommandStrategy(ExternalCommandStrategyParams{
-		Command: "../../../ops/terraform/remote_files/scripts/apply-http-allowlist.sh",
+		Command: "../../ops/terraform/remote_files/scripts/apply-http-allowlist.sh",
 	})
 
 	for _, testCase := range networkAllowlistTestCases {

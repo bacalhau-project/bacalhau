@@ -7,49 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
-
-func SetupTest(
-	ctx context.Context,
-	t *testing.T,
-	nodes int, badActors int,
-	lotusNode bool,
-	//nolint:gocritic
-	computeConfig node.ComputeConfig,
-	requesterConfig node.RequesterConfig,
-) (*devstack.DevStack, *system.CleanupManager) {
-	require.NoError(t, system.InitConfigForTesting(t))
-
-	cm := system.NewCleanupManager()
-
-	options := devstack.DevStackOptions{
-		NumberOfHybridNodes:      nodes,
-		NumberOfBadComputeActors: badActors,
-		LocalNetworkLotus:        lotusNode,
-	}
-
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterConfig)
-	require.NoError(t, err)
-
-	t.Cleanup(cm.Cleanup)
-
-	// important to give the pubsub network time to connect
-	time.Sleep(time.Second)
-
-	return stack, cm
-}
 
 func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
 	basePath := t.TempDir()
@@ -83,7 +53,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	args DeterministicVerifierTestArgs,
 ) {
 	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
+	defer cm.Cleanup(ctx)
 
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      args.NodeCount,

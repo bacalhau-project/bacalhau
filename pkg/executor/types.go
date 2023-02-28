@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Returns a executor for the given engine type

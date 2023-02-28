@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type bufferTask struct {
@@ -213,7 +213,14 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
-		_ = s.delegateService.Cancel(ctx, execution)
+
+		err := s.delegateService.Cancel(ctx, execution)
+		if err == nil {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			delete(s.running, execution.ID)
+		}
 	}()
 	return nil
 }

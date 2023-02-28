@@ -6,14 +6,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

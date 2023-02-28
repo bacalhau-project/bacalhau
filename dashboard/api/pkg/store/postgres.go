@@ -9,8 +9,8 @@ import (
 
 	"database/sql"
 
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )

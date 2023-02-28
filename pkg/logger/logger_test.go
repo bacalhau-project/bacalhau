@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger/testpackage/subpackage/subsubpackage"
+	"github.com/bacalhau-project/bacalhau/pkg/logger/testpackage/subpackage/subsubpackage"
 	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type InputLocalityStrategyParams struct {
@@ -28,7 +28,7 @@ func NewInputLocalityStrategy(params InputLocalityStrategyParams) *InputLocality
 func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	// if we have an "anywhere" policy for the data then we accept the job
 	if s.locality == model.Anywhere {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 
 	// otherwise we are checking that all of the named inputs in the job
@@ -52,12 +52,12 @@ func (s *InputLocalityStrategy) ShouldBid(ctx context.Context, request BidStrate
 	}
 
 	if foundInputs >= len(request.Job.Spec.Inputs) {
-		return newShouldBidResponse(), nil
+		return NewShouldBidResponse(), nil
 	}
 	return BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil
 }
 
 func (s *InputLocalityStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }

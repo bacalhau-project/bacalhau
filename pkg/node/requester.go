@@ -4,24 +4,25 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/jobstore"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/requester/discovery"
-	requester_publicapi "github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requester/ranking"
-	"github.com/filecoin-project/bacalhau/pkg/routing"
-	"github.com/filecoin-project/bacalhau/pkg/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
+	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/ranking"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -33,7 +34,7 @@ type Requester struct {
 	Endpoint           requester.Endpoint
 	JobStore           jobstore.Store
 	computeProxy       *bprotocol.ComputeProxy
-	localCallback      *requester.Scheduler
+	localCallback      requester.Scheduler
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
 	cleanupFunc        func(ctx context.Context)
 }
@@ -98,6 +99,7 @@ func NewRequesterNode(
 		ranking.NewEnginesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
 
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
@@ -121,13 +123,16 @@ func NewRequesterNode(
 
 	publicKey := host.Peerstore().PubKey(host.ID())
 	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
-
 	if err != nil {
 		return nil, err
 	}
+
+	selectionStrategy := bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy)
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
+		Selector:                   selectionStrategy,
 		Scheduler:                  scheduler,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,

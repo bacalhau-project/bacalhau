@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	ipfs2 "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -41,7 +41,9 @@ func (ds *DownloaderSuite) SetupSuite() {
 // Before each test
 func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = system.NewCleanupManager()
-	ds.T().Cleanup(ds.cm.Cleanup)
+	ds.T().Cleanup(func() {
+		ds.cm.Cleanup(context.Background())
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)

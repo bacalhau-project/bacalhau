@@ -3,7 +3,7 @@ package verifier
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // ErrInsufficientExecutions is returned when the number of executions is less than the minimum required

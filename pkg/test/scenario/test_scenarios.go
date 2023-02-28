@@ -1,11 +1,11 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/testdata/wasm/cat"
-	"github.com/filecoin-project/bacalhau/testdata/wasm/csv"
-	"github.com/filecoin-project/bacalhau/testdata/wasm/env"
-	"github.com/filecoin-project/bacalhau/testdata/wasm/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/env"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
 )
 
 const helloWorld = "hello world"

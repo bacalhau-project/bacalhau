@@ -5,7 +5,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -58,7 +58,7 @@ func (c *ChainedBidStrategy) delegate(
 		}
 	}
 
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 // Compile-time check to ensure ChainedBidStrategy implements the BidStrategy interface.

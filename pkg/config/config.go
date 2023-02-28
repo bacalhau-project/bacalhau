@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
@@ -55,17 +55,12 @@ type contextKey int
 
 const (
 	getVolumeSizeRequestTimeoutKey contextKey = iota
-	downloadCidRequestTimeoutKey
 )
 
 const (
 	// by default we wait 2 minutes for the IPFS network to resolve a CID
 	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	getVolumeSizeRequestTimeout time.Duration = 2 * time.Minute
-
-	// by default we wait 5 minutes for the IPFS network to download a CID
-	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	downloadCidRequestTimeout time.Duration = 5 * time.Minute
+	getVolumeSizeRequestTimeout = 2 * time.Minute
 )
 
 // how long do we wait for a volume size request to timeout
@@ -85,19 +80,6 @@ func GetVolumeSizeRequestTimeout(ctx context.Context) time.Duration {
 
 func SetVolumeSizeRequestTimeout(ctx context.Context, value time.Duration) context.Context {
 	return context.WithValue(ctx, getVolumeSizeRequestTimeoutKey, value)
-}
-
-// how long do we wait for a cid to download
-func GetDownloadCidRequestTimeout(ctx context.Context) time.Duration {
-	value := ctx.Value(downloadCidRequestTimeoutKey)
-	if value == nil {
-		value = downloadCidRequestTimeout
-	}
-	return value.(time.Duration)
-}
-
-func SetDownloadCidRequestTimeout(ctx context.Context, value time.Duration) context.Context {
-	return context.WithValue(ctx, downloadCidRequestTimeoutKey, value)
 }
 
 // by default we wait 5 minutes for a URL to download
@@ -135,7 +117,7 @@ func GetConfigPath() string {
 		// e.g. /home/francesca/.bacalhau
 		dirname, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Send()
 		}
 		d = filepath.Join(dirname, suffix)
 	} else {
@@ -144,7 +126,7 @@ func GetConfigPath() string {
 	}
 	// create dir if not exists
 	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Send()
 	}
 	return d
 }

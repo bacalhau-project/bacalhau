@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/jobstore"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/routing"
-	"github.com/filecoin-project/bacalhau/pkg/routing/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -166,6 +167,7 @@ func NewNode(
 		Host:            basicHost,
 		IdentityService: basicHost.IDService(),
 		Labels:          config.Labels,
+		BacalhauVersion: *version.Get(),
 	})
 
 	// node info publisher
@@ -255,16 +257,15 @@ func NewNode(
 	}
 
 	// cleanup libp2p resources in the desired order
-	config.CleanupManager.RegisterCallback(func() error {
-		cleanupCtx := context.Background()
+	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(cleanupCtx)
+			computeNode.cleanup(ctx)
 		}
 		if requesterNode != nil {
-			requesterNode.cleanup(cleanupCtx)
+			requesterNode.cleanup(ctx)
 		}
-		nodeInfoPublisher.Stop()
-		cleanupErr := nodeInfoPubSub.Close(cleanupCtx)
+		nodeInfoPublisher.Stop(ctx)
+		cleanupErr := nodeInfoPubSub.Close(ctx)
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
 		}

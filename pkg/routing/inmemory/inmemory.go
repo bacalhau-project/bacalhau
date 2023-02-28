@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 )

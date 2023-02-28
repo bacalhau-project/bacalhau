@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type EnginesInstalledStrategyParams struct {
@@ -66,12 +66,12 @@ func (s *EnginesInstalledStrategy) ShouldBid(ctx context.Context, request BidStr
 		}, nil
 	}
 
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 func (s *EnginesInstalledStrategy) ShouldBidBasedOnUsage(
 	_ context.Context, _ BidStrategyRequest, _ model.ResourceUsageData) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	return NewShouldBidResponse(), nil
 }
 
 // Compile-time check of interface implementation
