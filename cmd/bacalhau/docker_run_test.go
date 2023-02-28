@@ -742,7 +742,15 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {
-	system.MaxStderrReturnLength = 10 // Make it artificially small for this run
+	// Make it artificially small for this run
+	oldStderrLength := system.MaxStderrReturnLength
+	oldStdoutLength := system.MaxStdoutReturnLength
+	system.MaxStderrReturnLength = 10
+	system.MaxStdoutReturnLength = 10
+	s.T().Cleanup(func() {
+		system.MaxStderrReturnLength = oldStderrLength
+		system.MaxStdoutReturnLength = oldStdoutLength
+	})
 
 	tests := map[string]struct {
 		inputLength    datasize.ByteSize
@@ -774,28 +782,28 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	}
 
 	for name, tc := range tests {
-		//nolint:unusedparams // idomatic
-		s.T().Run(name, func(_ *testing.T) {
+		s.Run(name, func() {
 			ctx := context.Background()
-			flagsArray := []string{"docker", "run",
+			_, out, err := ExecuteTestCobraCommand(
+				"docker", "run",
 				"--api-host", s.host,
-				"--api-port", s.port}
-
-			flagsArray = append(flagsArray, "ubuntu", "--", "perl", fmt.Sprintf(`-e "print \"=\" x %d"`, tc.inputLength))
-
-			_, out, err := ExecuteTestCobraCommand(flagsArray...)
+				"--api-port", s.port,
+				"ubuntu", "--", "perl", "-e", fmt.Sprintf(`print "=" x %d`, tc.inputLength),
+			)
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
-			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
-			// TODO: test is not finished! test cases are not used!
+			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
+			info, _, err := s.client.Get(ctx, j.Metadata.ID)
+			s.Require().NoError(err)
 
-			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
-
+			s.Len(info.State.Shards, 1)
+			s.Len(info.State.Shards[0].Executions, 1)
+			s.Len(info.State.Shards[0].Executions[0].RunOutput.STDOUT, int(tc.expectedLength.Bytes()))
 		})
 	}
 }
 
-func (s *DockerRunSuite) TestRun_MutlipleURLs() {
+func (s *DockerRunSuite) TestRun_MultipleURLs() {
 
 	tests := []struct {
 		expectedVolumes int
