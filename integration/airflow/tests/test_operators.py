@@ -1,4 +1,4 @@
-"""Tests for `bacalhau-airflow.operators` package."""
+"""Tests for `bacalhau_airflow.operators` package."""
 
 import unittest
 from datetime import datetime

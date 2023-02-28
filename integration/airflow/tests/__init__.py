@@ -1,1 +1,1 @@
-"""Unit test package for bacalhau-airflow."""
+"""Unit test package for bacalhau_airflow."""

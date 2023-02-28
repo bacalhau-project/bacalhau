@@ -20,7 +20,7 @@ Install from source:
 pip install .
 ```
 
-This package is named `bacalhau`.
+This package is named `bacalhau-airflow`.
 
 ## Usage (WIP :warning:)
 
