@@ -19,7 +19,7 @@ import (
 func (s *ComputeAPIServer) debug(res http.ResponseWriter, req *http.Request) {
 	debugInfoMap := make(map[string]interface{})
 	for _, provider := range s.debugInfoProviders {
-		debugInfo, err := provider.GetDebugInfo()
+		debugInfo, err := provider.GetDebugInfo(req.Context())
 		if err != nil {
 			log.Ctx(req.Context()).Error().Msgf("could not get debug info from some providers: %s", err)
 			continue
