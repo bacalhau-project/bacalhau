@@ -415,6 +415,7 @@ func (s *scheduler) handleAskForBidResponse(ctx context.Context,
 		NewValues: model.ExecutionState{
 			ComputeReference: shardResponse.ExecutionID,
 			State:            newState,
+			Status:           shardResponse.Reason,
 		},
 	})
 	if err != nil {
