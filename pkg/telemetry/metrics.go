@@ -40,9 +40,17 @@ func newMeterProvider() {
 }
 
 func isMetricsEnabled() bool {
-	_, endpointDefined := os.LookupEnv(otlpEndpoint)
-	_, metricsEndpointDefined := os.LookupEnv(otlpMetricsEndpoint)
-	return endpointDefined || metricsEndpointDefined
+	if v, ok := os.LookupEnv(disableTracing); ok && v == "1" {
+		return false
+	}
+	if _, ok := os.LookupEnv(otlpEndpoint); ok {
+		return true
+	}
+	if _, ok := os.LookupEnv(otlpMetricsEndpoint); ok {
+		return true
+	}
+
+	return false
 }
 
 func getMetricsClient(ctx context.Context) (client sdkmetric.Exporter, err error) {

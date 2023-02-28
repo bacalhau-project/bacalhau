@@ -21,7 +21,6 @@ import (
 
 var apiHost string
 var apiPort int
-var doNotTrack bool
 
 var loggingMode = logger.LogModeDefault
 
@@ -145,14 +144,6 @@ func Execute() {
 	ctx, cancel := signal.NotifyContext(context.Background(), ShutdownSignals...)
 	defer cancel()
 	rootCmd.SetContext(ctx)
-
-	doNotTrack = false
-	if doNotTrackValue, foundDoNotTrack := os.LookupEnv("DO_NOT_TRACK"); foundDoNotTrack {
-		doNotTrackInt, err := strconv.Atoi(doNotTrackValue)
-		if err == nil && doNotTrackInt == 1 {
-			doNotTrack = true
-		}
-	}
 
 	viper.SetEnvPrefix("BACALHAU")
 

@@ -67,10 +67,10 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	}
 
 	for i, tc := range tests {
-		func() {
+		s.Run(fmt.Sprintf("job%d", tc.numberOfJobs), func() {
 			ctx := context.Background()
 			randomUUID := uuid.New()
-			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+			_, out, err := ExecuteTestCobraCommand("docker", "run",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				"ubuntu",
@@ -80,7 +80,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
-		}()
+		})
 	}
 }
 
@@ -95,7 +95,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 		func() {
 			randomUUID := uuid.New()
 			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
-			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+			_, out, err := ExecuteTestCobraCommand("docker", "run",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				"ubuntu",
@@ -105,7 +105,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			require.NoError(s.T(), err)
-			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
+			require.Contains(s.T(), out, randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
 			require.NoError(s.T(), model.YAMLUnmarshalWithMax([]byte(out), &j))
@@ -141,7 +141,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			ctx := context.Background()
 			allArgs := []string{"docker", "run", "--api-host", s.host, "--api-port", s.port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(allArgs...)
 
 			if tc.fatalErr {
 				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -177,7 +177,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 			swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(ctx)
 			require.NoError(s.T(), err)
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+			_, out, err := ExecuteTestCobraCommand("docker", "run",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -242,7 +242,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu", "cat", "/inputs/foo.txt") // This doesn't exist, but shouldn't error
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
+				_, out, err := ExecuteTestCobraCommand(flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
@@ -306,7 +306,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				flagsArray = append(flagsArray, turls.inputURL.flag, turls.inputURL.url)
 				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURL.pathInContainer, turls.inputURL.filename))
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
+				_, out, err := ExecuteTestCobraCommand(flagsArray...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
@@ -367,7 +367,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu", "echo", "'hello world'")
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
+				_, out, err := ExecuteTestCobraCommand(flagsArray...)
 
 				if tcids.err != "" {
 					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -427,7 +427,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+			_, out, err := ExecuteTestCobraCommand("docker", "run",
 				"--api-host", s.host,
 				"--api-port", s.port,
 				"ubuntu",
@@ -497,7 +497,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
 				args = append(args, "ubuntu", "echo", fmt.Sprintf("'hello world - %s'", randNum.String()))
 
-				_, out, err := ExecuteTestCobraCommand(s.T(), args...)
+				_, out, err := ExecuteTestCobraCommand(args...)
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
@@ -547,7 +547,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			ctx := context.Background()
 			allArgs := []string{"docker", "run", "--api-host", s.host, "--api-port", s.port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(allArgs...)
 
 			if tc.fatalErr {
 				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
@@ -591,7 +591,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu", "pwd")
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
+			_, out, err := ExecuteTestCobraCommand(flagsArray...)
 
 			if tc.error_code != 0 {
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
@@ -645,7 +645,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"ubuntu", "echo", "hello",
 	}
 
-	_, _, submitErr := ExecuteTestCobraCommand(s.T(), allArgs...)
+	_, _, submitErr := ExecuteTestCobraCommand(allArgs...)
 	require.NoError(s.T(), submitErr)
 }
 
@@ -660,7 +660,7 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
-		_, out, err := ExecuteTestCobraCommand(s.T(),
+		_, out, err := ExecuteTestCobraCommand(
 			"docker", "run",
 			"--api-host", host,
 			"--api-port", port,
@@ -783,7 +783,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 
 			flagsArray = append(flagsArray, "ubuntu", "--", "perl", fmt.Sprintf(`-e "print \"=\" x %d"`, tc.inputLength))
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), flagsArray...)
+			_, out, err := ExecuteTestCobraCommand(flagsArray...)
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
@@ -826,7 +826,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 
 	for _, tc := range tests {
 		ctx := context.Background()
-		args := []string{}
+		var args []string
 
 		args = append(args, "docker", "run",
 			"--api-host", s.host,
@@ -835,7 +835,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 		args = append(args, tc.inputFlags...)
 		args = append(args, "ubuntu", "--", "ls", "/input")
 
-		_, out, err := ExecuteTestCobraCommand(s.T(), args...)
+		_, out, err := ExecuteTestCobraCommand(args...)
 		require.NoError(s.T(), err, "Error submitting job")
 
 		j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
@@ -881,7 +881,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 	for name, tc := range tests {
 		s.Run(name, func() {
 
-			args := []string{}
+			var args []string
 
 			args = append(args, "docker", "run",
 				"--api-host", s.host,
@@ -889,7 +889,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			)
 			args = append(args, tc.imageName, "--", tc.executable)
 
-			_, out, err := ExecuteTestCobraCommand(s.T(), args...)
+			_, out, err := ExecuteTestCobraCommand(args...)
 			require.NoError(s.T(), err, "Error submitting job")
 
 			if !tc.isValid {
@@ -903,7 +903,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	ctx := context.Background()
-	_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+	_, out, err := ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		"ubuntu",
@@ -920,7 +920,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	var expectedTimeout float64 = 999
 
 	ctx := context.Background()
-	_, out, err := ExecuteTestCobraCommand(s.T(), "docker", "run",
+	_, out, err := ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		"--timeout", fmt.Sprintf("%f", expectedTimeout),

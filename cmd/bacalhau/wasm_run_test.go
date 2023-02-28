@@ -19,7 +19,7 @@ func TestWasmRunSuite(t *testing.T) {
 
 func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	ctx := context.Background()
-	_, out, err := ExecuteTestCobraCommand(s.T(), "wasm", "run",
+	_, out, err := ExecuteTestCobraCommand("wasm", "run",
 		"--api-host", s.host,
 		"--api-port", s.port,
 		"../../testdata/wasm/noop/main.wasm",

@@ -63,7 +63,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 
 		for _, tcids := range testCids {
 			func() {
-				outputVolumes := []string{}
+				var outputVolumes []string
 				for _, tcidOV := range tcids.outputVolumes {
 					outputVolumes = append(outputVolumes, strings.Join([]string{tcidOV.name, tcidOV.path}, ":"))
 				}
@@ -95,7 +95,6 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					"",         // sharding base path
 					"",         // sharding glob pattern
 					1,          // sharding batch size
-					true,       // do not track
 				)
 
 				if tcids.err != "" {
