@@ -267,7 +267,7 @@ scrape_configs:
            msg:
       - drop:
           source: "level"
-          expression:  "(debug|trace)"
+          expression:  "(trace)"
     journal:
       max_age: 12h
       labels:
