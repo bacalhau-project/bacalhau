@@ -841,19 +841,14 @@ const docTemplate = `{
                 "ComputeReference": {
                     "type": "string"
                 },
+                "ExecutionState": {
+                    "$ref": "#/definitions/model.StateChange-model_ExecutionStateType"
+                },
                 "JobID": {
                     "type": "string"
                 },
-                "NewState": {
-                    "type": "string"
-                },
-                "NewStateType": {
-                    "description": "only present for execution level events",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.ExecutionStateType"
-                        }
-                    ]
+                "JobState": {
+                    "$ref": "#/definitions/model.StateChange-model_JobStateType"
                 },
                 "NewVersion": {
                     "type": "integer"
@@ -861,11 +856,11 @@ const docTemplate = `{
                 "NodeID": {
                     "type": "string"
                 },
-                "PreviousState": {
-                    "type": "string"
-                },
                 "ShardIndex": {
                     "type": "integer"
+                },
+                "ShardState": {
+                    "$ref": "#/definitions/model.StateChange-model_ShardStateType"
                 },
                 "Time": {
                     "type": "string"
@@ -1193,6 +1188,9 @@ const docTemplate = `{
         "model.NodeInfo": {
             "type": "object",
             "properties": {
+                "BacalhauVersion": {
+                    "$ref": "#/definitions/model.BuildVersionInfo"
+                },
                 "ComputeNodeInfo": {
                     "$ref": "#/definitions/model.ComputeNodeInfo"
                 },
@@ -1506,6 +1504,39 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.StorageSpec"
                     }
+                }
+            }
+        },
+        "model.StateChange-model_ExecutionStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/model.ExecutionStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/model.ExecutionStateType"
+                }
+            }
+        },
+        "model.StateChange-model_JobStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/model.JobStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/model.JobStateType"
+                }
+            }
+        },
+        "model.StateChange-model_ShardStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/model.ShardStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/model.ShardStateType"
                 }
             }
         },
