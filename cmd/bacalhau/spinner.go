@@ -194,7 +194,6 @@ func (s *Spinner) Run() {
 				if signal == os.Interrupt {
 					s.ticker.Stop()
 
-					//s.msg.Failure = true
 					s.Done(false)
 					_, _ = os.Stderr.WriteString("\n\rPrintout canceled.")
 
