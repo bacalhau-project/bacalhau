@@ -91,4 +91,7 @@ type ExecutionStore interface {
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error
 	// DeleteExecution deletes an execution
 	DeleteExecution(ctx context.Context, id string) error
+	// GetExecutionCount returns a count of all executions that completed
+	// successfully on this compute node
+	GetExecutionCount(ctx context.Context) uint
 }
