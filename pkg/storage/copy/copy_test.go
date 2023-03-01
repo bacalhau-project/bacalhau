@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package copy
 
 import (
@@ -8,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
 	"github.com/stretchr/testify/require"
 )
@@ -83,11 +84,6 @@ func preserveSlice[T any](slice []*T) []T {
 func TestCopyOversize(t *testing.T) {
 	for _, testCase := range copyOversizeTestCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			cm := system.NewCleanupManager()
-			t.Cleanup(func() {
-				cm.Cleanup(context.Background())
-			})
-
 			originals := preserveSlice(testCase.specs)
 
 			didUpload := false

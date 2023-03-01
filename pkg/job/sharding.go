@@ -36,7 +36,7 @@ the following is how different patterns would group:
 /* = [/a/, /b/]
 /**\/*.txt = [/a/file1.txt, /a/file2.txt, /b/file1.txt, /b/file2.txt]
 */
-func ApplyGlobPattern(
+func applyGlobPattern(
 	files []model.StorageSpec,
 	pattern string,
 	basePath string,
@@ -123,7 +123,7 @@ func ExplodeShardedVolumes(
 		allVolumes = append(allVolumes, explodedVolumes...)
 	}
 	// let's filter all of the combined volumes down using the glob pattern
-	return ApplyGlobPattern(allVolumes, config.GlobPattern, config.BasePath)
+	return applyGlobPattern(allVolumes, config.GlobPattern, config.BasePath)
 }
 
 // given an exploded set of volumes - we now group them based on batch size

@@ -29,7 +29,7 @@ func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterA
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
 	datastore := inmemory.NewJobStore()

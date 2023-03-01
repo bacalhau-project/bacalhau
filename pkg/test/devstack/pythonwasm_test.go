@@ -43,8 +43,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	err := system.InitConfigForTesting(s.T())
-	require.NoError(s.T(), err)
+	system.InitConfigForTesting(s.T())
 }
 
 // full end-to-end test of python/wasm:
