@@ -5,13 +5,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/env"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/exit_code"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
 )
 
 const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = model.DownloadFilenameStdout
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
 
 var CatFileToStdout = Scenario{
@@ -66,7 +66,7 @@ var GrepFile = Scenario{
 		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		model.DownloadFilenameStdout,
 		"kiwi is delicious",
 		2,
 	),
@@ -89,7 +89,7 @@ var SedFile = Scenario{
 		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		model.DownloadFilenameStdout,
 		"LISBON",
 		5, //nolint:gomnd // magic number ok for testing
 	),
@@ -113,7 +113,7 @@ var AwkFile = Scenario{
 		simpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		model.DownloadFilenameStdout,
 		"LISBON",
 		501, //nolint:gomnd // magic number appropriate for test
 	),
@@ -133,7 +133,7 @@ var AwkFile = Scenario{
 
 var WasmHelloWorld = Scenario{
 	ResultsChecker: FileEquals(
-		stdoutString,
+		model.DownloadFilenameStdout,
 		"Hello, world!\n",
 	),
 	Spec: model.Spec{
@@ -142,6 +142,22 @@ var WasmHelloWorld = Scenario{
 			EntryPoint:  "_start",
 			EntryModule: InlineData(noop.Program()),
 			Parameters:  []string{},
+		},
+	},
+}
+
+var WasmExitCode = Scenario{
+	ResultsChecker: FileEquals(
+		model.DownloadFilenameExitCode,
+		"5",
+	),
+	Spec: model.Spec{
+		Engine: model.EngineWasm,
+		Wasm: model.JobSpecWasm{
+			EntryPoint:           "_start",
+			EntryModule:          InlineData(exit_code.Program()),
+			Parameters:           []string{},
+			EnvironmentVariables: map[string]string{"EXIT_CODE": "5"},
 		},
 	},
 }
@@ -204,5 +220,6 @@ func GetAllScenarios() map[string]Scenario {
 		"wasm_hello_world":   WasmHelloWorld,
 		"wasm_env_vars":      WasmEnvVars,
 		"wasm_csv_transform": WasmCsvTransform,
+		"wasm_exit_code":     WasmExitCode,
 	}
 }
