@@ -1,4 +1,37 @@
-## dev
+## local development
+
+```
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:=gcr.io}
+export GCP_PROJECT_ID=${GCP_PROJECT_ID:=bacalhau-production}
+export IMAGE_FRONTEND=$DOCKER_REGISTRY/$GCP_PROJECT_ID/dashboard-frontend:dev
+export IMAGE_API=$DOCKER_REGISTRY/$GCP_PROJECT_ID/dashboard-api:dev
+
+<from top level bacalhau directory>
+docker build -t $IMAGE_FRONTEND dashboard/frontend
+docker build -t $IMAGE_API -f Dockerfile.dashboard .
+
+<from dashboard directory>
+export POSTGRES_DATA_DIR=$(pwd)/pgdata
+export JWT_SECRET=a1b2c3d4
+export PEER_CONNECT=/ip4/172.17.0.1/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+
+export POSTGRES_PASSWORD=secret
+docker-compose up -d
+open http://localhost:8080
+```
+
+restarting:
+```
+docker-compose down; docker-compose up -d
+```
+rebuilding:
+```
+(cd .. ; docker build -t $IMAGE_API -f Dockerfile.dashboard .) && docker-compose down && docker-compose up -d && docker logs -f dashboard_api_1
+```
+^ from the dashboard folder
+
+
+## deploy to production
 
 Deploy VM:
 
