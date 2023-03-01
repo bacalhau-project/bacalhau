@@ -2,7 +2,6 @@ package bidstrategy
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -40,10 +39,9 @@ func (c *ChainedBidStrategy) ShouldBidBasedOnUsage(
 }
 
 func (c *ChainedBidStrategy) delegate(
-	ctx context.Context, f func(strategy BidStrategy) (BidStrategyResponse, error)) (BidStrategyResponse, error) {
-	if c.Strategies == nil {
-		return BidStrategyResponse{}, errors.New("no strategies registered")
-	}
+	ctx context.Context,
+	f func(strategy BidStrategy) (BidStrategyResponse, error),
+) (BidStrategyResponse, error) {
 	for _, strategy := range c.Strategies {
 		response, err := f(strategy)
 		if err != nil {

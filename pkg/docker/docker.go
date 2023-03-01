@@ -18,12 +18,17 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
+	"golang.org/x/exp/slices"
 )
+
+const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
+	`or registry needing authorization`
 
 type Client struct {
 	tracing.TracedClient
@@ -152,6 +157,35 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func (c *Client) ImagePlatforms(ctx context.Context, image string) ([]v1.Platform, error) {
+	distribution, err := c.DistributionInspect(ctx, image)
+	if err != nil {
+		return nil, errors.Wrapf(err, ImagePullError, image)
+	}
+
+	return distribution.Platforms, nil
+}
+
+func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) {
+	version, err := c.ServerVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	engineIdx := slices.IndexFunc(version.Components, func(v types.ComponentVersion) bool {
+		return v.Name == "Engine"
+	})
+
+	// Note that 'Os' is linux on Darwin/Windows platforms that are running Linux VMs
+	engine := version.Components[engineIdx].Details
+	return []v1.Platform{
+		{
+			Architecture: engine["Arch"],
+			OS:           engine["Os"],
+		},
+	}, nil
 }
 
 func (c *Client) PullImage(ctx context.Context, image string) error {

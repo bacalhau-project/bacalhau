@@ -397,7 +397,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,
 		odr.ShardingBatchSize,
-		doNotTrack,
 	)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")

@@ -13,11 +13,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	storage_bidstrategy "github.com/bacalhau-project/bacalhau/pkg/storage/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
@@ -143,16 +145,20 @@ func NewComputeNode(
 		bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
 			NetworkSize: 1,
 		}),
-		bidstrategy.NewEnginesInstalledStrategy(bidstrategy.EnginesInstalledStrategyParams{
-			Storages:   storages,
-			Executors:  executors,
-			Verifiers:  verifiers,
-			Publishers: publishers,
-		}),
-		bidstrategy.NewInputLocalityStrategy(bidstrategy.InputLocalityStrategyParams{
+		executor_util.NewExecutorSpecificBidStrategy(executors),
+		executor_util.NewInputLocalityStrategy(executor_util.InputLocalityStrategyParams{
 			Locality:  config.JobSelectionPolicy.Locality,
 			Executors: executors,
 		}),
+		bidstrategy.NewProviderInstalledStrategy[model.Verifier, verifier.Verifier](
+			verifiers,
+			func(j *model.Job) model.Verifier { return j.Spec.Verifier },
+		),
+		bidstrategy.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
+			publishers,
+			func(j *model.Job) model.Publisher { return j.Spec.Publisher },
+		),
+		storage_bidstrategy.NewStorageInstalledBidStrategy(storages),
 		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
 			MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
 			MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
@@ -192,6 +198,7 @@ func NewComputeNode(
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
 		runningInfoProvider,
+		sensors.NewCompletedJobs(executionStore),
 	}
 
 	// register compute public http apis

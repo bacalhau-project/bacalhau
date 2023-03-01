@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -125,6 +126,13 @@ func (c TracedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (
 	return telemetry.RecordErrorOnSpanThree[types.ImageInspect, []byte](span)(c.client.ImageInspectWithRaw(ctx, imageID))
 }
 
+func (c TracedClient) DistributionInspect(ctx context.Context, imageID string) (registry.DistributionInspect, error) {
+	ctx, span := c.span(ctx, "distribution.inspect")
+	defer span.End()
+
+	return telemetry.RecordErrorOnSpanTwo[registry.DistributionInspect](span)(c.client.DistributionInspect(ctx, imageID, ""))
+}
+
 func (c TracedClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 	ctx, span := c.span(ctx, "image.pull")
 	// span ends when the io.ReadCloser is closed
@@ -178,6 +186,13 @@ func (c TracedClient) Info(ctx context.Context) (types.Info, error) {
 	defer span.End()
 
 	return telemetry.RecordErrorOnSpanTwo[types.Info](span)(c.client.Info(ctx))
+}
+
+func (c TracedClient) ServerVersion(ctx context.Context) (types.Version, error) {
+	ctx, span := c.span(ctx, "version")
+	defer span.End()
+
+	return telemetry.RecordErrorOnSpanTwo[types.Version](span)(c.client.ServerVersion(ctx))
 }
 
 func (c TracedClient) Close() error {

@@ -1,7 +1,9 @@
 package model
 
+import "context"
+
 type DebugInfoProvider interface {
-	GetDebugInfo() (DebugInfo, error)
+	GetDebugInfo(ctx context.Context) (DebugInfo, error)
 }
 
 type DebugInfo struct {

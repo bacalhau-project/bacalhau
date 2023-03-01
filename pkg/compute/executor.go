@@ -54,18 +54,18 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		Str("ExecutionID", execution.ID).
 		Logger().WithContext(ctx)
 
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, execution, err, "Running")
-		}
-	}()
-
 	ctx, cancel := context.WithCancel(ctx)
 	e.cancellers.Put(execution, cancel)
 	defer func() {
 		if cancel, found := e.cancellers.Get(execution); found {
 			e.cancellers.Delete(execution)
 			cancel()
+		}
+	}()
+
+	defer func() {
+		if err != nil {
+			e.handleFailure(ctx, execution, err, "Running")
 		}
 	}()
 

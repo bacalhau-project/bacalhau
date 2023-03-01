@@ -3,6 +3,7 @@ package noop
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -10,12 +11,14 @@ import (
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
+type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
 type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error)
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
 	HasStorageLocally ExecutorHandlerHasStorageLocally
 	GetVolumeSize     ExecutorHandlerGetVolumeSize
+	GetBidStrategy    ExecutorHandlerGetBidStrategy
 	JobHandler        ExecutorHandlerJobHandler
 }
 
@@ -63,6 +66,14 @@ func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSp
 		return handler(ctx, volume)
 	}
 	return 0, nil
+}
+
+func (e *NoopExecutor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy, error) {
+	if e.Config.ExternalHooks.GetBidStrategy != nil {
+		handler := e.Config.ExternalHooks.GetBidStrategy
+		return handler(ctx)
+	}
+	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
 func (e *NoopExecutor) RunShard(

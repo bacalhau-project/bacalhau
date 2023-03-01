@@ -3,28 +3,30 @@ package wasm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/c2h5oh/datasize"
-	"golang.org/x/exp/maps"
-
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
+	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
+	"golang.org/x/exp/maps"
 )
 
 type Executor struct {
@@ -68,6 +70,11 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 	return storageProvider.GetVolumeSize(ctx, volume)
 }
 
+// GetBidStrategy implements executor.Executor
+func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
+}
+
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
 // will be the filesystem exposed to our WASM. The strategy for this is to:
 //
@@ -84,7 +91,10 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	}
 
 	for input, volume := range volumes {
-		log.Ctx(ctx).Debug().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+		log.Ctx(ctx).Debug().
+			Str("input", input.Path).
+			Str("source", volume.Source).
+			Msg("Using input")
 
 		var stat os.FileInfo
 		stat, err = os.Stat(volume.Source)
@@ -115,7 +125,10 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 		}
 
 		srcd := filepath.Join(jobResultsDir, output.Name)
-		log.Ctx(ctx).Debug().Msgf("Collecting output '%s' at '%s'", output.Name, srcd)
+		log.Ctx(ctx).Debug().
+			Str("output", output.Name).
+			Str("dir", srcd).
+			Msg("Collecting output")
 
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
@@ -141,7 +154,7 @@ func (e *Executor) RunShard(
 	defer span.End()
 
 	cache := wazero.NewCompilationCache()
-	engineConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	engineConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache).WithCloseOnContextDone(true)
 
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
@@ -165,14 +178,14 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return executor.FailResult(err)
 	}
-	defer module.Close(ctx)
+	defer closer.ContextCloserWithLogOnError(ctx, "module", module)
 
 	shardStorageSpec, err := job.GetShardStorageSpec(ctx, shard, e.StorageProvider)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
-	fs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -192,7 +205,7 @@ func (e *Executor) RunShard(
 		WithStdout(stdout).
 		WithStderr(stderr).
 		WithArgs(args...).
-		WithFS(fs)
+		WithFS(rootFs)
 
 	keys := maps.Keys(wasmSpec.EnvironmentVariables)
 	sort.Strings(keys)
@@ -202,7 +215,7 @@ func (e *Executor) RunShard(
 	}
 
 	entryPoint := wasmSpec.EntryPoint
-	importedModules := []wazero.CompiledModule{}
+	var importedModules []wazero.CompiledModule
 
 	// Load and instantiate imported modules
 	for _, wasmSpec := range wasmSpec.ImportModules {
@@ -222,7 +235,7 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return executor.FailResult(err)
 	}
-	defer wasi.Close(ctx)
+	defer closer.ContextCloserWithLogOnError(ctx, "wasi", wasi)
 
 	_, err = engine.InstantiateModule(ctx, wasi, config)
 	if err != nil {
@@ -246,13 +259,15 @@ func (e *Executor) RunShard(
 	// the exit code for inclusion in the job output, and ignore the return code
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Debug().Msgf("Running WASM %q from job %q", entryPoint, shard.Job.Metadata.ID)
+	log.Ctx(ctx).Debug().
+		Str("entryPoint", entryPoint).
+		Msg("Running WASM job")
 	entryFunc := instance.ExportedFunction(entryPoint)
-	exitCode := int(-1)
+	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 	if wasmErr != nil {
-		errExit, ok := wasmErr.(*sys.ExitError)
-		if ok {
+		var errExit *sys.ExitError
+		if errors.As(wasmErr, &errExit) {
 			exitCode = int(errExit.ExitCode())
 			wasmErr = nil
 		}

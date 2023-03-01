@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -159,33 +158,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 		)
 	}
 	return nil
-}
-
-func ExecuteTestCobraCommand(t *testing.T, args ...string) (c *cobra.Command, output string, err error) {
-	return ExecuteTestCobraCommandWithStdin(t, nil, args...)
-}
-
-func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...string) (
-	c *cobra.Command, output string, err error,
-) { //nolint:unparam // use of t is valuable here
-	buf := new(bytes.Buffer)
-	root := NewRootCmd()
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetIn(stdin)
-	root.SetArgs(args)
-
-	// Need to check if we're running in debug mode for VSCode
-	// Empty them if they exist
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
-
-	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
-
-	c, err = root.ExecuteC()
-	return c, buf.String(), err
 }
 
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
@@ -706,15 +678,6 @@ To get more information at any time, run:
 			}
 		}
 
-		log.Ctx(ctx).Trace().Msgf("Job Events:")
-		for i := range jobEvents {
-			log.Ctx(ctx).Trace().Msgf("\t%s - %s - %s",
-				jobEvents[i].NewState,
-				jobEvents[i].Time.UTC().String(),
-				jobEvents[i].Comment)
-		}
-		log.Ctx(ctx).Trace().Msgf("\n")
-
 		if err != nil {
 			if _, ok := err.(*bacerrors.JobNotFound); ok {
 				Fatal(cmd, fmt.Sprintf(`Somehow even though we submitted a job successfully,
@@ -729,7 +692,7 @@ To get more information at any time, run:
 				if jobEvents[i].Type == model.JobHistoryTypeExecutionLevel {
 					printingUpdateForEvent(cmd,
 						&printedEventsTracker,
-						jobEvents[i].NewStateType,
+						jobEvents[i].ExecutionState.New,
 						spin)
 				}
 			}
@@ -737,11 +700,16 @@ To get more information at any time, run:
 
 		// TODO: #1070 We should really streamline these two loops - when we get to a client side statemachine, that should take care of lots
 		// Look for any terminal event in all the events. If it's done, we're done.
-		for i := range jobEvents {
+		for _, event := range jobEvents {
 			// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
-			if eventsWorthPrinting[jobEvents[i].NewStateType].IsTerminal {
+			if event.Type == model.JobHistoryTypeJobLevel && event.JobState.New.IsTerminal() {
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
+
+				if event.JobState.New == model.JobStateError {
+					err = errors.New(event.Comment)
+					spin.StopMessage(fullLineMessage.PrintError())
+				}
 
 				_ = spin.Stop()
 				tickerDone <- true
@@ -882,28 +850,6 @@ func createSpinner(w io.Writer, startingMessage string) (*yacspin.Spinner, error
 	}
 
 	return s, nil
-}
-
-func spinnerFmtDuration(d time.Duration) string {
-	d = d.Round(time.Millisecond)
-
-	min := (d % time.Hour) / time.Minute
-	sec := (d % time.Minute) / time.Second
-	ms := (d % time.Second) / time.Millisecond / 100
-
-	minString, secString, msString := "", "", ""
-	if min > 0 {
-		minString = fmt.Sprintf("%02dm", min)
-		secString = fmt.Sprintf("%02d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else if sec > 0 {
-		secString = fmt.Sprintf("%01d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else {
-		msString = fmt.Sprintf("0.%01ds", ms)
-	}
-	// If hour string exists, set it
-	return fmt.Sprintf("%s%s%s", minString, secString, msString)
 }
 
 func formatMessage(msg string) string {

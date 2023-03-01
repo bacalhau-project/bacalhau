@@ -96,7 +96,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -111,8 +111,8 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	log.Debug().Msgf("jobId=%s", jobID)
 	time.Sleep(time.Second * 5)
 
-	node := stack.Nodes[0]
-	apiUri := node.APIServer.GetURI()
+	firstNode := stack.Nodes[0]
+	apiUri := firstNode.APIServer.GetURI()
 	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
@@ -129,7 +129,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, finalOutputPath)
+	err = firstNode.IPFSClient.Get(ctx, shard.PublishedResult.CID, finalOutputPath)
 	require.NoError(s.T(), err)
 
 	err = filepath.Walk(finalOutputPath,
@@ -167,7 +167,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -183,8 +183,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
-	node := stack.Nodes[0]
-	apiUri := node.APIServer.GetURI()
+	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewRequesterAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
@@ -220,7 +219,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",

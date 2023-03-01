@@ -37,7 +37,6 @@ func ConstructDockerJob( //nolint:funlen
 	shardingGlobPattern string,
 	shardingBasePath string,
 	shardingBatchSize int,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
@@ -119,7 +118,6 @@ func ConstructDockerJob( //nolint:funlen
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
 		Sharding:      jobShardingConfig,
-		DoNotTrack:    doNotTrack,
 	}
 
 	// override working dir if provided
@@ -153,7 +151,6 @@ func ConstructLanguageJob(
 	requirementsPath string,
 	deterministic bool,
 	annotations []string,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
 	jobContexts := []model.StorageSpec{}
@@ -203,7 +200,6 @@ func ConstructLanguageJob(
 	j.Spec.Contexts = jobContexts
 	j.Spec.Outputs = jobOutputs
 	j.Spec.Annotations = jobAnnotations
-	j.Spec.DoNotTrack = doNotTrack
 
 	j.Spec.Deal = model.Deal{
 		Concurrency: concurrency,

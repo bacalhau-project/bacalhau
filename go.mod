@@ -18,7 +18,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.3
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-jsonrpc v0.2.1
-	github.com/filecoin-project/go-state-types v0.9.9
+	github.com/filecoin-project/go-state-types v0.10.0
 	github.com/go-test/deep v1.1.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
@@ -47,7 +47,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/libp2p/go-libp2p v0.25.1
-	github.com/libp2p/go-libp2p-pubsub v0.9.0
+	github.com/libp2p/go-libp2p-pubsub v0.9.1
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.8.0
@@ -56,7 +56,7 @@ require (
 	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
-	github.com/pelletier/go-toml/v2 v2.0.6
+	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
@@ -64,26 +64,25 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.10
-	github.com/tetratelabs/wazero v1.0.0-pre.8
+	github.com/tetratelabs/wazero v1.0.0-rc.1
 	github.com/theckman/yacspin v0.13.12
 	github.com/tidwall/sjson v1.2.5
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.39.0
-	go.opentelemetry.io/otel v1.13.0
-	go.opentelemetry.io/otel/bridge/opencensus v0.36.0
+	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.35.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.13.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.13.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.13.0
 	go.opentelemetry.io/otel/metric v0.36.0
-	go.opentelemetry.io/otel/sdk v1.13.0
+	go.opentelemetry.io/otel/sdk v1.14.0
 	go.opentelemetry.io/otel/sdk/metric v0.36.0
-	go.opentelemetry.io/otel/trace v1.13.0
+	go.opentelemetry.io/otel/trace v1.14.0
 	go.ptx.dk/multierrgroup v0.0.2
 	go.uber.org/multierr v1.9.0
 	go.uber.org/zap v1.24.0
@@ -130,7 +129,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/elgris/jsondiff v0.0.0-20160530203242-765b5c24c302 // indirect
-	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.0.0 // indirect
@@ -316,7 +314,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.7.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.13.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.35.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.12.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.7.0 // indirect
@@ -326,7 +324,7 @@ require (
 	go.uber.org/fx v1.18.2 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
 	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/oauth2 v0.1.0 // indirect
+	golang.org/x/oauth2 v0.4.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
@@ -335,8 +333,8 @@ require (
 	golang.org/x/tools v0.3.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
-	google.golang.org/grpc v1.52.3 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/bridge/opencensus"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/metric/global"
@@ -30,9 +29,7 @@ func newMeterProvider() {
 		return
 	}
 
-	// reader that also bridges opencensus metrics to capture libp2p metrics
 	reader := sdkmetric.NewPeriodicReader(exp)
-	reader.RegisterProducer(opencensus.NewMetricProducer())
 
 	meterProvider = sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource()),
@@ -43,9 +40,17 @@ func newMeterProvider() {
 }
 
 func isMetricsEnabled() bool {
-	_, endpointDefined := os.LookupEnv(otlpEndpoint)
-	_, metricsEndpointDefined := os.LookupEnv(otlpMetricsEndpoint)
-	return endpointDefined || metricsEndpointDefined
+	if v, ok := os.LookupEnv(disableTracing); ok && v == "1" {
+		return false
+	}
+	if _, ok := os.LookupEnv(otlpEndpoint); ok {
+		return true
+	}
+	if _, ok := os.LookupEnv(otlpMetricsEndpoint); ok {
+		return true
+	}
+
+	return false
 }
 
 func getMetricsClient(ctx context.Context) (client sdkmetric.Exporter, err error) {
