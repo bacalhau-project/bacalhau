@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -175,8 +176,9 @@ func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *m
 		}
 	}
 
+	newCtx := util.NewDetachedContext(ctx)
 	for _, node := range nodes {
-		go s.doNotifyAskForBid(ctx, link, job, node.NodeInfo, shardIndexes)
+		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo, shardIndexes)
 	}
 }
 
@@ -215,7 +217,8 @@ func (s *scheduler) notifyBidAccepted(ctx context.Context, execution model.Execu
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to BidAccepted. %s", execution)
 	} else {
-		go func() {
+		newCtx := util.NewDetachedContext(ctx)
+		go func(ctx context.Context) {
 			request := compute.BidAcceptedRequest{
 				ExecutionID: execution.ComputeReference,
 				RoutingMetadata: compute.RoutingMetadata{
@@ -228,7 +231,7 @@ func (s *scheduler) notifyBidAccepted(ctx context.Context, execution model.Execu
 				log.Ctx(ctx).Error().Err(notifyErr).Msgf("failed to notify BidAccepted for bid: %s", execution.ComputeReference)
 			}
 			s.eventEmitter.EmitBidAccepted(ctx, request, response)
-		}()
+		}(newCtx)
 	}
 }
 
@@ -247,7 +250,8 @@ func (s *scheduler) notifyBidRejected(ctx context.Context, execution model.Execu
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to BidRejected. %s", execution)
 	} else {
-		go func() {
+		newCtx := util.NewDetachedContext(ctx)
+		go func(ctx context.Context) {
 			request := compute.BidRejectedRequest{
 				ExecutionID: execution.ComputeReference,
 				RoutingMetadata: compute.RoutingMetadata{
@@ -260,7 +264,7 @@ func (s *scheduler) notifyBidRejected(ctx context.Context, execution model.Execu
 				log.Ctx(ctx).Error().Err(notifyErr).Msgf("failed to notify BidRejected for bid: %s", execution.ComputeReference)
 			}
 			s.eventEmitter.EmitBidRejected(ctx, request, response)
-		}()
+		}(newCtx)
 	}
 }
 
@@ -282,7 +286,8 @@ func (s *scheduler) notifyResultAccepted(ctx context.Context, result verifier.Ve
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to ResultAccepted. %s", result.Execution.ID())
 	} else {
-		go func() {
+		newCtx := util.NewDetachedContext(ctx)
+		go func(ctx context.Context) {
 			request := compute.ResultAcceptedRequest{
 				ExecutionID: result.Execution.ComputeReference,
 				RoutingMetadata: compute.RoutingMetadata{
@@ -295,7 +300,7 @@ func (s *scheduler) notifyResultAccepted(ctx context.Context, result verifier.Ve
 				log.Ctx(ctx).Error().Err(notifyErr).Msgf("failed to notify ResultAccepted for execution: %s", result.Execution.ID())
 			}
 			s.eventEmitter.EmitResultAccepted(ctx, request, response)
-		}()
+		}(newCtx)
 	}
 }
 
@@ -317,7 +322,8 @@ func (s *scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to ResultRejected. %s", result.Execution.ID())
 	} else {
-		go func() {
+		newCtx := util.NewDetachedContext(ctx)
+		go func(ctx context.Context) {
 			request := compute.ResultRejectedRequest{
 				ExecutionID: result.Execution.ComputeReference,
 				RoutingMetadata: compute.RoutingMetadata{
@@ -330,7 +336,7 @@ func (s *scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 				log.Ctx(ctx).Error().Err(notifyErr).Msgf("failed to notify ResultRejected for execution: %s", result.Execution.ID())
 			}
 			s.eventEmitter.EmitResultRejected(ctx, request, response)
-		}()
+		}(newCtx)
 	}
 }
 
@@ -338,7 +344,9 @@ func (s *scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 // the execution state is updated when stopping/failing the shard itself.
 func (s *scheduler) notifyCancel(ctx context.Context, message string, execution model.ExecutionState) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, execution.ComputeReference)
-	go func() {
+
+	newCtx := util.NewDetachedContext(ctx)
+	go func(ctx context.Context) {
 		request := compute.CancelExecutionRequest{
 			ExecutionID:   execution.ComputeReference,
 			Justification: message,
@@ -351,7 +359,7 @@ func (s *scheduler) notifyCancel(ctx context.Context, message string, execution 
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to notify cancellation for execution: %s", execution.ComputeReference)
 		}
-	}()
+	}(newCtx)
 }
 
 // called for both JobEventShardCompleted and JobEventShardError
