@@ -56,7 +56,7 @@ require (
 	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
-	github.com/pelletier/go-toml/v2 v2.0.6
+	github.com/pelletier/go-toml/v2 v2.0.7
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
