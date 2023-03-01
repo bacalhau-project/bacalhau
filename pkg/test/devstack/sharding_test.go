@@ -66,8 +66,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 
 	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
 	require.NoError(suite.T(), err)

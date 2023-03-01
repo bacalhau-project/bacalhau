@@ -26,7 +26,7 @@ type GenericSQLSuite struct {
 }
 
 func (suite *GenericSQLSuite) SetupTest() {
-	suite.Require().NoError(system.InitConfigForTesting(suite.T()))
+	system.InitConfigForTesting(suite.T())
 	logger.ConfigureTestLogging(suite.T())
 	datastore := suite.SetupHandler()
 	suite.datastore = datastore

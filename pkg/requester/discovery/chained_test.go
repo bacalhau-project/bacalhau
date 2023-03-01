@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package discovery
 
 import (
@@ -82,7 +84,7 @@ func newFixedDiscoverer(peerIDs ...model.NodeInfo) *fixedDiscoverer {
 	}
 }
 
-func (f *fixedDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (f *fixedDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
 	return f.peerIDs, nil
 }
 
@@ -93,6 +95,6 @@ func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
 }
 
-func (b *badDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (b *badDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }

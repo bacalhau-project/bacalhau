@@ -155,7 +155,7 @@ func (suite *JobShardingSuite) TestApplyGlobPattern() {
 	}
 
 	for _, testCase := range testCases {
-		results, err := ApplyGlobPattern(explodeStringArray(testCase.files), testCase.pattern, testCase.basePath)
+		results, err := applyGlobPattern(explodeStringArray(testCase.files), testCase.pattern, testCase.basePath)
 		require.NoError(suite.T(), err)
 		require.Equal(
 			suite.T(),

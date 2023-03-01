@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -79,22 +80,21 @@ func InitConfig() error {
 type testingT interface {
 	TempDir() string
 	Setenv(key string, value string)
+	Errorf(format string, args ...interface{})
+	FailNow()
 }
 
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
-func InitConfigForTesting(t testingT) error {
+func InitConfigForTesting(t testingT) {
 	if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
-		return nil
+		return
 	}
 	t.Setenv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__", "set")
 	configDir := t.TempDir()
 	t.Setenv("BACALHAU_DIR", configDir)
 	err := InitConfig()
-	if err != nil {
-		return err
-	}
-	return nil
+	require.NoError(t, err)
 }
 
 // SignForClient signs a message with the user's private ID key.

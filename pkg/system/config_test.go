@@ -33,7 +33,7 @@ func (s *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	s.NoError(InitConfigForTesting(s.T()))
+	InitConfigForTesting(s.T())
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
@@ -57,14 +57,14 @@ func (s *SystemConfigSuite) TestGetClientID() {
 
 	var firstId string
 	s.Run("first", func() {
-		s.Require().NoError(InitConfigForTesting(s.T()))
+		InitConfigForTesting(s.T())
 		firstId = GetClientID()
 		s.Require().NotEmpty(firstId)
 	})
 
 	var secondId string
 	s.Run("second", func() {
-		s.Require().NoError(InitConfigForTesting(s.T()))
+		InitConfigForTesting(s.T())
 		secondId = GetClientID()
 		s.Require().NotEmpty(secondId)
 
@@ -74,7 +74,7 @@ func (s *SystemConfigSuite) TestGetClientID() {
 }
 
 func (s *SystemConfigSuite) TestPublicKeyMatchesID() {
-	s.NoError(InitConfigForTesting(s.T()))
+	InitConfigForTesting(s.T())
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()

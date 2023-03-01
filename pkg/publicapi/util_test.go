@@ -23,7 +23,7 @@ func setupNodeForTest(t *testing.T, cm *system.CleanupManager) *APIClient {
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverConfig APIServerConfig) *APIClient {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
 	libp2pPort, err := freeport.GetFreePort()

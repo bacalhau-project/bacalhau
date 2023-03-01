@@ -43,7 +43,7 @@ func TestServeSuite(t *testing.T) {
 // Before each test
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Require().NoError(system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), maxTestTime)
 
