@@ -36,7 +36,7 @@ type JobRequester struct {
 
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
-	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
+	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty" swaggertype:"string" format:"base64"`
 }
 type JobStatus struct {
 	// The current state of the job

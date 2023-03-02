@@ -894,10 +894,7 @@ const docTemplate = `{
                 },
                 "RequesterPublicKey": {
                     "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "string"
                 }
             }
         },
