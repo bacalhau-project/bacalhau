@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -55,7 +53,7 @@ func (ipfsDownloader *Downloader) FetchResult(ctx context.Context, result model.
 			result.Data.CID, downloadPath,
 		)
 
-		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(ipfsDownloader.settings.Timeout))
+		innerCtx, cancel := context.WithTimeout(ctx, ipfsDownloader.settings.Timeout)
 		defer cancel()
 
 		return ipfsClient.Get(innerCtx, result.Data.CID, downloadPath)
