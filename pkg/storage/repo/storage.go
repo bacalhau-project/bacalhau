@@ -80,7 +80,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 	repoURL := storageSpec.Repo
-	_, err := clone.IsValidGitRepoURL(repoURL)
+	var err error
+	_, err = clone.IsValidGitRepoURL(repoURL)
 	// fmt.Printf("%+v", storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, err
@@ -98,8 +99,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		cmd := exec.Command("git", "clone", repoURL, outputPath)
 		// The `Output` method executes the command and
 		// collects the output, returning its value
-		out, err := cmd.Output()
-		if err != nil {
+		out, err1 := cmd.Output()
+		if err1 != nil {
 			// if there was any error, print it here
 			fmt.Println("could not run command: ", err)
 		}
@@ -113,7 +114,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 			return storage.StorageVolume{}, err
 		}
 	}
-	filepath, err := url.Parse(repoURL)
+	filepath, err2 := url.Parse(repoURL)
+	if err2 != nil {
+		return storage.StorageVolume{}, err
+	}
 	filename := strings.Split(filepath.Path, ".")[0]
 	targetPath := "/inputs" + filename
 

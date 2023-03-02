@@ -100,12 +100,11 @@ func NewStandardStorageProvider(
 	}
 
 	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-    model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
-    model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
-    model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
-    model.StorageSourceInline:           tracing.Wrap(inlineStorage),
-    model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
-
+		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
+		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
+		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
+		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
+		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
 	}), nil
 }
 

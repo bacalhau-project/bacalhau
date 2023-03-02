@@ -13,7 +13,9 @@ import (
 )
 
 type ScriptStruct struct {
-	path      string
+	//nolint:unused
+	path string
+	//nolint:unused
 	arguments []string
 }
 
