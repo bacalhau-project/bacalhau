@@ -35,8 +35,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
 type SeenJobRecord struct {

@@ -5,6 +5,7 @@ package downloader
 import (
 	"context"
 	"crypto/rand"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,7 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
-	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
+	system.InitConfigForTesting(ds.T())
 }
 
 // Before each test
@@ -78,7 +79,7 @@ func generateFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer closer.CloseWithLogOnError("file", file)
 
 	b := make([]byte, 128)
 	_, err = rand.Read(b)

@@ -2,7 +2,7 @@ package model
 
 import "fmt"
 
-// A Millicore represents a thousandth of a CPU core, which is a unit of measure
+// A Millicores represents a thousandth of a CPU core, which is a unit of measure
 // used by Kubernetes. See also https://github.com/BTBurke/k8sresource.
 type Millicores int
 

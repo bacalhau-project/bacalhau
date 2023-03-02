@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,7 +20,7 @@ func TestSystemCleanupSuite(t *testing.T) {
 
 func (s *SystemCleanupSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), InitConfigForTesting(s.T()))
+	InitConfigForTesting(s.T())
 }
 
 func (s *SystemCleanupSuite) TestCleanupManager() {

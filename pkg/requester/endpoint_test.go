@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package requester
 
 import (
@@ -17,12 +19,12 @@ import (
 type mockBidStrategy bool
 
 // ShouldBid implements bidstrategy.BidStrategy
-func (m *mockBidStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (m *mockBidStrategy) ShouldBid(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	return bidstrategy.BidStrategyResponse{ShouldBid: bool(*m)}, nil
 }
 
 // ShouldBidBasedOnUsage implements bidstrategy.BidStrategy
-func (m *mockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, resourceUsage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+func (m *mockBidStrategy) ShouldBidBasedOnUsage(context.Context, bidstrategy.BidStrategyRequest, model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
 	return bidstrategy.BidStrategyResponse{ShouldBid: bool(*m)}, nil
 }
 

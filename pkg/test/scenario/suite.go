@@ -44,7 +44,7 @@ type ScenarioRunner struct {
 }
 
 func (s *ScenarioRunner) SetupTest() {
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 
 	s.Ctx = context.Background()
 
