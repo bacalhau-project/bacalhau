@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package ranking
 
 import (
@@ -82,7 +84,7 @@ func newFixedRanker(ranks ...int) *fixedRanker {
 	}
 }
 
-func (f *fixedRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
+func (f *fixedRanker) RankNodes(_ context.Context, _ model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
 	ranks := make([]requester.NodeRank, len(nodes))
 	for i, rank := range f.ranks {
 		ranks[i] = requester.NodeRank{

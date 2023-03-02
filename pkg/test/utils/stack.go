@@ -75,7 +75,7 @@ func SetupTestWithNoopExecutor(
 	executorConfig noop_executor.ExecutorConfig,
 	nodeOverrides ...node.NodeConfig,
 ) *devstack.DevStack {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	// We will take the standard executors and add in the noop executor
 	executorFactory := &mixedExecutorFactory{
 		StandardExecutorsFactory: node.NewStandardExecutorsFactory(),

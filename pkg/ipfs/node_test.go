@@ -23,7 +23,7 @@ type NodeSuite struct {
 
 func (s *NodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Require().NoError(system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:

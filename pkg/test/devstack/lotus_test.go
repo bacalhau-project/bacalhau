@@ -37,7 +37,7 @@ func (s *lotusNodeSuite) SetupTest() {
 	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
