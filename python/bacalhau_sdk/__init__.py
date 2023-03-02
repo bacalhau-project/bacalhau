@@ -2,4 +2,4 @@
 
 __author__ = """Enrico Rotundo"""
 __email__ = "team@bacalhau.org"
-__version__ = '0.1.2'
+__version__ = "0.1.4"

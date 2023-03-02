@@ -1,19 +1,66 @@
 # bacalhau_apiclient.JobApi
 
-All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
+All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**cancel**](JobApi.md#cancel) | **POST** /requester/cancel | Cancels the job with the job-id specified in the body payload.
 [**events**](JobApi.md#events) | **POST** /requester/events | Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
 [**list**](JobApi.md#list) | **POST** /requester/list | Simply lists jobs.
-[**local_events**](JobApi.md#local_events) | **POST** /requester/local_events | Returns the node&#39;s local events related to the job-id passed in the body payload. Useful for troubleshooting.
 [**results**](JobApi.md#results) | **POST** /requester/results | Returns the results of the job-id specified in the body payload.
 [**states**](JobApi.md#states) | **POST** /requester/states | Returns the state of the job-id specified in the body payload.
 [**submit**](JobApi.md#submit) | **POST** /requester/submit | Submits a new job to the network.
 
+# **cancel**
+> CancelResponse cancel(body)
+
+Cancels the job with the job-id specified in the body payload.
+
+Cancels a job specified by `id` as long as that job belongs to `client_id`.  Returns the current jobstate after the cancel request has been processed.
+
+### Example
+```python
+from __future__ import print_function
+import time
+import bacalhau_apiclient
+from bacalhau_apiclient.rest import ApiException
+from pprint import pprint
+
+# create an instance of the API class
+api_instance = bacalhau_apiclient.JobApi()
+body = bacalhau_apiclient.CancelRequest() # CancelRequest |
+
+try:
+    # Cancels the job with the job-id specified in the body payload.
+    api_response = api_instance.cancel(body)
+    pprint(api_response)
+except ApiException as e:
+    print("Exception when calling JobApi->cancel: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **body** | [**CancelRequest**](CancelRequest.md)|  |
+
+### Return type
+
+[**CancelResponse**](CancelResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **events**
-> EventsResponse events(events_request)
+> EventsResponse events(body)
 
 Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
 
@@ -29,11 +76,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-events_request = bacalhau_apiclient.EventsRequest() # EventsRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
+body = bacalhau_apiclient.EventsRequest() # EventsRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
 
 try:
     # Returns the events related to the job-id passed in the body payload. Useful for troubleshooting.
-    api_response = api_instance.events(events_request)
+    api_response = api_instance.events(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling JobApi->events: %s\n" % e)
@@ -43,7 +90,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **events_request** | [**EventsRequest**](EventsRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. |
+ **body** | [**EventsRequest**](EventsRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. |
 
 ### Return type
 
@@ -61,7 +108,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list**
-> ListResponse list(list_request)
+> ListResponse list(body)
 
 Simply lists jobs.
 
@@ -77,11 +124,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-list_request = bacalhau_apiclient.ListRequest() # ListRequest | Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!).
+body = bacalhau_apiclient.ListRequest() # ListRequest | Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!).
 
 try:
     # Simply lists jobs.
-    api_response = api_instance.list(list_request)
+    api_response = api_instance.list(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling JobApi->list: %s\n" % e)
@@ -91,7 +138,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **list_request** | [**ListRequest**](ListRequest.md)| Set &#x60;return_all&#x60; to &#x60;true&#x60; to return all jobs on the network (may degrade performance, use with care!). |
+ **body** | [**ListRequest**](ListRequest.md)| Set &#x60;return_all&#x60; to &#x60;true&#x60; to return all jobs on the network (may degrade performance, use with care!). |
 
 ### Return type
 
@@ -108,56 +155,8 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **local_events**
-> LocalEventsResponse local_events(local_events_request)
-
-Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
-
-Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.
-
-### Example
-```python
-from __future__ import print_function
-import time
-import bacalhau_apiclient
-from bacalhau_apiclient.rest import ApiException
-from pprint import pprint
-
-# create an instance of the API class
-api_instance = bacalhau_apiclient.JobApi()
-local_events_request = bacalhau_apiclient.LocalEventsRequest() # LocalEventsRequest |
-
-try:
-    # Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.
-    api_response = api_instance.local_events(local_events_request)
-    pprint(api_response)
-except ApiException as e:
-    print("Exception when calling JobApi->local_events: %s\n" % e)
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **local_events_request** | [**LocalEventsRequest**](LocalEventsRequest.md)|   |
-
-### Return type
-
-[**LocalEventsResponse**](LocalEventsResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
 # **results**
-> ResultsResponse results(state_request)
+> ResultsResponse results(body)
 
 Returns the results of the job-id specified in the body payload.
 
@@ -173,11 +172,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-state_request = bacalhau_apiclient.StateRequest() # StateRequest |
+body = bacalhau_apiclient.StateRequest() # StateRequest |
 
 try:
     # Returns the results of the job-id specified in the body payload.
-    api_response = api_instance.results(state_request)
+    api_response = api_instance.results(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling JobApi->results: %s\n" % e)
@@ -187,7 +186,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **state_request** | [**StateRequest**](StateRequest.md)|   |
+ **body** | [**StateRequest**](StateRequest.md)|  |
 
 ### Return type
 
@@ -205,7 +204,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **states**
-> StateResponse states(state_request)
+> StateResponse states(body)
 
 Returns the state of the job-id specified in the body payload.
 
@@ -221,11 +220,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-state_request = bacalhau_apiclient.StateRequest() # StateRequest |
+body = bacalhau_apiclient.StateRequest() # StateRequest |
 
 try:
     # Returns the state of the job-id specified in the body payload.
-    api_response = api_instance.states(state_request)
+    api_response = api_instance.states(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling JobApi->states: %s\n" % e)
@@ -235,7 +234,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **state_request** | [**StateRequest**](StateRequest.md)|   |
+ **body** | [**StateRequest**](StateRequest.md)|  |
 
 ### Return type
 
@@ -253,7 +252,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **submit**
-> SubmitResponse submit(submit_request)
+> SubmitResponse submit(body)
 
 Submits a new job to the network.
 
@@ -269,11 +268,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.JobApi()
-submit_request = bacalhau_apiclient.SubmitRequest() # SubmitRequest |
+body = bacalhau_apiclient.SubmitRequest() # SubmitRequest |
 
 try:
     # Submits a new job to the network.
-    api_response = api_instance.submit(submit_request)
+    api_response = api_instance.submit(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling JobApi->submit: %s\n" % e)
@@ -283,7 +282,7 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **submit_request** | [**SubmitRequest**](SubmitRequest.md)|   |
+ **body** | [**SubmitRequest**](SubmitRequest.md)|  |
 
 ### Return type
 

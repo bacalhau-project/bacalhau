@@ -1,12 +1,11 @@
 # bacalhau_apiclient.HealthApi
 
-All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
+All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**api_serverdebug**](HealthApi.md#api_serverdebug) | **GET** /debug | Returns debug information on what the current node is doing.
 [**debug**](HealthApi.md#debug) | **GET** /requester/debug | Returns debug information on what the current node is doing.
-
 
 # **api_serverdebug**
 > str api_serverdebug()
@@ -91,4 +90,3 @@ No authorization required
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
