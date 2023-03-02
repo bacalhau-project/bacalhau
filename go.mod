@@ -20,6 +20,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.9.9
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/go-test/deep v1.1.0
+	github.com/gogs/git-module v1.8.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/golang/mock v1.6.0
@@ -108,6 +109,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
