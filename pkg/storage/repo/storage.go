@@ -58,7 +58,7 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 		IPFSClient:    IPFSapiclient,
 		CloneClient:   c,
 	}
-	log.Debug().Msgf("URL download driver created with output dir: %s", dir)
+	log.Debug().Msgf("Repo download driver created with output dir: %s", dir)
 	return storageHandler, nil
 }
 
@@ -76,6 +76,7 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (ui
 	return 0, nil
 }
 
+//nolint:gocyclo
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
