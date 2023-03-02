@@ -16,12 +16,12 @@ import (
 	// "regexp"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 }
 
 func getIpfsStorage() (*apicopy.StorageProvider, error) {
@@ -137,7 +137,7 @@ func (s *StorageSuite) TestCloneRepo() {
 	}
 	// Rewrite this test replacing it with the clone part
 	filetypeCases := []repostruct{
-		{Site: "github", URL: "https://github.com/filecoin-project/bacalhau.git",
+		{Site: "github", URL: "https://github.com/bacalhau-project/bacalhau.git",
 			repoName: "filecoin-project/bacalhau",
 		}}
 

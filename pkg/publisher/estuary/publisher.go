@@ -102,7 +102,7 @@ func PinToIPFSViaEstuary(
 	EstuaryAPIKey string,
 	CID string,
 ) error {
-	client := GetClient(ctx, EstuaryAPIKey)
+	client := GetClient(EstuaryAPIKey)
 	_, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
 	pin := estuary_client.TypesIpfsPin{

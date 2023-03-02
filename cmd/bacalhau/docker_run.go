@@ -170,7 +170,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	// #TODO support mounting from a branch or a commit
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputRepos, "input-repos", "r", ODR.InputRepos,
-		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/filecoin-project/bacalhau.git'
+		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/bacalhau-project/bacalhau.git'
 		mounts the repo at '/inputs/filecoin-project/bacalhau').`,
 	)
 

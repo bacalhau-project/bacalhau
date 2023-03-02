@@ -43,13 +43,6 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
-func NewNoopJobLoader() JobLoader {
-	jobLoader := func(ctx context.Context, id string) (*model.Job, error) {
-		return &model.Job{}, nil
-	}
-	return jobLoader
-}
-
 func NewNoopStateLoader() StateLoader {
 	stateLoader := func(ctx context.Context, id string) (model.JobState, error) {
 		return model.JobState{}, nil
@@ -59,7 +52,6 @@ func NewNoopStateLoader() StateLoader {
 
 func buildJobInputs(inputVolumes, inputUrls []string, inputRepos []string) ([]model.StorageSpec, error) {
 	jobInputs := []model.StorageSpec{}
-
 
 	for _, inputRepo := range inputRepos {
 		u, err := clone.IsValidGitRepoURL(inputRepo)
