@@ -1,18 +1,17 @@
 # bacalhau_apiclient.UtilsApi
 
-All URIs are relative to *http://bootstrap.production.bacalhau.org:1234*
+All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**healthz**](UtilsApi.md#healthz) | **GET** /healthz | 
+[**healthz**](UtilsApi.md#healthz) | **GET** /healthz |
 [**id**](UtilsApi.md#id) | **GET** /id | Returns the id of the host node.
-[**livez**](UtilsApi.md#livez) | **GET** /livez | 
-[**logz**](UtilsApi.md#logz) | **GET** /logz | 
+[**livez**](UtilsApi.md#livez) | **GET** /livez |
+[**logz**](UtilsApi.md#logz) | **GET** /logz |
 [**node_info**](UtilsApi.md#node_info) | **GET** /node_info | Returns the info of the node.
 [**peers**](UtilsApi.md#peers) | **GET** /peers | Returns the peers connected to the host via the transport layer.
-[**readyz**](UtilsApi.md#readyz) | **GET** /readyz | 
-[**varz**](UtilsApi.md#varz) | **GET** /varz | 
-
+[**readyz**](UtilsApi.md#readyz) | **GET** /readyz |
+[**varz**](UtilsApi.md#varz) | **GET** /varz |
 
 # **healthz**
 > HealthInfo healthz()
@@ -346,4 +345,3 @@ No authorization required
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

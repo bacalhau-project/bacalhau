@@ -486,12 +486,12 @@ jobs:
       - run:
           name: Install Swagger
           command:
-            go install github.com/swaggo/swag/cmd/swag@v1.8.9-rc3
+            go install github.com/swaggo/swag/cmd/swag@v1.8.10
       - run:
           name: Install swagger-codegen
           command: |
             CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
             chmod +x ${HOME}/bin/swagger-codegen-cli.jar
             ${HOME}/bin/swagger-codegen-cli.jar version
       - run:
@@ -904,7 +904,7 @@ workflows:
           filters: *filters_tags_only
 
   # TODO: Disabling performance until we get a runner up and running again
-  # 
+  #
   # performance: # This workflow will run on all branches except 'main' and will not run on tags
   #   jobs:
   #     - build:
