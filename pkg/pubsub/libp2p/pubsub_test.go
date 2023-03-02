@@ -46,10 +46,10 @@ func (s *PubSubSuite) SetupSuite() {
 		}
 	}
 	if s1 {
-		s.Fail("subscriber 1 didn't receive initialization message")
+		s.FailNow("subscriber 1 didn't receive initialization message")
 	}
 	if s2 {
-		s.Fail("subscriber 2 didn't receive initialization message")
+		s.FailNow("subscriber 2 didn't receive initialization message")
 	}
 	log.Debug().Msg("libp2p pubsub suite is ready")
 }
