@@ -18,4 +18,5 @@ type DownloaderSettings struct {
 	Timeout        time.Duration
 	OutputDir      string
 	IPFSSwarmAddrs string
+	LocalIPFS      bool
 }
