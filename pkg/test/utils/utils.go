@@ -95,7 +95,7 @@ func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCo
 	nodeInfos, err := requesterNode.NodeInfoStore.List(ctx)
 	require.NoError(t, err)
 	if len(nodeInfos) != expectedNodeCount {
-		require.FailNowf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
+		require.Failf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
 			"expected 4 node infos, got %d. %+v", len(nodeInfos), nodeInfos)
 	}
 }
