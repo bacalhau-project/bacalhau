@@ -34,7 +34,7 @@ type Requester struct {
 	Endpoint           requester.Endpoint
 	JobStore           jobstore.Store
 	computeProxy       *bprotocol.ComputeProxy
-	localCallback      requester.Scheduler
+	localCallback      compute.Callback
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
 	cleanupFunc        func(ctx context.Context)
 }
@@ -133,6 +133,7 @@ func NewRequesterNode(
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
 		Selector:                   selectionStrategy,
+		Store:                      jobStore,
 		Scheduler:                  scheduler,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
