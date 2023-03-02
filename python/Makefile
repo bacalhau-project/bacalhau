@@ -41,3 +41,14 @@ clean:
 	rm -rf *.egg-info
 	rm -rf .tox dist site
 	rm -rf coverage.xml .coverage
+
+.PHONY: build
+build:
+	$(POETRY) build
+
+.PHONY: publish
+publish:
+	$(POETRY) publish -u __token__ -p ${PYPI_TOKEN}
+
+.PHONY: bumpversion
+	bump2version --new-version minor src/VERSION
