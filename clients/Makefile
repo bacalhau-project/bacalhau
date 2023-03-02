@@ -1,6 +1,6 @@
 PACKAGE_NAME := bacalhau-apiclient
 SWAGGER_JSON := ../docs/swagger.json
-VERSION := $(shell git describe --tags --abbrev=0 | tr -d v).post7
+VERSION := $(shell git describe --tags --abbrev=0 | tr -d v).post8
 
 #set cmd to be swagger-codegen if that doesnt exist make it the java command
 #swagger-codegen is supported by brew install swagger-codegen@2
@@ -14,7 +14,7 @@ endif
 endif
 
 .PHONY: all
-all: python-config.json $(patsubst %,%/,$(shell cat supported_langs)) pypi-build pypi-upload
+all: clean python-config.json $(patsubst %,%/,$(shell cat supported_langs)) pypi-build pypi-upload
 
 
 %-config.json: config.json.template
