@@ -1,10 +1,12 @@
+//go:build unit || !integration
+
 package ranking
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )

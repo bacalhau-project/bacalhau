@@ -36,12 +36,12 @@ var Envs = map[Environment]EnvironmentData{
 		APIPort: 1234,
 		APIHost: "bootstrap.development.bacalhau.org",
 		BootstrapAddresses: []string{
-			"/ip4/34.88.147.110/tcp/1235/p2p/QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD",
 			"/ip4/34.88.135.65/tcp/1235/p2p/QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo",
+			"/ip4/35.228.112.50/tcp/1235/p2p/QmQM1yRXyKGAfFtYpPSy5grHSief3fic6YjLEWQYpmiGTM",
 		},
 		IPFSSwarmAddresses: []string{
-			"/ip4/34.88.147.110/tcp/1235/p2p/QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD",
 			"/ip4/34.88.135.65/tcp/1235/p2p/QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo",
+			"/ip4/35.228.112.50/tcp/1235/p2p/QmQM1yRXyKGAfFtYpPSy5grHSief3fic6YjLEWQYpmiGTM",
 		},
 	},
 	EnvironmentStaging: {

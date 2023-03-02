@@ -5,5 +5,5 @@ These clients wrap *only* the API endpoint calls and request/response models and
 
 ---
 
-Note: for some reason, `swagger-codegen` version 3.0.36 does not generate any model nor API files properly.
-Please use version 2.4.29 instead.
+~Note: for some reason, `swagger-codegen` version 3.0.36 does not generate any model nor API files properly.
+Please use version 2.4.29 instead.~

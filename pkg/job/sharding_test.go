@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -155,7 +155,7 @@ func (suite *JobShardingSuite) TestApplyGlobPattern() {
 	}
 
 	for _, testCase := range testCases {
-		results, err := ApplyGlobPattern(explodeStringArray(testCase.files), testCase.pattern, testCase.basePath)
+		results, err := applyGlobPattern(explodeStringArray(testCase.files), testCase.pattern, testCase.basePath)
 		require.NoError(suite.T(), err)
 		require.Equal(
 			suite.T(),

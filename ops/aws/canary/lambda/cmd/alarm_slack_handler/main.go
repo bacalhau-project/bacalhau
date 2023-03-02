@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/logger"
 )
 
 // variable to store the slack webhooks to retrieve them once and reuse them across recent invocations

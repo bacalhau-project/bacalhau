@@ -3,8 +3,9 @@ package bidstrategy
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type AvailableCapacityStrategyParams struct {
@@ -26,23 +27,23 @@ func NewAvailableCapacityStrategy(ctx context.Context, params AvailableCapacityS
 }
 
 func (s *AvailableCapacityStrategy) ShouldBid(
-	ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
-	return newShouldBidResponse(), nil
+	ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+	return bidstrategy.NewShouldBidResponse(), nil
 }
 
 func (s *AvailableCapacityStrategy) ShouldBidBasedOnUsage(
-	ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error) {
+	ctx context.Context, request bidstrategy.BidStrategyRequest, usage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if we don't have enough capacity available
 	availableCapacity := s.runningCapacityTracker.GetAvailableCapacity(ctx).Add(s.enqueuedCapacityTracker.GetAvailableCapacity(ctx))
 	if !usage.LessThanEq(availableCapacity) {
-		return BidStrategyResponse{
+		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
 			Reason:    "not enough capacity available",
 		}, nil
 	}
 
-	return newShouldBidResponse(), nil
+	return bidstrategy.NewShouldBidResponse(), nil
 }
 
 // compile-time interface check
-var _ BidStrategy = (*AvailableCapacityStrategy)(nil)
+var _ bidstrategy.BidStrategy = (*AvailableCapacityStrategy)(nil)

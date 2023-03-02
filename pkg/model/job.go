@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -16,9 +15,6 @@ type Job struct {
 
 	// The specification of this job.
 	Spec Spec `json:"Spec,omitempty"`
-
-	// The status of the job: where are the nodes at, what are the events
-	Status JobStatus `json:"Status,omitempty"`
 }
 
 type Metadata struct {
@@ -30,6 +26,8 @@ type Metadata struct {
 
 	// The ID of the client that created this job.
 	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+
+	Requester JobRequester `json:"Requester,omitempty"`
 }
 type JobRequester struct {
 	// The ID of the requester node that owns this job.
@@ -38,18 +36,6 @@ type JobRequester struct {
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
-}
-type JobStatus struct {
-	// The current state of the job
-	State JobState `json:"JobState,omitempty"`
-
-	// All events associated with the job
-	Events []JobEvent `json:"JobEvents,omitempty"`
-
-	// All local events associated with the job
-	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty"`
-
-	Requester JobRequester `json:"Requester,omitempty"`
 }
 
 // TODO: There's probably a better way we want to globally version APIs
@@ -75,7 +61,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		},
 	})
 	if err != nil {
-		log.Err(err).Msg("failed to merge sane defaults into job")
 		return nil, err
 	}
 	return j, nil
@@ -83,21 +68,29 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 
 // JobWithInfo is the job request + the result of attempting to run it on the network
 type JobWithInfo struct {
-	Job            Job             `json:"Job,omitempty"`
-	JobState       JobState        `json:"JobState,omitempty"`
-	JobEvents      []JobEvent      `json:"JobEvents,omitempty"`
-	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty"`
+	// Job info
+	Job Job `json:"Job"`
+	// The current state of the job
+	State JobState `json:"State"`
+	// History of changes to the job state. Not always populated in the job description
+	History []JobHistory `json:"History,omitempty"`
 }
 
 // JobShard contains data about a job shard in the bacalhau network.
 type JobShard struct {
-	Job *Job `json:"Job,omitempty"`
-
-	Index int `json:"Index,omitempty"`
+	Job   *Job `json:"Job,omitempty"`
+	Index int  `json:"Index,omitempty"`
 }
 
 func (shard JobShard) ID() string {
-	return GetShardID(shard.Job.Metadata.ID, shard.Index)
+	return shard.ShardID().ID()
+}
+
+func (shard JobShard) ShardID() ShardID {
+	return ShardID{
+		JobID: shard.Job.Metadata.ID,
+		Index: shard.Index,
+	}
 }
 
 func (shard JobShard) String() string {
@@ -107,7 +100,7 @@ func (shard JobShard) String() string {
 type JobExecutionPlan struct {
 	// how many shards are there in total for this job
 	// we are expecting this number x concurrency total
-	// JobShardState objects for this job
+	// ShardState objects for this job
 	TotalShards int `json:"ShardsTotal,omitempty"`
 }
 
@@ -124,51 +117,6 @@ type JobShardingConfig struct {
 	// when using multiple input volumes
 	// what path do we treat as the common mount path to apply the glob pattern to
 	BasePath string `json:"GlobPatternBasePath,omitempty"`
-}
-
-// The state of a job across the whole network
-// generally be in different states on different nodes - one node may be
-// ignoring a job as its bid was rejected, while another node may be
-// submitting results for the job to the requester node.
-//
-// Each node will produce an array of JobShardState one for each shard
-// (jobs without a sharding config will still have sharded job
-// states - just with a shard count of 1). Any code that is determining
-// the current "state" of a job must look at both:
-//
-//   - the ShardCount of the JobExecutionPlan
-//   - the collection of JobShardState to determine the current state
-//
-// Note: JobState itself is not mutable - the JobExecutionPlan and
-// JobShardState are updatable and the JobState is queried by the rest
-// of the system.
-type JobState struct {
-	Nodes map[string]JobNodeState `json:"Nodes,omitempty"`
-}
-
-type JobNodeState struct {
-	Shards map[int]JobShardState `json:"Shards,omitempty"`
-}
-
-type JobShardState struct {
-	// which node is running this shard
-	NodeID string `json:"NodeId,omitempty"`
-	// Compute node reference for this shard execution
-	ExecutionID string `json:"ExecutionId,omitempty"`
-	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex,omitempty"`
-	// what is the state of the shard on this node
-	State JobStateType `json:"State,omitempty"`
-	// an arbitrary status message
-	Status string `json:"Status,omitempty"`
-	// the proposed results for this shard
-	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
-
-	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -340,17 +288,6 @@ type JobSpecWasm struct {
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
-// gives us a way to keep local data against a job
-// so our compute node and requester node control loops
-// can keep state against a job without broadcasting it
-// to the rest of the network
-type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName,omitempty"`
-	JobID        string            `json:"JobID,omitempty"`
-	ShardIndex   int               `json:"ShardIndex,omitempty"`
-	TargetNodeID string            `json:"TargetNodeID,omitempty"`
-}
-
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
@@ -405,4 +342,15 @@ type JobCreatePayload struct {
 
 	// The specification of this job.
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
+}
+
+type JobCancelPayload struct {
+	// the id of the client that is submitting the job
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
+
+	// the job id of the job to be canceled
+	JobID string `json:"JobID,omitempty" validate:"required"`
+
+	// The reason that the job is being canceled
+	Reason string `json:"Reason,omitempty"`
 }

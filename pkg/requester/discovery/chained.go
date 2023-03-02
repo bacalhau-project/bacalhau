@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 )
@@ -42,7 +42,7 @@ func (c *Chain) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo,
 				uniqueNodes[nodeInfo.PeerInfo.ID] = nodeInfo
 			}
 		}
-		log.Debug().Msgf("found %d more nodes by %s", len(uniqueNodes)-currentNodesCount, reflect.TypeOf(discoverer))
+		log.Ctx(ctx).Debug().Msgf("found %d more nodes by %s", len(uniqueNodes)-currentNodesCount, reflect.TypeOf(discoverer))
 	}
 	nodeInfos := make([]model.NodeInfo, 0, len(uniqueNodes))
 	for _, nodeInfo := range uniqueNodes {

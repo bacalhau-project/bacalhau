@@ -13,14 +13,14 @@ type IPLDTreeNode struct {
 	Children []IPLDTreeNode
 }
 
-func GetTreeNode(ctx context.Context, navNode ipld.NavigableNode, path []string) (IPLDTreeNode, error) {
-	children := []IPLDTreeNode{}
+func getTreeNode(ctx context.Context, navNode ipld.NavigableNode, path []string) (IPLDTreeNode, error) {
+	var children []IPLDTreeNode
 	for i, link := range navNode.GetIPLDNode().Links() {
 		childNavNode, err := navNode.FetchChild(ctx, uint(i))
 		if err != nil {
 			return IPLDTreeNode{}, err
 		}
-		childTreeNode, err := GetTreeNode(ctx, childNavNode, append(path, link.Name))
+		childTreeNode, err := getTreeNode(ctx, childNavNode, append(path, link.Name))
 		if err != nil {
 			return IPLDTreeNode{}, err
 		}

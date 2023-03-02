@@ -3,12 +3,12 @@ package estuary
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"go.uber.org/multierr"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/http"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Estuary downloader uses HTTP downloader to download result published to Estuary
@@ -32,7 +32,7 @@ func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (downloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/downloader.estuary.FetchResult")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
 	// fallback to ipfs download for old results without URL

@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"go.ptx.dk/multierrgroup"
 )
 

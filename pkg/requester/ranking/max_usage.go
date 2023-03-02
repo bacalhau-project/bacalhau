@@ -3,9 +3,9 @@ package ranking
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,7 +30,7 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes
 			if jobResourceUsage.LessThanEq(node.ComputeNodeInfo.MaxJobRequirements) {
 				rank = 10
 			} else {
-				log.Trace().Msgf("filtering node %s doesn't accept MaxJobRequirements %s", node.PeerInfo.ID, jobResourceUsage)
+				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't accept MaxJobRequirements %s", node.PeerInfo.ID, jobResourceUsage)
 				rank = -1
 			}
 		}

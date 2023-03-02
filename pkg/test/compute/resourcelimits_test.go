@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -35,8 +35,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
 type SeenJobRecord struct {
@@ -338,7 +337,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
@@ -377,7 +376,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		require.NoError(suite.T(), err)
 		completedShards := job.GetCompletedShardStates(jobState)
 		require.Equal(suite.T(), 1, len(completedShards))
-		require.Equal(suite.T(), model.JobStateCompleted, completedShards[0].State)
+		require.Equal(suite.T(), model.ExecutionStateCompleted, completedShards[0].State)
 		allocationMap[completedShards[0].NodeID]++
 	}
 

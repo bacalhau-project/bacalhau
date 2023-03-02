@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 )
 

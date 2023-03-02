@@ -38,7 +38,7 @@ Follow these steps when a new version of Bacalhau is released and deployed to pr
 4. Verify the canary is compiling locally by running `(cd ops/aws/canary/lambda &&  go build -o /dev/null ./cmd/scenario_lambda_runner)`
 5. Push the changes to main, and the canary pipeline will automatically deploy the new version.
 
-This is a [sample commit](https://github.com/filecoin-project/bacalhau/commit/958630dbe4ad9ba35b0715be2f82c66c60797ba4) updating the canary to Bacalhau v0.2.6
+This is a [sample commit](https://github.com/bacalhau-project/bacalhau/commit/958630dbe4ad9ba35b0715be2f82c66c60797ba4) updating the canary to Bacalhau v0.2.6
 
 ## Infrastructure Stacks
 There are two types of stacks in this project:

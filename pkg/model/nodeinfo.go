@@ -22,6 +22,7 @@ type ComputeNodeInfoProvider interface {
 }
 
 type NodeInfo struct {
+	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`

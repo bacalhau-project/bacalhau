@@ -35,3 +35,15 @@ func NewErrNodeNotFound(peerID peer.ID) ErrNodeNotFound {
 func (e ErrNodeNotFound) Error() string {
 	return fmt.Errorf("nodeInfo not found for peer id: %s", e.peerID).Error()
 }
+
+type ErrJobAlreadyTerminal struct {
+	JobID string
+}
+
+func NewErrJobAlreadyTerminal(jobID string) ErrJobAlreadyTerminal {
+	return ErrJobAlreadyTerminal{JobID: jobID}
+}
+
+func (e ErrJobAlreadyTerminal) Error() string {
+	return fmt.Errorf("job %s is already in a terminal state", e.JobID).Error()
+}

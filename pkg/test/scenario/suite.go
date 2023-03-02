@@ -6,22 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type ScenarioTestSuite interface {
@@ -42,23 +38,16 @@ type ScenarioTestSuite interface {
 // their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
-	Ctx  context.Context
-	Span trace.Span
+	Ctx context.Context
 }
 
 func (s *ScenarioRunner) SetupTest() {
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
 
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(context.Background(), t, s.T().Name())
-	s.Ctx = ctx
-	s.Span = rootSpan
+	s.Ctx = context.Background()
 
 	s.T().Cleanup(func() { _ = telemetry.Cleanup() })
-}
-
-func (s *ScenarioRunner) TearDownTest() {
-	s.Span.End()
 }
 
 func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []model.StorageSpec {
@@ -67,10 +56,10 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 	}
 
 	clients := stack.IPFSClients()
-	require.GreaterOrEqual(s.T(), len(clients), 1, "No IPFS clients to upload to?")
+	s.Require().GreaterOrEqual(len(clients), 1, "No IPFS clients to upload to?")
 
 	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, stack.IPFSClients()...)
-	require.NoError(s.T(), stErr)
+	s.Require().NoError(stErr)
 
 	return storageList
 }
@@ -118,18 +107,18 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	stack, cm := s.setupStack(scenario.Stack)
 
 	// Check that the stack has the appropriate executor installed
-	for _, node := range stack.Nodes {
-		executor, err := node.ComputeNode.Executors.Get(s.Ctx, spec.Engine)
-		require.NoError(s.T(), err)
+	for _, n := range stack.Nodes {
+		executor, err := n.ComputeNode.Executors.Get(s.Ctx, spec.Engine)
+		s.Require().NoError(err)
 
 		isInstalled, err := executor.IsInstalled(s.Ctx)
-		require.NoError(s.T(), err)
-		require.True(s.T(), isInstalled, "Expected %v to be installed on node %s", spec.Engine, node.Host.ID().String())
+		s.Require().NoError(err)
+		s.Require().True(isInstalled, "Expected %v to be installed on node %s", spec.Engine, n.Host.ID().String())
 	}
 
 	// TODO: assert network connectivity
 
-	// Setup storage
+	s.T().Log("Setting up storage")
 	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
 	spec.Contexts = s.prepareStorage(stack, scenario.Contexts)
 	spec.Outputs = scenario.Outputs
@@ -137,12 +126,12 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		spec.Outputs = []model.StorageSpec{}
 	}
 
-	// Setup job and submit
+	s.T().Log("Submitting job")
 	j, err := model.NewJobWithSaneProductionDefaults()
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	j.Spec = spec
-	require.True(s.T(), model.IsValidEngine(j.Spec.Engine))
+	s.Require().True(model.IsValidEngine(j.Spec.Engine))
 	if !model.IsValidVerifier(j.Spec.Verifier) {
 		j.Spec.Verifier = model.VerifierNoop
 	}
@@ -161,46 +150,47 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		scenario.SubmitChecker = SubmitJobSuccess()
 	}
 	err = scenario.SubmitChecker(submittedJob, submitError)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// exit if the test expects submission to fail as no further assertions can be made
 	if submitError != nil {
 		return
 	}
-	// Wait for job to complete
+
+	s.T().Log("Waiting for job")
 	resolver := apiClient.GetJobStateResolver()
-	checkers := scenario.JobCheckers
-	shards := job.GetJobTotalExecutionCount(submittedJob)
-	err = resolver.Wait(s.Ctx, submittedJob.Metadata.ID, shards, checkers...)
-	require.NoError(s.T(), err)
+	err = resolver.Wait(s.Ctx, submittedJob.Metadata.ID, scenario.JobCheckers...)
+	s.Require().NoError(err)
 
 	// Check outputs
+	s.T().Log("Checking output")
 	results, err := apiClient.GetResults(s.Ctx, submittedJob.Metadata.ID)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	resultsDir = s.T().TempDir()
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	downloaderSettings := &model.DownloaderSettings{
-		Timeout:        time.Second * 5,
+		Timeout:        time.Second * 10,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
+		LocalIPFS:      true,
 	}
 
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
 		model.StorageSourceIPFS: ipfsDownloader,
 	})
 
 	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, downloaderProvider, downloaderSettings)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	if scenario.ResultsChecker != nil {
 		err = scenario.ResultsChecker(filepath.Join(resultsDir, model.DownloadVolumesFolderName))
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}
 
 	return resultsDir

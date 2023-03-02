@@ -1,10 +1,12 @@
+//go:build integration
+
 package compute
 
 import (
 	"fmt"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 )
 
@@ -41,7 +43,6 @@ func addResourceUsage(job model.Job, usage model.ResourceUsageData) model.Job {
 	return job
 }
 
-//nolint:unused
 func getResources(c, m, d string) model.ResourceUsageConfig {
 	return model.ResourceUsageConfig{
 		CPU:    c,
@@ -50,7 +51,6 @@ func getResources(c, m, d string) model.ResourceUsageConfig {
 	}
 }
 
-//nolint:unused
 func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 	var res []model.ResourceUsageConfig
 	for _, d := range data {

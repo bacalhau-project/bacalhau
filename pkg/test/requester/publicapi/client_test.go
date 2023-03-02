@@ -6,21 +6,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
 	logger.ConfigureTestLogging(t)
 	n, c := setupNodeForTest(t)
-	defer n.CleanupManager.Cleanup()
+	defer n.CleanupManager.Cleanup(context.Background())
 
-	ctx, span := system.Span(context.Background(),
-		"publicapi/client_test", "TestGet")
-	defer span.End()
+	ctx := context.Background()
 
 	// Submit a few random jobs to the node:
 	var err error
@@ -35,5 +32,5 @@ func TestGet(t *testing.T) {
 	job2, ok, err := c.Get(ctx, j.Metadata.ID)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, job2.Metadata.ID, j.Metadata.ID)
+	require.Equal(t, job2.Job.Metadata.ID, j.Metadata.ID)
 }

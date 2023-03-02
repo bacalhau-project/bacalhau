@@ -19,13 +19,13 @@ import (
 	"strconv"
 	"strings"
 
-	bacalhau_model_v1beta1 "github.com/filecoin-project/bacalhau/pkg/model"
-	bacalhau_model_v1alpha1 "github.com/filecoin-project/bacalhau/pkg/model/v1alpha1"
+	bacalhau_model_v1alpha1 "github.com/bacalhau-project/bacalhau/pkg/model/v1alpha1"
+	bacalhau_model_v1beta1 "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
 // Based on code at:
 //
-//	github.com/filecoin-project/bacalhau/dashboard/api/cmd/dashboard/import.go
+//	github.com/bacalhau-project/bacalhau/dashboard/api/cmd/dashboard/import.go
 type LogLineAlpha struct {
 	Type  string
 	Event bacalhau_model_v1alpha1.JobEvent

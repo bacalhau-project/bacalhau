@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rs/zerolog/log"
@@ -36,7 +36,7 @@ func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	handler.host.SetStreamHandler(ResultAcceptedProtocolID, handler.onResultAccepted)
 	handler.host.SetStreamHandler(ResultRejectedProtocolID, handler.onResultRejected)
 	handler.host.SetStreamHandler(CancelProtocolID, handler.onCancelJob)
-	log.Info().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
+	log.Debug().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
 	return handler
 }
 

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 )
@@ -119,6 +119,7 @@ func (f *fanoutPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
+	var err error
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishShardResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
@@ -160,8 +161,8 @@ loop:
 
 		case <-timeoutChannel:
 			break loop
-		case err := <-errorChannel:
-			return model.StorageSpec{}, err
+		case err = <-errorChannel:
+			break loop
 		}
 	}
 
@@ -173,7 +174,7 @@ loop:
 		}
 	}
 
-	return model.StorageSpec{}, nil
+	return model.StorageSpec{}, err
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)

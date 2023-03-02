@@ -15,6 +15,11 @@ func CloseWithLogOnError(name string, c io.Closer) {
 	closeCloser(name, c)
 }
 
+// ContextCloserWithLogOnError will close the given resource using the context and log any relevant failure
+func ContextCloserWithLogOnError(ctx context.Context, name string, c CloseWithContext) {
+	closeCloser(name, contextIoCloser{ctx, c.Close})
+}
+
 // DrainAndCloseWithLogOnError will first ensure the contents of the reader has been read before being closed. This is
 // useful when dealing with HTTP response bodies which need to be drained and closed so that the connection may be
 // re-used by the OS.
@@ -38,3 +43,16 @@ func closeCloser(name string, c io.Closer) {
 }
 
 const framesFromCaller = 4
+
+type CloseWithContext interface {
+	Close(ctx context.Context) error
+}
+
+type contextIoCloser struct {
+	ctx context.Context
+	f   func(context.Context) error
+}
+
+func (c contextIoCloser) Close() error {
+	return c.f(c.ctx)
+}

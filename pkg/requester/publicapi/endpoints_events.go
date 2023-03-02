@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 )
 
 type eventsRequest struct {
@@ -14,7 +14,7 @@ type eventsRequest struct {
 }
 
 type eventsResponse struct {
-	Events []model.JobEvent `json:"events"`
+	Events []model.JobHistory `json:"events"`
 }
 
 // events godoc
@@ -43,7 +43,7 @@ func (s *RequesterAPIServer) events(res http.ResponseWriter, req *http.Request) 
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
 	ctx := req.Context()
-	events, err := s.localDB.GetJobEvents(ctx, eventsReq.JobID)
+	events, err := s.jobStore.GetJobHistory(ctx, eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

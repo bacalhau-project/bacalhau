@@ -3,16 +3,14 @@ package bacalhau
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/spf13/cobra"
@@ -26,13 +24,13 @@ var (
 	//nolint:lll // Documentation
 	devstackExample = templates.Examples(i18n.T(`
 		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
-		bacalhau devstack 
+		bacalhau devstack
 
 		# Create a devstack cluster with a two requester nodes and 10 compute nodes
 		bacalhau devstack  --requester-nodes 2 --compute-nodes 10
 
 		# Create a devstack cluster with a single hybrid (requester and compute) nodes
-		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1 
+		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 `))
 )
 
@@ -127,13 +125,13 @@ func newDevStackCmd() *cobra.Command {
 }
 
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOptions, IsNoop bool) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
-	defer rootSpan.End()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
+	if config.DevstackShouldWriteEnvFile() {
+		cm.RegisterCallback(cleanupDevstackDotEnv)
+	}
 	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
@@ -148,10 +146,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		Fatal(cmd, fmt.Sprintf("You cannot have more bad requester actors (%d) than there are nodes (%d).",
 			ODs.NumberOfBadRequesterActors, totalRequesterNodes), 1)
 	}
-
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := signal.NotifyContext(ctx, ShutdownSignals...)
-	defer cancel()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
@@ -168,6 +162,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 
 	computeConfig := getComputeConfig(OS)
+	requestorConfig := getRequesterConfig(OS)
 	if ODs.LocalNetworkLotus {
 		cmd.Println("Note that starting up the Lotus node can take many minutes!")
 	}
@@ -175,9 +170,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	var stack *devstack.DevStack
 	var stackErr error
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	}
 	if stackErr != nil {
 		return stackErr
@@ -214,5 +209,12 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	<-ctx.Done() // block until killed
 
 	cmd.Println("Shutting down devstack")
+	return nil
+}
+
+func cleanupDevstackDotEnv() error {
+	if _, err := os.Stat(config.DevstackEnvFile()); err == nil {
+		return os.Remove(config.DevstackEnvFile())
+	}
 	return nil
 }

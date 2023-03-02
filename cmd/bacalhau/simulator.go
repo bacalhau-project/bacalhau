@@ -3,11 +3,11 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -24,22 +24,15 @@ func newSimulatorCmd() *cobra.Command {
 }
 
 func runSimulator(cmd *cobra.Command) error {
-	//Cleanup manager ensures that resources are freed before exiting:
-	cm := system.NewCleanupManager()
-	//cm.RegisterCallback(telemetry.Cleanup)
-	defer cm.Cleanup()
 	ctx := cmd.Context()
-	datastore, err := inmemory.NewInMemoryDatastore()
-	if err != nil {
-		return err
-	}
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
+	//Cleanup manager ensures that resources are freed before exiting:
+	datastore := inmemory.NewJobStore()
 	libp2pHost, err := libp2p.NewHost(9075) //nolint:gomnd
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
 	}
-	cm.RegisterCallback(func() error {
-		return libp2pHost.Close()
-	})
+	cm.RegisterCallback(libp2pHost.Close)
 
 	// print out simulator multi-address
 	p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
@@ -47,13 +40,13 @@ func runSimulator(cmd *cobra.Command) error {
 		Fatal(cmd, fmt.Sprintf("Error creating p2p multiaddr: %s", err), 1)
 	}
 	fullAddr := libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
-	log.Info().Msgf("Simulator reachable at: %s", fullAddr)
-	log.Info().Msgf("You can run: bacalhau devstack --simulator-addr \"%s\"", fullAddr)
+	log.Ctx(ctx).Info().Msgf("Simulator reachable at: %s", fullAddr)
+	log.Ctx(ctx).Info().Msgf("You can run: bacalhau devstack --simulator-addr \"%s\"", fullAddr)
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		CleanupManager:      cm,
-		LocalDB:             datastore,
+		JobStore:            datastore,
 		Host:                libp2pHost,
 		HostAddress:         "0.0.0.0",
 		APIPort:             apiPort,

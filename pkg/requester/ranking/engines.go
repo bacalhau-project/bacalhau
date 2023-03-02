@@ -3,8 +3,8 @@ package ranking
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/rs/zerolog/log"
 )
 
@@ -32,7 +32,7 @@ func (s *EnginesNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes 
 			}
 			// engine wasn't found
 			if rank == 0 {
-				log.Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.Engine)
+				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.Engine)
 				rank = -1
 			}
 		}

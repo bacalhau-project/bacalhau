@@ -12,6 +12,7 @@ dist/*.sha256
 dist/*.tar.gz
 env.*
 .env
+.devstack.env
 *.swp
 *.swo
 bin/*/*

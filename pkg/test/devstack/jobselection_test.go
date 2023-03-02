@@ -5,13 +5,13 @@ package devstack
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -38,7 +38,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 	runTest := func(testCase TestCase) {
 		if testCase.nodeCount != testCase.addFilesCount {
-			suite.T().Skip("https://github.com/filecoin-project/bacalhau/issues/361")
+			suite.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/361")
 		}
 
 		testScenario := scenario.Scenario{
@@ -55,11 +55,11 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			Deal:     model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),
-				job.WaitThrowErrors([]model.JobStateType{
-					model.JobStateError,
+				job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+					model.ExecutionStateFailed,
 				}),
-				job.WaitForJobStates(map[model.JobStateType]int{
-					model.JobStateCompleted: testCase.expectedAccepts,
+				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+					model.ExecutionStateCompleted: testCase.expectedAccepts,
 				}),
 			},
 		}

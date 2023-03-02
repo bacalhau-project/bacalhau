@@ -4,25 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p/rcmgr"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/rs/zerolog/log"
@@ -235,6 +231,12 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 	})
 }
 
+func getRequesterConfig(OS *ServeOptions) node.RequesterConfig {
+	return node.NewRequesterConfigWith(node.RequesterConfigParams{
+		JobSelectionPolicy: getJobSelectionConfig(OS),
+	})
+}
+
 func newServeCmd() *cobra.Command {
 	OS := NewServeOptions()
 
@@ -305,17 +307,8 @@ func newServeCmd() *cobra.Command {
 
 //nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
-	// Cleanup manager ensures that resources are freed before exiting:
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(telemetry.Cleanup)
-	defer cm.Cleanup()
-
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := signal.NotifyContext(cmd.Context(), ShutdownSignals...)
-	defer cancel()
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
-	defer rootSpan.End()
+	ctx := cmd.Context()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -345,7 +338,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("libp2p connecting to: %s", peers)
+	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {
@@ -362,7 +355,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return err
 	}
 
-	datastore, err := inmemory.NewInMemoryDatastore()
+	datastore := inmemory.NewJobStore()
 	if err != nil {
 		return fmt.Errorf("error creating in memory datastore: %s", err)
 	}
@@ -371,14 +364,14 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	nodeConfig := node.NodeConfig{
 		IPFSClient:           ipfsClient,
 		CleanupManager:       cm,
-		LocalDB:              datastore,
+		JobStore:             datastore,
 		Host:                 libp2pHost,
 		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
 		ComputeConfig:        getComputeConfig(OS),
-		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
+		RequesterNodeConfig:  getRequesterConfig(OS),
 		IsComputeNode:        isComputeNode,
 		IsRequesterNode:      isRequesterNode,
 		Labels:               OS.Labels,
@@ -489,7 +482,7 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
 		}
-		cm.RegisterCallback(ipfsNode.Close)
+		cm.RegisterCallbackWithContext(ipfsNode.Close)
 		client := ipfsNode.Client()
 
 		swarmAddresses, err := client.SwarmAddresses(ctx)
@@ -501,7 +494,7 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		return client, nil
 	}
 
-	client, err := ipfs.NewClientUsingRemoteHandler(OS.IPFSConnect)
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect)
 	if err != nil {
 		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
 	}

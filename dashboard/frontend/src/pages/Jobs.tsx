@@ -402,38 +402,6 @@ const Jobs: FC = () => {
         <Box
           component="div"
           sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <FormControl component="fieldset">
-            <FormGroup aria-label="position" row>
-              {
-                annotations.map((annotation) => (
-                  <FormControlLabel
-                    key={ annotation.annotation }
-                    value="top"
-                    control={
-                      <Checkbox
-                        checked={ activeAnnotations.indexOf(annotation.annotation) >= 0 }
-                        onChange={ (event: React.ChangeEvent<HTMLInputElement>) => {
-                          updateAnnotation(annotation.annotation, event.target.checked)
-                        }}
-                      />
-                    }
-                    label={ `${annotation.annotation} (${annotation.count})` }
-                    labelPlacement="start"
-                  />
-                ))
-              }
-            </FormGroup>
-          </FormControl>
-        </Box>
-        <Box
-          component="div"
-          sx={{
             flexGrow: 1,
             mt: 2,
           }}

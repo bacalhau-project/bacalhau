@@ -1,0 +1,13 @@
+pip==22.3.1
+bump2version==0.5.11
+wheel==0.33.6
+watchdog==0.9.0
+flake8==6.0.0
+tox==4.2.6
+coverage==4.5.4
+twine==4.0.2
+black==22.12.0
+pluggy==1.0
+isort==5.12.0
+pendulum==2.1.2
+sphinx==6.1.3

@@ -1,11 +1,13 @@
+//go:build unit || !integration
+
 package ranking
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -82,7 +84,7 @@ func newFixedRanker(ranks ...int) *fixedRanker {
 	}
 }
 
-func (f *fixedRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
+func (f *fixedRanker) RankNodes(_ context.Context, _ model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
 	ranks := make([]requester.NodeRank, len(nodes))
 	for i, rank := range f.ranks {
 		ranks[i] = requester.NodeRank{

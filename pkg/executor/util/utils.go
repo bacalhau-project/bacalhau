@@ -3,23 +3,24 @@ package util
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor/language"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
-	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
-	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
-	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
-	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
-	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	repo "github.com/filecoin-project/bacalhau/pkg/storage/repo"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	pythonwasm "github.com/bacalhau-project/bacalhau/pkg/executor/python_wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
+	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type StandardStorageProviderOptions struct {
@@ -35,7 +36,7 @@ type StandardExecutorOptions struct {
 }
 
 func NewStandardStorageProvider(
-	ctx context.Context,
+	_ context.Context,
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
@@ -99,11 +100,12 @@ func NewStandardStorageProvider(
 	}
 
 	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             useIPFSDriver,
-		model.StorageSourceURLDownload:      urlDownloadStorage,
-		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
-		model.StorageSourceInline:           inlineStorage,
-		model.StorageSourceRepoClone:        repoCloneStorage,
+    model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
+    model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
+    model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
+    model.StorageSourceInline:           tracing.Wrap(inlineStorage),
+    model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
+
 	}), nil
 }
 
@@ -112,10 +114,7 @@ func NewNoopStorageProvider(
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewNoopStorage(ctx, cm, config)
-	if err != nil {
-		return nil, err
-	}
+	noopStorage := noop_storage.NewNoopStorage(config)
 	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
 }
 

@@ -1,14 +1,13 @@
-//go:build integration
+//go:build integration && linux
 
 package sqlite
 
 import (
-	"io/ioutil"
-	"runtime"
+	"os"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -16,10 +15,7 @@ import (
 func TestSQLiteSuite(t *testing.T) {
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
-		if runtime.GOOS != "linux" {
-			return nil
-		}
-		datafile, err := ioutil.TempFile("", "sqlite-test-*.db")
+		datafile, err := os.CreateTemp("", "sqlite-test-*.db")
 		require.NoError(testingSuite.T(), err)
 		datastore, err := NewSQLiteDatastore(datafile.Name())
 		require.NoError(testingSuite.T(), err)

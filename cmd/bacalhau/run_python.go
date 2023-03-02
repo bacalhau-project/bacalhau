@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -80,7 +78,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
 // that the compute node can verify the job knowing that it was run properly,
 // rather than doing the translation in, and thereby trusting, the client (to
-// set up the wasm environment to be determinstic)
+// set up the wasm environment to be deterministic)
 
 func newRunPythonCmd() *cobra.Command {
 	OLR := NewLanguageRunOptions()
@@ -165,13 +163,9 @@ func newRunPythonCmd() *cobra.Command {
 }
 
 func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// error if determinism is false
 	if !OLR.Deterministic {
@@ -199,10 +193,10 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 	// have ConstructLanguageJob and ConstructDockerJob as separate means
 	// manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
+		ctx,
 		OLR.InputVolumes,
 		OLR.InputUrls,
 		OLR.OutputVolumes,
-		[]string{}, // no env vars (yet)
 		OLR.Concurrency,
 		OLR.Confidence,
 		OLR.MinBids,
@@ -212,10 +206,8 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		OLR.Command,
 		programPath,
 		OLR.RequirementsPath,
-		OLR.ContextPath,
 		OLR.Deterministic,
 		OLR.Labels,
-		doNotTrack,
 	)
 	if err != nil {
 		return err

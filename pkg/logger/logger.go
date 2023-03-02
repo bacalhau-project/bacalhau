@@ -3,6 +3,7 @@ package logger
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"math"
@@ -15,7 +16,7 @@ import (
 
 	"github.com/rs/zerolog/pkgerrors"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
@@ -23,16 +24,47 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type LogMode string
+
+// Available logging modes
+const (
+	LogModeDefault  LogMode = "default"
+	LogModeStation  LogMode = "station"
+	LogModeJSON     LogMode = "json"
+	LogModeCombined LogMode = "combined"
+	LogModeEvent    LogMode = "event"
+)
+
+func ParseLogMode(s string) (LogMode, error) {
+	lm := []LogMode{LogModeDefault, LogModeStation, LogModeJSON, LogModeCombined, LogModeEvent}
+	for _, logMode := range lm {
+		if s == string(logMode) {
+			return logMode, nil
+		}
+	}
+	return "Error", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)",
+		s, lm)
+}
+
 var nodeIDFieldName = "NodeID"
 
-func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
-	configureLogging()
+func init() { //nolint:gochecknoinits
+	// logging needs to be automatically configured when running as a test.
+	// Buffer the log messages till logging has been configured when not running as a test, so they can be outputted
+	// in the correct format.
+	if strings.Contains(os.Args[0], "/_test/") ||
+		strings.HasSuffix(os.Args[0], ".test") ||
+		flag.Lookup("test.v") != nil ||
+		flag.Lookup("test.run") != nil {
+		configureLogging(defaultLogging())
+		return
+	}
+
+	configureLogging(bufferLogs())
 }
 
 type tTesting interface {
-	Log(args ...interface{})
-	Logf(format string, args ...interface{})
-	Helper()
+	zerolog.TestingLog
 	Cleanup(f func())
 }
 
@@ -40,7 +72,7 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	configureLogging(zerolog.ConsoleTestWriter(t))
+	configureLogging(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
@@ -48,10 +80,28 @@ func ConfigureTestLogging(t tTesting) {
 	})
 }
 
-func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
+func ConfigureLogging(mode LogMode) {
+	logModeConfig := defaultLogging()
+	switch mode {
+	case LogModeDefault:
+		logModeConfig = defaultLogging()
+	case LogModeStation:
+		logModeConfig = defaultStationLogging()
+	case LogModeJSON:
+		logModeConfig = jsonLogging()
+	case LogModeEvent:
+		logModeConfig = eventLogging()
+	case LogModeCombined:
+		logModeConfig = combinedLogging()
+	}
+	configureLogging(logModeConfig)
+
+	LogBufferedLogs(logModeConfig)
+}
+
+func configureLogging(logWriter io.Writer) {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
-	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
 
 	switch {
 	case logLevelString == "trace":
@@ -68,38 +118,6 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
-
-	defaultLogging := func(w *zerolog.ConsoleWriter) {
-		w.Out = os.Stderr
-		w.NoColor = !isTerminal
-		w.TimeFormat = "15:04:05.999 |"
-		w.PartsOrder = []string{
-			zerolog.TimestampFieldName,
-			zerolog.LevelFieldName,
-			zerolog.CallerFieldName,
-			zerolog.MessageFieldName,
-		}
-
-		// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
-		//  Adding the fields to the parts section didn't help as it just printed the fields twice.
-		w.FormatFieldName = func(i interface{}) string {
-			return fmt.Sprintf("[%s:", i)
-		}
-
-		w.FormatFieldValue = func(i interface{}) string {
-			// don't print nil in case field value wasn't preset. e.g. no nodeID
-			if i == nil {
-				i = ""
-			}
-			return fmt.Sprintf("%s]", i)
-		}
-	}
-
-	loggingOptions = append([]func(w *zerolog.ConsoleWriter){defaultLogging}, loggingOptions...)
-
-	textWriter := zerolog.NewConsoleWriter(loggingOptions...)
-
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {
 		// Branch that'll be used when the binary is run, as it is built as a Go module
@@ -113,21 +131,7 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 		}
 	}
 
-	// we default to text output
-	var useLogWriter io.Writer = textWriter
-
-	if logTypeString == "json" {
-		// we just want json
-		useLogWriter = os.Stdout
-	} else if logTypeString == "combined" {
-		// we just want json and text and events
-		useLogWriter = zerolog.MultiLevelWriter(textWriter, os.Stdout)
-	} else if logTypeString == "event" {
-		// we just want events
-		useLogWriter = io.Discard
-	}
-
-	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Stack().Logger()
+	log.Logger = zerolog.New(logWriter).With().Timestamp().Caller().Stack().Logger()
 	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
 	// Tests will use the DefaultContextLogger instead
 	zerolog.DefaultContextLogger = &log.Logger
@@ -135,6 +139,71 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	configureIpfsLogging(log.Logger)
+}
+
+func jsonLogging() io.Writer {
+	return os.Stdout
+}
+
+func eventLogging() io.Writer {
+	return io.Discard
+}
+
+func combinedLogging() io.Writer {
+	return zerolog.MultiLevelWriter(defaultLogging(), os.Stdout)
+}
+
+func defaultLogging() io.Writer {
+	return zerolog.NewConsoleWriter(defaultLogFormat)
+}
+
+func defaultLogFormat(w *zerolog.ConsoleWriter) {
+	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
+	w.Out = os.Stderr
+	w.NoColor = !isTerminal
+	w.TimeFormat = "15:04:05.999 |"
+	w.PartsOrder = []string{
+		zerolog.TimestampFieldName,
+		zerolog.LevelFieldName,
+		zerolog.CallerFieldName,
+		zerolog.MessageFieldName,
+	}
+
+	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
+	//  Adding the fields to the parts section didn't help as it just printed the fields twice.
+	w.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("[%s:", i)
+	}
+
+	w.FormatFieldValue = func(i interface{}) string {
+		// don't print nil in case field value wasn't preset. e.g. no nodeID
+		if i == nil {
+			i = ""
+		}
+		return fmt.Sprintf("%s]", i)
+	}
+}
+
+func defaultStationLogging() io.Writer {
+	return zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+		isTerminal := isatty.IsTerminal(os.Stdout.Fd())
+		w.Out = os.Stdout
+		w.NoColor = !isTerminal
+		w.PartsOrder = []string{
+			zerolog.LevelFieldName,
+			zerolog.MessageFieldName,
+		}
+
+		w.FormatLevel = func(i interface{}) string {
+			return strings.ToUpper(i.(string)) + ":"
+		}
+		w.FormatErrFieldName = func(i interface{}) string {
+			return "- "
+		}
+		w.FormatErrFieldValue = func(i interface{}) string {
+			return strings.Trim(i.(string), "\"")
+		}
+	})
 }
 
 func loggerWithNodeID(nodeID string) zerolog.Logger {

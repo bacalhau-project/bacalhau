@@ -1,7 +1,16 @@
 # Developer docs
 
 This page contains the documentation for the Bacalhau contributors or advanced users.
+
 Please find the general docs at: https://docs.bacalhau.org/.
+
+## Getting Started with the PL Ecosystem
+
+Read this first! The following link provides [tutorials and documentation](https://curriculum.pl-launchpad.io/tutorials/) to explain how all the key PL technologies work. Read this to learn more about IPFS, IPLD, libp2p and more.
+
+https://curriculum.pl-launchpad.io/
+
+## Sub-Pages
 
 * [Running locally](./running_locally.md)
 * [Debugging locally](./debugging_locally.md)

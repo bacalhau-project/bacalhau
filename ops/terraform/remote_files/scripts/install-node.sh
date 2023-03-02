@@ -5,6 +5,14 @@ IFS=$'\n\t'
 
 source /terraform_node/variables
 
+function install-go() {
+  echo "Installing Go..."
+  rm -fr /usr/local/go /usr/local/bin/go
+  curl --silent --show-error --location --fail https://go.dev/dl/go1.19.6.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+  go version
+}
+
 function install-docker() {
   echo "Installing Docker"
   sudo apt-get install -y \
@@ -81,15 +89,15 @@ function install-bacalhau() {
 function install-bacalhau-from-release() {
   echo "Installing Bacalhau from release ${BACALHAU_VERSION}"
   sudo apt-get -y install --no-install-recommends jq
-  wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
+  wget "https://github.com/bacalhau-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
 }
 
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
-  sudo apt-get -y install --no-install-recommends golang-go jq
-  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/filecoin-project/bacalhau.git
+  sudo apt-get -y install --no-install-recommends jq
+  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
   cd bacalhau
   GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
   sudo mv ./bacalhau /usr/local/bin/bacalhau
@@ -235,10 +243,10 @@ function install-promtail() {
     gunzip -S ".zip" promtail-linux-amd64.zip
     sudo chmod a+x "promtail-linux-amd64"
     sudo mv promtail-linux-amd64 /usr/local/bin/
-    
+
     # config file
     HOSTNAME=$(hostname)
-    
+
     sudo tee /terraform_node/promtail.yml > /dev/null <<EOF
 server:
   http_listen_port: 0
@@ -259,7 +267,7 @@ scrape_configs:
            msg:
       - drop:
           source: "level"
-          expression:  "(debug|trace)"
+          expression:  "(trace)"
     journal:
       max_age: 12h
       labels:
@@ -279,7 +287,7 @@ EOF
   fi
 }
 
-function mount-disk() { 
+function mount-disk() {
   echo "Mounting disk"
   # wait for /dev/sdb to exist
   while [[ ! -e /dev/sdb ]]; do
@@ -368,6 +376,7 @@ function start-services() {
 }
 
 function install() {
+  install-go
   install-docker
   install-gpu
   install-healthcheck

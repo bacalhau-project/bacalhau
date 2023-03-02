@@ -9,14 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	ipfs_storage "github.com/filecoin-project/bacalhau/pkg/storage/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -36,8 +35,7 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
@@ -71,12 +69,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
-
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	defer TeardownTest(cm)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
@@ -116,12 +109,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
-
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(telemetry.Cleanup)
+	defer TeardownTest(cm)
 
 	dir := t.TempDir()
 

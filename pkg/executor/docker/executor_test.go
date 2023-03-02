@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -39,7 +39,9 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	var err error
 	s.cm = system.NewCleanupManager()
-	s.T().Cleanup(s.cm.Cleanup)
+	s.T().Cleanup(func() {
+		s.cm.Cleanup(context.Background())
+	})
 
 	s.executor, err = NewExecutor(
 		context.Background(),
@@ -60,7 +62,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 	// the "docker0" interface.
 	var gateway net.IP
 	if runtime.GOOS == "linux" {
-		gateway, err = docker.HostGatewayIP(context.Background(), s.executor.Client)
+		gateway, err = s.executor.client.HostGatewayIP(context.Background())
 		require.NoError(s.T(), err)
 	} else {
 		gateway = net.ParseIP("127.0.0.1")
@@ -314,6 +316,9 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
 	})
-	s.ErrorIs(err, context.DeadlineExceeded)
+	// The Docker client has changed so that it prioritizes container error message
+	// and not the error message from the context. It does error upon timeout, but not
+	// with a context.DeadlineExceeded error.
+	s.Error(err)
 	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
 }

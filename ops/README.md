@@ -70,7 +70,7 @@ terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 terraform apply -var-file production.tfvars -var-file production-secrets.tfvars
 ```
 
-> :warning: Due to some limitations in how GCP provision gpus (inquiry @simonwo for more details :smile:) the disk of one of the gpu machines [has to be restored from a hand-picked snapshot](https://github.com/filecoin-project/bacalhau/blob/587415f600ba8b1b4a117799d1a14907430b893c/ops/terraform/main.tf#L198). This is a temporary solution.
+> :warning: Due to some limitations in how GCP provision gpus (inquiry @simonwo for more details :smile:) the disk of one of the gpu machines [has to be restored from a hand-picked snapshot](https://github.com/bacalhau-project/bacalhau/blob/587415f600ba8b1b4a117799d1a14907430b893c/ops/terraform/main.tf#L198). This is a temporary solution.
 
 # Stand up a new long lived cluster
 
@@ -187,7 +187,7 @@ gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo journalctl -u google-startup
 In some resources, the `name` property of a resource is calculated like this:
 
 ```
-name  = terraform.workspace == "production" ? 
+name  = terraform.workspace == "production" ?
   "bacalhau-ipv4-address-${count.index}" :
   "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
 ```

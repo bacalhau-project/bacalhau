@@ -3,7 +3,7 @@ package routing
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2p_routing "github.com/libp2p/go-libp2p/core/routing"
 )

@@ -1,27 +1,27 @@
+//go:build integration
+
 package compute
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	noop_publisher "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	noop_verifier "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 )
@@ -30,7 +30,6 @@ type ComputeSuite struct {
 	suite.Suite
 	node          *node.Compute
 	config        node.ComputeConfig
-	jobStore      localdb.LocalDB
 	cm            *system.CleanupManager
 	executor      *noop_executor.NoopExecutor
 	verifier      *noop_verifier.NoopVerifier
@@ -39,19 +38,17 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupTest() {
+	var err error
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
-	jobStore, err := inmemory.NewInMemoryDatastore()
-	s.NoError(err)
-
-	s.jobStore = jobStore
 	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
 		TotalResourceLimits: model.ResourceUsageData{
 			CPU: 2,
 		},
 	})
 	s.executor = noop_executor.NewNoopExecutor()
-	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm, localdb.GetStateResolver(s.jobStore))
+	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm)
+	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.setupNode()
 }
@@ -74,7 +71,7 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	noopstorage, err := noop_storage.NewNoopStorage(nil, nil, noop_storage.StorageConfig{})
+	noopstorage := noop_storage.NewNoopStorage(noop_storage.StorageConfig{})
 	s.Require().NoError(err)
 
 	s.node, err = node.NewComputeNode(

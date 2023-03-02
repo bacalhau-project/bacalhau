@@ -4,24 +4,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type RequesterConfigParams struct {
 	// Timeout config
-	JobNegotiationTimeout      time.Duration
 	MinJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
 
-	StateManagerBackgroundTaskInterval time.Duration
+	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
+	JobSelectionPolicy                 model.JobSelectionPolicy
 	SimulatorConfig                    model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 type RequesterConfig struct {
-	// Timeout config
-	// JobNegotiationTimeout timeout value waiting for enough bids to be submitted for a job
-	JobNegotiationTimeout time.Duration
 	// MinJobExecutionTimeout requester will replace any job execution timeout that is less than this
 	// value with DefaultJobExecutionTimeout.
 	MinJobExecutionTimeout time.Duration
@@ -29,12 +29,15 @@ type RequesterConfig struct {
 	// if the user didn't define one in the spec
 	DefaultJobExecutionTimeout time.Duration
 
-	// StateManagerBackgroundTaskInterval background task interval that periodically checks for
-	// expired states among other things.
-	StateManagerBackgroundTaskInterval time.Duration
+	// HousekeepingBackgroundTaskInterval background task interval that periodically checks for expired states
+	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
+	JobSelectionPolicy      model.JobSelectionPolicy
 	SimulatorConfig         model.SimulatorConfigRequester
+
+	// minimum version of compute nodes that the requester will accept and route jobs to
+	MinBacalhauVersion model.BuildVersionInfo
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -50,31 +53,30 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 			panic(fmt.Sprintf("Failed to initialize compute config %s", err.Error()))
 		}
 	}()
-	if params.JobNegotiationTimeout == 0 {
-		params.JobNegotiationTimeout = DefaultRequesterConfig.JobNegotiationTimeout
-	}
 	if params.MinJobExecutionTimeout == 0 {
 		params.MinJobExecutionTimeout = DefaultRequesterConfig.MinJobExecutionTimeout
 	}
 	if params.DefaultJobExecutionTimeout == 0 {
 		params.DefaultJobExecutionTimeout = DefaultRequesterConfig.DefaultJobExecutionTimeout
 	}
-	if params.StateManagerBackgroundTaskInterval == 0 {
-		params.StateManagerBackgroundTaskInterval = DefaultRequesterConfig.StateManagerBackgroundTaskInterval
+	if params.HousekeepingBackgroundTaskInterval == 0 {
+		params.HousekeepingBackgroundTaskInterval = DefaultRequesterConfig.HousekeepingBackgroundTaskInterval
 	}
 	if params.NodeRankRandomnessRange == 0 {
 		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
 	}
+	if params.MinBacalhauVersion == (model.BuildVersionInfo{}) {
+		params.MinBacalhauVersion = DefaultRequesterConfig.MinBacalhauVersion
+	}
 
 	config = RequesterConfig{
-		JobNegotiationTimeout:      params.JobNegotiationTimeout,
-		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-
-		StateManagerBackgroundTaskInterval: params.StateManagerBackgroundTaskInterval,
-
-		NodeRankRandomnessRange: params.NodeRankRandomnessRange,
-		SimulatorConfig:         params.SimulatorConfig,
+		MinJobExecutionTimeout:             params.MinJobExecutionTimeout,
+		DefaultJobExecutionTimeout:         params.DefaultJobExecutionTimeout,
+		HousekeepingBackgroundTaskInterval: params.HousekeepingBackgroundTaskInterval,
+		JobSelectionPolicy:                 params.JobSelectionPolicy,
+		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
+		SimulatorConfig:                    params.SimulatorConfig,
+		MinBacalhauVersion:                 params.MinBacalhauVersion,
 	}
 
 	return config

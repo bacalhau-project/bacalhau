@@ -3,28 +3,30 @@ package wasm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
+	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
+	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"golang.org/x/exp/maps"
-
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/filefs"
-	"github.com/filecoin-project/bacalhau/pkg/util/mountfs"
-	"github.com/filecoin-project/bacalhau/pkg/util/touchfs"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
+	"golang.org/x/exp/maps"
 )
 
 type Executor struct {
@@ -32,14 +34,12 @@ type Executor struct {
 }
 
 func NewExecutor(
-	ctx context.Context,
+	_ context.Context,
 	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
-	executor := &Executor{
+	return &Executor{
 		StorageProvider: storageProvider,
-	}
-
-	return executor, nil
+	}, nil
 }
 
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
@@ -48,7 +48,7 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.HasStorageLocally")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
 	defer span.End()
 
 	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -60,7 +60,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.GetVolumeSize")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
 
 	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
@@ -68,6 +68,11 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 		return 0, err
 	}
 	return storageProvider.GetVolumeSize(ctx, volume)
+}
+
+// GetBidStrategy implements executor.Executor
+func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
@@ -86,7 +91,10 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	}
 
 	for input, volume := range volumes {
-		log.Ctx(ctx).Debug().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+		log.Ctx(ctx).Debug().
+			Str("input", input.Path).
+			Str("source", volume.Source).
+			Msg("Using input")
 
 		var stat os.FileInfo
 		stat, err = os.Stat(volume.Source)
@@ -117,7 +125,10 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 		}
 
 		srcd := filepath.Join(jobResultsDir, output.Name)
-		log.Ctx(ctx).Debug().Msgf("Collecting output '%s' at '%s'", output.Name, srcd)
+		log.Ctx(ctx).Debug().
+			Str("output", output.Name).
+			Str("dir", srcd).
+			Msg("Collecting output")
 
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
@@ -139,10 +150,11 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/wasm/Executor.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.RunShard")
 	defer span.End()
 
-	engineConfig := wazero.NewRuntimeConfig()
+	cache := wazero.NewCompilationCache()
+	engineConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache).WithCloseOnContextDone(true)
 
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
@@ -166,14 +178,14 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return executor.FailResult(err)
 	}
-	defer module.Close(ctx)
+	defer closer.ContextCloserWithLogOnError(ctx, "module", module)
 
 	shardStorageSpec, err := job.GetShardStorageSpec(ctx, shard, e.StorageProvider)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
-	fs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -188,13 +200,12 @@ func (e *Executor) RunShard(
 	args := []string{module.Name()}
 	args = append(args, wasmSpec.Parameters...)
 
-	namespace := engine.NewNamespace(ctx)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
 		WithStderr(stderr).
 		WithArgs(args...).
-		WithFS(fs)
+		WithFS(rootFs)
 
 	keys := maps.Keys(wasmSpec.EnvironmentVariables)
 	sort.Strings(keys)
@@ -204,7 +215,7 @@ func (e *Executor) RunShard(
 	}
 
 	entryPoint := wasmSpec.EntryPoint
-	importedModules := []wazero.CompiledModule{}
+	var importedModules []wazero.CompiledModule
 
 	// Load and instantiate imported modules
 	for _, wasmSpec := range wasmSpec.ImportModules {
@@ -214,7 +225,7 @@ func (e *Executor) RunShard(
 		}
 		importedModules = append(importedModules, importedWasi)
 
-		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
+		_, instantiateErr := engine.InstantiateModule(ctx, importedWasi, config)
 		if instantiateErr != nil {
 			return executor.FailResult(instantiateErr)
 		}
@@ -224,15 +235,15 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return executor.FailResult(err)
 	}
-	defer wasi.Close(ctx)
+	defer closer.ContextCloserWithLogOnError(ctx, "wasi", wasi)
 
-	_, err = namespace.InstantiateModule(ctx, wasi, config)
+	_, err = engine.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	instance, err := namespace.InstantiateModule(ctx, module, config)
+	instance, err := engine.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -248,24 +259,21 @@ func (e *Executor) RunShard(
 	// the exit code for inclusion in the job output, and ignore the return code
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Debug().Msgf("Running WASM %q from job %q", entryPoint, shard.Job.Metadata.ID)
+	log.Ctx(ctx).Debug().
+		Str("entryPoint", entryPoint).
+		Msg("Running WASM job")
 	entryFunc := instance.ExportedFunction(entryPoint)
-	exitCode := int(-1)
+	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 	if wasmErr != nil {
-		errExit, ok := wasmErr.(*sys.ExitError)
-		if ok {
+		var errExit *sys.ExitError
+		if errors.As(wasmErr, &errExit) {
 			exitCode = int(errExit.ExitCode())
 			wasmErr = nil
 		}
 	}
 
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
-}
-
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	// TODO: Implement CancelShard for WASM executor #1060
-	return nil
 }
 
 // Compile-time check that Executor implements the Executor interface.

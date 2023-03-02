@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/bridge/opencensus"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/metric/global"
@@ -16,22 +15,21 @@ import (
 var meterProvider *sdkmetric.MeterProvider
 
 func newMeterProvider() {
-	if !isMetricsEnabled() {
-		log.Debug().Msgf("OLTP metrics endpoints are not defined. Not metrics will be exported")
-		return
-	}
-
 	// The context passed in to the exporter is only passed to the client and used when connecting to the endpoint
 	ctx := context.Background()
-	exp, err := getMetricsClient(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to initialize OLTP metric exporter")
+
+	if !isMetricsEnabled() {
+		log.Ctx(ctx).Debug().Msgf("OLTP metrics endpoints are not defined. No metrics will be exported")
 		return
 	}
 
-	// reader that also bridges opencensus metrics to capture libp2p metrics
+	exp, err := getMetricsClient(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to initialize OLTP metric exporter")
+		return
+	}
+
 	reader := sdkmetric.NewPeriodicReader(exp)
-	reader.RegisterProducer(opencensus.NewMetricProducer())
 
 	meterProvider = sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(newResource()),
@@ -42,9 +40,17 @@ func newMeterProvider() {
 }
 
 func isMetricsEnabled() bool {
-	_, endpointDefined := os.LookupEnv(otlpEndpoint)
-	_, metricsEndpointDefined := os.LookupEnv(otlpMetricsEndpoint)
-	return endpointDefined || metricsEndpointDefined
+	if v, ok := os.LookupEnv(disableTracing); ok && v == "1" {
+		return false
+	}
+	if _, ok := os.LookupEnv(otlpEndpoint); ok {
+		return true
+	}
+	if _, ok := os.LookupEnv(otlpMetricsEndpoint); ok {
+		return true
+	}
+
+	return false
 }
 
 func getMetricsClient(ctx context.Context) (client sdkmetric.Exporter, err error) {

@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -42,13 +42,13 @@ func (s *WebsocketSuite) SetupTest() {
 
 // After each test
 func (s *WebsocketSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
+	s.node.CleanupManager.Cleanup(context.Background())
 }
 
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
 	// string.Replace http with ws in c.BaseURI
-	url := "ws" + s.client.BaseURI[4:] + "/requester/websocket"
+	url := "ws" + s.client.BaseURI[4:] + "/requester/websocket/events"
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
@@ -81,7 +81,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
-	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.Metadata.ID)
+	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket/events?job_id=%s", j.Metadata.ID)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
 

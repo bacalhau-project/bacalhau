@@ -9,34 +9,33 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	"github.com/antihax/optional"
 	estuary_client "github.com/application-research/estuary-clients/go"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 type estuaryPublisher struct {
-	config EstuaryPublisherConfig
+	client *estuary_client.APIClient
 }
 
 const publisherTimeout = 5 * time.Minute
 
 func NewEstuaryPublisher(config EstuaryPublisherConfig) publisher.Publisher {
 	return &estuaryPublisher{
-		config: config,
+		client: GetClient(config.APIKey),
 	}
 }
 
 // IsInstalled implements publisher.Publisher
 func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	client := GetClient(ctx, e.config.APIKey)
-	_, response, err := client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
+	_, response, err := e.client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if response != nil {
 		defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", response.Body)
 		return response.StatusCode == http.StatusOK, nil
@@ -74,11 +73,10 @@ func (e *estuaryPublisher) PublishShardResult(
 		return model.StorageSpec{}, errors.Wrap(err, "error reading CAR data")
 	}
 
-	client := GetClient(ctx, e.config.APIKey)
 	timeout, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
 
-	addCarResponse, httpResponse, err := client.ContentApi.ContentAddCarPost( //nolint:bodyclose // golangcilint is dumb - this is closed
+	addCarResponse, httpResponse, err := e.client.ContentApi.ContentAddCarPost( //nolint:bodyclose // golangcilint is dumb - this is closed
 		timeout,
 		string(carContent),
 		&estuary_client.ContentApiContentAddCarPostOpts{

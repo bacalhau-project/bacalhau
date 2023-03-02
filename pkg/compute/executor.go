@@ -3,11 +3,12 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,6 +28,7 @@ type BaseExecutor struct {
 	ID              string
 	callback        Callback
 	store           store.ExecutionStore
+	cancellers      generic.SyncMap[store.Execution, context.CancelFunc]
 	executors       executor.ExecutorProvider
 	verifiers       verifier.VerifierProvider
 	publishers      publisher.PublisherProvider
@@ -46,11 +48,20 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 }
 
 // Run the execution of a shard after it has been accepted, and propose a result to the requester to be verified.
-func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
 		Str("Shard", execution.Shard.ID()).
 		Str("ExecutionID", execution.ID).
 		Logger().WithContext(ctx)
+
+	ctx, cancel := context.WithCancel(ctx)
+	e.cancellers.Put(execution, cancel)
+	defer func() {
+		if cancel, found := e.cancellers.Get(execution); found {
+			e.cancellers.Delete(execution)
+			cancel()
+		}
+	}()
 
 	defer func() {
 		if err != nil {
@@ -126,7 +137,7 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 }
 
 // Publish the result of a shard execution after it has been verified.
-func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Publishing")
@@ -179,31 +190,17 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 }
 
 // Cancel the execution of a running shard.
-func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Canceling")
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Msgf("Canceling execution %s", execution.ID)
-	// check that we have the executor to cancel this job
-	jobExecutor, err := e.executors.Get(ctx, execution.Shard.Job.Spec.Engine)
-	if err != nil {
-		return
-	}
-	err = jobExecutor.CancelShard(ctx, execution.Shard)
-	if err != nil {
-		return err
-	}
-
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID: execution.ID,
-		NewState:    store.ExecutionStateCancelled,
-		Comment:     "Canceled after execution accepted",
-	})
-	if err != nil {
-		return
+	log.Ctx(ctx).Debug().Str("execution", execution.ID).Msg("Canceling execution")
+	if cancel, found := e.cancellers.Get(execution); found {
+		e.cancellers.Delete(execution)
+		cancel()
 	}
 
 	e.callback.OnCancelComplete(ctx, CancelResult{
@@ -216,7 +213,7 @@ func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (er
 	return err
 }
 
-func (e BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,

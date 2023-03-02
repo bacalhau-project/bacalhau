@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/jobtransform"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -19,8 +19,8 @@ import (
 type BaseEndpointParams struct {
 	ID                         string
 	PublicKey                  []byte
-	JobStore                   localdb.LocalDB
-	Scheduler                  *Scheduler
+	Scheduler                  Scheduler
+	Selector                   bidstrategy.BidStrategy
 	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
@@ -30,9 +30,8 @@ type BaseEndpointParams struct {
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
 	id         string
-	publicKey  []byte
-	jobStore   localdb.LocalDB
-	scheduler  *Scheduler
+	selector   bidstrategy.BidStrategy
+	scheduler  Scheduler
 	transforms []jobtransform.Transformer
 }
 
@@ -41,12 +40,12 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewExecutionPlanner(params.StorageProviders),
+		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 	}
 
 	return &BaseEndpoint{
 		id:         params.ID,
-		publicKey:  params.PublicKey,
-		jobStore:   params.JobStore,
+		selector:   params.Selector,
 		scheduler:  params.Scheduler,
 		transforms: transforms,
 	}
@@ -62,7 +61,16 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	jobCtx, span := node.newRootSpanForJob(ctx, jobID)
+	jobCtx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
+		// job lifecycle spans go in their own, dedicated trace
+		trace.WithNewRoot(),
+		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(model.TracerAttributeNameNodeID, node.id),
+			attribute.String(model.TracerAttributeNameJobID, jobID),
+		),
+	)
 	defer span.End()
 
 	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
@@ -77,12 +85,6 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 			ClientID:  data.ClientID,
 			CreatedAt: time.Now(),
 		},
-		Status: model.JobStatus{
-			Requester: model.JobRequester{
-				RequesterNodeID:    node.id,
-				RequesterPublicKey: node.publicKey,
-			},
-		},
 		Spec: *data.Spec,
 	}
 
@@ -91,6 +93,13 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 		if err != nil {
 			return job, err
 		}
+	}
+
+	request := bidstrategy.BidStrategyRequest{NodeID: node.id, Job: *job}
+	if choice, bidErr := node.selector.ShouldBid(ctx, request); bidErr != nil {
+		return job, bidErr
+	} else if !choice.ShouldBid {
+		return job, fmt.Errorf("job is unacceptable: %s", choice.Reason)
 	}
 
 	err = node.scheduler.StartJob(jobCtx, StartJobRequest{
@@ -102,28 +111,9 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 
 	return job, nil
 }
-func (node *BaseEndpoint) UpdateDeal(ctx context.Context, jobID string, deal model.Deal) error {
-	//TODO: Is there an action to take here?
-	return node.jobStore.UpdateJobDeal(ctx, jobID, deal)
-}
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (node *BaseEndpoint) newRootSpanForJob(ctx context.Context, jobID string) (context.Context, trace.Span) {
-	return system.Span(ctx, "requester", "JobLifecycle",
-		// job lifecycle spans go in their own, dedicated trace
-		trace.WithNewRoot(),
-
-		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
-			attribute.String(model.TracerAttributeNameNodeID, node.id),
-			attribute.String(model.TracerAttributeNameJobID, jobID),
-		),
-	)
+	return node.scheduler.CancelJob(ctx, request)
 }
 
 // Compile-time interface check:

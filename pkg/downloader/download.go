@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	cp "github.com/n-marshall/go-cp"
 	"github.com/rs/zerolog/log"
 )
@@ -42,7 +42,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	downloadProvider DownloaderProvider,
 	settings *model.DownloaderSettings,
 ) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadJob")
 	defer span.End()
 
 	if len(publishedShardResults) == 0 {

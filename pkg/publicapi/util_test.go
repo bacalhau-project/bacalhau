@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func setupNodeForTest(t *testing.T, cm *system.CleanupManager) *APIClient {
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverConfig APIServerConfig) *APIClient {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
 	libp2pPort, err := freeport.GetFreePort()

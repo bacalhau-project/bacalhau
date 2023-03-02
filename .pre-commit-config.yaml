@@ -32,3 +32,7 @@ repos:
         name: make modtidy check-diff
         entry: .gitprecommit/go_mod_tidy_check.sh
         language: script
+      - id: "go-test-build-header"
+        name: "Go test '//go:build' header present"
+        entry: ".gitprecommit/go_test_build_header.sh"
+        language: "script"

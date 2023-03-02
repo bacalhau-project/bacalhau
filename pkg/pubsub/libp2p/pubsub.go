@@ -6,10 +6,10 @@ import (
 	"reflect"
 	realsync "sync"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
@@ -51,7 +51,7 @@ func NewPubSub[T any](params PubSubParams) (*PubSub[T], error) {
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/pubsub/libp2p.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub/libp2p.Publish.Publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)

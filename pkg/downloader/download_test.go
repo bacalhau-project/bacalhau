@@ -5,17 +5,18 @@ package downloader
 import (
 	"context"
 	"crypto/rand"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	ipfs2 "github.com/filecoin-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -35,13 +36,15 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
-	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
+	system.InitConfigForTesting(ds.T())
 }
 
 // Before each test
 func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = system.NewCleanupManager()
-	ds.T().Cleanup(ds.cm.Cleanup)
+	ds.T().Cleanup(func() {
+		ds.cm.Cleanup(context.Background())
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ds.T().Cleanup(cancel)
@@ -76,7 +79,7 @@ func generateFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer closer.CloseWithLogOnError("file", file)
 
 	b := make([]byte, 128)
 	_, err = rand.Read(b)

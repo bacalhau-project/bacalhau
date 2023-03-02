@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	requester_publicapi "github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -28,12 +29,10 @@ func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterA
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
+	datastore := inmemory.NewJobStore()
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
@@ -48,7 +47,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		Host:                libp2pHost,
 		HostAddress:         "0.0.0.0",
 		APIPort:             apiPort,
-		LocalDB:             datastore,
+		JobStore:            datastore,
 		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: node.NewRequesterConfigWithDefaults(),
 		APIServerConfig:     config,

@@ -11,9 +11,10 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type Executor struct {
@@ -54,6 +55,10 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec)
 	return 0, nil
 }
 
+func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
+	return bidstrategy.NewChainedBidStrategy(), nil
+}
+
 func (e *Executor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
@@ -64,14 +69,6 @@ func (e *Executor) RunShard(
 		return nil, err
 	}
 	return executor.RunShard(ctx, shard, jobResultsDir)
-}
-
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	executor, err := e.getDelegateExecutor(ctx, shard)
-	if err != nil {
-		return err
-	}
-	return executor.CancelShard(ctx, shard)
 }
 
 func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard) (executor.Executor, error) {

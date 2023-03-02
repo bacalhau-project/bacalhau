@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 // A ProviderKey will usually be some lookup value implemented as an enum member
@@ -91,8 +91,9 @@ func (p *NoopProvider[Key, Value]) Get(context.Context, Key) (Value, error) {
 }
 
 // Has implements Provider
-func (p *NoopProvider[Key, Value]) Has(context.Context, Key) bool {
-	return true
+func (p *NoopProvider[Key, Value]) Has(ctx context.Context, _ Key) bool {
+	isInstalled, err := p.noopProvidable.IsInstalled(ctx)
+	return isInstalled && err == nil
 }
 
 func NewNoopProvider[Key ProviderKey, Value Providable](noopProvidable Value) Provider[Key, Value] {

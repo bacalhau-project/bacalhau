@@ -1,50 +1,20 @@
 package job
 
 import (
+	"context"
 	"strings"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/clone"
-
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/clone"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
-
-func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
-	publicKey := ev.SenderPublicKey
-	if publicKey == nil {
-		publicKey = []byte{}
-	}
-	useCreatedAt := time.Now()
-	if !ev.EventTime.IsZero() {
-		useCreatedAt = ev.EventTime
-	}
-	j := &model.Job{
-		APIVersion: ev.APIVersion,
-		Metadata: model.Metadata{
-			ID:        ev.JobID,
-			ClientID:  ev.ClientID,
-			CreatedAt: useCreatedAt,
-		},
-		Status: model.JobStatus{
-			Requester: model.JobRequester{
-				RequesterNodeID:    ev.SourceNodeID,
-				RequesterPublicKey: publicKey,
-			},
-		},
-		Spec: ev.Spec,
-	}
-	j.Spec.Deal = ev.Deal
-	j.Spec.ExecutionPlan = ev.JobExecutionPlan
-
-	return j
-}
 
 // these are util methods for the CLI
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
+	ctx context.Context,
 	a model.APIVersion,
 	e model.Engine,
 	v model.Verifier,
@@ -69,7 +39,6 @@ func ConstructDockerJob( //nolint:funlen
 	shardingGlobPattern string,
 	shardingBasePath string,
 	shardingBatchSize int,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
@@ -97,7 +66,7 @@ func ConstructDockerJob( //nolint:funlen
 	if err != nil {
 		return &model.Job{}, err
 	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -113,7 +82,7 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}
@@ -126,7 +95,6 @@ func ConstructDockerJob( //nolint:funlen
 	if len(workingDir) > 0 {
 		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
-			log.Error().Msg(err.Error())
 			return &model.Job{}, err
 		}
 	}
@@ -167,7 +135,6 @@ func ConstructDockerJob( //nolint:funlen
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
 		Sharding:      jobShardingConfig,
-		DoNotTrack:    doNotTrack,
 	}
 
 	// override working dir if provided
@@ -185,10 +152,10 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
+	ctx context.Context,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
-	env []string,
 	concurrency int,
 	confidence int,
 	minBids int,
@@ -199,10 +166,8 @@ func ConstructLanguageJob(
 	command string,
 	programPath string,
 	requirementsPath string,
-	contextPath string, // we have to tar this up and POST it to the Requester node
 	deterministic bool,
 	annotations []string,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
 	jobContexts := []model.StorageSpec{}
@@ -211,7 +176,7 @@ func ConstructLanguageJob(
 	if err != nil {
 		return &model.Job{}, err
 	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -227,7 +192,7 @@ func ConstructLanguageJob(
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}
@@ -252,7 +217,6 @@ func ConstructLanguageJob(
 	j.Spec.Contexts = jobContexts
 	j.Spec.Outputs = jobOutputs
 	j.Spec.Annotations = jobAnnotations
-	j.Spec.DoNotTrack = doNotTrack
 
 	j.Spec.Deal = model.Deal{
 		Concurrency: concurrency,

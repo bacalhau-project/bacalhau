@@ -12,8 +12,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type Executor struct {
@@ -45,6 +46,14 @@ func (e *Executor) HasStorageLocally(context.Context, model.StorageSpec) (bool, 
 
 func (e *Executor) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
 	return 0, nil
+}
+
+func (e *Executor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy, error) {
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.GetBidStrategy(ctx)
 }
 
 func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) (
@@ -81,14 +90,6 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 		return nil, err
 	}
 	return dockerExecutor.RunShard(ctx, shard, resultsDir)
-}
-
-func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
-	if err != nil {
-		return err
-	}
-	return dockerExecutor.CancelShard(ctx, shard)
 }
 
 // Compile-time check that Executor implements the Executor interface.

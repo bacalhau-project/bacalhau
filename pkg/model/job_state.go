@@ -1,101 +1,38 @@
 package model
 
 import (
-	"fmt"
+	"time"
 )
 
-// JobStateType is the state of a job on a particular node. Note that the job
-// will typically have different states on different nodes.
+// JobStateType The state of a job across the whole network that represents an aggregate view across
+// the shards and nodes.
 //
-//go:generate stringer -type=JobStateType --trimprefix=JobState
+//go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 type JobStateType int
 
 // these are the states a job can be in against a single node
 const (
-	jobStateUnknown JobStateType = iota // must be first
+	JobStateNew JobStateType = iota // must be first
 
-	// a compute node has selected a job and has bid on it
-	// we are currently waiting to hear back from the requester
-	// node whether our bid was accepted or not
-	JobStateBidding
+	JobStateInProgress
 
-	// the bid has been accepted but we have not yet started the job
-	JobStateWaiting
-
-	// the job is in the process of running
-	JobStateRunning
-
-	// the compute node has finished execution and has communicated the ResultsProposal
-	JobStateVerifying
-
-	// a requester node has either rejected the bid or the compute node has canceled the bid
-	// either way - this node will not progress with this job any more
+	// Job is canceled by the user.
 	JobStateCancelled
 
-	// the job had an error - this is an end state
+	// All shards have failed
 	JobStateError
 
-	// our results have been processed and published
-	JobStateCompleted
+	// Some shards have failed, while others have completed successfully
+	JobStatePartialError
 
-	jobStateDone // must be last
+	// All shards have completed successfully
+	JobStateCompleted
 )
 
-// IsTerminal returns true if the given job type signals the end of the
-// lifecycle of that job on a particular node. After this, the job can be
-// safely ignored by the node.
+// IsTerminal returns true if the given job type signals the end of the lifecycle of
+// that job and that no change in the state can be expected.
 func (s JobStateType) IsTerminal() bool {
 	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled
-}
-
-// IsComplete returns true if the given job has succeeded at the bid stage
-// and has finished running the job - this is used to calculate if a job
-// has completed across all nodes because a cancelation does not count
-// towards actually "running" the job whereas an error does (even though it failed
-// it still "ran")
-func (s JobStateType) IsComplete() bool {
-	return s == JobStateCompleted || s == JobStateError
-}
-
-func (s JobStateType) HasPassedBidAcceptedStage() bool {
-	return s == JobStateWaiting || s == JobStateRunning || s == JobStateVerifying || s == JobStateError || s == JobStateCompleted
-}
-
-func (s JobStateType) IsError() bool {
-	return s == JobStateError
-}
-
-// tells you if this event is a valid one
-func IsValidJobState(s JobStateType) bool {
-	return s > jobStateUnknown && s < jobStateDone
-}
-
-func ParseJobStateType(str string) (JobStateType, error) {
-	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
-		if equal(typ.String(), str) {
-			return typ, nil
-		}
-	}
-
-	return jobStateUnknown, fmt.Errorf(
-		"executor: unknown job typ type '%s'", str)
-}
-
-func JobStateTypes() []JobStateType {
-	var res []JobStateType
-	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
-		res = append(res, typ)
-	}
-
-	return res
-}
-
-func JobStateTypeNames() []string {
-	var names []string
-	for _, typ := range JobStateTypes() {
-		names = append(names, typ.String())
-	}
-	return names
 }
 
 func (s JobStateType) MarshalText() ([]byte, error) {
@@ -104,52 +41,31 @@ func (s JobStateType) MarshalText() ([]byte, error) {
 
 func (s *JobStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	*s, err = ParseJobStateType(name)
+	for typ := JobStateNew; typ <= JobStateCompleted; typ++ {
+		if equal(typ.String(), name) {
+			*s = typ
+			return
+		}
+	}
 	return
 }
 
-// given an event name - return a job state
-func GetStateFromEvent(eventType JobEventType) JobStateType {
-	switch eventType {
-	// we have bid and are waiting to hear if that has been accepted
-	case JobEventBid:
-		return JobStateBidding
-
-	// our bid has been accepted but we've not yet started the job
-	case JobEventBidAccepted:
-		return JobStateWaiting
-
-	// out bid got rejected so we are canceled
-	case JobEventBidRejected:
-		return JobStateCancelled
-
-	// we canceled our bid so we are canceled
-	case JobEventBidCancelled:
-		return JobStateCancelled
-
-	// we are running
-	case JobEventRunning:
-		return JobStateRunning
-
-	// yikes
-	case JobEventError, JobEventComputeError, JobEventInvalidRequest:
-		return JobStateError
-
-	// we are complete
-	case JobEventResultsProposed:
-		return JobStateVerifying
-
-	// both of these are "finalized"
-	case JobEventResultsAccepted:
-		return JobStateVerifying
-
-	case JobEventResultsRejected:
-		return JobStateError
-
-	case JobEventResultsPublished:
-		return JobStateCompleted
-
-	default:
-		return jobStateUnknown
-	}
+// JobState The state of a job across the whole network that represents an aggregate view across
+// the shards and nodes.
+type JobState struct {
+	// JobID is the unique identifier for the job
+	JobID string `json:"JobID"`
+	// Shards is a map of shard index to shard state.
+	// The number of shards are fixed at the time of job creation.
+	Shards map[int]ShardState `json:"Shards"`
+	// State is the current state of the job
+	State JobStateType `json:"State"`
+	// Version is the version of the job state. It is incremented every time the job state is updated.
+	Version int `json:"Version"`
+	// CreateTime is the time when the job was created.
+	CreateTime time.Time `json:"CreateTime"`
+	// UpdateTime is the time when the job state was last updated.
+	UpdateTime time.Time `json:"UpdateTime"`
+	// TimeoutAt is the time when the job will be timed out if it is not completed.
+	TimeoutAt time.Time `json:"TimeoutAt,omitempty"`
 }

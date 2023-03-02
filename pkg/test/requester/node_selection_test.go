@@ -1,3 +1,5 @@
+//go:build integration
+
 package requester
 
 import (
@@ -5,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -31,6 +33,8 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
+
 	ctx := context.Background()
 	devstackOptions := devstack.DevStackOptions{
 		NumberOfRequesterOnlyNodes: 1,
@@ -74,7 +78,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute3 = stack.Nodes[3]
 	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.GetURI())
 	s.stateResolver = job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
@@ -88,10 +92,10 @@ func (s *NodeSelectionSuite) SetupSuite() {
 
 func (s *NodeSelectionSuite) TearDownSuite() {
 	if s.requester != nil {
-		s.requester.CleanupManager.Cleanup()
+		s.requester.CleanupManager.Cleanup(context.Background())
 	}
 	for _, n := range s.computeNodes {
-		n.CleanupManager.Cleanup()
+		n.CleanupManager.Cleanup(context.Background())
 	}
 }
 

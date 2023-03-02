@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,8 +62,6 @@ func RunTestCase(
 			ID:        "test-job",
 			ClientID:  "test-client",
 			CreatedAt: time.Now(),
-		},
-		Status: model.JobStatus{
 			Requester: model.JobRequester{
 				RequesterNodeID: "test-owner",
 			},

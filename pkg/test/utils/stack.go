@@ -6,12 +6,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,9 @@ func SetupTest(
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      nodes,
@@ -73,7 +75,7 @@ func SetupTestWithNoopExecutor(
 	executorConfig noop_executor.ExecutorConfig,
 	nodeOverrides ...node.NodeConfig,
 ) *devstack.DevStack {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	// We will take the standard executors and add in the noop executor
 	executorFactory := &mixedExecutorFactory{
 		StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
@@ -88,7 +90,9 @@ func SetupTestWithNoopExecutor(
 	}
 
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector, nodeOverrides...)
 	require.NoError(t, err)

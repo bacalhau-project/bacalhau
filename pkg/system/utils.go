@@ -2,15 +2,13 @@ package system
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"golang.org/x/exp/constraints"
 )
 
@@ -94,16 +92,4 @@ func GetShortID(ID string) string {
 		return ID
 	}
 	return ID[:model.ShortIDLength]
-}
-
-const ShellToUse = "bash"
-
-func Shellout(command string) (string, string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd := exec.Command(ShellToUse, "-c", command)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
 }

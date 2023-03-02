@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -121,7 +119,6 @@ func (f *StandardVerifiersFactory) Get(
 	return verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
-		localdb.GetStateResolver(nodeConfig.LocalDB),
 		encrypter.Encrypt,
 		encrypter.Decrypt,
 	)

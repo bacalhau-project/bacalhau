@@ -3,7 +3,8 @@ package executor
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Returns a executor for the given engine type
@@ -19,6 +20,11 @@ type Executor interface {
 	// used to filter and select jobs
 	//    tells us if the storage resource is "close" i.e. cheap to access
 	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
+
+	// A BidStrategy that should return a positive response if the executor
+	// could run the job or a negative response otherwise.
+	GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error)
+
 	//    tells us how much storage the given volume would consume
 	//    which we then use to calculate if there is capacity
 	//    alongside cpu & memory usage
@@ -31,10 +37,4 @@ type Executor interface {
 		shard model.JobShard,
 		resultsDir string,
 	) (*model.RunCommandResult, error)
-
-	// Cancel a running shard.
-	CancelShard(
-		ctx context.Context,
-		shard model.JobShard,
-	) error
 }

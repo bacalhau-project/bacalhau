@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/stretchr/testify/suite"
 )
@@ -23,7 +23,7 @@ type NodeSuite struct {
 
 func (s *NodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Require().NoError(system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:
@@ -35,7 +35,9 @@ func (s *NodeSuite) TestFunctionality() {
 	defer cancel()
 
 	cm := system.NewCleanupManager()
-	s.T().Cleanup(cm.Cleanup)
+	s.T().Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	n1, err := NewLocalNode(ctx, cm, nil)
 	s.Require().NoError(err)

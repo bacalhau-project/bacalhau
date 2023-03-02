@@ -3,8 +3,8 @@ package ranking
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -36,7 +36,7 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 			if selector.Matches(labels.Set(node.Labels)) {
 				rank = 1
 			} else {
-				log.Trace().Msgf("filtering node %s with labels %s doesn't match selectors %+v",
+				log.Ctx(ctx).Trace().Msgf("filtering node %s with labels %s doesn't match selectors %+v",
 					node.PeerInfo.ID, node.Labels, job.Spec.NodeSelectors)
 				rank = -1
 			}

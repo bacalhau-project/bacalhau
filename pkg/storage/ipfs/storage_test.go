@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,9 @@ const IpfsMetadataSize uint64 = 8
 func getIpfsStorage(t *testing.T) *StorageProvider {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
 	require.NoError(t, err)

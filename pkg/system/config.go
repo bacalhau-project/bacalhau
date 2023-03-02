@@ -10,13 +10,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/telemetry"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -77,22 +80,21 @@ func InitConfig() error {
 type testingT interface {
 	TempDir() string
 	Setenv(key string, value string)
+	Errorf(format string, args ...interface{})
+	FailNow()
 }
 
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
-func InitConfigForTesting(t testingT) error {
+func InitConfigForTesting(t testingT) {
 	if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
-		return nil
+		return
 	}
 	t.Setenv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__", "set")
 	configDir := t.TempDir()
 	t.Setenv("BACALHAU_DIR", configDir)
 	err := InitConfig()
-	if err != nil {
-		return err
-	}
-	return nil
+	require.NoError(t, err)
 }
 
 // SignForClient signs a message with the user's private ID key.
@@ -189,22 +191,28 @@ func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
 func ensureConfigDir() (string, error) {
 	configDir := os.Getenv("BACALHAU_DIR")
+	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
+	//and not a generic environment variable set by the user
+	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
+		configDir = os.Getenv("ROOT_DIR")
+	}
 	if configDir == "" {
 		log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
 
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", fmt.Errorf("failed to get user home dir: %w", err)
+			return "", errors.Wrap(err, "failed to get user home dir")
 		}
 
-		configDir = fmt.Sprintf("%s/.bacalhau", home)
+		configDir = filepath.Join(home, ".bacalhau")
 		if err = os.MkdirAll(configDir, util.OS_USER_RWX); err != nil {
-			return "", fmt.Errorf("failed to create config dir: %w", err)
+			return "", errors.Wrap(err, "failed to create config dir")
 		}
 	} else {
-		if _, err := os.Stat(configDir); err != nil {
-			return "", fmt.Errorf("failed to stat config dir '%s': %w",
-				configDir, err)
+		if fileinf, err := os.Stat(configDir); err != nil {
+			return "", errors.Wrapf(err, "failed to stat config dir %q", configDir)
+		} else if !fileinf.IsDir() {
+			return "", fmt.Errorf("%q is not a directory", configDir)
 		}
 	}
 

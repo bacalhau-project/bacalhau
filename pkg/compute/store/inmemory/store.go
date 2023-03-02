@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 const newExecutionComment = "Execution created"
@@ -139,6 +139,16 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Store) GetExecutionCount(ctx context.Context) uint {
+	var counter uint
+	for _, execution := range s.executionMap {
+		if execution.State == store.ExecutionStateCompleted {
+			counter++
+		}
+	}
+	return counter
 }
 
 // compile-time check that we implement the interface ExecutionStore

@@ -3,25 +3,22 @@ package util
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/filecoin-project/bacalhau/pkg/verifier/deterministic"
-	"github.com/filecoin-project/bacalhau/pkg/verifier/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/deterministic"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 )
 
 func NewStandardVerifiers(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
 ) (verifier.VerifierProvider, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		ctx,
 		cm,
-		resolver,
 	)
 	if err != nil {
 		return nil, err
@@ -30,7 +27,6 @@ func NewStandardVerifiers(
 	deterministicVerifier, err := deterministic.NewDeterministicVerifier(
 		ctx,
 		cm,
-		resolver,
 		encrypter,
 		decrypter,
 	)
@@ -47,9 +43,8 @@ func NewStandardVerifiers(
 func NewNoopVerifiers(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 ) (verifier.VerifierProvider, error) {
-	noopVerifier, err := noop.NewNoopVerifier(ctx, cm, resolver)
+	noopVerifier, err := noop.NewNoopVerifier(ctx, cm)
 	if err != nil {
 		return nil, err
 	}
