@@ -15,7 +15,6 @@ type StorageSourceType int
 const (
 	storageSourceUnknown StorageSourceType = iota // must be first
 	StorageSourceIPFS
-	StorageSourceRepoClone
 	StorageSourceURLDownload
 	StorageSourceFilecoinUnsealed
 	StorageSourceFilecoin

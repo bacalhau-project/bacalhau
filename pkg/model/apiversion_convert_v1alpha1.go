@@ -9,7 +9,6 @@ func ConvertV1alpha1StorageSpec(data v1alpha1.StorageSpec) StorageSpec {
 		StorageSource: StorageSourceType(data.StorageSource),
 		Name:          data.Name,
 		CID:           data.CID,
-		Repo:          data.Repo,
 		URL:           data.URL,
 		Path:          data.Path,
 		Metadata:      data.Metadata,
