@@ -33,6 +33,8 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
+
 	ctx := context.Background()
 	devstackOptions := devstack.DevStackOptions{
 		NumberOfRequesterOnlyNodes: 1,
