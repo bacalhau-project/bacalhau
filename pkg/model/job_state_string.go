@@ -14,11 +14,12 @@ func _() {
 	_ = x[JobStateError-3]
 	_ = x[JobStatePartialError-4]
 	_ = x[JobStateCompleted-5]
+	_ = x[JobStateQueued-6]
 }
 
-const _JobStateType_name = "NewInProgressCancelledErrorPartialErrorCompleted"
+const _JobStateType_name = "NewInProgressCancelledErrorPartialErrorCompletedQueued"
 
-var _JobStateType_index = [...]uint8{0, 3, 13, 22, 27, 39, 48}
+var _JobStateType_index = [...]uint8{0, 3, 13, 22, 27, 39, 48, 54}
 
 func (i JobStateType) String() string {
 	if i < 0 || i >= JobStateType(len(_JobStateType_index)-1) {

@@ -344,6 +344,10 @@ type JobCreatePayload struct {
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
 }
 
+func (j JobCreatePayload) GetClientID() string {
+	return j.ClientID
+}
+
 type JobCancelPayload struct {
 	// the id of the client that is submitting the job
 	ClientID string `json:"ClientID,omitempty" validate:"required"`
@@ -353,4 +357,8 @@ type JobCancelPayload struct {
 
 	// The reason that the job is being canceled
 	Reason string `json:"Reason,omitempty"`
+}
+
+func (j JobCancelPayload) GetClientID() string {
+	return j.ClientID
 }
