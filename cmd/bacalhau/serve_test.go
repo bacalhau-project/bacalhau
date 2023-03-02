@@ -86,7 +86,7 @@ func (s *ServeSuite) serve(extraArgs ...string) int {
 	for {
 		select {
 		case <-ctx.Done():
-			s.Fail("Server did not start in time")
+			s.FailNow("Server did not start in time")
 		case <-t.C:
 			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
 			if string(livezText) == "OK" {

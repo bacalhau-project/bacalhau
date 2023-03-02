@@ -136,7 +136,7 @@ func (cl Client) Get(ctx context.Context, cid, outputPath string) error {
 	// Output path is required to not exist yet:
 	ok, err := system.PathExists(outputPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to check if path %s exists: %w", outputPath, err)
 	}
 	if ok {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
