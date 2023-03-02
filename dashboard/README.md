@@ -13,7 +13,11 @@ docker build -t $IMAGE_API -f Dockerfile.dashboard .
 <from dashboard directory>
 export POSTGRES_DATA_DIR=$(pwd)/pgdata
 export JWT_SECRET=a1b2c3d4
-export PEER_CONNECT=/ip4/172.17.0.1/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+
+# get the following value from the final value of
+# 'export BACALHAU_PEER_CONNECT=...'
+# from the output of a `make devstack` in another terminal
+export PEER_CONNECT=/ip4/192.168.1.145/tcp/38327/p2p/QmWtUYvmDUxo2vKne9ZNE2j1uaBnJagFpX5G1yYY9LjSkE
 
 export POSTGRES_PASSWORD=secret
 docker-compose up -d
