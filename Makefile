@@ -104,7 +104,14 @@ endif
 swagger-docs:
 	@echo "Building swagger docs..."
 	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init --outputTypes "go,json" --parseDependency --parseInternal --parseDepth 1 --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag init \
+		--outputTypes "go,json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		--markdownFiles docs/swagger \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo
 	@echo "Swagger docs built."
 
 ################################################################################
