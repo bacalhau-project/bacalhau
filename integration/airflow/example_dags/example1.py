@@ -3,14 +3,14 @@ from datetime import datetime
 from airflow import DAG
 from bacalhau_airflow.operators import BacalhauSubmitJobOperator
 
-with DAG("run-me", start_date=datetime(2021, 1, 1)) as dag:
+with DAG("bacalhau-sample-dag", start_date=datetime(2021, 1, 1)) as dag:
     op1 = BacalhauSubmitJobOperator(
         task_id="run-1",
         api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
             verifier="Noop",
-            publisher="Estuary",
+            publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "Hello"],
@@ -25,7 +25,7 @@ with DAG("run-me", start_date=datetime(2021, 1, 1)) as dag:
         job_spec=dict(
             engine="Docker",
             verifier="Noop",
-            publisher="Estuary",
+            publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "World"],
