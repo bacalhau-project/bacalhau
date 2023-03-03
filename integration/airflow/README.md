@@ -81,13 +81,13 @@ airflow standalone
 Now head to http://0.0.0.0:8080 were Airflow UI is being served.
 The screenshot below shows our hello world has been loaded correctly.
 
-![](docs/_static/airflow_1.png)
+![](docs/_static/airflow_01.png)
 
 When you inspect a DAG, Airflow will render a graph depicting a color-coded topology (see image below).
 For active (i.e. running) pipelines, this will be useful to oversee what the status of each task is.
 To trigger a DAG please enable the toggle shown below.
 
-![](docs/_static/airflow_2.png)
+![](docs/_static/airflow_02.png)
 
 Lastly, we want to fetch the output of our pipeline.
 To do so we need to retrieve where the last task saved its results.
