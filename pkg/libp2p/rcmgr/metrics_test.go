@@ -78,8 +78,8 @@ func TestMetricsReporter(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "testing\n", string(read))
 
-	metrics, err := reader.Collect(ctx)
-	require.NoError(t, err)
+	metrics := &metricdata.ResourceMetrics{}
+	require.NoError(t, reader.Collect(ctx, metrics))
 
 	t.Log(metrics)
 
