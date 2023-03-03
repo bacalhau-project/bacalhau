@@ -20,10 +20,10 @@ bacalhau\_airflow.operators module
    :undoc-members:
    :show-inheritance:
 
-.. Module contents
-.. ---------------
+Module contents
+---------------
 
-.. .. automodule:: bacalhau_airflow
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+.. automodule:: bacalhau_airflow
+   :members:
+   :undoc-members:
+   :show-inheritance:
