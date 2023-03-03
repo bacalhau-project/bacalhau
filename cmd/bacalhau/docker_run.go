@@ -329,9 +329,8 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
+//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
-
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
@@ -382,12 +381,11 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 	for _, URI := range odr.MountUrls {
 		scheme := func(URI string) *url.URL {
-			parsed, err := url.Parse(URI)
-			if err != nil {
+			parsed, err1 := url.Parse(URI)
+			if err1 != nil {
 				errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
 				log.Fatal(errMsg)
 			}
-
 			return parsed
 		}(URI)
 
@@ -411,7 +409,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		default:
 			fmt.Println("Unknown scheme or scheme not currently supported...")
 		}
-
 	}
 
 	j, err := jobutils.ConstructDockerJob(
