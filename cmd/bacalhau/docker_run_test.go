@@ -357,14 +357,14 @@ func (s *DockerRunSuite) TestRun_SubmitMountInputs() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				parsed, err := url.Parse(URI)
+				parsed, err := url.Parse(turls.inputURI.uri)
 
-				if parsed.scheme == http || parsed.scheme == https {
+				if parsed.Scheme == "http" || parsed.Scheme == "https" {
 					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
 					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
 					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
 				}
-				if parsed.scheme == ipfs {
+				if parsed.Scheme == "ipfs" {
 					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job cids != # of test cids.")
 					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].CID, "Test CID not equal to CID from job.")
 					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
@@ -966,9 +966,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 func (s *DockerRunSuite) TestRun_InvalidImage() {
 	// The error of Docker being unable to find the invalid image should get back to the user
-
 	ctx := context.Background()
-
 	_, out, err := ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.host,
 		"--api-port", s.port,
@@ -976,14 +974,11 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 		"true",
 	)
 	s.Require().NoError(err)
-
 	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 	s.T().Log(job)
-
 	info, _, err := s.client.Get(ctx, job.Metadata.ID)
 	s.Require().NoError(err)
 	s.T().Log(info)
-
 	s.Len(info.State.Shards, 1)
 	s.Len(info.State.Shards[0].Executions, 1)
 	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Shards[0].Executions[0].State)
