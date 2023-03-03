@@ -822,6 +822,27 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobCancelPayload": {
+            "type": "object",
+            "required": [
+                "ClientID",
+                "JobID"
+            ],
+            "properties": {
+                "ClientID": {
+                    "description": "the id of the client that is submitting the job",
+                    "type": "string"
+                },
+                "JobID": {
+                    "description": "the job id of the job to be canceled",
+                    "type": "string"
+                },
+                "Reason": {
+                    "description": "The reason that the job is being canceled",
+                    "type": "string"
+                }
+            }
+        },
         "model.JobExecutionPlan": {
             "type": "object",
             "properties": {
@@ -1065,7 +1086,8 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5
+                5,
+                6
             ],
             "x-enum-comments": {
                 "JobStateNew": "must be first"
@@ -1076,7 +1098,8 @@ const docTemplate = `{
                 "JobStateCancelled",
                 "JobStateError",
                 "JobStatePartialError",
-                "JobStateCompleted"
+                "JobStateCompleted",
+                "JobStateQueued"
             ]
         },
         "model.JobWithInfo": {
@@ -1670,7 +1693,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "client_public_key",
-                "job_cancel_payload",
+                "payload",
                 "signature"
             ],
             "properties": {
@@ -1678,12 +1701,13 @@ const docTemplate = `{
                     "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "job_cancel_payload": {
+                "payload": {
                     "description": "The data needed to cancel a running job on the network",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCancelPayload"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",

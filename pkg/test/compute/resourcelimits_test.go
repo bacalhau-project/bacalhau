@@ -80,7 +80,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		epochSeconds := time.Now().Unix()
 
-		seenJobs := []SeenJobRecord{}
+		var seenJobs []SeenJobRecord
 		var seenJobsMutex sync.Mutex
 		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
 			Threshold: 10 * time.Millisecond,
@@ -280,7 +280,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeCount := 2
 	jobsPerNode := 2
 	seenJobs := 0
-	jobIds := []string{}
+	var jobIds []string
 
 	ctx := context.Background()
 

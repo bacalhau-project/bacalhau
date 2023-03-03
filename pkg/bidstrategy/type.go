@@ -12,8 +12,9 @@ type BidStrategyRequest struct {
 }
 
 type BidStrategyResponse struct {
-	ShouldBid bool
-	Reason    string
+	ShouldBid  bool   `json:"shouldBid"`
+	ShouldWait bool   `json:"shouldWait"`
+	Reason     string `json:"reason"`
 }
 
 func NewShouldBidResponse() BidStrategyResponse {

@@ -28,6 +28,7 @@ type Store interface {
 	GetJobHistory(ctx context.Context, jobID string) ([]model.JobHistory, error)
 	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	CreateJob(ctx context.Context, j model.Job) error
+	CreateShards(ctx context.Context, jobID string, count int) error
 	// UpdateJobState updates the Job state
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 	// GetShardState returns the shard for a given id

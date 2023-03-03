@@ -27,6 +27,9 @@ const (
 
 	// All shards have completed successfully
 	JobStateCompleted
+
+	// Job is waiting to be scheduled.
+	JobStateQueued
 )
 
 // IsTerminal returns true if the given job type signals the end of the lifecycle of

@@ -16,7 +16,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-const newJobComment = "Job created"
+const (
+	newJobComment   = "Job created"
+	newShardComment = "Shard created"
+)
 
 type JobStore struct {
 	// we keep pointers to these things because we will update them partially
@@ -172,24 +175,11 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 	}
 	d.jobs[job.Metadata.ID] = job
 
-	// populate shard states
-	shardStates := make(map[int]model.ShardState, job.Spec.ExecutionPlan.TotalShards)
-	for i := 0; i < job.Spec.ExecutionPlan.TotalShards; i++ {
-		shardStates[i] = model.ShardState{
-			JobID:      job.Metadata.ID,
-			ShardIndex: i,
-			State:      model.ShardStateInProgress,
-			Version:    1,
-			CreateTime: time.Now(),
-			UpdateTime: time.Now(),
-		}
-	}
-
 	// populate job state
 	jobState := model.JobState{
 		JobID:      job.Metadata.ID,
-		Shards:     shardStates,
-		State:      model.JobStateInProgress,
+		Shards:     nil,
+		State:      model.JobStateNew,
 		Version:    1,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
@@ -197,6 +187,30 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 	d.states[job.Metadata.ID] = jobState
 	d.inprogress[job.Metadata.ID] = struct{}{}
 	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
+	return nil
+}
+
+func (d *JobStore) CreateShards(ctx context.Context, jobID string, count int) error {
+	jobState, ok := d.states[jobID]
+	if !ok {
+		return jobstore.NewErrJobNotFound(jobID)
+	}
+
+	shardStates := make(map[int]model.ShardState, count)
+	for i := 0; i < count; i++ {
+		shardStates[i] = model.ShardState{
+			JobID:      jobID,
+			ShardIndex: i,
+			State:      model.ShardStateInProgress,
+			Version:    1,
+			CreateTime: time.Now(),
+			UpdateTime: time.Now(),
+		}
+		d.appendShardHistory(shardStates[i], model.ShardStateNew, newShardComment)
+	}
+
+	jobState.Shards = shardStates
+	d.states[jobID] = jobState
 	return nil
 }
 
