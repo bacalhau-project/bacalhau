@@ -14,17 +14,50 @@ import (
 
 func TestJobSelectionHttp(t *testing.T) {
 	testCases := []struct {
-		name           string
-		failMode       bool
-		expectedResult bool
+		name        string
+		status      int
+		contentType string
+		body        []byte
+		expectBid   bool
+		expectWait  bool
 	}{
 		{
 			"fail the response and don't select the job",
-			true,
+			http.StatusInternalServerError,
+			"text/plain",
+			[]byte("500 - Something bad happened!"),
+			false,
 			false,
 		},
 		{
 			"succeed the response and select the job",
+			http.StatusOK,
+			"text/plain",
+			[]byte("200 - Everything is good!"),
+			true,
+			false,
+		},
+		{
+			"pass a JSON response to select the job",
+			http.StatusOK,
+			"application/json",
+			[]byte(`{"shouldBid": true, "reason": "looks like a lovely job"}`),
+			true,
+			false,
+		},
+		{
+			"pass a JSON response to reject the job",
+			http.StatusOK,
+			"application/json",
+			[]byte(`{"shouldBid": false, "reason": "this job really stinks!"}`),
+			false,
+			false,
+		},
+		{
+			"pass a JSON response to wait for a future approval",
+			http.StatusAccepted,
+			"application/json",
+			[]byte(`{"shouldWait": true, "reason": "gonna have to think about this one"}`),
 			false,
 			true,
 		},
@@ -44,13 +77,9 @@ func TestJobSelectionHttp(t *testing.T) {
 					return
 				}
 
-				if test.failMode {
-					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte("500 - Something bad happened!"))
-				} else {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("200 - Everything is good!"))
-				}
+				w.Header().Add("Content-Type", test.contentType)
+				w.WriteHeader(test.status)
+				w.Write(test.body)
 			}))
 			defer svr.Close()
 
@@ -59,7 +88,8 @@ func TestJobSelectionHttp(t *testing.T) {
 			request := getBidStrategyRequest()
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)
-			require.Equal(t, test.expectedResult, result.ShouldBid)
+			require.Equal(t, test.expectBid, result.ShouldBid)
+			require.Equal(t, test.expectWait, result.ShouldWait)
 
 			// this makes sure that the http payload was given to the http endpoint
 			require.Equal(t, request.Job.Metadata.ID, requestPayload.JobID)

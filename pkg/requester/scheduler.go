@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -49,7 +49,7 @@ type scheduler struct {
 	mu               sync.Mutex
 }
 
-func NewScheduler(params SchedulerParams) Scheduler {
+func NewScheduler(params SchedulerParams) *scheduler {
 	res := &scheduler{
 		id:               params.ID,
 		host:             params.Host,
@@ -101,9 +101,19 @@ func (s *scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 		return rankedNodes[i].Rank > rankedNodes[j].Rank
 	})
 
-	err = s.jobStore.CreateJob(ctx, req.Job)
+	err = s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+		JobID: req.Job.Metadata.ID,
+		Condition: jobstore.UpdateJobCondition{
+			ExpectedState: model.JobStateNew,
+		},
+		NewState: model.JobStateInProgress,
+	})
 	if err != nil {
-		return fmt.Errorf("error saving job id: %w", err)
+		return errors.Wrap(err, "error saving job id")
+	}
+	err = s.jobStore.CreateShards(ctx, req.Job.Metadata.ID, req.Job.Spec.ExecutionPlan.TotalShards)
+	if err != nil {
+		return errors.Wrap(err, "error creating shards")
 	}
 	s.eventEmitter.EmitJobCreated(ctx, req.Job)
 
@@ -712,4 +722,5 @@ func (s *scheduler) stopShard(ctx context.Context, shardID model.ShardID, reason
 }
 
 // compile-time check that BackendCallback implements the expected interfaces
+var _ Scheduler = (*scheduler)(nil)
 var _ compute.Callback = (*scheduler)(nil)

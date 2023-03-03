@@ -706,7 +706,8 @@ To get more information at any time, run:
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
 
-				if event.JobState.New == model.JobStateError {
+				// If there was an unsuccessful job, print the reason why.
+				if event.JobState.New != model.JobStateCompleted {
 					err = errors.New(event.Comment)
 					spin.StopMessage(fullLineMessage.PrintError())
 				}
