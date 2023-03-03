@@ -3,6 +3,8 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -52,6 +54,7 @@ type DockerRunOptions struct {
 	Inputs           []string // Array of input CIDs
 	InputUrls        []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
+	MountUrls        []string //
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
 	Env              []string // Array of environment variables
 	IDOnly           bool     // Only print the job ID
@@ -94,6 +97,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Inputs:             []string{},
 		InputUrls:          []string{},
 		InputVolumes:       []string{},
+		MountUrls:          []string{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
 		Concurrency:        1,
@@ -174,6 +178,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputVolumes, "input-volumes", "v", ODR.InputVolumes,
 		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
+	)
+
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&ODR.MountUrls, "mount-uris", "m", ODR.MountUrls,
+		`Mount Inputs as URIs (e.g. -m ipfs://Qmc5gCcjYypU7y28oCALwfSvxCBskLuPKWpK4qpterKC7z -m https://example.com/bar.tar.gz)`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.OutputVolumes, "output-volumes", "o", ODR.OutputVolumes,
@@ -322,6 +331,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 
 // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
+
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
@@ -368,6 +378,40 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 	if odr.FilPlus {
 		labels = append(labels, "filplus")
+	}
+
+	for _, URI := range odr.MountUrls {
+		scheme := func(URI string) *url.URL {
+			parsed, err := url.Parse(URI)
+			if err != nil {
+				errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
+				log.Fatal(errMsg)
+			}
+
+			return parsed
+		}(URI)
+
+		switch scheme.Scheme {
+		case "http":
+			odr.InputUrls = append(odr.InputUrls, URI)
+		case "https":
+			odr.InputUrls = append(odr.InputUrls, URI)
+		case "ipfs":
+			odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
+		// unimplemented schemes
+		// case "git":
+		//     // Handle git scheme
+		//     fmt.Println("Handling git scheme...")
+		// case "s3":
+		//     // Handle s3 scheme
+		//     fmt.Println("Handling s3 scheme...")
+		// case "file":
+		//     // Handle file scheme
+		//     fmt.Println("Handling file scheme...")
+		default:
+			fmt.Println("Unknown scheme or scheme not currently supported...")
+		}
+
 	}
 
 	j, err := jobutils.ConstructDockerJob(
