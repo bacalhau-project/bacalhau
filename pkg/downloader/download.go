@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	cp "github.com/n-marshall/go-cp"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,34 +17,32 @@ import (
 var specialFiles = map[string]bool{
 	model.DownloadFilenameStdout:   true,
 	model.DownloadFilenameStderr:   true,
-	model.DownloadFilenameExitCode: false,
+	model.DownloadFilenameExitCode: true,
 }
 
+// DownloadResult downloads published results from a storage source and saves them to the specific download path.
+// It supports downloading multiple results from different jobs and will append the logs to the global log file. This behavior is left
+// from when we supported sharded jobs, and multiple results per job. It is not currently being user, and we can evaluate removing it in
+// the future if we don't expose merging results from multiple jobs.
 // * make a temp dir
 // * download all cids into temp dir
 // * ensure top level output dir exists
-// * iterate over each shard
-// * make new folder for shard logs
+// * iterate over each published result
 // * copy stdout, stderr, exitCode
 // * append stdout, stderr to global log
 // * iterate over each output volume
 // * make new folder for output volume
-// * iterate over each shard and merge files in output folder to results dir
-func DownloadJob( //nolint:funlen,gocyclo
+// * iterate over each result and merge files in output folder to results dir
+func DownloadResults( //nolint:funlen,gocyclo
 	ctx context.Context,
-	// these are the outputs named in the job spec
-	// we need them so we know which volumes exists
-	outputVolumes []model.StorageSpec,
-	// these are the published results we have loaded
-	// from the api
-	publishedShardResults []model.PublishedResult,
+	publishedResults []model.PublishedResult,
 	downloadProvider DownloaderProvider,
 	settings *model.DownloaderSettings,
 ) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadJob")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.DownloadResults")
 	defer span.End()
 
-	if len(publishedShardResults) == 0 {
+	if len(publishedResults) == 0 {
 		log.Ctx(ctx).Debug().Msg("No results to download")
 		return nil
 	}
@@ -63,98 +60,56 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return fmt.Errorf("output dir does not exist: %s", resultsOutputDir)
 	}
 
-	err = os.MkdirAll(filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName), model.DownloadFolderPerm)
+	cidParentDir := filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName)
+	err = os.MkdirAll(cidParentDir, model.DownloadFolderPerm)
 	if err != nil {
 		return err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Found %d Result shards, downloading to: %s.", len(publishedShardResults), resultsOutputDir)
+	log.Ctx(ctx).Info().Msgf("Downloading %d results to: %s.", len(publishedResults), resultsOutputDir)
 
-	// each shard context understands the various folder paths
-	// and other data it needs to download and resolve itself
-	shardContexts := []shardCIDContext{}
 	// keep track of which cids we have downloaded to avoid
 	// downloading the same cid multiple times
-	downloadedCids := map[string]bool{}
+	downloadedCids := map[string]string{}
 
-	// the base folder for globally merged volumes
-	volumeDir := filepath.Join(resultsOutputDir, model.DownloadVolumesFolderName)
-	err = os.Mkdir(volumeDir, model.DownloadFolderPerm)
-	if err != nil {
-		return err
-	}
-
-	// ensure we have each of the top level merged volumes
-	for _, outputVolume := range outputVolumes {
-		err = os.MkdirAll(filepath.Join(volumeDir, outputVolume.Name), model.DownloadFolderPerm)
-		if err != nil {
-			return err
-		}
-	}
-
-	// loop over shard results - create their cid and shard folders
-	// then add to an array of contexts
-	for _, shardResult := range publishedShardResults {
-		cidDownloadDir := filepath.Join(resultsOutputDir, model.DownloadCIDsFolderName, shardResult.Data.CID)
-		shardDir := filepath.Join(
-			resultsOutputDir,
-			model.DownloadShardsFolderName,
-			fmt.Sprintf("%d_node_%s", shardResult.ShardIndex, system.GetShortID(shardResult.NodeID)),
-		)
-
-		shardContexts = append(shardContexts, shardCIDContext{
-			Result:         shardResult,
-			OutputVolumes:  outputVolumes,
-			RootDir:        resultsOutputDir,
-			CIDDownloadDir: cidDownloadDir,
-			ShardDir:       shardDir,
-			VolumeDir:      volumeDir,
-		})
-
-		// get downloader for each shard and download it's CID
-		// (if we have not already done so)
-		downloader, err := downloadProvider.Get(ctx, shardResult.Data.StorageSource) //nolint
-		_, ok := downloadedCids[shardResult.Data.CID]
+	for _, publishedResult := range publishedResults {
+		cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
+		_, ok := downloadedCids[publishedResult.Data.CID]
 		if !ok {
-			err = downloader.FetchResult(ctx, shardResult, cidDownloadDir)
+			downloader, err := downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			err = downloader.FetchResult(ctx, publishedResult, cidDownloadDir)
 			if err != nil {
 				return err
 			}
-			downloadedCids[shardResult.Data.CID] = true
+			downloadedCids[publishedResult.Data.CID] = cidDownloadDir
 		}
 	}
 
-	// now that we have downloaded the unique CIDs of the results
-	// we want to re-construct folders for each shard and volume
-	for _, shardContext := range shardContexts {
-		err = moveShardData(ctx, shardContext)
+	for _, cidDownloadDir := range downloadedCids {
+		err = moveData(ctx, resultsOutputDir, cidDownloadDir, len(downloadedCids) > 1)
 		if err != nil {
 			return err
 		}
 	}
-
-	return nil
+	return os.RemoveAll(cidParentDir)
 }
 
-func moveShardData(
+func moveData(
 	ctx context.Context,
-	shardContext shardCIDContext,
+	volumeDir string,
+	cidDownloadDir string,
+	appendMode bool,
 ) error {
-	err := os.MkdirAll(shardContext.ShardDir, model.DownloadFolderPerm)
-	if err != nil {
-		return err
-	}
-
 	// the recursive function that will scan our source volume folder
 	moveFunc := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			// If there is an error reading a path, we should continue with the rest
 			log.Ctx(ctx).Error().Err(err).Msgf("Error with path %s", path)
-			return nil
+			return err
 		}
 
 		// the relative path of the file/folder
-		basePath, err := filepath.Rel(shardContext.CIDDownloadDir, path)
+		basePath, err := filepath.Rel(cidDownloadDir, path)
 		if err != nil {
 			return err
 		}
@@ -166,35 +121,21 @@ func moveShardData(
 			return nil
 		}
 
-		// the path to where we are saving this item in the shard and global folders
-		shardTargetPath := filepath.Join(shardContext.ShardDir, basePath)
-		globalTargetPath := filepath.Join(shardContext.VolumeDir, basePath)
+		// the path to where we are saving this item in the global folders
+		globalTargetPath := filepath.Join(volumeDir, basePath)
 
 		// are we dealing with a special case file?
 		shouldAppendLogs, isSpecialFile := specialFiles[basePath]
 
 		if d.IsDir() {
-			err = os.MkdirAll(shardTargetPath, model.DownloadFolderPerm)
-			if err != nil {
-				return nil
-			}
 			err = os.MkdirAll(globalTargetPath, model.DownloadFolderPerm)
 			if err != nil {
 				return nil
 			}
 		} else {
-			// we always copy the file into the shard dir
-			err = copyFile(
-				path,
-				shardTargetPath,
-			)
-			if err != nil {
-				return nil
-			}
-
-			// if it's not a special file then we also copy it into the global dir
-			if !isSpecialFile {
-				err = copyFile(
+			// if it's not a special file then we move it into the global dir
+			if !appendMode || !isSpecialFile {
+				err = moveFile(
 					path,
 					globalTargetPath,
 				)
@@ -203,8 +144,9 @@ func moveShardData(
 				}
 			}
 
-			// append to the global logs if we should
-			if shouldAppendLogs {
+			// if this is a special file, and we are in append mode (such as when downloading multiple results), then we
+			// append the content instead of overwriting it
+			if appendMode && shouldAppendLogs {
 				err = appendFile(
 					path,
 					globalTargetPath,
@@ -218,12 +160,7 @@ func moveShardData(
 		return nil
 	}
 
-	err = filepath.WalkDir(shardContext.CIDDownloadDir, moveFunc)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return filepath.WalkDir(cidDownloadDir, moveFunc)
 }
 
 // read data from sourcePath and append it to targetPath
@@ -249,7 +186,7 @@ func appendFile(sourcePath, targetPath string) error {
 	return nil
 }
 
-func copyFile(sourcePath, targetPath string) error {
+func moveFile(sourcePath, targetPath string) error {
 	_, err := os.Stat(targetPath)
 	if err != nil {
 		// we got some other type of error
@@ -262,8 +199,5 @@ func copyFile(sourcePath, targetPath string) error {
 		return nil
 	}
 
-	return cp.CopyFile(
-		sourcePath,
-		targetPath,
-	)
+	return os.Rename(sourcePath, targetPath)
 }

@@ -5,7 +5,7 @@ import (
 )
 
 // JobStateType The state of a job across the whole network that represents an aggregate view across
-// the shards and nodes.
+// the executions and nodes.
 //
 //go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 type JobStateType int
@@ -19,13 +19,10 @@ const (
 	// Job is canceled by the user.
 	JobStateCancelled
 
-	// All shards have failed
+	// Job have failed
 	JobStateError
 
-	// Some shards have failed, while others have completed successfully
-	JobStatePartialError
-
-	// All shards have completed successfully
+	// Job completed successfully
 	JobStateCompleted
 
 	// Job is waiting to be scheduled.
@@ -54,13 +51,14 @@ func (s *JobStateType) UnmarshalText(text []byte) (err error) {
 }
 
 // JobState The state of a job across the whole network that represents an aggregate view across
-// the shards and nodes.
+// the executions and nodes.
 type JobState struct {
 	// JobID is the unique identifier for the job
 	JobID string `json:"JobID"`
-	// Shards is a map of shard index to shard state.
-	// The number of shards are fixed at the time of job creation.
-	Shards map[int]ShardState `json:"Shards"`
+	// Executions is a list of executions of the job across the nodes.
+	// A new execution is created when a node is selected to execute the job, and a node can have multiple executions for the same
+	// job due to retries, but there can only be a single active execution per node at any given time.
+	Executions []ExecutionState `json:"Executions"`
 	// State is the current state of the job
 	State JobStateType `json:"State"`
 	// Version is the version of the job state. It is incremented every time the job state is updated.

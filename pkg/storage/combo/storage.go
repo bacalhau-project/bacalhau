@@ -2,7 +2,6 @@ package combo
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -98,17 +97,6 @@ func (driver *ComboStorageProvider) Upload(
 		return model.StorageSpec{}, err
 	}
 	return provider.Upload(ctx, localPath)
-}
-
-func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
-	provider, err := driver.getReadProvider(ctx, storageSpec)
-	if err != nil {
-		return nil, err
-	}
-	if provider == nil {
-		return nil, fmt.Errorf("no storage provider found for %s", storageSpec.CID)
-	}
-	return provider.Explode(ctx, storageSpec)
 }
 
 func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {

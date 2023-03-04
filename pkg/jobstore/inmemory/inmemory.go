@@ -16,10 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-const (
-	newJobComment   = "Job created"
-	newShardComment = "Shard created"
-)
+const newJobComment = "Job created"
 
 type JobStore struct {
 	// we keep pointers to these things because we will update them partially
@@ -178,7 +175,6 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 	// populate job state
 	jobState := model.JobState{
 		JobID:      job.Metadata.ID,
-		Shards:     nil,
 		State:      model.JobStateNew,
 		Version:    1,
 		CreateTime: time.Now(),
@@ -187,30 +183,6 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 	d.states[job.Metadata.ID] = jobState
 	d.inprogress[job.Metadata.ID] = struct{}{}
 	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
-	return nil
-}
-
-func (d *JobStore) CreateShards(ctx context.Context, jobID string, count int) error {
-	jobState, ok := d.states[jobID]
-	if !ok {
-		return jobstore.NewErrJobNotFound(jobID)
-	}
-
-	shardStates := make(map[int]model.ShardState, count)
-	for i := 0; i < count; i++ {
-		shardStates[i] = model.ShardState{
-			JobID:      jobID,
-			ShardIndex: i,
-			State:      model.ShardStateInProgress,
-			Version:    1,
-			CreateTime: time.Now(),
-			UpdateTime: time.Now(),
-		}
-		d.appendShardHistory(shardStates[i], model.ShardStateNew, newShardComment)
-	}
-
-	jobState.Shards = shardStates
-	d.states[jobID] = jobState
 	return nil
 }
 
@@ -273,53 +245,6 @@ func (d *JobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobS
 	return nil
 }
 
-func (d *JobStore) GetShardState(_ context.Context, shardID model.ShardID) (model.ShardState, error) {
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
-	jobState, ok := d.states[shardID.JobID]
-	if !ok {
-		return model.ShardState{}, jobstore.NewErrJobNotFound(shardID.JobID)
-	}
-	shardState, ok := jobState.Shards[shardID.Index]
-	if !ok {
-		return model.ShardState{}, jobstore.NewErrShardNotFound(shardID)
-	}
-	return shardState, nil
-}
-
-func (d *JobStore) UpdateShardState(_ context.Context, request jobstore.UpdateShardStateRequest) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-
-	// find the existing shard
-	jobState, ok := d.states[request.ShardID.JobID]
-	if !ok {
-		return jobstore.NewErrJobNotFound(request.ShardID.JobID)
-	}
-	shardState, ok := jobState.Shards[request.ShardID.Index]
-	if !ok {
-		return jobstore.NewErrShardNotFound(request.ShardID)
-	}
-
-	// check the expected state
-	if err := request.Condition.Validate(shardState); err != nil {
-		return err
-	}
-	if shardState.State.IsTerminal() {
-		return jobstore.NewErrShardAlreadyTerminal(request.ShardID, shardState.State, request.NewState)
-	}
-
-	// update the shard state
-	previousState := shardState.State
-	shardState.State = request.NewState
-	shardState.Version++
-	shardState.UpdateTime = time.Now()
-	jobState.Shards[request.ShardID.Index] = shardState
-	d.states[request.ShardID.JobID] = jobState
-	d.appendShardHistory(shardState, previousState, request.Comment)
-	return nil
-}
-
 func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -327,11 +252,7 @@ func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionS
 	if !ok {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
-	shardState, ok := jobState.Shards[execution.ShardIndex]
-	if !ok {
-		return jobstore.NewErrShardNotFound(execution.ShardID())
-	}
-	for _, e := range shardState.Executions {
+	for _, e := range jobState.Executions {
 		if e.ID() == execution.ID() {
 			return jobstore.NewErrExecutionAlreadyExists(execution.ID())
 		}
@@ -345,8 +266,7 @@ func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionS
 	if execution.Version == 0 {
 		execution.Version = 1
 	}
-	shardState.Executions = append(shardState.Executions, execution)
-	jobState.Shards[execution.ShardIndex] = shardState
+	jobState.Executions = append(jobState.Executions, execution)
 	d.states[execution.JobID] = jobState
 	d.appendExecutionHistory(execution, model.ExecutionStateNew, "")
 	return nil
@@ -361,13 +281,9 @@ func (d *JobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExe
 	if !ok {
 		return jobstore.NewErrJobNotFound(request.ExecutionID.JobID)
 	}
-	shardState, ok := jobState.Shards[request.ExecutionID.ShardIndex]
-	if !ok {
-		return jobstore.NewErrShardNotFound(request.ExecutionID.ShardID())
-	}
 	var existingExecution model.ExecutionState
 	executionIndex := -1
-	for i, e := range shardState.Executions {
+	for i, e := range jobState.Executions {
 		if e.ID() == request.ExecutionID {
 			existingExecution = e
 			executionIndex = i
@@ -405,8 +321,7 @@ func (d *JobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExe
 
 	// update the execution
 	previousState := existingExecution.State
-	shardState.Executions[executionIndex] = newExecution
-	jobState.Shards[newExecution.ShardIndex] = shardState
+	jobState.Executions[executionIndex] = newExecution
 	d.states[newExecution.JobID] = jobState
 	d.appendExecutionHistory(newExecution, previousState, request.Comment)
 	return nil
@@ -427,27 +342,10 @@ func (d *JobStore) appendJobHistory(updateJob model.JobState, previousState mode
 	d.history[updateJob.JobID] = append(d.history[updateJob.JobID], historyEntry)
 }
 
-func (d *JobStore) appendShardHistory(updatedShard model.ShardState, previousState model.ShardStateType, comment string) {
-	historyEntry := model.JobHistory{
-		Type:       model.JobHistoryTypeShardLevel,
-		JobID:      updatedShard.JobID,
-		ShardIndex: updatedShard.ShardIndex,
-		ShardState: &model.StateChange[model.ShardStateType]{
-			Previous: previousState,
-			New:      updatedShard.State,
-		},
-		NewVersion: updatedShard.Version,
-		Comment:    comment,
-		Time:       updatedShard.UpdateTime,
-	}
-	d.history[updatedShard.JobID] = append(d.history[updatedShard.JobID], historyEntry)
-}
-
 func (d *JobStore) appendExecutionHistory(updatedExecution model.ExecutionState, previousState model.ExecutionStateType, comment string) {
 	historyEntry := model.JobHistory{
 		Type:             model.JobHistoryTypeExecutionLevel,
 		JobID:            updatedExecution.JobID,
-		ShardIndex:       updatedExecution.ShardIndex,
 		NodeID:           updatedExecution.NodeID,
 		ComputeReference: updatedExecution.ComputeReference,
 		ExecutionState: &model.StateChange[model.ExecutionStateType]{

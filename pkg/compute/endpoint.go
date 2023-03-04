@@ -52,7 +52,6 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	jobsReceived.Add(ctx, 1)
 
 	// ask the bidding strategy if we should bid on this job
-	// TODO: we should check at the shard level, not the job level
 	bidStrategyRequest := bidstrategy.BidStrategyRequest{
 		NodeID: s.id,
 		Job:    request.Job,
@@ -64,56 +63,36 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 		return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
 	}
 
-	var shardRequirements model.ResourceUsageData
+	var jobRequirements model.ResourceUsageData
 	if bidStrategyResponse.ShouldBid {
 		// calculate resource requirements for this job
-		shardRequirements, err = s.usageCalculator.Calculate(
+		jobRequirements, err = s.usageCalculator.Calculate(
 			ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
 		if err != nil {
 			return AskForBidResponse{}, fmt.Errorf("error calculating job requirements: %w", err)
 		}
 
 		// Check bidding strategies after calculating resource usage
-		bidStrategyResponse, err = s.bidStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, shardRequirements)
+		bidStrategyResponse, err = s.bidStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, jobRequirements)
 		if err != nil {
 			return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
 		}
 	}
 
-	// prepare the response, which can include partial bids
-	var shardResponses []AskForBidShardResponse
-	var enqueueErr error
-	var acceptedShards = 0
-	for _, shardIndex := range request.ShardIndexes {
-		var shardResponse AskForBidShardResponse
-		shardResponse, enqueueErr = s.prepareAskForBidShardResponse(ctx, request, shardIndex, shardRequirements, bidStrategyResponse)
-		shardResponses = append(shardResponses, shardResponse)
-		if shardResponse.Accepted {
-			acceptedShards++
-		}
-	}
-
-	// if we didn't accept any shard, and an error occurred, return it instead of shard level response.
-	if enqueueErr != nil && acceptedShards == 0 {
-		return AskForBidResponse{}, fmt.Errorf("error preparing shard responses: %w", enqueueErr)
-	}
-
-	return AskForBidResponse{ShardResponse: shardResponses}, nil
+	return s.prepareAskForBidResponse(ctx, request, jobRequirements, bidStrategyResponse)
 }
 
-// Enqueues the shard in the execution executionStore, and returns the shard response.
-// Failure to enqueue the shard will return BOTH an error and a shard response with Accepted=false.
-func (s BaseEndpoint) prepareAskForBidShardResponse(
+// Enqueues the job in the execution executionStore, and returns the response.
+// Failure to enqueue the job will return BOTH an error and a response with Accepted=false.
+func (s BaseEndpoint) prepareAskForBidResponse(
 	ctx context.Context,
 	request AskForBidRequest,
-	shardIndex int,
-	shardRequirements model.ResourceUsageData,
-	bidStrategyResponse bidstrategy.BidStrategyResponse) (AskForBidShardResponse, error) {
+	resourceUsage model.ResourceUsageData,
+	bidStrategyResponse bidstrategy.BidStrategyResponse) (AskForBidResponse, error) {
 	if !bidStrategyResponse.ShouldBid {
-		return AskForBidShardResponse{
+		return AskForBidResponse{
 			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.Metadata.ID,
-				ShardIndex: shardIndex,
+				JobID: request.Job.Metadata.ID,
 			},
 			Accepted: false,
 			Reason:   bidStrategyResponse.Reason,
@@ -122,29 +101,27 @@ func (s BaseEndpoint) prepareAskForBidShardResponse(
 
 	execution := *store.NewExecution(
 		"e-"+uuid.NewString(),
-		model.JobShard{Job: &request.Job, Index: shardIndex},
+		request.Job,
 		request.SourcePeerID,
-		shardRequirements,
+		resourceUsage,
 	)
 
 	err := s.executionStore.CreateExecution(ctx, execution)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error adding shard %s to backlog", execution.Shard)
-		return AskForBidShardResponse{
+		log.Ctx(ctx).Error().Err(err).Msgf("error adding job %s to backlog", execution.Job)
+		return AskForBidResponse{
 			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.Metadata.ID,
-				ShardIndex: shardIndex,
+				JobID: request.Job.Metadata.ID,
 			},
 			Accepted: false,
-			Reason:   "error adding shard to backlog",
+			Reason:   "error adding job to backlog",
 		}, err
 	} else {
-		log.Ctx(ctx).Debug().Msgf("bidding for shard %s with execution %s", execution.Shard, execution.ID)
-		return AskForBidShardResponse{
+		log.Ctx(ctx).Debug().Msgf("bidding for job %s with execution %s", execution.Job, execution.ID)
+		return AskForBidResponse{
 			ExecutionMetadata: ExecutionMetadata{
 				ExecutionID: execution.ID,
 				JobID:       request.Job.Metadata.ID,
-				ShardIndex:  shardIndex,
 			},
 			Accepted: true,
 		}, nil

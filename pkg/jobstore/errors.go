@@ -81,68 +81,6 @@ func (e ErrJobAlreadyTerminal) Error() string {
 		e.JobID, e.Actual.String(), e.NewState.String())
 }
 
-// ErrShardNotFound is returned when the Shard is not found
-type ErrShardNotFound struct {
-	ShardID model.ShardID
-}
-
-func NewErrShardNotFound(id model.ShardID) ErrShardNotFound {
-	return ErrShardNotFound{ShardID: id}
-}
-
-func (e ErrShardNotFound) Error() string {
-	return "shard not found: " + e.ShardID.String()
-}
-
-// ErrInvalidShardState is returned when an shard is in an invalid state.
-type ErrInvalidShardState struct {
-	ShardID  model.ShardID
-	Actual   model.ShardStateType
-	Expected model.ShardStateType
-}
-
-func NewErrInvalidShardState(id model.ShardID, actual model.ShardStateType, expected model.ShardStateType) ErrInvalidShardState {
-	return ErrInvalidShardState{ShardID: id, Actual: actual, Expected: expected}
-}
-
-func (e ErrInvalidShardState) Error() string {
-	if e.Expected == model.ShardStateNew {
-		return fmt.Sprintf("shard %s is in unexpted state %s.", e.ShardID, e.Actual.String())
-	}
-	return "shard " + e.ShardID.String() + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
-}
-
-// ErrInvalidShardVersion is returned when an shard has an invalid version.
-type ErrInvalidShardVersion struct {
-	ShardID  model.ShardID
-	Actual   int
-	Expected int
-}
-
-func NewErrInvalidShardVersion(id model.ShardID, actual int, expected int) ErrInvalidShardVersion {
-	return ErrInvalidShardVersion{ShardID: id, Actual: actual, Expected: expected}
-}
-
-func (e ErrInvalidShardVersion) Error() string {
-	return fmt.Sprintf("shard %s has version %d but expected %d", e.ShardID, e.Actual, e.Expected)
-}
-
-// ErrShardAlreadyTerminal is returned when an shard is already in terminal state and cannot be updated.
-type ErrShardAlreadyTerminal struct {
-	ShardID  model.ShardID
-	Actual   model.ShardStateType
-	NewState model.ShardStateType
-}
-
-func NewErrShardAlreadyTerminal(id model.ShardID, actual model.ShardStateType, newState model.ShardStateType) ErrShardAlreadyTerminal {
-	return ErrShardAlreadyTerminal{ShardID: id, Actual: actual, NewState: newState}
-}
-
-func (e ErrShardAlreadyTerminal) Error() string {
-	return fmt.Sprintf("shard %s is in terminal state %s and cannot transition to %s",
-		e.ShardID, e.Actual.String(), e.NewState.String())
-}
-
 // ErrExecutionNotFound is returned when an job already exists
 type ErrExecutionNotFound struct {
 	ExecutionID model.ExecutionID

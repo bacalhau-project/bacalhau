@@ -49,23 +49,16 @@ func (e *RequestHandler) AskForBid(ctx context.Context, request compute.AskForBi
 		return compute.AskForBidResponse{}, err
 	}
 
-	// only return the shard responses that the wallet did not reject
-	toReturnShardResponses := make([]compute.AskForBidShardResponse, 0)
-	for _, shardResponse := range response.ShardResponse {
-		if shardResponse.Accepted {
-			event := e.constructEvent(request.RoutingMetadata, shardResponse.ExecutionMetadata, model.JobEventBid)
-			// we flip senders to mimic a bid was received instead of being asked
-			event.SourceNodeID = request.RoutingMetadata.TargetPeerID
-			err = e.wallets.addEvent(event)
-			if err != nil {
-				continue
-			}
-			e.executionStore[shardResponse.ExecutionMetadata.ExecutionID] = shardResponse.ExecutionMetadata
+	if response.Accepted {
+		event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
+		// we flip senders to mimic a bid was received instead of being asked
+		event.SourceNodeID = request.RoutingMetadata.TargetPeerID
+		err = e.wallets.addEvent(event)
+		if err != nil {
+			return compute.AskForBidResponse{}, err
 		}
-		toReturnShardResponses = append(toReturnShardResponses, shardResponse)
+		e.executionStore[response.ExecutionMetadata.ExecutionID] = response.ExecutionMetadata
 	}
-	response.ShardResponse = toReturnShardResponses
-
 	return response, nil
 }
 
@@ -193,7 +186,6 @@ func (e *RequestHandler) constructEvent(
 		TargetNodeID: routingMetadata.TargetPeerID,
 		SourceNodeID: routingMetadata.SourcePeerID,
 		JobID:        executionMetadata.JobID,
-		ShardIndex:   executionMetadata.ShardIndex,
 		ExecutionID:  executionMetadata.ExecutionID,
 		EventName:    eventName,
 		EventTime:    time.Now(),

@@ -105,9 +105,8 @@ func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, er
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
-	j := &model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
-	shard := model.JobShard{Job: j, Index: 0}
-	return s.executor.RunShard(ctx, shard, result)
+	j := model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
+	return s.executor.Run(ctx, j, result)
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {

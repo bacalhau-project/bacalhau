@@ -31,7 +31,7 @@ func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 	if err != nil {
 		return err
 	}
-	spec.Contexts = []StorageSpec{parseStorageSource("/job", entryModule)}
+	spec.Inputs = []StorageSpec{parseStorageSource("/job", entryModule)}
 
 	for _, resource := range wasm.Modules {
 		resource := resource
@@ -42,7 +42,7 @@ func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 	if err != nil {
 		return err
 	}
-	spec.Inputs = inputData
+	spec.Inputs = append(spec.Inputs, inputData...)
 
 	spec.Outputs = []StorageSpec{}
 	for path := range wasm.Outputs.Values {

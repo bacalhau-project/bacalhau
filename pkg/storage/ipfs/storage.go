@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -97,39 +96,6 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.S
 		StorageSource: model.StorageSourceIPFS,
 		CID:           cid,
 	}, nil
-}
-
-func (s *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	treeNode, err := s.ipfsClient.GetTreeNode(ctx, spec.CID)
-	if err != nil {
-		return []model.StorageSpec{}, err
-	}
-	flatNodes, err := ipfs.FlattenTreeNode(ctx, treeNode)
-	if err != nil {
-		return []model.StorageSpec{}, err
-	}
-	basePath := strings.TrimPrefix(spec.Path, "/")
-	basePath = strings.TrimSuffix(basePath, "/")
-	var specs []model.StorageSpec
-	seenPaths := map[string]bool{}
-	for _, node := range flatNodes {
-		prepend := basePath
-		if prepend != "" {
-			prepend = "/" + prepend
-		}
-		usePath := strings.TrimSuffix(prepend+"/"+strings.Join(node.Path, "/"), "/")
-		_, ok := seenPaths[usePath]
-		if ok {
-			continue
-		}
-		seenPaths[usePath] = true
-		specs = append(specs, model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           node.Cid.String(),
-			Path:          usePath,
-		})
-	}
-	return specs, nil
 }
 
 func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {

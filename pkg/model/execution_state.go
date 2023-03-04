@@ -5,14 +5,14 @@ import (
 	"time"
 )
 
-// ExecutionStateType The state of an execution. An execution represents a single attempt to execute a shard on a node.
-// A compute node can have multiple executions for the same shard due to retries, but there can only be a single active execution
+// ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
+// A compute node can have multiple executions for the same job due to retries, but there can only be a single active execution
 // per node at any given time.
 type ExecutionStateType int
 
 const (
 	ExecutionStateNew ExecutionStateType = iota
-	// ExecutionStateAskForBid A node has been selected to execute a shard, and is being asked to bid on the shard.
+	// ExecutionStateAskForBid A node has been selected to execute a job, and is being asked to bid on the job.
 	ExecutionStateAskForBid
 	// ExecutionStateAskForBidAccepted compute node has rejected the ask for bid.
 	ExecutionStateAskForBidAccepted
@@ -79,29 +79,21 @@ func (s *ExecutionStateType) UnmarshalText(text []byte) (err error) {
 // ExecutionID a globally unique identifier for an execution
 type ExecutionID struct {
 	JobID       string `json:"JobID,omitempty"`
-	ShardIndex  int    `json:"ShardIndex,omitempty"`
 	NodeID      string `json:"NodeID,omitempty"`
 	ExecutionID string `json:"ExecutionID,omitempty"`
 }
 
 // String returns a string representation of the execution id
 func (e ExecutionID) String() string {
-	return fmt.Sprintf("%s:%d:%s:%s", e.JobID, e.ShardIndex, e.NodeID, e.ExecutionID)
-}
-
-// ShardID returns the shard ID for this execution id
-func (e ExecutionID) ShardID() ShardID {
-	return ShardID{JobID: e.JobID, Index: e.ShardIndex}
+	return fmt.Sprintf("%s:%s:%s", e.JobID, ShortID(e.NodeID), e.ExecutionID)
 }
 
 type ExecutionState struct {
 	// JobID the job id
 	JobID string `json:"JobID"`
-	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex"`
 	// which node is running this execution
 	NodeID string `json:"NodeId"`
-	// Compute node reference for this shard execution
+	// Compute node reference for this job execution
 	ComputeReference string `json:"ComputeReference"`
 	// State is the current state of the execution
 	State ExecutionStateType `json:"State"`
@@ -125,12 +117,7 @@ type ExecutionState struct {
 
 // ID returns the ID for this execution
 func (e ExecutionState) ID() ExecutionID {
-	return ExecutionID{JobID: e.JobID, ShardIndex: e.ShardIndex, NodeID: e.NodeID, ExecutionID: e.ComputeReference}
-}
-
-// ShardID returns the shard ID for this execution
-func (e ExecutionState) ShardID() ShardID {
-	return ShardID{JobID: e.JobID, Index: e.ShardIndex}
+	return ExecutionID{JobID: e.JobID, NodeID: e.NodeID, ExecutionID: e.ComputeReference}
 }
 
 // String returns a string representation of the execution
