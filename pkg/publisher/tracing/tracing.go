@@ -29,13 +29,13 @@ func (t *tracingPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return t.delegate.IsInstalled(ctx)
 }
 
-func (t *tracingPublisher) PublishShardResult(
-	ctx context.Context, shard model.JobShard, hostID string, shardResultPath string,
+func (t *tracingPublisher) PublishResult(
+	ctx context.Context, j model.Job, hostID string, resultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishShardResult", t.name))
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
 	defer span.End()
 
-	return t.delegate.PublishShardResult(ctx, shard, hostID, shardResultPath)
+	return t.delegate.PublishResult(ctx, j, hostID, resultPath)
 }
 
 var _ publisher.Publisher = &tracingPublisher{}

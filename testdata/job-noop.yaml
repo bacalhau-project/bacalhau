@@ -7,9 +7,6 @@ Spec:
     - StorageSource: IPFS
       Name: output_custom
       path: /output_custom
-  Sharding:
-    BatchSize: 1
-    GlobPatternBasePath: /inputs
   Deal:
     Concurrency: 1
     Confidence: 0

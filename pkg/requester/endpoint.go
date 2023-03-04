@@ -44,7 +44,6 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
-		jobtransform.NewExecutionPlanner(params.StorageProviders),
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 	}
 

@@ -122,12 +122,12 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	ctx = system.AddJobIDToBaggage(ctx, task.execution.Shard.Job.Metadata.ID)
+	ctx = system.AddJobIDToBaggage(ctx, task.execution.Job.Metadata.ID)
 	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
-	timeout := task.execution.Shard.Job.Spec.GetTimeout()
+	timeout := task.execution.Job.Spec.GetTimeout()
 	if timeout == 0 {
 		timeout = s.defaultJobExecutionTimeout
 	}
@@ -196,7 +196,7 @@ func (s *ExecutorBuffer) Publish(_ context.Context, execution store.Execution) e
 	// TODO: Enqueue publish tasks
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Shard.Job.Metadata.ID)
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
 		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Publish")
 		defer span.End()
@@ -209,7 +209,7 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 	// TODO: Enqueue cancel tasks
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Shard.Job.Metadata.ID)
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
 		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()

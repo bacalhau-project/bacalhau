@@ -36,11 +36,11 @@ func (c *piggybackedPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (c *piggybackedPublisher) PublishShardResult(
-	ctx context.Context, shard model.JobShard, hostID string, shardResultPath string,
+func (c *piggybackedPublisher) PublishResult(
+	ctx context.Context, job model.Job, hostID string, resultPath string,
 ) (model.StorageSpec, error) {
 	results, err := callAllPublishers(c.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, job, hostID, resultPath)
 	})
 	if err != nil {
 		return model.StorageSpec{}, err

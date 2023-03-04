@@ -17,6 +17,16 @@ type Job struct {
 	Spec Spec `json:"Spec,omitempty"`
 }
 
+// ID returns the ID of the job.
+func (j Job) ID() string {
+	return j.Metadata.ID
+}
+
+// String returns the id of the job.
+func (j Job) String() string {
+	return j.Metadata.ID
+}
+
 type Metadata struct {
 	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"ID,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`
@@ -74,49 +84,6 @@ type JobWithInfo struct {
 	State JobState `json:"State"`
 	// History of changes to the job state. Not always populated in the job description
 	History []JobHistory `json:"History,omitempty"`
-}
-
-// JobShard contains data about a job shard in the bacalhau network.
-type JobShard struct {
-	Job   *Job `json:"Job,omitempty"`
-	Index int  `json:"Index,omitempty"`
-}
-
-func (shard JobShard) ID() string {
-	return shard.ShardID().ID()
-}
-
-func (shard JobShard) ShardID() ShardID {
-	return ShardID{
-		JobID: shard.Job.Metadata.ID,
-		Index: shard.Index,
-	}
-}
-
-func (shard JobShard) String() string {
-	return shard.ID()
-}
-
-type JobExecutionPlan struct {
-	// how many shards are there in total for this job
-	// we are expecting this number x concurrency total
-	// ShardState objects for this job
-	TotalShards int `json:"ShardsTotal,omitempty"`
-}
-
-// describe how we chunk a job up into shards
-type JobShardingConfig struct {
-	// divide the inputs up into the smallest possible unit
-	// for example /* would mean "all top level files or folders"
-	// this being an empty string means "no sharding"
-	GlobPattern string `json:"GlobPattern,omitempty"`
-	// how many "items" are to be processed in each shard
-	// we first apply the glob pattern which will result in a flat list of items
-	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"BatchSize,omitempty"`
-	// when using multiple input volumes
-	// what path do we treat as the common mount path to apply the glob pattern to
-	BasePath string `json:"GlobPatternBasePath,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -185,11 +152,6 @@ type Spec struct {
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
 	Inputs []StorageSpec `json:"inputs,omitempty"`
 
-	// Input volumes that will not be sharded
-	// for example to upload code into a base image
-	// every shard will get the full range of context volumes
-	Contexts []StorageSpec `json:"Contexts,omitempty"`
-
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
 	Outputs []StorageSpec `json:"outputs,omitempty"`
@@ -199,15 +161,9 @@ type Spec struct {
 
 	// NodeSelectors is a selector which must be true for the compute node to run this job.
 	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
-	// the sharding config for this job
-	// describes how the job might be split up into parallel shards
-	Sharding JobShardingConfig `json:"Sharding,omitempty"`
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty"`
-
-	// how will this job be executed by nodes on the network
-	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal Deal `json:"Deal,omitempty"`
@@ -226,7 +182,6 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	}
 
 	for _, collection := range [][]StorageSpec{
-		s.Contexts,
 		s.Inputs,
 		s.Outputs,
 	} {
@@ -295,8 +250,6 @@ type JobEvent struct {
 	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
 
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// what shard is this event for
-	ShardIndex int `json:"ShardIndex,omitempty"`
 	// compute execution identifier
 	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
@@ -309,8 +262,6 @@ type JobEvent struct {
 	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events
 	Spec Spec `json:"Spec,omitempty"`
-	// this is only defined in "create" events
-	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan,omitempty"`
 	// this is only defined in "update_deal" events
 	Deal                 Deal               `json:"Deal,omitempty"`
 	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`

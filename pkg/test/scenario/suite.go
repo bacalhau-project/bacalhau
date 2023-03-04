@@ -2,7 +2,6 @@ package scenario
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -120,7 +119,6 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	s.T().Log("Setting up storage")
 	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
-	spec.Contexts = s.prepareStorage(stack, scenario.Contexts)
 	spec.Outputs = scenario.Outputs
 	if spec.Outputs == nil {
 		spec.Outputs = []model.StorageSpec{}
@@ -185,11 +183,11 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		model.StorageSourceIPFS: ipfsDownloader,
 	})
 
-	err = downloader.DownloadJob(s.Ctx, spec.Outputs, results, downloaderProvider, downloaderSettings)
+	err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)
 	s.Require().NoError(err)
 
 	if scenario.ResultsChecker != nil {
-		err = scenario.ResultsChecker(filepath.Join(resultsDir, model.DownloadVolumesFolderName))
+		err = scenario.ResultsChecker(resultsDir)
 		s.Require().NoError(err)
 	}
 

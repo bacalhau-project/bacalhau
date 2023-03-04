@@ -84,7 +84,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, submittedJob.Metadata.ID)
+	executions, err := resolver.GetExecutions(ctx, submittedJob.Metadata.ID)
 	require.NoError(s.T(), err)
 
 	require.NotNil(s.T(), stack.Lotus)
@@ -101,7 +101,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	require.NoError(s.T(), err)
 
 	require.Len(s.T(), imports, 1)
-	require.Len(s.T(), shards, 1)
+	require.Len(s.T(), executions, 1)
 
 	dir := s.T().TempDir()
 
@@ -116,7 +116,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	lotusExitCode, err := strconv.Atoi(string(lotusExitCodeStr))
 	require.NoError(s.T(), err)
 
-	assert.Equal(s.T(), shards[0].RunOutput.STDOUT, string(lotusStdout))
-	assert.Equal(s.T(), shards[0].RunOutput.STDERR, string(lotusStderr))
-	assert.Equal(s.T(), shards[0].RunOutput.ExitCode, lotusExitCode)
+	assert.Equal(s.T(), executions[0].RunOutput.STDOUT, string(lotusStdout))
+	assert.Equal(s.T(), executions[0].RunOutput.STDERR, string(lotusStderr))
+	assert.Equal(s.T(), executions[0].RunOutput.ExitCode, lotusExitCode)
 }

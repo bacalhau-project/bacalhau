@@ -10,7 +10,7 @@ import (
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
 // interact with the frontend service to submit jobs, ask for bids, accept or reject bids, etc.
 type Endpoint interface {
-	// AskForBid asks for a bid for a given job and shard IDs, which will assign executionIDs for each shard the node
+	// AskForBid asks for a bid for a given job, which will assign executionID to the job and return a bid
 	// is interested in bidding on.
 	AskForBid(context.Context, AskForBidRequest) (AskForBidResponse, error)
 	// BidAccepted accepts a bid for a given executionID, which will trigger executing the job in the backend.
@@ -58,14 +58,12 @@ type RoutingMetadata struct {
 type ExecutionMetadata struct {
 	ExecutionID string
 	JobID       string
-	ShardIndex  int
 }
 
 func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
-		JobID:       execution.Shard.Job.Metadata.ID,
-		ShardIndex:  execution.Shard.Index,
+		JobID:       execution.Job.Metadata.ID,
 	}
 }
 
@@ -73,16 +71,9 @@ type AskForBidRequest struct {
 	RoutingMetadata
 	// Job specifies the job to be executed.
 	Job model.Job
-	// ShardIndexes specifies the shard indexes to be executed.
-	// This enables the requester to ask for bids for a subset of the shards of a job.
-	ShardIndexes []int
 }
 
 type AskForBidResponse struct {
-	ShardResponse []AskForBidShardResponse
-}
-
-type AskForBidShardResponse struct {
 	ExecutionMetadata
 	Accepted bool
 	Reason   string

@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -145,12 +144,12 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 }
 
 //nolint:funlen  // Will be made shorter when we do more module linking
-func (e *Executor) RunShard(
+func (e *Executor) Run(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
 	cache := wazero.NewCompilationCache()
@@ -159,8 +158,8 @@ func (e *Executor) RunShard(
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
-	if shard.Job.Spec.Resources.Memory != "" {
-		memoryLimit, err := datasize.ParseString(shard.Job.Spec.Resources.Memory)
+	if job.Spec.Resources.Memory != "" {
+		memoryLimit, err := datasize.ParseString(job.Spec.Resources.Memory)
 		if err != nil {
 			return executor.FailResult(err)
 		}
@@ -172,20 +171,15 @@ func (e *Executor) RunShard(
 
 	engine := wazero.NewRuntimeWithConfig(ctx, engineConfig)
 
-	wasmSpec := shard.Job.Spec.Wasm
-	contextStorageSpec := shard.Job.Spec.Wasm.EntryModule
+	wasmSpec := job.Spec.Wasm
+	contextStorageSpec := job.Spec.Wasm.EntryModule
 	module, err := LoadRemoteModule(ctx, engine, e.StorageProvider, contextStorageSpec)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 	defer closer.ContextCloserWithLogOnError(ctx, "module", module)
 
-	shardStorageSpec, err := job.GetShardStorageSpec(ctx, shard, e.StorageProvider)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -250,7 +244,7 @@ func (e *Executor) RunShard(
 
 	// Check that all WASI modules conform to our requirements.
 	importedModules = append(importedModules, wasi)
-	err = ValidateModuleAgainstJob(module, shard.Job.Spec, importedModules...)
+	err = ValidateModuleAgainstJob(module, job.Spec, importedModules...)
 	if err != nil {
 		return executor.FailResult(err)
 	}

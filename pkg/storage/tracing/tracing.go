@@ -64,11 +64,4 @@ func (t *tracingStorage) Upload(ctx context.Context, s string) (model.StorageSpe
 	return t.delegate.Upload(ctx, s)
 }
 
-func (t *tracingStorage) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.Explode", t.name))
-	defer span.End()
-
-	return t.delegate.Explode(ctx, spec)
-}
-
 var _ storage.Storage = &tracingStorage{}
