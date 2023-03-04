@@ -22,8 +22,3 @@ outputs:
     CID: ""
     URL: ""
     path: /outputs
-# Not required
-Sharding:
-  GlobPattern: ""
-  BatchSize: 1
-  GlobPatternBasePath: /inputs
