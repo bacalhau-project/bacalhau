@@ -48,10 +48,6 @@ type LanguageRunOptions struct {
 
 	RuntimeSettings  RunTimeSettings
 	DownloadSettings model.DownloaderSettings
-
-	// ShardingGlobPattern string
-	// ShardingBasePath string
-	// ShardingBatchSize int
 }
 
 func NewLanguageRunOptions() *LanguageRunOptions {
@@ -230,7 +226,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 			return nil
 		}
 		context.Path = "/job"
-		j.Spec.Contexts = append(j.Spec.Contexts, context)
+		j.Spec.Inputs = append(j.Spec.Inputs, context)
 	}
 
 	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)

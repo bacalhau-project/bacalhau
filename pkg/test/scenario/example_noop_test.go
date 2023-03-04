@@ -15,7 +15,7 @@ var noopScenario Scenario = Scenario{
 	Stack: &StackConfig{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil)
 				},
 			},

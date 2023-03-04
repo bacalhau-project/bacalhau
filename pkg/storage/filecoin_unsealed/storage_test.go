@@ -90,12 +90,3 @@ func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
 }
-
-func (suite *FilecoinUnsealedSuite) TestExplode() {
-	cid := "123"
-	spec := suite.prepareCid(cid)
-	exploded, err := driver.Explode(ctx, spec)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), len(exploded), 1, "the exploded list should be 1 item long")
-	require.Equal(suite.T(), exploded[0].CID, cid, "the cid is correct")
-}

@@ -9,7 +9,6 @@ require (
 	github.com/antihax/optional v1.0.0
 	github.com/application-research/estuary-clients/go v0.0.0-20221129102826-8a9f3452ad5a
 	github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46
-	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/didip/tollbooth/v7 v7.0.1
@@ -53,7 +52,6 @@ require (
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/multiformats/go-multicodec v0.8.1
 	github.com/multiformats/go-multihash v0.2.1
-	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pelletier/go-toml/v2 v2.0.7

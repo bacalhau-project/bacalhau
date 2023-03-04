@@ -30,9 +30,9 @@ type Verifier interface {
 	// should live - this is called by the executor to prepare
 	// output volumes when running a job and the publisher when uploading
 	// the results after verification
-	GetShardResultPath(
+	GetResultPath(
 		ctx context.Context,
-		shard model.JobShard,
+		job model.Job,
 	) (string, error)
 
 	// compute node
@@ -42,10 +42,10 @@ type Verifier interface {
 	// that will be broadcast back to the network
 	// For example - the "resultsHash" verifier will hash the folder
 	// and encrypt that hash with the public key of the requester
-	GetShardProposal(
+	GetProposal(
 		ctx context.Context,
-		shard model.JobShard,
-		shardResultPath string,
+		job model.Job,
+		resultPath string,
 	) ([]byte, error)
 
 	// requester node
@@ -54,12 +54,11 @@ type Verifier interface {
 	// by the compute nodes - what this actually does is up to the verifier but
 	// it's highly likely that a verifier implementation has a controller attached
 	// and so can trigger state transitions (such as results accepted / rejected)
-	// for each of the shards reported
 	//
 	// IsJobComplete must return true otherwise this function will error
-	VerifyShard(
+	Verify(
 		ctx context.Context,
-		shard model.JobShard,
+		job model.Job,
 		executions []model.ExecutionState,
 	) ([]VerifierResult, error)
 }

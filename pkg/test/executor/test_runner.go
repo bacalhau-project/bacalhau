@@ -53,11 +53,10 @@ func RunTestCase(
 	}
 
 	spec.Inputs = prepareStorage(testCase.Inputs)
-	spec.Contexts = prepareStorage(testCase.Contexts)
 	spec.Outputs = testCase.Outputs
 	spec.Deal = model.Deal{Concurrency: testNodeCount}
 
-	job := &model.Job{
+	job := model.Job{
 		Metadata: model.Metadata{
 			ID:        "test-job",
 			ClientID:  "test-client",
@@ -69,14 +68,9 @@ func RunTestCase(
 		Spec: spec,
 	}
 
-	shard := model.JobShard{
-		Job:   job,
-		Index: 0,
-	}
-
 	resultsDirectory := t.TempDir()
 
-	runnerOutput, err := executor.RunShard(ctx, shard, resultsDirectory)
+	runnerOutput, err := executor.Run(ctx, job, resultsDirectory)
 	require.NoError(t, err)
 	require.Empty(t, runnerOutput.ErrorMsg)
 

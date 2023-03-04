@@ -42,13 +42,9 @@ type Scenario struct {
 	// their default configuration, and without a Noop executor.
 	Stack *StackConfig
 
-	// Setup routines which define data available to the job, potentially
-	// sharded. If nil, no storage will be set up.
-	Inputs SetupStorage
-
-	// Setup routines which define data available to the job, for every shard.
+	// Setup routines which define data available to the job.
 	// If nil, no storage will be set up.
-	Contexts SetupStorage
+	Inputs SetupStorage
 
 	// Output volumes that must be available to the job. If nil, no output
 	// volumes will be attached to the job.

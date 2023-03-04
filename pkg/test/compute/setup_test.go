@@ -99,16 +99,14 @@ func TestComputeSuite(t *testing.T) {
 
 func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
 	response, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		Job:          job,
-		ShardIndexes: []int{0},
+		Job: job,
 	})
 	s.NoError(err)
 
 	// check the response
-	s.Equal(1, len(response.ShardResponse))
-	s.True(response.ShardResponse[0].Accepted)
+	s.True(response.Accepted)
 
-	return response.ShardResponse[0].ExecutionID
+	return response.ExecutionID
 }
 
 func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string {

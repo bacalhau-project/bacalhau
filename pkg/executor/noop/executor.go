@@ -12,7 +12,7 @@ type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
@@ -76,15 +76,15 @@ func (e *NoopExecutor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrat
 	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
-func (e *NoopExecutor) RunShard(
+func (e *NoopExecutor) Run(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	e.Jobs = append(e.Jobs, *shard.Job)
+	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, shard, jobResultsDir)
+		return handler(ctx, job, jobResultsDir)
 	}
 	return &model.RunCommandResult{}, nil
 }
