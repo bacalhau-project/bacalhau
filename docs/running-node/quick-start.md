@@ -211,7 +211,7 @@ These commands join this node to the public Bacalhau network, congrats! :tada:
 
 ### Check your node works
 
-Even though the cli (by default) submits jobs to [the bootstrap nodes](/about-bacalhau/architecture.md#job-submission), each node listens for events on the global network and possibly bids for taking a job: your logs should therefore show activity of your node bidding for incoming jobs.
+Even though the cli (by default) submits jobs, each node listens for events on the global network and possibly bids for taking a job: your logs should therefore show activity of your node bidding for incoming jobs.
 
 To quick check your node runs properly, let's submit the following dummy job:
 

@@ -12,7 +12,7 @@ WASM programs can be uploaded using the Bacalhau client or can be retrieved from
 
 Bacalhau can run compiled WASM programs that expect the WebAssembly System Interface (WASI) Snapshot 1. Through this interface, WebAssembly programs can access data, environment variables and program arguments.
 
-All ingress/egress networking is disabled – you won't be able to pull data/code/weights/etc from an external source. Instead, data input and output is implemented using [Bacalhau's input/output volumes](../about-bacalhau/architecture.md#input--output-volumes). WASM jobs can say what data they need using URLs or IPFS CIDs and can then access the data by reading from the filesystem.
+All ingress/egress networking is disabled – you won't be able to pull data/code/weights/etc from an external source. WASM jobs can say what data they need using URLs or IPFS CIDs and can then access the data by reading from the filesystem.
 
 There is no multi-threading as WASI does not expose any interface for it.
 

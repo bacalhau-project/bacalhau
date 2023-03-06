@@ -81,7 +81,7 @@ Checking job status...
 
 The job id above is shown in its full form. For convenience, you can use the shortened version, in this case: `3b39baee`. We will store that portion of the job id in an environment variable so that we can reuse it later on.
 
-After the above command is run, a job is submitted to the public network, which processes the job as described in the [Job Lifecycle page](../about-bacalhau/architecture#job-lifecycle). To check the current job's state, we can use the `list` verb as shown below.
+After the above command is run, a job is submitted to the public network, which processes the job. To check the current job's state, we can use the `list` verb as shown below.
 
 ```shell
 $ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
