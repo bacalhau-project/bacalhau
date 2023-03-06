@@ -90,8 +90,6 @@ While Airflow's pinwheel is warming up in the background, let's take a look at t
 
 > In brief, the first task of this DAG prints out "Hello World" to stdout, then automatically pipe its output into the subsequent task as an input file. The second task will simply print out the content of its input file.
 
- will read that string from an input file and print it once again.
-
 All you need to import from this package is the `BacalhauSubmitJobOperator`.
 It allows you to submit a job spec comprised of the usual fields such as engine, image, etc.
 
