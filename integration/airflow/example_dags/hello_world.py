@@ -1,3 +1,8 @@
+"""
+The first task of this DAG prints out "Hello World" to stdout,
+then automatically pipe its output into the subsequent task as an input file.
+The second task will simply print out the content of its input file.
+"""
 from datetime import datetime
 
 from airflow import DAG
