@@ -28,7 +28,7 @@ The integration automatically registers itself for Airflow 2.3+ if it's installe
 ## From pypi
 
 ```console
-pip install bacalhau-airflow
+$ pip install bacalhau-airflow
 ```
 
 ## From source
@@ -36,44 +36,37 @@ pip install bacalhau-airflow
 Clone the public repository:
 
 ```shell
-git clone https://github.com/bacalhau-project/bacalhau/
+$ git clone https://github.com/bacalhau-project/bacalhau/
 ```
 
 Once you have a copy of the source, you can install it with:
 
 ```shell
-cd integration/airflow/
-cd integration/airflow/
-pip install .
+$ cd integration/airflow/
+$ pip install .
 ```
 
 ## Worked example
 
 ### Setup
 
-::: tips
 
-For a production environment you may want to follow the [official Airflow's instructions](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/production-deployment.html) or pick one of the suggested [hosted solutions](https://airflow.apache.org/ecosystem/#airflow-as-a-service).
+> In a production environment you may want to follow the [official Airflow's instructions](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/production-deployment.html) or pick one of the suggested [hosted solutions](https://airflow.apache.org/ecosystem/#airflow-as-a-service).
 
-:::
+If you're just curious and want to give it a try on your *local machine*, please follow the steps below.
 
-If you're just curious and want to give it a try on your local machine, please follow the steps below.
-
-First, install and initalize Airflow:
 First, install and initalize Airflow:
 
 ```shell
-pip install apache-airflow
-```shell
-pip install apache-airflow
+$ pip install apache-airflow
 export AIRFLOW_HOME=~/airflow
-airflow db init
+$ airflow db init
 ```
 
 Then, we need to point Airflow to the absolute path of the folder where your pipelines live.
 To do that we edit the `dags_folder` field in `${AIRFLOW_HOME}/airflow.cfg` file.
 In this example I'm going to use the `hello_world.py` DAG shipped with this repository;
-for the sake of completeness, the next section will walk you through the related code snippet.
+for the sake of completeness, the next section will walk you through the actual code.
 
 My config file looks like what follows:
 
@@ -83,7 +76,7 @@ dags_folder = /Users/enricorotundo/bacalhau/integration/airflow/example_dags
 ...
 ```
 
-*Optionally, to reduce clutter in the Airflow UI, you could disable the loading of the default example DAGs by setting `load_examples` to `False`.*
+Optionally, to reduce clutter in the Airflow UI, you could disable the loading of the default example DAGs by setting `load_examples` to `False`.
 
 Finally, we can launch Airflow locally:
 
@@ -91,11 +84,17 @@ Finally, we can launch Airflow locally:
 airflow standalone
 ```
 
-### Example DAG with chained jobs
+### Example DAG: chaining jobs
 
 While Airflow's pinwheel is warming up in the background, let's take a look at the `hello_world.py` break down below.
 All you need to import from this package is the `BacalhauSubmitJobOperator`.
 It allows you to submit a job spec comprised of the usual fields such as engine, image, etc.
+
+```python
+from datetime import datetime
+from airflow import DAG
+from bacalhau_airflow.operators import BacalhauSubmitJobOperator
+```
 
 This operator supports chaining multiple jobs without the need to manually pass any CID along, in this regards a special note goes to the `input_volumes` parameter (see `task_2` below).
 Every time the operator runs a task, it stores a comma-separated string with the output shard-CIDs in an internal key-value store under the `cids` key.
@@ -106,10 +105,6 @@ Lastly, we define task dependencies simply with `task_1 >> task_2`.
 For more complex graphs please read more about [Airflow's syntax here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#task-dependencies).
 
 ```python
-from datetime import datetime
-from airflow import DAG
-from bacalhau_airflow.operators import BacalhauSubmitJobOperator
-
 with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
     task_1 = BacalhauSubmitJobOperator(
         task_id="task_1",
@@ -157,6 +152,7 @@ The screenshot below shows our hello world has been loaded correctly.
 
 When you inspect a DAG, Airflow will render a graph depicting a color-coded topology (see image below).
 For active (i.e. running) pipelines, this will be useful to oversee what the status of each task is.
+
 To trigger a DAG please enable the toggle shown below.
 
 ![](docs/_static/airflow_02.png)
@@ -185,18 +181,20 @@ $ cat /tmp/dag-example/job-8fdab73b/combined_results/stdout
 Hello World
 ```
 
+That's all folks :rainbow:.
+
 ## Development
 
 
 ```console
-pip install -r dev-requirements.txt
+$ pip install -r dev-requirements.txt
 ```
 
 ### Unit tests
 
 
 ```shell
-tox
+$ tox
 ```
 
 You can also skip using `tox` and run `pytest` on your own dev environment.
