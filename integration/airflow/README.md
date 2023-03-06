@@ -102,6 +102,7 @@ from bacalhau_airflow.operators import BacalhauSubmitJobOperator
 This operator supports chaining multiple jobs without the need to manually pass any CID along, in this regards a special note goes to the `input_volumes` parameter (see `task_2` below).
 Every time the operator runs a task, it stores a comma-separated string with the output shard-CIDs in an internal key-value store under the `cids` key.
 Thus, downstream tasks can read in those CIDs via the `input_volumes` parameter.
+
 All you need to do is (1) use the [XComs syntax](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html) (in curly brackets) to specify the "sender" task ids and the `cids` key (e.g. `{{ task_instance.xcom_pull(task_ids='task_1', key='cids') }}`), (2) define a target mount point separated by a colon (e.g. `:/task_1_output`).
 
 Lastly, we define task dependencies simply with `task_1 >> task_2`.
