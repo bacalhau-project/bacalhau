@@ -35,6 +35,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
+      GOMAXPROCS: "2" # Avoid using all the allocated CPU, so tests don't get rate limited
     working_directory: ~/repo
     executor: << parameters.executor >>
     parameters:
