@@ -106,7 +106,7 @@ Thus, downstream tasks can read in those CIDs via the `input_volumes` parameter.
 All you need to do is (1) use the [XComs syntax](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html) (in curly brackets) to specify the "sender" task ids and the `cids` key (e.g. `{{ task_instance.xcom_pull(task_ids='task_1', key='cids') }}`), (2) define a target mount point separated by a colon (e.g. `:/task_1_output`).
 
 Lastly, we define task dependencies simply with `task_1 >> task_2`.
-For more complex graphs please read more about [Airflow's syntax here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#task-dependencies).
+To learn more about [Airflow's DAG syntax please check out this page](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#task-dependencies).
 
 ```python
 with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
