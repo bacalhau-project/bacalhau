@@ -6,7 +6,7 @@ First, thanks to this package you can now write complex pipelines for Bacalhau.
 For instance, jobs can communicate their output's CIDs to downstream jobs, that can use those as inputs.
 Second, Apache Airflow provides a solid solution to reliably orchestrate your DAGs.
 
-> :warning: You may try this out using a local devstack until https://github.com/bacalhau-project/bacalhau/issues/2038 has been fixed.
+> :warning: You may try this out using a local devstack until https://github.com/bacalhau-project/bacalhau/issues/2038 has been fixed. Please set the following environment variables `AIRFLOW_VAR_BACALHAU_API_HOST`, `AIRFLOW_VAR_BACALHAU_API_PORT`.
 
 ## Features
 
