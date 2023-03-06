@@ -13,7 +13,7 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
-                entrypoint=["echo", "Hello"],
+                entrypoint=["echo", "Hello World"],
             ),
             deal=dict(concurrency=1, confidence=0, min_bids=0),
         ),
@@ -31,7 +31,7 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
-                entrypoint=["echo", "$(cat /task_1_output/stdout)", "World"],
+                entrypoint=["cat", "/task_1_output/stdout"],
             ),
             deal=dict(concurrency=1, confidence=0, min_bids=0),
         ),

@@ -1,14 +1,15 @@
 # Apache Airflow Provider for Bacalhau
 
-This is `bacalhau-airflow`, a Python package that integrates Bacalhau with Apache Airflow.
+This is `bacalhau-airflow`, a Python package that integrates [Bacalhau](https://github.com/bacalhau-project/bacalhau) with [Apache Airflow](https://github.com/apache/airflow).
 The benefit is two fold.
-First, thanks to this package you can now write complex pipelines for Bacalhau. For instance, jobs can communicate their output's CIDs to downstream jobs, that can use those as inputs.
+First, thanks to this package you can now write complex pipelines for Bacalhau.
+For instance, jobs can communicate their output's CIDs to downstream jobs, that can use those as inputs.
 Second, Apache Airflow provides a solid solution to reliably orchestrate your DAGs.
 
 ## Features
 
 - Create Airflow tasks that run on Bacalhau (via custom operator!)
-- Support for sharded jobs: output shards can be passed downstream (via XComs TODO link to xcoms)
+- Support for sharded jobs: output shards can be passed downstream (via [XComs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html))
 - Coming soon...
     - Lineage (via OpenLineage)
     - Various working code examples
@@ -17,7 +18,7 @@ Second, Apache Airflow provides a solid solution to reliably orchestrate your DA
 ## Requirements
 
 - Python 3.8+
-- `bacalhau-sdk` 0.1.6 TODO add link to pypi
+- [`bacalhau-sdk` 0.1.6](https://pypi.org/project/bacalhau-sdk/)
 - `apache-airflow` 2.3+
 
 ## Installation
@@ -45,9 +46,15 @@ cd integration/airflow/
 pip install .
 ```
 
-## Setup
+## Worked example
 
-For a production environment you may want to deploy Airflow in one of the many official / suggested options.
+### Setup
+
+::: tips
+
+For a production environment you may want to follow the [official Airflow's instructions](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/production-deployment.html) or pick one of the suggested [hosted solutions](https://airflow.apache.org/ecosystem/#airflow-as-a-service).
+
+:::
 
 If you're just curious and want to give it a try on your local machine, please follow the steps below.
 
@@ -61,7 +68,9 @@ airflow db init
 
 Then, we need to point Airflow to the absolute path of the folder where your pipelines live.
 To do that we edit the `dags_folder` field in `${AIRFLOW_HOME}/airflow.cfg` file.
-In this example I'm going to use the `hello_world.py` DAG shipped with this repository.
+In this example I'm going to use the `hello_world.py` DAG shipped with this repository;
+for the sake of completeness, the next section will walk you through the related code snippet.
+
 My config file looks like what follows:
 
 ```
@@ -78,7 +87,66 @@ Finally, we can launch Airflow locally:
 airflow standalone
 ```
 
-Now head to http://0.0.0.0:8080 were Airflow UI is being served.
+### Example DAG with chained jobs
+
+While Airflow's pinwheel is warming up in the background, let's take a look at the `hello_world.py` break down below.
+All you need to import from this package is the `BacalhauSubmitJobOperator`.
+It allows you to submit a job spec comprised of the usual fields such as engine, image, etc.
+
+This operator supports chaining multiple jobs without the need to manually pass any CID along, in this regards a special note goes to the `input_volumes` parameter (see `task_2` below).
+Every time the operator runs a task, it stores a comma-separated string with the output shard-CIDs in an internal key-value store under the `cids` key.
+Thus, downstream tasks can read in those CIDs via the `input_volumes` parameter.
+All you need to do is (1) use the [XComs syntax](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html) (in curly brackets) to specify the "sender" task ids and the `cids` key (e.g. `{{ task_instance.xcom_pull(task_ids='task_1', key='cids') }}`), (2) define a target mount point separated by a colon (e.g. `:/task_1_output`).
+
+Lastly, we define task dependencies simply with `task_1 >> task_2`.
+For more complex graphs please read more about [Airflow's syntax here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#task-dependencies).
+
+```python
+from datetime import datetime
+from airflow import DAG
+from bacalhau_airflow.operators import BacalhauSubmitJobOperator
+
+with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
+    task_1 = BacalhauSubmitJobOperator(
+        task_id="task_1",
+        api_version="V1beta1",
+        job_spec=dict(
+            engine="Docker",
+            verifier="Noop",
+            publisher="IPFS",
+            docker=dict(
+                image="ubuntu",
+                entrypoint=["echo", "Hello World"],
+            ),
+            deal=dict(concurrency=1, confidence=0, min_bids=0),
+        ),
+    )
+
+    task_2 = BacalhauSubmitJobOperator(
+        task_id="task_2",
+        api_version="V1beta1",
+        input_volumes=[
+            "{{ task_instance.xcom_pull(task_ids='task_1', key='cids') }}:/task_1_output",
+        ],
+        job_spec=dict(
+            engine="Docker",
+            verifier="Noop",
+            publisher="IPFS",
+            docker=dict(
+                image="ubuntu",
+                entrypoint=["cat", "/task_1_output/stdout"],
+            ),
+            deal=dict(concurrency=1, confidence=0, min_bids=0),
+        ),
+    )
+
+    task_1 >> task_2
+```
+
+### Run it
+
+Now the we understand what the example DAG is supposed to do, let's just run it!
+Head over to http://0.0.0.0:8080 were Airflow UI is being served.
 The screenshot below shows our hello world has been loaded correctly.
 
 ![](docs/_static/airflow_01.png)
@@ -89,14 +157,34 @@ To trigger a DAG please enable the toggle shown below.
 
 ![](docs/_static/airflow_02.png)
 
-Lastly, we want to fetch the output of our pipeline.
-To do so we need to retrieve where the last task saved its results.
-TODO...
+When all tasks have completed, we want to fetch the output of our pipeline.
+To do so we need to retrieve the job-id of the last task.
+Click on a green box in the `task_2` line and then open the XCom tab.
+
+![](docs/_static/airflow_03.png)
+
+Here we find the `bacalhau_job_id`.
+Select that value and copy into your clipboard.
+
+![](docs/_static/airflow_04.png)
+
+Lastly, we can use the bacalhau cli `get` command to fetch the output data as follows:
+
+```console
+$ bacalhau get 8fdab73b-00fd-4d13-941c-8ba002f8178d
+Fetching results of job '8fdab73b-00fd-4d13-941c-8ba002f8178d'...
+...
+Results for job '8fdab73b-00fd-4d13-941c-8ba002f8178d' have been written to...
+/tmp/dag-example/job-8fdab73b
+
+$ cat /tmp/dag-example/job-8fdab73b/combined_results/stdout
+Hello World
+```
 
 ## Development
 
 
-```shell
+```console
 pip install -r dev-requirements.txt
 ```
 
