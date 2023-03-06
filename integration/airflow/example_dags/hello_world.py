@@ -1,11 +1,16 @@
+"""
+The first task of this DAG prints out "Hello World" to stdout,
+then automatically pipe its output into the subsequent task as an input file.
+The second task will simply print out the content of its input file.
+"""
 from datetime import datetime
 
 from airflow import DAG
 from bacalhau_airflow.operators import BacalhauSubmitJobOperator
 
-with DAG("bacalhau-sample-dag", start_date=datetime(2021, 1, 1)) as dag:
-    op1 = BacalhauSubmitJobOperator(
-        task_id="run-1",
+with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
+    task_1 = BacalhauSubmitJobOperator(
+        task_id="task_1",
         api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
@@ -13,35 +18,28 @@ with DAG("bacalhau-sample-dag", start_date=datetime(2021, 1, 1)) as dag:
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
-                entrypoint=["echo", "Hello"],
+                entrypoint=["echo", "Hello World"],
             ),
             deal=dict(concurrency=1, confidence=0, min_bids=0),
         ),
     )
 
-    op2 = BacalhauSubmitJobOperator(
-        task_id="run-2",
+    task_2 = BacalhauSubmitJobOperator(
+        task_id="task_2",
         api_version="V1beta1",
-        job_spec=dict(
-            engine="Docker",
-            verifier="Noop",
-            publisher="IPFS",
-            docker=dict(
-                image="ubuntu",
-                entrypoint=["echo", "World"],
-            ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
-            inputs=[
-                dict(
-                    cid="QmWG3ZCXTbdMUh6GWq2Pb1n7MMNxPQFa9NMswdZXuVKFUX",
-                    path="/another-dataset",
-                    storagesource="ipfs",
-                )
-            ],
-        ),
         input_volumes=[
-            "{{ task_instance.xcom_pull(task_ids='run-1', key='cids') }}:/datasets",
+            "{{ task_instance.xcom_pull(task_ids='task_1', key='cids') }}:/task_1_output",
         ],
+        job_spec=dict(
+            engine="Docker",
+            verifier="Noop",
+            publisher="IPFS",
+            docker=dict(
+                image="ubuntu",
+                entrypoint=["cat", "/task_1_output/stdout"],
+            ),
+            deal=dict(concurrency=1, confidence=0, min_bids=0),
+        ),
     )
 
-    op1 >> op2
+    task_1 >> task_2

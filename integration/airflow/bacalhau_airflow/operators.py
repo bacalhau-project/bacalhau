@@ -126,24 +126,25 @@ class BacalhauSubmitJobOperator(BaseOperator):
 
             terminate = False
             print(events["events"])
-            for event in events["events"]:
-                if "type" in event:
-                    if event["type"] == "JobLevel":
-                        if "job_state" in event:
-                            if "new" in event["job_state"]:
-                                # TODO fix case when event hangs/errors out/never completes
-                                if (
-                                    event["job_state"]["new"] == "ComputeError"
-                                    or event["job_state"]["new"] == "Completed"
-                                    or event["job_state"]["new"] == "Cancelled"
-                                    or event["job_state"]["new"] == "Error"
-                                ):
-                                    terminate = True
-                                    break
-            if terminate:
-                break
-            print("clock it ticking...")
-            time.sleep(2)
+            if events["events"]:
+                for event in events["events"]:
+                    if "type" in event:
+                        if event["type"] == "JobLevel":
+                            if "job_state" in event:
+                                if event["job_state"] and "new" in event["job_state"]:
+                                    # TODO fix case when event hangs/errors out/never completes
+                                    if (
+                                        event["job_state"]["new"] == "ComputeError"
+                                        or event["job_state"]["new"] == "Completed"
+                                        or event["job_state"]["new"] == "Cancelled"
+                                        or event["job_state"]["new"] == "Error"
+                                    ):
+                                        terminate = True
+                                        break
+                if terminate:
+                    break
+                print("clock it ticking...")
+                time.sleep(2)
 
         # fetch all shards' resulting CIDs
         results = self.hook.get_results(job_id)
