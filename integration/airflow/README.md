@@ -11,7 +11,7 @@ Second, Apache Airflow provides a solid solution to reliably orchestrate your DA
 - Create Airflow tasks that run on Bacalhau (via custom operator!)
 - Support for sharded jobs: output shards can be passed downstream (via [XComs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html))
 - Coming soon...
-    - Lineage (via OpenLineage)
+    - Lineage (see [OpenLineage proof-of-concept integration here](https://github.com/enricorotundo/bacalhau-airflow-provider))
     - Various working code examples
     - Hosting instructions
 
@@ -28,7 +28,7 @@ The integration automatically registers itself for Airflow 2.3+ if it's installe
 ## From pypi
 
 ```console
-$ pip install bacalhau-airflow
+pip install bacalhau-airflow
 ```
 
 ## From source
@@ -36,14 +36,14 @@ $ pip install bacalhau-airflow
 Clone the public repository:
 
 ```shell
-$ git clone https://github.com/bacalhau-project/bacalhau/
+git clone https://github.com/bacalhau-project/bacalhau/
 ```
 
 Once you have a copy of the source, you can install it with:
 
 ```shell
-$ cd integration/airflow/
-$ pip install .
+cd integration/airflow/
+pip install .
 ```
 
 ## Worked example
@@ -187,14 +187,14 @@ That's all folks :rainbow:.
 
 
 ```console
-$ pip install -r dev-requirements.txt
+pip install -r dev-requirements.txt
 ```
 
 ### Unit tests
 
 
 ```shell
-$ tox
+tox
 ```
 
 You can also skip using `tox` and run `pytest` on your own dev environment.
