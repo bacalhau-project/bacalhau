@@ -308,7 +308,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = libp2p.ConnectToPeers(ctx, libp2pHost, libp2pPeer)
+		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
 		if err != nil {
 			return nil, err
 		}
@@ -323,7 +323,7 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
+	profiler := startProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
 		cm.RegisterCallbackWithContext(profiler.Close)
 	}

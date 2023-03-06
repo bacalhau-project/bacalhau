@@ -61,7 +61,6 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 		logMsg = logMsg.
 			Str("EventName", event.EventName.String()).
 			Str("JobID", event.JobID).
-			Int("ShardIndex", event.ShardIndex).
 			Str("SourceNodeID", event.SourceNodeID).
 			Str("TargetNodeID", event.TargetNodeID).
 			Str("ClientID", event.ClientID).

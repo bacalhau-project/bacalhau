@@ -3,15 +3,18 @@ package requester
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -21,6 +24,7 @@ type BaseEndpointParams struct {
 	PublicKey                  []byte
 	Scheduler                  Scheduler
 	Selector                   bidstrategy.BidStrategy
+	Store                      jobstore.Store
 	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
@@ -30,8 +34,9 @@ type BaseEndpointParams struct {
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
 	id         string
+	queue      Queue
+	store      jobstore.Store
 	selector   bidstrategy.BidStrategy
-	scheduler  Scheduler
 	transforms []jobtransform.Transformer
 }
 
@@ -39,14 +44,15 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
-		jobtransform.NewExecutionPlanner(params.StorageProviders),
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 	}
 
+	queue := NewQueue(params.Store, params.Scheduler)
 	return &BaseEndpoint{
 		id:         params.ID,
+		queue:      queue,
 		selector:   params.Selector,
-		scheduler:  params.Scheduler,
+		store:      params.Store,
 		transforms: transforms,
 	}
 }
@@ -61,7 +67,7 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	jobCtx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
 		// job lifecycle spans go in their own, dedicated trace
 		trace.WithNewRoot(),
 		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
@@ -95,25 +101,61 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 		}
 	}
 
-	request := bidstrategy.BidStrategyRequest{NodeID: node.id, Job: *job}
-	if choice, bidErr := node.selector.ShouldBid(ctx, request); bidErr != nil {
-		return job, bidErr
-	} else if !choice.ShouldBid {
-		return job, fmt.Errorf("job is unacceptable: %s", choice.Reason)
-	}
-
-	err = node.scheduler.StartJob(jobCtx, StartJobRequest{
-		Job: *job,
-	})
+	err = node.store.CreateJob(ctx, *job)
 	if err != nil {
-		return &model.Job{}, fmt.Errorf("error starting job: %w", err)
+		return job, err
 	}
 
-	return job, nil
+	err = node.queue.EnqueueJob(ctx, *job)
+	if err != nil {
+		return job, err
+	}
+
+	selectRequest := bidstrategy.BidStrategyRequest{NodeID: node.id, Job: *job}
+	response, err := node.selector.ShouldBid(ctx, selectRequest)
+	if err != nil {
+		return job, err
+	}
+
+	return job, node.handleBidResponse(ctx, *job, response)
+}
+
+func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval ApproveJobRequest) error {
+	// We deliberately expect this to be the empty string if unset. This is so
+	// that if this env variable is (accidentally) left unset, no jobs can be
+	// approved because an empty ClientID is invalid.
+	approvingClient := os.Getenv("BACALHAU_JOB_APPROVER")
+	if approval.ClientID != approvingClient {
+		return errors.New("approval submitted by unknown client")
+	}
+
+	job, err := node.store.GetJob(ctx, approval.JobID)
+	if err != nil {
+		return err
+	}
+
+	return node.handleBidResponse(ctx, job, approval.Response)
 }
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
-	return node.scheduler.CancelJob(ctx, request)
+	return node.queue.CancelJob(ctx, request)
+}
+
+func (node *BaseEndpoint) handleBidResponse(ctx context.Context, job model.Job, response bidstrategy.BidStrategyResponse) error {
+	if response.ShouldWait {
+		return nil
+	}
+
+	if response.ShouldBid {
+		return node.queue.StartJob(ctx, StartJobRequest{Job: job})
+	}
+
+	_, err := node.queue.CancelJob(ctx, CancelJobRequest{
+		JobID:         job.Metadata.ID,
+		Reason:        fmt.Sprintf("job rejected: %s", response.Reason),
+		UserTriggered: false,
+	})
+	return err
 }
 
 // Compile-time interface check:

@@ -54,14 +54,14 @@ func (f *fallbackPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	})
 }
 
-// PublishShardResult implements publisher.Publisher
-func (f *fallbackPublisher) PublishShardResult(
+// PublishResult implements publisher.Publisher
+func (f *fallbackPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	hostID string,
-	shardResultPath string,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	return fallback(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, job, hostID, resultPath)
 	})
 }

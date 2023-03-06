@@ -3,7 +3,7 @@ package requester
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -11,8 +11,22 @@ import (
 type Endpoint interface {
 	// SubmitJob submits a new job to the network.
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
+	// ApproveJob approves or rejects the running of a job.
+	ApproveJob(context.Context, ApproveJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+}
+
+// Scheduler distributes jobs to the compute nodes and tracks the executions.
+type Scheduler interface {
+	StartJob(context.Context, StartJobRequest) error
+	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+}
+
+type Queue interface {
+	Scheduler
+
+	EnqueueJob(context.Context, model.Job) error
 }
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
@@ -45,9 +59,8 @@ type CancelJobRequest struct {
 
 type CancelJobResult struct{}
 
-type Scheduler interface {
-	compute.Callback
-
-	StartJob(context.Context, StartJobRequest) error
-	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+type ApproveJobRequest struct {
+	ClientID string
+	JobID    string
+	Response bidstrategy.BidStrategyResponse
 }

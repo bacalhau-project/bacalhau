@@ -118,17 +118,17 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	err = resolver.WaitUntilComplete(ctx, jobID)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, jobID)
+	executions, err := resolver.GetExecutions(ctx, jobID)
 	require.NoError(s.T(), err)
-	require.True(s.T(), len(shards) > 0)
+	require.True(s.T(), len(executions) > 0)
 
-	shard := shards[0]
+	executionState := executions[0]
 
 	outputDir := s.T().TempDir()
-	require.NotEmpty(s.T(), shard.PublishedResult.CID)
+	require.NotEmpty(s.T(), executionState.PublishedResult.CID)
 
-	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
-	err = firstNode.IPFSClient.Get(ctx, shard.PublishedResult.CID, finalOutputPath)
+	finalOutputPath := filepath.Join(outputDir, executionState.PublishedResult.CID)
+	err = firstNode.IPFSClient.Get(ctx, executionState.PublishedResult.CID, finalOutputPath)
 	require.NoError(s.T(), err)
 
 	err = filepath.Walk(finalOutputPath,

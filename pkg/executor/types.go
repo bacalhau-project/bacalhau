@@ -32,9 +32,9 @@ type Executor interface {
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
-	RunShard(
+	Run(
 		ctx context.Context,
-		shard model.JobShard,
+		job model.Job,
 		resultsDir string,
 	) (*model.RunCommandResult, error)
 }

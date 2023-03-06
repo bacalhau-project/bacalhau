@@ -63,7 +63,7 @@ func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
 	return p.topic.Publish(ctx, payload)
 }
 
-func (p *PubSub[T]) Subscribe(ctx context.Context, subscriber pubsub.Subscriber[T]) (err error) {
+func (p *PubSub[T]) Subscribe(_ context.Context, subscriber pubsub.Subscriber[T]) (err error) {
 	var firstSubscriber bool
 	p.subscriberOnce.Do(func() {
 		// register the subscriber

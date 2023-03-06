@@ -43,6 +43,7 @@ Once you have a copy of the source, you can install it with:
 
 ```shell
 cd integration/airflow/
+cd integration/airflow/
 pip install .
 ```
 
@@ -59,7 +60,10 @@ For a production environment you may want to follow the [official Airflow's inst
 If you're just curious and want to give it a try on your local machine, please follow the steps below.
 
 First, install and initalize Airflow:
+First, install and initalize Airflow:
 
+```shell
+pip install apache-airflow
 ```shell
 pip install apache-airflow
 export AIRFLOW_HOME=~/airflow

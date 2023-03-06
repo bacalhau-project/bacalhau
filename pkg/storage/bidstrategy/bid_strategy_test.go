@@ -21,11 +21,10 @@ var (
 )
 
 var (
-	EmptySpec        = model.Spec{}
-	SpecWithInputs   = model.Spec{Inputs: OneStorageSpec}
-	SpecWithContexts = model.Spec{Contexts: OneStorageSpec}
-	SpecWithOutputs  = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm     = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	EmptySpec       = model.Spec{}
+	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
+	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
+	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
 )
 
 func TestStorageBidStrategy(t *testing.T) {
@@ -39,8 +38,6 @@ func TestStorageBidStrategy(t *testing.T) {
 		{"no storage with nothing installed", EmptySpec, false, require.True},
 		{"uninstalled storage/Inputs", SpecWithInputs, false, require.False},
 		{"installed storage/Inputs", SpecWithInputs, true, require.True},
-		{"uninstalled storage/Contexts", SpecWithContexts, false, require.False},
-		{"installed storage/Contexts", SpecWithContexts, true, require.True},
 		{"uninstalled storage/Outputs", SpecWithOutputs, false, require.False},
 		{"installed storage/Outputs", SpecWithOutputs, true, require.True},
 		{"uninstalled storage/Wasm", SpecWithWasm, false, require.False},

@@ -30,10 +30,6 @@ type Store interface {
 	CreateJob(ctx context.Context, j model.Job) error
 	// UpdateJobState updates the Job state
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
-	// GetShardState returns the shard for a given id
-	GetShardState(ctx context.Context, shardID model.ShardID) (model.ShardState, error)
-	// UpdateShardState updates the shard state
-	UpdateShardState(ctx context.Context, request UpdateShardStateRequest) error
 	// CreateExecution creates a new execution for a given job
 	CreateExecution(ctx context.Context, execution model.ExecutionState) error
 	// UpdateExecution updates the Job state
@@ -44,13 +40,6 @@ type UpdateJobStateRequest struct {
 	JobID     string
 	Condition UpdateJobCondition
 	NewState  model.JobStateType
-	Comment   string
-}
-
-type UpdateShardStateRequest struct {
-	ShardID   model.ShardID
-	Condition UpdateShardCondition
-	NewState  model.ShardStateType
 	Comment   string
 }
 
@@ -67,7 +56,7 @@ type UpdateJobCondition struct {
 	ExpectedVersion  int
 }
 
-// Validate checks if the condition matches the given shard
+// Validate checks if the condition matches the given job
 func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 	if condition.ExpectedState != model.JobStateNew && condition.ExpectedState != jobState.State {
 		return NewErrInvalidJobState(jobState.JobID, jobState.State, condition.ExpectedState)
@@ -79,30 +68,6 @@ func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 		for _, s := range condition.UnexpectedStates {
 			if s == jobState.State {
 				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateNew)
-			}
-		}
-	}
-	return nil
-}
-
-type UpdateShardCondition struct {
-	ExpectedState    model.ShardStateType
-	UnexpectedStates []model.ShardStateType
-	ExpectedVersion  int
-}
-
-// Validate checks if the condition matches the given shard
-func (condition UpdateShardCondition) Validate(shard model.ShardState) error {
-	if condition.ExpectedState != model.ShardStateNew && condition.ExpectedState != shard.State {
-		return NewErrInvalidShardState(shard.ID(), shard.State, condition.ExpectedState)
-	}
-	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != shard.Version {
-		return NewErrInvalidShardVersion(shard.ID(), shard.Version, condition.ExpectedVersion)
-	}
-	if len(condition.UnexpectedStates) > 0 {
-		for _, s := range condition.UnexpectedStates {
-			if s == shard.State {
-				return NewErrInvalidShardState(shard.ID(), shard.State, model.ShardStateNew)
 			}
 		}
 	}

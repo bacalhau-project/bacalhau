@@ -61,11 +61,6 @@ func (i *InlineStorage) CleanupStorage(ctx context.Context, spec model.StorageSp
 	return os.RemoveAll(vol.Source)
 }
 
-// Every node will get the inline data, so there is no point in applying any sharding.
-func (*InlineStorage) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	return []model.StorageSpec{spec}, nil
-}
-
 // For an inline storage, we define the volume size as uncompressed data size,
 // as this is how much resource using the storage will take up.
 func (i *InlineStorage) GetVolumeSize(ctx context.Context, spec model.StorageSpec) (uint64, error) {

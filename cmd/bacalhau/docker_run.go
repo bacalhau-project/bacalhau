@@ -79,10 +79,6 @@ type DockerRunOptions struct {
 
 	DownloadFlags model.DownloaderSettings // Settings for running Download
 
-	ShardingGlobPattern string
-	ShardingBasePath    string
-	ShardingBatchSize   int
-
 	FilPlus bool // add a "filplus" label to the job to grab the attention of fil+ moderators
 }
 
@@ -111,10 +107,6 @@ func NewDockerRunOptions() *DockerRunOptions {
 		NodeSelector:       "",
 		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
-
-		ShardingGlobPattern: "",
-		ShardingBasePath:    "/inputs",
-		ShardingBatchSize:   1,
 
 		FilPlus: false,
 	}
@@ -242,21 +234,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringVarP(
 		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
 		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
-	)
-
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
-		`Use this pattern to match files to be sharded.`,
-	)
-
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingBasePath, "sharding-base-path", ODR.ShardingBasePath,
-		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.ShardingBatchSize, "sharding-batch-size", ODR.ShardingBatchSize,
-		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
@@ -394,9 +371,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		labels,
 		odr.NodeSelector,
 		odr.WorkingDirectory,
-		odr.ShardingGlobPattern,
-		odr.ShardingBasePath,
-		odr.ShardingBatchSize,
 	)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")

@@ -80,12 +80,6 @@ func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpe
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	return []model.StorageSpec{
-		spec,
-	}, nil
-}
-
 func (driver *StorageProvider) getPathToVolume(volume model.StorageSpec) (string, error) {
 	var buffer bytes.Buffer
 	err := driver.localPathTemplate.Execute(&buffer, volume)

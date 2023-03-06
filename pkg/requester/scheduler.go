@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -49,7 +49,7 @@ type scheduler struct {
 	mu               sync.Mutex
 }
 
-func NewScheduler(params SchedulerParams) Scheduler {
+func NewScheduler(params SchedulerParams) *scheduler {
 	res := &scheduler{
 		id:               params.ID,
 		host:             params.Host,
@@ -101,9 +101,15 @@ func (s *scheduler) StartJob(ctx context.Context, req StartJobRequest) error {
 		return rankedNodes[i].Rank > rankedNodes[j].Rank
 	})
 
-	err = s.jobStore.CreateJob(ctx, req.Job)
+	err = s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+		JobID: req.Job.Metadata.ID,
+		Condition: jobstore.UpdateJobCondition{
+			ExpectedState: model.JobStateNew,
+		},
+		NewState: model.JobStateInProgress,
+	})
 	if err != nil {
-		return fmt.Errorf("error saving job id: %w", err)
+		return errors.Wrap(err, "error saving job id")
 	}
 	s.eventEmitter.EmitJobCreated(ctx, req.Job)
 
@@ -120,26 +126,18 @@ func (s *scheduler) CancelJob(ctx context.Context, request CancelJobRequest) (Ca
 	if err != nil {
 		return CancelJobResult{}, err
 	}
-	var shardIDs []model.ShardID
-	for _, shard := range jobState.Shards {
-		if !shard.State.IsTerminal() {
-			shardIDs = append(shardIDs, shard.ID())
-		}
-	}
-	if len(shardIDs) == 0 {
+	if jobState.State.IsTerminal() {
 		return CancelJobResult{}, NewErrJobAlreadyTerminal(request.JobID)
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, shardID := range shardIDs {
-		s.stopShard(ctx, shardID, request.Reason, request.UserTriggered)
-	}
+	s.stopJob(ctx, jobState.JobID, request.Reason, request.UserTriggered)
 	return CancelJobResult{}, nil
 }
 
 //////////////////////////////
-//    Shard fsm handlers    //
+//    Job fsm handlers    //
 //////////////////////////////
 
 func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodes []NodeRank) {
@@ -152,40 +150,31 @@ func (s *scheduler) notifyAskForBid(ctx context.Context, link trace.Link, job *m
 		),
 	)
 	defer span.End()
-	// TODO: ask to bid on certain shards rather than asking all compute nodes to bid on all shards
-	shardIndexes := make([]int, job.Spec.ExecutionPlan.TotalShards)
-	for i := 0; i < job.Spec.ExecutionPlan.TotalShards; i++ {
-		shardIndexes[i] = i
-	}
 
 	// persist the intent to ask the node for a bid, which is helpful to avoid asking an unresponsive node again during retries.
 	// we persist the intent for all nodes before asking any node to bid, so that we don't fail the job if the first node we ask rejects the
 	// the bid before we persist the intent to ask the other nodes.
 	for _, node := range nodes {
-		for _, shardIndex := range shardIndexes {
-			err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
-				JobID:      job.Metadata.ID,
-				ShardIndex: shardIndex,
-				NodeID:     node.NodeInfo.PeerInfo.ID.String(),
-				State:      model.ExecutionStateAskForBid,
-			})
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
-				return
-			}
+		err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
+			JobID:  job.Metadata.ID,
+			NodeID: node.NodeInfo.PeerInfo.ID.String(),
+			State:  model.ExecutionStateAskForBid,
+		})
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
+			return
 		}
 	}
 
 	newCtx := util.NewDetachedContext(ctx)
 	for _, node := range nodes {
-		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo, shardIndexes)
+		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo)
 	}
 }
 
-func (s *scheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodeInfo model.NodeInfo, shardIndexes []int) {
+func (s *scheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job *model.Job, nodeInfo model.NodeInfo) {
 	request := compute.AskForBidRequest{
-		Job:          *job,
-		ShardIndexes: shardIndexes,
+		Job: *job,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: nodeInfo.PeerInfo.ID.String(),
@@ -197,9 +186,7 @@ func (s *scheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job 
 	}
 
 	// handle responses
-	for _, shardResponse := range bid.ShardResponse {
-		s.handleAskForBidResponse(ctx, request, shardResponse)
-	}
+	s.handleAskForBidResponse(ctx, request, bid)
 }
 
 func (s *scheduler) notifyBidAccepted(ctx context.Context, execution model.ExecutionState) {
@@ -341,7 +328,7 @@ func (s *scheduler) notifyResultRejected(ctx context.Context, result verifier.Ve
 }
 
 // notifyCancel only notifies compute nodes and doesn't update the execution state in the job store. This is because
-// the execution state is updated when stopping/failing the shard itself.
+// the execution state is updated when stopping/failing the job itself.
 func (s *scheduler) notifyCancel(ctx context.Context, message string, execution model.ExecutionState) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, execution.ComputeReference)
 
@@ -362,22 +349,21 @@ func (s *scheduler) notifyCancel(ctx context.Context, message string, execution 
 	}(newCtx)
 }
 
-// called for both JobEventShardCompleted and JobEventShardError
 // we ask the verifier "IsExecutionComplete" to decide if we can start
 // verifying the results - each verifier might have a different
 // answer for IsExecutionComplete so we pass off to it to decide
 // we mark the job as "verifying" to prevent duplicate verification
-func (s *scheduler) verifyShard(
+func (s *scheduler) verifyResult(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	jobVerifier, err := s.verifiers.Get(ctx, shard.Job.Spec.Verifier)
+	jobVerifier, err := s.verifiers.Get(ctx, job.Spec.Verifier)
 	if err != nil {
 		return nil, err
 	}
 
-	verificationResults, err := jobVerifier.VerifyShard(ctx, shard, executionStates)
+	verificationResults, err := jobVerifier.Verify(ctx, job, executionStates)
 	if err != nil {
 		return nil, err
 	}
@@ -403,16 +389,15 @@ func (s *scheduler) verifyShard(
 
 func (s *scheduler) handleAskForBidResponse(ctx context.Context,
 	request compute.AskForBidRequest,
-	shardResponse compute.AskForBidShardResponse) {
-	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", shardResponse)
+	response compute.AskForBidResponse) {
+	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
 	executionID := model.ExecutionID{
-		JobID:      shardResponse.JobID,
-		ShardIndex: shardResponse.ShardIndex,
-		NodeID:     request.TargetPeerID,
+		JobID:  response.JobID,
+		NodeID: request.TargetPeerID,
 	}
 	newState := model.ExecutionStateAskForBidRejected
-	if shardResponse.Accepted {
+	if response.Accepted {
 		newState = model.ExecutionStateAskForBidAccepted
 	}
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
@@ -421,9 +406,9 @@ func (s *scheduler) handleAskForBidResponse(ctx context.Context,
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			ComputeReference: shardResponse.ExecutionID,
+			ComputeReference: response.ExecutionID,
 			State:            newState,
-			Status:           shardResponse.Reason,
+			Status:           response.Reason,
 		},
 	})
 	if err != nil {
@@ -433,34 +418,32 @@ func (s *scheduler) handleAskForBidResponse(ctx context.Context,
 
 	// decide if we should notify compute node of the bid decision
 	// we only notify if we've already received more than MinBids
-	if shardResponse.Accepted {
-		s.eventEmitter.EmitBidReceived(ctx, request, shardResponse)
-		s.startAcceptingBidsIfPossible(ctx, shardResponse)
+	if response.Accepted {
+		s.eventEmitter.EmitBidReceived(ctx, request, response)
+		s.startAcceptingBidsIfPossible(ctx, response)
 	} else {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		s.failIfRecoveryIsNotPossible(ctx, model.ShardID{JobID: shardResponse.JobID, Index: shardResponse.ShardIndex},
-			errors.New("not enough bids received"))
+		s.failIfRecoveryIsNotPossible(ctx, response.JobID, errors.New("not enough bids received"))
 	}
 }
 
 // startAcceptingBidsIfPossible is called when a compute node has accepted a bid
 // If we have received more than MinBids, we start accepting/rejecting bids, and notify the compute node of the decision
-func (s *scheduler) startAcceptingBidsIfPossible(ctx context.Context, shardResponse compute.AskForBidShardResponse) {
+func (s *scheduler) startAcceptingBidsIfPossible(ctx context.Context, response compute.AskForBidResponse) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	shardID := model.ShardID{JobID: shardResponse.JobID, Index: shardResponse.ShardIndex}
-	shardState, err := s.jobStore.GetShardState(ctx, shardID)
+	jobState, err := s.jobStore.GetJobState(ctx, response.JobID)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("[startAcceptingBidsIfPossible] failed to get shard state")
+		log.Ctx(ctx).Error().Err(err).Msg("[startAcceptingBidsIfPossible] failed to get job state")
 		return
 	}
 
 	var pendingBids []model.ExecutionState
 	var receivedBidsCount int
 	var activeExecutionsCount int
-	for _, execution := range shardState.Executions {
-		// total compute nodes that submitted a bid for this shard
+	for _, execution := range jobState.Executions {
+		// total compute nodes that submitted a bid for this job
 		if execution.HasAcceptedAskForBid() {
 			receivedBidsCount++
 		}
@@ -468,13 +451,13 @@ func (s *scheduler) startAcceptingBidsIfPossible(ctx context.Context, shardRespo
 		if execution.State == model.ExecutionStateAskForBidAccepted {
 			pendingBids = append(pendingBids, execution)
 		}
-		// compute nodes that are actively executing the shard, or has completed execution
+		// compute nodes that are actively executing the job, or has completed execution
 		if execution.State.IsActive() {
 			activeExecutionsCount++
 		}
 	}
 
-	job, err := s.jobStore.GetJob(ctx, shardResponse.JobID)
+	job, err := s.jobStore.GetJob(ctx, response.JobID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("[startAcceptingBidsIfPossible] failed to get job")
 		return
@@ -502,7 +485,6 @@ func (s *scheduler) OnRunComplete(ctx context.Context, result compute.RunResult)
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: model.ExecutionID{
 			JobID:       result.JobID,
-			ShardIndex:  result.ShardIndex,
 			NodeID:      result.SourcePeerID,
 			ExecutionID: result.ExecutionID,
 		},
@@ -520,29 +502,28 @@ func (s *scheduler) OnRunComplete(ctx context.Context, result compute.RunResult)
 		return
 	}
 
-	s.startVerificationIfPossible(ctx, model.ShardID{JobID: result.JobID, Index: result.ShardIndex})
+	s.startVerificationIfPossible(ctx, result.JobID)
 }
 
-func (s *scheduler) startVerificationIfPossible(ctx context.Context, shardID model.ShardID) {
+func (s *scheduler) startVerificationIfPossible(ctx context.Context, jobID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// check if we gathered enough results to start verification
-	shardState, err := s.jobStore.GetShardState(ctx, shardID)
+	jobState, err := s.jobStore.GetJobState(ctx, jobID)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("[startVerificationIfPossible] failed to get shard state")
+		log.Ctx(ctx).Error().Err(err).Msg("[startVerificationIfPossible] failed to get job state")
 		return
 	}
 
 	var pendingVerifications []model.ExecutionState
-	for _, execution := range shardState.Executions {
+	for _, execution := range jobState.Executions {
 		// compute nodes that are waiting for their results to be verified
 		if execution.State == model.ExecutionStateResultProposed {
 			pendingVerifications = append(pendingVerifications, execution)
 		}
 	}
 
-	job, err := s.jobStore.GetJob(ctx, shardID.JobID)
-	shard := model.JobShard{Job: &job, Index: shardID.Index}
+	job, err := s.jobStore.GetJob(ctx, jobID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("[startAcceptingBidsIfPossible] failed to get job")
 		return
@@ -551,13 +532,13 @@ func (s *scheduler) startVerificationIfPossible(ctx context.Context, shardID mod
 	//  and concurrency. Though we will have ot handle the case where verification fails, but can still
 	//  succeed if we wait for more results.
 	if len(pendingVerifications) >= job.Spec.Deal.Concurrency {
-		verifiedResults, verificationErr := s.verifyShard(ctx, shard, pendingVerifications)
+		verifiedResults, verificationErr := s.verifyResult(ctx, job, pendingVerifications)
 		if verificationErr != nil {
-			s.failIfRecoveryIsNotPossible(ctx, shardID, fmt.Errorf("failed to verify shard %s: %w", shardID, verificationErr))
+			s.failIfRecoveryIsNotPossible(ctx, jobID, fmt.Errorf("failed to verify job %s: %w", jobID, verificationErr))
 			return
 		}
 		if len(verifiedResults) == 0 {
-			s.failIfRecoveryIsNotPossible(ctx, shardID, fmt.Errorf("failed to verify shard %s: no verified results", shardID))
+			s.failIfRecoveryIsNotPossible(ctx, jobID, fmt.Errorf("failed to verify job %s: no verified results", jobID))
 			return
 		}
 	}
@@ -574,7 +555,6 @@ func (s *scheduler) OnPublishComplete(ctx context.Context, result compute.Publis
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: model.ExecutionID{
 			JobID:       result.JobID,
-			ShardIndex:  result.ShardIndex,
 			NodeID:      result.SourcePeerID,
 			ExecutionID: result.ExecutionID,
 		},
@@ -593,22 +573,24 @@ func (s *scheduler) OnPublishComplete(ctx context.Context, result compute.Publis
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	shardID := model.ShardID{JobID: result.JobID, Index: result.ShardIndex}
-	shardState, err := s.jobStore.GetShardState(ctx, shardID)
+	jobState, err := s.jobStore.GetJobState(ctx, result.JobID)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("[OnPublishComplete] failed to get shard state")
+		log.Ctx(ctx).Error().Err(err).Msg("[OnPublishComplete] failed to get job state")
 		return
 	}
-	if shardState.State == model.ShardStateCompleted {
+	if jobState.State == model.JobStateCompleted {
 		// result already published by another node
 		return
 	}
-	err = jobstore.CompleteShard(ctx, s.jobStore, shardID)
+	err = s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+		JobID:    result.JobID,
+		NewState: model.JobStateCompleted,
+	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[OnPublishComplete] failed to update shard state")
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnPublishComplete] failed to update job state")
 		return
 	} else {
-		log.Ctx(ctx).Info().Msgf("Shard %s completed successfully", shardID)
+		log.Ctx(ctx).Info().Msgf("Job %s completed successfully", result.JobID)
 	}
 }
 
@@ -626,7 +608,6 @@ func (s *scheduler) OnComputeFailure(ctx context.Context, result compute.Compute
 	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: model.ExecutionID{
 			JobID:       result.JobID,
-			ShardIndex:  result.ShardIndex,
 			NodeID:      result.SourcePeerID,
 			ExecutionID: result.ExecutionID,
 		},
@@ -649,30 +630,30 @@ func (s *scheduler) OnComputeFailure(ctx context.Context, result compute.Compute
 	s.eventEmitter.EmitComputeFailure(ctx, result)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.failIfRecoveryIsNotPossible(ctx, model.ShardID{JobID: result.JobID, Index: result.ShardIndex}, result)
+	s.failIfRecoveryIsNotPossible(ctx, result.JobID, result)
 }
 
 // make sure to call this function with the lock held
-func (s *scheduler) failIfRecoveryIsNotPossible(ctx context.Context, shardID model.ShardID, failure error) {
-	if !s.isRecoveryStillPossible(ctx, shardID) {
-		s.stopShard(ctx, shardID, failure.Error(), false)
+func (s *scheduler) failIfRecoveryIsNotPossible(ctx context.Context, jobID string, failure error) {
+	if !s.isRecoveryStillPossible(ctx, jobID) {
+		s.stopJob(ctx, jobID, failure.Error(), false)
 	}
 }
 
-func (s *scheduler) isRecoveryStillPossible(ctx context.Context, shardID model.ShardID) bool {
-	shardState, err := s.jobStore.GetShardState(ctx, shardID)
+func (s *scheduler) isRecoveryStillPossible(ctx context.Context, jobID string) bool {
+	jobState, err := s.jobStore.GetJobState(ctx, jobID)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("[isRecoveryStillPossible] failed to get shard state")
+		log.Ctx(ctx).Error().Err(err).Msg("[isRecoveryStillPossible] failed to get job state")
 		return false
 	}
-	job, err := s.jobStore.GetJob(ctx, shardID.JobID)
+	job, err := s.jobStore.GetJob(ctx, jobID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("[isRecoveryStillPossible] failed to get job")
 		return false
 	}
 
 	activeExecutions := 0
-	for _, execution := range shardState.Executions {
+	for _, execution := range jobState.Executions {
 		if !execution.State.IsDiscarded() {
 			activeExecutions++
 		}
@@ -682,16 +663,16 @@ func (s *scheduler) isRecoveryStillPossible(ctx context.Context, shardID model.S
 }
 
 // make sure to call this function with the lock held
-func (s *scheduler) stopShard(ctx context.Context, shardID model.ShardID, reason string, userRequested bool) {
+func (s *scheduler) stopJob(ctx context.Context, jobID, reason string, userRequested bool) {
 	if userRequested {
-		log.Ctx(ctx).Info().Msgf("stopping shard %s because the user requested it", shardID)
+		log.Ctx(ctx).Info().Msgf("stopping job %s because the user requested it", jobID)
 	} else {
-		log.Ctx(ctx).Error().Err(errors.New(reason)).Msgf("error completing shard %s", shardID)
+		log.Ctx(ctx).Error().Err(errors.New(reason)).Msgf("error completing job %s", jobID)
 	}
 
-	cancelledExecutions, err := jobstore.StopShard(ctx, s.jobStore, shardID, reason, userRequested)
+	cancelledExecutions, err := jobstore.StopJob(ctx, s.jobStore, jobID, reason, userRequested)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[stopShard] failed to stop shard")
+		log.Ctx(ctx).Error().Err(err).Msgf("[stopJob] failed to stop job")
 	}
 
 	for _, execution := range cancelledExecutions {
@@ -703,8 +684,7 @@ func (s *scheduler) stopShard(ctx context.Context, shardID model.ShardID, reason
 	}
 	s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 		SourceNodeID: s.id,
-		JobID:        shardID.JobID,
-		ShardIndex:   shardID.Index,
+		JobID:        jobID,
 		Status:       reason,
 		EventName:    eventName,
 		EventTime:    time.Now(),
@@ -712,4 +692,5 @@ func (s *scheduler) stopShard(ctx context.Context, shardID model.ShardID, reason
 }
 
 // compile-time check that BackendCallback implements the expected interfaces
+var _ Scheduler = (*scheduler)(nil)
 var _ compute.Callback = (*scheduler)(nil)

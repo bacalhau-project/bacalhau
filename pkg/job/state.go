@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -50,7 +49,7 @@ func (resolver *StateResolver) SetWaitTime(maxWaitAttempts int, delay time.Durat
 	resolver.waitDelay = delay
 }
 
-func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]model.ExecutionState, error) {
+func (resolver *StateResolver) GetExecutions(ctx context.Context, jobID string) ([]model.ExecutionState, error) {
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return []model.ExecutionState{}, err
@@ -68,9 +67,9 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 	}
 
 	var currentJobState model.ExecutionStateType
-	for _, shardState := range FlattenExecutionStates(jobState) { //nolint:gocritic
-		if shardState.State > currentJobState {
-			currentJobState = shardState.State
+	for _, executionState := range FlattenExecutionStates(jobState) { //nolint:gocritic
+		if executionState.State > currentJobState {
+			currentJobState = executionState.State
 		}
 	}
 
@@ -94,32 +93,25 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 	if err != nil {
 		return "", err
 	}
-	totalShards := GetJobTotalExecutionCount(j)
-	verifiedShardCount := CountVerifiedShardStates(jobState)
+	desiredExecutionCount := GetJobConcurrency(j)
+	verifiedExecutionCount := CountVerifiedExecutionStates(jobState)
 
-	return fmt.Sprintf("%d/%d", verifiedShardCount, totalShards), nil
+	return fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount), nil
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.ResultSummary")
 	defer span.End()
 
-	job, err := resolver.jobLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-	if GetJobTotalShards(job) > 1 {
-		return "", nil
-	}
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
-	completedShards := GetCompletedVerifiedShardStates(jobState)
-	if len(completedShards) == 0 {
+	completedExecutions := GetCompletedExecutionStates(jobState)
+	if len(completedExecutions) == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID), nil
+	return fmt.Sprintf("/ipfs/%s", completedExecutions[0].PublishedResult.CID), nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -191,7 +183,7 @@ func (resolver *StateResolver) WaitWithOptions(
 	return waiter.Wait(ctx)
 }
 
-// this is an auto wait where we auto calculate how many shard
+// this is an auto wait where we auto calculate how many execution
 // states we expect to see and we use that to pass to WaitForExecutionStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID string) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.WaitUntilComplete")
@@ -214,111 +206,91 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		return results, err
 	}
 
-	// group the shard states by shard index
-	for _, shardState := range GetCompletedVerifiedShardStates(jobState) {
+	for _, executionState := range GetCompletedVerifiedExecutionStates(jobState) {
 		results = append(results, model.PublishedResult{
-			NodeID:     shardState.NodeID,
-			ShardIndex: shardState.ShardIndex,
-			Data:       shardState.PublishedResult,
+			NodeID: executionState.NodeID,
+			Data:   executionState.PublishedResult,
 		})
 	}
 
 	return results, nil
 }
 
-type ShardStateChecker func(
-	shardStates []model.ExecutionState,
+type ExecutionStateChecker func(
+	executionStates []model.ExecutionState,
 	concurrency int,
 ) (bool, error)
 
-// iterate each shard and pass off []model.ExecutionState to the given function
-// every shard must return true for this function to return true
+// iterate each execution and pass off []model.ExecutionState to the given function
+// every execution must return true for this function to return true
 // this is useful for example to say "do we have enough to begin verification"
-func (resolver *StateResolver) CheckShardStates(
+func (resolver *StateResolver) CheckExecutionStates(
 	ctx context.Context,
-	shard model.JobShard,
-	shardStateChecker ShardStateChecker,
+	job model.Job,
+	executionStateChecker ExecutionStateChecker,
 ) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.CheckShardStates")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.CheckExecutionStates")
 	defer span.End()
 
-	jobState, err := resolver.stateLoader(ctx, shard.Job.Metadata.ID)
+	jobState, err := resolver.stateLoader(ctx, job.ID())
 	if err != nil {
 		return false, err
 	}
 
-	concurrency := int(math.Max(float64(shard.Job.Spec.Deal.Concurrency), 1))
-	shardStates := GetStatesForShardIndex(jobState, shard.Index)
-	if len(shardStates) == 0 {
-		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
-	}
-
-	shardCheckResult, err := shardStateChecker(shardStates, concurrency)
+	concurrency := GetJobConcurrency(job)
+	checkResult, err := executionStateChecker(jobState.Executions, concurrency)
 	if err != nil {
 		return false, err
 	}
-	if !shardCheckResult {
+	if !checkResult {
 		return false, nil
 	}
 	return true, nil
 }
 
 func FlattenExecutionStates(jobState model.JobState) []model.ExecutionState {
-	var ret []model.ExecutionState
-	for _, shardState := range jobState.Shards {
-		ret = append(ret, shardState.Executions...)
-	}
-	return ret
+	return jobState.Executions
 }
 
-func GetStatesForShardIndex(jobState model.JobState, shardIndex int) []model.ExecutionState {
+func GetFilteredExecutionStates(jobState model.JobState, filterState model.ExecutionStateType) []model.ExecutionState {
 	var ret []model.ExecutionState
-	shardState, ok := jobState.Shards[shardIndex]
-	if !ok {
-		return ret
-	}
-	return shardState.Executions
-}
-
-func GetFilteredShardStates(jobState model.JobState, filterState model.ExecutionStateType) []model.ExecutionState {
-	var ret []model.ExecutionState
-	for _, shardState := range FlattenExecutionStates(jobState) { //nolint:gocritic
-		if shardState.State == filterState {
-			ret = append(ret, shardState)
+	for _, executionState := range jobState.Executions {
+		if executionState.State == filterState {
+			ret = append(ret, executionState)
 		}
 	}
 	return ret
 }
 
-func CountVerifiedShardStates(jobState model.JobState) int {
+func CountVerifiedExecutionStates(jobState model.JobState) int {
 	count := 0
-	for _, shardState := range FlattenExecutionStates(jobState) { //nolint:gocritic
-		if shardState.VerificationResult.Result {
+	for _, executionState := range jobState.Executions {
+		if executionState.VerificationResult.Result {
 			count++
 		}
 	}
 	return count
 }
 
-func GetCompletedShardStates(jobState model.JobState) []model.ExecutionState {
-	return GetFilteredShardStates(jobState, model.ExecutionStateCompleted)
+func GetCompletedExecutionStates(jobState model.JobState) []model.ExecutionState {
+	return GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted)
 }
 
-// return only shard states that are both complete and verified
-func GetCompletedVerifiedShardStates(jobState model.JobState) []model.ExecutionState {
-	ret := []model.ExecutionState{}
-	for _, shardState := range GetFilteredShardStates(jobState, model.ExecutionStateCompleted) { //nolint:gocritic
-		if shardState.VerificationResult.Complete && shardState.VerificationResult.Result && shardState.PublishedResult.CID != "" {
-			ret = append(ret, shardState)
+// return only execution states that are both complete and verified
+func GetCompletedVerifiedExecutionStates(jobState model.JobState) []model.ExecutionState {
+	var ret []model.ExecutionState
+	for _, executionState := range GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted) { //nolint:gocritic
+		if executionState.VerificationResult.Complete && executionState.VerificationResult.Result && executionState.PublishedResult.CID != "" {
+			ret = append(ret, executionState)
 		}
 	}
 	return ret
 }
 
-func GetShardStateTotals(shardStates []model.ExecutionState) map[model.ExecutionStateType]int {
+func GetExecutionStateTotals(executionStates []model.ExecutionState) map[model.ExecutionStateType]int {
 	discoveredStateCount := map[model.ExecutionStateType]int{}
-	for _, shardState := range shardStates { //nolint:gocritic
-		discoveredStateCount[shardState.State]++
+	for _, executionState := range executionStates { //nolint:gocritic
+		discoveredStateCount[executionState.State]++
 	}
 	return discoveredStateCount
 }
@@ -334,7 +306,7 @@ func WaitExecutionsThrowErrors(errorStates []model.ExecutionStateType) CheckStat
 					if execution.RunOutput != nil {
 						e = e.Str("stdout", execution.RunOutput.STDOUT).Str("stderr", execution.RunOutput.STDERR)
 					}
-					e.Msg("Shard failed")
+					e.Msg("Job failed")
 					return false, fmt.Errorf("job has error state %s on node %s (%s)", execution.State.String(), execution.NodeID, execution.Status)
 				}
 			}
@@ -346,8 +318,8 @@ func WaitExecutionsThrowErrors(errorStates []model.ExecutionStateType) CheckStat
 // wait for the given number of different states to occur
 func WaitForExecutionStates(requiredStateCounts map[model.ExecutionStateType]int) CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
-		allShardStates := FlattenExecutionStates(jobState)
-		discoveredStateCount := GetShardStateTotals(allShardStates)
+		executionStates := FlattenExecutionStates(jobState)
+		discoveredStateCount := GetExecutionStateTotals(executionStates)
 		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, discoveredStateCount)
 		for requiredStateType, requiredStateCount := range requiredStateCounts {
 			discoveredCount, ok := discoveredStateCount[requiredStateType]
@@ -366,18 +338,12 @@ func WaitForExecutionStates(requiredStateCounts map[model.ExecutionStateType]int
 // such as when one node publishes the result before others, or when confidence factor is lower than concurrency.
 // for that reason, we consider a job to be in a terminal state when:
 // - all executions are in a terminal state
-// - shards are in terminal states to account for possible retries
 // - the job is in a terminal state to account for possible retries
 func WaitForTerminalStates() CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
 		executionStates := FlattenExecutionStates(jobState)
 		for _, executionState := range executionStates {
 			if !executionState.State.IsTerminal() {
-				return false, nil
-			}
-		}
-		for _, shardState := range jobState.Shards {
-			if !shardState.State.IsTerminal() {
 				return false, nil
 			}
 		}
@@ -400,9 +366,9 @@ func WaitForSuccessfulCompletion() CheckStatesFunction {
 // if there are > X states then error
 func WaitDontExceedCount(count int) CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
-		allShardStates := FlattenExecutionStates(jobState)
-		if len(allShardStates) > count {
-			return false, fmt.Errorf("there are more states: %d than expected: %d", len(allShardStates), count)
+		executionStates := FlattenExecutionStates(jobState)
+		if len(executionStates) > count {
+			return false, fmt.Errorf("there are more states: %d than expected: %d", len(executionStates), count)
 		}
 		return true, nil
 	}

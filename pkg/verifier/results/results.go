@@ -23,12 +23,13 @@ func NewResults() (*Results, error) {
 	}, nil
 }
 
-func (results *Results) GetShardResultsDir(jobID string, shardIndex int) string {
-	return fmt.Sprintf("%s/%s/%d", results.ResultsDir, jobID, shardIndex)
+func (results *Results) GetResultsDir(jobID string) string {
+	//TODO: include executionID or a nuance to avoid collisions during retries
+	return fmt.Sprintf("%s/%s", results.ResultsDir, jobID)
 }
 
-func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (string, error) {
-	dir := results.GetShardResultsDir(jobID, shardIndex)
+func (results *Results) EnsureResultsDir(jobID string) (string, error) {
+	dir := results.GetResultsDir(jobID)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	if err != nil {
 		return "", fmt.Errorf("error creating results dir %s: %w", dir, err)
