@@ -294,7 +294,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeOverrides := make([]node.NodeConfig, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		nodeOverrides[i] = node.NodeConfig{
-			NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+			NodeInfoPublisherInterval: 100 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 		}
 	}
 	stack := testutils.SetupTestWithNoopExecutor(

@@ -63,7 +63,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		},
 	}
 	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 10 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
+		nodeOverrides[i].NodeInfoPublisherInterval = 100 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
 	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
 		node.NewComputeConfigWithDefaults(),

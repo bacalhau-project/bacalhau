@@ -578,8 +578,8 @@ func (s *scheduler) OnPublishComplete(ctx context.Context, result compute.Publis
 		log.Ctx(ctx).Error().Err(err).Msg("[OnPublishComplete] failed to get job state")
 		return
 	}
-	if jobState.State == model.JobStateCompleted {
-		// result already published by another node
+	if !jobState.ExecutionsInTerminalState() {
+		// An execution is still being worked on, so the job isn't completed yet.
 		return
 	}
 	err = s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{

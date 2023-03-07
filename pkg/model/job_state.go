@@ -70,3 +70,13 @@ type JobState struct {
 	// TimeoutAt is the time when the job will be timed out if it is not completed.
 	TimeoutAt time.Time `json:"TimeoutAt,omitempty"`
 }
+
+func (j JobState) ExecutionsInTerminalState() bool {
+	for _, execution := range j.Executions {
+		if !execution.State.IsTerminal() {
+			return false
+		}
+	}
+
+	return true
+}
