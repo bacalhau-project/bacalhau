@@ -8,7 +8,7 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
 
  * x86_64 or ARM64 architecture
     * Ubuntu 20.0+ has most often been used for development and testing
- * Go >= 1.19
+ * Go >= 1.20
  * [Docker Engine](https://docs.docker.com/get-docker/)
  * (Optional) A build of the [latest Bacalhau release](https://github.com/bacalhau-project/bacalhau/releases/)
 

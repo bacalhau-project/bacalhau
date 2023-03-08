@@ -29,7 +29,7 @@ jobs:
   build:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
+      GOVER: 1.20.2
       IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
@@ -235,7 +235,7 @@ jobs:
   build_canary:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
+      GOVER: 1.20.2
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
@@ -276,7 +276,7 @@ jobs:
   coverage:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
+      GOVER: 1.20.2
       GOPROXY: https://proxy.golang.org
     steps:
       - checkout
@@ -298,8 +298,8 @@ jobs:
   lint:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
-      GOLANGCILINT: v1.49.0
+      GOVER: 1.20.2
+      GOLANGCILINT: v1.51.2
       GOPROXY: https://proxy.golang.org
     working_directory: ~/repo
     executor: linux-amd64
@@ -459,9 +459,9 @@ jobs:
   build_swagger:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
+      GOVER: 1.20.2
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.49.0
+      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -542,9 +542,9 @@ jobs:
   build_jsonschema_job:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
+      GOVER: 1.20.2
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.49.0
+      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
