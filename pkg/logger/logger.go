@@ -260,16 +260,20 @@ func findRepositoryRoot() string {
 			dir = parentDir
 			continue
 		}
-
-		dir = trimRepositoryRootDir(dir)
-
-		return dir
+		return filepath.ToSlash(dir)
 	}
 }
 
 func marshalCaller(prefix string) func(uintptr, string, int) string {
+	goPath, goPathPresent := os.LookupEnv("GOPATH")
+	// `file` will always use '/', even on Windows
+	goPath = fmt.Sprintf("%s/%s/%s/", filepath.ToSlash(goPath), "pkg", "mod")
 	return func(_ uintptr, file string, line int) string {
-		file = strings.TrimPrefix(file, prefix+"/")
+		if strings.HasPrefix(file, prefix) {
+			file = strings.TrimPrefix(file, prefix+"/")
+		} else if goPathPresent {
+			file = strings.TrimPrefix(file, goPath)
+		}
 		return file + ":" + strconv.Itoa(line)
 	}
 }
