@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'Onboard Docker Workload'
-sidebar_position: 2
+sidebar_position: 3
 description: How to use docker containers with Bacalhau
 ---
 import ReactPlayer from 'react-player'
