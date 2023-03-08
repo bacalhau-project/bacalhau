@@ -1,7 +1,7 @@
 version: 0.1
 runtimes:
   enabled:
-    - go@1.19.3
+    - go@1.20.2
     - node@16.14.2
     - python@3.10.3
 actions:

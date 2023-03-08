@@ -129,7 +129,7 @@ export class PipelineStack extends cdk.Stack {
                     install: {
                         commands: [
                             'rm -rf `goenv root`',
-                            'curl --silent --show-error --location --fail https://go.dev/dl/go1.19.6.linux-amd64.tar.gz | tar --extract --gzip --file=- --directory=/usr/local',
+                            'curl --silent --show-error --location --fail https://go.dev/dl/go1.20.2.linux-amd64.tar.gz | tar --extract --gzip --file=- --directory=/usr/local',
                             'ln -s /usr/local/go/bin/go /usr/local/bin/go',
                         ],
                     },
@@ -206,7 +206,7 @@ export class PipelineStack extends cdk.Stack {
                     install: {
                         commands: [
                             'rm -rf `goenv root`',
-                            'curl --silent --show-error --location --fail https://go.dev/dl/go1.19.6.linux-amd64.tar.gz | tar --extract --gzip --file=- --directory=/usr/local',
+                            'curl --silent --show-error --location --fail https://go.dev/dl/go1.20.2.linux-amd64.tar.gz | tar --extract --gzip --file=- --directory=/usr/local',
                             'ln -s /usr/local/go/bin/go /usr/local/bin/go',
                             'go install gotest.tools/gotestsum@v1.8.2',
                         ],
