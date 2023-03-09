@@ -16,6 +16,8 @@ services:
   postgres:
     image: postgres:12.13-alpine
     restart: always
+    volumes:
+      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
     ports:
       - 5432:5432
     environment:
