@@ -198,10 +198,6 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		unusedFieldList = append(unusedFieldList, "CreatedAt")
 		j.Metadata.CreatedAt = time.Time{}
 	}
-	if !reflect.DeepEqual(j.Spec.ExecutionPlan, model.JobExecutionPlan{}) {
-		unusedFieldList = append(unusedFieldList, "Verification")
-		j.Spec.ExecutionPlan = model.JobExecutionPlan{}
-	}
 	if j.Metadata.ID != "" {
 		unusedFieldList = append(unusedFieldList, "ID")
 		j.Metadata.ID = ""

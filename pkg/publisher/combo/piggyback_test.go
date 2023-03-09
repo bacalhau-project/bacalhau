@@ -73,7 +73,7 @@ func TestPiggybackedPublisher_IsInstalled(t *testing.T) {
 	}
 }
 
-func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
+func TestPiggybackedPublisher_PublishResult(t *testing.T) {
 	for _, test := range []struct {
 		name        string
 		primary     []interface{}
@@ -109,14 +109,14 @@ func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
 
 			subject := NewPiggybackedPublisher(primary, piggyback)
 
-			shard := model.JobShard{Index: 4}
+			job := model.Job{}
 			hostId := "host"
 			resultsPath := "/some/path"
 
-			primary.On("PublishShardResult", mock.Anything, shard, hostId, resultsPath).Return(test.primary...)
-			piggyback.On("PublishShardResult", mock.Anything, shard, hostId, resultsPath).Return(test.piggyback...)
+			primary.On("PublishResult", mock.Anything, job, hostId, resultsPath).Return(test.primary...)
+			piggyback.On("PublishResult", mock.Anything, job, hostId, resultsPath).Return(test.piggyback...)
 
-			actual, err := subject.PublishShardResult(context.Background(), shard, hostId, resultsPath)
+			actual, err := subject.PublishResult(context.Background(), job, hostId, resultsPath)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, test.expected, actual)
 		})
@@ -132,8 +132,8 @@ func (t *testifyPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (t *testifyPublisher) PublishShardResult(ctx context.Context, shard model.JobShard, hostID string, shardResultPath string) (model.StorageSpec, error) {
-	args := t.Called(ctx, shard, hostID, shardResultPath)
+func (t *testifyPublisher) PublishResult(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
+	args := t.Called(ctx, job, hostID, resultPath)
 	return args.Get(0).(model.StorageSpec), args.Error(1)
 }
 

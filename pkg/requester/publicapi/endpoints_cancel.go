@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type cancelRequest = SignedRequest[model.JobCancelPayload]
+type cancelRequest = SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
 
 type cancelResponse struct {
 	State *model.JobState `json:"state"`

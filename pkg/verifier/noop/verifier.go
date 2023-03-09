@@ -37,30 +37,30 @@ func (noopVerifier *NoopVerifier) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (noopVerifier *NoopVerifier) GetShardResultPath(
+func (noopVerifier *NoopVerifier) GetResultPath(
 	_ context.Context,
-	shard model.JobShard,
+	job model.Job,
 ) (string, error) {
-	return noopVerifier.results.EnsureShardResultsDir(shard.Job.Metadata.ID, shard.Index)
+	return noopVerifier.results.EnsureResultsDir(job.ID())
 }
 
-func (noopVerifier *NoopVerifier) GetShardProposal(
+func (noopVerifier *NoopVerifier) GetProposal(
 	context.Context,
-	model.JobShard,
+	model.Job,
 	string,
 ) ([]byte, error) {
 	return []byte{}, nil
 }
 
-func (noopVerifier *NoopVerifier) VerifyShard(
+func (noopVerifier *NoopVerifier) Verify(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.NoopVerifier.VerifyShard")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.NoopVerifier.Verify")
 	defer span.End()
 
-	err := verifier.ValidateExecutions(shard, executionStates)
+	err := verifier.ValidateExecutions(job, executionStates)
 	if err != nil {
 		return nil, err
 	}

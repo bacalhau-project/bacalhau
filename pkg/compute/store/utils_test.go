@@ -34,13 +34,10 @@ func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 func newExecution() Execution {
 	return *NewExecution(
 		uuid.NewString(),
-		model.JobShard{
-			Job: &model.Job{
-				Metadata: model.Metadata{
-					ID: uuid.NewString(),
-				},
+		model.Job{
+			Metadata: model.Metadata{
+				ID: uuid.NewString(),
 			},
-			Index: 1,
 		},
 		"nodeID-1",
 		model.ResourceUsageData{

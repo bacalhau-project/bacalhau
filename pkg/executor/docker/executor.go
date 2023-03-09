@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -103,26 +102,17 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 }
 
 //nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunShard(
+func (e *Executor) Run(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.RunShard")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
-	defer e.cleanupJob(ctx, shard)
+	defer e.cleanupJob(ctx, job)
 
-	shardStorageSpec, err := jobutils.GetShardStorageSpec(ctx, shard, e.StorageProvider)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	var inputStorageSpecs []model.StorageSpec
-	inputStorageSpecs = append(inputStorageSpecs, shard.Job.Spec.Contexts...)
-	inputStorageSpecs = append(inputStorageSpecs, shardStorageSpec...)
-
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputStorageSpecs)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -149,7 +139,7 @@ func (e *Executor) RunShard(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range shard.Job.Spec.Outputs {
+	for _, output := range job.Spec.Outputs {
 		if output.Name == "" {
 			err = fmt.Errorf("output volume has no name: %+v", output)
 			return executor.FailResult(err)
@@ -184,8 +174,8 @@ func (e *Executor) RunShard(
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		if pullErr := e.client.PullImage(ctx, shard.Job.Spec.Docker.Image); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, shard.Job.Spec.Docker.Image)
+		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
 			return executor.FailResult(pullErr)
 		}
 	}
@@ -193,29 +183,29 @@ func (e *Executor) RunShard(
 	// json the job spec and pass it into all containers
 	// TODO: check if this will overwrite a user supplied version of this value
 	// (which is what we actually want to happen)
-	log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
-	jsonJobSpec, err := model.JSONMarshalWithMax(shard.Job.Spec)
+	log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", job.Spec)
+	jsonJobSpec, err := model.JSONMarshalWithMax(job.Spec)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables,
+	useEnv := append(job.Spec.Docker.EnvironmentVariables,
 		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
 	)
 
 	containerConfig := &container.Config{
-		Image:      shard.Job.Spec.Docker.Image,
+		Image:      job.Spec.Docker.Image,
 		Tty:        false,
 		Env:        useEnv,
-		Entrypoint: shard.Job.Spec.Docker.Entrypoint,
-		Labels:     e.jobContainerLabels(shard),
-		WorkingDir: shard.Job.Spec.Docker.WorkingDirectory,
+		Entrypoint: job.Spec.Docker.Entrypoint,
+		Labels:     e.jobContainerLabels(job),
+		WorkingDir: job.Spec.Docker.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacity.ParseResourceUsageConfig(shard.Job.Spec.Resources)
+	resourceRequirements := capacity.ParseResourceUsageConfig(job.Spec.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
@@ -239,7 +229,7 @@ func (e *Executor) RunShard(
 	}
 
 	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, shard, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, job, containerConfig, hostConfig)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -250,7 +240,7 @@ func (e *Executor) RunShard(
 		hostConfig,
 		nil,
 		nil,
-		e.jobContainerName(shard),
+		e.jobContainerName(job),
 	)
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
@@ -307,7 +297,7 @@ func (e *Executor) RunShard(
 	)
 }
 
-func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
+func (e *Executor) cleanupJob(ctx context.Context, job model.Job) {
 	// Use a detached context in case the current one has already been canceled
 	separateCtx, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 1*time.Minute)
 	defer cancel()
@@ -315,7 +305,7 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 		return
 	}
 
-	err := e.client.RemoveObjectsWithLabel(separateCtx, labelJobName, e.labelJobValue(shard))
+	err := e.client.RemoveObjectsWithLabel(separateCtx, labelJobName, e.labelJobValue(job))
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
@@ -335,25 +325,26 @@ func (e *Executor) cleanupAll(ctx context.Context) error {
 	return nil
 }
 
-func (e *Executor) dockerObjectName(shard model.JobShard, parts ...string) string {
-	strs := []string{"bacalhau", e.ID, shard.Job.Metadata.ID, fmt.Sprint(shard.Index)}
+func (e *Executor) dockerObjectName(job model.Job, parts ...string) string {
+	// TODO: should include executor id or random string to avoid collisions during retries
+	strs := []string{"bacalhau", e.ID, job.ID()}
 	strs = append(strs, parts...)
 	return strings.Join(strs, "-")
 }
 
-func (e *Executor) jobContainerName(shard model.JobShard) string {
-	return e.dockerObjectName(shard, "executor")
+func (e *Executor) jobContainerName(job model.Job) string {
+	return e.dockerObjectName(job, "executor")
 }
 
-func (e *Executor) jobContainerLabels(shard model.JobShard) map[string]string {
+func (e *Executor) jobContainerLabels(job model.Job) map[string]string {
 	return map[string]string{
 		labelExecutorName: e.ID,
-		labelJobName:      e.labelJobValue(shard),
+		labelJobName:      e.labelJobValue(job),
 	}
 }
 
-func (e *Executor) labelJobValue(shard model.JobShard) string {
-	return e.ID + shard.ID()
+func (e *Executor) labelJobValue(job model.Job) string {
+	return e.ID + job.ID()
 }
 
 // Compile-time interface check:

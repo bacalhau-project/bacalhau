@@ -29,12 +29,12 @@ jobs:
   build:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
       IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
+      GOMAXPROCS: "2" # Avoid using all the allocated CPU, so tests don't get rate limited
     working_directory: ~/repo
     executor: << parameters.executor >>
     parameters:
@@ -65,6 +65,20 @@ jobs:
                   choco install -y make
                   choco install -y jq
                 shell: powershell.exe
+
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
+
+      - when:
+          condition:
+            equal: ["windows", << parameters.target_os >>]
+          steps:
             - run:
                 name: Install Go
                 command: |
@@ -234,13 +248,21 @@ jobs:
   build_canary:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     executor: linux-amd64
     steps:
       - checkout
+
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
 
       - run:
           name: Install golang
@@ -275,7 +297,6 @@ jobs:
   coverage:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
     steps:
       - checkout
@@ -297,13 +318,21 @@ jobs:
   lint:
     parallelism: 1
     environment:
-      GOVER: 1.19.3
-      GOLANGCILINT: v1.49.0
+      GOLANGCILINT: v1.51.2
       GOPROXY: https://proxy.golang.org
     working_directory: ~/repo
     executor: linux-amd64
     steps:
       - checkout
+
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
 
       - run:
           name: Install golang
@@ -458,9 +487,8 @@ jobs:
   build_swagger:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.49.0
+      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -468,6 +496,14 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
       - run:
           name: Install Go
           command: |
@@ -541,9 +577,8 @@ jobs:
   build_jsonschema_job:
     executor: linux-amd64
     environment:
-      GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
-      GOLANGCILINT: v1.49.0
+      GOLANGCILINT: v1.51.2
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -551,6 +586,14 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
       - run:
           name: Install Go
           command: |

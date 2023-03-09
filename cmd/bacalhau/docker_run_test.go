@@ -694,9 +694,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"--api-port", s.port,
 		"--wait",
 		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
-		"--sharding-base-path", "/inputs",
-		"--sharding-glob-pattern", "*.mp4",
-		"--sharding-batch-size", "1",
 		"ubuntu", "echo", "hello",
 	}
 
@@ -723,8 +720,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 			"--verifier", "deterministic",
 			"--concurrency", strconv.Itoa(args.NodeCount),
 			"--confidence", strconv.Itoa(args.Confidence),
-			"--sharding-glob-pattern", "/data/*.txt",
-			"--sharding-batch-size", "1",
 			"ubuntu", "echo", "hello",
 		)
 
@@ -739,7 +734,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	s.T().Run("more-than-one-node-to-run-the-job", func(t *testing.T) {
 		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
 			NodeCount:      1,
-			ShardCount:     2,
 			BadActors:      0,
 			Confidence:     0,
 			ExpectedPassed: 0,
@@ -751,7 +745,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	s.T().Run("all-nodes-agree-then-all-are-verified", func(t *testing.T) {
 		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
 			NodeCount:      3,
-			ShardCount:     2,
 			BadActors:      0,
 			Confidence:     0,
 			ExpectedPassed: 3,
@@ -763,7 +756,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	s.T().Run("one-node-misbehaves-but-others-are-verified", func(t *testing.T) {
 		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
 			NodeCount:      3,
-			ShardCount:     2,
 			BadActors:      1,
 			Confidence:     0,
 			ExpectedPassed: 2,
@@ -775,7 +767,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	s.T().Run("draw-between-good-and-bad-actors-then-none-are-verified", func(t *testing.T) {
 		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
 			NodeCount:      2,
-			ShardCount:     2,
 			BadActors:      1,
 			Confidence:     0,
 			ExpectedPassed: 0,
@@ -787,7 +778,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	s.T().Run("larger-group-with-confidence-gives-lower-threshold", func(t *testing.T) {
 		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
 			NodeCount:      5,
-			ShardCount:     2,
 			BadActors:      2,
 			Confidence:     4,
 			ExpectedPassed: 0,
@@ -851,9 +841,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			info, _, err := s.client.Get(ctx, j.Metadata.ID)
 			s.Require().NoError(err)
 
-			s.Len(info.State.Shards, 1)
-			s.Len(info.State.Shards[0].Executions, 1)
-			s.Len(info.State.Shards[0].Executions[0].RunOutput.STDOUT, int(tc.expectedLength.Bytes()))
+			s.Len(info.State.Executions, 1)
+			s.Len(info.State.Executions[0].RunOutput.STDOUT, int(tc.expectedLength.Bytes()))
 		})
 	}
 }
@@ -979,10 +968,10 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	info, _, err := s.client.Get(ctx, job.Metadata.ID)
 	s.Require().NoError(err)
 	s.T().Log(info)
-	s.Len(info.State.Shards, 1)
-	s.Len(info.State.Shards[0].Executions, 1)
-	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Shards[0].Executions[0].State)
-	s.Contains(info.State.Shards[0].Executions[0].Status, `Could not pull image "@" - could be due to repo/image not existing`)
+	s.Len(info.State.Executions, 1)
+	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Executions[0].State)
+	s.Contains(info.State.Executions[0].Status, `Could not pull image "@" - could be due to repo/image not existing`)
+
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {

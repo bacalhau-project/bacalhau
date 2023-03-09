@@ -26,7 +26,6 @@ func TestMinBidsSuite(t *testing.T) {
 
 type minBidsTestCase struct {
 	nodes          int
-	shards         int
 	concurrency    int
 	minBids        int
 	expectedResult map[model.ExecutionStateType]int
@@ -36,17 +35,13 @@ type minBidsTestCase struct {
 
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 	spec := scenario.WasmHelloWorld.Spec
-	spec.Sharding = model.JobShardingConfig{
-		GlobPattern: "/input/*",
-		BatchSize:   1,
-	}
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: testCase.nodes},
 		},
 		Inputs: scenario.StoredFile(
-			prepareFolderWithFiles(s.T(), testCase.shards),
+			prepareFolderWithFiles(s.T(), 1),
 			"/input",
 		),
 		Spec: spec,
@@ -68,7 +63,6 @@ func (s *MinBidsSuite) TestMinBids_0and1Node() {
 	// sanity test that with min bids at zero and 1 node we get the job through
 	s.testMinBids(minBidsTestCase{
 		nodes:       1,
-		shards:      1,
 		concurrency: 1,
 		minBids:     0,
 		expectedResult: map[model.ExecutionStateType]int{
@@ -84,7 +78,6 @@ func (s *MinBidsSuite) TestMinBids_isConcurrency() {
 	// test that when min bids is concurrency we get the job through
 	s.testMinBids(minBidsTestCase{
 		nodes:       3,
-		shards:      1,
 		concurrency: 3,
 		minBids:     3,
 		expectedResult: map[model.ExecutionStateType]int{
@@ -102,7 +95,6 @@ func (s *MinBidsSuite) TestMinBids_noBids() {
 	// to satisfy the min bids
 	s.testMinBids(minBidsTestCase{
 		nodes:         3,
-		shards:        1,
 		concurrency:   3,
 		minBids:       5,
 		submitChecker: scenario.SubmitJobErrorContains("not enough"),

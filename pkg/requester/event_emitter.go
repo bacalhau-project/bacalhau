@@ -32,21 +32,20 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 func (e EventEmitter) EmitJobCreated(
 	ctx context.Context, job model.Job) {
 	event := model.JobEvent{
-		APIVersion:       job.APIVersion,
-		ClientID:         job.Metadata.ClientID,
-		Spec:             job.Spec,
-		Deal:             job.Spec.Deal,
-		JobExecutionPlan: job.Spec.ExecutionPlan,
-		SourceNodeID:     job.Metadata.Requester.RequesterNodeID,
-		JobID:            job.Metadata.ID,
-		EventName:        model.JobEventCreated,
-		EventTime:        time.Now(),
+		APIVersion:   job.APIVersion,
+		ClientID:     job.Metadata.ClientID,
+		Spec:         job.Spec,
+		Deal:         job.Spec.Deal,
+		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
+		JobID:        job.Metadata.ID,
+		EventName:    model.JobEventCreated,
+		EventTime:    time.Now(),
 	}
 	e.EmitEventSilently(ctx, event)
 }
 
 func (e EventEmitter) EmitBidReceived(
-	ctx context.Context, request compute.AskForBidRequest, response compute.AskForBidShardResponse) {
+	ctx context.Context, request compute.AskForBidRequest, response compute.AskForBidResponse) {
 	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
 	// we flip senders to mimic a bid was received instead of being asked
 	event.SourceNodeID = request.RoutingMetadata.TargetPeerID
@@ -116,7 +115,6 @@ func (e EventEmitter) constructEvent(
 		TargetNodeID: routingMetadata.TargetPeerID,
 		SourceNodeID: routingMetadata.SourcePeerID,
 		JobID:        executionMetadata.JobID,
-		ShardIndex:   executionMetadata.ShardIndex,
 		ExecutionID:  executionMetadata.ExecutionID,
 		EventName:    eventName,
 		EventTime:    time.Now(),

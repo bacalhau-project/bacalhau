@@ -67,18 +67,18 @@ func (s *Suite) TestGetExecutions() {
 	err := s.executionStore.CreateExecution(ctx, s.execution)
 	s.NoError(err)
 
-	readExecutions, err := s.executionStore.GetExecutions(ctx, s.execution.Shard.ID())
+	readExecutions, err := s.executionStore.GetExecutions(ctx, s.execution.Job.ID())
 	s.NoError(err)
 	s.Len(readExecutions, 1)
 	s.Equal(s.execution, readExecutions[0])
 
-	// Create another execution for the same shard
+	// Create another execution for the same job
 	anotherExecution := newExecution()
-	anotherExecution.Shard = s.execution.Shard
+	anotherExecution.Job = s.execution.Job
 	err = s.executionStore.CreateExecution(ctx, anotherExecution)
 	s.NoError(err)
 
-	readExecutions, err = s.executionStore.GetExecutions(ctx, s.execution.Shard.ID())
+	readExecutions, err = s.executionStore.GetExecutions(ctx, s.execution.Job.ID())
 	s.NoError(err)
 	s.Len(readExecutions, 2)
 	s.Equal(s.execution, readExecutions[0])
@@ -87,7 +87,7 @@ func (s *Suite) TestGetExecutions() {
 
 func (s *Suite) TestGetExecutions_DoesntExist() {
 	_, err := s.executionStore.GetExecutions(context.Background(), uuid.NewString())
-	s.ErrorAs(err, &store.ErrExecutionsNotFoundForShard{})
+	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 }
 
 func (s *Suite) TestUpdateExecution() {
@@ -180,8 +180,8 @@ func (s *Suite) TestDeleteExecution() {
 	_, err = s.executionStore.GetExecution(context.Background(), s.execution.ID)
 	s.ErrorAs(err, &store.ErrExecutionNotFound{})
 
-	_, err = s.executionStore.GetExecutions(context.Background(), s.execution.Shard.ID())
-	s.ErrorAs(err, &store.ErrExecutionsNotFoundForShard{})
+	_, err = s.executionStore.GetExecutions(context.Background(), s.execution.Job.ID())
+	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 }
 
 func (s *Suite) TestDeleteExecution_MultiEntries() {
@@ -189,31 +189,31 @@ func (s *Suite) TestDeleteExecution_MultiEntries() {
 	err := s.executionStore.CreateExecution(ctx, s.execution)
 	s.NoError(err)
 
-	// second execution with same shardID
+	// second execution with same jobID
 	secondExecution := newExecution()
-	secondExecution.Shard = s.execution.Shard
+	secondExecution.Job = s.execution.Job
 	err = s.executionStore.CreateExecution(ctx, secondExecution)
 
-	// third execution with different shardID
+	// third execution with different jobID
 	thirdExecution := newExecution()
 	err = s.executionStore.CreateExecution(ctx, thirdExecution)
 	s.NoError(err)
 
 	// validate pre-state
-	firstShardExecutions, err := s.executionStore.GetExecutions(ctx, s.execution.Shard.ID())
+	firstJobExecutions, err := s.executionStore.GetExecutions(ctx, s.execution.Job.ID())
 	s.NoError(err)
-	s.Len(firstShardExecutions, 2)
+	s.Len(firstJobExecutions, 2)
 
-	secondShardExecutions, err := s.executionStore.GetExecutions(ctx, thirdExecution.Shard.ID())
+	secondJobExecutions, err := s.executionStore.GetExecutions(ctx, thirdExecution.Job.ID())
 	s.NoError(err)
-	s.Len(secondShardExecutions, 1)
+	s.Len(secondJobExecutions, 1)
 
 	// delete first execution
 	err = s.executionStore.DeleteExecution(ctx, s.execution.ID)
 	s.NoError(err)
 	_, err = s.executionStore.GetExecution(ctx, s.execution.ID)
 	s.ErrorAs(err, &store.ErrExecutionNotFound{})
-	executions, err := s.executionStore.GetExecutions(ctx, s.execution.Shard.ID())
+	executions, err := s.executionStore.GetExecutions(ctx, s.execution.Job.ID())
 	s.NoError(err)
 	s.Len(executions, 1)
 
@@ -222,16 +222,16 @@ func (s *Suite) TestDeleteExecution_MultiEntries() {
 	s.NoError(err)
 	_, err = s.executionStore.GetExecution(ctx, secondExecution.ID)
 	s.ErrorAs(err, &store.ErrExecutionNotFound{})
-	executions, err = s.executionStore.GetExecutions(ctx, secondExecution.Shard.ID())
-	s.ErrorAs(err, &store.ErrExecutionsNotFoundForShard{})
+	executions, err = s.executionStore.GetExecutions(ctx, secondExecution.Job.ID())
+	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 
 	// delete third execution
 	err = s.executionStore.DeleteExecution(ctx, thirdExecution.ID)
 	s.NoError(err)
 	_, err = s.executionStore.GetExecution(ctx, thirdExecution.ID)
 	s.ErrorAs(err, &store.ErrExecutionNotFound{})
-	_, err = s.executionStore.GetExecutions(ctx, thirdExecution.Shard.ID())
-	s.ErrorAs(err, &store.ErrExecutionsNotFoundForShard{})
+	_, err = s.executionStore.GetExecutions(ctx, thirdExecution.Job.ID())
+	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 }
 
 func (s *Suite) TestDeleteExecution_DoesntExist() {
@@ -247,13 +247,10 @@ func (s *Suite) TestGetExecutionHistory_DoesntExist() {
 func newExecution() store.Execution {
 	return *store.NewExecution(
 		uuid.NewString(),
-		model.JobShard{
-			Job: &model.Job{
-				Metadata: model.Metadata{
-					ID: uuid.NewString(),
-				},
+		model.Job{
+			Metadata: model.Metadata{
+				ID: uuid.NewString(),
 			},
-			Index: 1,
 		},
 		"nodeID-1",
 		model.ResourceUsageData{

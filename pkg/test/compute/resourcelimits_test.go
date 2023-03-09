@@ -99,13 +99,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(_ context.Context, shard model.JobShard, _ string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, job model.Job, _ string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          shard.Job.Metadata.ID,
+				Id:          job.ID(),
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -286,7 +286,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(_ context.Context, _ model.JobShard, _ string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ model.Job, _ string) (*model.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil
@@ -294,7 +294,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeOverrides := make([]node.NodeConfig, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		nodeOverrides[i] = node.NodeConfig{
-			NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+			NodeInfoPublisherInterval: 100 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 		}
 	}
 	stack := testutils.SetupTestWithNoopExecutor(
@@ -374,10 +374,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	for _, jobId := range jobIds {
 		jobState, err := resolver.GetJobState(ctx, jobId)
 		require.NoError(suite.T(), err)
-		completedShards := job.GetCompletedShardStates(jobState)
-		require.Equal(suite.T(), 1, len(completedShards))
-		require.Equal(suite.T(), model.ExecutionStateCompleted, completedShards[0].State)
-		allocationMap[completedShards[0].NodeID]++
+		completedExecutionStates := job.GetCompletedExecutionStates(jobState)
+		require.Equal(suite.T(), 1, len(completedExecutionStates))
+		require.Equal(suite.T(), model.ExecutionStateCompleted, completedExecutionStates[0].State)
+		allocationMap[completedExecutionStates[0].NodeID]++
 	}
 
 	// test that each node has 2 job allocated to it
