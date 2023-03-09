@@ -125,22 +125,26 @@ class BacalhauSubmitJobOperator(BaseOperator):
             events = self.hook.get_events(job_id)
 
             terminate = False
-            for event in events["events"]:
-                if "event_name" in event:
-                    # TODO fix case when event hangs/errors out/never completes
-                    if (
-                        event["event_name"] == "ComputeError"
-                        or event["event_name"] == "ResultsPublished"
-                    ):
-                        # print(event)
-                        terminate = True
-                        break
-                    # else:
-                    #     print(event)
-            if terminate:
-                break
-            print("clock it ticking...")
-            time.sleep(2)
+            print(events["events"])
+            if events["events"]:
+                for event in events["events"]:
+                    if "type" in event:
+                        if event["type"] == "JobLevel":
+                            if "job_state" in event:
+                                if event["job_state"] and "new" in event["job_state"]:
+                                    # TODO fix case when event hangs/errors out/never completes
+                                    if (
+                                        event["job_state"]["new"] == "ComputeError"
+                                        or event["job_state"]["new"] == "Completed"
+                                        or event["job_state"]["new"] == "Cancelled"
+                                        or event["job_state"]["new"] == "Error"
+                                    ):
+                                        terminate = True
+                                        break
+                if terminate:
+                    break
+                print("clock it ticking...")
+                time.sleep(2)
 
         # fetch all shards' resulting CIDs
         results = self.hook.get_results(job_id)

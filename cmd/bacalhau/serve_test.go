@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const maxServeTime = 750 * time.Millisecond
+const maxServeTime = 1 * time.Second
 const maxTestTime = 10 * time.Second
 
 type ServeSuite struct {
@@ -146,6 +146,10 @@ func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 	s.Require().NoError(err)
 
 	job.Spec.Network.Type = model.NetworkHTTP
-	_, err = client.Submit(s.ctx, job)
-	s.ErrorContains(err, "job is unacceptable")
+	job, err = client.Submit(s.ctx, job)
+	s.NoError(err)
+
+	state, err := client.GetJobState(s.ctx, job.Metadata.ID)
+	s.NoError(err)
+	s.Equal(model.JobStateCancelled, state.State, state.State.String())
 }

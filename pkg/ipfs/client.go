@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -123,6 +124,29 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// It's common for callers to this function to use the result to connect to another IPFS node.
+	// This sorts the addresses so IPv4 localhost is first, with the aim of using the localhost connection during tests
+	// and so avoid any unneeded network hops. Other callers to this either sort the list themselves or just output the
+	// full list.
+	preferLocalhost := func(m ma.Multiaddr) int {
+		count := 0
+		if _, err := m.ValueForProtocol(ma.P_TCP); err == nil {
+			count++
+		}
+		if ip, err := m.ValueForProtocol(ma.P_IP4); err == nil {
+			count++
+			if ip == "127.0.0.1" {
+				count++
+			}
+		} else if ip, err := m.ValueForProtocol(ma.P_IP6); err == nil && ip != "::1" {
+			count++
+		}
+		return count
+	}
+	sort.Slice(multiAddresses, func(i, j int) bool {
+		return preferLocalhost(multiAddresses[i]) > preferLocalhost(multiAddresses[j])
+	})
 
 	addresses := generic.Map(multiAddresses, func(f ma.Multiaddr) string {
 		return f.String()

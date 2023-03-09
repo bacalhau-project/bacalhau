@@ -8,31 +8,31 @@ import (
 
 // ErrInsufficientExecutions is returned when the number of executions is less than the minimum required
 type ErrInsufficientExecutions struct {
-	ShardID        string
+	JobID          string
 	MinCount       int
 	SubmittedCount int
 }
 
 func NewErrInsufficientExecutions(id string, minCount, submittedCount int) ErrInsufficientExecutions {
-	return ErrInsufficientExecutions{ShardID: id, MinCount: minCount, SubmittedCount: submittedCount}
+	return ErrInsufficientExecutions{JobID: id, MinCount: minCount, SubmittedCount: submittedCount}
 }
 
 func (e ErrInsufficientExecutions) Error() string {
-	return fmt.Sprintf("insufficient executions to verify shard %s: %d submitted, %d required", e.ShardID, e.SubmittedCount, e.MinCount)
+	return fmt.Sprintf("insufficient executions to verify job %s: %d submitted, %d required", e.JobID, e.SubmittedCount, e.MinCount)
 }
 
-// ErrMismatchingExecution is returned when the execution does not match the shard
+// ErrMismatchingExecution is returned when the execution does not match the job
 type ErrMismatchingExecution struct {
-	ShardID     model.ShardID
+	JobID       string
 	ExecutionID model.ExecutionID
 }
 
-func NewErrMismatchingExecution(shardID model.ShardID, executionID model.ExecutionID) ErrMismatchingExecution {
-	return ErrMismatchingExecution{ShardID: shardID, ExecutionID: executionID}
+func NewErrMismatchingExecution(jobID string, executionID model.ExecutionID) ErrMismatchingExecution {
+	return ErrMismatchingExecution{JobID: jobID, ExecutionID: executionID}
 }
 
 func (e ErrMismatchingExecution) Error() string {
-	return fmt.Sprintf("execution %s does not match shard %s", e.ExecutionID, e.ShardID)
+	return fmt.Sprintf("execution %s does not match job %s", e.ExecutionID, e.JobID)
 }
 
 // ErrInvalidExecutionState is returned when the execution state is not valid for verification

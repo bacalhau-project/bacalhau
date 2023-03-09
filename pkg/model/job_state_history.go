@@ -9,7 +9,6 @@ type JobHistoryType int
 const (
 	jobHistoryTypeUndefined JobHistoryType = iota
 	JobHistoryTypeJobLevel
-	JobHistoryTypeShardLevel
 	JobHistoryTypeExecutionLevel
 )
 
@@ -35,18 +34,16 @@ type StateChange[StateType any] struct {
 }
 
 // JobHistory represents a single event in the history of a job. An event can be
-// at the job level, shard level, or execution (node) level.
+// at the job level, or execution (node) level.
 //
-// {Job,Shard,Event}State fields will only be present if the Type field is of
+// {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
 	Type             JobHistoryType                   `json:"Type"`
 	JobID            string                           `json:"JobID"`
-	ShardIndex       int                              `json:"ShardIndex,omitempty"`
 	NodeID           string                           `json:"NodeID,omitempty"`
 	ComputeReference string                           `json:"ComputeReference,omitempty"`
 	JobState         *StateChange[JobStateType]       `json:"JobState,omitempty"`
-	ShardState       *StateChange[ShardStateType]     `json:"ShardState,omitempty"`
 	ExecutionState   *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
 	NewVersion       int                              `json:"NewVersion"`
 	Comment          string                           `json:"Comment,omitempty"`

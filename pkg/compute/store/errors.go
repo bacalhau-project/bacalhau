@@ -26,17 +26,17 @@ func (e ErrExecutionNotFound) Error() string {
 	return "execution not found: " + e.ExecutionID
 }
 
-// ErrExecutionNotFound is returned when the execution is not found
-type ErrExecutionsNotFoundForShard struct {
-	ShardID string
+// ErrExecutionsNotFoundForJob is returned when the execution is not found for a given job
+type ErrExecutionsNotFoundForJob struct {
+	JobID string
 }
 
-func NewErrExecutionsNotFound(id string) ErrExecutionsNotFoundForShard {
-	return ErrExecutionsNotFoundForShard{ShardID: id}
+func NewErrExecutionsNotFoundForJob(id string) ErrExecutionsNotFoundForJob {
+	return ErrExecutionsNotFoundForJob{JobID: id}
 }
 
-func (e ErrExecutionsNotFoundForShard) Error() string {
-	return "no executions found for shard: " + e.ShardID
+func (e ErrExecutionsNotFoundForJob) Error() string {
+	return "no executions found for job: " + e.JobID
 }
 
 // ErrExecutionHistoryNotFound is returned when the execution is not found

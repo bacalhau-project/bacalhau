@@ -92,9 +92,6 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					[]string{}, // annotations
 					"",         // node selector
 					"",         // working dir
-					"",         // sharding base path
-					"",         // sharding glob pattern
-					1,          // sharding batch size
 				)
 
 				if tcids.err != "" {

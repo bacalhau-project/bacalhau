@@ -10,7 +10,7 @@ import (
 
 type Execution struct {
 	ID              string
-	Shard           model.JobShard
+	Job             model.Job
 	RequesterNodeID string
 	ResourceUsage   model.ResourceUsageData
 	State           ExecutionState
@@ -22,12 +22,12 @@ type Execution struct {
 
 func NewExecution(
 	id string,
-	shard model.JobShard,
+	job model.Job,
 	requesterNodeID string,
 	resourceUsage model.ResourceUsageData) *Execution {
 	return &Execution{
 		ID:              id,
-		Shard:           shard,
+		Job:             job,
 		RequesterNodeID: requesterNodeID,
 		ResourceUsage:   resourceUsage,
 		State:           ExecutionStateCreated,
@@ -39,7 +39,7 @@ func NewExecution(
 
 // string returns a string representation of the execution
 func (e Execution) String() string {
-	return fmt.Sprintf("{ID: %s, Shard: %s, State: %s}", e.ID, e.Shard.ID(), e.State)
+	return fmt.Sprintf("{ID: %s, Job: %s, State: %s}", e.ID, e.Job.Metadata.ID, e.State)
 }
 
 type ExecutionHistory struct {
@@ -54,7 +54,7 @@ type ExecutionHistory struct {
 // Summary of an execution that is used in logging and debugging.
 type ExecutionSummary struct {
 	ExecutionID   string                  `json:"ExecutionID"`
-	ShardID       string                  `json:"ShardID"`
+	JobID         string                  `json:"JobID"`
 	State         string                  `json:"State"`
 	ResourceUsage model.ResourceUsageData `json:"ResourceUsage"`
 }
@@ -63,7 +63,7 @@ type ExecutionSummary struct {
 func NewExecutionSummary(execution Execution) ExecutionSummary {
 	return ExecutionSummary{
 		ExecutionID:   execution.ID,
-		ShardID:       execution.Shard.ID(),
+		JobID:         execution.Job.Metadata.ID,
 		State:         execution.State.String(),
 		ResourceUsage: execution.ResourceUsage,
 	}
@@ -81,11 +81,11 @@ type UpdateExecutionStateRequest struct {
 type ExecutionStore interface {
 	// GetExecution returns the execution for a given id
 	GetExecution(ctx context.Context, id string) (Execution, error)
-	// GetExecutions returns all the executions for a given shard
-	GetExecutions(ctx context.Context, sharedID string) ([]Execution, error)
+	// GetExecutions returns all the executions for a given job
+	GetExecutions(ctx context.Context, jobID string) ([]Execution, error)
 	// GetExecutionHistory returns the history of an execution
 	GetExecutionHistory(ctx context.Context, id string) ([]ExecutionHistory, error)
-	// CreateExecution creates a new execution for a given shard
+	// CreateExecution creates a new execution for a given job
 	CreateExecution(ctx context.Context, execution Execution) error
 	// UpdateExecutionState updates the execution state
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error

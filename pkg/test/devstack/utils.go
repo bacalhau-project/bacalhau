@@ -36,7 +36,6 @@ func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unuse
 
 type DeterministicVerifierTestArgs struct {
 	NodeCount      int
-	ShardCount     int
 	BadActors      int
 	Confidence     int
 	ExpectedPassed int
@@ -64,13 +63,11 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ExternalHooks: noop_storage.StorageConfigExternalHooks{
 			Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
 				var results []model.StorageSpec
-				for i := 0; i < args.ShardCount; i++ {
-					results = append(results, model.StorageSpec{
-						StorageSource: model.StorageSourceIPFS,
-						CID:           fmt.Sprintf("123%d", i),
-						Path:          fmt.Sprintf("/data/file%d.txt", i),
-					})
-				}
+				results = append(results, model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					CID:           "123",
+					Path:          "/data/file1.txt",
+				})
 				return results, nil
 			},
 		},
@@ -80,11 +77,11 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 		return executor_util.NewNoopExecutors(noop_executor.ExecutorConfig{
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 					runOutput := &model.RunCommandResult{}
-					runOutput.STDOUT = fmt.Sprintf("hello world %d", shard.Index)
+					runOutput.STDOUT = fmt.Sprintf("hello world %s", job.ID())
 					if nodeConfig.ComputeConfig.SimulatorConfig.IsBadActor {
-						runOutput.STDOUT = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
+						runOutput.STDOUT = fmt.Sprintf("i am bad and deserve to fail %s", job.ID())
 					}
 					err := os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd
 					if err != nil {
@@ -135,17 +132,15 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	verifiedCount := 0
 	failedCount := 0
 
-	for _, shard := range state.Shards {
-		for _, execution := range shard.Executions { //nolint:gocritic
-			require.True(t, execution.VerificationResult.Complete)
-			if execution.VerificationResult.Result {
-				verifiedCount++
-			} else {
-				failedCount++
-			}
+	for _, execution := range state.Executions { //nolint:gocritic
+		require.True(t, execution.VerificationResult.Complete)
+		if execution.VerificationResult.Result {
+			verifiedCount++
+		} else {
+			failedCount++
 		}
 	}
 
-	require.Equal(t, args.ExpectedPassed*args.ShardCount, verifiedCount, "verified count should be correct")
-	require.Equal(t, args.ExpectedFailed*args.ShardCount, failedCount, "failed count should be correct")
+	require.Equal(t, args.ExpectedPassed, verifiedCount, "verified count should be correct")
+	require.Equal(t, args.ExpectedFailed, failedCount, "failed count should be correct")
 }

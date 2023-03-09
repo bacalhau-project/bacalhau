@@ -48,11 +48,10 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 					JobSelectionPolicy: testCase.policy,
 				}),
 			},
-			Inputs:   scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
-			Contexts: scenario.WasmCsvTransform.Contexts,
-			Outputs:  scenario.WasmCsvTransform.Outputs,
-			Spec:     scenario.WasmCsvTransform.Spec,
-			Deal:     model.Deal{Concurrency: testCase.nodeCount},
+			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
+			Outputs: scenario.WasmCsvTransform.Outputs,
+			Spec:    scenario.WasmCsvTransform.Spec,
+			Deal:    model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),
 				job.WaitExecutionsThrowErrors([]model.ExecutionStateType{

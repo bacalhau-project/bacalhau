@@ -58,11 +58,11 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadResults(ctx, results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, model.DownloadFilenameStdout))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}

@@ -41,14 +41,8 @@ func (c *DiskUsageCalculator) Calculate(
 		totalDiskRequirements += volumeSize
 	}
 
-	// TODO: think about the fact that each shard might be different sizes
-	//  this is probably good enough for now
-	totalShards := job.Spec.ExecutionPlan.TotalShards
-	if totalShards == 0 {
-		totalShards = 1
-	}
 	// update the job requirements disk space with what we calculated
-	requirements.Disk = totalDiskRequirements / uint64(totalShards)
+	requirements.Disk = totalDiskRequirements
 
 	return requirements, nil
 }

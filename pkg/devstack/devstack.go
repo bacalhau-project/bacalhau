@@ -197,16 +197,13 @@ func NewDevStack(
 				libp2pPeer = append(libp2pPeer, peerAddr)
 			}
 		} else {
-			for _, addrs := range nodes[0].Host.Addrs() {
-				p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
-				if p2pAddrErr != nil {
-					return nil, p2pAddrErr
-				}
-				libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
-			}
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String()) //nolint:govet
 			if err != nil {
-				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+				return nil, err
 			}
+			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
+			// connecting/joining topics, when using multiple addresses for a single host.
+			libp2pPeer = append(libp2pPeer, nodes[0].Host.Addrs()[0].Encapsulate(p2pAddr))
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
@@ -308,7 +305,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = libp2p.ConnectToPeers(ctx, libp2pHost, libp2pPeer)
+		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
 		if err != nil {
 			return nil, err
 		}
@@ -323,7 +320,7 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
+	profiler := startProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
 		cm.RegisterCallbackWithContext(profiler.Close)
 	}

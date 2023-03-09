@@ -119,10 +119,10 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 	}
 	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
 
-	req := cancelRequest{
-		JobCancelPayload: &rawPayloadJSON,
-		ClientSignature:  signature,
-		ClientPublicKey:  system.GetClientPublicKey(),
+	req := signedRequest{
+		Payload:         &rawPayloadJSON,
+		ClientSignature: signature,
+		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
 	var res cancelResponse

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM cgr.dev/chainguard/go:1.19 as build
+FROM cgr.dev/chainguard/go:1.20 as build
 WORKDIR /work
 COPY Makefile .
 COPY go.mod .

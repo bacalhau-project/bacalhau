@@ -325,31 +325,27 @@ func ExecuteJob(ctx context.Context,
 	if runtimeSettings.PrintNodeDetails {
 		printOut += "\n"
 		printOut += "Job Results By Node:\n"
-		for j, s := range js.Shards {
-			printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
-			printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
-			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
-			for _, n := range s.Executions {
-				printOut += fmt.Sprintf("Node %s:\n", n.NodeID[:8])
-				if n.RunOutput == nil {
-					printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
-				} else {
-					printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", n.RunOutput.ExitCode)
-					resultsCID = n.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
-					printResults := func(t string, s string, trunc bool) {
-						truncatedString := ""
-						if trunc {
-							truncatedString = " (truncated: last 2000 characters)"
-						}
-						if s != "" {
-							printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
-						} else {
-							printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
-						}
+		for _, n := range js.Executions {
+			printOut += fmt.Sprintf("Node %s:\n", n.NodeID[:8])
+			if n.RunOutput == nil {
+				printOut += fmt.Sprintf(indentTwo + "No RunOutput for this execution" +
+					"\n")
+			} else {
+				printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", n.RunOutput.ExitCode)
+				resultsCID = n.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+				printResults := func(t string, s string, trunc bool) {
+					truncatedString := ""
+					if trunc {
+						truncatedString = " (truncated: last 2000 characters)"
 					}
-					printResults("Stdout", n.RunOutput.STDOUT, n.RunOutput.StdoutTruncated)
-					printResults("Stderr", n.RunOutput.STDERR, n.RunOutput.StderrTruncated)
+					if s != "" {
+						printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+					} else {
+						printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
+					}
 				}
+				printResults("Stdout", n.RunOutput.STDOUT, n.RunOutput.StdoutTruncated)
+				printResults("Stderr", n.RunOutput.STDERR, n.RunOutput.StderrTruncated)
 			}
 		}
 	}
@@ -427,9 +423,8 @@ func downloadResultsHandler(
 		return err
 	}
 
-	err = downloader.DownloadJob(
+	err = downloader.DownloadResults(
 		ctx,
-		j.Job.Spec.Outputs,
 		results,
 		downloaderProvider,
 		&processedDownloadSettings,
@@ -701,12 +696,13 @@ To get more information at any time, run:
 		// TODO: #1070 We should really streamline these two loops - when we get to a client side statemachine, that should take care of lots
 		// Look for any terminal event in all the events. If it's done, we're done.
 		for _, event := range jobEvents {
-			// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
+			// TODO: #837 We should be checking for the last event of a given type, not the first, across all execution.
 			if event.Type == model.JobHistoryTypeJobLevel && event.JobState.New.IsTerminal() {
 				// Send a signal to the goroutine that is waiting for Ctrl+C
 				finishedRunning = true
 
-				if event.JobState.New == model.JobStateError {
+				// If there was an unsuccessful job, print the reason why.
+				if event.JobState.New != model.JobStateCompleted {
 					err = errors.New(event.Comment)
 					spin.StopMessage(fullLineMessage.PrintError())
 				}

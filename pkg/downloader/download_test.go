@@ -5,11 +5,12 @@ package downloader
 import (
 	"context"
 	"crypto/rand"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -95,13 +96,13 @@ func generateFile(path string) ([]byte, error) {
 }
 
 // Wraps generation of a set of output files that represent the output from a
-// specific shard, and saves them to IPFS.
+// specific result, and saves them to IPFS.
 //
 // The passed setup func will be called with a temporary directory. Within the
 // setup func, the user should make a number of calls to `mockFile` to generate
 // files within the directory. At the end, the entire directory is saved to
 // IPFS.
-func mockShardOutput(ds *DownloaderSuite, setup func(string)) string {
+func mockOutput(ds *DownloaderSuite, setup func(string)) string {
 	testDir := ds.T().TempDir()
 
 	setup(testDir)
@@ -144,9 +145,8 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 }
 
 func (ds *DownloaderSuite) TestNoExpectedResults() {
-	err := DownloadJob(
+	err := DownloadResults(
 		context.Background(),
-		[]model.StorageSpec{},
 		[]model.PublishedResult{},
 		ds.downloadProvider,
 		ds.downloadSettings,
@@ -156,7 +156,7 @@ func (ds *DownloaderSuite) TestNoExpectedResults() {
 
 func (ds *DownloaderSuite) TestFullOutput() {
 	var exitCode, stdout, stderr, hello, goodbye []byte
-	cid := mockShardOutput(ds, func(dir string) {
+	cid := mockOutput(ds, func(dir string) {
 		exitCode = mockFile(ds, dir, "exitCode")
 		stdout = mockFile(ds, dir, model.DownloadFilenameStdout)
 		stderr = mockFile(ds, dir, "stderr")
@@ -164,22 +164,14 @@ func (ds *DownloaderSuite) TestFullOutput() {
 		goodbye = mockFile(ds, dir, "outputs", "goodbye.txt")
 	})
 
-	err := DownloadJob(
+	err := DownloadResults(
 		context.Background(),
-		[]model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "outputs",
-				Path:          "/outputs",
-			},
-		},
 		[]model.PublishedResult{
 			{
-				NodeID:     "testnode",
-				ShardIndex: 0,
+				NodeID: "testnode",
 				Data: model.StorageSpec{
 					StorageSource: model.StorageSourceIPFS,
-					Name:          "shard-0",
+					Name:          "result-0",
 					CID:           cid,
 				},
 			},
@@ -189,36 +181,26 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, model.DownloadVolumesFolderName, "stdout")
-	requireFile(ds, stderr, model.DownloadVolumesFolderName, "stderr")
-	requireFile(ds, exitCode, model.DownloadShardsFolderName, "0_node_testnode", "exitCode")
-	requireFile(ds, stdout, model.DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, stderr, model.DownloadShardsFolderName, "0_node_testnode", "stderr")
-	requireFile(ds, goodbye, model.DownloadVolumesFolderName, "outputs", "goodbye.txt")
-	requireFile(ds, hello, model.DownloadVolumesFolderName, "outputs", "hello.txt")
+	requireFile(ds, stdout, "stdout")
+	requireFile(ds, stderr, "stderr")
+	requireFile(ds, exitCode, "exitCode")
+	requireFile(ds, goodbye, "outputs", "goodbye.txt")
+	requireFile(ds, hello, "outputs", "hello.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
-	cid := mockShardOutput(ds, func(dir string) {
+	cid := mockOutput(ds, func(dir string) {
 		mockFile(ds, dir, "outputs", "lonely.txt")
 	})
 
-	err := DownloadJob(
+	err := DownloadResults(
 		context.Background(),
-		[]model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "outputs",
-				Path:          "/outputs",
-			},
-		},
 		[]model.PublishedResult{
 			{
-				NodeID:     "testnode",
-				ShardIndex: 0,
+				NodeID: "testnode",
 				Data: model.StorageSpec{
 					StorageSource: model.StorageSourceIPFS,
-					Name:          "shard-0",
+					Name:          "result-0",
 					CID:           cid,
 				},
 			},
@@ -228,85 +210,22 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "lonely.txt")
-}
-
-func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
-	var shard0stdout, shard1stdout []byte
-	cid0 := mockShardOutput(ds, func(s string) {
-		shard0stdout = mockFile(ds, s, model.DownloadFilenameStdout)
-		mockFile(ds, s, "outputs", "data0.csv")
-	})
-
-	cid1 := mockShardOutput(ds, func(s string) {
-		shard1stdout = mockFile(ds, s, model.DownloadFilenameStdout)
-		mockFile(ds, s, "outputs", "data1.csv")
-	})
-
-	err := DownloadJob(
-		context.Background(),
-		[]model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "outputs",
-				Path:          "/outputs",
-			},
-		},
-		[]model.PublishedResult{
-			{
-				NodeID:     "testnode",
-				ShardIndex: 0,
-				Data: model.StorageSpec{
-					StorageSource: model.StorageSourceIPFS,
-					Name:          "shard-0",
-					CID:           cid0,
-				},
-			},
-			{
-				NodeID:     "testnode",
-				ShardIndex: 1,
-				Data: model.StorageSpec{
-					StorageSource: model.StorageSourceIPFS,
-					Name:          "shard-1",
-					CID:           cid1,
-				},
-			},
-		},
-		ds.downloadProvider,
-		ds.downloadSettings,
-	)
-	require.NoError(ds.T(), err)
-
-	fullStdout := append(shard0stdout, shard1stdout...)
-	requireFile(ds, fullStdout, model.DownloadVolumesFolderName, model.DownloadFilenameStdout)
-	requireFile(ds, shard0stdout, model.DownloadShardsFolderName, "0_node_testnode", "stdout")
-	requireFile(ds, shard1stdout, model.DownloadShardsFolderName, "1_node_testnode", "stdout")
-	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "data0.csv")
-	requireFileExists(ds, model.DownloadVolumesFolderName, "outputs", "data1.csv")
+	requireFileExists(ds, "outputs", "lonely.txt")
 }
 
 func (ds *DownloaderSuite) TestCustomVolumeNames() {
-	cid := mockShardOutput(ds, func(s string) {
+	cid := mockOutput(ds, func(s string) {
 		mockFile(ds, s, "secrets", "private.pem")
 	})
 
-	err := DownloadJob(
+	err := DownloadResults(
 		context.Background(),
-		[]model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "secrets",
-				Path:          "/sensitive",
-				// TODO: Path is currently ignored but is set on Docker jobs?
-			},
-		},
 		[]model.PublishedResult{
 			{
-				NodeID:     "testnode",
-				ShardIndex: 0,
+				NodeID: "testnode",
 				Data: model.StorageSpec{
 					StorageSource: model.StorageSourceIPFS,
-					Name:          "shard-0",
+					Name:          "result-0",
 					CID:           cid,
 				},
 			},
@@ -316,5 +235,5 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, model.DownloadVolumesFolderName, "secrets", "private.pem")
+	requireFileExists(ds, "secrets", "private.pem")
 }

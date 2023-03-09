@@ -705,7 +705,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "ComputeReference": {
-                    "description": "Compute node reference for this shard execution",
+                    "description": "Compute node reference for this job execution",
                     "type": "string"
                 },
                 "CreateTime": {
@@ -730,10 +730,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.RunCommandResult"
                         }
                     ]
-                },
-                "ShardIndex": {
-                    "description": "what shard is this we are running",
-                    "type": "integer"
                 },
                 "State": {
                     "description": "State is the current state of the execution",
@@ -822,12 +818,24 @@ const docTemplate = `{
                 }
             }
         },
-        "model.JobExecutionPlan": {
+        "model.JobCancelPayload": {
             "type": "object",
+            "required": [
+                "ClientID",
+                "JobID"
+            ],
             "properties": {
-                "ShardsTotal": {
-                    "description": "how many shards are there in total for this job\nwe are expecting this number x concurrency total\nShardState objects for this job",
-                    "type": "integer"
+                "ClientID": {
+                    "description": "the id of the client that is submitting the job",
+                    "type": "string"
+                },
+                "JobID": {
+                    "description": "the job id of the job to be canceled",
+                    "type": "string"
+                },
+                "Reason": {
+                    "description": "The reason that the job is being canceled",
+                    "type": "string"
                 }
             }
         },
@@ -855,12 +863,6 @@ const docTemplate = `{
                 "NodeID": {
                     "type": "string"
                 },
-                "ShardIndex": {
-                    "type": "integer"
-                },
-                "ShardState": {
-                    "$ref": "#/definitions/model.StateChange-model_ShardStateType"
-                },
                 "Time": {
                     "type": "string"
                 },
@@ -874,13 +876,11 @@ const docTemplate = `{
             "enum": [
                 0,
                 1,
-                2,
-                3
+                2
             ],
             "x-enum-varnames": [
                 "jobHistoryTypeUndefined",
                 "JobHistoryTypeJobLevel",
-                "JobHistoryTypeShardLevel",
                 "JobHistoryTypeExecutionLevel"
             ]
         },
@@ -894,23 +894,6 @@ const docTemplate = `{
                 },
                 "RequesterPublicKey": {
                     "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobShardingConfig": {
-            "type": "object",
-            "properties": {
-                "BatchSize": {
-                    "description": "how many \"items\" are to be processed in each shard\nwe first apply the glob pattern which will result in a flat list of items\nthis number decides how to group that flat list into actual shards run by compute nodes",
-                    "type": "integer"
-                },
-                "GlobPattern": {
-                    "description": "divide the inputs up into the smallest possible unit\nfor example /* would mean \"all top level files or folders\"\nthis being an empty string means \"no sharding\"",
-                    "type": "string"
-                },
-                "GlobPatternBasePath": {
-                    "description": "when using multiple input volumes\nwhat path do we treat as the common mount path to apply the glob pattern to",
                     "type": "string"
                 }
             }
@@ -1024,16 +1007,16 @@ const docTemplate = `{
                     "description": "CreateTime is the time when the job was created.",
                     "type": "string"
                 },
+                "Executions": {
+                    "description": "Executions is a list of executions of the job across the nodes.\nA new execution is created when a node is selected to execute the job, and a node can have multiple executions for the same\njob due to retries, but there can only be a single active execution per node at any given time.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ExecutionState"
+                    }
+                },
                 "JobID": {
                     "description": "JobID is the unique identifier for the job",
                     "type": "string"
-                },
-                "Shards": {
-                    "description": "Shards is a map of shard index to shard state.\nThe number of shards are fixed at the time of job creation.",
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/model.ShardState"
-                    }
                 },
                 "State": {
                     "description": "State is the current state of the job",
@@ -1075,8 +1058,8 @@ const docTemplate = `{
                 "JobStateInProgress",
                 "JobStateCancelled",
                 "JobStateError",
-                "JobStatePartialError",
-                "JobStateCompleted"
+                "JobStateCompleted",
+                "JobStateQueued"
             ]
         },
         "model.JobWithInfo": {
@@ -1223,9 +1206,6 @@ const docTemplate = `{
                 },
                 "NodeID": {
                     "type": "string"
-                },
-                "ShardIndex": {
-                    "type": "integer"
                 }
             }
         },
@@ -1325,63 +1305,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ShardState": {
-            "type": "object",
-            "properties": {
-                "CreateTime": {
-                    "description": "CreateTime is the time when the shard was created, which is the same as the job creation time.",
-                    "type": "string"
-                },
-                "Executions": {
-                    "description": "Executions is a list of executions of the shard across the nodes.\nA new execution is created when a node is selected to execute the shard, and a node can have multiple executions for the same\nshard due to retries, but there can only be a single active execution per node at any given time.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.ExecutionState"
-                    }
-                },
-                "JobID": {
-                    "description": "JobID is the unique identifier for the job",
-                    "type": "string"
-                },
-                "ShardIndex": {
-                    "description": "ShardIndex is the index of the shard in the job",
-                    "type": "integer"
-                },
-                "State": {
-                    "description": "State is the current state of the shard",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.ShardStateType"
-                        }
-                    ]
-                },
-                "UpdateTime": {
-                    "description": "UpdateTime is the time when the shard state was last updated.",
-                    "type": "string"
-                },
-                "Version": {
-                    "description": "Version is the version of the shard state. It is incremented every time the shard state is updated.",
-                    "type": "integer"
-                }
-            }
-        },
-        "model.ShardStateType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4
-            ],
-            "x-enum-varnames": [
-                "ShardStateNew",
-                "ShardStateInProgress",
-                "ShardStateCancelled",
-                "ShardStateError",
-                "ShardStateCompleted"
-            ]
-        },
         "model.Spec": {
             "type": "object",
             "properties": {
@@ -1390,13 +1313,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
-                },
-                "Contexts": {
-                    "description": "Input volumes that will not be sharded\nfor example to upload code into a base image\nevery shard will get the full range of context volumes",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
                 "Deal": {
@@ -1424,14 +1340,6 @@ const docTemplate = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Engine"
-                        }
-                    ]
-                },
-                "ExecutionPlan": {
-                    "description": "how will this job be executed by nodes on the network",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobExecutionPlan"
                         }
                     ]
                 },
@@ -1466,14 +1374,6 @@ const docTemplate = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.ResourceUsageConfig"
-                        }
-                    ]
-                },
-                "Sharding": {
-                    "description": "the sharding config for this job\ndescribes how the job might be split up into parallel shards",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.JobShardingConfig"
                         }
                     ]
                 },
@@ -1525,17 +1425,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.StateChange-model_ShardStateType": {
-            "type": "object",
-            "properties": {
-                "New": {
-                    "$ref": "#/definitions/model.ShardStateType"
-                },
-                "Previous": {
-                    "$ref": "#/definitions/model.ShardStateType"
-                }
-            }
-        },
         "model.StorageSourceType": {
             "type": "integer",
             "enum": [
@@ -1583,7 +1472,7 @@ const docTemplate = `{
                 "Name": {
                     "description": "Name of the spec's data, for reference.",
                     "type": "string",
-                    "example": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+                    "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
                 },
                 "SourcePath": {
                     "description": "The path of the host data if we are using local directory paths",
@@ -1670,7 +1559,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "client_public_key",
-                "job_cancel_payload",
+                "payload",
                 "signature"
             ],
             "properties": {
@@ -1678,12 +1567,13 @@ const docTemplate = `{
                     "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "job_cancel_payload": {
+                "payload": {
                     "description": "The data needed to cancel a running job on the network",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCancelPayload"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",

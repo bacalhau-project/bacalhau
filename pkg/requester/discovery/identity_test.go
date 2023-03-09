@@ -4,14 +4,13 @@ package discovery
 
 import (
 	"context"
-	"testing"
-
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 type IdentityNodeDiscovererSuite struct {
@@ -61,8 +60,9 @@ func (s *IdentityNodeDiscovererSuite) TestFindNodes() {
 	discoverer := NewIdentityNodeDiscoverer(IdentityNodeDiscovererParams{
 		Host: s.node1,
 	})
+
 	peerIDs, err := discoverer.FindNodes(context.Background(), model.Job{})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	peerIDStrings := make([]string, len(peerIDs))
 	for i, p := range peerIDs {

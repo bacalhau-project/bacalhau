@@ -144,14 +144,10 @@ func (s *JobUtilSuite) TestStateSummary() {
 	for _, testCase := range tc {
 		s.Run(testCase.name, func() {
 			j := model.JobState{
-				Shards: map[int]model.ShardState{
-					0: {
-						Executions: []model.ExecutionState{
-							{State: testCase.states[0]},
-							{State: testCase.states[1]},
-							{State: testCase.states[2]},
-						},
-					},
+				Executions: []model.ExecutionState{
+					{State: testCase.states[0]},
+					{State: testCase.states[1]},
+					{State: testCase.states[2]},
 				},
 			}
 

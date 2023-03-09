@@ -11,15 +11,15 @@ import (
 )
 
 var sleepyPublisher = mockPublisher{
-	isInstalled:        true,
-	publishShardResult: model.StorageSpec{CID: "123"},
-	sleepTime:          50 * time.Millisecond,
+	isInstalled:     true,
+	PublishedResult: model.StorageSpec{CID: "123"},
+	sleepTime:       50 * time.Millisecond,
 }
 
 var uninstalledPublisher = mockPublisher{
-	isInstalled:           false,
-	publishShardResultErr: fmt.Errorf("not installed"),
-	sleepTime:             0,
+	isInstalled:        false,
+	PublishedResultErr: fmt.Errorf("not installed"),
+	sleepTime:          0,
 }
 
 func TestFanoutPublisher(t *testing.T) {

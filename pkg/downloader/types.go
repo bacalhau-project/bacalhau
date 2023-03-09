@@ -16,12 +16,3 @@ type Downloader interface {
 type DownloaderProvider interface {
 	model.Provider[model.StorageSourceType, Downloader]
 }
-
-type shardCIDContext struct {
-	Result         model.PublishedResult
-	OutputVolumes  []model.StorageSpec
-	RootDir        string
-	CIDDownloadDir string
-	ShardDir       string
-	VolumeDir      string
-}
