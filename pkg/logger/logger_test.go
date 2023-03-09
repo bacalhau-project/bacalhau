@@ -5,7 +5,6 @@ package logger
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -20,7 +19,6 @@ import (
 	"github.com/ipfs/kubo/plugin/loader"
 	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
-	"github.com/phayes/freeport"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -117,13 +115,6 @@ func triggerIPFSLogging(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, config.Profiles["test"].Transform(cfg))
 
-	apiPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	gatewayPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	swarmPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
 	cfg.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
 	cfg.Swarm.EnableHolePunching = config.False
 	cfg.Swarm.DisableNatPortMap = true
@@ -131,15 +122,9 @@ func triggerIPFSLogging(t *testing.T) {
 	cfg.Swarm.RelayService.Enabled = config.False
 	cfg.Swarm.Transports.Network.Relay = config.False
 	cfg.Discovery.MDNS.Enabled = false
-	cfg.Addresses.Gateway = []string{
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort),
-	}
-	cfg.Addresses.API = []string{
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
-	}
-	cfg.Addresses.Swarm = []string{
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-	}
+	cfg.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0"}
+	cfg.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0"}
+	cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
 	cfg.Peering = config.Peering{
 		Peers: nil,
 	}

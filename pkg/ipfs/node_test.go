@@ -83,9 +83,11 @@ func (s *NodeSuite) TestFunctionality() {
 	s.Require().Equal(testString, string(data))
 
 	s.Never(func() bool {
-		peers, err := n2.Client().API.Swarm().Peers(ctx)
+		peers, err := n2.Client().API.Swarm().KnownAddrs(ctx)
 		s.Require().NoError(err)
-
+		id, err := n2.Client().API.Key().Self(ctx)
+		s.Require().NoError(err)
+		delete(peers, id.ID())
 		return !s.Len(peers, 1)
 	}, 500*time.Millisecond, 10*time.Millisecond, "a local node should only connect to the passed in peers")
 

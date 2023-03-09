@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/imdario/mergo"
-	"github.com/libp2p/go-libp2p/core/host"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
+	"github.com/imdario/mergo"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -201,9 +201,10 @@ func NewDevStack(
 			if err != nil {
 				return nil, err
 			}
+			addresses := multiaddresses.SortLocalhostFirst(nodes[0].Host.Addrs())
 			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
 			// connecting/joining topics, when using multiple addresses for a single host.
-			libp2pPeer = append(libp2pPeer, nodes[0].Host.Addrs()[0].Encapsulate(p2pAddr))
+			libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
