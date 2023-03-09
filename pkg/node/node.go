@@ -82,13 +82,7 @@ type Node struct {
 }
 
 func (n *Node) Start(ctx context.Context) error {
-	go func(ctx context.Context) {
-		if err := n.APIServer.ListenAndServe(ctx, n.CleanupManager); err != nil {
-			log.Ctx(ctx).Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
-		}
-	}(ctx)
-
-	return nil
+	return n.APIServer.ListenAndServe(ctx, n.CleanupManager)
 }
 
 func NewStandardNode(

@@ -29,23 +29,15 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 	}
 
 	addrs := []string{
-		"/ip4/0.0.0.0/tcp/%d",
-		"/ip4/0.0.0.0/udp/%d/quic",
-		"/ip4/0.0.0.0/udp/%d/quic-v1",
-		"/ip6/::/tcp/%d",
-		"/ip6/::/udp/%d/quic",
-		"/ip6/::/udp/%d/quic-v1",
-	}
-	listenAddrs := make([]multiaddr.Multiaddr, 0, len(addrs))
-	for _, s := range addrs {
-		addr, addrErr := multiaddr.NewMultiaddr(fmt.Sprintf(s, port))
-		if addrErr != nil {
-			return nil, addrErr
-		}
-		listenAddrs = append(listenAddrs, addr)
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
+		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
+		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", port),
+		fmt.Sprintf("/ip6/::/tcp/%d", port),
+		fmt.Sprintf("/ip6/::/udp/%d/quic", port),
+		fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port),
 	}
 
-	opts = append(opts, libp2p.ListenAddrs(listenAddrs...))
+	opts = append(opts, libp2p.ListenAddrStrings(addrs...))
 	opts = append(opts, libp2p.Identity(prvKey))
 	h, err := libp2p.New(opts...)
 	if err != nil {
