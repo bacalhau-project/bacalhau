@@ -69,7 +69,7 @@ const JobProgram: FC<{
       let programCID = ''
       let entryPoint = job.Spec.Wasm.EntryPoint
       let useUrl = ''
-      if (job.Spec.Contexts.length > 0) {
+      if (job.Spec && job.Spec.Contexts && job.Spec.Contexts.length > 0) {
         programCID = job.Spec.Contexts[0].CID || ''
         useUrl = `http://ipfs.io/ipfs/${programCID}` 
       }
