@@ -18,8 +18,6 @@ services:
     restart: always
     ports:
       - 5432:5432
-    volumes:
-      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -27,6 +25,8 @@ services:
   frontend:
     image: ${IMAGE_FRONTEND}
     restart: always
+    volumes:
+      - /data/dashboard/.htaccess:/etc/apache2/.htpasswd
   api:
     image: ${IMAGE_API}
     restart: always
@@ -40,4 +40,6 @@ services:
       - BACALHAU_DASHBOARD_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - BACALHAU_DASHBOARD_PEER_CONNECT=${PEER_CONNECT}
       - BACALHAU_DASHBOARD_JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=debug
+      
 
