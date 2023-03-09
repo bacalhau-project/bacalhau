@@ -36,9 +36,6 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	apiPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
 	libp2pHost, err := libp2p.NewHost(libp2pPort)
 	require.NoError(t, err)
 
@@ -46,7 +43,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		CleanupManager:      system.NewCleanupManager(),
 		Host:                libp2pHost,
 		HostAddress:         "0.0.0.0",
-		APIPort:             apiPort,
+		APIPort:             0,
 		JobStore:            datastore,
 		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: node.NewRequesterConfigWithDefaults(),

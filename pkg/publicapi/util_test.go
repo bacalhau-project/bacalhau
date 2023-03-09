@@ -15,21 +15,16 @@ import (
 const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
-//nolint:unused // used in tests
 func setupNodeForTest(t *testing.T, cm *system.CleanupManager) *APIClient {
 	// blank config should result in using defaults in node.Node constructor
 	return setupNodeForTestWithConfig(t, cm, APIServerConfig{})
 }
 
-//nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverConfig APIServerConfig) *APIClient {
 	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
 	libp2pPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	apiPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
 	libp2pHost, err := libp2p.NewHost(libp2pPort)
@@ -38,22 +33,18 @@ func setupNodeForTestWithConfig(t *testing.T, cm *system.CleanupManager, serverC
 	apiServer, err := NewAPIServer(APIServerParams{
 		Host:    libp2pHost,
 		Address: "0.0.0.0",
-		Port:    apiPort,
+		Port:    0,
 		Config:  serverConfig,
 	})
 	require.NoError(t, err)
 
-	go func() {
-		err := apiServer.ListenAndServe(ctx, cm)
-		require.NoError(t, err)
-	}()
+	require.NoError(t, apiServer.ListenAndServe(ctx, cm))
 
 	client := NewAPIClient(apiServer.GetURI())
 	require.NoError(t, waitForHealthy(ctx, client))
 	return client
 }
 
-//nolint:unused // used in tests
 func waitForHealthy(ctx context.Context, c *APIClient) error {
 	ch := make(chan bool)
 	go func() {
