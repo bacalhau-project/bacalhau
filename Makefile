@@ -115,15 +115,12 @@ swagger-docs:
 	@echo "Swagger docs built."
 
 ################################################################################
-# Target: clients
+# Target: build-python-apiclient
 ################################################################################
-# Generate Bacalhau API clients but only if the swagger.json has actually been
-# updated because the clients include random numbers and timestamps and hence
-# will generate a lot of noisy diffs if regenerated all of the time
-.PHONY: clients
-clients:
-	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
-		cd clients && ${MAKE} -j all) || true
+.PHONY: build-python-apiclient
+build-python-apiclient:
+	cd clients && ${MAKE} all
+
 
 ################################################################################
 # Target: build
@@ -266,6 +263,7 @@ test:
 
 .PHONY: test-python
 test-python:
+# sdk tests
 	cd python && make test
 
 .PHONY: integration-test

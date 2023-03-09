@@ -446,6 +446,7 @@ jobs:
           name: Update dashboard
           command: |
             heroku run build --app bacalhau-dashboards
+
   release:
     executor: linux-amd64
     steps:
@@ -524,13 +525,6 @@ jobs:
           command:
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
       - run:
-          name: Install swagger-codegen
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
@@ -539,7 +533,7 @@ jobs:
           command:
             make swagger-docs
 
-      - when:
+      - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
           condition:
             equal: ["main", << pipeline.git.branch >>]
           steps:
@@ -657,6 +651,35 @@ jobs:
             docker context create buildx-build
             docker buildx create --use buildx-build
             make push-bacalhau-image
+
+  build_python_apiclient:
+    executor: linux-amd64
+    environment:
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Python
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-pip
+      - run:
+          name: Install swagger-codegen
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
+      - run:
+          name: Build Python API client
+          command: |
+            make build-python-apiclient
+
+
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -870,10 +893,10 @@ workflows:
             - build-windows
             - build-arm
 
-  build_swagger: # This workflow will only run on 'main' and will not run on tags
+  build_swagger: # This workflow will run on any branch and will NOT run on tags
     jobs:
       - build_swagger:
-          name: Build swagger docs
+          name: Build swagger spec
           filters:
             tags:
               ignore: /.*/
