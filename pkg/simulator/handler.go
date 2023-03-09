@@ -117,6 +117,11 @@ func (e *RequestHandler) CancelExecution(
 	return e.computeProxy.CancelExecution(ctx, request)
 }
 
+func (e *RequestHandler) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	return e.computeProxy.ExecutionLogs(ctx, request)
+}
+
 func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunResult) {
 	event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventResultsProposed)
 	if err != nil {

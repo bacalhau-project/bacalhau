@@ -36,6 +36,7 @@ func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	handler.host.SetStreamHandler(ResultAcceptedProtocolID, handler.onResultAccepted)
 	handler.host.SetStreamHandler(ResultRejectedProtocolID, handler.onResultRejected)
 	handler.host.SetStreamHandler(CancelProtocolID, handler.onCancelJob)
+	handler.host.SetStreamHandler(ExecutionLogsID, handler.onExecutionLogs)
 	log.Debug().Msgf("ComputeHandler started on host %s", handler.host.ID().String())
 	return handler
 }
@@ -68,6 +69,11 @@ func (h *ComputeHandler) onResultRejected(stream network.Stream) {
 func (h *ComputeHandler) onCancelJob(stream network.Stream) {
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
 	handleStream[compute.CancelExecutionRequest, compute.CancelExecutionResponse](ctx, stream, h.computeEndpoint.CancelExecution)
+}
+
+func (h *ComputeHandler) onExecutionLogs(stream network.Stream) {
+	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
+	handleStream[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](ctx, stream, h.computeEndpoint.ExecutionLogs)
 }
 
 //nolint:errcheck

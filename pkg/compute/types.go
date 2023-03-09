@@ -25,6 +25,8 @@ type Endpoint interface {
 	ResultRejected(context.Context, ResultRejectedRequest) (ResultRejectedResponse, error)
 	// CancelExecution cancels a job for a given executionID.
 	CancelExecution(context.Context, CancelExecutionRequest) (CancelExecutionResponse, error)
+	// ExecutionLogs returns the address of a suitable log server
+	ExecutionLogs(context.Context, ExecutionLogsRequest) (ExecutionLogsResponse, error)
 }
 
 // Executor Backend service that is responsible for running and publishing executions.
@@ -127,6 +129,16 @@ type CancelExecutionRequest struct {
 
 type CancelExecutionResponse struct {
 	ExecutionMetadata
+}
+
+type ExecutionLogsRequest struct {
+	RoutingMetadata
+	ExecutionID string
+	WithHistory bool
+}
+
+type ExecutionLogsResponse struct {
+	Address string
 }
 
 ///////////////////////////////////

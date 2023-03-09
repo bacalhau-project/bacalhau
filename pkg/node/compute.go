@@ -8,6 +8,7 @@ import (
 	compute_bidstrategies "github.com/bacalhau-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -33,6 +34,7 @@ type Compute struct {
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
+	LogServer           *logstream.LogStreamServer
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
 	computeInfoProvider model.ComputeNodeInfoProvider
@@ -166,6 +168,14 @@ func NewComputeNode(
 		}),
 	)
 
+	// logging server
+	logserver := logstream.NewLogStreamServer(ctx, host)
+	_, loggingCancel := context.WithCancel(ctx)
+	cleanupManager.RegisterCallback(func() error {
+		loggingCancel()
+		return nil
+	})
+
 	// node info
 	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Executors:          executors,
@@ -180,6 +190,7 @@ func NewComputeNode(
 		UsageCalculator: capacityCalculator,
 		BidStrategy:     biddingStrategy,
 		Executor:        bufferRunner,
+		LogServer:       *logserver,
 	})
 
 	// if this node is the simulator, then we set the simulator request handler as the stream handler
@@ -224,6 +235,7 @@ func NewComputeNode(
 		computeCallback:     standardComputeCallback,
 		cleanupFunc:         cleanupFunc,
 		computeInfoProvider: nodeInfoProvider,
+		LogServer:           logserver,
 	}, nil
 }
 
