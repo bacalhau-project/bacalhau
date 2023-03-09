@@ -300,7 +300,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
+//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
@@ -334,8 +334,8 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 	for _, i := range odr.Inputs {
 		isValidCID := func(i string) bool {
-			c, err := cid.Decode(i)
-			if err != nil {
+			c, er := cid.Decode(i)
+			if er != nil {
 				return false // invalid CID format
 			}
 			return c.Type() == cid.Raw || c.Type() == cid.DagProtobuf // check CID version

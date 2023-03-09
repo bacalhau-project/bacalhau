@@ -338,8 +338,8 @@ func (s *DockerRunSuite) TestRun_SubmitMountInputs() {
 		testURLs := []struct {
 			inputURI InputMount
 		}{
-			{inputURI: InputMount{uri: "https://gateway.ipfs.io/ipfs/Qmc5gCcjYypU7y28oCALwfSvxCBskLuPKWpK4qpterKC7z", pathInContainer: "/inputs", filename: "hello.txt", flag: "-m"}},
-			{inputURI: InputMount{uri: "ipfs://Qmc5gCcjYypU7y28oCALwfSvxCBskLuPKWpK4qpterKC7z", pathInContainer: "/inputs", filename: "hello.txt", flag: "-m"}},
+			{inputURI: InputMount{uri: "https://gateway.ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
+			{inputURI: InputMount{uri: "ipfs://bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
 		}
 
 		for _, turls := range testURLs {
