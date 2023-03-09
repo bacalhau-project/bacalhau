@@ -535,9 +535,9 @@ jobs:
           command: |
             make install-pre-commit
       - run:
-          name: Build Swagger Docs and Clients
+          name: Build Swagger Docs
           command:
-            make swagger-docs clients
+            make swagger-docs
 
       - when:
           condition:
