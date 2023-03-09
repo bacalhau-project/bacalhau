@@ -15,7 +15,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/log"
@@ -59,8 +58,7 @@ type Node struct {
 	// APIPort is the port that the node's ipfs API is listening on.
 	APIPort int
 
-	// SwarmPort is the port that the node's ipfs swarm is listening on.
-	SwarmPort int
+	apiAddresses []string
 }
 
 // NodeMode configures how the node treats the public IPFS network.
@@ -104,10 +102,6 @@ func (cfg *Config) getMode() NodeMode {
 	return cfg.Mode
 }
 
-func (cfg *Config) getPeerAddrs() []string {
-	return cfg.PeerAddrs
-}
-
 // NewNode creates a new IPFS node in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
@@ -129,31 +123,10 @@ func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string,
 			filteredPeerAddrs = append(filteredPeerAddrs, addr)
 		}
 	}
-	return tryCreateNode(ctx, cm, Config{
+	return newNodeWithConfig(ctx, cm, Config{
 		Mode:      mode,
 		PeerAddrs: filteredPeerAddrs,
 	})
-}
-
-func tryCreateNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
-	// Starting up an IPFS node can have issues as there's a race between finding a free port and getting the listener
-	// running on that port (e.g. find the port, write the config file, save the file, start up IPFS, then start the listener)
-	attempts := 3
-	var err error
-	for i := 0; i < attempts; i++ {
-		var ipfsNode *Node
-		ipfsNode, err = newNodeWithConfig(ctx, cm, cfg)
-		if err != nil {
-			if errors.Is(err, addressInUseError) {
-				log.Ctx(ctx).Debug().Err(err).Msg("Failed to start up node as port was already in use")
-				continue
-			}
-			return nil, err
-		}
-
-		return ipfsNode, nil
-	}
-	return nil, err
 }
 
 // newNodeWithConfig creates a new IPFS node with the given configuration.
@@ -177,43 +150,29 @@ func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		}
 	}()
 
-	if err = connectToPeers(ctx, api, ipfsNode, cfg.getPeerAddrs()); err != nil {
+	if err = connectToPeers(ctx, api, ipfsNode, cfg.PeerAddrs); err != nil {
 		log.Ctx(ctx).Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
-	if err = serveAPI(cm, ipfsNode, repoPath); err != nil {
+	apiAddresses, err := serveAPI(cm, ipfsNode, repoPath)
+	if err != nil {
 		return nil, fmt.Errorf("failed to serve API: %w", err)
 	}
 
-	// Fetch useful info from the newly initialized node:
-	nodeCfg, err := ipfsNode.Repo.Config()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repo config: %w", err)
-	}
-
 	var apiPort int
-	if len(nodeCfg.Addresses.API) > 0 {
-		apiPort, err = getTCPPort(nodeCfg.Addresses.API[0])
+	if len(apiAddresses) > 0 {
+		apiPort, err = getTCPPort(apiAddresses[0])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse api port: %w", err)
 		}
 	}
 
-	var swarmPort int
-	if len(nodeCfg.Addresses.Swarm) > 0 {
-		swarmPort, err = getTCPPort(nodeCfg.Addresses.Swarm[0])
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse swarm port: %w", err)
-		}
-	}
-
 	n := Node{
-		api:       api,
-		ipfsNode:  ipfsNode,
-		Mode:      cfg.getMode(),
-		RepoPath:  repoPath,
-		APIPort:   apiPort,
-		SwarmPort: swarmPort,
+		api:      api,
+		ipfsNode: ipfsNode,
+		Mode:     cfg.getMode(),
+		RepoPath: repoPath,
+		APIPort:  apiPort,
 	}
 
 	cm.RegisterCallbackWithContext(n.Close)
@@ -230,30 +189,15 @@ func (n *Node) ID() string {
 	return n.ipfsNode.Identity.String()
 }
 
-// APIAddresses returns the node's api addresses.
-func (n *Node) APIAddresses() ([]string, error) {
-	cfg, err := n.ipfsNode.Repo.Config()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repo config: %w", err)
-	}
-
-	var res []string
-	for _, addr := range cfg.Addresses.API {
-		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, n.ID()))
-	}
-
-	return res, nil
-}
-
 // SwarmAddresses returns the node's swarm addresses.
 func (n *Node) SwarmAddresses() ([]string, error) {
-	cfg, err := n.ipfsNode.Repo.Config()
+	addresses, err := n.api.Swarm().ListenAddrs(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
 
 	var res []string
-	for _, addr := range cfg.Addresses.Swarm {
+	for _, addr := range addresses {
 		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, n.ID()))
 	}
 
@@ -262,25 +206,15 @@ func (n *Node) SwarmAddresses() ([]string, error) {
 
 // LogDetails logs connection details for the node's swarm and API servers.
 func (n *Node) LogDetails() {
-	apiAddrs, err := n.APIAddresses()
-	if err != nil {
-		log.Debug().Msgf("error fetching api addresses: %s", err)
-		return
-	}
+	id := n.ID()
 
-	var swarmAddrs []string
-	swarmAddrs, err = n.SwarmAddresses()
+	swarmAddrs, err := n.SwarmAddresses()
 	if err != nil {
 		log.Debug().Msgf("error fetching swarm addresses: %s", err)
+	} else {
+		log.Trace().Str("id", id).Strs("addresses", swarmAddrs).Msg("IPFS node listening for swarm")
 	}
-
-	id := n.ID()
-	for _, apiAddr := range apiAddrs {
-		log.Trace().Msgf("IPFS node %s listening for API on: %s", id, apiAddr)
-	}
-	for _, swarmAddr := range swarmAddrs {
-		log.Trace().Msgf("IPFS node %s listening for swarm on: %s", id, swarmAddr)
-	}
+	log.Trace().Str("id", id).Strs("addresses", n.apiAddresses).Msg("IPFS node listening for API")
 }
 
 // Client returns an API client for interacting with the node.
@@ -346,22 +280,22 @@ func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icor
 }
 
 // serveAPI starts a new API server for the node on the given address.
-func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) error {
+func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) ([]string, error) {
 	cfg, err := node.Repo.Config()
 	if err != nil {
-		return fmt.Errorf("failed to get repo config: %w", err)
+		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
 
 	var listeners []manet.Listener
 	for _, addr := range cfg.Addresses.API {
 		maddr, err := ma.NewMultiaddr(addr)
 		if err != nil {
-			return fmt.Errorf("failed to parse multiaddr: %w", err)
+			return nil, fmt.Errorf("failed to parse multiaddr: %w", err)
 		}
 
 		listener, err := manet.Listen(maddr)
 		if err != nil {
-			return fmt.Errorf("failed to listen on api multiaddr: %w", err)
+			return nil, fmt.Errorf("failed to listen on api multiaddr: %w", err)
 		}
 
 		cm.RegisterCallback(func() error {
@@ -392,16 +326,18 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 		corehttp.CommandsOption(cmdContext),
 	}
 
+	var addresses []string
 	for _, listener := range listeners {
+		addresses = append(addresses, listener.Multiaddr().String())
 		// NOTE: this is not critical, but we should log for debugging
 		go func(listener manet.Listener) {
 			if err := corehttp.Serve(node, manet.NetListener(listener), opts...); err != nil {
-				log.Debug().Msgf("node '%s' failed to serve ipfs api: %s", node.Identity, err)
+				log.Debug().Err(err).Msgf("node '%s' failed to serve ipfs api", node.Identity)
 			}
 		}(listener)
 	}
 
-	return nil
+	return addresses, nil
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
@@ -425,9 +361,7 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 			defer wg.Done()
 			if err := api.Swarm().Connect(ctx, peerInfo); err != nil {
 				anyErr = err
-				log.Ctx(ctx).Debug().Msgf(
-					"failed to connect to ipfs peer %s, skipping: %s",
-					peerInfo.ID, err)
+				log.Ctx(ctx).Debug().Err(err).Msgf("failed to connect to ipfs peer %s, skipping", peerInfo.ID)
 			}
 		}(peerInfo)
 	}
@@ -456,27 +390,9 @@ func createRepo(path string, nodeConfig Config) error {
 		return err
 	}
 
-	var apiPort int
-	apiPort, err = freeport.GetFreePort()
-	if err != nil {
-		return fmt.Errorf("could not create port for api: %w", err)
-	}
-
 	// If we're in local mode, then we need to manually change the config to
 	// serve an IPFS swarm client on some local port:
 	if nodeConfig.getMode() == ModeLocal {
-		var gatewayPort int
-		gatewayPort, err = freeport.GetFreePort()
-		if err != nil {
-			return fmt.Errorf("could not create port for gateway: %w", err)
-		}
-
-		var swarmPort int
-		swarmPort, err = freeport.GetFreePort()
-		if err != nil {
-			return fmt.Errorf("could not create port for swarm: %w", err)
-		}
-
 		cfg.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
 		cfg.Swarm.EnableHolePunching = config.False
 		cfg.Swarm.DisableNatPortMap = true
@@ -484,25 +400,17 @@ func createRepo(path string, nodeConfig Config) error {
 		cfg.Swarm.RelayService.Enabled = config.False
 		cfg.Swarm.Transports.Network.Relay = config.False
 		cfg.Discovery.MDNS.Enabled = false
-		cfg.Addresses.Gateway = []string{
-			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", gatewayPort),
-		}
-		cfg.Addresses.API = []string{
-			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", apiPort),
-		}
-		cfg.Addresses.Swarm = []string{
-			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarmPort),
-		}
+		cfg.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0"}
+		cfg.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0"}
+		cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
 	} else {
-		cfg.Addresses.API = []string{
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
-		}
+		cfg.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
 	}
 
 	// establish peering with the passed nodes. This is different than bootstrapping or manually connecting to peers,
 	//and kubo will create sticky connections with these nodes and reconnect if the connection is lost
 	// https://github.com/ipfs/kubo/blob/master/docs/config.md#peering
-	swarmPeers, err := ParsePeersString(nodeConfig.getPeerAddrs())
+	swarmPeers, err := ParsePeersString(nodeConfig.PeerAddrs)
 	if err != nil {
 		return fmt.Errorf("failed to parse peer addresses: %w", err)
 	}
