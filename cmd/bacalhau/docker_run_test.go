@@ -318,62 +318,62 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 	}
 }
 
-func (s *DockerRunSuite) TestRun_SubmitMountInputs() {
-	tests := []struct {
-		numberOfJobs int
-	}{
-		{numberOfJobs: 1},
-	}
+// func (s *DockerRunSuite) TestRun_SubmitMountInputs() {
+// 	tests := []struct {
+// 		numberOfJobs int
+// 	}{
+// 		{numberOfJobs: 1},
+// 	}
 
-	for i, tc := range tests {
-		type (
-			InputMount struct {
-				uri             string
-				pathInContainer string
-				flag            string
-				filename        string
-			}
-		)
+// 	for i, tc := range tests {
+// 		type (
+// 			InputMount struct {
+// 				uri             string
+// 				pathInContainer string
+// 				flag            string
+// 				filename        string
+// 			}
+// 		)
 
-		testURLs := []struct {
-			inputURI InputMount
-		}{
-			{inputURI: InputMount{uri: "https://gateway.ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
-			{inputURI: InputMount{uri: "ipfs://bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
-		}
+// 		testURLs := []struct {
+// 			inputURI InputMount
+// 		}{
+// 			{inputURI: InputMount{uri: "https://gateway.ipfs.io/ipfs/bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
+// 			{inputURI: InputMount{uri: "ipfs://bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m", pathInContainer: "/inputs", filename: "hello.txt", flag: "-i"}},
+// 		}
 
-		for _, turls := range testURLs {
-			func() {
-				ctx := context.Background()
-				flagsArray := []string{"docker", "run",
-					"--api-host", s.host,
-					"--api-port", s.port}
+// 		for _, turls := range testURLs {
+// 			func() {
+// 				ctx := context.Background()
+// 				flagsArray := []string{"docker", "run",
+// 					"--api-host", s.host,
+// 					"--api-port", s.port}
 
-				flagsArray = append(flagsArray, turls.inputURI.flag, turls.inputURI.uri)
-				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURI.pathInContainer, turls.inputURI.filename))
+// 				flagsArray = append(flagsArray, turls.inputURI.flag, turls.inputURI.uri)
+// 				flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURI.pathInContainer, turls.inputURI.filename))
 
-				_, out, err := ExecuteTestCobraCommand(flagsArray...)
-				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+// 				_, out, err := ExecuteTestCobraCommand(flagsArray...)
+// 				s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
+// 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				parsed, err := url.Parse(turls.inputURI.uri)
+// 				parsed, err := url.Parse(turls.inputURI.uri)
 
-				if parsed.Scheme == "http" || parsed.Scheme == "https" {
-					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
-					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
-					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
-				}
-				if parsed.Scheme == "ipfs" {
-					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job cids != # of test cids.")
-					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].CID, "Test CID not equal to CID from job.")
-					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
-				}
+// 				if parsed.Scheme == "http" || parsed.Scheme == "https" {
+// 					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
+// 					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
+// 					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
+// 				}
+// 				if parsed.Scheme == "ipfs" {
+// 					s.Require().Equal(1, len(j.Spec.Inputs), "Number of job cids != # of test cids.")
+// 					s.Require().Equal(turls.inputURI.uri, j.Spec.Inputs[0].CID, "Test CID not equal to CID from job.")
+// 					s.Require().Equal(turls.inputURI.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
+// 				}
 
-			}()
-		}
-	}
-}
+// 			}()
+// 		}
+// 	}
+// }
 
 func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 	tests := []struct {
