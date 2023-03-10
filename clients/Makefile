@@ -14,7 +14,7 @@ endif
 endif
 
 .PHONY: all
-all: clean python-config.json python/ pypi-build
+all: python-config.json python/ pypi-build
 
 %-config.json: config.json.template
 	cat $< | \

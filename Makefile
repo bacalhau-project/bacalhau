@@ -119,8 +119,24 @@ swagger-docs:
 ################################################################################
 .PHONY: build-python-apiclient
 build-python-apiclient:
-	cd clients && ${MAKE} all
+	cd clients && ${MAKE} clean all
+	@echo "Python API client built."
 
+################################################################################
+# Target: build-python-sdk
+################################################################################
+.PHONY: build-python-sdk
+build-python-sdk:
+	cd python && ${MAKE} clean all
+	@echo "Python SDK built."
+
+################################################################################
+# Target: build-bacalhau-airflow
+################################################################################
+.PHONY: build-bacalhau-airflow
+build-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} clean all
+	@echo "Python bacalhau-airflow built."
 
 ################################################################################
 # Target: build
