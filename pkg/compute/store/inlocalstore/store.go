@@ -70,7 +70,10 @@ func (proxy *StoreProxy) GetExecution(ctx context.Context, id string) (store.Exe
 // GetExecutionCount implements store.ExecutionStore
 func (proxy *StoreProxy) GetExecutionCount(ctx context.Context) uint {
 	//read counter from file (olgibbons)
-	jsonFilepath := EnsureJobStatsJSONExists()
+	jsonFilepath, err := EnsureJobStatsJSONExists()
+	if err != nil {
+		return err
+	}
 	jsonbs, err := os.ReadFile(jsonFilepath)
 	var jobStore JobStats
 	if err != nil {
@@ -93,10 +96,15 @@ func (proxy *StoreProxy) GetExecutions(ctx context.Context, sharedID string) ([]
 // UpdateExecutionState implements store.ExecutionStore
 func (proxy *StoreProxy) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
 	err := proxy.store.UpdateExecutionState(ctx, request)
+	if err != nil {
+		return fmt.Errorf("Failed to update execution state: %w", err)
+	}
 	//check json file exists in .bacalhau config dir
-	jsonFilepath := EnsureJobStatsJSONExists()
-
-	if err == nil && request.NewState == store.ExecutionStateCompleted {
+	jsonFilepath, err := EnsureJobStatsJSONExists()
+	if err != nil {
+		return err
+	}
+	if request.NewState == store.ExecutionStateCompleted {
 		//write to file
 		var jobStore JobStats
 		//Read json file into byte string
