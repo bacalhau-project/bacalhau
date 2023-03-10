@@ -104,18 +104,35 @@ func (c *Client) RemoveObjectsWithLabel(ctx context.Context, labelName, labelVal
 	return multierr.Combine(containerErr, networkErr)
 }
 
+func (c *Client) FindContainer(ctx context.Context, label string, value string) (string, error) {
+	containers, err := c.ContainerList(ctx, types.ContainerListOptions{All: true})
+	if err != nil {
+		return "", err
+	}
+
+	for _, ctr := range containers {
+		if ctr.Labels[label] == value {
+			return ctr.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to find container for %s=%s", label, value)
+}
+
 func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.Reader, err error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get container")
 	}
 
-	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
-	logsReader, err := c.ContainerLogs(ctx, cont.ID, types.ContainerLogsOptions{
+	logOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
-	})
+	}
+
+	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
+	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get container logs")
 	}
@@ -138,6 +155,30 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	}()
 
 	return stdoutReader, stderrReader, nil
+}
+
+func (c *Client) GetOutputStream(ctx context.Context, id string, since string) (io.ReadCloser, error) {
+	cont, err := c.ContainerInspect(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get container")
+	}
+
+	logOptions := types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	}
+	if since != "" {
+		logOptions.Since = since
+	}
+
+	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
+	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get container logs")
+	}
+
+	return logsReader, nil
 }
 
 func (c *Client) RemoveContainer(ctx context.Context, id string) error {

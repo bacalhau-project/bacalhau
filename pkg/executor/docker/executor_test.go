@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/logstream"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -100,12 +101,12 @@ func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
 }
 
 func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
-	return s.runJobWithContext(context.Background(), spec)
+	return s.runJobWithContext(context.Background(), spec, "test")
 }
 
-func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec) (*model.RunCommandResult, error) {
+func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
-	j := model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
+	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
 	return s.executor.Run(ctx, j, result)
 }
 
@@ -138,6 +139,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
 	})
+	require.NoError(s.T(), err)
 
 	values := strings.Fields(result)
 
@@ -314,10 +316,81 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
-	})
+	}, "timeout")
 	// The Docker client has changed so that it prioritizes container error message
 	// and not the error message from the context. It does error upon timeout, but not
 	// with a context.DeadlineExceeded error.
 	s.Error(err)
 	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
+}
+
+func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
+	id := "streams-fail"
+	done := make(chan bool, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spec := model.Spec{
+		Engine: model.EngineDocker,
+		Resources: model.ResourceUsageConfig{
+			CPU:    CPU_LIMIT,
+			Memory: MEMORY_LIMIT,
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
+		},
+	}
+
+	go func() {
+		_, _ = s.runJobWithContext(ctx, spec, id)
+		done <- true
+	}()
+
+	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
+	reader, err := s.executor.GetOutputStream(ctx, job)
+
+	<-done
+	require.Nil(s.T(), reader)
+	require.Error(s.T(), err)
+}
+
+func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
+	id := "streams-ok"
+	done := make(chan bool, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spec := model.Spec{
+		Engine: model.EngineDocker,
+		Resources: model.ResourceUsageConfig{
+			CPU:    CPU_LIMIT,
+			Memory: MEMORY_LIMIT,
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
+		},
+	}
+
+	go func() {
+		_, _ = s.runJobWithContext(ctx, spec, id)
+		done <- true
+	}()
+
+	// Give docker time to start the container, otherwise there
+	// be nothing to retrieve the output from.
+	time.Sleep(time.Duration(500) * time.Millisecond)
+
+	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
+	reader, err := s.executor.GetOutputStream(ctx, job)
+
+	require.NotNil(s.T(), reader)
+	require.NoError(s.T(), err)
+
+	df, err := logstream.NewDataFrameFromReader(reader)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), string(df.Data), "hello\n")
+	require.Equal(s.T(), df.Size, 6)
+	require.Equal(s.T(), df.Tag, logstream.StdoutStreamTag)
 }

@@ -2,6 +2,8 @@ package noop
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -87,6 +89,10 @@ func (e *NoopExecutor) Run(
 		return handler(ctx, job, jobResultsDir)
 	}
 	return &model.RunCommandResult{}, nil
+}
+
+func (e *NoopExecutor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 
 // Compile-time check that Executor implements the Executor interface.
