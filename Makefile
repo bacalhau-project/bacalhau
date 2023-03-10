@@ -44,6 +44,10 @@ define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
+# pypi version scheme: https://peps.python.org/pep-0440/
+PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v))$(PYPI_VERSION)
+export PYPI_VERSION
+
 all: build
 
 # Run init repo after cloning it
@@ -137,6 +141,12 @@ build-python-sdk:
 build-bacalhau-airflow:
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
+
+################################################################################
+# Target: build-python
+################################################################################
+.PHONY: build-python
+build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 
 ################################################################################
 # Target: build

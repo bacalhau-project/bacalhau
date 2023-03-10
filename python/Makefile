@@ -1,4 +1,5 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
+VERSION ?= $${PYPI_VERSION}
 
 sources = bacalhau_sdk
 
@@ -44,6 +45,7 @@ clean:
 
 .PHONY: build
 build:
+	$(POETRY) version -- ${VERSION}
 	$(POETRY) build
 
 .PHONY: publish

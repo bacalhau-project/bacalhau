@@ -4,8 +4,8 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **create_time** | **str** | CreateTime is the time when the job was created. | [optional]
+**executions** | [**list[ExecutionState]**](ExecutionState.md) | Executions is a list of executions of the job across the nodes. A new execution is created when a node is selected to execute the job, and a node can have multiple executions for the same job due to retries, but there can only be a single active execution per node at any given time. | [optional]
 **job_id** | **str** | JobID is the unique identifier for the job | [optional]
-**shards** | [**dict(str, ShardState)**](ShardState.md) | Shards is a map of shard index to shard state. The number of shards are fixed at the time of job creation. | [optional]
 **state** | **AllOfJobStateState** | State is the current state of the job | [optional]
 **timeout_at** | **str** | TimeoutAt is the time when the job will be timed out if it is not completed. | [optional]
 **update_time** | **str** | UpdateTime is the time when the job state was last updated. | [optional]

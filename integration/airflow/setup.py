@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
 """The setup script."""
+import os
 
 from setuptools import find_packages, setup
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
+
+pypi_version = os.getenv("PYPI_VERSION", "0.0.0")
 
 
 requirements = [
@@ -39,6 +42,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/filecoin-project/bacalhau/tree/main/integration/airflow",
-    version="0.0.3",
+    version=pypi_version,
     zip_safe=False,
 )

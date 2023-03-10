@@ -1,5 +1,5 @@
 """Top-level package for bacalhau-airflow."""
 
-__author__ = """Audrey Roy Greenfeld"""
-__email__ = "audreyr@example.com"
-__version__ = "0.0.3"
+__author__ = """Enrico Rotundo"""
+__email__ = "team@bacalhau.com"
+# __version__ = "0.0.3"
