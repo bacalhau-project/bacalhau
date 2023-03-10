@@ -122,9 +122,9 @@ func triggerIPFSLogging(t *testing.T) {
 	cfg.Swarm.RelayService.Enabled = config.False
 	cfg.Swarm.Transports.Network.Relay = config.False
 	cfg.Discovery.MDNS.Enabled = false
-	cfg.Addresses.Gateway = []string{"/ip4/0.0.0.0/tcp/0"}
-	cfg.Addresses.API = []string{"/ip4/0.0.0.0/tcp/0"}
-	cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
+	cfg.Addresses.Gateway = []string{"/ip4/127.0.0.1/tcp/0"}
+	cfg.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
+	cfg.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/0"}
 	cfg.Peering = config.Peering{
 		Peers: nil,
 	}
