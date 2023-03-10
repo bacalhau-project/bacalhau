@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"go/build"
 	"io"
 	"math"
 	"os"
@@ -265,13 +266,13 @@ func findRepositoryRoot() string {
 }
 
 func marshalCaller(prefix string) func(uintptr, string, int) string {
-	goPath, goPathPresent := os.LookupEnv("GOPATH")
+	goPath := build.Default.GOPATH
 	// `file` will always use '/', even on Windows
 	goPath = fmt.Sprintf("%s/%s/%s/", filepath.ToSlash(goPath), "pkg", "mod")
 	return func(_ uintptr, file string, line int) string {
 		if strings.HasPrefix(file, prefix) {
 			file = strings.TrimPrefix(file, prefix+"/")
-		} else if goPathPresent {
+		} else {
 			file = strings.TrimPrefix(file, goPath)
 		}
 		return file + ":" + strconv.Itoa(line)
