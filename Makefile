@@ -142,11 +142,36 @@ build-bacalhau-airflow:
 	cd integration/airflow && ${MAKE} clean all
 	@echo "Python bacalhau-airflow built."
 
+# Builds all python packages
 ################################################################################
 # Target: build-python
 ################################################################################
 .PHONY: build-python
 build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
+
+################################################################################
+# Target: release-python-apiclient
+################################################################################
+.PHONY: release-python-apiclient
+release-python-apiclient:
+	cd clients && ${MAKE} pypi-upload
+	@echo "Python API client pushed to PyPi."
+
+################################################################################
+# Target: release-python-sdk
+################################################################################
+.PHONY: release-python-sdk
+release-python-sdk:
+	cd python && ${MAKE} publish
+	@echo "Python SDK pushed to PyPi."
+
+################################################################################
+# Target: release-bacalhau-airflow
+################################################################################
+.PHONY: release-bacalhau-airflow
+release-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} release
+	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
 # Target: build

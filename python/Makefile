@@ -48,6 +48,7 @@ build:
 	$(POETRY) version -- ${VERSION}
 	$(POETRY) build
 
+.SILENT: publish
 .PHONY: publish
 publish:
 	$(POETRY) publish -u __token__ -p ${PYPI_TOKEN}

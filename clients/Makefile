@@ -69,7 +69,8 @@ python/: python-config.json
 pypi-build: python/
 	cd python && python3 -m pip install --upgrade build && python3 -m build
 
-pypi-upload: pypi-build
+.SILENT: pypi-upload
+pypi-upload:
 	cd python && \
 	python3 -m pip install --upgrade twine && \
 	python3 -m twine upload \
@@ -78,6 +79,7 @@ pypi-upload: pypi-build
 		--skip-existing \
 		-u __token__ -p ${PYPI_TOKEN} \
 		dist/*
+	@echo "Package uploaded to PyPI"
 
 .PHONY: clean
 clean:

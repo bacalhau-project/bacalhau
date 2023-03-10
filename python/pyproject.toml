@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "bacalhau-sdk"
-version = "0.3.24.dev0"
+version = "0.3.24.dev1"
 homepage = "https://github.com/bacalhau-project/bacalhau/"
 repository = "https://github.com/bacalhau-project/bacalhau/"
 documentation = "https://docs.bacalhau.org/"
