@@ -111,6 +111,18 @@ func (p *ComputeProxy) CancelExecution(
 		ctx, p.host, p.simulatorNodeID, bprotocol.CancelProtocolID, request)
 }
 
+func (p *ComputeProxy) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	if p.simulatorNodeID == p.host.ID().String() {
+		if p.localEndpoint == nil {
+			return compute.ExecutionLogsResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
+		}
+		return p.localEndpoint.ExecutionLogs(ctx, request)
+	}
+	return proxyRequest[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](
+		ctx, p.host, p.simulatorNodeID, bprotocol.CancelProtocolID, request)
+}
+
 func proxyRequest[Request any, Response any](
 	ctx context.Context,
 	h host.Host,

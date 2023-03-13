@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -20,6 +21,7 @@ type BaseEndpointParams struct {
 	UsageCalculator capacity.UsageCalculator
 	BidStrategy     bidstrategy.BidStrategy
 	Executor        Executor
+	LogServer       logstream.LogStreamServer
 }
 
 // Base implementation of Endpoint
@@ -29,6 +31,7 @@ type BaseEndpoint struct {
 	usageCalculator capacity.UsageCalculator
 	bidStrategy     bidstrategy.BidStrategy
 	executor        Executor
+	logServer       logstream.LogStreamServer
 }
 
 func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
@@ -38,6 +41,7 @@ func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
 		usageCalculator: params.UsageCalculator,
 		bidStrategy:     params.BidStrategy,
 		executor:        params.Executor,
+		logServer:       params.LogServer,
 	}
 }
 
@@ -247,6 +251,23 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	}
 	return CancelExecutionResponse{
 		ExecutionMetadata: NewExecutionMetadata(execution),
+	}, nil
+}
+
+func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (ExecutionLogsResponse, error) {
+	log.Ctx(ctx).Debug().Msgf("processing log request for %s", request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	if err != nil {
+		return ExecutionLogsResponse{}, err
+	}
+
+	if execution.State.IsTerminal() {
+		return ExecutionLogsResponse{},
+			fmt.Errorf("cannot retrieve real-time logs for execution %s in state %s", execution.ID, execution.State)
+	}
+
+	return ExecutionLogsResponse{
+		Address: s.logServer.Address,
 	}, nil
 }
 
