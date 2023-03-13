@@ -652,23 +652,19 @@ jobs:
             docker buildx create --use buildx-build
             make push-bacalhau-image
 
-  build_python_apiclient:
+  build_python_packages:
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
       - run:
           name: Install Python
           command: |
             sudo apt-get update
             sudo apt-get install -y python3 python3-pip
       - run:
-          name: Install swagger-codegen
+          name: Install Python API client pre-requistes
           command: |
             CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
             wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
@@ -678,24 +674,8 @@ jobs:
           name: Build Python API client
           command: |
             make build-python-apiclient
-
-  build_python_sdk:
-    executor: linux-amd64
-    environment:
-      TARGET_COMMIT: << pipeline.git.revision >>
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
       - run:
-          name: Install Python
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y python3 python3-pip
-      - run:
-          name: Install
+          name: Install Python SDK pre-requistes
           command: |
             export POETRY_HOME=/opt/poetry
             curl -sSL https://install.python-poetry.org | python3 -
@@ -704,24 +684,8 @@ jobs:
           name: Build Python SDK
           command: |
             make build-python-sdk
-
-  build_bacalhau_airflow:
-    executor: linux-amd64
-    environment:
-      TARGET_COMMIT: << pipeline.git.revision >>
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
       - run:
-          name: Install Python
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y python3 python3-pip
-      - run:
-          name: Install
+          name: Install bacalhau-airflow pre-requistes
           command: |
             pip install flake8==6.0.0
             pip install black==23.1.0
@@ -729,7 +693,6 @@ jobs:
           name: Build Python Bacalhau Airflow
           command: |
             make build-bacalhau-airflow
-
 
 
 orbs:
@@ -948,6 +911,13 @@ workflows:
     jobs:
       - build_swagger:
           name: Build swagger spec
+          filters:
+            tags:
+              ignore: /.*/
+      - build_python_packages:
+          name: Build python packages
+          requires:
+            - build_swagger
           filters:
             tags:
               ignore: /.*/
