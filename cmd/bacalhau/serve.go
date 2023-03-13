@@ -582,8 +582,5 @@ func gpuList() ([]string, []string) {
 
 func checkGitLFS() bool {
 	_, err := exec.LookPath("git-lfs")
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
