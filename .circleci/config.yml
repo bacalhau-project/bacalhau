@@ -679,6 +679,57 @@ jobs:
           command: |
             make build-python-apiclient
 
+  build_python_sdk:
+    executor: linux-amd64
+    environment:
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Python
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-pip
+      - run:
+          name: Install
+          command: |
+            export POETRY_HOME=/opt/poetry
+            curl -sSL https://install.python-poetry.org | python3 -
+            $POETRY_HOME/bin/poetry --version
+      - run:
+          name: Build Python SDK
+          command: |
+            make build-python-sdk
+
+  build_bacalhau_airflow:
+    executor: linux-amd64
+    environment:
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Python
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-pip
+      - run:
+          name: Install
+          command: |
+            pip install flake8==6.0.0
+            pip install black==23.1.0
+      - run:
+          name: Build Python Bacalhau Airflow
+          command: |
+            make build-bacalhau-airflow
+
 
 
 orbs:
