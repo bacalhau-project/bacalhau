@@ -3,10 +3,8 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -521,11 +519,12 @@ func AutoOutputLabels() map[string]string {
 	os := runtime.GOOS
 	m["Operating-System"] = os
 	m["git-lfs"] = "False"
+	if checkGitLFS() {
+		m["git-lfs"] = "True"
+	}
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
-
 	CLIPATH, _ := exec.LookPath(NvidiaCLI)
-
 	if CLIPATH != "" {
 		gpuNames, gpuMemory := gpuList()
 		// Print the GPU names
@@ -536,22 +535,19 @@ func AutoOutputLabels() map[string]string {
 			m[key] = gpuMemory[i]
 		}
 	}
+	// Get list of installed packages (Only works for linux, make it work for every platform)
+	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// var packageList []string
+	// for _, file := range files {
+	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
 
-	// Get list of installed packages
-	files, err := ioutil.ReadDir("/var/lib/dpkg/info")
-	if err != nil {
-		panic(err)
-	}
-	var packageList []string
-	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
-			if file.Name()[:len(file.Name())-5] == "git-lfs" {
-				m["git-lfs"] = "True"
-			}
-			packageList = append(packageList, file.Name()[:len(file.Name())-5])
-		}
-	}
-	m["Installed-Packages"] = strings.Join(packageList, ",")
+	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
+	// 	}
+	// }
+	// m["Installed-Packages"] = strings.Join(packageList, ",")
 	return m
 }
 
@@ -582,4 +578,12 @@ func gpuList() ([]string, []string) {
 	gpuMemory = gpuMemory[1 : len(gpuMemory)-1]
 
 	return gpuNames, gpuMemory
+}
+
+func checkGitLFS() bool {
+	_, err := exec.LookPath("git-lfs")
+	if err != nil {
+		return false
+	}
+	return true
 }
