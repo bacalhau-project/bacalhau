@@ -658,11 +658,11 @@ jobs:
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
-      - run:
-          name: Install Python
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y python3 python3-pip
+      # - run:
+      #     name: Install Python
+      #     command: |
+      #       sudo apt-get update
+      #       sudo apt-get install -y python3 python3-pip
       - run:
           name: Install Python API client pre-requistes
           command: |
@@ -687,8 +687,8 @@ jobs:
       - run:
           name: Install bacalhau-airflow pre-requistes
           command: |
-            pip install flake8==6.0.0
-            pip install black==23.1.0
+            pip3 install flake8==6.0.0
+            pip3 install black==23.1.0
       - run:
           name: Build Python Bacalhau Airflow
           command: |
@@ -915,7 +915,7 @@ workflows:
             tags:
               ignore: /.*/
       - build_python_packages:
-          name: Build python packages
+          name: build-python-packages
           requires:
             - build-swagger-spec
           filters:
