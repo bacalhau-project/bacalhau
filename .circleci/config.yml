@@ -910,14 +910,14 @@ workflows:
   build_swagger: # This workflow will run on any branch and will NOT run on tags
     jobs:
       - build_swagger:
-          name: Build swagger spec
+          name: build-swagger-spec
           filters:
             tags:
               ignore: /.*/
       - build_python_packages:
           name: Build python packages
           requires:
-            - build_swagger
+            - build-swagger-spec
           filters:
             tags:
               ignore: /.*/
