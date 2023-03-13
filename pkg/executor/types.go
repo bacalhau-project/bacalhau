@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"io"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -29,6 +30,9 @@ type Executor interface {
 	//    which we then use to calculate if there is capacity
 	//    alongside cpu & memory usage
 	GetVolumeSize(context.Context, model.StorageSpec) (uint64, error)
+
+	// GetOutputStream retrieves a muxed stream from the executor
+	GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error)
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
