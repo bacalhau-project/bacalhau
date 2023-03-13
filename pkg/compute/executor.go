@@ -169,6 +169,11 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		return
 	}
 
+	log.Ctx(ctx).Debug().
+		Str("execution", execution.ID).
+		Str("cid", publishedResult.CID).
+		Msg("Execution published")
+
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStatePublishing,
