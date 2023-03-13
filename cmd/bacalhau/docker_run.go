@@ -365,6 +365,8 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			//     // Handle git scheme
 			//     fmt.Println("Handling git scheme...")
 			// case "gitlfs":
+			// lfsConstraint:= "git-lfs=True"
+			// odr.Labels = append(odr.Labels,lfsConstraint )
 			//     // Handle git scheme
 			//     fmt.Println("Handling git scheme...")
 			// case "s3":
