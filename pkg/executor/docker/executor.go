@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -295,6 +296,22 @@ func (e *Executor) Run(
 		int(containerExitStatusCode),
 		multierr.Combine(containerError, logsErr),
 	)
+}
+
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	ctrID, err := e.client.FindContainer(ctx, labelJobName, e.labelJobValue(job))
+	if err != nil {
+		return nil, err
+	}
+
+	// As for the output stream since 1 which docker interprets as a unix timestamp, so this
+	// should retrieve all of the logs since the start of the execution.
+	reader, err := e.client.GetOutputStream(ctx, ctrID, "1")
+	if err != nil {
+		return nil, err
+	}
+
+	return reader, nil
 }
 
 func (e *Executor) cleanupJob(ctx context.Context, job model.Job) {
