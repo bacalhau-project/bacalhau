@@ -8,6 +8,7 @@ docker executor, depending on whether determinism is required.
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/rs/zerolog/log"
 
@@ -69,6 +70,14 @@ func (e *Executor) Run(
 		return nil, err
 	}
 	return executor.Run(ctx, job, jobResultsDir)
+}
+
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	executor, err := e.getDelegateExecutor(ctx, job)
+	if err != nil {
+		return nil, err
+	}
+	return executor.GetOutputStream(ctx, job)
 }
 
 func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (executor.Executor, error) {

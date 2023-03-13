@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -268,6 +269,10 @@ func (e *Executor) Run(
 	}
 
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
+}
+
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("not implemented for wasm executor")
 }
 
 // Compile-time check that Executor implements the Executor interface.
