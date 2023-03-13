@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -518,7 +517,6 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 }
 func AutoOutputLabels() map[string]string {
 	m := make(map[string]string)
-
 	// Get the operating system name
 	os := runtime.GOOS
 	m["Operating-System"] = os
@@ -526,20 +524,9 @@ func AutoOutputLabels() map[string]string {
 	arch := runtime.GOARCH
 	m["Architecture"] = arch
 
-	var info syscall.Sysinfo_t
-	err := syscall.Sysinfo(&info)
-	if err != nil {
-		panic(err)
-	}
-
-	// Print the total amount of RAM
-	totalRam := info.Totalram * uint64(info.Unit)
-	m["Total-RAM"] = fmt.Sprintf("%d bytes", totalRam)
-
 	CLIPATH, _ := exec.LookPath(NvidiaCLI)
 
 	if CLIPATH != "" {
-
 		gpuNames, gpuMemory := gpuList()
 		// Print the GPU names
 		for i, name := range gpuNames {
@@ -557,7 +544,6 @@ func AutoOutputLabels() map[string]string {
 	}
 	var packageList []string
 	for _, file := range files {
-
 		if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
 			if file.Name()[:len(file.Name())-5] == "git-lfs" {
 				m["git-lfs"] = "True"
@@ -566,7 +552,6 @@ func AutoOutputLabels() map[string]string {
 		}
 	}
 	m["Installed-Packages"] = strings.Join(packageList, ",")
-
 	return m
 }
 
