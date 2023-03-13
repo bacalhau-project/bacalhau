@@ -9,6 +9,7 @@ ipfs so that it can be mounted into the wasm runtime container.
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/rs/zerolog/log"
 
@@ -86,6 +87,14 @@ func (e *Executor) Run(ctx context.Context, job model.Job, resultsDir string) (
 		return nil, err
 	}
 	return dockerExecutor.Run(ctx, job, resultsDir)
+}
+
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.GetOutputStream(ctx, job)
 }
 
 // Compile-time check that Executor implements the Executor interface.
