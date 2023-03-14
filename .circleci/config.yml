@@ -944,7 +944,13 @@ workflows:
             - build-arm
           filters: *filters_tags_only
       - docker:
-          filters: *filters_tags_only
+          filters:
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              # only run on tags that look like release tags e.g. v0.1.2,
+              # NOT v0.1.3alpha19
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
 
   # TODO: Disabling performance until we get a runner up and running again
   #
