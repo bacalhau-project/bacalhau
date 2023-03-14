@@ -120,7 +120,7 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 
 	// Temporary files will have 0600 as their permissions, which could cause issues when sharing with a Lotus node
 	// running inside a container.
-	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil { //nolint:govet
+	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil {
 		return "", err
 	}
 
