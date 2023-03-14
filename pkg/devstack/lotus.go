@@ -65,7 +65,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 	}
 
 	// Container may be running as a different user, so need to be sure that they can read the contents
-	if err := os.Chmod(uploadDir, util.OS_ALL_RWX); err != nil { //nolint:govet
+	if err := os.Chmod(uploadDir, util.OS_ALL_RWX); err != nil {
 		return err
 	}
 	l.UploadDir = uploadDir
@@ -111,7 +111,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 	}
 
 	if err := l.waitForLotusToBeHealthy(ctx); err != nil {
-		if err := l.Close(ctx); err != nil { //nolint:govet
+		if err := l.Close(ctx); err != nil {
 			log.Ctx(ctx).Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
 		}
 		return err
@@ -165,7 +165,7 @@ func (l *LotusNode) copyOutTokenFile(ctx context.Context) error {
 	defer closer.CloseWithLogOnError("content", content)
 
 	tarContent := tar.NewReader(content)
-	if _, err := tarContent.Next(); err != nil { //nolint:govet
+	if _, err := tarContent.Next(); err != nil {
 		return err
 	}
 

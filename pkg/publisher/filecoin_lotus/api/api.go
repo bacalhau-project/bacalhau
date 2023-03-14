@@ -82,7 +82,7 @@ func fetchHostnameFromConfig(file string) (string, error) {
 			ListenAddress string
 		}
 	}
-	if err := toml.Unmarshal(unparsedConfig, &config); err != nil { //nolint:govet
+	if err := toml.Unmarshal(unparsedConfig, &config); err != nil {
 		return "", fmt.Errorf("unable to parse config file %s: %w", file, err)
 	}
 

@@ -125,14 +125,14 @@ func NewDevStack(
 	}
 
 	if options.LocalNetworkLotus {
-		lotus, err = newLotusNode(ctx) //nolint:govet
+		lotus, err = newLotusNode(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		cm.RegisterCallbackWithContext(lotus.Close)
 
-		if err := lotus.start(ctx); err != nil { //nolint:govet
+		if err := lotus.start(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -155,7 +155,7 @@ func NewDevStack(
 
 		var ipfsSwarmAddresses []string
 		if i > 0 {
-			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx) //nolint:govet
+			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
@@ -194,7 +194,7 @@ func NewDevStack(
 				libp2pPeer = append(libp2pPeer, peerAddr)
 			}
 		} else {
-			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String()) //nolint:govet
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
 			if err != nil {
 				return nil, err
 			}
