@@ -487,18 +487,17 @@ jobs:
           name: Release python apiclient
           command: |
             make release-python-apiclient
-      - run:
-          name: Install Python SDK pre-requistes
-          command: |
-            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
-            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
       - run :
           name: Release python sdk
           command: |
+            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+
             make release-python-sdk
       - run :
           name: Release python Airflow integration
           command: |
+            pip3 install twine==4.0.2
             make release-bacalhau-airflow
 
   update_metadata:
