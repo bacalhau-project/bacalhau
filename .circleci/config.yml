@@ -467,6 +467,34 @@ jobs:
             find dist/
             gh release upload $TAG dist/*
 
+  release_python:
+    executor: linux-amd64
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/py_dist
+      - run:
+          name: Copy dist files
+          command: |
+            mkdir -p clients/python/dist
+            cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
+            mkdir -p python/dist
+            cp /tmp/py_dist/bacalhau_sdk* python/dist
+            mkdir -p integration/airflow/dist
+            cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
+      - run :
+          name: Release python apiclient
+          command: |
+            make release-python-apiclient
+      - run :
+          name: Release python sdk
+          command: |
+            make release-python-sdk
+      - run :
+          name: Release python Airflow integration
+          command: |
+            make release-bacalhau-airflow
+
   update_metadata:
     executor: linux-amd64
     parameters:
@@ -660,7 +688,7 @@ jobs:
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
-      # PYPI_VERSION: 0.3.24.dev2
+      PYPI_VERSION: 0.3.24.dev8
     working_directory: ~/repo
     steps:
       - checkout
@@ -681,6 +709,11 @@ jobs:
           name: Build Python API client
           command: |
             make build-python-apiclient
+      - persist_to_workspace:
+          root: clients/python/dist
+          paths:
+            - bacalhau_apiclient-*.tar.gz
+            - bacalhau_apiclient-*.whl
       - run:
           name: Install Python SDK pre-requistes
           command: |
@@ -692,6 +725,11 @@ jobs:
           name: Build Python SDK
           command: |
             make build-python-sdk
+      - persist_to_workspace:
+          root: python/dist
+          paths:
+            - bacalhau_sdk-*.tar.gz
+            - bacalhau_sdk-*.whl
       - run:
           name: Install bacalhau-airflow pre-requistes
           command: |
@@ -701,6 +739,11 @@ jobs:
           name: Build Python Bacalhau Airflow
           command: |
             make build-bacalhau-airflow
+      - persist_to_workspace:
+          root: integration/airflow/dist
+          paths:
+            - bacalhau_airflow-*.tar.gz
+            - bacalhau_airflow-*.whl
 
 
 orbs:
@@ -915,24 +958,6 @@ workflows:
             - build-windows
             - build-arm
 
-  build_python: # Runs on new tags starting with 'v.'
-    jobs:
-      - build_swagger:
-          name: build-swagger-spec
-          filters: &filters_tags_only
-            branches:
-              ignore: /.*/ # don't run on any branches - only tags
-            tags:
-              # only run on tags that look like release tags e.g. v0.1.2 or
-              # v0.1.3alpha19 (actually v0.1.3anything...)
-              only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
-      - build_python_packages:
-          name: build-python-packages
-          requires:
-            - build-swagger-spec
-          filters:
-            <<: *filters_tags_only
-
   build_jsonschema: # Runs on new tags starting with 'v.'
     jobs:
       - build:
@@ -1000,6 +1025,33 @@ workflows:
           filters: *filters_tags_only
       - docker:
           filters: *filters_tags_only
+
+  build_python: # Runs on new tags starting with 'v.'
+    jobs:
+      - build_swagger:
+          name: build-swagger-spec
+          filters: &filters_tags_only
+            tags:
+              ignore: /.*/
+            # branches:
+            #   ignore: /.*/ # don't run on any branches - only tags
+            # tags:
+            #   # only run on tags that look like release tags e.g. v0.1.2 or
+            #   # v0.1.3alpha19 (actually v0.1.3anything...)
+            #   only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - build_python_packages:
+          name: build-python-packages
+          requires:
+            - build-swagger-spec
+          filters:
+            <<: *filters_tags_only
+      - release_python:
+          name: release-python-packages
+          requires:
+            - build-swagger-spec
+            - build-python-packages
+          filters:
+            <<: *filters_tags_only
 
   # TODO: Disabling performance until we get a runner up and running again
   #
