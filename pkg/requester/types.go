@@ -15,6 +15,8 @@ type Endpoint interface {
 	ApproveJob(context.Context, ApproveJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+	// ReadLogs retrieves the logs for an execution
+	ReadLogs(context.Context, ReadLogsRequest) (ReadLogsResponse, error)
 }
 
 // Scheduler distributes jobs to the compute nodes and tracks the executions.
@@ -63,4 +65,13 @@ type ApproveJobRequest struct {
 	ClientID string
 	JobID    string
 	Response bidstrategy.BidStrategyResponse
+}
+
+type ReadLogsRequest struct {
+	JobID       string
+	ExecutionID string
+}
+
+type ReadLogsResponse struct {
+	Address string
 }

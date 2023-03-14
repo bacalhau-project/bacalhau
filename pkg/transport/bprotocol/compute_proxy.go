@@ -114,7 +114,7 @@ func (p *ComputeProxy) ExecutionLogs(
 		return p.localEndpoint.ExecutionLogs(ctx, request)
 	}
 	return proxyRequest[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](
-		ctx, p.host, request.TargetPeerID, CancelProtocolID, request)
+		ctx, p.host, request.TargetPeerID, ExecutionLogsID, request)
 }
 
 func proxyRequest[Request any, Response any](
@@ -145,21 +145,21 @@ func proxyRequest[Request any, Response any](
 	}
 	defer stream.Close() //nolint:errcheck
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
 	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
 	// Now we read the response that was sent from the dest peer
 	err = json.NewDecoder(stream).Decode(response)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 

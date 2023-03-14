@@ -72,12 +72,12 @@ func (e *Executor) Run(
 	return executor.Run(ctx, job, jobResultsDir)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error) {
 	executor, err := e.getDelegateExecutor(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	return executor.GetOutputStream(ctx, job)
+	return executor.GetOutputStream(ctx, job, withHistory)
 }
 
 func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (executor.Executor, error) {

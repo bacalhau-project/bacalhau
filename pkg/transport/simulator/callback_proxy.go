@@ -111,7 +111,7 @@ func proxyCallbackRequest(
 		// write the request to the stream
 		_, err = stream.Write(data)
 		if err != nil {
-			stream.Reset() //nolint:errcheck
+			_ = stream.Reset()
 			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}

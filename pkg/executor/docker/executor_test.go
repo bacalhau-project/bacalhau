@@ -348,7 +348,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	}()
 
 	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
-	reader, err := s.executor.GetOutputStream(ctx, job)
+	reader, err := s.executor.GetOutputStream(ctx, job, true)
 
 	<-done
 	require.Nil(s.T(), reader)
@@ -383,7 +383,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	time.Sleep(time.Duration(500) * time.Millisecond)
 
 	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
-	reader, err := s.executor.GetOutputStream(ctx, job)
+	reader, err := s.executor.GetOutputStream(ctx, job, true)
 
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)

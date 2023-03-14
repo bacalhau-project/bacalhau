@@ -68,7 +68,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	log.Ctx(s.ctx).Info().Msgf("Logserver read log header: %+v", request)
+	log.Ctx(s.ctx).Debug().Msgf("Logserver read log header: %+v", request)
 
 	execution, err := s.executionStore.GetExecution(s.ctx, request.ExecutionID)
 	if err != nil {
@@ -77,7 +77,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	log.Ctx(s.ctx).Info().Msgf("Logserver checking execution state: %+v", execution)
+	log.Ctx(s.ctx).Debug().Msgf("Logserver checking execution state: %+v", execution)
 
 	if execution.State.IsTerminal() {
 		log.Ctx(s.ctx).Error().Msgf("execution is already complete: %s", request.ExecutionID)
@@ -85,7 +85,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	log.Ctx(s.ctx).Info().Msgf("Logserver finding executor for: %+v", execution.Job.Spec.Engine)
+	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %+v", execution.Job.Spec.Engine)
 
 	jobSpec := execution.Job.Spec
 	e, err := s.executors.Get(s.ctx, jobSpec.Engine)
@@ -95,9 +95,9 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	log.Ctx(s.ctx).Info().Msgf("Logserver getting output stream")
+	log.Ctx(s.ctx).Debug().Msgf("Logserver getting output stream")
 
-	reader, err := e.GetOutputStream(s.ctx, execution.Job)
+	reader, err := e.GetOutputStream(s.ctx, execution.Job, request.WithHistory)
 	if err != nil {
 		log.Ctx(s.ctx).Error().Msgf("failed to get output streams from job: %s", execution.Job.ID())
 		_ = stream.Reset()
@@ -107,7 +107,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 	// While we can read, and don't get an EOF, keep writing to the stream.
 	buffer := make([]byte, 65535) //nolint:gomnd
 	for {
-		log.Ctx(s.ctx).Info().Msgf("Logserver waiting for read ....")
+		log.Ctx(s.ctx).Debug().Msgf("Logserver waiting for read ....")
 		n, err := reader.Read(buffer)
 		if err == io.EOF {
 			break

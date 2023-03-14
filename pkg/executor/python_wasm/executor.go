@@ -89,12 +89,12 @@ func (e *Executor) Run(ctx context.Context, job model.Job, resultsDir string) (
 	return dockerExecutor.Run(ctx, job, resultsDir)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error) {
 	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.GetOutputStream(ctx, job)
+	return dockerExecutor.GetOutputStream(ctx, job, withHistory)
 }
 
 // Compile-time check that Executor implements the Executor interface.

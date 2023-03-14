@@ -253,7 +253,7 @@ func (e *Executor) Run(ctx context.Context, job model.Job, jobResultsDir string)
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
-func (e *Executor) GetOutputStream(context.Context, model.Job) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for wasm executor")
 }
 

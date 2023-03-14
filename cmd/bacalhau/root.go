@@ -103,6 +103,9 @@ func NewRootCmd() *cobra.Command {
 	// Describe a job
 	RootCmd.AddCommand(newDescribeCmd())
 
+	// Get logs
+	RootCmd.AddCommand(newLogsCmd())
+
 	// Get the results of a job
 	RootCmd.AddCommand(newGetCmd())
 

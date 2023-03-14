@@ -32,7 +32,7 @@ type Executor interface {
 	GetVolumeSize(context.Context, model.StorageSpec) (uint64, error)
 
 	// GetOutputStream retrieves a muxed stream from the executor
-	GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error)
+	GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error)
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results

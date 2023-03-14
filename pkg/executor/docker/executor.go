@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -298,15 +299,20 @@ func (e *Executor) Run(
 	)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error) {
 	ctrID, err := e.client.FindContainer(ctx, labelJobName, e.labelJobValue(job))
 	if err != nil {
 		return nil, err
 	}
 
+	since := strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
+	if withHistory {
+		since = "1"
+	}
+
 	// As for the output stream since 1 which docker interprets as a unix timestamp, so this
 	// should retrieve all of the logs since the start of the execution.
-	reader, err := e.client.GetOutputStream(ctx, ctrID, "1")
+	reader, err := e.client.GetOutputStream(ctx, ctrID, since)
 	if err != nil {
 		return nil, err
 	}

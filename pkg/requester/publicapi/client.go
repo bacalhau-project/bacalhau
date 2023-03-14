@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 )
 
@@ -294,6 +296,85 @@ func (apiClient *RequesterAPIClient) Submit(
 	}
 
 	return res.Job, nil
+}
+
+// Logs will retrieve the address of an endpoint where a client connection can be
+// made to stream the results of an execution back to a TTY
+func (apiClient *RequesterAPIClient) Logs(
+	ctx context.Context,
+	jobID string,
+	executionID string,
+	withHistory bool) (*websocket.Conn, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Logs")
+	defer span.End()
+
+	if jobID == "" {
+		return nil, fmt.Errorf("jobID must be non-empty in a logs call")
+	}
+
+	if executionID == "" {
+		return nil, fmt.Errorf("executionID must be non-empty in a logs call")
+	}
+
+	// Check the existence of a job with the provided ID, whether it is a short or long ID.
+	jobInfo, found, err := apiClient.Get(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, bacerrors.NewJobNotFound(jobID)
+	}
+
+	// We potentially used the short jobID which `Get` supports and so let's switch
+	// to use the longer version.
+	jobID = jobInfo.State.JobID
+
+	// Create a payload before signing it with our local key (for verification on the
+	// server).
+	payload := model.LogsPayload{
+		ClientID:    system.GetClientID(),
+		JobID:       jobID,
+		ExecutionID: executionID,
+		WithHistory: withHistory,
+	}
+
+	jsonData, err := model.JSONMarshalWithMax(payload)
+	if err != nil {
+		return nil, err
+	}
+	rawPayloadJSON := json.RawMessage(jsonData)
+	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
+
+	// sign the raw bytes representation of model.JobCreatePayload
+	signature, err := system.SignForClient(rawPayloadJSON)
+	if err != nil {
+		return nil, err
+	}
+	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
+
+	req := signedRequest{
+		Payload:         &rawPayloadJSON,
+		ClientSignature: signature,
+		ClientPublicKey: system.GetClientPublicKey(),
+	}
+
+	u, _ := url.Parse(apiClient.APIClient.BaseURI)
+	u.Scheme = "ws"
+	u.Path = APIPrefix + "logs"
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil) //nolint:bodyclose
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("Failed to dial to : %s", u.String())
+		return nil, err
+	}
+
+	err = c.WriteJSON(req)
+	if err != nil {
+		log.Ctx(ctx).Error().Msg("Failed to write the JSON for the start of the logs request")
+		return nil, err
+	}
+
+	return c, nil
 }
 
 func (apiClient *RequesterAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {

@@ -111,8 +111,12 @@ func shortID(outputWide bool, id string) string {
 	return id[:model.ShortIDLength]
 }
 
+func GetAPIHostAndPort() string {
+	return fmt.Sprintf("%s:%d", apiHost, apiPort)
+}
+
 func GetAPIClient() *publicapi.RequesterAPIClient {
-	return publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	return publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s", GetAPIHostAndPort()))
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
@@ -209,6 +213,7 @@ type RunTimeSettings struct {
 	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
 	PrintJobIDOnly        bool // Only print the Job ID as output
 	PrintNodeDetails      bool // Print the node details as output
+	Follow                bool // Follow along with the output of the job
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
@@ -220,6 +225,7 @@ func NewRunTimeSettings() *RunTimeSettings {
 		IsLocal:               false,
 		PrintJobIDOnly:        false,
 		PrintNodeDetails:      false,
+		Follow:                false,
 	}
 }
 
@@ -239,6 +245,9 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`Print out details of all nodes (overridden by --id-only).`)
 	flags.BoolVar(&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
 		`Should we download the results once the job is complete?`)
+	flags.BoolVarP(&settings.Follow, "follow", "f", settings.Follow,
+		`When specified will follow the output from the job as it runs`)
+
 	return flags
 }
 
@@ -290,6 +299,35 @@ func ExecuteJob(ctx context.Context,
 	// if we are in --id-only mode - print the id
 	if runtimeSettings.PrintJobIDOnly {
 		cmd.Print(j.Metadata.ID + "\n")
+	}
+
+	if runtimeSettings.Follow {
+		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
+		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+
+		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
+		// the execution to appear.
+		for i := 0; i < 10; i++ {
+			jobState, stateErr := apiClient.GetJobState(ctx, j.ID())
+			if stateErr != nil {
+				Fatal(cmd, fmt.Sprintf("failed waiting for execution to start: %s", stateErr), 1)
+			}
+
+			executionID := ""
+			for _, execution := range jobState.Executions {
+				if execution.State.IsActive() {
+					executionID = execution.ComputeReference
+				}
+			}
+
+			if executionID != "" {
+				break
+			}
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+
+		logOptions := LogCommandOptions{WithHistory: true}
+		return logs(cmd, []string{j.Metadata.ID}, logOptions)
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",

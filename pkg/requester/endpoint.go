@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
@@ -25,6 +26,7 @@ type BaseEndpointParams struct {
 	Scheduler                  Scheduler
 	Selector                   bidstrategy.BidStrategy
 	Store                      jobstore.Store
+	ComputeEndpoint            compute.Endpoint
 	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
@@ -36,6 +38,7 @@ type BaseEndpoint struct {
 	id         string
 	queue      Queue
 	store      jobstore.Store
+	computesvc compute.Endpoint
 	selector   bidstrategy.BidStrategy
 	transforms []jobtransform.Transformer
 }
@@ -51,6 +54,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
 		id:         params.ID,
 		queue:      queue,
+		computesvc: params.ComputeEndpoint,
 		selector:   params.Selector,
 		store:      params.Store,
 		transforms: transforms,
@@ -139,6 +143,49 @@ func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval ApproveJobReq
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
 	return node.queue.CancelJob(ctx, request)
+}
+
+func (node *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (ReadLogsResponse, error) {
+	emptyResponse := ReadLogsResponse{}
+
+	jobstate, err := node.store.GetJobState(ctx, request.JobID)
+	if err != nil {
+		return emptyResponse, err
+	}
+
+	job, err := node.store.GetJob(ctx, request.JobID)
+	if err != nil {
+		return emptyResponse, err
+	}
+
+	nodeID := ""
+	for _, e := range jobstate.Executions {
+		if e.ComputeReference == request.ExecutionID {
+			nodeID = e.NodeID
+			break
+		}
+	}
+
+	if nodeID == "" {
+		return emptyResponse, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
+	}
+
+	req := compute.ExecutionLogsRequest{
+		RoutingMetadata: compute.RoutingMetadata{
+			SourcePeerID: job.Metadata.Requester.RequesterNodeID,
+			TargetPeerID: nodeID,
+		},
+		ExecutionID: request.ExecutionID,
+		WithHistory: true,
+	}
+
+	newCtx := context.Background()
+	response, err := node.computesvc.ExecutionLogs(newCtx, req)
+	if err != nil {
+		return emptyResponse, err
+	}
+
+	return ReadLogsResponse{Address: response.Address}, nil
 }
 
 func (node *BaseEndpoint) handleBidResponse(ctx context.Context, job model.Job, response bidstrategy.BidStrategyResponse) error {
