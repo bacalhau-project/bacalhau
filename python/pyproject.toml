@@ -42,7 +42,7 @@ pycryptodome = "^3.16.0"
 cryptography = "^39.0.1"
 six = "^1.16.0"
 types-six = "^1.16.21.4"
-bacalhau-apiclient = "0.3.23.post8"
+bacalhau-apiclient = "latest"
 
 [tool.poetry.extras]
 
