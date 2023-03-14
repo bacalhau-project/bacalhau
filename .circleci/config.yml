@@ -469,6 +469,7 @@ jobs:
 
   release_python:
     executor: linux-amd64
+    working_directory: ~/repo
     steps:
       - checkout
       - attach_workspace:
