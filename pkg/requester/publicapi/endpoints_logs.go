@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -71,15 +72,17 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var payload model.LogsPayload
-	err = json.Unmarshal(*srequest.Payload, &payload)
+	// This should not marshal badly given we just converted it from bytes
+	// to a signedRequest. We have to convert it back to bytes as our
+	// websocket connection isn't an io.Reader and so we can't ask it to
+	// process the signature.
+	b, _ := json.Marshal(srequest)
+	buffer := bytes.NewBuffer(b)
+	payload, err := unmarshalSignedJob[model.LogsPayload](ctx, buffer)
 	if err != nil {
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("unable to parse incoming request: %s", err))
-		http.Error(res, errorResponse, http.StatusBadRequest)
+		httpError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
-
-	// TODO: Check the actual signature
 
 	ctx = system.AddJobIDToBaggage(ctx, payload.ClientID)
 
