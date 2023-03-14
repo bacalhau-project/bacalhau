@@ -20,7 +20,7 @@ func NewSQLiteDatastore(filename string) (*shared.GenericSQLDatastore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(semconv.DBSystemSqlite)); err != nil { //nolint:govet
+	if err := otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(semconv.DBSystemSqlite)); err != nil {
 		return nil, err
 	}
 	datastore, err := shared.NewGenericSQLDatastore(

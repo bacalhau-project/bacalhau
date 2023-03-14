@@ -157,3 +157,8 @@ run:
   # Allow multiple parallel golangci-lint instances running.
   # If false (default) - golangci-lint acquires file lock on start.
   allow-parallel-runners: false
+
+issues:
+  exclude:
+    # Naming of `error` variables as `err` is standard practise for Go
+    - 'shadow: declaration of "err" shadows declaration at'

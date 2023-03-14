@@ -233,14 +233,14 @@ func (n *Node) Close(ctx context.Context) error {
 		// as the message can be written just after the test has finished but before the repo has been told by node
 		// that it's supposed to shut down.
 		if n.ipfsNode.Repo != nil {
-			if err := n.ipfsNode.Repo.Close(); err != nil { //nolint:govet
+			if err := n.ipfsNode.Repo.Close(); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
 			}
 		}
 	}
 
 	if n.RepoPath != "" {
-		if err := os.RemoveAll(n.RepoPath); err != nil { //nolint:govet
+		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
 	}
