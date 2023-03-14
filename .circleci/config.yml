@@ -689,9 +689,8 @@ jobs:
       - run:
           name: Install Python SDK pre-requistes
           command: |
-            export POETRY_HOME=/opt/poetry
-            curl -sSL https://install.python-poetry.org | python3 -
-            $POETRY_HOME/bin/poetry --version
+
+            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
       - run:
           name: Build Python SDK
           command: |
