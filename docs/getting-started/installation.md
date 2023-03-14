@@ -96,14 +96,14 @@ The list command prints out the following text:
  07:20:32  3b39baee  Docker ubuntu echo H...  Published            /ipfs/bafybeidu4zm6w...
 ```
 
-A `Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.
+A `Completed` state indicates the job has completed successfully and the results are stored in the storage location under the `PUBLISHED` column.
 
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 
 
 ## Get results
 
-After the job has finished processing, its outputs are stored on IPFS. To download outputs locally.
+After the job has finished processing, its outputs are stored in your storage location. To download outputs locally.
 
 First, we'll create a directory that will store our job outputs.
 
