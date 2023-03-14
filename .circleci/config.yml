@@ -666,9 +666,9 @@ jobs:
       - attach_workspace:
           at: /tmp/swagger_spec
       - run:
-        name: Copy swagger.json from workspace
-        command: |
-          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+          name: Copy swagger.json from workspace
+          command: |
+            cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
       # - run:
       #     name: Install Python
       #     command: |
