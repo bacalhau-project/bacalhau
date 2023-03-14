@@ -660,6 +660,7 @@ jobs:
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
+      PYPI_VERSION: 0.3.24.dev2
     working_directory: ~/repo
     steps:
       - checkout
@@ -918,7 +919,7 @@ workflows:
             - build-windows
             - build-arm
 
-  build_swagger: # This workflow will run on any branch and will NOT run on tags
+  build_python: # This workflow will run on any branch and will NOT run on tags
     jobs:
       - build_swagger:
           name: build-swagger-spec
