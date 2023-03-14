@@ -528,8 +528,8 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 		fatalErr   bool
 		errString  string
 	}{
-		{submitArgs: []string{"ubuntu", "-foo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"}, // submitting flag will fail if not separated with a --
-		{submitArgs: []string{"ubuntu", "python -foo -bar -baz"}, fatalErr: false, errString: ""},               // separating with -- should work and allow flags
+		{submitArgs: []string{"ubuntu", "-xoo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"}, // submitting flag will fail if not separated with a --
+		{submitArgs: []string{"ubuntu", "python -xoo -bar -baz"}, fatalErr: false, errString: ""},               // separating with -- should work and allow flags
 		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
