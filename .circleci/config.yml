@@ -532,6 +532,10 @@ jobs:
           name: Build Swagger Docs
           command:
             make swagger-docs
+      - persist_to_workspace:
+          root: docs
+          paths:
+            - swagger.json
 
       - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
           condition:
@@ -658,6 +662,13 @@ jobs:
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/swagger_spec
+      - run:
+        name: Copy swagger.json from workspace
+        command: |
+          cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
       # - run:
       #     name: Install Python
       #     command: |
