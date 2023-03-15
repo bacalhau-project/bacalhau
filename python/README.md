@@ -32,7 +32,7 @@ $ cd python/
 $ pip install .
 ```
 
-## Initalize
+## Initialize
 
 Likewise the Bacalhau CLI, this SDK uses a key pair to be stored in `BACALHAU_DIR` used for signing requests.
 If a key pair is not found there, it will create one for you.

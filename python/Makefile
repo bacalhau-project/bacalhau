@@ -1,9 +1,10 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
+VERSION ?= $${PYPI_VERSION}
 
 sources = bacalhau_sdk
 
 .`.PHONY: all
-all: format lint pre-commit test
+all: format lint pre-commit build
 
 .PHONY: test
 test: unittest coverage
@@ -32,7 +33,7 @@ install-pre-commit:
 	@echo "Pre-commit installed."
 
 .PHONY: pre-commit
-pre-commit:
+pre-commit: install-pre-commit
 	$(POETRY) run pre-commit run --files ./**/*
 
 .PHONY: clean
@@ -44,11 +45,13 @@ clean:
 
 .PHONY: build
 build:
+	$(POETRY) version -- ${VERSION}
 	$(POETRY) build
 
+.SILENT: publish
 .PHONY: publish
 publish:
-	$(POETRY) publish -u __token__ -p ${PYPI_TOKEN}
+	$(POETRY) publish --skip-existing -u __token__ -p ${PYPI_TOKEN}
 
-.PHONY: bumpversion
-	bump2version --new-version minor src/VERSION
+# .PHONY: bumpversion
+# 	bump2version --new-version minor src/VERSION
