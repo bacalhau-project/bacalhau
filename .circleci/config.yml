@@ -1036,7 +1036,13 @@ workflows:
             - build-arm
           filters: *filters_tags_only
       - docker:
-          filters: *filters_tags_only
+          filters:
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
+              # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
       - build_python_packages:
           name: build-python-packages
           requires:
