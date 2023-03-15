@@ -695,7 +695,7 @@ jobs:
     executor: linux-amd64
     environment:
       TARGET_COMMIT: << pipeline.git.revision >>
-      PYPI_VERSION: 0.3.24.dev8
+      # PYPI_VERSION: 0.3.24.dev8 # use this to set a custom version identifier (https://peps.python.org/pep-0440/)
     working_directory: ~/repo
     steps:
       - checkout
