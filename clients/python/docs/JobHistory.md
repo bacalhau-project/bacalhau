@@ -10,8 +10,6 @@ Name | Type | Description | Notes
 **job_state** | [**StateChangeJobStateType**](StateChangeJobStateType.md) |  | [optional]
 **new_version** | **int** |  | [optional]
 **node_id** | **str** |  | [optional]
-**shard_index** | **int** |  | [optional]
-**shard_state** | [**StateChangeShardStateType**](StateChangeShardStateType.md) |  | [optional]
 **time** | **str** |  | [optional]
 **type** | [**JobHistoryType**](JobHistoryType.md) |  | [optional]
 
