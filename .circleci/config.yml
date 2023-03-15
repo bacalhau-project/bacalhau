@@ -446,6 +446,7 @@ jobs:
           name: Update dashboard
           command: |
             heroku run build --app bacalhau-dashboards
+
   release:
     executor: linux-amd64
     steps:
@@ -465,6 +466,41 @@ jobs:
             echo "TAG = ${TAG}"
             find dist/
             gh release upload $TAG dist/*
+
+  release_python:
+    executor: linux-amd64
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/py_dist
+      - run:
+          name: Copy dist files
+          command: |
+            mkdir -p clients/python/dist
+            cp /tmp/py_dist/bacalhau_apiclient* clients/python/dist
+            mkdir -p python/dist
+            cp /tmp/py_dist/bacalhau_sdk* python/dist
+            mkdir -p integration/airflow/dist
+            cp /tmp/py_dist/bacalhau_airflow* integration/airflow/dist
+      - run :
+          name: Release python apiclient
+          command: |
+            make release-python-apiclient
+      - run:
+          name: Install Python SDK pre-requistes
+          command: |
+            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+      - run :
+          name: Release python sdk
+          command: |
+            make release-python-sdk
+      - run :
+          name: Release python Airflow integration
+          command: |
+            pip3 install twine==4.0.2
+            make release-bacalhau-airflow
 
   update_metadata:
     executor: linux-amd64
@@ -524,22 +560,19 @@ jobs:
           command:
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
       - run:
-          name: Install swagger-codegen
-          command: |
-            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
-            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
-            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
-            ${HOME}/bin/swagger-codegen-cli.jar version
-      - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
       - run:
-          name: Build Swagger Docs and Clients
+          name: Build Swagger Docs
           command:
-            make swagger-docs clients
+            make swagger-docs
+      - persist_to_workspace:
+          root: docs
+          paths:
+            - swagger.json
 
-      - when:
+      - when: # Only if the current branch is main, we push the swagger spec to the repo (via auto PR)
           condition:
             equal: ["main", << pipeline.git.branch >>]
           steps:
@@ -657,6 +690,68 @@ jobs:
             docker context create buildx-build
             docker buildx create --use buildx-build
             make push-bacalhau-image
+
+  build_python_packages:
+    executor: linux-amd64
+    environment:
+      TARGET_COMMIT: << pipeline.git.revision >>
+      PYPI_VERSION: 0.3.24.dev8
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/swagger_spec
+      - run:
+          name: Copy swagger.json from workspace
+          command: |
+            cp /tmp/swagger_spec/swagger.json ./docs/swagger.json
+      - run:
+          name: Install Python API client pre-requistes
+          command: |
+            CODEGEN_BASE_URL="https://repo1.maven.org/maven2/io/swagger/codegen/v3"
+            wget ${CODEGEN_BASE_URL}/swagger-codegen-cli/3.0.41/swagger-codegen-cli-3.0.41.jar -O ${HOME}/bin/swagger-codegen-cli.jar
+            chmod +x ${HOME}/bin/swagger-codegen-cli.jar
+            ${HOME}/bin/swagger-codegen-cli.jar version
+      - run:
+          name: Build Python API client
+          command: |
+            make build-python-apiclient
+      - persist_to_workspace:
+          root: clients/python/dist
+          paths:
+            - bacalhau_apiclient-*.tar.gz
+            - bacalhau_apiclient-*.whl
+      - run:
+          name: Install Python SDK pre-requistes
+          command: |
+            curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.4.0 python3 -
+            echo 'export PATH="/home/circleci/.local/bin:$PATH"' >> "$BASH_ENV"
+            cd python
+            /home/circleci/.local/bin/poetry run pip3 install black>=22.12.0 isort>=5.8.0 flake8>=6.0.0 mypy>=0.991 pre-commit>=2.12.0
+      - run:
+          name: Build Python SDK
+          command: |
+            make build-python-sdk
+      - persist_to_workspace:
+          root: python/dist
+          paths:
+            - bacalhau_sdk-*.tar.gz
+            - bacalhau_sdk-*.whl
+      - run:
+          name: Install bacalhau-airflow pre-requistes
+          command: |
+            cd integration/airflow
+            pip3 install -r dev-requirements.txt
+      - run:
+          name: Build Python Bacalhau Airflow
+          command: |
+            make build-bacalhau-airflow
+      - persist_to_workspace:
+          root: integration/airflow/dist
+          paths:
+            - bacalhau_airflow-*.tar.gz
+            - bacalhau_airflow-*.whl
+
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -869,14 +964,14 @@ workflows:
             - build-darwin-arm64
             - build-windows
             - build-arm
-
-  build_swagger: # This workflow will only run on 'main' and will not run on tags
-    jobs:
       - build_swagger:
-          name: Build swagger docs
-          filters:
-            tags:
-              ignore: /.*/
+          name: build-swagger-spec
+          filters: *filters_main_only
+      - build_python_packages:
+          name: build-python-packages
+          requires:
+            - build-swagger-spec
+          filters: *filters_main_only
 
   build_jsonschema: # Runs on new tags starting with 'v.'
     jobs:
@@ -944,7 +1039,28 @@ workflows:
             - build-arm
           filters: *filters_tags_only
       - docker:
+          filters:
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
+              # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+      - build_swagger:
+          name: build-swagger-spec
           filters: *filters_tags_only
+      - build_python_packages:
+          name: build-python-packages
+          requires:
+            - build-swagger-spec
+          filters: *filters_tags_only
+      - release_python:
+          name: release-python-packages
+          requires:
+            - build-swagger-spec
+            - build-python-packages
+          filters: *filters_tags_only
+
 
   # TODO: Disabling performance until we get a runner up and running again
   #

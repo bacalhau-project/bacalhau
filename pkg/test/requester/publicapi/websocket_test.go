@@ -4,8 +4,11 @@ package publicapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -52,23 +55,33 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	require.NoError(s.T(), err)
+	s.T().Cleanup(func() {
+		s.NoError(conn.Close())
+	})
 
 	eventChan := make(chan model.JobEvent)
 	go func() {
+		defer close(eventChan)
 		for {
 			var event model.JobEvent
 			err = conn.ReadJSON(&event)
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
 			require.NoError(s.T(), err)
 			eventChan <- event
 		}
 	}()
+
+	// Pause to ensure the websocket connects _before_ we submit the job
+	time.Sleep(100 * time.Millisecond)
 
 	genericJob := testutils.MakeGenericJob()
 	_, err = s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
 	event := <-eventChan
-	require.Equal(s.T(), "Created", event.EventName.String())
+	require.Equal(s.T(), model.JobEventCreated, event.EventName)
 
 }
 

@@ -178,14 +178,17 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	// Cleanup resources when system is done:
 	cm.RegisterCallbackWithContext(srv.Shutdown)
 
-	err = srv.Serve(listener)
-	if err == http.ErrServerClosed {
-		log.Ctx(ctx).Debug().Msgf(
-			"API server closed for host %s on %s.", apiServer.Address, srv.Addr)
-		return nil // expected error if the server is shut down
-	}
+	go func() {
+		err := srv.Serve(listener)
+		if err == http.ErrServerClosed {
+			log.Ctx(ctx).Debug().Msgf(
+				"API server closed for host %s on %s.", apiServer.Address, srv.Addr)
+		} else if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Api server can't run. Cannot serve client requests!")
+		}
+	}()
 
-	return err
+	return nil
 }
 
 func (apiServer *APIServer) RegisterHandlers(config ...HandlerConfig) error {

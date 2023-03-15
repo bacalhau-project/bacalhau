@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -244,7 +245,10 @@ func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
 	programPath := args[0]
 	entryPoint := wasmJob.Spec.Wasm.EntryPoint
 
-	engine := wazero.NewRuntime(ctx)
+	config := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
+	engine := wazero.NewRuntimeWithConfig(ctx, config)
+	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
+
 	module, err := wasm.LoadModule(ctx, engine, programPath)
 	if err != nil {
 		Fatal(cmd, err.Error(), 1)

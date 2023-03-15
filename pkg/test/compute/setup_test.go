@@ -60,12 +60,9 @@ func (s *ComputeSuite) setupNode() {
 	host, err := libp2p.NewHost(libp2pPort)
 	s.NoError(err)
 
-	apiPort, err := freeport.GetFreePort()
-	s.NoError(err)
-
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address: "0.0.0.0",
-		Port:    apiPort,
+		Port:    0,
 		Host:    host,
 		Config:  publicapi.DefaultAPIServerConfig,
 	})

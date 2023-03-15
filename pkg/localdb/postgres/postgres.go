@@ -29,7 +29,7 @@ func NewPostgresDatastore(
 		return nil, err
 	}
 
-	if err := otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(semconv.DBSystemPostgreSQL)); err != nil { //nolint:govet
+	if err := otelsql.RegisterDBStatsMetrics(db, otelsql.WithAttributes(semconv.DBSystemPostgreSQL)); err != nil {
 		return nil, err
 	}
 

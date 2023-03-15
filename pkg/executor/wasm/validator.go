@@ -6,7 +6,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"golang.org/x/exp/maps"
 )
 
 // ValidateModuleAgainstJob will return an error if the passed job does not
@@ -32,11 +31,6 @@ func ValidateModuleImports(
 	module wazero.CompiledModule,
 	importModules ...wazero.CompiledModule,
 ) error {
-	availableImports := make(map[string]api.FunctionDefinition)
-	for _, importModule := range importModules {
-		maps.Copy(importModule.ExportedFunctions(), availableImports)
-	}
-
 	for _, requiredImport := range module.ImportedFunctions() {
 		importNamespace, funcName, _ := requiredImport.Import()
 		exists := false

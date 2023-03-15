@@ -44,6 +44,10 @@ define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
+# pypi version scheme: https://peps.python.org/pep-0440/
+PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v))$(PYPI_VERSION)
+export PYPI_VERSION
+
 all: build
 
 # Run init repo after cloning it
@@ -115,15 +119,59 @@ swagger-docs:
 	@echo "Swagger docs built."
 
 ################################################################################
-# Target: clients
+# Target: build-python-apiclient
 ################################################################################
-# Generate Bacalhau API clients but only if the swagger.json has actually been
-# updated because the clients include random numbers and timestamps and hence
-# will generate a lot of noisy diffs if regenerated all of the time
-.PHONY: clients
-clients:
-	(test -n "$(shell git ls-files --modified docs/swagger.json)" && \
-		cd clients && ${MAKE} -j all) || true
+.PHONY: build-python-apiclient
+build-python-apiclient:
+	cd clients && ${MAKE} clean all
+	@echo "Python API client built."
+
+################################################################################
+# Target: build-python-sdk
+################################################################################
+.PHONY: build-python-sdk
+build-python-sdk:
+	cd python && ${MAKE} clean all
+	@echo "Python SDK built."
+
+################################################################################
+# Target: build-bacalhau-airflow
+################################################################################
+.PHONY: build-bacalhau-airflow
+build-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} clean all
+	@echo "Python bacalhau-airflow built."
+
+# Builds all python packages
+################################################################################
+# Target: build-python
+################################################################################
+.PHONY: build-python
+build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
+
+################################################################################
+# Target: release-python-apiclient
+################################################################################
+.PHONY: release-python-apiclient
+release-python-apiclient:
+	cd clients && ${MAKE} pypi-upload
+	@echo "Python API client pushed to PyPi."
+
+################################################################################
+# Target: release-python-sdk
+################################################################################
+.PHONY: release-python-sdk
+release-python-sdk:
+	cd python && ${MAKE} publish
+	@echo "Python SDK pushed to PyPi."
+
+################################################################################
+# Target: release-bacalhau-airflow
+################################################################################
+.PHONY: release-bacalhau-airflow
+release-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} release
+	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
 # Target: build
@@ -266,6 +314,7 @@ test:
 
 .PHONY: test-python
 test-python:
+# sdk tests
 	cd python && make test
 
 .PHONY: integration-test
