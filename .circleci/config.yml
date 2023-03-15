@@ -964,6 +964,9 @@ workflows:
             - build-darwin-arm64
             - build-windows
             - build-arm
+      - build_swagger:
+          name: build-swagger-spec
+          filters: *filters_main_only
       - build_python_packages:
           name: build-python-packages
           requires:
