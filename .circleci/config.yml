@@ -1046,6 +1046,9 @@ workflows:
               # only run on tags that STRICTLY look like release tags e.g. v0.1.2,
               # NOT v0.1.3alpha19 (i.e. only build containers on real releases)
               only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+      - build_swagger:
+          name: build-swagger-spec
+          filters: *filters_tags_only
       - build_python_packages:
           name: build-python-packages
           requires:
