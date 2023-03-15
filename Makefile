@@ -44,8 +44,9 @@ define BUILD_FLAGS
 -X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
-# pypi version scheme: https://peps.python.org/pep-0440/
-PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v))$(PYPI_VERSION)
+# pypi version scheme (https://peps.python.org/pep-0440/) does not accept
+# versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
+PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$/.dev0/'))$(PYPI_VERSION)
 export PYPI_VERSION
 
 all: build
