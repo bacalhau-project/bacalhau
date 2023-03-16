@@ -138,7 +138,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	// so LibP2P knows how to contact it
 	addresses := host.Peerstore().Addrs(info.ID)
 	if len(addresses) == 0 {
-		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.AddressTTL)
 	}
 
 	stream, err := host.NewStream(ctx, info.ID, "/bacalhau/compute/logs/1.0.0")

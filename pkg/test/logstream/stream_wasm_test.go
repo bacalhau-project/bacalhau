@@ -1,4 +1,4 @@
-//go:build integration
+//go:build unit || !integration
 
 package logstream
 
