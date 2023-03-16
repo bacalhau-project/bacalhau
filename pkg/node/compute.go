@@ -179,7 +179,12 @@ func NewComputeNode(
 	}
 
 	// logging server
-	logserver := logstream.NewLogStreamServer(ctx, host, executionStore, executors)
+	logserver := logstream.NewLogStreamServer(logstream.LogStreamServerOptions{
+		Ctx:            ctx,
+		Host:           host,
+		ExecutionStore: executionStore,
+		Executors:      executors,
+	})
 	_, loggingCancel := context.WithCancel(ctx)
 	cleanupManager.RegisterCallback(func() error {
 		loggingCancel()

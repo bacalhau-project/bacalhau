@@ -310,8 +310,9 @@ func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHisto
 		since = "1"
 	}
 
-	// As for the output stream since 1 which docker interprets as a unix timestamp, so this
-	// should retrieve all of the logs since the start of the execution.
+	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
+	// If we want everything, we specify 1, a timestamp which we are confident we don't have
+	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
 	reader, err := e.client.GetOutputStream(ctx, ctrID, since)
 	if err != nil {
 		return nil, err

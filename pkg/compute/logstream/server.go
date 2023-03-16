@@ -21,20 +21,22 @@ const (
 	LogsProcotolID = "/bacalhau/compute/logs/1.0.0"
 )
 
-func NewLogStreamServer(
-	ctx context.Context,
-	host host.Host,
-	executionStore store.ExecutionStore,
-	executors executor.ExecutorProvider) *LogStreamServer {
-	svr := &LogStreamServer{
-		ctx:            util.NewDetachedContext(ctx),
-		host:           host,
-		executionStore: executionStore,
-		executors:      executors,
-	}
-	svr.Address = findTCPAddress(host)
+type LogStreamServerOptions struct {
+	Ctx            context.Context
+	Host           host.Host
+	ExecutionStore store.ExecutionStore
+	Executors      executor.ExecutorProvider
+}
 
-	host.SetStreamHandler(LogsProcotolID, svr.Handle)
+func NewLogStreamServer(options LogStreamServerOptions) *LogStreamServer {
+	svr := &LogStreamServer{
+		ctx:            util.NewDetachedContext(options.Ctx),
+		host:           options.Host,
+		executionStore: options.ExecutionStore,
+		executors:      options.Executors,
+		Address:        findTCPAddress(options.Host),
+	}
+	svr.host.SetStreamHandler(LogsProcotolID, svr.Handle)
 	return svr
 }
 
