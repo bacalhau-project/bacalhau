@@ -34,7 +34,7 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a bacalhau compute node
+		# Start a bacalhau requester and compute node
 		bacalhau serve
 		# or
 		bacalhau serve --node-type compute
@@ -81,8 +81,8 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                        []string{"compute"},
-		PeerConnect:                     "",
+		NodeType:                        []string{"requester", "compute"},
+		PeerConnect:                     "none",
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
 		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
@@ -101,6 +101,7 @@ func NewServeOptions() *ServeOptions {
 		LimitJobGPU:                     "",
 		LotusFilecoinPathDirectory:      os.Getenv("LOTUS_PATH"),
 		LotusFilecoinMaximumPing:        2 * time.Second,
+		PrivateInternalIPFS:             true,
 	}
 }
 
@@ -177,8 +178,10 @@ func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
-	} else if OS.PeerConnect == "" {
-		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
+	} else if system.Environment(OS.PeerConnect).IsKnown() {
+		// TODO @enricorotundo - throw a warning if OS.PeerConnect does not matche system.GetEnvironment() ?
+		// TODO @enricorotundo - add tests for this case
+		peersStrings = system.Envs[system.Environment(OS.PeerConnect)].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}

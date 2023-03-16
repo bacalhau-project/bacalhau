@@ -61,11 +61,12 @@ func (s *ServeSuite) serve(extraArgs ...string) int {
 
 	cmd := NewRootCmd()
 
-	// peer set to "none" to avoid accidentally talking to production endpoints
+	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
+	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
 	args := []string{
 		"serve",
 		"--peer", "none",
-		"--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", s.ipfsPort),
+		"--private-internal-ipfs",
 		"--api-port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
@@ -126,7 +127,8 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {
-	port := s.serve("--node-type", "requester", "--node-type", "compute")
+	// no need to passing node-type options to serve because it creates a requester and compute node by default
+	port := s.serve()
 	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://localhost:%d", port))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
@@ -152,4 +154,25 @@ func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 	state, err := client.GetJobState(s.ctx, job.Metadata.ID)
 	s.NoError(err)
 	s.Equal(model.JobStateCancelled, state.State, state.State.String())
+}
+
+func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
+	cm := system.NewCleanupManager()
+	OS := NewServeOptions()
+
+	client, err := ipfsClient(s.ctx, OS, cm)
+	s.Require().NoError(err)
+
+	swarmAddresses, err := client.SwarmAddresses(s.ctx)
+	s.NoError(err)
+	// an IPFS local node usually returns 2 addresses
+	s.Require().Equal(2, len(swarmAddresses))
+}
+
+func (s *ServeSuite) TestGetPeers() {
+	// by default it should return no peers
+	OS := NewServeOptions()
+	peers, err := getPeers(OS)
+	s.NoError(err)
+	s.Require().Equal(0, len(peers))
 }
