@@ -37,6 +37,10 @@ func (s *LogStreamTestSuite) SetupSuite() {
 	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1, 0, false)
 }
 
+func (s *LogStreamTestSuite) TearDownSuite() {
+	s.cm.Cleanup(s.ctx)
+}
+
 func waitForOutputStream(ctx context.Context, job model.Job, withHistory bool, exec executor.Executor) (io.Reader, error) {
 	for i := 0; i < 10; i++ {
 		reader, err := exec.GetOutputStream(ctx, job, withHistory)

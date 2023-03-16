@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestDockerOutputStream() {
+	docker.MustHaveDocker(s.T())
+
 	node := s.stack.Nodes[0]
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
 	require.NoError(s.T(), err)

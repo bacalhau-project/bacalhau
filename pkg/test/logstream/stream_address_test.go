@@ -4,12 +4,15 @@ package logstream
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
+	docker.MustHaveDocker(s.T())
+
 	node := s.stack.Nodes[0]
 
 	job := newDockerJob("address-test", model.JobSpecDocker{
@@ -30,7 +33,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		require.NoError(s.T(), err)
 
 		_, err = exec.Run(s.ctx, job, "/tmp")
-		require.NoError(s.T(), err, err.Error())
+		require.NoError(s.T(), err)
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when
@@ -53,8 +56,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 
 	client, err := logstream.NewLogStreamClient(s.ctx, response.Address)
-	defer client.Close()
 	require.NoError(s.T(), err)
+	defer client.Close()
 
 	client.Connect(s.ctx, job.ID(), execution.ID, true)
 
