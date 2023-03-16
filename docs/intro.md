@@ -29,6 +29,18 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ![image](/img/bacalhau-high-level-view.png)
 
+## How it works
+
+The goal of the Bacalhau project is to make it easy to perform distributed, decentralised computation next to where the data resides. So a key step in this process is making your data accessible. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
+
+- [Copy data from a URL to public storage](https://docs.bacalhau.org/examples/data-ingestion/from-url/)
+- [Pin Data to public storage](https://docs.bacalhau.org/examples/data-ingestion/pinning/)
+- [Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/examples/data-ingestion/s3-to-ipfs/)
+
+:::info
+The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
+:::
+
 ## Roadmap
 
 Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)!
