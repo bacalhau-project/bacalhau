@@ -3,6 +3,8 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -11,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -297,7 +300,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
+//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
@@ -330,7 +333,52 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 	}
 
 	for _, i := range odr.Inputs {
-		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+		isValidCID := func(i string) bool {
+			c, er := cid.Decode(i)
+			if er != nil {
+				return false // invalid CID format
+			}
+			return c.Type() == cid.Raw || c.Type() == cid.DagProtobuf // check CID version
+		}(i)
+		isTheCIDValid := isValidCID
+		if isTheCIDValid {
+			odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+		} else {
+			scheme := func(URI string) *url.URL {
+				parsed, err1 := url.Parse(URI)
+				if err1 != nil {
+					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
+					log.Fatal(errMsg)
+				}
+				return parsed
+			}(i)
+
+			switch scheme.Scheme {
+			case "http":
+				odr.InputUrls = append(odr.InputUrls, i)
+			case "https":
+				odr.InputUrls = append(odr.InputUrls, i)
+			case "ipfs":
+				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
+			// unimplemented schemes
+			// case "git":
+			//     // Handle git scheme
+			//     fmt.Println("Handling git scheme...")
+			// case "gitlfs":
+			// lfsConstraint:= "git-lfs=True"
+			// odr.Labels = append(odr.Labels,lfsConstraint )
+			//     // Handle git scheme
+			//     fmt.Println("Handling git scheme...")
+			// case "s3":
+			//     // Handle s3 scheme
+			//     fmt.Println("Handling s3 scheme...")
+			// case "file":
+			//     // Handle file scheme
+			//     fmt.Println("Handling file scheme...")
+			default:
+				fmt.Println("Unknown scheme or scheme not currently supported...")
+			}
+		}
 	}
 
 	if len(odr.WorkingDirectory) > 0 {
