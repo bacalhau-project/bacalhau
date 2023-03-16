@@ -67,7 +67,7 @@ func newStorage(dir string) *StorageProvider {
 	client.RetryWaitMax = time.Second * 1
 	client.Logger = retryLogger{}
 	client.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		if err := ctx.Err(); err != nil { //nolint:govet
+		if err := ctx.Err(); err != nil {
 			return false, err
 		}
 		if err == nil {

@@ -20,7 +20,9 @@ var (
 		`))
 
 	languageRunExample = templates.Examples(i18n.T(`
-		TBD`))
+		# Run a simple "Hello, World" script within the current directory
+		bacalhau run python -- hello-world.py
+		`))
 )
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
