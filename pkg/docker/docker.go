@@ -163,6 +163,10 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string) (
 		return nil, errors.Wrap(err, "failed to get container")
 	}
 
+	if !cont.State.Running {
+		return nil, errors.Wrap(err, "cannot get logs when container is not running")
+	}
+
 	logOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
