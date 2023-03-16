@@ -36,6 +36,8 @@ type DataFrame struct {
 	Data []byte
 }
 
+var EmptyDataFrame DataFrame
+
 func NewDataFrameFromReader(reader io.Reader) (DataFrame, error) {
 	header := make([]byte, headerLength)
 

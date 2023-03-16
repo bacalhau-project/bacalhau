@@ -3,18 +3,10 @@
 package logstream
 
 import (
-	"encoding/json"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	logstream_util "github.com/bacalhau-project/bacalhau/pkg/util/logstream"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/stretchr/testify/require"
-
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -60,39 +52,13 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	response, err := node.RequesterNode.Endpoint.ReadLogs(s.ctx, logRequest)
 	require.NoError(s.T(), err)
 
-	host, err := libp2p.New([]libp2p.Option{libp2p.DisableRelay()}...)
+	client, err := logstream.NewLogStreamClient(s.ctx, response.Address)
+	defer client.Close()
 	require.NoError(s.T(), err)
 
-	maddr, err := ma.NewMultiaddr(response.Address)
-	if err != nil {
-		return
-	}
-	info, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return
-	}
+	client.Connect(s.ctx, job.ID(), execution.ID, true)
 
-	addresses := host.Peerstore().Addrs(info.ID)
-	if len(addresses) == 0 {
-		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.TempAddrTTL)
-	}
-
-	stream, err := host.NewStream(s.ctx, info.ID, "/bacalhau/compute/logs/1.0.0")
-	if err != nil {
-		return
-	}
-	defer stream.Close()
-
-	lsReq := logstream.LogStreamRequest{
-		JobID:       job.ID(),
-		ExecutionID: execution.ID,
-		WithHistory: true,
-	}
-
-	err = json.NewEncoder(stream).Encode(lsReq)
-	require.NoError(s.T(), err)
-
-	frame, err := logstream_util.NewDataFrameFromReader(stream)
+	frame, err := client.ReadDataFrame(s.ctx)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), frame)
 

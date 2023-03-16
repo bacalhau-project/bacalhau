@@ -6,9 +6,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/bacalhau-project/bacalhau/pkg/util/logstream"
 	"github.com/stretchr/testify/require"
 )
 
