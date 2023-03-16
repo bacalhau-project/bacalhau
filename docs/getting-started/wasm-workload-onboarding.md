@@ -4,15 +4,13 @@ sidebar_position: 3
 ---
 # Onboarding Your WebAssembly Workloads
 
-Bacalhau supports running programs that are compiled to [WebAssembly (WASM)](https://webassembly.org/). 
-
-WASM programs can be uploaded using the Bacalhau client or can be retrieved from IPFS. They can read and write data, receive program arguments and access environment variables.
+Bacalhau supports running programs that are compiled to [WebAssembly (WASM)](https://webassembly.org/). With Bacalhau client, you can upload WASM programs, retrieve data from public storage, read and write data, receive program arguments and access environment variables.
 
 ## Prerequisites and Limitations
 
 Bacalhau can run compiled WASM programs that expect the WebAssembly System Interface (WASI) Snapshot 1. Through this interface, WebAssembly programs can access data, environment variables and program arguments.
 
-All ingress/egress networking is disabled – you won't be able to pull data/code/weights/etc from an external source. WASM jobs can say what data they need using URLs or IPFS CIDs and can then access the data by reading from the filesystem.
+All ingress/egress networking is disabled – you won't be able to pull data/code/weights/etc from an external source. WASM jobs can say what data they need using URLs or CIDs (Content IDentifier) and can then access the data by reading from the filesystem.
 
 There is no multi-threading as WASI does not expose any interface for it.
 
