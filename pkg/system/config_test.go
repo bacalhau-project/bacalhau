@@ -105,7 +105,7 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 			func() {
 				s.T().Setenv("ROOT_DIR", test.root_dir)
 				s.T().Setenv("BACALHAU_DIR", test.bacalhau_dir)
-				configDir, err := ensureConfigDir()
+				configDir, err := EnsureConfigDir()
 				s.DirExists(configDir)
 				s.Equal(configDir, test.exp)
 				s.NoError(err)
