@@ -26,14 +26,12 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
+	require.NoError(s.T(), err)
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		require.NoError(s.T(), err)
-
-		_, err = exec.Run(s.ctx, job, "/tmp")
-		require.NoError(s.T(), err)
+		_, _ = exec.Run(s.ctx, job, "/tmp")
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when

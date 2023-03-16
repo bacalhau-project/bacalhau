@@ -38,9 +38,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, err = exec.Run(ctx, *job, "/tmp")
-		require.NoError(s.T(), err, err.Error())
-
+		_, _ = exec.Run(ctx, *job, "/tmp")
 		fail <- true
 	}()
 
