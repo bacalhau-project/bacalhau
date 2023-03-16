@@ -12,13 +12,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 type logRequest = SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
@@ -59,6 +54,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
+	defer conn.Close()
 
 	ctx := req.Context()
 
@@ -115,52 +111,23 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	opts := []libp2p.Option{
-		libp2p.DisableRelay(),
-	}
-
-	host, err := libp2p.New(opts...)
+	client, err := logstream.NewLogStreamClient(ctx, response.Address)
 	if err != nil {
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("failed to write to websocket connection: %s", err))
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err))
 		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
-	maddr, err := ma.NewMultiaddr(response.Address)
-	if err != nil {
-		return
-	}
-	info, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return
-	}
+	defer client.Close()
 
-	// We have a peer ID and a targetAddr so we add it to the peerstore
-	// so LibP2P knows how to contact it
-	addresses := host.Peerstore().Addrs(info.ID)
-	if len(addresses) == 0 {
-		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.AddressTTL)
-	}
-
-	stream, err := host.NewStream(ctx, info.ID, "/bacalhau/compute/logs/1.0.0")
+	err = client.Connect(ctx, payload.JobID, payload.ExecutionID, payload.WithHistory)
 	if err != nil {
-		return
-	}
-	defer stream.Close()
-
-	lsReq := LogStreamRequest{
-		JobID:       payload.JobID,
-		ExecutionID: payload.ExecutionID,
-		WithHistory: payload.WithHistory,
-	}
-
-	err = json.NewEncoder(stream).Encode(lsReq)
-	if err != nil {
-		_ = stream.Reset()
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
+		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
 
 	for {
-		frame, err := logstream.NewDataFrameFromReader(stream)
+		frame, err := client.ReadDataFrame(ctx)
 		if err == io.EOF {
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			break
@@ -175,6 +142,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 			Tag:  uint8(frame.Tag),
 			Data: string(frame.Data),
 		}
+
 		err = conn.WriteJSON(msg)
 		if err != nil {
 			log.Ctx(ctx).Error().Msgf("websocket write failure: %s", err)
@@ -184,8 +152,4 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 
 	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	conn.Close()
-
-	_ = stream.Reset()
-	_ = stream.Close()
 }
