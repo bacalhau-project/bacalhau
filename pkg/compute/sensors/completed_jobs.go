@@ -17,11 +17,11 @@ func NewCompletedJobs(e store.ExecutionStore) *CompletedJobProvider {
 
 // GetDebugInfo implements model.DebugInfoProvider
 func (c *CompletedJobProvider) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
-	jobcounts := c.ExecutionStore.GetExecutionCount(ctx)
+	jobcounts, err := c.ExecutionStore.GetExecutionCount(ctx)
 	return model.DebugInfo{
 		Component: "jobsCompleted",
 		Info:      jobcounts,
-	}, nil
+	}, err
 }
 
 var _ model.DebugInfoProvider = (*CompletedJobProvider)(nil)

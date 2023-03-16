@@ -19,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -35,7 +34,7 @@ var (
 // InitConfig ensures that a bacalhau config file exists and loads it.
 // NOTE: this will override the global config cache if called twice.
 func InitConfig() error {
-	configDir, err := ensureConfigDir()
+	configDir, err := EnsureConfigDir()
 	if err != nil {
 		return fmt.Errorf("failed to init config dir: %w", err)
 	}
@@ -94,7 +93,10 @@ func InitConfigForTesting(t testingT) {
 	configDir := t.TempDir()
 	t.Setenv("BACALHAU_DIR", configDir)
 	err := InitConfig()
-	require.NoError(t, err)
+	if err != nil {
+		t.Errorf("Unable to set up config in dir %s", configDir)
+		t.FailNow()
+	}
 }
 
 // SignForClient signs a message with the user's private ID key.
@@ -189,7 +191,7 @@ func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
 }
 
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
-func ensureConfigDir() (string, error) {
+func EnsureConfigDir() (string, error) {
 	configDir := os.Getenv("BACALHAU_DIR")
 	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
 	//and not a generic environment variable set by the user

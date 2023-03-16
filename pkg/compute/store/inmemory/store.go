@@ -141,14 +141,14 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context) uint {
+func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
 	var counter uint
 	for _, execution := range s.executionMap {
 		if execution.State == store.ExecutionStateCompleted {
 			counter++
 		}
 	}
-	return counter
+	return counter, nil
 }
 
 // compile-time check that we implement the interface ExecutionStore
