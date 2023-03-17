@@ -50,7 +50,7 @@ func (s JobStateType) IsTerminal() bool {
 
 // IsComplete returns true if the given job has succeeded at the bid stage
 // and has finished running the job - this is used to calculate if a job
-// has completed across all nodes because a cancelation does not count
+// has completed across all nodes because a cancellation does not count
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (s JobStateType) IsComplete() bool {

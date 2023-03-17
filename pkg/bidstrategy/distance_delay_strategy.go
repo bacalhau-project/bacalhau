@@ -51,7 +51,7 @@ func (s DistanceDelayStrategy) ShouldBidBasedOnUsage(
 func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context, request BidStrategyRequest) (int, bool) {
 	// Calculate how long to wait to bid on the job by using a circular hashing
 	// style approach: Invent a metric for distance between node ID and job ID.
-	// If the node and job ID happen to be close to eachother, such that we'd
+	// If the node and job ID happen to be close to each other, such that we'd
 	// expect that we are one of the N nodes "closest" to the job, bid
 	// instantly. Beyond that, back off an amount "stepped" proportional to how
 	// far we are from the job. This should evenly spread the work across the

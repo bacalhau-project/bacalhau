@@ -37,7 +37,7 @@ python-config.json: config.json.template
 python/: python-config.json
 	# swagger codegen names the generated methods after the related endpoint @ID annotation (e.g. pkg/requester/publicapi/submit)
 	# this results into a names that are not quite user-friendly (e.g. pkgrequesterpublicapisubmit)
-	# futhermore, codegen does not allow overriding the prefix name for python
+	# furthermore, codegen does not allow overriding the prefix name for python
 	# thus, we patch the swagger spec file to remove the prefix above
 	# TODO: remove the line below when https://github.com/swagger-api/swagger-codegen/issues/11993 is addressed
 	cat ${SWAGGER_JSON} | sed -e 's/model.//g;s/publicapi.//g;s/pkg\/requester//g;s/types.//g' | tee ./swagger-edited-tmp.json >> /dev/null

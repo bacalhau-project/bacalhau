@@ -65,7 +65,7 @@ Optionally, ensure you have appropriate values in `production-secrets.tfvars` (s
 ```bash
 # make sure gcloud is connected to the correct project and compute zone for our workspace
 bash scripts/connect_workspace.sh production
-# apply the latest varibales
+# apply the latest variables
 terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 terraform apply -var-file production.tfvars -var-file production-secrets.tfvars
 ```

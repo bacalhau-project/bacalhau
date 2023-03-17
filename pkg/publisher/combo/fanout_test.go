@@ -27,7 +27,7 @@ func TestFanoutPublisher(t *testing.T) {
 		"single publisher":                 {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
 		"takes first value":                {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
 		"waits for installed":              {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
-		"noone is installed":               {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
+		"no one is installed":               {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
 		"waits for good value":             {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
 		"returns error for all":            {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
 		"waits for highest priority value": {NewPrioritizedFanoutPublisher(time.Millisecond*100, &sleepyPublisher, &healthyPublisher), sleepyPublisher},

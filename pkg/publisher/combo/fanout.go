@@ -166,7 +166,7 @@ loop:
 		}
 	}
 
-	// loop trough publishers by priority and return
+	// loop through publishers by priority and return
 	for _, pub := range f.publishers {
 		result, resultExists := results[pub]
 		if resultExists {
