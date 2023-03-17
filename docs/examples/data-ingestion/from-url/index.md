@@ -2,21 +2,19 @@
 sidebar_label: "From A URL"
 sidebar_position: 1
 ---
-# Copy Data from a URL to Filecoin
+# Copy Data from a URL to a Public Storage
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-ingestion/from-url/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/from-url/index.ipynb)
 
 
-In this example tutorial, we will show how to use Bacalhau to copy data from a URL to Filecoin and expose on IPFS for use with Bacalhau. IPFS is a set of protocols that allow data to be discovered and accessed in a decentralised way. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID.
-
-The goal of the Bacalhau project is to make it easy to perform distributed, decentralised computation next to where the data resides. So a key step in this process is making your data accessible.
-
-
+In this example tutorial, we will show how to use Bacalhau to copy data from a URL to public storage for use with Bacalhau. 
 
 ## Prerequisites
 
-To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to:
+- Install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation).
+- Any public URL
 
 ## Running a Bacalhau Job 
 
