@@ -25,7 +25,9 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 🤓  You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data 
 
-🗓 With Bacalhau you can schedule [jobs based on Latency](https://docs.bacalhau.org/getting-started/resources/#how-it-works)
+🗓 With Bacalhau, you can schedule [jobs based on latency](https://docs.bacalhau.org/getting-started/resources/#how-it-works)
+
+💥 You can integrate with Bacalhau and run a job on a [database](https://docs.bacalhau.org/examples/data-engineering/DuckDB/)
 
 📚 Bacalhau operates on a network of **open compute resources** made available to serve any data processing workload. With Bacalhau you can batch process petabytes (quadrillion bytes) of data.
 
