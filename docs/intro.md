@@ -39,6 +39,31 @@ The goal of the Bacalhau project is to make it easy to perform distributed, dece
 The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
 :::
 
+## 📺 Bacalhau in 1 minute
+Go to the folder directory that you want to store your job results
+
+Install the bacalhau client
+
+```bash
+curl -sL https://get.bacalhau.org/install.sh | bash
+```
+
+Submit a "Hello World" job
+
+```bash
+bacalhau docker run ubuntu echo Hello World
+```
+
+Download your result
+
+```bash
+bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
+```
+
+![](https://github.com/bacalhau-project/bacalhau/blob/main/docs/images/terminal.gif)
+
+For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
+
 ## Use Cases
 
 Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
