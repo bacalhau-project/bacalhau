@@ -19,7 +19,7 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ⚡️ Jobs in Bacalhau are processed where the data was created and all **jobs are parallel by default**.
 
-🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertantly sharing your data outside of your organization.
+🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
 💸 Bacalhau **eliminates ingress/egress costs** since jobs are processed closer to the source. 
 

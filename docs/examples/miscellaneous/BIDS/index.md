@@ -63,7 +63,7 @@ Let's look closely at the command above:
 * `participant --participant_label 01 02 03`: run the participant level in subjects 001 002 003
 
 
-When a job is sumbitted, Bacalhau prints out the related job_id. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related job_id. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python

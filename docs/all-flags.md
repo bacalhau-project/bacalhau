@@ -311,7 +311,7 @@ Flags:
       --concurrency int          How many nodes should run the job (default 1)
       --confidence int           The minimum number of nodes that must agree on a verification result
       --context-path string      Path to context (e.g. python code) to send to server (via public IPFS network) for execution (max 10MiB). Set to empty string to disable (default ".")
-      --deterministic            Enforce determinism: run job in a single-threaded wasm runtime with no sources of entropy. NB: this will make the python runtime executein an environment where only some librarie are supported, see https://pyodide.org/en/stable/usage/packages-in-pyodide.html (default true)
+      --deterministic            Enforce determinism: run job in a single-threaded wasm runtime with no sources of entropy. NB: this will make the python runtime executein an environment where only some libraries are supported, see https://pyodide.org/en/stable/usage/packages-in-pyodide.html (default true)
   -e, --env strings              The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
   -h, --help                     help for python
   -v, --input-volumes strings    CID:path of the input data volumes

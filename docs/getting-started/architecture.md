@@ -165,7 +165,7 @@ The default publisher is `Estuary` (if no API key is provided this falls back to
 
 ### Networking
 
-It is possible to run Bacalhau completely disconnected from the main Bacalhau network, so that you can run private workloads without risking running on public nodes or inadvertantly sharing your data outside of your organization. The isolated network will not connect to the public Bacalhau network nor connect to a public network. Read more on [networking](https://docs.bacalhau.org/next-steps/private-cluster)
+It is possible to run Bacalhau completely disconnected from the main Bacalhau network, so that you can run private workloads without risking running on public nodes or inadvertently sharing your data outside of your organization. The isolated network will not connect to the public Bacalhau network nor connect to a public network. Read more on [networking](https://docs.bacalhau.org/next-steps/private-cluster)
 
 
 ### Input / Output Volumes

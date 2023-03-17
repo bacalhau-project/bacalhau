@@ -270,7 +270,7 @@ Let's look closely at the command above:
 
 * `../outputs`: path to output
 
-* `python main.py`: exceute script
+* `python main.py`: execute script
 
 
 The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
@@ -281,7 +281,7 @@ This will take about 5 minutes to complete and is mainly due to the cold-start G
 Furthermore, the container itself is about 10GB, so it might take a while to download on the node if it isn't cached.
 :::
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python

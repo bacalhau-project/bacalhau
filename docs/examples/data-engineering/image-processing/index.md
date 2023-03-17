@@ -12,7 +12,7 @@ In this example tutorial, we will show you how to use Bacalhau to process images
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
-## Prerequiste
+## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 

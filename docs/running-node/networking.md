@@ -25,7 +25,7 @@ bacalhau id
 
 ## Configure peers
 
-By default , running `bacalhau serve` will connect to the following nodes (which are thge default bootstrap nodes run by Protocol labs):
+By default , running `bacalhau serve` will connect to the following nodes (which are the default bootstrap nodes run by Protocol labs):
 
 ```
 /ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
@@ -53,7 +53,7 @@ bacalhau serve \
   --port 1235
 ```
 
-To ensure that the node can communicate with other nodes on the network, make sure the swarm port is open and accesible by other nodes.
+To ensure that the node can communicate with other nodes on the network, make sure the swarm port is open and accessible by other nodes.
 
 ## REST api port
 

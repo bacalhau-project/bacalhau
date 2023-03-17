@@ -138,7 +138,7 @@ Before you can upload files via estuary, you need an account. [Sign up](https://
 
 ### 2. Create an API Key
 
-Browse to [the API Key mangement page](https://estuary.tech/api-admin) and create a key.
+Browse to [the API Key management page](https://estuary.tech/api-admin) and create a key.
 
 ### 3. Pin a Local File via the Esturay UI
 

@@ -9,7 +9,7 @@ sidebar_position: 10
 
 ## Introduction
 
-In this example tutorial, we use Bacalhau and Easy OCR to digitalize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pretrained models or use your own fine tuned model.
+In this example tutorial, we use Bacalhau and Easy OCR to digitize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pretrained models or use your own fine tuned model.
 
 ## Prerequisite
 
@@ -66,7 +66,7 @@ from PIL import ImageDraw
 im = PIL.Image.open("thai.jpg")
 ```
 
-Next, we create a reader to do OCR to get cordinates which represent a rectangle containing text and the text itself 
+Next, we create a reader to do OCR to get coordinates which represent a rectangle containing text and the text itself 
 
 
 ```python
@@ -160,7 +160,7 @@ Breaking up the easyocr command
 - `--gpu=True`: we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false 
 
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 

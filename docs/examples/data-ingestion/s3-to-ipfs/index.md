@@ -49,7 +49,7 @@ Let's look closely at the command above:
 The command above extracts the path of the file in the bucket, we added the URL as a prefix to the path `https://noaa-goes16.s3.amazonaws.com/`  then provided the path where the XML document tree of the URL is mounted which is `/inputs`
 
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 :::tip
 This only works with datasets that are publicly accessible and don't require an AWS account or pay to use buckets and possibly only limited to first 1000 URLs.

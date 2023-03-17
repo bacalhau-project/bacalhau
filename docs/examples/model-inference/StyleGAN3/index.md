@@ -125,7 +125,7 @@ Let's look closely at the command above:
 
 * `../outputs`: path to output
 
-* `python gen_images.py`: exceute script
+* `python gen_images.py`: execute script
 
 * `--trunc=1 --seeds=2 --network=stylegan3-r-afhqv2-512x512.pkl`: The animation length is either determined based on the --seeds value or explicitly  specified using the --num-keyframes option. When num keyframes is specified with --num-keyframes, the output video length will be 'num_keyframes*w_frames' frames.
 
@@ -156,11 +156,11 @@ Let's look closely at the command above:
 
 * `../outputs`: path to output
 
-* `python gen_images.py`: exceute script
+* `python gen_images.py`: execute script
 
 * `--trunc=1 --seeds=2 --network=stylegan3-r-afhqv2-512x512.pkl`: The animation length is either determined based on the _--seeds_ value or explicitly  specified using the _--num-keyframes_ option. When num keyframes is specified with _--num-keyframes_, the output video length will be 'num_keyframes*w_frames' frames. If _--num-keyframes_ is not specified, the number of seeds given with  _--seeds_ must be divisible by grid size W*H (--grid).  In this case the  output video length will be '# seeds/(w*h)*w_frames' frames.
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
