@@ -137,10 +137,12 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 		for !exiting {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
-				if !exiting {
+				// If the error is NOT a CloseNormal then log the error
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 					cmd.PrintErrf("failed to read: %s", err)
 				}
-				break
+
+				exiting = true
 			}
 
 			if msg.Tag == 1 {
@@ -150,7 +152,9 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 			}
 			n, err := fd.WriteString(msg.Data)
 			if err != nil {
-				cmd.PrintErrf("failed to write: %s", err)
+				if !exiting {
+					cmd.PrintErrf("failed to write: %s", err)
+				}
 				break
 			}
 			if n != len(msg.Data) {
@@ -167,16 +171,14 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 		select {
 		case <-done:
 			exiting = true
-			return conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			return nil
 		case <-ctx.Done():
 			exiting = true
 			return nil
 		case <-interrupt:
 			exiting = true
-			err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				return err
-			}
+			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
 			select {
 			case <-done:

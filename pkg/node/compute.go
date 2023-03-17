@@ -183,7 +183,8 @@ func NewComputeNode(
 		Ctx:            ctx,
 		Host:           host,
 		ExecutionStore: executionStore,
-		Executors:      executors,
+		//
+		Executors: executors,
 	})
 	_, loggingCancel := context.WithCancel(ctx)
 	cleanupManager.RegisterCallback(func() error {

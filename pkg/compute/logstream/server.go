@@ -82,7 +82,12 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 	log.Ctx(s.ctx).Debug().Msgf("Logserver checking execution state: %+v", execution)
 
 	if execution.State.IsTerminal() {
-		log.Ctx(s.ctx).Error().Msgf("execution is already complete: %s", request.ExecutionID)
+		// If the execution is already complete, possibly an error or possibly
+		// just a really fast task, then we have to resort to reading the output
+		// from the job. We will send the stdout/stderr that it did collect whilst
+		// execution and will send stdout followed by stderr rather than the usual
+		// interleaved dataframes.
+		log.Ctx(s.ctx).Error().Msgf("execution was already terminated: %s", execution.ID)
 		_ = stream.Reset()
 		return
 	}
@@ -106,24 +111,10 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	// While we can read, and don't get an EOF, keep writing to the stream.
-	buffer := make([]byte, 65535) //nolint:gomnd
-	for {
-		log.Ctx(s.ctx).Debug().Msgf("Logserver waiting for read ....")
-		n, err := reader.Read(buffer)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Ctx(s.ctx).Error().Msgf("problem reading from executor streams: %s", err)
-			break
-		}
-
-		_, err = stream.Write(buffer[:n])
-		if err != nil {
-			log.Ctx(s.ctx).Error().Msgf("problem writing to stream: %s", err)
-			break
-		}
+	_, err = io.Copy(stream, reader)
+	if err != nil {
+		log.Ctx(s.ctx).Error().Msgf("problem reading from executor streams: %s", err)
 	}
+
 	_ = stream.Reset()
 }

@@ -73,5 +73,6 @@ type ReadLogsRequest struct {
 }
 
 type ReadLogsResponse struct {
-	Address string
+	Address           string
+	ExecutionComplete bool
 }

@@ -138,7 +138,8 @@ type ExecutionLogsRequest struct {
 }
 
 type ExecutionLogsResponse struct {
-	Address string
+	Address           string
+	ExecutionFinished bool
 }
 
 ///////////////////////////////////

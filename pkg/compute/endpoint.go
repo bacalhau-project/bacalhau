@@ -261,13 +261,9 @@ func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRe
 		return ExecutionLogsResponse{}, err
 	}
 
-	if execution.State.IsTerminal() {
-		return ExecutionLogsResponse{},
-			fmt.Errorf("cannot retrieve real-time logs for execution %s in state %s", execution.ID, execution.State)
-	}
-
 	return ExecutionLogsResponse{
-		Address: s.logServer.Address,
+		Address:           s.logServer.Address,
+		ExecutionFinished: execution.State.IsTerminal(),
 	}, nil
 }
 

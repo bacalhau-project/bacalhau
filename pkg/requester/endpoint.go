@@ -185,7 +185,7 @@ func (node *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest)
 		return emptyResponse, err
 	}
 
-	return ReadLogsResponse{Address: response.Address}, nil
+	return ReadLogsResponse{Address: response.Address, ExecutionComplete: response.ExecutionFinished}, nil
 }
 
 func (node *BaseEndpoint) handleBidResponse(ctx context.Context, job model.Job, response bidstrategy.BidStrategyResponse) error {

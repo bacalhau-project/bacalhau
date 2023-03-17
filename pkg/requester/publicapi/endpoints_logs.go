@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -64,7 +65,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	err = conn.ReadJSON(&srequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("error reading signed request: %s", err))
-		http.Error(res, errorResponse, http.StatusBadRequest)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
 		return
 	}
 
@@ -76,7 +77,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	buffer := bytes.NewBuffer(b)
 	payload, err := unmarshalSignedJob[model.LogsPayload](ctx, buffer)
 	if err != nil {
-		httpError(ctx, res, err, http.StatusBadRequest)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, "failed to decode request"))
 		return
 	}
 
@@ -86,7 +87,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	job, err := s.jobStore.GetJob(ctx, payload.JobID)
 	if err != nil {
 		log.Ctx(ctx).Debug().Msgf("Missing job: %s", err)
-		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, err.Error()))
 		return
 	}
 
@@ -98,7 +99,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 			job.Metadata.ClientID, payload.ClientID)
 
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("mismatched client id: %s", payload.ClientID))
-		http.Error(res, errorResponse, http.StatusForbidden)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
 		return
 	}
 
@@ -107,14 +108,19 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	response, err := s.requester.ReadLogs(ctx, logRequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("read logs failure: %s", err))
-		http.Error(res, errorResponse, http.StatusBadRequest)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
+		return
+	}
+
+	if response.ExecutionComplete {
+		s.writeTerminatedJobOutput(ctx, conn, job.ID(), payload.ExecutionID)
 		return
 	}
 
 	client, err := logstream.NewLogStreamClient(ctx, response.Address)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err))
-		http.Error(res, errorResponse, http.StatusInternalServerError)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))
 		return
 	}
 	defer client.Close()
@@ -122,7 +128,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	err = client.Connect(ctx, payload.JobID, payload.ExecutionID, payload.WithHistory)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
-		http.Error(res, errorResponse, http.StatusInternalServerError)
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))
 		return
 	}
 
@@ -138,16 +144,59 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 
-		msg := Msg{
-			Tag:  uint8(frame.Tag),
-			Data: string(frame.Data),
-		}
-
-		err = conn.WriteJSON(msg)
+		err = s.writeDataFrame(ctx, conn, frame)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("websocket write failure: %s", err)
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			break
+		}
+	}
+
+	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+}
+
+func (s *RequesterAPIServer) writeDataFrame(ctx context.Context, conn *websocket.Conn, frame logstream.DataFrame) error {
+	msg := Msg{
+		Tag:  uint8(frame.Tag),
+		Data: string(frame.Data),
+	}
+
+	err := conn.WriteJSON(msg)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("websocket write failure: %s", err)
+	}
+	return err
+}
+
+func (s *RequesterAPIServer) writeTerminatedJobOutput(
+	ctx context.Context,
+	conn *websocket.Conn,
+	jobID string,
+	executionID string) {
+	jobState, err := s.jobStore.GetJobState(ctx, jobID)
+	if err != nil {
+		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, err.Error()))
+		return
+	}
+
+	for _, exec := range jobState.Executions {
+		if exec.ComputeReference == executionID {
+			if exec.RunOutput.STDOUT != "" {
+				df := logstream.DataFrame{
+					Tag:  logstream.StdoutStreamTag,
+					Size: len(exec.RunOutput.STDOUT),
+					Data: []byte(exec.RunOutput.STDOUT),
+				}
+				_ = s.writeDataFrame(ctx, conn, df)
+			}
+
+			if exec.RunOutput.STDERR != "" {
+				df := logstream.DataFrame{
+					Tag:  logstream.StderrStreamTag,
+					Size: len(exec.RunOutput.STDERR),
+					Data: []byte(exec.RunOutput.STDERR),
+				}
+				_ = s.writeDataFrame(ctx, conn, df)
+			}
 		}
 	}
 
