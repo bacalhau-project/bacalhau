@@ -27,7 +27,6 @@ Bacalhau is a platform for fast, cost efficient, and secure computation by runni
 
 Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals with the project center around creating an open, collaborative Compute ecosystem. We created Bacalhau to bring useful Compute resources to data stored in Filecoin. We believe that the same benefits of open collaboration on datasets should be available to generic storage compute tasks.
 
-![image](/img/bacalhau-high-level-view.png)
 
 ## How it works
 
@@ -40,6 +39,11 @@ The goal of the Bacalhau project is to make it easy to perform distributed, dece
 :::info
 The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
 :::
+
+## Use Cases
+
+Bacalhau shines when it comes to data-intensive applications like _data engineering_, _model training_, _model inference_, _model training_, _model dynanmics_, etc.
+Here are some examples we have covered 
 
 ## Roadmap
 
