@@ -8,7 +8,7 @@ sidebar_position: 80
 :::info
 
 The following commands refer to bacalhau cli version `v0.3.18`.
-For installing or upgrading a client, follow the instructions in the [installation page](./getting-started/installation.md).
+For installing or upgrading a client, follow the instructions in the [installation page](https://docs.bacalhau.org/getting-started/installation).
 Run `bacalhau version` in a terminal to check what version you have.
 
 :::

@@ -100,6 +100,6 @@ Bacalhau has a very friendly community and we are always happy to help you get s
 
 ## Next Steps
 
-👉 Continue with [Getting Started guide](/docs/getting-started/installation.md) to learn how to install and run a job with the Bacalhau client.
+👉 Continue with [Getting Started guide](https://docs.bacalhau.org/getting-started/installation) to learn how to install and run a job with the Bacalhau client.
 
 👉 Or jump directly to try out the different [Examples](/docs/examples/index.md) that showcases Bacalhau abilities.
