@@ -4,7 +4,7 @@ VERSION ?= $${PYPI_VERSION}
 
 
 
-#set cmd to be swagger-codegen if that doesnt exist make it the java command
+#set cmd to be swagger-codegen if that doesn't exist make it the java command
 #swagger-codegen is supported by brew install swagger-codegen@2
 #the java command is supported by the docker image swaggerapi/swagger-codegen-cli
 SWAGGER ?= swagger-codegen

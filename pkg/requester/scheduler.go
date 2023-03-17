@@ -529,7 +529,7 @@ func (s *scheduler) startVerificationIfPossible(ctx context.Context, jobID strin
 		return
 	}
 	// TODO: technically we can start verifying if we have enough results compared to deal's confidence
-	//  and concurrency. Though we will have ot handle the case where verification fails, but can still
+	//  and concurrency. Though we will have to handle the case where verification fails, but can still
 	//  succeed if we wait for more results.
 	if len(pendingVerifications) >= job.Spec.Deal.Concurrency {
 		verifiedResults, verificationErr := s.verifyResult(ctx, job, pendingVerifications)
