@@ -252,7 +252,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.3 // indirect
 	github.com/swaggo/swag v1.8.10 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
-	github.com/tetratelabs/wazero v1.0.0-rc.1 // indirect
+	github.com/tetratelabs/wazero v1.0.0-rc.2 // indirect
 	github.com/ucarion/urlpath v0.0.0-20200424170820-7ccc79b76bbb // indirect
 	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
