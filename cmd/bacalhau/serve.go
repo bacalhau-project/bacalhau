@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -27,6 +29,8 @@ import (
 )
 
 var DefaultSwarmPort = 1235
+
+const NvidiaCLI = "nvidia-container-cli"
 
 var (
 	serveLong = templates.LongDesc(i18n.T(`
@@ -361,7 +365,15 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	if err != nil {
 		return fmt.Errorf("error creating in memory datastore: %s", err)
 	}
+	AutoLabels := AutoOutputLabels()
+	combinedMap := make(map[string]string)
+	for key, value := range AutoLabels {
+		combinedMap[key] = value
+	}
 
+	for key, value := range OS.Labels {
+		combinedMap[key] = value
+	}
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		IPFSClient:           ipfsClient,
@@ -376,7 +388,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		RequesterNodeConfig:  getRequesterConfig(OS),
 		IsComputeNode:        isComputeNode,
 		IsRequesterNode:      isRequesterNode,
-		Labels:               OS.Labels,
+		Labels:               combinedMap,
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
@@ -502,4 +514,75 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 	}
 
 	return client, nil
+}
+func AutoOutputLabels() map[string]string {
+	m := make(map[string]string)
+	// Get the operating system name
+	os := runtime.GOOS
+	m["Operating-System"] = os
+	m["git-lfs"] = "False"
+	if checkGitLFS() {
+		m["git-lfs"] = "True"
+	}
+	arch := runtime.GOARCH
+	m["Architecture"] = arch
+	CLIPATH, _ := exec.LookPath(NvidiaCLI)
+	if CLIPATH != "" {
+		gpuNames, gpuMemory := gpuList()
+		// Print the GPU names
+		for i, name := range gpuNames {
+			key := fmt.Sprintf("GPU-%d", i)
+			m[key] = name
+			key = fmt.Sprintf("GPU-%d-Memory", i)
+			m[key] = gpuMemory[i]
+		}
+	}
+	// Get list of installed packages (Only works for linux, make it work for every platform)
+	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// var packageList []string
+	// for _, file := range files {
+	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
+
+	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
+	// 	}
+	// }
+	// m["Installed-Packages"] = strings.Join(packageList, ",")
+	return m
+}
+
+func gpuList() ([]string, []string) {
+	// Execute nvidia-smi command to get GPU names
+	cmd := exec.Command("nvidia-smi", "--query-gpu=gpu_name", "--format=csv")
+	output, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	// Split the output by newline character
+	gpuNames := strings.Split(string(output), "\n")
+
+	// Remove the first and last elements of the slice
+	gpuNames = gpuNames[1 : len(gpuNames)-1]
+
+	cmd1 := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv")
+	output1, err1 := cmd1.Output()
+	if err1 != nil {
+		panic(err1)
+	}
+
+	// Split the output by newline character
+	gpuMemory := strings.Split(string(output1), "\n")
+
+	// Remove the first and last elements of the slice
+	gpuMemory = gpuMemory[1 : len(gpuMemory)-1]
+
+	return gpuNames, gpuMemory
+}
+
+func checkGitLFS() bool {
+	_, err := exec.LookPath("git-lfs")
+	return err == nil
 }
