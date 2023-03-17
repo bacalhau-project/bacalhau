@@ -8,6 +8,7 @@ hide_title: true
 <p align="center">
 <img src="img/bacalhau-horizontal.jpg" alt="Bacalhau Logo" width="300" />
 </p>
+import ReactPlayer from 'react-player'
 
 ## Overview
 
@@ -39,7 +40,7 @@ The goal of the Bacalhau project is to make it easy to perform distributed, dece
 The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
 :::
 
-## 📺 Bacalhau in 1 minute
+## Bacalhau in 1 minute
 Go to the folder directory that you want to store your job results
 
 Install the bacalhau client
@@ -59,8 +60,7 @@ Download your result
 ```bash
 bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
 ```
-
-![](https://github.com/bacalhau-project/bacalhau/blob/main/docs/images/terminal.gif)
+<ReactPlayer playing controls url='https://github.com/bacalhau-project/bacalhau/blob/main/docs/images/terminal.gif' />
 
 For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
 
