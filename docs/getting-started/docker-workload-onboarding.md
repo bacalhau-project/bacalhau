@@ -119,34 +119,37 @@ do something useful
 
 ### Step 5 - Upload the Input Data
 
-We recommend uploading your data to IPFS for persistent storage, because:
+Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. You can use either of these methods to upload your data:
 
-* Bacalhau is designed to perform the computation next to the data
-* Distributing data across the solar system with IPFS distributes the Bacalhau computation
-* Distributing computation improves performance by scaling, and improves resiliency via redundancy
-* Using IPFS CIDs as inputs enables repeatable and cacheable execution
+- [Copy data from a URL to public storage](https://docs.bacalhau.org/examples/data-ingestion/from-url/)
+- [Pin Data to public storage](https://docs.bacalhau.org/examples/data-ingestion/pinning/)
+- [Copy Data from S3 Bucket to public storage](https://docs.bacalhau.org/examples/data-ingestion/s3-to-ipfs/)
 
-:::tip
-
-The following guides explain how to store data on the IPFS network.
-
-- Leverage an IPFS “pinning service” such as:
-  - [Web3.Storage](https://web3.storage/account/)
-  - [Estuary](https://estuary.tech/sign-in)
-  - [Manually pin your files to IPFS](https://docs.ipfs.io/how-to/pin-files/) with your own IPFS server.
-- If uploading a folder of input files, consider [uploading with this script](https://web3.storage/docs/#create-the-upload-script). However, please note that any content uploaded to Web3.storage is [also wrapped in a parent directory](https://web3.storage/docs/how-tos/store/#directory-wrapping). You will need to take care to reference the inner directory CID in your bacalhau command.
-
+:::info
+You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
 :::
 
 ### Step 6 - Run the Workload on Bacalhau
 
-To run your workload using input data stored in IPFS, run the following command:
+To run your workload, run the following command:
 
 ```shell
 $ bacalhau docker run --inputs ${CID} ${IMAGE} ${CMD}
+```
+To check the status of your job, run the following command:
 
+```shell
 $ bacalhau list 
+```
+To get more information on your job
 
+```shell
+$ bacalhau descrie JOB_ID
+```
+
+To download your job
+
+```shell
 $ bacalhau get JOB_ID
 ```
 
@@ -175,12 +178,10 @@ job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9
 ```
 
 :::caution
-
 The `--inputs` flag does not support CID subpaths.
-
 :::
 
-Alternatively, you can run your workload with a publicly accessible http(s) URL, which will download the data temporarily into IPFS:
+Alternatively, you can run your workload with a publicly accessible http(s) URL, which will download the data temporarily into your public storage:
 
 ```shell
 $ export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
@@ -192,17 +193,9 @@ $ bacalhau get JOB_ID
 ```
 
 :::caution
-
 The `--input-urls` flag does not support URL directories.
-
 :::
 
-## Video Tutorials
-
-We have video tutorial examples on how to onboarded workload to Bacalhau:
-- [Youtube: Bacalhau SOCAT Workload Demo](https://www.youtube.com/watch?v=t2AHD8yJhLY)
-- [Github: bacalhau_socat_test](https://github.com/wesfloyd/bacalhau_socat_test)
-- [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
 <!-- <ReactPlayer playing controls url='https://www.youtube.com/watch?v=t2AHD8yJhLY' playing='false'/> -->
 
