@@ -34,18 +34,18 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a bacalhau requester and compute node
+		# Start a bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve
 		# or
-		bacalhau serve --node-type compute
+		bacalhau serve --node-type compute --node-type requester
+		# or
+		bacalhau serve --node-type compute,requester
 
 		# Start a bacalhau requester node
 		bacalhau serve --node-type requester
 
-		# Start a bacalhau hybrid node that acts as both compute and requester
-		bacalhau serve --node-type compute --node-type requester
-		# or
-		bacalhau serve --node-type compute,requester
+		# Start a bacalhau compute node
+		bacalhau serve --node-type compute
 `))
 )
 
@@ -162,7 +162,8 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`The libp2p multiaddress to connect to.`,
+		// TODO @enricorotundo - elaborate on this flag (none, env, or comma separated list of multiaddresses)
+		`The libp2p multiaddress to connect to. Use "none" to not connect to any peers, "env" to connect to the peers specified in the BACALHAU_ENVIRONMENT environment variable, or a comma separated list of multiaddresses to connect to.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
@@ -178,10 +179,8 @@ func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
 	if OS.PeerConnect == "none" {
 		peersStrings = []string{}
-	} else if system.Environment(OS.PeerConnect).IsKnown() {
-		// TODO @enricorotundo - throw a warning if OS.PeerConnect does not matche system.GetEnvironment() ?
-		// TODO @enricorotundo - add tests for this case
-		peersStrings = system.Envs[system.Environment(OS.PeerConnect)].BootstrapAddresses
+	} else if OS.PeerConnect == "env" {
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}

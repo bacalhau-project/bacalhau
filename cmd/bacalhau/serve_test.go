@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -175,4 +177,44 @@ func (s *ServeSuite) TestGetPeers() {
 	peers, err := getPeers(OS)
 	s.NoError(err)
 	s.Require().Equal(0, len(peers))
+
+	// if we set the peer connect to "env" it should return the peers from the env
+	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
+	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
+	for envName, envData := range system.Envs {
+		OS = NewServeOptions()
+		OS.PeerConnect = "env"
+		peers, err = getPeers(OS)
+		s.NoError(err)
+		// search each peer in env BootstrapAddresses
+		for _, peer := range peers {
+			found := false
+			for _, envPeer := range envData.BootstrapAddresses {
+				if peer.String() == envPeer {
+					found = true
+					break
+				}
+			}
+			s.Require().True(found, "Peer %s not found in env %s", peer, envName)
+		}
+	}
+
+	// if we pass multiaddresses it should return them
+	OS = NewServeOptions()
+	inputPeers := []string{
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
+	}
+	OS.PeerConnect = strings.Join(inputPeers, ",")
+	peers, err = getPeers(OS)
+	s.NoError(err)
+	s.Require().Equal(inputPeers[0], peers[0].String())
+	s.Require().Equal(inputPeers[1], peers[1].String())
+
+	// if we pass invalid multiaddress it should error out
+	OS = NewServeOptions()
+	inputPeers = []string{"foo"}
+	OS.PeerConnect = strings.Join(inputPeers, ",")
+	_, err = getPeers(OS)
+	s.Require().Error(err)
 }
