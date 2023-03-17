@@ -220,4 +220,4 @@ This can often be resolved by re-tagging your docker image
 
 ## Support
 
-Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or for any issues you encounter.
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY)(#bacalhau channel)
