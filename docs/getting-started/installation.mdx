@@ -9,54 +9,81 @@ In this tutorial, you'll learn how to install and run a job with the Bacalhau cl
 
 ## Install the Bacalhau Client
 
-The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. It is also available as a Docker image.
+The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. you can also run Bacalhau in a Docker container. 
 
-### Installing the Bacalhau CLI Locally
+If you don't already have Docker installed, see the [full example](../examples/workload-onboarding/bacalhau-docker-image/index.md) for installing and running Bacalhau on Docker.
 
-You can install or update the Bacalhau CLI by running the following command in a terminal.
-It will prompt for the root password to copy the Bacalhau binary to `/usr/local/bin`:
+### Install the Bacalhau CLI 
 
-```bash
-$ curl -sL https://get.bacalhau.org/install.sh | bash
-```
+You can install or update the Bacalhau CLI or pull a Docker image by running the following command in a terminal.
+You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
 
 :::tip
-Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
+Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere on the PATH.
 :::
 
-### Running The Bacalhau CLI Via Docker
 
-Instead of installing the client, you can use the [Bacalhau Docker image](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau) to run the client. There's also a [comprehensive example](../examples/workload-onboarding/bacalhau-docker-image/index.md). To pull the latest image run the following command:
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-```shell
-$ docker pull ghcr.io/bacalhau-project/bacalhau:latest
-```
+<Tabs
+    defaultValue="Local"
+    values={[
+        {label: 'Local', value: 'Local'},
+        {label: 'Docker', value: 'Docker'},
+    ]}>
+<TabItem value="Local">
+
+    curl -sL https://get.bacalhau.org/install.sh | bash
+
+</TabItem>
+<TabItem value="Docker">
+
+    docker pull ghcr.io/bacalhau-project/bacalhau:latest
+
+</TabItem>
+</Tabs>
+
+_ See the [full example](../examples/workload-onboarding/bacalhau-docker-image/index.md) for installing and running bacalhau on Docker. _
 
 :::warning
-Remember that the "latest" tag is just a string. It doesn't refer to the latest version of the Bacalhau client, it refers to an image that has the "latest" tag. Therefore, if your machine has already downloaded the "latest" image, it won't download it again. To force a download, you can use the `--no-cache` flag.
+The "latest" tag is just a tag for a given version of Bacalhau, [referring to a release](https://github.com/bacalhau-project/bacalhau/releases) or Docker image with the "latest" tag. Therefore, if your machine has already pulled a "latest" image with an older version tagged as latest, it won't download it again. To run a specific version, use the command `docker run -it ghcr.io/bacalhau-project/bacalhau:v0.3.23` (this will run version 0.3.23)
 :::
 
-Now you can run any Bacalhau client command by prefixing it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`. For example, to run the `version` command, you can run:
-
-```shell
-$ docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
-```
-
-:::tip
-If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. You can see an example of this in the [Bacalhau Docker example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
-:::
 
 ### Verify the Installation
 
-Once your Bacalhau client is installed, it will show the client and server version. Your client and server versions must be aligned before you can run a job with Bacalhau client. You can use the code below to check this:
+To run and Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`. 
 
-```shell
-$ bacalhau version
-```
+To verify installation and check the version of the cleint and server, use the `version` command, you can run the command:
+
+
+
+<Tabs
+    defaultValue="Local"
+    values={[
+        {label: 'Local', value: 'Local'},
+        {label: 'Docker', value: 'Docker'},
+    ]}>
+<TabItem value="Local">
+
+    bacalhau version
+
+</TabItem>
+<TabItem value="Docker">
+
+    docker run -it ghcr.io/bacalhau-project/bacalhau:latest version
+
+</TabItem>
+</Tabs>
 
 If you're wondering which server is being used, the Bacalhau Project has a [public Bacalhau server network](https://docs.bacalhau.org/#our-vision) that's shared with the community. This server allows you to launch your jobs from your computer without maintaining a compute cluster on your own.
 
 Going further, we will look at some commands to run a simple job. For a complete overview of the `bacalhau` commands, take a look at the [CLI Reference page](../all-flags).
+
+:::tip
+If you want to pass files between the Docker Bacalhau CLI and your desktop, don't forget to mount a volume. You can see an example of this in the [Bacalhau Docker example](../examples/workload-onboarding/bacalhau-docker-image/index.md).
+:::
 
 ## Submit a "Hello World" job
 
@@ -101,7 +128,7 @@ A `Completed` state indicates the job has completed successfully and the results
 For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 
 
-## Get results
+## Get Results
 
 After the job has finished processing, its outputs are stored in your storage location. To download outputs locally.
 
