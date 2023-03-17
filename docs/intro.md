@@ -41,13 +41,18 @@ The options are not limited to the above mentioned. You can mount your data anyw
 
 ## Use Cases
 
-Bacalhau shines when it comes to data-intensive applications like _data engineering_, _model training_, _model inference_, _model training_, _model dynanmics_, etc.
-Here are some example tutorials to get you started:
+Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
+
+Here are some example tutorials on how you can process your data with Bacalhau:
 - [Image processing with Bacalhau](https://docs.bacalhau.org/examples/model-inference/stable-diffusion-gpu/)
 - [Generate Realistic Images using StyleGAN3 and Bacalhau](https://docs.bacalhau.org/examples/model-inference/StyleGAN3/)
 - [Object Detection with YOLOv5 on Bacalhau](https://docs.bacalhau.org/examples/model-inference/object-detection-yolo5/)
 - [Running Genomics on Bacalhau](https://docs.bacalhau.org/examples/miscellaneous/Genomics/)
 - [Training Pytorch Model with Bacalhau](https://docs.bacalhau.org/examples/model-training/Training-Pytorch-Model/)
+
+:::info
+For more tutorials, visit our [example page](https://docs.bacalhau.org/examples/)
+:::
 
 ## Roadmap
 
