@@ -1,3 +1,8 @@
 [codespell]
-skip = .git,*.pdf,*.svg
-# ignore-words-list = 
+skip = .git,*.pdf,*.svg,testdata,Gemfile.lock,go*.sum,_config.yml,package-lock.json
+# keypair - it is ok as a single word IMHO
+# querys - Python API param querys: Query parameters tuple list to be updated.
+# fo - user in URL query
+# ndoes - side effect of \ndoes
+# ReceivedFrom - used in a comment, taken as candidate for fixing
+ignore-words-list = keypair,keypairs,querys,fo,ndoes,receivedfrom
