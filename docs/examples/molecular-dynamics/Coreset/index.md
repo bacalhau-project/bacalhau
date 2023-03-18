@@ -4,20 +4,12 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/Coreset/BIDS/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=miscellaneous/Coreset/index.ipynb)
 
-## **Introduction**
-
-[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets
-
-Coresets similar functionality as same as the whole dataset
-
-![](https://i.imgur.com/AQDLMXn.png)
-
-In this case, we use the coreset method which can lead to a fast speed in solving the k-means problem among the big data with high accuracy in the meantime.
+[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets. In this case, we use the coreset method which can lead to a fast speed in solving the k-means problem among the big data with high accuracy in the meantime.
 
 We construct a small coreset for arbitrary shapes of numerical data with a decent time cost. The implementation was mainly based on the coreset construction algorithm that was proposed by Braverman et al. (SODA 2021).
 
 
-## **Running Locally**
+## Running Locally
 
 Clone the repo which contains the code
 
@@ -78,12 +70,9 @@ The following command is to run the python script to generate the coreset:
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson
 ```
 
-Now, lets build the Docker container. Let's create a  `Dockerfile` to create your Docker deployment. The `Dockerfile` is a text document that contains the commands used to assemble the image.
+## Containerize Script using Docker
 
-First, create the `Dockerfile`.
-
-Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included.
-
+To build your own docker container, create a `Dockerfile`, which contains instructions on how the image will be built, and what extra requirements will be included.
 
 ```
 FROM python:3.8
@@ -100,38 +89,51 @@ RUN cd Coreset && pip3 install -r requirements.txt
 
 We will use the `python:3.8` image, and we will choose the src directory in the container as our work directory, we run the same commands for installing dependencies that we used locally, but we also add files and directories which are present on our local machine, we also run a test command, in the end, to check whether the script works
 
-To Build the docker container run the docker build command
+:::info
+See more information on how to containerize your script/app [here](https://docs.docker.com/get-started/02_our_app/)
+:::
 
+
+### Build the container
+
+We will run `docker build` command to build the container;
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
 ```
 
+Before running the command replace;
 
-You need to replace
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
-* `<hub-user>` with your Docker hub username. If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created.
+- **repo-name** with the name of the container, you can name it anything you want
 
-* `<repo-name>` with the name of the container, you can name it anything you want
+- **tag** this is not required but you can use the latest tag
 
-* `<tag>`: this is not required but you can use the latest tag
+In our case
 
-After you have build the container, the next step is to test it locally and then push it Docker hub.
-
-Now you can push this repository to the registry designated by its name or tag.
-
-
-```
- docker push <hub-user>/<repo-name>:<tag>
+```bash
+docker build -t jsace/coreset
 ```
 
+### Push the container
 
-After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+
+```
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case
+
+```bash
+docker push jsace/coreset
+```
 
 
-## Running on Bacalhau
+## Running a Bacalhau Job
 
-The following command let you to run the example on Bacalhau:
+After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 ```
 bacalhau docker run \
@@ -144,11 +146,12 @@ python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o output
 
 Backend: Docker backend here for running the job
 
-Input dataset: Upload the .osm.pbf file while you want to use as a dataset to IPFS, use this CID here 
+* `input/liechtenstein-latest.osm.pbf`: Upload the .osm.pbf file 
 
-we mount it to the folder inside the container so it can be used by the script
+* `-v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/inpu`: mount dataset to the folder inside the container so it can be used by the script
 
-Image: custom docker Image (it has osmium, python and the requirements for the script installed )
+* `jsace/coreset`:  the name and the tag of the docker image we are using
+
 
 The following command converts the osm.pbf dataset to geojson (the dataset is stored in the input volume folder):
 
@@ -162,7 +165,6 @@ Let's run the script, we use flag `-f` to determine the path of the output geojs
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs
 ```
 
-
 We get the output in stdout
 
 Additional parameters: 
@@ -172,34 +174,17 @@ Additional parameters:
 
 * `-o`: the output folder
 
-Let's install Bacalhau:
-
-
-```bash
-%%bash
-curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-
-```bash
-%%bash --out job_id
-bacalhau docker run \
---id-only \
---wait \
---timeout 3600 \
---wait-timeout-secs 3600 \
--v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input \
-jsace/coreset
--- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson; python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs'
-```
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
-%env JOB_ID={job_id}
+%%env JOB_ID={job_id}
 ```
 
 
-Running the commands will output a UUID. This is the ID of the job that was created. You can check the status of the job with the following command:
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
 
@@ -208,10 +193,9 @@ Running the commands will output a UUID. This is the ID of the job that was crea
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-Where it says `Completed`, that means the job is done, and we can get the results.
-
-To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -219,11 +203,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
-we can download the results!
-we create a temporary directory to save our results
-
-To download the results of your job, run the following command:
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -232,7 +212,9 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finishe, you should see the following contents in results directory
+## Viewing your Job Output
+
+Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash
@@ -261,7 +243,7 @@ cat results/combined_results/outputs/coreset-weights-liechtenstein-latest.csv | 
 ```
 
 
-Sources
+#### Sources
 
 [1] [http://proceedings.mlr.press/v97/braverman19a/braverman19a.pdf](http://proceedings.mlr.press/v97/braverman19a/braverman19a.pdf)
 

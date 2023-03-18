@@ -124,7 +124,7 @@ Let's look closely at the command above:
 * `'duckdb -s "select 1"'`: execute DuckDB
 
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
@@ -178,9 +178,9 @@ cat results/combined_results/stdout  # displays the contents of the file
     └───┘
 
 
-## Running Arbituary SQL commands
+## Running Arbitrary SQL commands
 
-Below is the `bacalhau docker run` command to to run arbituary SQL commands over yellow taxi trips dataset
+Below is the `bacalhau docker run` command to to run arbitrary SQL commands over yellow taxi trips dataset
 
 
 ```bash
@@ -207,10 +207,10 @@ Let's look closely at the command above:
 
 * `/inputs`: path to input dataset
 
-* `duckdb -s`: exceute DuckDB
+* `duckdb -s`: execute DuckDB
 
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 - **Job status**: You can check the status of the job using `bacalhau list`. 
 

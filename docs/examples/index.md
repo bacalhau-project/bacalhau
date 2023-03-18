@@ -24,7 +24,7 @@ We're adding examples all the time. Check back soon for more!
 
 ## Usage
 
-Each example walks you through a specific task and aims at being as self-contained as possible.
+Each example walks you  a specific task and aims at being as self-contained as possible.
 For starters, we recommended to start from examples whose prerequistes include only the Bacalhau client (e.g. [Python Hello World](./workload-onboarding/Prolog-Hello-World/index.md)).
 First read through an example to grasp its objectives and syntax, once you feel confident with those you may want to run it *interactively*.
 
@@ -47,7 +47,7 @@ This may feel repetitive but it's helpful to display the actual results of your 
 ### Syntax primer
 
 Spread across each example you'll find **blocks** like the one below.
-As you go trough an example, you'll need to understand the nature these blocks and how to interpret them.
+As you go through an example, you'll need to understand the nature these blocks and how to interpret them.
 
 ```
 Hello reader, I'm a block!
@@ -109,7 +109,7 @@ You have two options:
 #### Run examples locally
 
 1. Pick an example you'd like to run
-1. Find the corrseponding `.ipynb` file in https://github.com/bacalhau-project/examples
+1. Find the corresponding `.ipynb` file in https://github.com/bacalhau-project/examples
 1. Pull the example repo locally: `git clone https://github.com/bacalhau-project/examples.git`
 1. Install Jupyter Notebook or preferably [install JupyterLab](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) locally
 1. Launch JupyterLab, run `jupyter lab` in a terminal (see the [official docs for more details](https://jupyterlab.readthedocs.io/en/stable/getting_started/starting.html))

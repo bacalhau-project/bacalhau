@@ -19,7 +19,7 @@ Architecturally, the CPU is composed of just a few cores with lots of cache memo
 Computations like matrix multiplication could be done much faster on GPU than on CPU
 
 
-## Prerequiste
+## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
@@ -123,7 +123,7 @@ Let's look closely at the command above:
 
 
 ```python
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 ```
 
 ## Checking the State of your Jobs

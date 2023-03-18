@@ -4,7 +4,7 @@ sidebar_position: 10
 description: "Oceanography data conversion with Bacalhau"
 ---
 # Oceanography - Data Conversion
-
+ƒ
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/oceanography-conversion/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering/oceanography-conversion/index.ipynb)
 
@@ -248,7 +248,7 @@ bacalhau docker run \
         ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py
 ```
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python

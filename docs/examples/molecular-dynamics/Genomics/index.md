@@ -15,7 +15,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Containerize your Script using Docker
 
-To run Genomics on Bacalhau we need to set up a Docker container. To do this, you'll need to create a `Dockerfile` and add your desired configuaration. The Dockerfile is a text document that contains the commands that specify how the image will be built.
+To run Genomics on Bacalhau we need to set up a Docker container. To do this, you'll need to create a `Dockerfile` and add your desired configuration. The Dockerfile is a text document that contains the commands that specify how the image will be built.
 
 ```
 FROM kipoi/kipoi-veff2:py37
@@ -70,7 +70,7 @@ jsacex/kipoi-veff2:py37 \
 -- kipoi_veff2_predict ./examples/input/test.vcf ./examples/input/test.fa ../outputs/output.tsv -m "DeepSEA/predict" -s "diff" -s "logit"
 ```
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
@@ -87,10 +87,6 @@ When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that
 %%bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 11:01:31 [0m[97;40m cf10a68c [0m[97;40m Docker jsacex/kipoi-... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmU3EV213QSHeK... [0m
-
 
 When it says `Completed`, that means the job is done, and we can get the results.
 

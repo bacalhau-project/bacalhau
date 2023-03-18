@@ -281,7 +281,7 @@ This will take about 5 minutes to complete and is mainly due to the cold-start G
 Furthermore, the container itself is about 10GB, so it might take a while to download on the node if it isn't cached.
 :::
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
