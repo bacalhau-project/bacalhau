@@ -12,7 +12,7 @@ In this example tutorial, we will show you how to use Bacalhau to process images
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
-## Prerequiste
+## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
@@ -53,10 +53,6 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     13:17:34  0e4119fd  Docker dpokidov/imag...  Completed            /ipfs/QmQnern37ueHrs... 
-
-
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -75,11 +71,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
-
-    Fetching results of job '0e4119fd-12f9-42f5-8cd2-54a0d270541e'...
-    Results for job '0e4119fd-12f9-42f5-8cd2-54a0d270541e' have been written to...
-    results
-
 
 After the download has finished you should see the following contents in results directory.
 

@@ -1,6 +1,6 @@
 ---
 sidebar_label: Stable Diffusion - CPU
-sidebar_position: 1
+sidebar_position: 2
 ---
 # Stable Diffusion on a CPU
 

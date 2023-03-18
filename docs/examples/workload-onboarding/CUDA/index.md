@@ -25,7 +25,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Running CUDA locally
 
-You'll need to install the following:
+You'll need to have the following installed:
 - NVIDIA GPU
 - CUDA drivers installed
 - nvcc installed
@@ -55,7 +55,7 @@ wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/mas
 cat inputs/00-hello-world.cu
 ```
 
-This is a standard c++ program which uses loops which are not parallizable so it dosen't use the most of the processing power of the GPU
+This is a standard c++ program which uses loops which are not parallizable so it doesn't use the most of the processing power of the GPU
 
 
 ```python
@@ -69,7 +69,7 @@ This is a standard c++ program which uses loops which are not parallizable so it
 ```
 
 Instead of looping we use Vector addition using CUDA and allocate the memory in advance and copy the memory to the GPU
-using cudaMemcpy so that it can utilize the HBM (High Bandwith memory of the GPU)
+using cudaMemcpy so that it can utilize the HBM (High Bandwidth memory of the GPU)
 
 
 ```python

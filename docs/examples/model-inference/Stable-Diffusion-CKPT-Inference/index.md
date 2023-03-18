@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Stable Diffusion -CKPT"
-sidebar_position: 1
+sidebar_position: 3
 ---
 # Stable Diffusion Checkpoint Inference
 
@@ -168,7 +168,7 @@ Let's look closely at the command above:
 
 * `--seed $RANDOM`: The output generated on the same prompt will always be the same for different outputs on the same prompt set the seed parameter to random
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 

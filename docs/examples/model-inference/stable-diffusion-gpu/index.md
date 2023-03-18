@@ -1,6 +1,6 @@
 ---
 sidebar_label: Stable Diffusion - GPU
-sidebar_position: 2
+sidebar_position: 1
 ---
 # Stable Diffusion on a GPU
 
@@ -270,7 +270,7 @@ Let's look closely at the command above:
 
 * `../outputs`: path to output
 
-* `python main.py`: exceute script
+* `python main.py`: execute script
 
 
 The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
