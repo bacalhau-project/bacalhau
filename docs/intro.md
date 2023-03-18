@@ -23,11 +23,13 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 💸 Bacalhau **eliminates ingress/egress costs** since jobs are processed closer to the source. 
 
-🤓  You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data 
+🤓  You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data.
 
-💥 You can integrate with Bacalhau and run a job on a [database](https://docs.bacalhau.org/examples/data-engineering/DuckDB/)
+💥 You can integrate with Bacalhau and run a job on a [database](https://docs.bacalhau.org/examples/data-engineering/DuckDB/).
 
 📚 Bacalhau operates on a network of **open compute resources** made available to serve any data processing workload. With Bacalhau you can batch process petabytes (quadrillion bytes) of data.
+
+🎆 You can auto-generate art using a [Stable Diffusion AI model](https://www.waterlily.ai/) trained on the chosen artist’s original works.
 
 
 ## Fast Track ⏱️
@@ -76,7 +78,7 @@ The options are not limited to the above mentioned. You can mount your data anyw
 Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
 
 Here are some example tutorials on how you can process your data with Bacalhau:
-- [Image processing with Bacalhau](https://docs.bacalhau.org/examples/model-inference/stable-diffusion-gpu/)
+- [Stable Diffusion AI](https://docs.bacalhau.org/examples/model-inference/stable-diffusion-gpu/)
 - [Generate Realistic Images using StyleGAN3 and Bacalhau](https://docs.bacalhau.org/examples/model-inference/StyleGAN3/)
 - [Object Detection with YOLOv5 on Bacalhau](https://docs.bacalhau.org/examples/model-inference/object-detection-yolo5/)
 - [Running Genomics on Bacalhau](https://docs.bacalhau.org/examples/miscellaneous/Genomics/)
