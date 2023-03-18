@@ -42,7 +42,7 @@ Rscript hello.R
     [1] "hello world"
 
 
-Recall that Bacalhau does now provide any external connectivity whilst running a job. So you must place the script in a container or, as shown below, upload the script to IPFS for long term storage. Check out the [data ingestion documentation](../../data-ingestion/index.md) for more information on how to upload data to IPFS.
+Recall that Bacalhau does now provide any external connectivity whilst running a job. So you must place the script in a container or, as shown below, upload the script to IPFS for long term storage. Check out the data ingestion documentation for more information on how to upload data to public storage.
 
 We've already uploaded the script to IPFS and the CID is: `QmVHSWhAL7fNkRiHfoEJGeMYjaYZUsKHvix7L54SptR8ie`. You can look at this by browsing to one of the HTTP IPFS proxies like [ipfs.io](https://cloudflare-ipfs.com/ipfs/QmVHSWhAL7fNkRiHfoEJGeMYjaYZUsKHvix7L54SptR8ie/) or [w3s.link](https://w3s.link/ipfs/QmVHSWhAL7fNkRiHfoEJGeMYjaYZUsKHvix7L54SptR8ie).
 
