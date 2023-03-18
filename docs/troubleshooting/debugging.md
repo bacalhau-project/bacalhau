@@ -99,7 +99,8 @@ Inside your code:
 
 
 :::info
-Seriously, we've seen all sorts of wonderful things go wrong. Like IPFS CIDs presenting a corrupted file. It's worth checking everything!
+Seriously, we've seen all sorts of wonderful things go wrong. Like IPF
+CIDs presenting a corrupted file. It's worth checking everything!
 :::
 
 More tips:
