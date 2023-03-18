@@ -35,11 +35,11 @@ Tested on: Ubuntu 22.04 LTS (x86/64) running on a GCP e2-standard-4 (4 vCPU, 16 
 ### Prerequisites
 
 * Docker Engine - to take on Docker workloads
-* Connection to IPFS - for storing job's results
+* Connection to storage provider - for storing job's results
 * Firewall - to ensure your node can communicate with the rest of the network
 * Physical hardware, Virtual Machine or cloud based host. A Bacalhau compute node is not intended to be ran from within a Docker container.
 
-#### Install docker
+#### Install Docker
 
 To run docker based workloads, you should have docker installed and running.
 
@@ -79,13 +79,13 @@ sudo groupadd docker
 sudo usermod -aG docker $USER
 ```
 
-#### Ensure IPFS is running
+#### Ensure your Storage Server is Running
 
-We will need to connect our bacalhau node to an IPFS server so we can run jobs that consume CIDs as inputs.
+We will need to connect our bacalhau node to an storage server for this we will be using IPFS server so we can run jobs that consume CIDs as inputs.
 
-You can either install IPFS and run it locally or you can connect to a remote IPFS server.
+You can either install and run it locally or you can connect to a remote IPFS server.
 
-In both cases - we should have an [IPFS multiaddress](https://richardschneider.github.io/net-ipfs-core/articles/multiaddress.html) for our IPFS server that should look something like this:
+In both cases - we should have a [multiaddress](https://richardschneider.github.io/net-ipfs-core/articles/multiaddress.html) for our IPFS server that should look something like this:
 
 ```bash
 export IPFS_CONNECT=/ip4/10.1.10.10/tcp/80/p2p/QmVcSqVEsvm5RR9mBLjwpb2XjFVn5bPdPL69mL8PH45pPC
@@ -93,14 +93,13 @@ export IPFS_CONNECT=/ip4/10.1.10.10/tcp/80/p2p/QmVcSqVEsvm5RR9mBLjwpb2XjFVn5bPdP
 
 :::caution
 
-The multiaddress above is just an example - you need to get the multiaddress of the IPFS server you want to connect to.
+The multiaddress above is just an example - you need to get the multiaddress of the server you want to connect to.
 
 :::
 
-To install a single IPFS node locally on Ubuntu you can follow the [official instructions](https://docs.ipfs.tech/install/ipfs-desktop/#ubuntu), or follow the steps below.
+To install a single IPFS node locally on Ubuntu you can follow the [official instructions](https://docs.ipfs.tech/install/ipfs-desktop/#ubuntu), or follow the steps below. We advise to run the same IPFS version as the Bacalhau main network.
 
-We advise to run the same IPFS version as the Bacalhau main network.
-Pick that with the command below:
+Using the command below:
 
 ```bash
 export IPFS_VERSION=$(wget -q -O - https://raw.githubusercontent.com/filecoin-project/bacalhau/main/ops/terraform/production.tfvars | grep --color=never ipfs_version | awk -F'"' '{print $2}')
@@ -138,6 +137,7 @@ If you want to run the IPFS daemon as a [systemd](https://en.wikipedia.org/wiki/
 :::
 
 Don't forget we need to fetch an [IPFS multiaddress](https://richardschneider.github.io/net-ipfs-core/articles/multiaddress.html) pointing to our local node.
+
 Use the following command to print out a number of addresses.
 
 ```bash
