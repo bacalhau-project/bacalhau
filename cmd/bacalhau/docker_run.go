@@ -375,7 +375,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			case "gitlfs":
 				lfsConstraint := "git-lfs=True"
 				if odr.NodeSelector == "" {
-
 					odr.NodeSelector = lfsConstraint
 				}
 				odr.NodeSelector = lfsConstraint + "," + odr.NodeSelector
