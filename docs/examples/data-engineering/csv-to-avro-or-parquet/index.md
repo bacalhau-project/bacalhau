@@ -183,7 +183,7 @@ Let's look closely at the command above:
 
 * `python3 src/converter.py`: execute the script
 
-When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
