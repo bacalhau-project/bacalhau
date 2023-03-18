@@ -370,15 +370,13 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "ipfs":
 				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
+			case "git":
+				odr.InputUrls = append(odr.InputRepos, i)
+			case "gitlfs":
+				lfsConstraint := "git-lfs=True"
+				odr.Labels = append(odr.Labels, lfsConstraint)
+				odr.InputUrls = append(odr.InputRepos, i)
 			// unimplemented schemes
-			// case "git":
-			//     // Handle git scheme
-			//     fmt.Println("Handling git scheme...")
-			// case "gitlfs":
-			// lfsConstraint:= "git-lfs=True"
-			// odr.Labels = append(odr.Labels,lfsConstraint )
-			//     // Handle git scheme
-			//     fmt.Println("Handling git scheme...")
 			// case "s3":
 			//     // Handle s3 scheme
 			//     fmt.Println("Handling s3 scheme...")
