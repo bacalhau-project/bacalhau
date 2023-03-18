@@ -144,7 +144,7 @@ $ bacalhau list
 To get more information on your job
 
 ```shell
-$ bacalhau descrie JOB_ID
+$ bacalhau describe JOB_ID
 ```
 
 To download your job
