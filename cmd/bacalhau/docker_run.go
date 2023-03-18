@@ -357,7 +357,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			scheme := func(URI string) *url.URL {
 				parsed, err1 := url.Parse(URI)
 				if err1 != nil {
-					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
+					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err1)
 					log.Fatal(errMsg)
 				}
 				return parsed
@@ -371,11 +371,11 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			case "ipfs":
 				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
 			case "git":
-				odr.InputUrls = append(odr.InputRepos, i)
+				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			case "gitlfs":
 				lfsConstraint := "git-lfs=True"
 				odr.Labels = append(odr.Labels, lfsConstraint)
-				odr.InputUrls = append(odr.InputRepos, i)
+				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			// unimplemented schemes
 			// case "s3":
 			//     // Handle s3 scheme

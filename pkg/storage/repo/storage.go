@@ -14,7 +14,7 @@ import (
 	"os/exec"
 	"strings"
 
-	git "github.com/gogs/git-module"
+	// git "github.com/gogs/git-module"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
@@ -94,27 +94,27 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 
-	err = git.Clone(repoURL, outputPath)
-	if err != nil {
-		fmt.Println("Failed to clone repository:", err)
-		cmd := exec.Command("git", "clone", repoURL, outputPath)
-		// The `Output` method executes the command and
-		// collects the output, returning its value
-		out, err1 := cmd.Output()
-		if err1 != nil {
-			// if there was any error, print it here
-			fmt.Println("could not run command: ", err)
-		}
-		// otherwise, print the output from running the command
-		fmt.Println("Output: ", string(out))
-		if err != nil {
-			panic(err)
-		}
-
-		if err != nil {
-			return storage.StorageVolume{}, err
-		}
+	// err = git.Clone(repoURL, outputPath)
+	// if err != nil {
+	// 	fmt.Println("Failed to clone repository:", err)
+	cmd := exec.Command("git", "clone", repoURL, outputPath)
+	// The `Output` method executes the command and
+	// collects the output, returning its value
+	out, err1 := cmd.Output()
+	if err1 != nil {
+		// if there was any error, print it here
+		fmt.Println("could not run command: ", err)
 	}
+	// otherwise, print the output from running the command
+	fmt.Println("Output: ", string(out))
+	if err != nil {
+		panic(err)
+	}
+
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	// }
 	filepath, err2 := url.Parse(repoURL)
 	if err2 != nil {
 		return storage.StorageVolume{}, err
