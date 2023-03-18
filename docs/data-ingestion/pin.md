@@ -5,7 +5,7 @@ description: "How to pin data to public storage"
 ---
 # Pinning Data
 
-If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Estuary, etc. Pinning services store data on behalf of users and expose the data over IPFS. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money. 
+If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Estuary, etc. Pinning services store data on behalf of users. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money. 
 
 ## Web3.Storage
 
