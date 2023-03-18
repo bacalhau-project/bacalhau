@@ -110,7 +110,7 @@ Football makes people angry!
 
 ## Using custom Images as an input
 
-Now let's use some custom images. First you will need to ingest your images onto IPFS/Filecoin. For more information about how to do that see the ingestion section of the [getting started guide](../../data-ingestion/index.md).
+Now let's use some custom images. First you will need to ingest your images onto IPFS/Filecoin. For more information about how to do that see the ingestion section of the getting started guide.
 
 This example will use the [Cyclist Dataset for Object Detection | Kaggle](https://www.kaggle.com/datasets/f445f341fc5e3ab58757efa983a38d6dc709de82abd1444c8817785ecd42a1ac) dataset.
 
