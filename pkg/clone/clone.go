@@ -1,16 +1,22 @@
 package clone
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
+
 	"strings"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/storage/memory"
 
 	//nolint:staticcheck
 	"io/ioutil"
 	"net/http"
 	"net/url"
 )
+
+const baseURL = "http://kv.bacalhau.org/"
 
 type ScriptStruct struct {
 	//nolint:unused
@@ -34,19 +40,26 @@ func NewCloneClient() (*Clone, error) {
 }
 
 func RepoExistsOnIPFSGivenURL(urlStr string) (string, error) {
-	cmd := exec.Command("git", "ls-remote", urlStr)
-	output, err := cmd.CombinedOutput()
+	output, err := GetLatestCommitHash(urlStr)
 	if err != nil {
 		fmt.Println(err)
 		return "", err
 	}
-	x := "http://kv.bacalhau.org/" + fmt.Sprintf("%v", string(output)[:40])
-	//nolint:gosec,noctx
-	resp, _ := http.Get(x)
+	url := baseURL + output
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return "", err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println("Error making request:", err)
 		return "", err
 	}
 	defer resp.Body.Close()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 	var response Response
 	err = json.Unmarshal(body, &response)
@@ -84,4 +97,31 @@ func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
 		return nil, fmt.Errorf("URL must use .git file extension")
 	}
 	return u, nil
+}
+
+func GetLatestCommitHash(URL string) (string, error) {
+	// Create a memory storage
+	memStorage := memory.NewStorage()
+
+	// Clone the remote repository into the memory storage
+	repo, err := git.Clone(memStorage, nil, &git.CloneOptions{
+		URL:          URL,
+		Depth:        1,
+		SingleBranch: true,
+		NoCheckout:   true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Get the reference to the head of the repository
+	headRef, err := repo.Head()
+	if err != nil {
+		return "", err
+	}
+
+	// Get the hash of the latest commit
+	commitHash := headRef.Hash()
+
+	return commitHash.String(), nil
 }
