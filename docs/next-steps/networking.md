@@ -15,7 +15,7 @@ When you submit a Bacalhau job, you'll need to specify the internet locations to
 
 When submitting a Bacalhau job, you can specify the CID (Content IDentifier) or HTTP(S) URL to download data from. The data will be retrieved before the job starts and made available to the job as a directory on the filesystem. When running Bacalhau jobs, you can specify as many CIDs or URLs as needed using `--input-volumes` and `--input-urls` which are accepted by both `bacalhau docker run` and `bacalhau wasm run`. See [command line flags](https://docs.bacalhau.org/all-flags) for more information.
 
-You can write back results from your Bacalhau jobs to your public storage location. By default, jobs will write results to the storage provider both through [Estuary](https://estuary.tech) using the `--publisher` command line flag. See [command line flags](https://docs.bacalhau.org/all-flags) on how to configure this.
+You can write back results from your Bacalhau jobs to your public storage location. By default, jobs will write results to the storage provider using the `--publisher` command line flag. See [command line flags](https://docs.bacalhau.org/all-flags) on how to configure this.
 
 To use these features, the data to be downloaded has to be known before the job starts. For some workloads, the required data is computed as part of the job if the purpose of the job is to process web results. In these cases, networking may be possible during job execution.
 
