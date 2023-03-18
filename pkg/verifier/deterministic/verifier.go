@@ -44,26 +44,26 @@ func (deterministicVerifier *DeterministicVerifier) IsInstalled(context.Context)
 	return true, nil
 }
 
-func (deterministicVerifier *DeterministicVerifier) GetShardResultPath(
+func (deterministicVerifier *DeterministicVerifier) GetResultPath(
 	_ context.Context,
-	shard model.JobShard,
+	job model.Job,
 ) (string, error) {
-	return deterministicVerifier.results.EnsureShardResultsDir(shard.Job.Metadata.ID, shard.Index)
+	return deterministicVerifier.results.EnsureResultsDir(job.ID())
 }
 
-func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
+func (deterministicVerifier *DeterministicVerifier) GetProposal(
 	ctx context.Context,
-	shard model.JobShard,
-	shardResultPath string,
+	job model.Job,
+	resultPath string,
 ) ([]byte, error) {
-	if len(shard.Job.Metadata.Requester.RequesterPublicKey) == 0 {
+	if len(job.Metadata.Requester.RequesterPublicKey) == 0 {
 		return nil, fmt.Errorf("no RequesterPublicKey found in the job")
 	}
-	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
+	dirHash, err := dirhash.HashDir(resultPath, "results", dirhash.Hash1)
 	if err != nil {
 		return nil, err
 	}
-	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), shard.Job.Metadata.Requester.RequesterPublicKey)
+	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), job.Metadata.Requester.RequesterPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -110,19 +110,19 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	return hashGroups
 }
 
-func (deterministicVerifier *DeterministicVerifier) VerifyShard(
+func (deterministicVerifier *DeterministicVerifier) Verify(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.DeterministicVerifier.VerifyShard")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.DeterministicVerifier.Verify")
 	defer span.End()
 
-	err := verifier.ValidateExecutions(shard, executionStates)
+	err := verifier.ValidateExecutions(job, executionStates)
 	if err != nil {
 		return nil, err
 	}
-	confidence := shard.Job.Spec.Deal.Confidence
+	confidence := job.Spec.Deal.Confidence
 
 	largestGroupHash := ""
 	largestGroupSize := 0

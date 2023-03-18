@@ -12,8 +12,9 @@ type BidStrategyRequest struct {
 }
 
 type BidStrategyResponse struct {
-	ShouldBid bool
-	Reason    string
+	ShouldBid  bool   `json:"shouldBid"`
+	ShouldWait bool   `json:"shouldWait"`
+	Reason     string `json:"reason"`
 }
 
 func NewShouldBidResponse() BidStrategyResponse {
@@ -30,18 +31,16 @@ type BidStrategy interface {
 // the JSON data we send to http or exec probes
 // TODO: can we just use the BidStrategyRequest struct?
 type JobSelectionPolicyProbeData struct {
-	NodeID        string                 `json:"node_id"`
-	JobID         string                 `json:"job_id"`
-	Spec          model.Spec             `json:"spec"`
-	ExecutionPlan model.JobExecutionPlan `json:"execution_plan"`
+	NodeID string     `json:"node_id"`
+	JobID  string     `json:"job_id"`
+	Spec   model.Spec `json:"spec"`
 }
 
 // Return JobSelectionPolicyProbeData for the given request
 func getJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
 	return JobSelectionPolicyProbeData{
-		NodeID:        request.NodeID,
-		JobID:         request.Job.Metadata.ID,
-		Spec:          request.Job.Spec,
-		ExecutionPlan: request.Job.Spec.ExecutionPlan,
+		NodeID: request.NodeID,
+		JobID:  request.Job.Metadata.ID,
+		Spec:   request.Job.Spec,
 	}
 }

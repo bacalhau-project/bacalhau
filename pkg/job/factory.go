@@ -36,16 +36,12 @@ func ConstructDockerJob( //nolint:funlen
 	annotations []string,
 	nodeSelector string,
 	workingDir string,
-	shardingGlobPattern string,
-	shardingBasePath string,
-	shardingBatchSize int,
 ) (*model.Job, error) {
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
 		GPU:    gpu,
 	}
-	jobContexts := []model.StorageSpec{}
 
 	for _, url := range inputRepos {
 		repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
@@ -99,15 +95,6 @@ func ConstructDockerJob( //nolint:funlen
 		}
 	}
 
-	// Weird bug that sharding basepath fails if has a trailing slash
-	shardingBasePath = strings.TrimSuffix(shardingBasePath, "/")
-
-	jobShardingConfig := model.JobShardingConfig{
-		GlobPattern: shardingGlobPattern,
-		BasePath:    shardingBasePath,
-		BatchSize:   shardingBatchSize,
-	}
-
 	j, err := model.NewJobWithSaneProductionDefaults()
 	if err != nil {
 		return &model.Job{}, err
@@ -130,11 +117,9 @@ func ConstructDockerJob( //nolint:funlen
 		Timeout:       timeout,
 		Resources:     jobResources,
 		Inputs:        jobInputs,
-		Contexts:      jobContexts,
 		Outputs:       jobOutputs,
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
-		Sharding:      jobShardingConfig,
 	}
 
 	// override working dir if provided
@@ -170,7 +155,6 @@ func ConstructLanguageJob(
 	annotations []string,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, nil)
 	if err != nil {
@@ -214,7 +198,6 @@ func ConstructLanguageJob(
 	}
 	j.Spec.Timeout = timeout
 	j.Spec.Inputs = jobInputs
-	j.Spec.Contexts = jobContexts
 	j.Spec.Outputs = jobOutputs
 	j.Spec.Annotations = jobAnnotations
 

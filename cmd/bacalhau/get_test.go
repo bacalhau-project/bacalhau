@@ -5,11 +5,12 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 
@@ -49,40 +50,15 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	})
 	require.NoError(t, err, "Error walking results directory")
 
-	shortID := system.GetShortID(hostID)
-
-	// if you change the docker run command in any way we need to change this
-	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
-
 	expected := []string{
-		"/" + model.DownloadVolumesFolderName,
-		"/" + model.DownloadVolumesFolderName + "/data",
-		"/" + model.DownloadVolumesFolderName + "/data/apples",
-		"/" + model.DownloadVolumesFolderName + "/data/apples/file.txt",
-		"/" + model.DownloadVolumesFolderName + "/data/file.txt",
-		"/" + model.DownloadVolumesFolderName + "/outputs",
-		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStderr,
-		"/" + model.DownloadVolumesFolderName + "/" + model.DownloadFilenameStdout,
-		"/" + model.DownloadShardsFolderName,
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID,
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
-		"/" + model.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
-		"/" + model.DownloadCIDsFolderName,
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID,
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
-		"/" + model.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
+		"/data",
+		"/data/apples",
+		"/data/apples/file.txt",
+		"/data/file.txt",
+		"/exitCode",
+		"/outputs",
+		"/" + model.DownloadFilenameStderr,
+		"/" + model.DownloadFilenameStdout,
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")

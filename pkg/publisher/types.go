@@ -26,10 +26,10 @@ type Publisher interface {
 	// can have multiple publishers and some publisher
 	// implementations don't concern themselves with storage
 	// (e.g. notify slack)
-	PublishShardResult(
+	PublishResult(
 		ctx context.Context,
-		shard model.JobShard,
+		job model.Job,
 		hostID string,
-		shardResultPath string,
+		resultPath string,
 	) (model.StorageSpec, error)
 }

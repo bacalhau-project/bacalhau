@@ -34,7 +34,7 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 	}
 
 	for _, peerHost := range peers {
-		if err := connectToPeer(ctx, h, peerHost); err != nil { //nolint:govet
+		if err := connectToPeer(ctx, h, peerHost); err != nil {
 			return nil, err
 		}
 	}
@@ -52,7 +52,7 @@ func connectToPeer(ctx context.Context, h host.Host, peer host.Host) error {
 		Stringer("peer", peer.ID()).
 		Int("addresses", len(peerAddresses)).
 		Msg("Connecting to peer")
-	if err := ConnectToPeers(ctx, h, peerAddresses); err != nil { //nolint:govet
+	if err := connectToPeers(ctx, h, peerAddresses); err != nil {
 		return err
 	}
 

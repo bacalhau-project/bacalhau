@@ -15,7 +15,7 @@ type profiler struct {
 	memoryFile string
 }
 
-func StartProfiling(ctx context.Context, cpuFile, memoryFile string) CloserWithContext {
+func startProfiling(ctx context.Context, cpuFile, memoryFile string) CloserWithContext {
 	// do a GC before we start profiling
 	runtime.GC()
 

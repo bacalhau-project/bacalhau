@@ -112,18 +112,18 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-// PublishShardResult implements publisher.Publisher
-func (f *fanoutPublisher) PublishShardResult(
+// PublishResult implements publisher.Publisher
+func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	hostID string,
-	shardResultPath string,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	var err error
-	ctx = log.Ctx(ctx).With().Str("Method", "PublishShardResult").Logger().WithContext(ctx)
+	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, job, hostID, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)

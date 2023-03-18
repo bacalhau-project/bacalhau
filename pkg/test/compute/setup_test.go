@@ -60,12 +60,9 @@ func (s *ComputeSuite) setupNode() {
 	host, err := libp2p.NewHost(libp2pPort)
 	s.NoError(err)
 
-	apiPort, err := freeport.GetFreePort()
-	s.NoError(err)
-
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address: "0.0.0.0",
-		Port:    apiPort,
+		Port:    0,
 		Host:    host,
 		Config:  publicapi.DefaultAPIServerConfig,
 	})
@@ -99,16 +96,14 @@ func TestComputeSuite(t *testing.T) {
 
 func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
 	response, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		Job:          job,
-		ShardIndexes: []int{0},
+		Job: job,
 	})
 	s.NoError(err)
 
 	// check the response
-	s.Equal(1, len(response.ShardResponse))
-	s.True(response.ShardResponse[0].Accepted)
+	s.True(response.Accepted)
 
-	return response.ShardResponse[0].ExecutionID
+	return response.ExecutionID
 }
 
 func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string {

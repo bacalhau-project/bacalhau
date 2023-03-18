@@ -13,7 +13,6 @@ import (
 type bidResponseTestCase struct {
 	name          string
 	job           model.Job
-	shardCount    int
 	rejected      bool
 	resourceUsage model.ResourceUsageData
 }
@@ -22,16 +21,10 @@ func (s *ComputeSuite) TestAskForBid() {
 	s.runAskForBidTest(bidResponseTestCase{})
 }
 
-func (s *ComputeSuite) TestAskForBid_MultipleShards() {
-	s.runAskForBidTest(bidResponseTestCase{
-		shardCount: 3,
-	})
-}
-
 func (s *ComputeSuite) TestAskForBid_PopulateResourceUsage() {
 	ctx := context.Background()
 	verify := func(response compute.AskForBidResponse, expected model.ResourceUsageData) {
-		execution, err := s.node.ExecutionStore.GetExecution(ctx, response.ShardResponse[0].ExecutionID)
+		execution, err := s.node.ExecutionStore.GetExecution(ctx, response.ExecutionID)
 		s.NoError(err)
 		s.Equal(expected, execution.ResourceUsage)
 	}
@@ -100,37 +93,22 @@ func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) compute.As
 	if job.Metadata.ID == "" {
 		job = generateJob()
 	}
-	shardCount := testCase.shardCount
-	if shardCount == 0 {
-		shardCount = 1
-	}
-
-	shardIndexes := make([]int, shardCount)
-	for i := 0; i < shardCount; i++ {
-		shardIndexes[i] = i
-	}
 
 	// issue the request
 	request := compute.AskForBidRequest{
-		Job:          job,
-		ShardIndexes: shardIndexes,
+		Job: job,
 	}
 	response, err := s.node.LocalEndpoint.AskForBid(ctx, request)
 	s.NoError(err)
 
 	// check the response
-	s.Equal(shardCount, len(response.ShardResponse))
-	for _, shardResponse := range response.ShardResponse {
-		s.Equal(!testCase.rejected, shardResponse.Accepted)
-	}
+	s.Equal(!testCase.rejected, response.Accepted)
 
 	// check execution state
 	if !testCase.rejected {
-		for _, shardResponse := range response.ShardResponse {
-			execution, err := s.node.ExecutionStore.GetExecution(ctx, shardResponse.ExecutionID)
-			s.NoError(err)
-			s.Equal(store.ExecutionStateCreated, execution.State)
-		}
+		execution, err := s.node.ExecutionStore.GetExecution(ctx, response.ExecutionID)
+		s.NoError(err)
+		s.Equal(store.ExecutionStateCreated, execution.State)
 	}
 
 	return response

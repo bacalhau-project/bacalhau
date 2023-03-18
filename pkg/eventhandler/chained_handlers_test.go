@@ -45,7 +45,6 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 	suite.event = model.JobEvent{
 		EventName:    model.JobEventCreated,
 		JobID:        uuid.NewString(),
-		ShardIndex:   1,
 		SourceNodeID: "nodeA",
 		TargetNodeID: "nodeB",
 		ClientID:     "clientX",

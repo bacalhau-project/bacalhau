@@ -20,7 +20,9 @@ var (
 		`))
 
 	languageRunExample = templates.Examples(i18n.T(`
-		TBD`))
+		# Run a simple "Hello, World" script within the current directory
+		bacalhau run python -- hello-world.py
+		`))
 )
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
@@ -48,10 +50,6 @@ type LanguageRunOptions struct {
 
 	RuntimeSettings  RunTimeSettings
 	DownloadSettings model.DownloaderSettings
-
-	// ShardingGlobPattern string
-	// ShardingBasePath string
-	// ShardingBatchSize int
 }
 
 func NewLanguageRunOptions() *LanguageRunOptions {
@@ -230,7 +228,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 			return nil
 		}
 		context.Path = "/job"
-		j.Spec.Contexts = append(j.Spec.Contexts, context)
+		j.Spec.Inputs = append(j.Spec.Inputs, context)
 	}
 
 	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)

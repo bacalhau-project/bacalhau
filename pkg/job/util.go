@@ -144,18 +144,18 @@ func ShortID(id string) string {
 
 func ComputeStateSummary(j model.JobState) string {
 	var currentJobState model.ExecutionStateType
-	jobShardStates := FlattenExecutionStates(j)
-	for i := range jobShardStates {
-		// If any of the shards are reporting completion, or an active state then
+	executionStates := FlattenExecutionStates(j)
+	for i := range executionStates {
+		// If any of the executions are reporting completion, or an active state then
 		// we should use that as the summary. Without this we will continue to
 		// return BidRejected even when an execution has BidAccepted based on the
 		// ordering of the ExecutionStateType enum.
-		if jobShardStates[i].State.IsActive() || jobShardStates[i].State == model.ExecutionStateCompleted {
-			return jobShardStates[i].State.String()
+		if executionStates[i].State.IsActive() || executionStates[i].State == model.ExecutionStateCompleted {
+			return executionStates[i].State.String()
 		}
 
-		if jobShardStates[i].State > currentJobState {
-			currentJobState = jobShardStates[i].State
+		if executionStates[i].State > currentJobState {
+			currentJobState = executionStates[i].State
 		}
 	}
 
@@ -165,15 +165,11 @@ func ComputeStateSummary(j model.JobState) string {
 
 func ComputeResultsSummary(j *model.JobWithInfo) string {
 	var resultSummary string
-	if GetJobTotalShards(j.Job) > 1 {
+	completedExecutionStates := GetCompletedExecutionStates(j.State)
+	if len(completedExecutionStates) == 0 {
 		resultSummary = ""
 	} else {
-		completedShards := GetCompletedShardStates(j.State)
-		if len(completedShards) == 0 {
-			resultSummary = ""
-		} else {
-			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
-		}
+		resultSummary = fmt.Sprintf("/ipfs/%s", completedExecutionStates[0].PublishedResult.CID)
 	}
 	return resultSummary
 }
@@ -183,18 +179,27 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	if j.Job.Spec.Verifier == model.VerifierNoop {
 		verifiedSummary = ""
 	} else {
-		totalShards := GetJobTotalExecutionCount(j.Job)
-		verifiedShardCount := CountVerifiedShardStates(j.State)
-		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
+		desiredExecutionCount := GetJobConcurrency(j.Job)
+		verifiedExecutionCount := CountVerifiedExecutionStates(j.State)
+		verifiedSummary = fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount)
 	}
 	return verifiedSummary
 }
 
-func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
+func GetPublishedStorageSpec(job model.Job, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
+	//TODO: include executionID or a nuance to avoid collisions during retries
 	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.Metadata.ID, shard.Index, hostID),
+		Name:          fmt.Sprintf("job-%s-host-%s", job.ID(), hostID),
 		StorageSource: storageType,
 		CID:           cid,
 		Metadata:      map[string]string{},
 	}
+}
+
+func GetJobConcurrency(j model.Job) int {
+	concurrency := j.Spec.Deal.Concurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	return concurrency
 }

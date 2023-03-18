@@ -9,6 +9,7 @@ ipfs so that it can be mounted into the wasm runtime container.
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/rs/zerolog/log"
 
@@ -56,32 +57,28 @@ func (e *Executor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy,
 	return dockerExecutor.GetBidStrategy(ctx)
 }
 
-func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) (
+func (e *Executor) Run(ctx context.Context, job model.Job, resultsDir string) (
 	*model.RunCommandResult, error) {
 	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
-	shard.Job.Spec.Docker.Image = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
-	if shard.Job.Spec.Language.Command != "" {
+	job.Spec.Docker.Image = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
+	if job.Spec.Language.Command != "" {
 		// pass command through to node wasm wrapper
-		shard.Job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", shard.Job.Spec.Language.Command}
-	} else if shard.Job.Spec.Language.ProgramPath != "" {
+		job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", job.Spec.Language.Command}
+	} else if job.Spec.Language.ProgramPath != "" {
 		// pass command through to node wasm wrapper
-		shard.Job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", shard.Job.Spec.Language.ProgramPath)}
+		job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", job.Spec.Language.ProgramPath)}
 	}
-	shard.Job.Spec.Engine = model.EngineDocker
+	job.Spec.Engine = model.EngineDocker
 
 	// prepend a path on each of the user supplied volumes to prevent an accidental
 	// collision with the internal pyodide filesystem
-	for idx, v := range shard.Job.Spec.Inputs {
-		shard.Job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	for idx, v := range job.Spec.Inputs {
+		job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
-	for idx, v := range shard.Job.Spec.Contexts {
-		shard.Job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
-	}
-
-	for idx, v := range shard.Job.Spec.Outputs {
-		shard.Job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
+	for idx, v := range job.Spec.Outputs {
+		job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
@@ -89,7 +86,15 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.RunShard(ctx, shard, resultsDir)
+	return dockerExecutor.Run(ctx, job, resultsDir)
+}
+
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.GetOutputStream(ctx, job)
 }
 
 // Compile-time check that Executor implements the Executor interface.

@@ -28,7 +28,7 @@ type BaseExecutor struct {
 	ID              string
 	callback        Callback
 	store           store.ExecutionStore
-	cancellers      generic.SyncMap[store.Execution, context.CancelFunc]
+	cancellers      generic.SyncMap[string, context.CancelFunc]
 	executors       executor.ExecutorProvider
 	verifiers       verifier.VerifierProvider
 	publishers      publisher.PublisherProvider
@@ -47,18 +47,18 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-// Run the execution of a shard after it has been accepted, and propose a result to the requester to be verified.
+// Run the execution after it has been accepted, and propose a result to the requester to be verified.
 func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
-		Str("Shard", execution.Shard.ID()).
+		Str("Job", execution.Job.ID()).
 		Str("ExecutionID", execution.ID).
 		Logger().WithContext(ctx)
 
 	ctx, cancel := context.WithCancel(ctx)
-	e.cancellers.Put(execution, cancel)
+	e.cancellers.Put(execution.ID, cancel)
 	defer func() {
-		if cancel, found := e.cancellers.Get(execution); found {
-			e.cancellers.Delete(execution)
+		if cancel, found := e.cancellers.Get(execution.ID); found {
+			e.cancellers.Delete(execution.ID)
 			cancel()
 		}
 	}()
@@ -79,17 +79,17 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
 		return
 	}
 
-	resultFolder, err := jobVerifier.GetShardResultPath(ctx, execution.Shard)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
 	if err != nil {
 		return
 	}
 
-	jobExecutor, err := e.executors.Get(ctx, execution.Shard.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
 	if err != nil {
 		return
 	}
@@ -97,7 +97,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	var runCommandResult *model.RunCommandResult
 
 	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
+		runCommandResult, err = jobExecutor.Run(ctx, execution.Job, resultFolder)
 		if err != nil {
 			jobsFailed.Add(ctx, 1)
 		} else {
@@ -105,12 +105,12 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		}
 
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to run shard")
+			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
 			return
 		}
 	}
 
-	shardProposal, err := jobVerifier.GetShardProposal(ctx, execution.Shard, resultFolder)
+	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, resultFolder)
 	if err != nil {
 		return
 	}
@@ -130,13 +130,13 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.RequesterNodeID,
 		},
-		ResultProposal:   shardProposal,
+		ResultProposal:   proposal,
 		RunCommandResult: runCommandResult,
 	})
 	return err
 }
 
-// Publish the result of a shard execution after it has been verified.
+// Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
@@ -152,22 +152,27 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 	if err != nil {
 		return
 	}
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
 		return
 	}
-	resultFolder, err := jobVerifier.GetShardResultPath(ctx, execution.Shard)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
 	if err != nil {
 		return
 	}
-	jobPublisher, err := e.publishers.Get(ctx, execution.Shard.Job.Spec.Publisher)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.Publisher)
 	if err != nil {
 		return
 	}
-	publishedResult, err := jobPublisher.PublishShardResult(ctx, execution.Shard, e.ID, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution.Job, e.ID, resultFolder)
 	if err != nil {
 		return
 	}
+
+	log.Ctx(ctx).Debug().
+		Str("execution", execution.ID).
+		Str("cid", publishedResult.CID).
+		Msg("Execution published")
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
@@ -189,7 +194,7 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 	return err
 }
 
-// Cancel the execution of a running shard.
+// Cancel the execution.
 func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
@@ -198,8 +203,8 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (e
 	}()
 
 	log.Ctx(ctx).Debug().Str("execution", execution.ID).Msg("Canceling execution")
-	if cancel, found := e.cancellers.Get(execution); found {
-		e.cancellers.Delete(execution)
+	if cancel, found := e.cancellers.Get(execution.ID); found {
+		e.cancellers.Delete(execution.ID)
 		cancel()
 	}
 

@@ -14,18 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type cancelRequest struct {
-	// The data needed to cancel a running job on the network
-	JobCancelPayload *json.RawMessage `json:"job_cancel_payload" validate:"required"`
-
-	// A base64-encoded signature of the data, signed by the client:
-	ClientSignature string `json:"signature" validate:"required"`
-
-	// The base64-encoded public key of the client:
-	ClientPublicKey string `json:"client_public_key" validate:"required"`
-}
-
-type CancelRequest = cancelRequest
+type cancelRequest = SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
 
 type cancelResponse struct {
 	State *model.JobState `json:"state"`
@@ -48,37 +37,13 @@ type cancelResponse struct {
 //	@Router					/requester/cancel [post]
 func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	var cancelReq CancelRequest
-	if err := json.NewDecoder(req.Body).Decode(&cancelReq); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> Decode cancelRequest error: %s", err)
-		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+	jobCancelPayload, err := unmarshalSignedJob[model.JobCancelPayload](ctx, req.Body)
+	if err != nil {
+		httpError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
-	// first verify the signature on the raw bytes
-	if err := verifyRequestSignature(*cancelReq.JobCancelPayload, cancelReq.ClientSignature, cancelReq.ClientPublicKey); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> VerifyRequestSignature error: %s", err)
-		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusBadRequest)
-		return
-	}
-
-	// then decode the job create payload
-	var jobCancelPayload model.JobCancelPayload
-	if err := json.Unmarshal(*cancelReq.JobCancelPayload, &jobCancelPayload); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> Decode JobCancelPayload error: %s", err)
-		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
-		return
-	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCancelPayload.ClientID)
-
-	if err := verifySignedJobRequest(jobCancelPayload.ClientID, cancelReq.ClientSignature, cancelReq.ClientPublicKey); err != nil {
-		log.Ctx(ctx).Debug().Msgf("====> verifySignedJobRequest error: %s", err)
-		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusUnauthorized)
-		return
-	}
-
 	ctx = system.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
 
 	// Get the job, check it exists and check it belongs to the same client

@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "bacalhau-sdk"
-version = "0.1.4"
+version = "0.3.24.dev8"
 homepage = "https://github.com/bacalhau-project/bacalhau/"
 repository = "https://github.com/bacalhau-project/bacalhau/"
 documentation = "https://docs.bacalhau.org/"
@@ -42,7 +42,7 @@ pycryptodome = "^3.16.0"
 cryptography = "^39.0.1"
 six = "^1.16.0"
 types-six = "^1.16.21.4"
-bacalhau-apiclient = "^0.3.23.post7"
+bacalhau-apiclient = "*"
 
 [tool.poetry.extras]
 

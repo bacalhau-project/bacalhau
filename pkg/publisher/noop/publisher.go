@@ -17,7 +17,7 @@ func (publisher *NoopPublisher) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (publisher *NoopPublisher) PublishShardResult(context.Context, model.JobShard, string, string) (model.StorageSpec, error) {
+func (publisher *NoopPublisher) PublishResult(context.Context, model.Job, string, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, nil
 }
 

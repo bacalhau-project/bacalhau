@@ -63,7 +63,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		},
 	}
 	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 10 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
+		nodeOverrides[i].NodeInfoPublisherInterval = 100 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
 	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
 		node.NewComputeConfigWithDefaults(),
@@ -166,20 +166,20 @@ func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	s.NoError(s.stateResolver.WaitUntilComplete(ctx, jobID))
 	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
 	s.NoError(err)
-	completedShards := job.GetCompletedShardStates(jobState)
+	completedExecutionStates := job.GetCompletedExecutionStates(jobState)
 
-	nodes := make([]*node.Node, 0, len(completedShards))
-	for _, shard := range completedShards {
+	nodes := make([]*node.Node, 0, len(completedExecutionStates))
+	for _, executionState := range completedExecutionStates {
 		nodeFound := false
 		for _, n := range s.computeNodes {
-			if n.Host.ID().String() == shard.NodeID {
+			if n.Host.ID().String() == executionState.NodeID {
 				nodes = append(nodes, n)
 				nodeFound = true
 				break
 			}
 		}
 		if !nodeFound {
-			s.Fail("node not found", shard.NodeID)
+			s.Fail("node not found", executionState.NodeID)
 		}
 	}
 	return nodes

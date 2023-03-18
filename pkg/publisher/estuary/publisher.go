@@ -44,12 +44,12 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-// PublishShardResult implements publisher.Publisher
-func (e *estuaryPublisher) PublishShardResult(
+// PublishResult implements publisher.Publisher
+func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
+	j model.Job,
 	hostID string,
-	shardResultPath string,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
 	if err != nil {
@@ -58,7 +58,7 @@ func (e *estuaryPublisher) PublishShardResult(
 	defer os.RemoveAll(tempDir)
 
 	carFile := filepath.Join(tempDir, "results.car")
-	_, err = car.CreateCar(ctx, shardResultPath, carFile, 1)
+	_, err = car.CreateCar(ctx, resultPath, carFile, 1)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -80,7 +80,7 @@ func (e *estuaryPublisher) PublishShardResult(
 		timeout,
 		string(carContent),
 		&estuary_client.ContentApiContentAddCarPostOpts{
-			Filename: optional.NewString(shard.ID()),
+			Filename: optional.NewString(j.ID()),
 		},
 	)
 	if err != nil && err != io.EOF {
@@ -91,7 +91,7 @@ func (e *estuaryPublisher) PublishShardResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceEstuary, hostID, addCarResponse.Cid)
+	spec := job.GetPublishedStorageSpec(j, model.StorageSourceEstuary, hostID, addCarResponse.Cid)
 	spec.URL = addCarResponse.EstuaryRetrievalUrl
 
 	return spec, nil

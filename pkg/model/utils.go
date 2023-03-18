@@ -21,6 +21,13 @@ const MaxNumberOfObjectsToSerialize = 1000
 
 const ShortIDLength = 8
 
+func ShortID(id string) string {
+	if len(id) > ShortIDLength {
+		return id[:ShortIDLength]
+	}
+	return id
+}
+
 func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	ipld "github.com/ipfs/go-ipld-format"
 	files "github.com/ipfs/go-libipfs/files"
@@ -123,6 +124,12 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// It's common for callers to this function to use the result to connect to another IPFS node.
+	// This sorts the addresses so IPv4 localhost is first, with the aim of using the localhost connection during tests
+	// and so avoid any unneeded network hops. Other callers to this either sort the list themselves or just output the
+	// full list.
+	multiAddresses = multiaddresses.SortLocalhostFirst(multiAddresses)
 
 	addresses := generic.Map(multiAddresses, func(f ma.Multiaddr) string {
 		return f.String()

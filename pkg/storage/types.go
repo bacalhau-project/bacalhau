@@ -25,10 +25,6 @@ type Storage interface {
 
 	// given a local file path - "store" it and return a StorageSpec
 	Upload(context.Context, string) (model.StorageSpec, error)
-
-	// given a StorageSpec - explode it into a list of storage specs it contains
-	// each file path will be appended to the "path" of the storage spec
-	Explode(context.Context, model.StorageSpec) ([]model.StorageSpec, error)
 }
 
 // a storage entity that is consumed are produced by a job

@@ -3,6 +3,8 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -11,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -80,10 +83,6 @@ type DockerRunOptions struct {
 
 	DownloadFlags model.DownloaderSettings // Settings for running Download
 
-	ShardingGlobPattern string
-	ShardingBasePath    string
-	ShardingBatchSize   int
-
 	FilPlus bool // add a "filplus" label to the job to grab the attention of fil+ moderators
 }
 
@@ -113,10 +112,6 @@ func NewDockerRunOptions() *DockerRunOptions {
 		NodeSelector:       "",
 		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
-
-		ShardingGlobPattern: "",
-		ShardingBasePath:    "/inputs",
-		ShardingBatchSize:   1,
 
 		FilPlus: false,
 	}
@@ -254,21 +249,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
-		`Use this pattern to match files to be sharded.`,
-	)
-
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingBasePath, "sharding-base-path", ODR.ShardingBasePath,
-		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.ShardingBatchSize, "sharding-batch-size", ODR.ShardingBatchSize,
-		`Place results of the sharding glob pattern into groups of this size.`,
-	)
-
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.FilPlus, "filplus", ODR.FilPlus,
 		`Mark the job as a candidate for moderation for FIL+ rewards.`,
@@ -330,7 +310,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
+//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
@@ -363,7 +343,52 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 	}
 
 	for _, i := range odr.Inputs {
-		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+		isValidCID := func(i string) bool {
+			c, er := cid.Decode(i)
+			if er != nil {
+				return false // invalid CID format
+			}
+			return c.Type() == cid.Raw || c.Type() == cid.DagProtobuf // check CID version
+		}(i)
+		isTheCIDValid := isValidCID
+		if isTheCIDValid {
+			odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+		} else {
+			scheme := func(URI string) *url.URL {
+				parsed, err1 := url.Parse(URI)
+				if err1 != nil {
+					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
+					log.Fatal(errMsg)
+				}
+				return parsed
+			}(i)
+
+			switch scheme.Scheme {
+			case "http":
+				odr.InputUrls = append(odr.InputUrls, i)
+			case "https":
+				odr.InputUrls = append(odr.InputUrls, i)
+			case "ipfs":
+				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
+			// unimplemented schemes
+			// case "git":
+			//     // Handle git scheme
+			//     fmt.Println("Handling git scheme...")
+			// case "gitlfs":
+			// lfsConstraint:= "git-lfs=True"
+			// odr.Labels = append(odr.Labels,lfsConstraint )
+			//     // Handle git scheme
+			//     fmt.Println("Handling git scheme...")
+			// case "s3":
+			//     // Handle s3 scheme
+			//     fmt.Println("Handling s3 scheme...")
+			// case "file":
+			//     // Handle file scheme
+			//     fmt.Println("Handling file scheme...")
+			default:
+				fmt.Println("Unknown scheme or scheme not currently supported...")
+			}
+		}
 	}
 
 	if len(odr.WorkingDirectory) > 0 {
@@ -405,9 +430,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		labels,
 		odr.NodeSelector,
 		odr.WorkingDirectory,
-		odr.ShardingGlobPattern,
-		odr.ShardingBasePath,
-		odr.ShardingBatchSize,
 	)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")

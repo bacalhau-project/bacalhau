@@ -1,6 +1,8 @@
 PACKAGE_NAME := bacalhau-apiclient
 SWAGGER_JSON := ../docs/swagger.json
-VERSION := $(shell git describe --tags --abbrev=0 | tr -d v).post7
+VERSION ?= $${PYPI_VERSION}
+
+
 
 #set cmd to be swagger-codegen if that doesnt exist make it the java command
 #swagger-codegen is supported by brew install swagger-codegen@2
@@ -14,8 +16,7 @@ endif
 endif
 
 .PHONY: all
-all: python-config.json $(patsubst %,%/,$(shell cat supported_langs)) pypi-build pypi-upload
-
+all: python-config.json python/ pypi-build
 
 %-config.json: config.json.template
 	cat $< | \
@@ -68,7 +69,8 @@ python/: python-config.json
 pypi-build: python/
 	cd python && python3 -m pip install --upgrade build && python3 -m build
 
-pypi-upload: pypi-build
+.SILENT: pypi-upload
+pypi-upload:
 	cd python && \
 	python3 -m pip install --upgrade twine && \
 	python3 -m twine upload \
@@ -77,10 +79,11 @@ pypi-upload: pypi-build
 		--skip-existing \
 		-u __token__ -p ${PYPI_TOKEN} \
 		dist/*
+	@echo "Package uploaded to PyPI"
 
 .PHONY: clean
-clean: $(shell find . -type d -depth 1 -not -name bacalhau_sdk)
-	$(RM) -r $^
-	$(RM) *-config.json
+clean:
+	$(RM) -r ./python
+	$(RM) python-config.json
 	$(RM) ./swagger-edited*.json
 	mkdir -p python

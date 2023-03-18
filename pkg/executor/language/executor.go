@@ -8,6 +8,7 @@ docker executor, depending on whether determinism is required.
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/rs/zerolog/log"
 
@@ -59,22 +60,30 @@ func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error
 	return bidstrategy.NewChainedBidStrategy(), nil
 }
 
-func (e *Executor) RunShard(
+func (e *Executor) Run(
 	ctx context.Context,
-	shard model.JobShard,
+	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	executor, err := e.getDelegateExecutor(ctx, shard)
+	executor, err := e.getDelegateExecutor(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	return executor.RunShard(ctx, shard, jobResultsDir)
+	return executor.Run(ctx, job, jobResultsDir)
 }
 
-func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard) (executor.Executor, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+	executor, err := e.getDelegateExecutor(ctx, job)
+	if err != nil {
+		return nil, err
+	}
+	return executor.GetOutputStream(ctx, job)
+}
+
+func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (executor.Executor, error) {
 	requiredLang := LanguageSpec{
-		Language: shard.Job.Spec.Language.Language,
-		Version:  shard.Job.Spec.Language.LanguageVersion,
+		Language: job.Spec.Language.Language,
+		Version:  job.Spec.Language.LanguageVersion,
 	}
 
 	engineKey, exists := supportedVersions[requiredLang]
@@ -83,7 +92,7 @@ func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard
 		return nil, err
 	}
 
-	if shard.Job.Spec.Language.Deterministic {
+	if job.Spec.Language.Deterministic {
 		log.Ctx(ctx).Debug().Msgf("Running deterministic %v", requiredLang)
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?

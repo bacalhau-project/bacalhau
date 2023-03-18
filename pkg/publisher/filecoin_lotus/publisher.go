@@ -80,19 +80,19 @@ func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (l *Publisher) PublishShardResult(
+func (l *Publisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
+	j model.Job,
 	hostID string,
-	shardResultPath string,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	log.Ctx(ctx).Debug().
-		Stringer("shard", shard).
+		Stringer("job", j).
 		Str("host", hostID).
-		Str("shardResultPath", shardResultPath).
+		Str("resultPath", resultPath).
 		Msg("Uploading results folder to filecoin lotus")
 
-	carFile, err := l.carResultsDir(ctx, shardResultPath)
+	carFile, err := l.carResultsDir(ctx, resultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -107,7 +107,7 @@ func (l *Publisher) PublishShardResult(
 		return model.StorageSpec{}, err
 	}
 
-	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceFilecoin, hostID, contentCid.String())
+	spec := job.GetPublishedStorageSpec(j, model.StorageSourceFilecoin, hostID, contentCid.String())
 	spec.Metadata["deal_cid"] = dealCid
 	return spec, nil
 }
@@ -120,7 +120,7 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 
 	// Temporary files will have 0600 as their permissions, which could cause issues when sharing with a Lotus node
 	// running inside a container.
-	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil { //nolint:govet
+	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil {
 		return "", err
 	}
 

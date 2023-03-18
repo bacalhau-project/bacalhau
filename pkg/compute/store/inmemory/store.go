@@ -13,7 +13,7 @@ const newExecutionComment = "Execution created"
 
 type Store struct {
 	executionMap map[string]store.Execution
-	shardMap     map[string][]string
+	jobMap       map[string][]string
 	history      map[string][]store.ExecutionHistory
 	mu           sync.RWMutex
 }
@@ -21,7 +21,7 @@ type Store struct {
 func NewStore() *Store {
 	res := &Store{
 		executionMap: make(map[string]store.Execution),
-		shardMap:     make(map[string][]string),
+		jobMap:       make(map[string][]string),
 		history:      make(map[string][]store.ExecutionHistory),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
@@ -41,12 +41,12 @@ func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, e
 	return execution, nil
 }
 
-func (s *Store) GetExecutions(ctx context.Context, shardID string) ([]store.Execution, error) {
+func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	executionIDs, ok := s.shardMap[shardID]
+	executionIDs, ok := s.jobMap[jobID]
 	if !ok {
-		return []store.Execution{}, store.NewErrExecutionsNotFound(shardID)
+		return []store.Execution{}, store.NewErrExecutionsNotFoundForJob(jobID)
 	}
 	executions := make([]store.Execution, len(executionIDs))
 	for i, id := range executionIDs {
@@ -76,7 +76,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 	}
 
 	s.executionMap[execution.ID] = execution
-	s.shardMap[execution.Shard.ID()] = append(s.shardMap[execution.Shard.ID()], execution.ID)
+	s.jobMap[execution.Job.ID()] = append(s.jobMap[execution.Job.ID()], execution.ID)
 	s.appendHistory(execution, store.ExecutionStateUndefined, newExecutionComment)
 	return nil
 }
@@ -125,14 +125,14 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	if ok {
 		delete(s.executionMap, id)
 		delete(s.history, id)
-		shardID := execution.Shard.ID()
-		shardExecutions := s.shardMap[shardID]
-		if len(shardExecutions) == 1 {
-			delete(s.shardMap, shardID)
+		jobID := execution.Job.ID()
+		jobExecutions := s.jobMap[jobID]
+		if len(jobExecutions) == 1 {
+			delete(s.jobMap, jobID)
 		} else {
-			for i, executionID := range shardExecutions {
+			for i, executionID := range jobExecutions {
 				if executionID == id {
-					s.shardMap[shardID] = append(shardExecutions[:i], shardExecutions[i+1:]...)
+					s.jobMap[jobID] = append(jobExecutions[:i], jobExecutions[i+1:]...)
 					break
 				}
 			}
@@ -141,14 +141,14 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context) uint {
+func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
 	var counter uint
 	for _, execution := range s.executionMap {
 		if execution.State == store.ExecutionStateCompleted {
 			counter++
 		}
 	}
-	return counter
+	return counter, nil
 }
 
 // compile-time check that we implement the interface ExecutionStore

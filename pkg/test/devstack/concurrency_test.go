@@ -32,7 +32,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	testCase.Deal = model.Deal{Concurrency: 2}
 	testCase.ResultsChecker = scenario.FileEquals(
 		model.DownloadFilenameStdout,
-		"Hello, world!\nHello, world!\n",
+		"Hello, world!\n",
 	)
 	testCase.JobCheckers = []job.CheckStatesFunction{
 		job.WaitForExecutionStates(map[model.ExecutionStateType]int{

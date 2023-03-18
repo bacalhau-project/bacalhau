@@ -46,12 +46,9 @@ func TestUpload(t *testing.T) {
 	require.NoError(t, err)
 
 	publisher := getPublisherWithGoodConfig(t)
-	spec, err := publisher.PublishShardResult(
+	spec, err := publisher.PublishResult(
 		context.Background(),
-		model.JobShard{
-			Job:   model.NewJob(),
-			Index: 0,
-		},
+		model.Job{},
 		"host",
 		tempDir,
 	)
