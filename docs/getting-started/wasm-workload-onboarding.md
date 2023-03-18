@@ -53,10 +53,11 @@ You can run a WebAssembly program on Bacalhau using the `bacalhau wasm run` comm
 To run a locally compiled WASM program, specify it as an argument. For example, running `bacalhau wasm run main.wasm` will upload and execute the `main.wasm` program.
 
 :::caution
-The program you specify will be uploaded to a Bacalhau IPFS node and will be publicly available.
+The program you specify will be uploaded to a Bacalhau storage node and will be publicly available.
 :::
 
-Alternatively, you can specify a WASM program already on IPFS by using a CID, like `bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ`.
+Alternatively, you can specify a WASM program by 
+using a CID, like `bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ`.
 
 Make sure to specify any input data using the `--input-volumes` or `--input-urls` flags.
 
