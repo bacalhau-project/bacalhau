@@ -374,7 +374,11 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			case "gitlfs":
 				lfsConstraint := "git-lfs=True"
-				odr.Labels = append(odr.Labels, lfsConstraint)
+				if odr.NodeSelector == "" {
+
+					odr.NodeSelector = lfsConstraint
+				}
+				odr.NodeSelector = lfsConstraint + "," + odr.NodeSelector
 				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			// unimplemented schemes
 			// case "s3":
