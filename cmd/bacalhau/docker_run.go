@@ -310,8 +310,8 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
+// CreateJob creates a job object from the given command line arguments and options.
+func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
