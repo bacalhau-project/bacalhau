@@ -102,7 +102,7 @@ The publisher is responsible for uploading the final results of a job to a publi
 
 During the verification process, the raw results are kept private between the compute node and requester node to prevent unauthorized access or copying. Once the verification is complete and the results are deemed valid, the publisher interface takes over the task of uploading the local folder of results to a public location that can be accessed by the wider network.
 
-The default publisher used is either Estuary or IPFS, with the published results being stored on IPFS with a unique content identifier (cid) that can be used to retrieve them. If Estuary is used as the publisher, the results will also be stored on Filecoin. The publisher interface is responsible for ensuring that the published results are accessible and can be read by other nodes on the network.
+The default publisher used is either Estuary, with the published results being stored with a unique content identifier (cid) that can be used to retrieve them. If Estuary is used as the publisher, the results will also be stored on Filecoin. The publisher interface is responsible for ensuring that the published results are accessible and can be read by other nodes on the network.
 
 ## Job Lifecycle
 
