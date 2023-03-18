@@ -86,7 +86,7 @@ pytorch/pytorch \
 -- python ../inputs/main.py --save-model
 ```
 
-### Structure of the command
+### Sturucture of the command
 
 - `bacalhau docker run`: call to bacalhau 
 
@@ -102,7 +102,7 @@ pytorch/pytorch \
 
 `python ../inputs/main.py --save-model`: URL script gets mounted to the /inputs folder in the container. 
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 

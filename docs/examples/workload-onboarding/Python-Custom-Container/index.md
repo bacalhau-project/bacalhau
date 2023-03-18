@@ -17,7 +17,7 @@ In this tutorial example, we will walk you through building your own docker cont
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Sample Recommendation Dataset
+## Sample Recommedation Dataset
 
 We will using a simple recommendation script that when given a movie ID will recommend other movies based on user ratings. Assuming you want if recommendations for the movie Toy Story (1995) it will recommend movies from similar categories:
 
@@ -58,7 +58,7 @@ input
 
 
 ```python
-# Extracting the downloaded zip file
+# Extracting the downlaoded zip file
 !unzip ml-1m.zip
 ```
 
@@ -290,7 +290,7 @@ Let's look closely at the command above:
 
 * `-- python similar-movies.py`: execute the python script
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ### Running the Container with Custom Parameters
 

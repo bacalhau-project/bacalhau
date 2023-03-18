@@ -40,7 +40,7 @@ bacalhau docker run \
   python:3.10-slim -- python3 /inputs/hello-world.py
 ```
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python

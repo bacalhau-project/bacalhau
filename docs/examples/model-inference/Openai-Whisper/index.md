@@ -16,7 +16,7 @@ The advantages of using bacalhau over managed Automatic Speech Recognition servi
 
 # Running whisper locally
 
-Installing dependencies like Whisper, torch, pandas
+Installing dependecies like Whisper, torch, pandas
 
 
 ```bash
@@ -95,7 +95,7 @@ parser.add_argument("-s",dest="speechtask", type=str,help="Whether to perform X-
 parser.add_argument("-n",dest="numSteps", type=int,help="Number of Steps",default=50)
 parser.add_argument("-t",dest="decodingtemperature", type=int,help="Temperature to increase when falling back when the decoding fails to meet either of the thresholds below.",default=0.15 )
 parser.add_argument("-b",dest="beamsize", type=int,help="Number of Images",default=5)
-parser.add_argument("-o",dest="output", type=str,help="Output Folder where to store the outputs",default="")
+parser.add_argument("-o",dest="output", type=str,help="Output Folder where to store the ouputs",default="")
 
 args=parser.parse_args()
 device = torch.device('cuda:0')
@@ -819,7 +819,7 @@ optional arguments:
                         Temperature to increase when falling back when the
                         decoding fails to meet either of the thresholds below.
   -b BEAMSIZE           Number of Images
-  -o OUTPUT             Output Folder where to store the outputs
+  -o OUTPUT             Output Folder where to store the ouputs
 ```
 
 Viewing the outputs

@@ -43,7 +43,7 @@ forcefield = ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
 
 # Output
 output_path = '/outputs/final_state.pdbx'
-if not os.path.exists(os.path.dirname(output_path)): # check if output dir exists
+if not os.path.exists(os.path.dirname(output_path)): # check if ouput dir exists
     os.makedirs(os.path.dirname(output_path))
 
 # System Configuration
@@ -208,7 +208,7 @@ bacalhau docker run \
 ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py
 ```
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 
 ```python

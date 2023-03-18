@@ -232,7 +232,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished, you should see the following contents in results directory
+After the download has finishe, you should see the following contents in results directory
 
 
 ```bash

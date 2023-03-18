@@ -11,7 +11,7 @@ sidebar_position: 2
 
 Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
-## Prerequisite
+## Prerequiste
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
@@ -97,7 +97,7 @@ amancevice/pandas \
 -- python read_csv.py
 ```
 
-### Structure of the command
+### Sturucture of the command
 
 - `bacalhau docker run`: call to bacalhau 
 
@@ -111,7 +111,7 @@ amancevice/pandas \
 
 ` python read_csv.py`: python script to read pandas script
 
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 

@@ -19,7 +19,7 @@ Architecturally, the CPU is composed of just a few cores with lots of cache memo
 Computations like matrix multiplication could be done much faster on GPU than on CPU
 
 
-## Prerequisite
+## Prerequiste
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
@@ -55,7 +55,7 @@ wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/mas
 cat inputs/00-hello-world.cu
 ```
 
-This is a standard c++ program which uses loops which are not parallizable so it doesn't use the most of the processing power of the GPU
+This is a standard c++ program which uses loops which are not parallizable so it dosen't use the most of the processing power of the GPU
 
 
 ```python
@@ -69,7 +69,7 @@ This is a standard c++ program which uses loops which are not parallizable so it
 ```
 
 Instead of looping we use Vector addition using CUDA and allocate the memory in advance and copy the memory to the GPU
-using cudaMemcpy so that it can utilize the HBM (High Bandwidth memory of the GPU)
+using cudaMemcpy so that it can utilize the HBM (High Bandwith memory of the GPU)
 
 
 ```python
@@ -123,7 +123,7 @@ Let's look closely at the command above:
 
 
 ```python
-When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+When a job is sumbitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 ```
 
 ## Checking the State of your Jobs
