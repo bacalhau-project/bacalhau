@@ -11,7 +11,6 @@ import (
 	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
@@ -52,7 +51,9 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
-	executionStore := inlocalstore.NewPersistentJobStore(inmemory.NewStore())
+	// TODO: bring back persistent job store as it is failing tests with `unexpected end of JSON input`
+	//executionStore := inlocalstore.NewPersistentJobStore(inmemory.NewStore())
+	executionStore := inmemory.NewStore()
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
