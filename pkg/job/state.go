@@ -31,7 +31,7 @@ func NewStateResolver(
 	return &StateResolver{
 		jobLoader:       jobLoader,
 		stateLoader:     stateLoader,
-		maxWaitAttempts: 1000,
+		maxWaitAttempts: 300,
 		waitDelay:       time.Millisecond * 100,
 	}
 }
