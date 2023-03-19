@@ -84,15 +84,20 @@ func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCo
 	waitDuration := 15 * time.Second
 	waitGaps := 20 * time.Millisecond
 	waitUntil := time.Now().Add(waitDuration)
+	loggingGap := 1 * time.Second
+	waitLoggingUntil := time.Now().Add(loggingGap)
 
 	var nodeInfos []model.NodeInfo
 	for time.Now().Before(waitUntil) {
 		var err error
 		nodeInfos, err = requesterNode.NodeInfoStore.List(ctx)
 		require.NoError(t, err)
-		t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
-			return t.PeerInfo.ID.String()
-		}))
+		if time.Now().After(waitLoggingUntil) {
+			t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
+				return t.PeerInfo.ID.String()
+			}))
+			waitLoggingUntil = time.Now().Add(loggingGap)
+		}
 		if len(nodeInfos) == expectedNodeCount {
 			return
 		}

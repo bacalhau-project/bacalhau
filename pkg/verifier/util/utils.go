@@ -43,8 +43,9 @@ func NewStandardVerifiers(
 func NewNoopVerifiers(
 	ctx context.Context,
 	cm *system.CleanupManager,
+	config noop.VerifierConfig,
 ) (verifier.VerifierProvider, error) {
-	noopVerifier, err := noop.NewNoopVerifier(ctx, cm)
+	noopVerifier, err := noop.NewNoopVerifierWithConfig(ctx, cm, config)
 	if err != nil {
 		return nil, err
 	}
