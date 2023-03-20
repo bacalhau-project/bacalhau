@@ -54,7 +54,6 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
-
 	// create the execution store
 	executionStore, err := createExecutionStore(host)
 	if err != nil {
