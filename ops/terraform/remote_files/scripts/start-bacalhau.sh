@@ -64,4 +64,9 @@ bacalhau serve \
   --swarm-port "${BACALHAU_PORT}" \
   --api-port 1234 \
   --peer "${CONNECT_PEER}" \
+  --private-internal-ipfs=false \
   --labels owner=bacalhau
+
+# // // make sure we run serve in local mode
+	# OS.PeerConnect = "none"
+	# OS.PrivateInternalIPFS = true

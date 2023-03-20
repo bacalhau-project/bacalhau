@@ -15,6 +15,10 @@ type IDInfo struct {
 func newIDCmd() *cobra.Command {
 	OS := NewServeOptions()
 
+	// make sure we run serve in local mode
+	OS.PeerConnect = "none"
+	OS.PrivateInternalIPFS = true
+
 	idCmd := &cobra.Command{
 		Use:   "id",
 		Short: "Show bacalhau node id info",
