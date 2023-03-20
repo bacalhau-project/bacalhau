@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/bacalhau-project/bacalhau v0.3.24-0.20230304060345-84fca95c3c00
+	github.com/bacalhau-project/bacalhau v0.3.25-0.20230319174528-80ebfc97d3e0
 	github.com/rs/zerolog v1.29.0
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5

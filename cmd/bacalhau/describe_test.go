@@ -58,16 +58,16 @@ func (s *DescribeSuite) TestDescribeJob() {
 				returnedJobDescription := &model.JobWithInfo{}
 
 				// No job id (should error)
-				_, out, err := ExecuteTestCobraCommand("describe",
+				_, _, err := ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 				)
 				require.Error(s.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
-				_, out, err = ExecuteTestCobraCommand("describe",
+				_, out, err := ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 					submittedJob.Metadata.ID,
 				)
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
@@ -85,7 +85,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				_, out, err = ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
 					submittedJob.Metadata.ID,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 				)
 
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
@@ -101,7 +101,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				_, out, err = ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
 					submittedJob.Metadata.ID[0:model.ShortIDLength],
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 				)
 
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
@@ -141,7 +141,7 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			var args []string
 
-			args = append(args, "describe", "--api-host", s.host, "--api-port", s.port, submittedJob.Metadata.ID)
+			args = append(args, "describe", "--api-host", s.host, "--api-port", fmt.Sprint(s.port), submittedJob.Metadata.ID)
 			if tc.includeEvents {
 				args = append(args, "--include-events")
 			}
@@ -210,7 +210,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				_, out, err = ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 					jobID,
 				)
 				if tc.describeIDEdgecase == "" {

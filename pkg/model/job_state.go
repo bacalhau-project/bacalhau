@@ -25,6 +25,9 @@ const (
 	// Job completed successfully
 	JobStateCompleted
 
+	// Some executions completed successfully, but others failed to publish their results.
+	JobStateCompletedPartially
+
 	// Job is waiting to be scheduled.
 	JobStateQueued
 )
@@ -32,7 +35,7 @@ const (
 // IsTerminal returns true if the given job type signals the end of the lifecycle of
 // that job and that no change in the state can be expected.
 func (s JobStateType) IsTerminal() bool {
-	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled
+	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled || s == JobStateCompletedPartially
 }
 
 func (s JobStateType) MarshalText() ([]byte, error) {
@@ -41,7 +44,7 @@ func (s JobStateType) MarshalText() ([]byte, error) {
 
 func (s *JobStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := JobStateNew; typ <= JobStateCompleted; typ++ {
+	for typ := JobStateNew; typ <= JobStateQueued; typ++ {
 		if equal(typ.String(), name) {
 			*s = typ
 			return
@@ -71,12 +74,11 @@ type JobState struct {
 	TimeoutAt time.Time `json:"TimeoutAt,omitempty"`
 }
 
-func (j JobState) ExecutionsInTerminalState() bool {
-	for _, execution := range j.Executions {
-		if !execution.State.IsTerminal() {
-			return false
-		}
+// GroupExecutionsByState groups the executions by state
+func (s *JobState) GroupExecutionsByState() map[ExecutionStateType][]ExecutionState {
+	result := make(map[ExecutionStateType][]ExecutionState)
+	for _, execution := range s.Executions {
+		result[execution.State] = append(result[execution.State], execution)
 	}
-
-	return true
+	return result
 }

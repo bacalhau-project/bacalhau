@@ -6,7 +6,7 @@ type EnvironmentData struct {
 	APIHost string
 
 	// APIPort is the port that an environment serves the public API on.
-	APIPort int
+	APIPort uint16
 
 	// Bootstrap lists the bacalhau addresses for bootstrapping new local nodes.
 	BootstrapAddresses []string

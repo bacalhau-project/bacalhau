@@ -57,7 +57,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			_, out, err := ExecuteTestCobraCommand("list",
 				"--hide-header",
 				"--api-host", suite.host,
-				"--api-port", suite.port,
+				"--api-port", fmt.Sprint(suite.port),
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 				"--reverse", "false",
 			)
@@ -85,7 +85,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	_, out, err := ExecuteTestCobraCommand("list",
 		"--hide-header",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--id-filter", jobIds[0],
 	)
 	require.NoError(suite.T(), err)
@@ -108,7 +108,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	_, out, err = ExecuteTestCobraCommand("list",
 		"--hide-header",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--id-filter", jobLongIds[0],
 		"--output", "json",
 	)
@@ -181,7 +181,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				args := []string{"list",
 					"--hide-header",
 					"--api-host", suite.host,
-					"--api-port", suite.port,
+					"--api-port", fmt.Sprint(suite.port),
 					"--output", "json",
 				}
 				args = append(args, flags...)
@@ -189,7 +189,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				require.NoError(suite.T(), err)
 
 				response := publicapi.ListResponse{}
-				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
 					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)
@@ -288,7 +288,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					"--hide-header",
 					"--no-style",
 					"--api-host", suite.host,
-					"--api-port", suite.port,
+					"--api-port", fmt.Sprint(suite.port),
 					"--sort-by", sortFlags.sortFlag,
 					"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 					reverseString,

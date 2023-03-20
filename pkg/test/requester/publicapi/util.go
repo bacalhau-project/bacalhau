@@ -50,15 +50,16 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		APIServerConfig:     config,
 		IsRequesterNode:     true,
 		IsComputeNode:       true,
+		DependencyInjector:  devstack.NewNoopNodeDependencyInjector(),
 	}
 
-	n, err := node.NewNode(ctx, nodeConfig, devstack.NewNoopNodeDependencyInjector())
+	n, err := node.NewNode(ctx, nodeConfig)
 	require.NoError(t, err)
 
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	client := requester_publicapi.NewRequesterAPIClient(n.APIServer.GetURI())
+	client := requester_publicapi.NewRequesterAPIClient(n.APIServer.Address, n.APIServer.Port)
 	require.NoError(t, waitForHealthy(ctx, client))
 	return n, client
 }

@@ -112,7 +112,7 @@ func shortID(outputWide bool, id string) string {
 }
 
 func GetAPIClient() *publicapi.RequesterAPIClient {
-	return publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
@@ -262,8 +262,8 @@ func ExecuteJob(ctx context.Context,
 			return errLocalDevStack
 		}
 
-		apiURI := stack.Nodes[0].APIServer.GetURI()
-		apiClient = publicapi.NewRequesterAPIClient(apiURI)
+		apiServer := stack.Nodes[0].APIServer
+		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	} else {
 		apiClient = GetAPIClient()
 	}

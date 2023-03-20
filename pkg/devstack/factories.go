@@ -8,10 +8,12 @@ import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
@@ -61,26 +63,38 @@ func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) *Noo
 	return &NoopExecutorsFactory{config: config}
 }
 
-type NoopVerifiersFactory struct{}
+type NoopVerifiersFactory struct {
+	config noop_verifier.VerifierConfig
+}
 
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig) (verifier.VerifierProvider, error) {
-	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager)
+	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, f.config)
 }
 
 func NewNoopVerifiersFactory() *NoopVerifiersFactory {
-	return &NoopVerifiersFactory{}
+	return NewNoopVerifiersFactoryWithConfig(noop_verifier.VerifierConfig{})
 }
 
-type NoopPublishersFactory struct{}
+func NewNoopVerifiersFactoryWithConfig(config noop_verifier.VerifierConfig) *NoopVerifiersFactory {
+	return &NoopVerifiersFactory{config: config}
+}
+
+type NoopPublishersFactory struct {
+	config noop_publisher.PublisherConfig
+}
 
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
-	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager)
+	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, f.config)
 }
 
 func NewNoopPublishersFactory() *NoopPublishersFactory {
-	return &NoopPublishersFactory{}
+	return NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{})
+}
+
+func NewNoopPublishersFactoryWithConfig(config noop_publisher.PublisherConfig) *NoopPublishersFactory {
+	return &NoopPublishersFactory{config: config}
 }

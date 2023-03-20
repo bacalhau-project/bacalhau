@@ -110,9 +110,8 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	log.Debug().Msgf("jobId=%s", jobID)
 	time.Sleep(time.Second * 5)
 
-	firstNode := stack.Nodes[0]
-	apiUri := firstNode.APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobID)
@@ -128,7 +127,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	require.NotEmpty(s.T(), executionState.PublishedResult.CID)
 
 	finalOutputPath := filepath.Join(outputDir, executionState.PublishedResult.CID)
-	err = firstNode.IPFSClient.Get(ctx, executionState.PublishedResult.CID, finalOutputPath)
+	err = stack.Nodes[0].IPFSClient.Get(ctx, executionState.PublishedResult.CID, finalOutputPath)
 	require.NoError(s.T(), err)
 
 	err = filepath.Walk(finalOutputPath,
@@ -182,8 +181,8 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
@@ -233,8 +232,8 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)

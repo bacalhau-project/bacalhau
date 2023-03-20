@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -190,7 +192,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 	defer os.Remove(portFileName)
 	firstNode := stack.Nodes[0]
-	_, err = f.WriteString(strconv.Itoa(firstNode.APIServer.Port))
+	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error writing out port file: %v", portFileName), 1)
 	}
@@ -204,6 +206,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error writing out pid file: %v", pidFileName), 1)
+	}
+
+	if loggingMode == logger.LogModeStation {
+		fmt.Printf("API: %s\n", firstNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
 	}
 
 	<-ctx.Done() // block until killed

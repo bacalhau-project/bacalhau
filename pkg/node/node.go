@@ -40,7 +40,7 @@ type NodeConfig struct {
 	FilecoinUnsealedPath      string
 	EstuaryAPIKey             string
 	HostAddress               string
-	APIPort                   int
+	APIPort                   uint16
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
@@ -50,6 +50,7 @@ type NodeConfig struct {
 	IsComputeNode             bool
 	Labels                    map[string]string
 	NodeInfoPublisherInterval time.Duration
+	DependencyInjector        NodeDependencyInjector
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -85,43 +86,37 @@ func (n *Node) Start(ctx context.Context) error {
 	return n.APIServer.ListenAndServe(ctx, n.CleanupManager)
 }
 
-func NewStandardNode(
-	ctx context.Context,
-	config NodeConfig) (*Node, error) {
-	return NewNode(ctx, config, NewStandardNodeDependencyInjector())
-}
-
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	config NodeConfig,
-	injector NodeDependencyInjector) (*Node, error) {
+	config NodeConfig) (*Node, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/node.NewNode")
 	defer span.End()
 
 	identify.ActivationThresh = 2
 
+	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	storageProviders, err := injector.StorageProvidersFactory.Get(ctx, config)
+	storageProviders, err := config.DependencyInjector.StorageProvidersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	executors, err := injector.ExecutorsFactory.Get(ctx, config)
+	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	verifiers, err := injector.VerifiersFactory.Get(ctx, config)
+	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	publishers, err := injector.PublishersFactory.Get(ctx, config)
+	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -326,4 +321,20 @@ func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub
 		libp2p_pubsub.WithPeerGater(pgParams),
 		libp2p_pubsub.WithEventTracer(tracer),
 	)
+}
+
+func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector NodeDependencyInjector) NodeDependencyInjector {
+	if injector.StorageProvidersFactory == nil {
+		injector.StorageProvidersFactory = defaultInjector.StorageProvidersFactory
+	}
+	if injector.ExecutorsFactory == nil {
+		injector.ExecutorsFactory = defaultInjector.ExecutorsFactory
+	}
+	if injector.VerifiersFactory == nil {
+		injector.VerifiersFactory = defaultInjector.VerifiersFactory
+	}
+	if injector.PublishersFactory == nil {
+		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	return injector
 }

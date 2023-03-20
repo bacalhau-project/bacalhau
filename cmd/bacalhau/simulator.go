@@ -55,8 +55,9 @@ func runSimulator(cmd *cobra.Command) error {
 		SimulatorNodeID:     libp2pHost.ID().String(),
 		IsComputeNode:       true,
 		IsRequesterNode:     true,
+		DependencyInjector:  devstack.NewNoopNodeDependencyInjector(),
 	}
-	node, err := node.NewNode(ctx, nodeConfig, devstack.NewNoopNodeDependencyInjector())
+	node, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating node: %s", err), 1)
 	}

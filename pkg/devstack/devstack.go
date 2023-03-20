@@ -217,9 +217,10 @@ func NewDevStack(
 		//////////////////////////////////////
 		// port for API
 		//////////////////////////////////////
-		apiPort := 0
+		apiPort := uint16(0)
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			apiPort = 20000 + i
+			const startPort = 20000
+			apiPort = uint16(startPort + i)
 		}
 
 		//////////////////////////////////////
@@ -268,6 +269,7 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
+			DependencyInjector: injector,
 		}
 
 		if lotus != nil {
@@ -292,7 +294,7 @@ func NewDevStack(
 		}
 
 		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig, injector)
+		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
 			return nil, err
 		}

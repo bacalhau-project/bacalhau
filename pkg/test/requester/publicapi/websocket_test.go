@@ -51,9 +51,11 @@ func (s *WebsocketSuite) TearDownTest() {
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
 	// string.Replace http with ws in c.BaseURI
-	url := "ws" + s.client.BaseURI[4:] + "/requester/websocket/events"
+	url := *s.client.BaseURI
+	url.Scheme = "ws"
+	wurl := url.JoinPath("requester", "websocket", "events")
 
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
 	require.NoError(s.T(), err)
 	s.T().Cleanup(func() {
 		s.NoError(conn.Close())
@@ -94,8 +96,12 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
-	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket/events?job_id=%s", j.Metadata.ID)
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	url := *s.client.BaseURI
+	url.Scheme = "ws"
+	wurl := url.JoinPath("websocket", "events")
+	wurl.RawQuery = fmt.Sprintf("job_id=%s", j.Metadata.ID)
+
+	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
 	require.NoError(s.T(), err)
 
 	var event model.JobEvent

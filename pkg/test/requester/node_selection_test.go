@@ -67,7 +67,10 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
 		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
+		node.NewRequesterConfigWith(node.RequesterConfigParams{
+			NodeRankRandomnessRange: 0,
+			OverAskForBidsFactor:    1,
+		}),
 		noop_executor.ExecutorConfig{},
 		nodeOverrides...,
 	)
@@ -76,7 +79,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.GetURI())
+	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = job.NewStateResolver(
 		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
@@ -139,6 +142,21 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 			name:          "select by multiple negative env",
 			selector:      "env notin (prod,test)",
 			expectedNodes: []*node.Node{},
+		},
+		{
+			name:          "favour by name",
+			selector:      "favour_name=compute-1,name in (compute-1,compute-2)",
+			expectedNodes: []*node.Node{s.compute1}, // concurrency=1
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
 		},
 	}
 

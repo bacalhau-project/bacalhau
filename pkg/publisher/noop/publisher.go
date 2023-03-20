@@ -7,17 +7,50 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
-type NoopPublisher struct{}
+type PublisherHandlerIsInstalled func(ctx context.Context) (bool, error)
+type PublisherHandlerPublishResult func(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error)
+
+func ErrorResultPublisher(err error) PublisherHandlerPublishResult {
+	return func(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
+		return model.StorageSpec{}, err
+	}
+}
+
+type PublisherExternalHooks struct {
+	IsInstalled   PublisherHandlerIsInstalled
+	PublishResult PublisherHandlerPublishResult
+}
+
+type PublisherConfig struct {
+	ExternalHooks PublisherExternalHooks
+}
+
+type NoopPublisher struct {
+	externalHooks PublisherExternalHooks
+}
 
 func NewNoopPublisher() *NoopPublisher {
 	return &NoopPublisher{}
 }
 
-func (publisher *NoopPublisher) IsInstalled(context.Context) (bool, error) {
+func NewNoopPublisherWithConfig(config PublisherConfig) *NoopPublisher {
+	p := NewNoopPublisher()
+	p.externalHooks = config.ExternalHooks
+	return p
+}
+
+func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
+	if publisher.externalHooks.IsInstalled != nil {
+		return publisher.externalHooks.IsInstalled(ctx)
+	}
 	return true, nil
 }
 
-func (publisher *NoopPublisher) PublishResult(context.Context, model.Job, string, string) (model.StorageSpec, error) {
+func (publisher *NoopPublisher) PublishResult(
+	ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
+	if publisher.externalHooks.PublishResult != nil {
+		return publisher.externalHooks.PublishResult(ctx, job, hostID, resultPath)
+	}
 	return model.StorageSpec{}, nil
 }
 
