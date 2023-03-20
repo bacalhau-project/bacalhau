@@ -100,10 +100,18 @@ func (e EventEmitter) EmitPublishComplete(ctx context.Context, response compute.
 	e.EmitEventSilently(ctx, event)
 }
 
-func (e EventEmitter) EmitComputeFailure(ctx context.Context, response compute.ComputeError) {
-	event := e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventComputeError)
-	event.Status = response.Error()
-	event.TargetNodeID = "" // localDB don't assume a target node for events coming from compute nodes
+func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID model.ExecutionID, err error) {
+	// incoming error routing metadata
+	routingMetadata := compute.RoutingMetadata{
+		SourcePeerID: executionID.NodeID,
+		TargetPeerID: "", // localDB don't assume a target node for events coming from compute nodes
+	}
+	executionMetadata := compute.ExecutionMetadata{
+		JobID:       executionID.JobID,
+		ExecutionID: executionID.ExecutionID,
+	}
+	event := e.constructEvent(routingMetadata, executionMetadata, model.JobEventComputeError)
+	event.Status = err.Error()
 	e.EmitEventSilently(ctx, event)
 }
 

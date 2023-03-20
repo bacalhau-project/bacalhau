@@ -10,8 +10,25 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/results"
 )
 
+type VerifierHandlerIsInstalled func(ctx context.Context) (bool, error)
+type VerifierHandlerGetResultPath func(ctx context.Context, job model.Job) (string, error)
+type VerifierHandlerGetProposal func(context.Context, model.Job, string) ([]byte, error)
+type VerifierHandlerVerify func(context.Context, model.Job, []model.ExecutionState) ([]verifier.VerifierResult, error)
+
+type VerifierExternalHooks struct {
+	IsInstalled   VerifierHandlerIsInstalled
+	GetResultPath VerifierHandlerGetResultPath
+	GetProposal   VerifierHandlerGetProposal
+	Verify        VerifierHandlerVerify
+}
+
+type VerifierConfig struct {
+	ExternalHooks VerifierExternalHooks
+}
+
 type NoopVerifier struct {
-	results *results.Results
+	results       *results.Results
+	externalHooks VerifierExternalHooks
 }
 
 func NewNoopVerifier(
@@ -33,22 +50,40 @@ func NewNoopVerifier(
 	}, nil
 }
 
-func (noopVerifier *NoopVerifier) IsInstalled(context.Context) (bool, error) {
+func NewNoopVerifierWithConfig(ctx context.Context, cm *system.CleanupManager, config VerifierConfig) (*NoopVerifier, error) {
+	v, err := NewNoopVerifier(ctx, cm)
+	if err != nil {
+		return nil, err
+	}
+	v.externalHooks = config.ExternalHooks
+	return v, nil
+}
+
+func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
+	if noopVerifier.externalHooks.IsInstalled != nil {
+		return noopVerifier.externalHooks.IsInstalled(ctx)
+	}
 	return true, nil
 }
 
 func (noopVerifier *NoopVerifier) GetResultPath(
-	_ context.Context,
+	ctx context.Context,
 	job model.Job,
 ) (string, error) {
+	if noopVerifier.externalHooks.GetResultPath != nil {
+		return noopVerifier.externalHooks.GetResultPath(ctx, job)
+	}
 	return noopVerifier.results.EnsureResultsDir(job.ID())
 }
 
 func (noopVerifier *NoopVerifier) GetProposal(
-	context.Context,
-	model.Job,
-	string,
+	ctx context.Context,
+	job model.Job,
+	s string,
 ) ([]byte, error) {
+	if noopVerifier.externalHooks.GetProposal != nil {
+		return noopVerifier.externalHooks.GetProposal(ctx, job, s)
+	}
 	return []byte{}, nil
 }
 
@@ -57,9 +92,9 @@ func (noopVerifier *NoopVerifier) Verify(
 	job model.Job,
 	executionStates []model.ExecutionState,
 ) ([]verifier.VerifierResult, error) {
-	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.NoopVerifier.Verify")
-	defer span.End()
-
+	if noopVerifier.externalHooks.Verify != nil {
+		return noopVerifier.externalHooks.Verify(ctx, job, executionStates)
+	}
 	err := verifier.ValidateExecutions(job, executionStates)
 	if err != nil {
 		return nil, err

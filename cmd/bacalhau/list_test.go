@@ -189,7 +189,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				require.NoError(suite.T(), err)
 
 				response := publicapi.ListResponse{}
-				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
 					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)

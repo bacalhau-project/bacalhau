@@ -63,7 +63,8 @@ func NewIPFSPublishers(
 func NewNoopPublishers(
 	_ context.Context,
 	_ *system.CleanupManager,
+	config noop.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher := noop.NewNoopPublisher()
+	noopPublisher := noop.NewNoopPublisherWithConfig(config)
 	return model.NewNoopProvider[model.Publisher, publisher.Publisher](noopPublisher), nil
 }
