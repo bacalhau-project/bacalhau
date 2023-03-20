@@ -111,8 +111,8 @@ func RunDeterministicVerifierTest( //nolint:funlen
 
 	// wait for other nodes to catch up
 	time.Sleep(time.Second * 1)
-	apiURI := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiURI)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 
 	jobID, err := submitJob(apiClient, args)
 	require.NoError(t, err)

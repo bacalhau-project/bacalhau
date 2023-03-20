@@ -14,8 +14,8 @@ type ComputeAPIClient struct {
 }
 
 // NewComputeAPIClient returns a new client for a node's API server.
-func NewComputeAPIClient(baseURI string) *ComputeAPIClient {
-	return NewComputeAPIClientFromClient(publicapi.NewAPIClient(baseURI))
+func NewComputeAPIClient(host string, port uint16, path ...string) *ComputeAPIClient {
+	return NewComputeAPIClientFromClient(publicapi.NewAPIClient(host, port, path...))
 }
 
 // NewComputeAPIClientFromClient returns a new client for a node's API server.
