@@ -13,7 +13,7 @@
   </a>
   </p>
 
-<h1 align="center">The Filecoin Distributed Computation Framework⚡️ <br>Compute Over Data(CoD)</h1>
+<h1 align="center">The Distributed Computation Framework⚡️ <br>Compute Over Data(CoD)</h1>
 <br>
 
 <p align="center">

@@ -105,6 +105,22 @@ type Deal struct {
 	MinBids int `json:"MinBids,omitempty"`
 }
 
+// GetConcurrency returns the concurrency value from the deal
+func (d Deal) GetConcurrency() int {
+	if d.Concurrency == 0 {
+		return 1
+	}
+	return d.Concurrency
+}
+
+// GetConfidence returns the confidence value from the deal
+func (d Deal) GetConfidence() int {
+	if d.Confidence == 0 {
+		return d.GetConcurrency()
+	}
+	return d.Confidence
+}
+
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
 // These are based on labels library from kubernetes package. While we use labels.Requirement to represent the label selector requirements
 // in the command line arguments as the library supports multiple parsing formats, and we also use it when matching selectors to labels

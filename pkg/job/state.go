@@ -354,7 +354,7 @@ func WaitForTerminalStates() CheckStatesFunction {
 func WaitForSuccessfulCompletion() CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
 		if jobState.State.IsTerminal() {
-			if jobState.State != model.JobStateCompleted {
+			if jobState.State != model.JobStateCompleted && jobState.State != model.JobStateCompletedPartially {
 				return false, fmt.Errorf("job did not complete successfully")
 			}
 			return true, nil

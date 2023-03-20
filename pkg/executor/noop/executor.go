@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -15,6 +16,19 @@ type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.Sto
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
 type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
+
+func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
+	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+		return nil, err
+	}
+}
+
+func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
+	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+		time.Sleep(sleep)
+		return nil, nil
+	}
+}
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled

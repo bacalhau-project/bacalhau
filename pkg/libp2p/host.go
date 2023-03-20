@@ -109,7 +109,7 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 	// The call to `Connect` will "block until a connection is open, or an error is returned". This could mean the
 	// request to open a connection is never seen if the peer has only just started up. The default dial timeout
 	// is 60 seconds.
-	ctx = network.WithDialPeerTimeout(ctx, 1*time.Second)
+	ctx = network.WithDialPeerTimeout(ctx, 5*time.Second) //nolint:gomnd
 
 	var errors []error
 	grouped := map[peer.ID][]multiaddr.Multiaddr{}
@@ -136,6 +136,7 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 			errors = append(errors, err)
 			log.Ctx(ctx).Warn().
 				Err(err).
+				Stringers("addresses", logger.ToSliceStringer(addresses, multiAddressToString)).
 				Stringer("peer", id).
 				Msg("Error connecting to peer, continuing...")
 		} else {
