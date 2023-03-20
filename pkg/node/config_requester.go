@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 )
 
 type RequesterConfigParams struct {
@@ -14,11 +15,14 @@ type RequesterConfigParams struct {
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
+	OverAskForBidsFactor               int
 	JobSelectionPolicy                 model.JobSelectionPolicy
 	SimulatorConfig                    model.SimulatorConfigRequester
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion model.BuildVersionInfo
+
+	RetryStrategy requester.RetryStrategy
 }
 
 type RequesterConfig struct {
@@ -33,11 +37,14 @@ type RequesterConfig struct {
 	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange int
+	OverAskForBidsFactor    int
 	JobSelectionPolicy      model.JobSelectionPolicy
 	SimulatorConfig         model.SimulatorConfigRequester
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion model.BuildVersionInfo
+
+	RetryStrategy requester.RetryStrategy
 }
 
 func NewRequesterConfigWithDefaults() RequesterConfig {
@@ -65,6 +72,9 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 	if params.NodeRankRandomnessRange == 0 {
 		params.NodeRankRandomnessRange = DefaultRequesterConfig.NodeRankRandomnessRange
 	}
+	if params.OverAskForBidsFactor == 0 {
+		params.OverAskForBidsFactor = DefaultRequesterConfig.OverAskForBidsFactor
+	}
 	if params.MinBacalhauVersion == (model.BuildVersionInfo{}) {
 		params.MinBacalhauVersion = DefaultRequesterConfig.MinBacalhauVersion
 	}
@@ -75,8 +85,10 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		HousekeepingBackgroundTaskInterval: params.HousekeepingBackgroundTaskInterval,
 		JobSelectionPolicy:                 params.JobSelectionPolicy,
 		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
+		OverAskForBidsFactor:               params.OverAskForBidsFactor,
 		SimulatorConfig:                    params.SimulatorConfig,
 		MinBacalhauVersion:                 params.MinBacalhauVersion,
+		RetryStrategy:                      params.RetryStrategy,
 	}
 
 	return config

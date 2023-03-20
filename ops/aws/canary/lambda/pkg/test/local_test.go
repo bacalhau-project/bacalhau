@@ -31,12 +31,12 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		nodeOverrides[i] = nodeOverride
 	}
 	stack, _ := testutils.SetupTest(context.Background(), t,
-		3, 0, false,
+		nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...)
 	// for the requester node to pick up the nodeInfo messages
-	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], 2)
+	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
 
 	var swarmAddresses []string
 	for _, n := range stack.Nodes {

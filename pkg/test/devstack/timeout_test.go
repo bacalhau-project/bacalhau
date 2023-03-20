@@ -15,6 +15,7 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
@@ -61,6 +62,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					MinJobExecutionTimeout:             testCase.requesterMinJobExecutionTimeout,
 					DefaultJobExecutionTimeout:         testCase.requesterDefaultJobExecutionTimeout,
 					HousekeepingBackgroundTaskInterval: 1 * time.Second,
+					RetryStrategy:                      retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
 				}),
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{

@@ -104,8 +104,8 @@ github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN
 github.com/aws/aws-sdk-go v1.44.96 h1:S9paaqnJ0AJ95t5AB+iK8RM6YNZN0W0Lek1gOVJsEr8=
 github.com/aws/aws-sdk-go v1.44.96/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/bacalhau-project/bacalhau v0.3.24-0.20230304060345-84fca95c3c00 h1:A3lULuFPZ/5Ahe0DV0Ts9juOvPk19UTJFt+i+2AQYgY=
-github.com/bacalhau-project/bacalhau v0.3.24-0.20230304060345-84fca95c3c00/go.mod h1:QhQCdcVTZW5PTHMPVlPIIa7Q4KCz5g21qf4SzMXmzqE=
+github.com/bacalhau-project/bacalhau v0.3.25-0.20230319174528-80ebfc97d3e0 h1:/V5v4LSp+fr/EK/pKPv3+kKzOjIpB1wYI6S57T/J1Gg=
+github.com/bacalhau-project/bacalhau v0.3.25-0.20230319174528-80ebfc97d3e0/go.mod h1:Xc+Skq1kWBskPpw71bpBecOzHNFvgXsmnMCmpbXOqnM=
 github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46 h1:i5Gk78Ro4ErhY8EO1E7/ddrEo9dUS1dkqeiV/ssdbaI=
 github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46/go.mod h1:sIou/i7OdHnqTfcXr7/aJmEl+6kd/FVT+ajQbjeR+MM=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

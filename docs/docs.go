@@ -1048,7 +1048,8 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5
+                5,
+                6
             ],
             "x-enum-comments": {
                 "JobStateNew": "must be first"
@@ -1059,6 +1060,7 @@ const docTemplate = `{
                 "JobStateCancelled",
                 "JobStateError",
                 "JobStateCompleted",
+                "JobStateCompletedPartially",
                 "JobStateQueued"
             ]
         },

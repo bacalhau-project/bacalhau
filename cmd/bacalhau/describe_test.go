@@ -58,14 +58,14 @@ func (s *DescribeSuite) TestDescribeJob() {
 				returnedJobDescription := &model.JobWithInfo{}
 
 				// No job id (should error)
-				_, out, err := ExecuteTestCobraCommand("describe",
+				_, _, err := ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
 					"--api-port", s.port,
 				)
 				require.Error(s.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
-				_, out, err = ExecuteTestCobraCommand("describe",
+				_, out, err := ExecuteTestCobraCommand("describe",
 					"--api-host", s.host,
 					"--api-port", s.port,
 					submittedJob.Metadata.ID,

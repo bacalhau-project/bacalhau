@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -81,16 +82,19 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 
 	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
+		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
 
 	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
 	if err != nil {
+		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
 
 	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
 	if err != nil {
+		err = fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
 		return
 	}
 
@@ -112,6 +116,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 
 	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, resultFolder)
 	if err != nil {
+		err = fmt.Errorf("failed to get proposal: %w", err)
 		return
 	}
 
@@ -154,18 +159,22 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 	}
 	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
+		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
 	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
 	if err != nil {
+		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.Publisher)
 	if err != nil {
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.Publisher, err)
 		return
 	}
 	publishedResult, err := jobPublisher.PublishResult(ctx, execution.Job, e.ID, resultFolder)
 	if err != nil {
+		err = fmt.Errorf("failed to publish result: %w", err)
 		return
 	}
 
