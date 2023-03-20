@@ -8,11 +8,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
+)
+
+const (
+	maxUInt16 uint16 = 0xFFFF
+	minUInt16 uint16 = 0x0000
 )
 
 func DevstackShouldWriteEnvFile() bool {
@@ -47,8 +53,18 @@ func GetAPIHost() string {
 	return os.Getenv("BACALHAU_HOST")
 }
 
-func GetAPIPort() string {
-	return os.Getenv("BACALHAU_PORT")
+func GetAPIPort() *uint16 {
+	portStr, found := os.LookupEnv("BACALHAU_PORT")
+	if !found {
+		return nil
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		panic(fmt.Sprintf("must be uint16 (%d-%d): %s", minUInt16, maxUInt16, portStr))
+	}
+	smallPort := uint16(port)
+	return &smallPort
 }
 
 type contextKey int

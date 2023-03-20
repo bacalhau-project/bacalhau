@@ -35,7 +35,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	ctx := context.Background()
 	_, stdout, err := ExecuteTestCobraCommand("create",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		testFile,
 	)
 	require.NoError(suite.T(), err, "Error submitting job")
@@ -46,7 +46,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 	_, stdout, err = ExecuteTestCobraCommand("cancel",
 		job.Metadata.ID,
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 	)
 	require.NoError(suite.T(), err, "Error cancelling job")
 	require.Contains(suite.T(), stdout, "already in a terminal state")
@@ -60,7 +60,7 @@ func (suite *CancelSuite) TestCancelJob() {
 	_, stdout, err := ExecuteTestCobraCommand("create",
 		"--wait=false",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		testFile,
 	)
 	require.NoError(suite.T(), err, "Error submitting job")
@@ -75,7 +75,7 @@ func (suite *CancelSuite) TestCancelJob() {
 	_, stdout, err = ExecuteTestCobraCommand("cancel",
 		jobInfo.Job.Metadata.ID,
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 	)
 	require.NoError(suite.T(), err, "Error cancelling job")
 
