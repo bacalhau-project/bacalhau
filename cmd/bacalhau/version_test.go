@@ -16,6 +16,7 @@ limitations under the License.
 package bacalhau
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -36,7 +37,7 @@ type VersionSuite struct {
 func (suite *VersionSuite) Test_Version() {
 	_, out, err := ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 	)
 	require.NoError(suite.T(), err)
 
@@ -47,7 +48,7 @@ func (suite *VersionSuite) Test_Version() {
 func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err := ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--output", JSONFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
@@ -59,7 +60,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 
 	_, out, err = ExecuteTestCobraCommand("version",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--output", YAMLFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")

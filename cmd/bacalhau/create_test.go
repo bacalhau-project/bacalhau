@@ -55,7 +55,7 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 				ctx := context.Background()
 				_, out, err := ExecuteTestCobraCommand("create",
 					"--api-host", s.host,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 					testFile,
 				)
 
@@ -74,7 +74,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	_, out, err := ExecuteTestCobraCommandWithStdin(testSpec, "create",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
@@ -83,7 +83,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
 	_, _, err = ExecuteTestCobraCommand("describe",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 		job.Metadata.ID,
 	)
 

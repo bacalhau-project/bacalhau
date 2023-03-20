@@ -4,6 +4,7 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -23,7 +24,7 @@ func (s *WasmRunSuite) Test_SupportsRelativeDirectory() {
 	ctx := context.Background()
 	_, out, err := ExecuteTestCobraCommand("wasm", "run",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 		"../../testdata/wasm/noop/main.wasm",
 	)
 	s.Require().NoError(err)

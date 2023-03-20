@@ -64,8 +64,8 @@ func (s *lotusNodeSuite) TestLotusNode() {
 		Concurrency: 1,
 	}
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	submittedJob, err := apiClient.Submit(ctx, j)
 	require.NoError(s.T(), err)
 

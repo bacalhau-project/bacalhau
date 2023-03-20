@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/docs"
@@ -57,7 +58,7 @@ type APIServerConfig struct {
 
 type APIServerParams struct {
 	Address          string
-	Port             int
+	Port             uint16
 	Host             host.Host
 	NodeInfoProvider model.NodeInfoProvider
 	Config           APIServerConfig
@@ -66,7 +67,7 @@ type APIServerParams struct {
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	Address          string
-	Port             int
+	Port             uint16
 	host             host.Host
 	nodeInfoProvider model.NodeInfoProvider
 	config           APIServerConfig
@@ -115,8 +116,13 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 }
 
 // GetURI returns the HTTP URI that the server is listening on.
-func (apiServer *APIServer) GetURI() string {
-	return fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port)
+func (apiServer *APIServer) GetURI() *url.URL {
+	interpolated := fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port)
+	url, err := url.Parse(interpolated)
+	if err != nil {
+		panic(fmt.Errorf("callback url must parse: %s", interpolated))
+	}
+	return url
 }
 
 //	@title			Bacalhau API
@@ -166,7 +172,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	if apiServer.Port == 0 {
 		switch addr := listener.Addr().(type) {
 		case *net.TCPAddr:
-			apiServer.Port = addr.Port
+			apiServer.Port = uint16(addr.Port)
 		default:
 			return fmt.Errorf("unknown address %v", addr)
 		}

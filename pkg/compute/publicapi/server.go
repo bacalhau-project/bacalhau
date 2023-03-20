@@ -8,6 +8,7 @@ import (
 )
 
 const APIPrefix = "compute/"
+const APIDebugSuffix = "debug"
 
 type ComputeAPIServerParams struct {
 	APIServer          *publicapi.APIServer
@@ -28,7 +29,7 @@ func NewComputeAPIServer(params ComputeAPIServerParams) *ComputeAPIServer {
 
 func (s *ComputeAPIServer) RegisterAllHandlers() error {
 	handlerConfigs := []publicapi.HandlerConfig{
-		{URI: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
+		{URI: "/" + APIPrefix + APIDebugSuffix, Handler: http.HandlerFunc(s.debug)},
 	}
 	return s.apiServer.RegisterHandlers(handlerConfigs...)
 }

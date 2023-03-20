@@ -90,7 +90,7 @@ func (s *ServerSuite) TestTimeout() {
 	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
 	endpoint := "/logz"
-	res, err := http.Get(s.client.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
 	require.NoError(s.T(), err, "Could not get %s endpoint.", endpoint)
 	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
 
@@ -148,8 +148,7 @@ func (s *ServerSuite) TestMaxBodyReader() {
 }
 
 func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-
-	res, err := http.Get(s.client.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
 	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
 	defer res.Body.Close()
 

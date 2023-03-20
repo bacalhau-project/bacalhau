@@ -217,9 +217,10 @@ func NewDevStack(
 		//////////////////////////////////////
 		// port for API
 		//////////////////////////////////////
-		apiPort := 0
+		apiPort := uint16(0)
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			apiPort = 20000 + i
+			const startPort = 20000
+			apiPort = uint16(startPort + i)
 		}
 
 		//////////////////////////////////////

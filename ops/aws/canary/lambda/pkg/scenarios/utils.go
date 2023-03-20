@@ -135,9 +135,9 @@ func getClient() *publicapi.RequesterAPIClient {
 	if apiHost == "" {
 		apiHost = system.Envs[system.GetEnvironment()].APIHost
 	}
-	if apiPort == "" {
-		apiPort = fmt.Sprint(system.Envs[system.GetEnvironment()].APIPort)
+	if apiPort == nil {
+		defaultPort := system.Envs[system.GetEnvironment()].APIPort
+		apiPort = &defaultPort
 	}
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
-	return client
+	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
 }
