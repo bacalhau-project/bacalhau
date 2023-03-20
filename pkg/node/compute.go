@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -11,6 +13,7 @@ import (
 	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
@@ -51,9 +54,12 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
-	// TODO: bring back persistent job store as it is failing tests with `unexpected end of JSON input`
-	//executionStore := inlocalstore.NewPersistentJobStore(inmemory.NewStore())
-	executionStore := inmemory.NewStore()
+
+	// create the execution store
+	executionStore, err := createExecutionStore(host)
+	if err != nil {
+		return nil, err
+	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -211,7 +217,7 @@ func NewComputeNode(
 		APIServer:          apiServer,
 		DebugInfoProviders: debugInfoProviders,
 	})
-	err := computeAPIServer.RegisterAllHandlers()
+	err = computeAPIServer.RegisterAllHandlers()
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +240,25 @@ func NewComputeNode(
 
 func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
+}
+
+func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
+	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
+	// e.g. when running tests or when running devstack
+	configDir, err := system.EnsureConfigDir()
+	if err != nil {
+		return nil, err
+	}
+	stateRootDir := filepath.Join(configDir, "execution-state-"+host.ID().String())
+	err = os.MkdirAll(stateRootDir, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+
+	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
+		Store:   inmemory.NewStore(),
+		RootDir: stateRootDir,
+	})
 }
 
 func (c *Compute) cleanup(ctx context.Context) {
