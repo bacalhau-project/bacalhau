@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/ranking"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -100,22 +101,37 @@ func NewRequesterNode(
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
-
+		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: config.NodeRankRandomnessRange,
 		}),
 	)
 
-	scheduler := requester.NewScheduler(requester.SchedulerParams{
-		ID:               host.ID().String(),
-		Host:             host,
-		JobStore:         jobStore,
-		NodeDiscoverer:   nodeDiscoveryChain,
-		NodeRanker:       nodeRankerChain,
-		ComputeEndpoint:  computeProxy,
-		Verifiers:        verifiers,
-		StorageProviders: storageProviders,
+	retryStrategy := config.RetryStrategy
+	if retryStrategy == nil {
+		// retry strategy
+		retryStrategyChain := retry.NewChain()
+		retryStrategyChain.Add(
+			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+		)
+		retryStrategy = retryStrategyChain
+	}
+
+	nodeSelector := requester.NewNodeSelector(requester.NodeSelectorParams{
+		NodeDiscoverer: nodeDiscoveryChain,
+		NodeRanker:     nodeRankerChain,
+	})
+	scheduler := requester.NewBaseScheduler(requester.BaseSchedulerParams{
+		ID:                   host.ID().String(),
+		Host:                 host,
+		JobStore:             jobStore,
+		NodeSelector:         *nodeSelector,
+		OverAskForBidsFactor: config.OverAskForBidsFactor,
+		RetryStrategy:        retryStrategy,
+		ComputeEndpoint:      computeProxy,
+		Verifiers:            verifiers,
+		StorageProviders:     storageProviders,
 		EventEmitter: requester.NewEventEmitter(requester.EventEmitterParams{
 			EventConsumer: localJobEventConsumer,
 		}),

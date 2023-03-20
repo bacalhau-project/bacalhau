@@ -268,6 +268,7 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
+			DependencyInjector: injector,
 		}
 
 		if lotus != nil {
@@ -292,7 +293,7 @@ func NewDevStack(
 		}
 
 		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig, injector)
+		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
 			return nil, err
 		}

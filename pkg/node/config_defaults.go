@@ -28,7 +28,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	DefaultJobExecutionTimeout: 30 * time.Minute,
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
-	NodeRankRandomnessRange:            10,
+	NodeRankRandomnessRange:            5,
+	OverAskForBidsFactor:               3,
 
 	MinBacalhauVersion: model.BuildVersionInfo{
 		Major: "0", Minor: "3", GitVersion: "v0.3.20",

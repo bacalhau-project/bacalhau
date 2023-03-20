@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -35,6 +36,8 @@ type ComputeConfigParams struct {
 	LogRunningExecutionsInterval time.Duration
 
 	SimulatorConfig model.SimulatorConfigCompute
+
+	BidStrategy bidstrategy.BidStrategy
 }
 
 type ComputeConfig struct {
@@ -71,6 +74,8 @@ type ComputeConfig struct {
 	LogRunningExecutionsInterval time.Duration
 
 	SimulatorConfig model.SimulatorConfigCompute
+
+	BidStrategy bidstrategy.BidStrategy
 }
 
 func NewComputeConfigWithDefaults() ComputeConfig {
@@ -152,6 +157,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
 		SimulatorConfig:              params.SimulatorConfig,
+		BidStrategy:                  params.BidStrategy,
 	}
 
 	validateConfig(config, physicalResources)

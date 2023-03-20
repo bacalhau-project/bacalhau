@@ -39,7 +39,7 @@ func NewExecution(
 
 // string returns a string representation of the execution
 func (e Execution) String() string {
-	return fmt.Sprintf("{ID: %s, Job: %s, State: %s}", e.ID, e.Job.Metadata.ID, e.State)
+	return fmt.Sprintf("{ID: %s, Job: %s}", e.ID, e.Job.Metadata.ID)
 }
 
 type ExecutionHistory struct {

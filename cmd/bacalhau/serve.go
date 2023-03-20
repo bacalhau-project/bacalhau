@@ -401,7 +401,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Create node
-	standardNode, err := node.NewStandardNode(ctx, nodeConfig)
+	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("error creating node: %s", err)
 	}
