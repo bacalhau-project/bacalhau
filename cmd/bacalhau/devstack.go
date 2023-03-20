@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -204,6 +206,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error writing out pid file: %v", pidFileName), 1)
+	}
+
+	if loggingMode == logger.LogModeStation {
+		fmt.Printf("API: %s\n", firstNode.APIServer.GetURI()+"/"+publicapi.APIPrefix+publicapi.APIDebugSuffix)
 	}
 
 	<-ctx.Done() // block until killed
