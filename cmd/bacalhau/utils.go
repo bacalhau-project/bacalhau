@@ -162,6 +162,8 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
+	flags.BoolVar(&settings.Raw, "raw",
+		settings.Raw, "Download raw result CIDs instead of merging multiple CIDs into a single result")
 	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
 		settings.Timeout, "Timeout duration for IPFS downloads.")
 	flags.StringVar(&settings.OutputDir, "output-dir",
