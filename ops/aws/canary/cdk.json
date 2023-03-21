@@ -32,7 +32,7 @@
         "account": "284305717835",
         "region": "eu-west-1",
         "createOperators": false,
-        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0="
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProdOwned&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTo3MWVjMGZjYS0wMDAzLTRkODktYmViMi0zOWZmZDQxZTY1ZDEiLCJNIjoiUHVibGljIn0="
       },
       "staging": {
         "bacalhauEnvironment": "staging",
