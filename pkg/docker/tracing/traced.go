@@ -89,7 +89,7 @@ func (c TracedClient) ContainerStart(ctx context.Context, id string, options typ
 	return telemetry.RecordErrorOnSpan(span)(c.client.ContainerStart(ctx, id, options))
 }
 
-func (c TracedClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
+func (c TracedClient) ContainerStop(ctx context.Context, containerID string, timeout time.Duration) error {
 	ctx, span := c.span(ctx, "container.stop")
 	defer span.End()
 

@@ -1,9 +1,12 @@
 package publicapi
 
 import (
+	"context"
+	"net/http"
 	"os/exec"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
@@ -30,4 +33,9 @@ func TailFile(count int, path string) ([]byte, error) {
 		return nil, err
 	}
 	return output, nil
+}
+
+func HTTPError(ctx context.Context, res http.ResponseWriter, err error, statusCode int) {
+	log.Ctx(ctx).Error().Err(err).Send()
+	http.Error(res, bacerrors.ErrorToErrorResponse(err), statusCode)
 }

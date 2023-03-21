@@ -34,7 +34,7 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 	}
 
 	for _, peerHost := range peers {
-		if err := connectToPeer(ctx, h, peerHost); err != nil {
+		if err := ConnectToPeer(ctx, h, peerHost); err != nil {
 			return nil, err
 		}
 	}
@@ -42,7 +42,7 @@ func NewHostForTest(ctx context.Context, peers ...host.Host) (host.Host, error) 
 	return h, err
 }
 
-func connectToPeer(ctx context.Context, h host.Host, peer host.Host) error {
+func ConnectToPeer(ctx context.Context, h host.Host, peer host.Host) error {
 	peerAddresses, err := encapsulateP2pAddrs(*host.InfoFromHost(peer))
 	if err != nil {
 		return err

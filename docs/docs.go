@@ -541,7 +541,7 @@ const docTemplate = `{
         },
         "/requester/submit": {
             "post": {
-                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `job_create_payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
+                "description": "Description:\n\n* ` + "`" + `client_public_key` + "`" + `: The base64-encoded public key of the client.\n* ` + "`" + `signature` + "`" + `: A base64-encoded signature of the ` + "`" + `data` + "`" + ` attribute, signed by the client.\n* ` + "`" + `payload` + "`" + `:\n    * ` + "`" + `ClientID` + "`" + `: Request must specify a ` + "`" + `ClientID` + "`" + `. To retrieve your ` + "`" + `ClientID` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.\n\t* ` + "`" + `APIVersion` + "`" + `: e.g. ` + "`" + `\"V1beta1\"` + "`" + `.\n    * ` + "`" + `Spec` + "`" + `: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -1874,7 +1874,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "client_public_key",
-                "job_create_payload",
+                "payload",
                 "signature"
             ],
             "properties": {
@@ -1882,7 +1882,7 @@ const docTemplate = `{
                     "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "job_create_payload": {
+                "payload": {
                     "description": "The data needed to submit and run a job on the network:",
                     "type": "array",
                     "items": {

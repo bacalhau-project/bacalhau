@@ -28,7 +28,7 @@ def submit(data: dict):
     client_public_key = get_client_public_key()
     submit_req = SubmitRequest(
         client_public_key=client_public_key,
-        job_create_payload=sanitized_data,
+        payload=sanitized_data,
         signature=signature,
     )
     return api_instance.submit(submit_req)

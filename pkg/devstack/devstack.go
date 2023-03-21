@@ -120,7 +120,7 @@ func NewDevStack(
 		}
 		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract p2p protocoll from simulator address: %w", err)
+			return nil, fmt.Errorf("failed to extract p2p protocol from simulator address: %w", err)
 		}
 	}
 
