@@ -7,8 +7,10 @@ import (
 
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/rs/zerolog/log"
 
 	//nolint:staticcheck
 	"io/ioutil"
@@ -55,7 +57,7 @@ func RepoExistsOnIPFSGivenURL(urlStr string) (string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("Error making request:", err)
+		log.Err(err)
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -74,6 +76,22 @@ func RemoveFromSlice(arr []string, item string) []string {
 	for _, s := range arr {
 		if s != item {
 			newArr = append(newArr, s)
+		}
+	}
+	return newArr
+}
+
+func RemoveFromModelStorageSpec(inputs []model.StorageSpec, url string) []model.StorageSpec {
+	newArr := []model.StorageSpec{}
+	for _, s := range inputs {
+		if s.StorageSource == model.StorageSourceRepoClone {
+			if s.Repo != url {
+				newArr = append(newArr, model.StorageSpec{
+					StorageSource: model.StorageSourceRepoClone,
+					Repo:          url,
+					Path:          "/inputs",
+				})
+			}
 		}
 	}
 	return newArr

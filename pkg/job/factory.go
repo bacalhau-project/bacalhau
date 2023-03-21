@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -43,20 +42,20 @@ func ConstructDockerJob( //nolint:funlen
 		GPU:    gpu,
 	}
 
-	for _, url := range inputRepos {
-		repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
-		// if err != nil {
-		// 	fmt.Print(err)
-		// }
-		if repoCID != "" {
-			inputRepos = clone.RemoveFromSlice(inputRepos, url)
-			repoCIDPATH := repoCID + ":/inputs"
+	// for _, url := range inputRepos {
+	// 	repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
+	// 	// if err != nil {
+	// 	// 	fmt.Print(err)
+	// 	// }
+	// 	if repoCID != "" {
+	// 		inputRepos = clone.RemoveFromSlice(inputRepos, url)
+	// 		repoCIDPATH := repoCID + ":/inputs"
 
-			SHAtoCID := []string{}
-			SHAtoCID = append(SHAtoCID, repoCIDPATH)
-			inputVolumes = append(inputVolumes, SHAtoCID...)
-		}
-	}
+	// 		SHAtoCID := []string{}
+	// 		SHAtoCID = append(SHAtoCID, repoCIDPATH)
+	// 		inputVolumes = append(inputVolumes, SHAtoCID...)
+	// 	}
+	// }
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, inputRepos)
 	if err != nil {

@@ -45,6 +45,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
+		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 	}
 
 	queue := NewQueue(params.Store, params.Scheduler)

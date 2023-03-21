@@ -89,7 +89,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 	// # create a tmp directory
 	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
-	fmt.Printf("Output Path: %s\n", outputPath)
+	log.Debug().Str("Output Path", outputPath).Send()
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -149,7 +149,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
-		log1.Println("Successfully Pinned to Estuary...")
+		log.Print("Successfully Pinned to Estuary...")
 	}
 	data := url.Values{}
 	data.Set("key", SHA1HASH)

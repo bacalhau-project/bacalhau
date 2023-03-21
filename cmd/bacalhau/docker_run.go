@@ -365,8 +365,16 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 			switch scheme.Scheme {
 			case "http":
+				isGitUrl := strings.HasSuffix(i, ".git")
+				if isGitUrl {
+					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
+				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "https":
+				isGitUrl := strings.HasSuffix(i, ".git")
+				if isGitUrl {
+					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "ipfs":
 				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
