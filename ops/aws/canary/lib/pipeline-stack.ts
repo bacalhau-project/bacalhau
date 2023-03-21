@@ -19,8 +19,9 @@ export class PipelineStack extends cdk.Stack {
 
         // Configs
         const prodConfig = getCanaryConfig(app, 'prod');
+        const prodOwnedConfig = getCanaryConfig(app, 'prodOwned');
         const stagingConfig = getCanaryConfig(app, 'staging');
-        const allConfigs = [prodConfig, stagingConfig]
+        const allConfigs = [prodConfig, prodOwnedConfig, stagingConfig]
 
         // Build artifacts
         const cloudformationBuild = this.getCloudformationBuild(allConfigs);
@@ -108,6 +109,21 @@ export class PipelineStack extends cdk.Stack {
                             actionName: 'DeployCanary',
                             templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
                             stackName: 'BacalhauCanaryProd',
+                            adminPermissions: true,
+                            parameterOverrides: {
+                                ...props.lambdaCode.assign(canaryBuildOutput.s3Location),
+                            },
+                            extraInputs: [canaryBuildOutput],
+                        }),
+                    ],
+                },
+                {
+                    stageName: 'DeployProdOwned',
+                    actions: [
+                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                            actionName: 'DeployCanary',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryProdOwned.template.json'),
+                            stackName: 'BacalhauCanaryProdOwned',
                             adminPermissions: true,
                             parameterOverrides: {
                                 ...props.lambdaCode.assign(canaryBuildOutput.s3Location),

@@ -20,9 +20,18 @@
     "canary": {
       "prod": {
         "bacalhauEnvironment": "production",
+        "nodeSelectors": "favour_owner!=bacalhau",
         "account": "284305717835",
         "region": "eu-west-1",
         "createOperators": true,
+        "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0="
+      },
+      "prodOwned": {
+        "bacalhauEnvironment": "production",
+        "nodeSelectors": "owner=bacalhau",
+        "account": "284305717835",
+        "region": "eu-west-1",
+        "createOperators": false,
         "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0="
       },
       "staging": {
