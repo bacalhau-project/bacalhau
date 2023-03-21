@@ -71,8 +71,8 @@ func runGenericJob(s model.Spec) (string, error) {
 	j.Spec = s
 
 	env := system.EnvironmentProd
-	baseURI := fmt.Sprintf("http://%s:%d", system.Envs[env].APIHost, system.Envs[env].APIPort)
-	client := publicapi.NewRequesterAPIClient(baseURI)
+	host, port := system.Envs[env].APIHost, system.Envs[env].APIPort
+	client := publicapi.NewRequesterAPIClient(host, port)
 
 	submittedJob, err := client.Submit(context.Background(), j)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"time"
 
@@ -21,16 +22,16 @@ import (
 
 // APIClient is a utility for interacting with a node's API server.
 type APIClient struct {
-	BaseURI        string
+	BaseURI        *url.URL
 	DefaultHeaders map[string]string
 
 	Client *http.Client
 }
 
 // NewAPIClient returns a new client for a node's API server.
-func NewAPIClient(baseURI string) *APIClient {
+func NewAPIClient(host string, port uint16, path ...string) *APIClient {
 	return &APIClient{
-		BaseURI:        baseURI,
+		BaseURI:        system.MustParseURL(fmt.Sprintf("http://%s:%d", host, port)).JoinPath(path...),
 		DefaultHeaders: map[string]string{},
 
 		Client: &http.Client{
@@ -52,7 +53,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 	defer span.End()
 
 	var body io.Reader
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiClient.BaseURI+"/livez", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiClient.BaseURI.JoinPath("livez").String(), body)
 	if err != nil {
 		return false, nil
 	}
@@ -91,7 +92,7 @@ func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resDa
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error encoding request body: %v", err))
 	}
 
-	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
+	addr := apiClient.BaseURI.JoinPath(api).String()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating Post request: %v", err))

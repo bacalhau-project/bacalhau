@@ -2,8 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"net"
-	"net/url"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -11,7 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,7 +17,7 @@ type BaseSuite struct {
 	node   *node.Node
 	client *publicapi.RequesterAPIClient
 	host   string
-	port   string
+	port   uint16
 }
 
 // before each test
@@ -40,12 +37,9 @@ func (s *BaseSuite) SetupTest() {
 		}),
 	)
 	s.node = stack.Nodes[0]
-	s.client = publicapi.NewRequesterAPIClient(s.node.APIServer.GetURI())
-	parsedBasedURI, err := url.Parse(s.client.BaseURI)
-	require.NoError(s.T(), err)
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	s.host = host
-	s.port = port
+	s.host = s.node.APIServer.Address
+	s.port = s.node.APIServer.Port
+	s.client = publicapi.NewRequesterAPIClient(s.host, s.port)
 }
 
 // After each test

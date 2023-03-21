@@ -421,7 +421,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 
 	// only in station logging output
 	if loggingMode == logger.LogModeStation {
-		fmt.Printf("API: %s\n", standardNode.APIServer.GetURI()+"/"+publicapi.APIPrefix+publicapi.APIDebugSuffix)
+		fmt.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
 	}
 
 	if OS.PrivateInternalIPFS && OS.PeerConnect == "none" {

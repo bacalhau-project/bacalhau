@@ -55,9 +55,10 @@ func (s *ServeSuite) SetupTest() {
 	s.ipfsPort = node.APIPort
 }
 
-func (s *ServeSuite) serve(extraArgs ...string) int {
-	port, err := freeport.GetFreePort()
+func (s *ServeSuite) serve(extraArgs ...string) uint16 {
+	bigPort, err := freeport.GetFreePort()
 	s.Require().NoError(err)
+	port := uint16(bigPort)
 
 	cmd := NewRootCmd()
 
@@ -127,7 +128,7 @@ func (s *ServeSuite) TestHealthcheck() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	port := s.serve("--node-type", "requester", "--node-type", "compute")
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://localhost:%d", port))
+	client := publicapi.NewRequesterAPIClient("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
@@ -140,7 +141,7 @@ func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 	// Networking is disabled by default so we try to submit a networked job and
 	// expect it to be rejected.
 	port := s.serve("--node-type", "requester")
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://localhost:%d", port))
+	client := publicapi.NewRequesterAPIClient("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)

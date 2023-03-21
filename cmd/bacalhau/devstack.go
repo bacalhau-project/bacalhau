@@ -192,7 +192,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 	defer os.Remove(portFileName)
 	firstNode := stack.Nodes[0]
-	_, err = f.WriteString(strconv.Itoa(firstNode.APIServer.Port))
+	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error writing out port file: %v", portFileName), 1)
 	}
@@ -209,7 +209,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 
 	if loggingMode == logger.LogModeStation {
-		fmt.Printf("API: %s\n", firstNode.APIServer.GetURI()+"/"+publicapi.APIPrefix+publicapi.APIDebugSuffix)
+		fmt.Printf("API: %s\n", firstNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
 	}
 
 	<-ctx.Done() // block until killed
