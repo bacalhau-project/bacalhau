@@ -106,7 +106,7 @@ export class PipelineStack extends cdk.Stack {
                     stageName: 'DeployProd',
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'DeployCanary',
+                            actionName: 'DeployProdCanary',
                             templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
                             stackName: 'BacalhauCanaryProd',
                             adminPermissions: true,
@@ -115,13 +115,8 @@ export class PipelineStack extends cdk.Stack {
                             },
                             extraInputs: [canaryBuildOutput],
                         }),
-                    ],
-                },
-                {
-                    stageName: 'DeployProdOwned',
-                    actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'DeployCanary',
+                            actionName: 'DeployProdOwnedCanary',
                             templatePath: cdkBuildOutput.atPath('BacalhauCanaryProdOwned.template.json'),
                             stackName: 'BacalhauCanaryProdOwned',
                             adminPermissions: true,
@@ -131,7 +126,7 @@ export class PipelineStack extends cdk.Stack {
                             extraInputs: [canaryBuildOutput],
                         }),
                     ],
-                }
+                },
             ],
         });
     }
