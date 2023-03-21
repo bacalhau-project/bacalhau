@@ -74,6 +74,14 @@ func (ds *DownloaderSuite) SetupTest() {
 	)
 }
 
+type mockResult struct {
+	cid      string
+	stdout   []byte
+	stderr   []byte
+	exitCode []byte
+	outputs  map[string][]byte
+}
+
 // Generate a file with random data.
 func generateFile(path string) ([]byte, error) {
 	file, err := os.Create(path)
@@ -111,6 +119,25 @@ func mockOutput(ds *DownloaderSuite, setup func(string)) string {
 	require.NoError(ds.T(), err)
 
 	return cid
+}
+
+func (ds *DownloaderSuite) easyMockOutput(outputNames ...string) mockResult {
+	dir := ds.T().TempDir()
+
+	res := &mockResult{
+		stdout:   mockFile(ds, dir, model.DownloadFilenameStdout),
+		stderr:   mockFile(ds, dir, model.DownloadFilenameStderr),
+		exitCode: mockFile(ds, dir, model.DownloadFilenameExitCode),
+		outputs:  make(map[string][]byte),
+	}
+	for _, name := range outputNames {
+		res.outputs[name] = mockFile(ds, dir, "outputs", name)
+	}
+
+	cid, err := ds.client.Put(context.Background(), dir)
+	ds.NoError(err)
+	res.cid = cid
+	return *res
 }
 
 // Generates a test file at the given path filled with random data, ensuring
@@ -154,15 +181,8 @@ func (ds *DownloaderSuite) TestNoExpectedResults() {
 	require.NoError(ds.T(), err)
 }
 
-func (ds *DownloaderSuite) TestFullOutput() {
-	var exitCode, stdout, stderr, hello, goodbye []byte
-	cid := mockOutput(ds, func(dir string) {
-		exitCode = mockFile(ds, dir, "exitCode")
-		stdout = mockFile(ds, dir, model.DownloadFilenameStdout)
-		stderr = mockFile(ds, dir, "stderr")
-		hello = mockFile(ds, dir, "outputs", "hello.txt")
-		goodbye = mockFile(ds, dir, "outputs", "goodbye.txt")
-	})
+func (ds *DownloaderSuite) TestSingleOutput() {
+	res := ds.easyMockOutput("hello.txt", "goodbye.txt")
 
 	err := DownloadResults(
 		context.Background(),
@@ -172,7 +192,7 @@ func (ds *DownloaderSuite) TestFullOutput() {
 				Data: model.StorageSpec{
 					StorageSource: model.StorageSourceIPFS,
 					Name:          "result-0",
-					CID:           cid,
+					CID:           res.cid,
 				},
 			},
 		},
@@ -181,11 +201,144 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, "stdout")
-	requireFile(ds, stderr, "stderr")
-	requireFile(ds, exitCode, "exitCode")
-	requireFile(ds, goodbye, "outputs", "goodbye.txt")
-	requireFile(ds, hello, "outputs", "hello.txt")
+	requireFile(ds, res.stdout, "stdout")
+	requireFile(ds, res.stderr, "stderr")
+	requireFile(ds, res.exitCode, "exitCode")
+	requireFile(ds, res.outputs["goodbye.txt"], "outputs", "goodbye.txt")
+	requireFile(ds, res.outputs["hello.txt"], "outputs", "hello.txt")
+}
+
+func (ds *DownloaderSuite) TestSingleRawOutput() {
+	res := ds.easyMockOutput("hello.txt", "goodbye.txt")
+
+	settings := ds.downloadSettings
+	settings.Raw = true
+	err := DownloadResults(
+		context.Background(),
+		[]model.PublishedResult{
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-0",
+					CID:           res.cid,
+				},
+			},
+		},
+		ds.downloadProvider,
+		settings,
+	)
+	require.NoError(ds.T(), err)
+
+	requireFile(ds, res.stdout, model.DownloadCIDsFolderName, res.cid, "stdout")
+	requireFile(ds, res.stderr, model.DownloadCIDsFolderName, res.cid, "stderr")
+	requireFile(ds, res.exitCode, model.DownloadCIDsFolderName, res.cid, "exitCode")
+	requireFile(ds, res.outputs["goodbye.txt"], model.DownloadCIDsFolderName, res.cid, "outputs", "goodbye.txt")
+	requireFile(ds, res.outputs["hello.txt"], model.DownloadCIDsFolderName, res.cid, "outputs", "hello.txt")
+}
+
+func (ds *DownloaderSuite) TestMultiRawOutput() {
+	res := ds.easyMockOutput("hello.txt")
+	res2 := ds.easyMockOutput("goodbye.txt")
+
+	settings := ds.downloadSettings
+	settings.Raw = true
+	err := DownloadResults(
+		context.Background(),
+		[]model.PublishedResult{
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-1",
+					CID:           res.cid,
+				},
+			},
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-2",
+					CID:           res2.cid,
+				},
+			},
+		},
+		ds.downloadProvider,
+		settings,
+	)
+	require.NoError(ds.T(), err)
+
+	requireFile(ds, res.stdout, model.DownloadCIDsFolderName, res.cid, "stdout")
+	requireFile(ds, res.stderr, model.DownloadCIDsFolderName, res.cid, "stderr")
+	requireFile(ds, res.exitCode, model.DownloadCIDsFolderName, res.cid, "exitCode")
+	requireFile(ds, res.outputs["hello.txt"], model.DownloadCIDsFolderName, res.cid, "outputs", "hello.txt")
+
+	requireFile(ds, res2.stdout, model.DownloadCIDsFolderName, res2.cid, "stdout")
+	requireFile(ds, res2.stderr, model.DownloadCIDsFolderName, res2.cid, "stderr")
+	requireFile(ds, res2.exitCode, model.DownloadCIDsFolderName, res2.cid, "exitCode")
+	requireFile(ds, res2.outputs["goodbye.txt"], model.DownloadCIDsFolderName, res2.cid, "outputs", "goodbye.txt")
+}
+
+func (ds *DownloaderSuite) TestMultiMergedOutput() {
+	res := ds.easyMockOutput("hello.txt")
+	res2 := ds.easyMockOutput("goodbye.txt")
+
+	err := DownloadResults(
+		context.Background(),
+		[]model.PublishedResult{
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-1",
+					CID:           res.cid,
+				},
+			},
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-2",
+					CID:           res2.cid,
+				},
+			},
+		},
+		ds.downloadProvider,
+		ds.downloadSettings,
+	)
+	require.NoError(ds.T(), err)
+	requireFile(ds, res.outputs["hello.txt"], "outputs", "hello.txt")
+	requireFile(ds, res2.outputs["goodbye.txt"], "outputs", "goodbye.txt")
+}
+
+func (ds *DownloaderSuite) TestMultiMergeConflictingOutput() {
+	res := ds.easyMockOutput("same_same.txt")
+	res2 := ds.easyMockOutput("same_same.txt")
+
+	err := DownloadResults(
+		context.Background(),
+		[]model.PublishedResult{
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-1",
+					CID:           res.cid,
+				},
+			},
+			{
+				NodeID: "testnode",
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "result-2",
+					CID:           res2.cid,
+				},
+			},
+		},
+		ds.downloadProvider,
+		ds.downloadSettings,
+	)
+	require.Error(ds.T(), err)
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
