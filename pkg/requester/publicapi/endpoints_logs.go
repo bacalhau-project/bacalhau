@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
@@ -17,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type logRequest = SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
+type logRequest = publicapi.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
 
 type Msg struct {
 	Tag  uint8
@@ -55,7 +56,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 
 	// Rather than have a request body or query parameters, we get the necessary
 	// information we need via the client sending a JSON message.
-	var srequest signedRequest
+	var srequest json.RawMessage
 	err = conn.ReadJSON(&srequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("error reading signed request: %s", err))
@@ -67,9 +68,8 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	// to a signedRequest. We have to convert it back to bytes as our
 	// websocket connection isn't an io.Reader and so we can't ask it to
 	// process the signature.
-	b, _ := json.Marshal(srequest)
-	buffer := bytes.NewBuffer(b)
-	payload, err := unmarshalSignedJob[model.LogsPayload](ctx, buffer)
+	buffer := bytes.NewReader(srequest)
+	payload, err := publicapi.UnmarshalSigned[model.LogsPayload](ctx, buffer)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, "failed to decode request"))
 		return

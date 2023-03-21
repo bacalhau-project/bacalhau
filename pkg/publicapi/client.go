@@ -82,6 +82,18 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 	return res.VersionInfo, nil
 }
 
+func (apiClient *APIClient) PostSigned(ctx context.Context, api string, reqData, resData interface{}) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.PostSigned")
+	defer span.End()
+
+	req, err := SignRequest(reqData)
+	if err != nil {
+		return err
+	}
+
+	return apiClient.Post(ctx, api, req, resData)
+}
+
 func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resData interface{}) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Post")
 	defer span.End()

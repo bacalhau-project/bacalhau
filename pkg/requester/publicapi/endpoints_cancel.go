@@ -3,18 +3,18 @@ package publicapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
-type cancelRequest = SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
+type cancelRequest = publicapi.SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
 
 type cancelResponse struct {
 	State *model.JobState `json:"state"`
@@ -37,9 +37,9 @@ type cancelResponse struct {
 //	@Router					/requester/cancel [post]
 func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	jobCancelPayload, err := unmarshalSignedJob[model.JobCancelPayload](ctx, req.Body)
+	jobCancelPayload, err := publicapi.UnmarshalSigned[model.JobCancelPayload](ctx, req.Body)
 	if err != nil {
-		httpError(ctx, res, err, http.StatusBadRequest)
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
@@ -49,8 +49,7 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	// Get the job, check it exists and check it belongs to the same client
 	job, err := s.jobStore.GetJob(ctx, jobCancelPayload.JobID)
 	if err != nil {
-		log.Ctx(ctx).Debug().Msgf("Missing job: %s", err)
-		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
+		publicapi.HTTPError(ctx, res, errors.Wrap(err, "missing job"), http.StatusNotFound)
 		return
 	}
 
@@ -58,11 +57,9 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	// as we have confirmed the public key that the request was signed with matches
 	// the client ID the request claims.
 	if job.Metadata.ClientID != jobCancelPayload.ClientID {
-		log.Ctx(ctx).Debug().Msgf("Mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
+		err = fmt.Errorf("mismatched ClientIDs for cancel, existing job: %s and cancel request: %s",
 			job.Metadata.ClientID, jobCancelPayload.ClientID)
-
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("mismatched client id: %s", jobCancelPayload.ClientID))
-		http.Error(res, errorResponse, http.StatusForbidden)
+		publicapi.HTTPError(ctx, res, err, http.StatusUnauthorized)
 		return
 	}
 
@@ -72,13 +69,13 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		UserTriggered: true,
 	})
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
 	}
 
 	jobState, err := getJobStateFromJobID(ctx, s, jobCancelPayload.JobID)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -89,7 +86,7 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 		State: &jobState,
 	})
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return
 	}
 }

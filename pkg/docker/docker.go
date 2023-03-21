@@ -194,7 +194,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	log.Ctx(ctx).Debug().Str("id", id).Msgf("Container Stop")
 	timeout := time.Millisecond * 100
-	if err := c.ContainerStop(ctx, id, &timeout); err != nil {
+	if err := c.ContainerStop(ctx, id, timeout); err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return nil
 		}

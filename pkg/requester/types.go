@@ -12,7 +12,7 @@ type Endpoint interface {
 	// SubmitJob submits a new job to the network.
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
 	// ApproveJob approves or rejects the running of a job.
-	ApproveJob(context.Context, ApproveJobRequest) error
+	ApproveJob(context.Context, bidstrategy.ModerateJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
 	// ReadLogs retrieves the logs for an execution
@@ -60,12 +60,6 @@ type CancelJobRequest struct {
 }
 
 type CancelJobResult struct{}
-
-type ApproveJobRequest struct {
-	ClientID string
-	JobID    string
-	Response bidstrategy.BidStrategyResponse
-}
 
 type ReadLogsRequest struct {
 	JobID       string
