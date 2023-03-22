@@ -205,6 +205,7 @@ Flags:
       --dry-run                        Do not submit the job, but instead print out what will be submitted
       --engine string                  What executor engine to use to run the job (default "docker")
   -e, --env strings                    The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
+  -id, --id-only                       Output the job ID. Used to pipe the output of the command into another command.
   -g, --gettimeout int                 Timeout for getting the results of a job in --wait (default 10)
       --gpu string                     Job GPU requirement (e.g. 1, 2, 8).
   -h, --help                           help for run
