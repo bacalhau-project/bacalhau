@@ -43,25 +43,25 @@ type ContainsClientID interface {
 }
 
 func unmarshalSignedJob[PayloadType ContainsClientID](ctx context.Context, body io.Reader) (PayloadType, error) {
-	var cancelReq signedRequest
+	var request signedRequest
 	var payload PayloadType
 
-	if err := json.NewDecoder(body).Decode(&cancelReq); err != nil {
+	if err := json.NewDecoder(body).Decode(&request); err != nil {
 		return payload, errors.Wrap(err, "error unmarshalling envelope")
 	}
 
 	// first verify the signature on the raw bytes
-	if err := verifyRequestSignature(*cancelReq.Payload, cancelReq.ClientSignature, cancelReq.ClientPublicKey); err != nil {
+	if err := verifyRequestSignature(*request.Payload, request.ClientSignature, request.ClientPublicKey); err != nil {
 		return payload, errors.Wrap(err, "error verifying request signature")
 	}
 
 	// then decode the job create payload
-	if err := json.Unmarshal(*cancelReq.Payload, &payload); err != nil {
+	if err := json.Unmarshal(*request.Payload, &payload); err != nil {
 		return payload, errors.Wrap(err, "error unmarshalling payload")
 	}
 
 	// check that the client id in the payload actually matches the key
-	if err := verifySignedJobRequest(payload.GetClientID(), cancelReq.ClientSignature, cancelReq.ClientPublicKey); err != nil {
+	if err := verifySignedJobRequest(payload.GetClientID(), request.ClientSignature, request.ClientPublicKey); err != nil {
 		return payload, errors.Wrap(err, "error validating request")
 	}
 

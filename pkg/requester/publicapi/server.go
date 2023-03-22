@@ -54,6 +54,7 @@ func (s *RequesterAPIServer) RegisterAllHandlers() error {
 		{URI: "/" + APIPrefix + "approve", Handler: http.HandlerFunc(s.approve)},
 		{URI: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
 		{URI: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
+		{URI: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},
 		{URI: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
 	}
 	return s.apiServer.RegisterHandlers(handlerConfigs...)
