@@ -41,6 +41,8 @@ var (
 const (
 	// The default size of a node's repo keypair.
 	defaultKeypairSize = 2048
+	// PvtIpfsFolderPerm is what permissions we give to a private ipfs repo
+	PvtIpfsFolderPerm       = 0755
 )
 
 // Node is a wrapper around an in-process IPFS node that can be used to
@@ -239,7 +241,8 @@ func (n *Node) Close(ctx context.Context) error {
 		}
 	}
 
-	if n.RepoPath != "" {
+	// don't delete repo if we've setup BACALHAU_PVT_IPFS_PATH
+	if n.RepoPath != "" && os.Getenv("BACALHAU_PVT_IPFS_PATH") == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -249,7 +252,15 @@ func (n *Node) Close(ctx context.Context) error {
 
 // createNode spawns a new IPFS node using a temporary repo path.
 func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
-	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
+	var repoPath string
+	var err error
+	if os.Getenv("BACALHAU_PVT_IPFS_PATH") == "" {
+		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
+
+	} else {
+		repoPath = os.Getenv("BACALHAU_PVT_IPFS_PATH")
+		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)
+	}
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
