@@ -386,6 +386,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/requester/logs": {
+            "post": {
+                "description": "Shows the output from the job specified by ` + "`" + `id` + "`" + ` as long as that job belongs to ` + "`" + `client_id` + "`" + `.\n\nThe ouput will be continuous until either, the client disconnects or the execution completes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Displays the logs for a current job/execution",
+                "operationId": "pkg/requester/publicapi/logs",
+                "parameters": [
+                    {
+                        "description": " ",
+                        "name": "logRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.logRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/requester/results": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
@@ -1116,6 +1175,36 @@ const docTemplate = `{
                 }
             }
         },
+        "model.LogsPayload": {
+            "type": "object",
+            "required": [
+                "ClientID",
+                "ExecutionID",
+                "JobID"
+            ],
+            "properties": {
+                "ClientID": {
+                    "description": "the id of the client that is requesting the logs",
+                    "type": "string"
+                },
+                "ExecutionID": {
+                    "description": "the execution to be shown",
+                    "type": "string"
+                },
+                "Follow": {
+                    "description": "whether the logs should be followed after the current logs are shown",
+                    "type": "boolean"
+                },
+                "JobID": {
+                    "description": "the job id of the job to be shown",
+                    "type": "string"
+                },
+                "WithHistory": {
+                    "description": "whether the logs history is required",
+                    "type": "boolean"
+                }
+            }
+        },
         "model.Metadata": {
             "type": "object",
             "properties": {
@@ -1668,6 +1757,32 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.JobWithInfo"
                     }
+                }
+            }
+        },
+        "publicapi.logRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.LogsPayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
                 }
             }
         },

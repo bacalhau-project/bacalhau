@@ -105,7 +105,7 @@ func (e *NoopExecutor) Run(
 	return &model.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) GetOutputStream(ctx context.Context, job model.Job) (io.ReadCloser, error) {
+func (e *NoopExecutor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 

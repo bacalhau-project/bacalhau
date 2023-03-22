@@ -15,6 +15,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func SetupTestWithDefaultConfigs(
+	ctx context.Context,
+	t *testing.T,
+	nodes int, badActors int,
+	lotusNode bool,
+	nodeOverrides ...node.NodeConfig,
+) (*devstack.DevStack, *system.CleanupManager) {
+	return SetupTest(
+		ctx,
+		t,
+		nodes, badActors,
+		lotusNode,
+		node.NewComputeConfigWithDefaults(),
+		node.NewRequesterConfigWithDefaults(),
+		nodeOverrides...,
+	)
+}
+
 func SetupTest(
 	ctx context.Context,
 	t *testing.T,
