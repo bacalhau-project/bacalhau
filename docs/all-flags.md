@@ -222,9 +222,6 @@ Flags:
       --output-dir string              Directory to write the output to. (default ".")
   -o, --output-volumes strings         name:path of the output data volumes. 'outputs:/outputs' is always added.
       --publisher string               What publisher engine to use to publish the job results (default "estuary")
-      --sharding-base-path string      Where the sharding glob pattern starts from - useful when you have multiple volumes. (default "/inputs")
-      --sharding-batch-size int        Place results of the sharding glob pattern into groups of this size. (default 1)
-      --sharding-glob-pattern string   Use this pattern to match files to be sharded.
       --skip-syntax-checking           Skip having 'shellchecker' verify syntax of the command
       --verifier string                What verification engine to use to run the job (default "noop")
       --wait                           Wait for the job to finish.
