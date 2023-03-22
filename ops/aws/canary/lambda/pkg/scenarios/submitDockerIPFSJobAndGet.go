@@ -18,7 +18,10 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	client := getClient()
 
 	cm := system.NewCleanupManager()
-	j := getSampleDockerIPFSJob()
+	j, err := getSampleDockerIPFSJob()
+	if err != nil {
+		return err
+	}
 
 	expectedChecksum := "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz"
 	expectedStat := "62731802"
