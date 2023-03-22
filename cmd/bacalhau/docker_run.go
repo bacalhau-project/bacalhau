@@ -367,26 +367,26 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			case "http":
 				isGitURL := strings.HasSuffix(i, ".git")
 				if isGitURL {
-					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
+					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
 				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "https":
 				isGitURL := strings.HasSuffix(i, ".git")
 				if isGitURL {
-					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "ipfs":
 				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
 			case "git":
-				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			case "gitlfs":
 				lfsConstraint := "git-lfs=True"
 				if odr.NodeSelector == "" {
 					odr.NodeSelector = lfsConstraint
 				}
 				odr.NodeSelector = lfsConstraint + "," + odr.NodeSelector
-				odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			// unimplemented schemes
 			// case "s3":
 			//     // Handle s3 scheme

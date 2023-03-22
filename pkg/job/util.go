@@ -50,7 +50,7 @@ func NewNoopStateLoader() StateLoader {
 	return stateLoader
 }
 
-func buildJobInputs(inputVolumes, inputUrls []string, inputRepos []string) ([]model.StorageSpec, error) {
+func buildJobInputs(inputVolumes, inputUrls, inputRepos []string) ([]model.StorageSpec, error) {
 	jobInputs := []model.StorageSpec{}
 
 	for _, inputRepo := range inputRepos {
