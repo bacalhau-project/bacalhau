@@ -106,7 +106,6 @@ func logs(cmd *cobra.Command, cmdArgs []string, options LogCommandOptions) error
 	// Get a websocket connection to the requester node from where we will be streamed
 	// any dataframes that are logged from the requested execution/job.
 	conn, err := apiClient.Logs(ctx, jobID, executionID, true, options.Follow)
-	fmt.Println("Options.Follow: ", options.Follow)
 	if err != nil {
 		if er, ok := err.(*bacerrors.ErrorResponse); ok {
 			Fatal(cmd, er.Error(), 1)
