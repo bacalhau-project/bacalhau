@@ -70,6 +70,8 @@ type ApproveJobRequest struct {
 type ReadLogsRequest struct {
 	JobID       string
 	ExecutionID string
+	WithHistory bool
+	Follow      bool
 }
 
 type ReadLogsResponse struct {

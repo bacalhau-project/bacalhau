@@ -304,7 +304,8 @@ func (apiClient *RequesterAPIClient) Logs(
 	ctx context.Context,
 	jobID string,
 	executionID string,
-	withHistory bool) (*websocket.Conn, error) {
+	withHistory bool,
+	follow bool) (*websocket.Conn, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Logs")
 	defer span.End()
 
@@ -336,6 +337,7 @@ func (apiClient *RequesterAPIClient) Logs(
 		JobID:       jobID,
 		ExecutionID: executionID,
 		WithHistory: withHistory,
+		Follow:      follow,
 	}
 
 	jsonData, err := model.JSONMarshalWithMax(payload)
@@ -358,7 +360,7 @@ func (apiClient *RequesterAPIClient) Logs(
 		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
-	u, _ := url.Parse(apiClient.APIClient.BaseURI)
+	u, _ := url.Parse(apiClient.APIClient.BaseURI.String())
 	u.Scheme = "ws"
 	u.Path = APIPrefix + "logs"
 

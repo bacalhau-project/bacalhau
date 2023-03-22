@@ -104,7 +104,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 
 	log.Ctx(s.ctx).Debug().Msgf("Logserver getting output stream")
 
-	reader, err := e.GetOutputStream(s.ctx, execution.Job, request.WithHistory)
+	reader, err := e.GetOutputStream(s.ctx, execution.Job, request.WithHistory, request.Follow)
 	if err != nil {
 		log.Ctx(s.ctx).Error().Msgf("failed to get output streams from job: %s", execution.Job.ID())
 		_ = stream.Reset()

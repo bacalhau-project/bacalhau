@@ -43,7 +43,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	}()
 
 	go func() {
-		reader, err := waitForOutputStream(ctx, *job, true, exec)
+		reader, err := waitForOutputStream(ctx, *job, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
 

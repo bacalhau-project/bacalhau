@@ -23,6 +23,7 @@ type LogStreamRequest struct {
 	JobID       string
 	ExecutionID string
 	WithHistory bool
+	Follow      bool
 }
 
 type Msg struct {
@@ -104,7 +105,11 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Ask the Compute node for a multiaddr where we can connect to a log server
-	logRequest := requester.ReadLogsRequest{JobID: job.ID(), ExecutionID: payload.ExecutionID}
+	logRequest := requester.ReadLogsRequest{
+		JobID:       job.ID(),
+		ExecutionID: payload.ExecutionID,
+		WithHistory: payload.WithHistory,
+		Follow:      payload.Follow}
 	response, err := s.requester.ReadLogs(ctx, logRequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("read logs failure: %s", err))
@@ -125,7 +130,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 	defer client.Close()
 
-	err = client.Connect(ctx, payload.JobID, payload.ExecutionID, payload.WithHistory)
+	err = client.Connect(ctx, payload.JobID, payload.ExecutionID, payload.WithHistory, payload.Follow)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
 		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))

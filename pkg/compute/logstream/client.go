@@ -59,7 +59,7 @@ func NewLogStreamClient(ctx context.Context, address string) (*LogStreamClient, 
 }
 
 // Connect sends the initial request to the logserver before
-func (c *LogStreamClient) Connect(ctx context.Context, jobID string, executionID string, withHistory bool) error {
+func (c *LogStreamClient) Connect(ctx context.Context, jobID string, executionID string, withHistory bool, follow bool) error {
 	if c.connected {
 		return fmt.Errorf("logstream client is already connected")
 	}
@@ -68,6 +68,7 @@ func (c *LogStreamClient) Connect(ctx context.Context, jobID string, executionID
 		JobID:       jobID,
 		ExecutionID: executionID,
 		WithHistory: withHistory,
+		Follow:      follow,
 	}
 
 	err := json.NewEncoder(c.stream).Encode(streamRequest)

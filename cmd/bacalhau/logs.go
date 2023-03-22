@@ -35,6 +35,7 @@ type Msg struct {
 }
 
 type LogCommandOptions struct {
+	Follow      bool
 	WithHistory bool
 }
 
@@ -53,8 +54,8 @@ func newLogsCmd() *cobra.Command {
 	}
 
 	logsCmd.PersistentFlags().BoolVarP(
-		&options.WithHistory, "all", "a", false,
-		`Show the entire log history`,
+		&options.Follow, "follow", "f", false,
+		`Follow the logs in real-time after retrieving the current logs.`,
 	)
 
 	return logsCmd
@@ -104,7 +105,8 @@ func logs(cmd *cobra.Command, cmdArgs []string, options LogCommandOptions) error
 
 	// Get a websocket connection to the requester node from where we will be streamed
 	// any dataframes that are logged from the requested execution/job.
-	conn, err := apiClient.Logs(ctx, jobID, executionID, options.WithHistory)
+	conn, err := apiClient.Logs(ctx, jobID, executionID, true, options.Follow)
+	fmt.Println("Options.Follow: ", options.Follow)
 	if err != nil {
 		if er, ok := err.(*bacerrors.ErrorResponse); ok {
 			Fatal(cmd, er.Error(), 1)

@@ -157,7 +157,7 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	return stdoutReader, stderrReader, nil
 }
 
-func (c *Client) GetOutputStream(ctx context.Context, id string, since string) (io.ReadCloser, error) {
+func (c *Client) GetOutputStream(ctx context.Context, id string, since string, follow bool) (io.ReadCloser, error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get container")
@@ -170,7 +170,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string) (
 	logOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Follow:     true,
+		Follow:     follow,
 	}
 	if since != "" {
 		logOptions.Since = since

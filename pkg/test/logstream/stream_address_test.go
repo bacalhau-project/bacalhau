@@ -36,7 +36,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	// Wait for the docker container to be running so we know it'll be there when
 	// the logstream requests it
-	reader, err := waitForOutputStream(s.ctx, job, true, exec)
+	reader, err := waitForOutputStream(s.ctx, job, true, true, exec)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
@@ -49,7 +49,11 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	})
 	require.NoError(s.T(), err)
 
-	logRequest := requester.ReadLogsRequest{JobID: job.ID(), ExecutionID: execution.ID}
+	logRequest := requester.ReadLogsRequest{
+		JobID:       job.ID(),
+		ExecutionID: execution.ID,
+		WithHistory: true,
+		Follow:      true}
 	response, err := node.RequesterNode.Endpoint.ReadLogs(s.ctx, logRequest)
 	require.NoError(s.T(), err)
 
@@ -57,7 +61,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	defer client.Close()
 
-	client.Connect(s.ctx, job.ID(), execution.ID, true)
+	client.Connect(s.ctx, job.ID(), execution.ID, true, true)
 
 	frame, err := client.ReadDataFrame(s.ctx)
 	require.NoError(s.T(), err)

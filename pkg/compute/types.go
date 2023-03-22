@@ -135,6 +135,7 @@ type ExecutionLogsRequest struct {
 	RoutingMetadata
 	ExecutionID string
 	WithHistory bool
+	Follow      bool
 }
 
 type ExecutionLogsResponse struct {

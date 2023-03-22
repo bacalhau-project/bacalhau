@@ -299,7 +299,7 @@ func (e *Executor) Run(
 	)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
 	ctrID, err := e.client.FindContainer(ctx, labelJobName, e.labelJobValue(job))
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHisto
 	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
 	// If we want everything, we specify 1, a timestamp which we are confident we don't have
 	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	reader, err := e.client.GetOutputStream(ctx, ctrID, since)
+	reader, err := e.client.GetOutputStream(ctx, ctrID, since, follow)
 	if err != nil {
 		return nil, err
 	}

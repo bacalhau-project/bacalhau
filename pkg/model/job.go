@@ -342,6 +342,9 @@ type LogsPayload struct {
 
 	// whether the logs history is required
 	WithHistory bool `json:"WithHistory,omitempty"`
+
+	// whether the logs should be followed after the current logs are shown
+	Follow bool `json:"Follow,omitempty"`
 }
 
 func (j LogsPayload) GetClientID() string {

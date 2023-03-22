@@ -326,7 +326,7 @@ func ExecuteJob(ctx context.Context,
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 
-		logOptions := LogCommandOptions{WithHistory: true}
+		logOptions := LogCommandOptions{WithHistory: true, Follow: true}
 		return logs(cmd, []string{j.Metadata.ID}, logOptions)
 	}
 

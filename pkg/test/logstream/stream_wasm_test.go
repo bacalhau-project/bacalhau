@@ -43,6 +43,6 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 		require.NoError(s.T(), err)
 	}()
 
-	_, err = waitForOutputStream(ctx, job, true, exec)
+	_, err = waitForOutputStream(ctx, job, true, true, exec)
 	require.NotNil(s.T(), err)
 }

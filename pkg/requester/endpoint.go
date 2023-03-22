@@ -176,7 +176,8 @@ func (node *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest)
 			TargetPeerID: nodeID,
 		},
 		ExecutionID: request.ExecutionID,
-		WithHistory: true,
+		WithHistory: request.WithHistory,
+		Follow:      request.Follow,
 	}
 
 	newCtx := context.Background()
