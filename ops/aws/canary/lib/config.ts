@@ -3,7 +3,7 @@ import * as cdk from "aws-cdk-lib";
 // These values map to the keys in our cdk.json and make sure
 // no values that aren't supported are passed in with the
 // -c config=env flag
-const supportedEnvironments = ["prod", "staging"] as const;
+const supportedEnvironments = ["prod", "prodOwned", "staging"] as const;
 
 type SupportedEnvironments = typeof supportedEnvironments[number];
 
@@ -13,6 +13,7 @@ export type CanaryConfig = {
     readonly env: SupportedEnvironments;
     readonly envTitle: string;
     readonly bacalhauEnvironment: string;
+    readonly nodeSelectors: string;
     readonly account: string;
     readonly region: string;
     readonly createOperators: boolean;
@@ -66,6 +67,7 @@ export const getCanaryConfig = (app: cdk.App, forceEnv?: any): CanaryConfig => {
         env: env,
         envTitle: envTitle,
         bacalhauEnvironment: ensureString(unparsedEnv, "bacalhauEnvironment"),
+        nodeSelectors: unparsedEnv["nodeSelectors"],
         account: ensureString(unparsedEnv, "account"),
         region: ensureString(unparsedEnv, "region"),
         createOperators: ensureBool(unparsedEnv, "createOperators"),

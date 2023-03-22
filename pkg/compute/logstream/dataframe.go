@@ -36,6 +36,8 @@ type DataFrame struct {
 	Data []byte
 }
 
+var EmptyDataFrame DataFrame
+
 func NewDataFrameFromReader(reader io.Reader) (DataFrame, error) {
 	header := make([]byte, headerLength)
 
@@ -57,7 +59,7 @@ func NewDataFrameFromReader(reader io.Reader) (DataFrame, error) {
 		return DataFrame{}, err
 	}
 	if n != df.Size {
-		return DataFrame{}, fmt.Errorf("unable to read dataframe data")
+		return DataFrame{}, fmt.Errorf("unable to read dataframe data, read %d wanted %d", n, df.Size)
 	}
 
 	return df, nil
