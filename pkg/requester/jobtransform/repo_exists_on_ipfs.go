@@ -18,7 +18,7 @@ func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 				repoArray = append(repoArray, inputRepos.Repo)
 			}
 			for _, url := range repoArray {
-				repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
+				repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url, ctx)
 				// if err != nil {
 				// 	fmt.Print(err)
 				// }

@@ -130,22 +130,12 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	CID := CIDSpec.CID
 	// Update the KV store
 	SHA1HASH, _ := UrltoLatestCommitHash(repoURL)
-	spkey := sp.EstuaryAPIKey
 	envkey := os.Getenv("ESTUARY_API_KEY")
-	var key string
-	if spkey != "" && envkey == "" {
-		key = spkey
-	} else if envkey != "" && spkey == "" {
-		key = envkey
-	} else if envkey != "" && spkey != "" {
-		key = spkey
-	} else {
-		key = ""
-	}
-	if key != "" {
+
+	if envkey != "" {
 		log1.Println("Pinning to Estuary...")
 		//nolint:govet,noctx
-		err := estuary.PinToIPFSViaEstuary(ctx, key, CID)
+		err := estuary.PinToIPFSViaEstuary(ctx, envkey, CID)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}

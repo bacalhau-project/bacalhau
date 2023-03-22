@@ -41,17 +41,16 @@ func NewCloneClient() (*Clone, error) {
 	}, nil
 }
 
-func RepoExistsOnIPFSGivenURL(urlStr string) (string, error) {
+func RepoExistsOnIPFSGivenURL(urlStr string, ctx context.Context) (string, error) {
 	output, err := GetLatestCommitHash(urlStr)
 	if err != nil {
 		fmt.Println(err)
 		return "", err
 	}
 	url := baseURL + output
-	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		log.Err(err)
 		return "", err
 	}
 
