@@ -32,7 +32,6 @@ func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 					})
 					ModificationCount++
 				}
-
 			}
 		}
 		j.Spec.Inputs = inputs

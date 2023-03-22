@@ -7,7 +7,6 @@ import (
 	log1 "log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"net/http"
 	"net/url"
@@ -202,8 +201,6 @@ func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([
 }
 
 func CreateSHA1CIDPair(data url.Values) error {
-	//nolint:gomnd
-	time.Sleep(100 * time.Millisecond)
 	//nolint:noctx
 	resp, err := http.PostForm("http://kv.bacalhau.org", data)
 	if err != nil {

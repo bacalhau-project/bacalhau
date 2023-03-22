@@ -138,7 +138,7 @@ func (s *StorageSuite) TestCloneRepo() {
 	// Rewrite this test replacing it with the clone part
 	filetypeCases := []repostruct{
 		{Site: "github", URL: "https://github.com/bacalhau-project/bacalhau.git",
-			repoName: "filecoin-project/bacalhau",
+			repoName: "bacalhau-project/bacalhau",
 		}}
 
 	for _, ftc := range filetypeCases {

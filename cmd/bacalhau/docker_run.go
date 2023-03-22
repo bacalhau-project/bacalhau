@@ -166,7 +166,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputRepos, "input-repos", "r", ODR.InputRepos,
 		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/bacalhau-project/bacalhau.git'
-		mounts the repo at '/inputs/filecoin-project/bacalhau').`,
+		mounts the repo at '/inputs/bacalhau-project/bacalhau').`,
 	)
 
 	//nolint:lll // Documentation, ok if long.
@@ -365,14 +365,14 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 			switch scheme.Scheme {
 			case "http":
-				isGitUrl := strings.HasSuffix(i, ".git")
-				if isGitUrl {
+				isGitURL := strings.HasSuffix(i, ".git")
+				if isGitURL {
 					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
 				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "https":
-				isGitUrl := strings.HasSuffix(i, ".git")
-				if isGitUrl {
+				isGitURL := strings.HasSuffix(i, ".git")
+				if isGitURL {
 					odr.InputUrls = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 				}
 				odr.InputUrls = append(odr.InputUrls, i)
