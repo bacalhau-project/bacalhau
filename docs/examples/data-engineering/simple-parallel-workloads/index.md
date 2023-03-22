@@ -25,9 +25,6 @@ bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
   --id-only \
-  --sharding-base-path "/inputs" \
-  --sharding-glob-pattern "*.mp4" \
-  --sharding-batch-size 1 \
   -v Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j:/inputs \
   linuxserver/ffmpeg -- \
   bash -c 'find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}'
@@ -37,12 +34,6 @@ bacalhau docker run \
 The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.
 
 The `bacalhau docker run` command allows one to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
-
-To shard across files in the input directory, we need to pass three (optional) arguments to the command:
-
-- `sharding-base-path` - the path to the directory you want to shard over
-- `sharding-glob-pattern` - the pattern to match files in the directory
-- `sharding-batch-size` - the number of files to pass into each job
 
 We created a 72px wide video thumbnails for all the videos in the `inputs` directory. The `outputs` directory will contain the thumbnails for each video. We will shard by 1 video per job, and use the `linuxserver/ffmpeg` container to resize the videos.
 
