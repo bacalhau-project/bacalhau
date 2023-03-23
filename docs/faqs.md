@@ -4,7 +4,7 @@ sidebar_position: 90
 hide_title: true
 ---
 
-# FAQs
+# Bacalhau FAQs
 
 ### Can I use multiple data sources in the same job?
 You can use the `--input-volumes` or `-v` flag multiple times with multiple different CIDs, and give each of them a path to be mounted at. 

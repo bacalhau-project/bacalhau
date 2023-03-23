@@ -9,7 +9,7 @@ hide_title: true
 <img src="img/bacalhau-horizontal.jpg" alt="Bacalhau Logo" width="300" />
 </p>
 
-## Overview
+# What is Bacalhau?
 
 Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_. 
 
@@ -102,6 +102,6 @@ Bacalhau has a very friendly community and we are always happy to help you get s
 
 ## Next Steps
 
-👉 Continue with [Getting Started guide](https://docs.bacalhau.org/getting-started/installation) to learn how to install and run a job with the Bacalhau client.
+👉 Continue with [Bacalhau Getting Started guide](https://docs.bacalhau.org/getting-started/installation) to learn how to install and run a job with the Bacalhau client.
 
 👉 Or jump directly to try out the different [Examples](/docs/examples/index.md) that showcases Bacalhau abilities.
