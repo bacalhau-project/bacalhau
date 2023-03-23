@@ -51,7 +51,8 @@ build:
 .SILENT: publish
 .PHONY: publish
 publish:
-	$(POETRY) publish --skip-existing -u __token__ -p ${PYPI_TOKEN}
+	$(POETRY) version -- ${VERSION}
+	$(POETRY) publish --build --no-interaction --skip-existing -u __token__ -p ${PYPI_TOKEN}
 
 # .PHONY: bumpversion
 # 	bump2version --new-version minor src/VERSION
