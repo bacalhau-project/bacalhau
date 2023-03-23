@@ -2,7 +2,9 @@ package system
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -92,4 +94,12 @@ func GetShortID(ID string) string {
 		return ID
 	}
 	return ID[:model.ShortIDLength]
+}
+
+func MustParseURL(uri string) *url.URL {
+	url, err := url.Parse(uri)
+	if err != nil {
+		panic(fmt.Sprintf("url does not parse: %s", uri))
+	}
+	return url
 }

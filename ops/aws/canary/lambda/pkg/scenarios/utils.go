@@ -13,13 +13,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 const defaultEchoMessage = "hello λ!"
 const canaryAnnotation = "canary"
 
-func getSampleDockerJob() *model.Job {
+func getSampleDockerJob() (*model.Job, error) {
+	nodeSelectors, err := getNodeSelectors()
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
@@ -34,16 +37,21 @@ func getSampleDockerJob() *model.Job {
 				defaultEchoMessage,
 			},
 		},
-		Annotations: []string{canaryAnnotation},
+		Annotations:   []string{canaryAnnotation},
+		NodeSelectors: nodeSelectors,
 	}
 
 	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
-	return j
+	return j, nil
 }
 
-func getSampleDockerIPFSJob() *model.Job {
+func getSampleDockerIPFSJob() (*model.Job, error) {
+	nodeSelectors, err := getNodeSelectors()
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
@@ -76,20 +84,14 @@ func getSampleDockerIPFSJob() *model.Job {
 				Path:          "/outputs",
 			},
 		},
-		Annotations: []string{canaryAnnotation},
-		NodeSelectors: []model.LabelSelectorRequirement{
-			{
-				Key:      "owner",
-				Operator: selection.Equals,
-				Values:   []string{"bacalhau"},
-			},
-		},
+		Annotations:   []string{canaryAnnotation},
+		NodeSelectors: nodeSelectors,
 	}
 
 	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
-	return j
+	return j, nil
 }
 
 func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
@@ -135,9 +137,17 @@ func getClient() *publicapi.RequesterAPIClient {
 	if apiHost == "" {
 		apiHost = system.Envs[system.GetEnvironment()].APIHost
 	}
-	if apiPort == "" {
-		apiPort = fmt.Sprint(system.Envs[system.GetEnvironment()].APIPort)
+	if apiPort == nil {
+		defaultPort := system.Envs[system.GetEnvironment()].APIPort
+		apiPort = &defaultPort
 	}
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%s", apiHost, apiPort))
-	return client
+	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+}
+
+func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
+	nodeSelectors := os.Getenv("BACALHAU_NODE_SELECTORS")
+	if nodeSelectors != "" {
+		return job.ParseNodeSelector(nodeSelectors)
+	}
+	return nil, nil
 }

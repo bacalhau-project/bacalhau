@@ -105,6 +105,18 @@ func (p *ComputeProxy) CancelExecution(
 		ctx, p.host, request.TargetPeerID, CancelProtocolID, request)
 }
 
+func (p *ComputeProxy) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	if request.TargetPeerID == p.host.ID().String() {
+		if p.localEndpoint == nil {
+			return compute.ExecutionLogsResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
+		}
+		return p.localEndpoint.ExecutionLogs(ctx, request)
+	}
+	return proxyRequest[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](
+		ctx, p.host, request.TargetPeerID, ExecutionLogsID, request)
+}
+
 func proxyRequest[Request any, Response any](
 	ctx context.Context,
 	h host.Host,
@@ -133,21 +145,21 @@ func proxyRequest[Request any, Response any](
 	}
 	defer stream.Close() //nolint:errcheck
 	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
 	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
 	// Now we read the response that was sent from the dest peer
 	err = json.NewDecoder(stream).Decode(response)
 	if err != nil {
-		stream.Reset() //nolint:errcheck
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 

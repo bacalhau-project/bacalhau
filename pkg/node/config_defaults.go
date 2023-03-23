@@ -32,6 +32,6 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	OverAskForBidsFactor:               3,
 
 	MinBacalhauVersion: model.BuildVersionInfo{
-		Major: "0", Minor: "3", GitVersion: "v0.3.20",
+		Major: "0", Minor: "3", GitVersion: "v0.3.25",
 	},
 }

@@ -329,3 +329,24 @@ type JobCancelPayload struct {
 func (j JobCancelPayload) GetClientID() string {
 	return j.ClientID
 }
+
+type LogsPayload struct {
+	// the id of the client that is requesting the logs
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
+
+	// the job id of the job to be shown
+	JobID string `json:"JobID,omitempty" validate:"required"`
+
+	// the execution to be shown
+	ExecutionID string `json:"ExecutionID,omitempty" validate:"required"`
+
+	// whether the logs history is required
+	WithHistory bool `json:"WithHistory,omitempty"`
+
+	// whether the logs should be followed after the current logs are shown
+	Follow bool `json:"Follow,omitempty"`
+}
+
+func (j LogsPayload) GetClientID() string {
+	return j.ClientID
+}

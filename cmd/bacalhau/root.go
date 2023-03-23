@@ -20,14 +20,14 @@ import (
 )
 
 var apiHost string
-var apiPort int
+var apiPort uint16
 
 var loggingMode = logger.LogModeDefault
 
 var Fatal = FatalErrorHandler
 
 var defaultAPIHost string
-var defaultAPIPort int
+var defaultAPIPort uint16
 
 func init() { //nolint:gochecknoinits
 	defaultAPIHost = system.Envs[system.GetEnvironment()].APIHost
@@ -37,11 +37,8 @@ func init() { //nolint:gochecknoinits
 		defaultAPIHost = config.GetAPIHost()
 	}
 
-	if config.GetAPIPort() != "" {
-		intPort, err := strconv.Atoi(config.GetAPIPort())
-		if err == nil {
-			defaultAPIPort = intPort
-		}
+	if config.GetAPIPort() != nil {
+		defaultAPIPort = *config.GetAPIPort()
 	}
 
 	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
@@ -103,6 +100,9 @@ func NewRootCmd() *cobra.Command {
 	// Describe a job
 	RootCmd.AddCommand(newDescribeCmd())
 
+	// Get logs
+	RootCmd.AddCommand(newLogsCmd())
+
 	// Get the results of a job
 	RootCmd.AddCommand(newGetCmd())
 
@@ -125,7 +125,7 @@ func NewRootCmd() *cobra.Command {
 		`The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 	)
-	RootCmd.PersistentFlags().IntVar(
+	RootCmd.PersistentFlags().Uint16Var(
 		&apiPort, "api-port", defaultAPIPort,
 		`The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
@@ -163,9 +163,11 @@ func Execute() {
 
 	if envAPIPort := viper.GetString("API_PORT"); envAPIPort != "" {
 		var parseErr error
-		apiPort, parseErr = strconv.Atoi(envAPIPort)
+		parsedPort, parseErr := strconv.ParseUint(envAPIPort, 10, 16)
 		if parseErr != nil {
 			log.Ctx(ctx).Fatal().Msgf("could not parse API_PORT into an int. %s", envAPIPort)
+		} else {
+			apiPort = uint16(parsedPort)
 		}
 	}
 

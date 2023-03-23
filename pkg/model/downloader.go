@@ -17,4 +17,5 @@ type DownloaderSettings struct {
 	OutputDir      string
 	IPFSSwarmAddrs string
 	LocalIPFS      bool
+	Raw            bool
 }

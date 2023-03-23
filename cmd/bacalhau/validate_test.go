@@ -34,7 +34,7 @@ func (s *ValidateSuite) TestValidate() {
 
 			_, out, err := ExecuteTestCobraCommand("validate",
 				"--api-host", s.host,
-				"--api-port", s.port,
+				"--api-port", fmt.Sprint(s.port),
 				test.testFile,
 			)
 

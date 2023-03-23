@@ -85,13 +85,17 @@ func DownloadResults( //nolint:funlen,gocyclo
 		}
 	}
 
-	for _, cidDownloadDir := range downloadedCids {
-		err = moveData(ctx, resultsOutputDir, cidDownloadDir, len(downloadedCids) > 1)
-		if err != nil {
-			return err
+	if settings.Raw {
+		return nil
+	} else {
+		for _, cidDownloadDir := range downloadedCids {
+			err = moveData(ctx, resultsOutputDir, cidDownloadDir, len(downloadedCids) > 1)
+			if err != nil {
+				return err
+			}
 		}
+		return os.RemoveAll(cidParentDir)
 	}
-	return os.RemoveAll(cidParentDir)
 }
 
 func moveData(
@@ -130,7 +134,7 @@ func moveData(
 		if d.IsDir() {
 			err = os.MkdirAll(globalTargetPath, model.DownloadFolderPerm)
 			if err != nil {
-				return nil
+				return err
 			}
 		} else {
 			// if it's not a special file then we move it into the global dir
@@ -140,7 +144,7 @@ func moveData(
 					globalTargetPath,
 				)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 
@@ -152,7 +156,7 @@ func moveData(
 					globalTargetPath,
 				)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 		}
@@ -195,8 +199,8 @@ func moveFile(sourcePath, targetPath string) error {
 		}
 		// file doesn't exist
 	} else {
-		// this means there was no error and so the file exists
-		return nil
+		return fmt.Errorf(
+			"cannot merge results as output already exists: %s. Try --raw to download raw results instead of merging them", targetPath)
 	}
 
 	return os.Rename(sourcePath, targetPath)

@@ -64,7 +64,7 @@ func handleCallbackStream[Request any](
 	ctx = logger.ContextWithNodeIDLogger(ctx, stream.Conn().LocalPeer().String())
 	if err := stream.Scope().SetService(CallbackServiceName); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("error attaching stream to requester service")
-		stream.Reset()
+		_ = stream.Reset()
 		return
 	}
 
@@ -72,12 +72,12 @@ func handleCallbackStream[Request any](
 	err := json.NewDecoder(stream).Decode(request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
-		stream.Reset()
+		_ = stream.Reset()
 		return
 	}
 	defer stream.Close() //nolint:errcheck
 
-	// TODO: validate which context to user here, and whether running in a goroutine is ok
+	// TODO: validate which context to use here, and whether running in a goroutine is ok
 	newCtx := logger.ContextWithNodeIDLogger(context.Background(), stream.Conn().LocalPeer().String())
 	go f(newCtx, *request)
 }

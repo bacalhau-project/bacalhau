@@ -40,7 +40,7 @@ type NodeConfig struct {
 	FilecoinUnsealedPath      string
 	EstuaryAPIKey             string
 	HostAddress               string
-	APIPort                   int
+	APIPort                   uint16
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig

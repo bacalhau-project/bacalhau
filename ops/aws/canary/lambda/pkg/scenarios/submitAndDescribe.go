@@ -15,7 +15,10 @@ func SubmitAnDescribe(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := getClient()
 
-	j := getSampleDockerJob()
+	j, err := getSampleDockerJob()
+	if err != nil {
+		return err
+	}
 	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err

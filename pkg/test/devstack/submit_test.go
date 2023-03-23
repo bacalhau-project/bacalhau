@@ -48,8 +48,8 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		node.NewRequesterConfigWithDefaults(),
 	)
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}

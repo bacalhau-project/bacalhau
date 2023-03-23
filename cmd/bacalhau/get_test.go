@@ -99,7 +99,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	args := []string{
 		"docker", "run",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		"-o", "data:/data",
 		"--wait",
