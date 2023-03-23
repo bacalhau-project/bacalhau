@@ -1,6 +1,8 @@
 package wasmlogs
 
-import "time"
+import (
+	"time"
+)
 
 type Message struct {
 	Stream    string `json:"stream"`

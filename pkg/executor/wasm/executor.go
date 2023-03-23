@@ -1,7 +1,6 @@
 package wasm
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,8 +18,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
+	"github.com/bacalhau-project/bacalhau/pkg/wasmlogs"
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
@@ -31,6 +32,7 @@ import (
 
 type Executor struct {
 	StorageProvider storage.StorageProvider
+	LogManagerMap   generic.SyncMap[string, *wasmlogs.LogManager]
 }
 
 func NewExecutor(_ context.Context, storageProvider storage.StorageProvider) (*Executor, error) {
@@ -173,15 +175,18 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// that we can later include them in the job results. We don't want to
 	// execute any start functions automatically as we will do it manually
 	// later. Finally, add the filesystem which contains our input and output.
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
+	// stdout := new(bytes.Buffer)
+	// stderr := new(bytes.Buffer)
+
+	stdoutWritePipe, stderrWritePipe := e.setupOutputStreams(ctx, job.ID())
+	defer e.cleanupOutputStreams(ctx, job.ID())
 
 	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
 
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
-		WithStdout(stdout).
-		WithStderr(stderr).
+		WithStdout(stdoutWritePipe).
+		WithStderr(stderrWritePipe).
 		WithArgs(args...).
 		WithFS(rootFs)
 
@@ -221,11 +226,45 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		wasmErr = nil
 	}
 
+	logmanager, _ := e.LogManagerMap.Get(job.ID())
+	stdout, stderr, _ := logmanager.GetReaders(false)
+
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for wasm executor")
+}
+
+func (e *Executor) setupOutputStreams(ctx context.Context, jobID string) (io.Writer, io.Writer) {
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s_log.json", jobID))
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("failed to created tmp file for wasm logs")
+		return nil, nil
+	}
+
+	fmt.Println("------------------------------")
+	fmt.Println(tmpFile.Name())
+	fmt.Println("------------------------------")
+
+	logmanager, err := wasmlogs.NewLogManager(ctx, tmpFile.Name())
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("failed to create new wasm log manager")
+		return nil, nil
+	}
+	e.LogManagerMap.Put(jobID, logmanager)
+	return logmanager.GetWriters()
+}
+
+func (e *Executor) cleanupOutputStreams(ctx context.Context, jobID string) {
+	logmanager, present := e.LogManagerMap.Get(jobID)
+	if !present {
+		log.Ctx(ctx).Debug().Msgf("expected to find logmanager for %s but not found", jobID)
+		return
+	}
+
+	logmanager.Close()
+	e.LogManagerMap.Delete(jobID)
 }
 
 // Compile-time check that Executor implements the Executor interface.
