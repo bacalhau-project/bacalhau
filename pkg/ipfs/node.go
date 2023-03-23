@@ -255,7 +255,7 @@ func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icor
 	var repoPath string
 	var err error
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
-		repoPath, err = os.MkdirTemp("/tmp/dvstck", "ipfs-tmp")
+		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
 
 	} else {
 		repoPath = os.Getenv("BACALHAU_SERVE_IPFS_PATH")

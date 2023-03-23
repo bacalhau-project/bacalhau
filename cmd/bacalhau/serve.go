@@ -38,18 +38,21 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a bacalhau hybrid node that acts as both compute and requester
+		# Start a private bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve
 		# or
 		bacalhau serve --node-type compute --node-type requester
 		# or
 		bacalhau serve --node-type compute,requester
 
-		# Start a bacalhau requester node
+		# Start a private bacalhau requester node
 		bacalhau serve --node-type requester
 
-		# Start a bacalhau compute node
-		bacalhau serve --node-type compute
+		# Start a private bacalhau node with a persistent local Ipds node
+		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
+
+		# Start a (public!) bacalhau node
+		bacalhau serve --peer env --private-internal-ipfs=false
 `))
 )
 
@@ -166,10 +169,9 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`The libp2p multiaddress to connect to. `+
+		`A comma-separated list of libp2p multiaddress to connect to. `+
 			`Use "none" to avoid connecting to any peer, `+
-			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var), `+
-			`or a comma separated list of multiaddresses to connect to.`,
+			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var).`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
