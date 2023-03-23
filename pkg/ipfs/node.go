@@ -241,8 +241,8 @@ func (n *Node) Close(ctx context.Context) error {
 		}
 	}
 
-	// don't delete repo if we've setup BACALHAU_PVT_IPFS_PATH
-	if n.RepoPath != "" && os.Getenv("BACALHAU_PVT_IPFS_PATH") == "" {
+	// don't delete repo if we've setup BACALHAU_SERVE_IPFS_PATH
+	if n.RepoPath != "" && os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
 		if err := os.RemoveAll(n.RepoPath); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
 		}
@@ -254,11 +254,11 @@ func (n *Node) Close(ctx context.Context) error {
 func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	var repoPath string
 	var err error
-	if os.Getenv("BACALHAU_PVT_IPFS_PATH") == "" {
-		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
+	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
+		repoPath, err = os.MkdirTemp("/tmp/dvstck", "ipfs-tmp")
 
 	} else {
-		repoPath = os.Getenv("BACALHAU_PVT_IPFS_PATH")
+		repoPath = os.Getenv("BACALHAU_SERVE_IPFS_PATH")
 		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)
 	}
 	if err != nil {

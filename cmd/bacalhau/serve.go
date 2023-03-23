@@ -166,8 +166,10 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
-		// TODO @enricorotundo - elaborate on this flag (none, env, or comma separated list of multiaddresses)
-		`The libp2p multiaddress to connect to. Use "none" to not connect to any peers, "env" to connect to the peers specified in the BACALHAU_ENVIRONMENT environment variable, or a comma separated list of multiaddresses to connect to.`,
+		`The libp2p multiaddress to connect to. `+
+			`Use "none" to avoid connecting to any peer, `+
+			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var), `+
+			`or a comma separated list of multiaddresses to connect to.`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
@@ -301,7 +303,9 @@ func newServeCmd() *cobra.Command {
 	serveCmd.PersistentFlags().BoolVar(
 		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
 		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
-			"cannot be used with --ipfs-connect.",
+			"cannot be used with --ipfs-connect. "+
+			"Use \"--private-internal-ipfs=false\" to disable. "+
+			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
 	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
@@ -495,6 +499,9 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		ipfsNode, err := newNode(ctx, cm, OS.IPFSSwarmAddresses)
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
+		}
+		if OS.PrivateInternalIPFS {
+			log.Ctx(ctx).Debug().Msgf("ipfs_node_apiport: %d", ipfsNode.APIPort)
 		}
 		cm.RegisterCallbackWithContext(ipfsNode.Close)
 		client := ipfsNode.Client()

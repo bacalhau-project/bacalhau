@@ -15,7 +15,7 @@ type IDInfo struct {
 func newIDCmd() *cobra.Command {
 	OS := NewServeOptions()
 
-	// make sure we run serve in local mode
+	// make sure serve options point to local mode
 	OS.PeerConnect = "none"
 	OS.PrivateInternalIPFS = true
 
