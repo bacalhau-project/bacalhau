@@ -74,7 +74,7 @@ Notes about the command:
 * The IPFS connect string points to the RPC port of the IPFS node in Docker. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP. If you're running your own node, replace it.
 * The `--node-type` flag is set to `compute` because we only want to run a compute node
 * The `--labels` flag is used to set a human-readable label for the node, and so we can run jobs on our machine later
-* We do not specify the `peer` flag, so it defaults to using the public bootstrap nodes
+* We specify the `--peer env` flag, so it defaults to using the public bootstrap nodes (see `BACALHAU_ENVIRONMENT=production`)
 
 ```bash
 sudo docker run \
@@ -88,7 +88,9 @@ sudo docker run \
     serve \
         --ipfs-connect /dns4/localhost/tcp/5001 \
         --node-type compute \
-        --labels "owner=docs-quick-start"
+        --labels "owner=docs-quick-start" \
+        --private-internal-ipfs=false \
+        --peer env
 ```
 
 There are several ways to ensure that the Bacalhau compute node is connected to the network.
@@ -203,7 +205,6 @@ Notes about the command:
 * It exposes the Bacalhau API ports to the local host only, to prevent accidentally exposing the API to the public internet
 * The container version should match that of the Bacalhau installed on your system
 * The IPFS connect string points to the RPC port of the IPFS node. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP.
-* The `--peer` flag is set to `none` because we don't want to bootstrap to the public network
 * The `--node-type` flag is set to `requester,compute` because we want to run both a requester and a compute node
 
 ```bash
@@ -216,7 +217,6 @@ docker run \
     ghcr.io/bacalhau-project/bacalhau:latest \
     serve \
         --ipfs-connect /dns4/ipfs_host/tcp/5001 \
-        --peer "none" \
         --node-type requester,compute
 ```
 
