@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -153,20 +154,22 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	api.jobEventHandler.startBufferGC(ctx)
 	api.cleanupFunc = func(ctx context.Context) {
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close job event pubsub")
-		}
+		logDebugIfContextCancelled(cleanupErr, ctx, "job event pubsub")
 		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
-		}
+		logDebugIfContextCancelled(cleanupErr, ctx, "job event pubsub")
 		cleanupErr = nodeInfoPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
-		}
+		logDebugIfContextCancelled(cleanupErr, ctx, "node info pubsub")
 		cancel()
 	}
 	return nil
+}
+
+func logDebugIfContextCancelled(cleanupErr error, ctx context.Context, msg string) {
+	if !errors.Is(cleanupErr, context.Canceled) {
+		log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close " + msg)
+	} else {
+		log.Ctx(ctx).Info().Err(cleanupErr).Msg("failed to close " + msg)
+	}
 }
 
 func (api *ModelAPI) Stop(ctx context.Context) error {

@@ -157,7 +157,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Info().Msg("done closing BufferingPubSub")
+	log.Ctx(ctx).Debug().Msg("done closing BufferingPubSub")
 	return nil
 }
 

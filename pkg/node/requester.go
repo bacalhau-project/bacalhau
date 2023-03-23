@@ -239,19 +239,13 @@ func NewRequesterNode(
 		housekeeping.Stop()
 
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close job event pubsub")
-		}
+		LogDebugIfContextCancelled(cleanupErr, ctx, "buffered job event pubsub")
 		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
-		}
-
+		LogDebugIfContextCancelled(cleanupErr, ctx, "libp2p job event pubsub")
 		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
 		}
-
 		cleanupErr = eventTracer.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
