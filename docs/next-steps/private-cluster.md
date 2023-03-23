@@ -72,6 +72,11 @@ Instructions for connecting to the public IPFS network via private Bacalhau clus
 On all nodes, start ipfs:
 
 ```
+ipfs init
+```
+Then run the following command in your shell:
+
+```
 export IPFS_CONNECT=$(ipfs id |grep tcp |grep 127.0.0.1 |sed s/4001/5001/|sed s/,//g |sed 's/"//g')
 ```
 
@@ -82,13 +87,18 @@ export LOG_LEVEL=debug
 bacalhau serve --peer none --ipfs-connect $IPFS_CONNECT --node-type requester,compute
 ```
 Monitor the output log for:
-11:16:03.827 | DBG pkg/transport/bprotocol/compute_handler.go:39 > ComputeHandler started on host QmWXAaSHbbP7mU4GrqDhkgUkX9EscfAHPMCHbrBSUi4A35
+`11:16:03.827 | DBG pkg/transport/bprotocol/compute_handler.go:39 > ComputeHandler started on host QmWXAaSHbbP7mU4GrqDhkgUkX9EscfAHPMCHbrBSUi4A35`
 
 
 On **all other nodes** execute the following:
 
 ```
 export PEER_ADDR=/ip4/<public-ip>/tcp/1235/p2p/<above>
+````
+Replace the values in the command above with your own value
+
+Here is our example:
+````
 export PEER_ADDR=/ip4/192.18.129.124/tcp/1235/p2p/QmWXAaSHbbP7mU4GrqDhkgUkX9EscfAHPMCHbrBSUi4A35
 bacalhau serve --peer $PEER_ADDR --ipfs-connect $IPFS_CONNECT --node-type compute
 ```
