@@ -32,6 +32,7 @@ import (
 var DefaultSwarmPort = 1235
 
 const NvidiaCLI = "nvidia-container-cli"
+const DefaultPeerConnect = "none"
 
 var (
 	serveLong = templates.LongDesc(i18n.T(`
@@ -90,7 +91,7 @@ type ServeOptions struct {
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
 		NodeType:                        []string{"requester", "compute"},
-		PeerConnect:                     "none",
+		PeerConnect:                     DefaultPeerConnect,
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
 		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
@@ -186,7 +187,7 @@ func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 
 func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
-	if OS.PeerConnect == "none" {
+	if OS.PeerConnect == DefaultPeerConnect {
 		peersStrings = []string{}
 	} else if OS.PeerConnect == "env" {
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
@@ -432,7 +433,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		fmt.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
 	}
 
-	if OS.PrivateInternalIPFS && OS.PeerConnect == "none" {
+	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
 		nodeType := ""
 		if !isRequesterNode {
 			nodeType = "--node-type requester "

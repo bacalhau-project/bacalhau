@@ -42,7 +42,7 @@ const (
 	// The default size of a node's repo keypair.
 	defaultKeypairSize = 2048
 	// PvtIpfsFolderPerm is what permissions we give to a private ipfs repo
-	PvtIpfsFolderPerm       = 0755
+	PvtIpfsFolderPerm = 0755
 )
 
 // Node is a wrapper around an in-process IPFS node that can be used to
@@ -256,7 +256,6 @@ func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icor
 	var err error
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
 		repoPath, err = os.MkdirTemp("", "ipfs-tmp")
-
 	} else {
 		repoPath = os.Getenv("BACALHAU_SERVE_IPFS_PATH")
 		err = os.MkdirAll(repoPath, PvtIpfsFolderPerm)

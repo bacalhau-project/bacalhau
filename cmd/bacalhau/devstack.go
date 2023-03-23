@@ -57,7 +57,7 @@ func newDevStackCmd() *cobra.Command {
 	OS := NewServeOptions()
 
 	// make sure serve options point to local mode
-	OS.PeerConnect = "none"
+	OS.PeerConnect = DefaultPeerConnect
 	OS.PrivateInternalIPFS = true
 
 	IsNoop := false

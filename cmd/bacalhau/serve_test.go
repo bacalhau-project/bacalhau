@@ -68,7 +68,7 @@ func (s *ServeSuite) serve(extraArgs ...string) uint16 {
 	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
 	args := []string{
 		"serve",
-		"--peer", "none",
+		"--peer", DefaultPeerConnect,
 		"--private-internal-ipfs",
 		"--api-port", fmt.Sprint(port),
 	}
