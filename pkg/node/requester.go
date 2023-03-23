@@ -23,6 +23,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -239,9 +240,9 @@ func NewRequesterNode(
 		housekeeping.Stop()
 
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		LogDebugIfContextCancelled(cleanupErr, ctx, "buffered job event pubsub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "buffered job event pubsub")
 		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
-		LogDebugIfContextCancelled(cleanupErr, ctx, "libp2p job event pubsub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "libp2p job event pubsub")
 		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")

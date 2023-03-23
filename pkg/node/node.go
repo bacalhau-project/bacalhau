@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -256,11 +256,11 @@ func NewNode(
 		}
 		nodeInfoPublisher.Stop(ctx)
 		cleanupErr := nodeInfoPubSub.Close(ctx)
-		LogDebugIfContextCancelled(cleanupErr, ctx, "node info pub sub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()
-		LogDebugIfContextCancelled(cleanupErr, ctx, "host")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "host")
 		return cleanupErr
 	})
 
@@ -287,18 +287,6 @@ func NewNode(
 	}
 
 	return node, nil
-}
-
-// checkContextCanceled will ensure that LOG_LEVEL is set to debug if
-// the context is canceled.
-func LogDebugIfContextCancelled(cleanupErr error, ctx context.Context, msg string) {
-	if cleanupErr != nil {
-		if !errors.Is(cleanupErr, context.Canceled) {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close " + msg)
-		} else {
-			log.Ctx(ctx).Debug().Err(cleanupErr).Msg("failed to close " + msg)
-		}
-	}
 }
 
 // IsRequesterNode returns true if the node is a requester node

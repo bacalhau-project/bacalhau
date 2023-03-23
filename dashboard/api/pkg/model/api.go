@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
 	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -154,22 +153,14 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	api.jobEventHandler.startBufferGC(ctx)
 	api.cleanupFunc = func(ctx context.Context) {
 		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		logDebugIfContextCancelled(cleanupErr, ctx, "job event pubsub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job event pubsub")
 		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
-		logDebugIfContextCancelled(cleanupErr, ctx, "job event pubsub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job event pubsub")
 		cleanupErr = nodeInfoPubSub.Close(ctx)
-		logDebugIfContextCancelled(cleanupErr, ctx, "node info pubsub")
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pubsub")
 		cancel()
 	}
 	return nil
-}
-
-func logDebugIfContextCancelled(cleanupErr error, ctx context.Context, msg string) {
-	if !errors.Is(cleanupErr, context.Canceled) {
-		log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close " + msg)
-	} else {
-		log.Ctx(ctx).Info().Err(cleanupErr).Msg("failed to close " + msg)
-	}
 }
 
 func (api *ModelAPI) Stop(ctx context.Context) error {
