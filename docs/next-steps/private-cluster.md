@@ -98,7 +98,8 @@ export PEER_ADDR=/ip4/<public-ip>/tcp/1235/p2p/<above>
 Replace the values in the command above with your own value
 
 Here is our example:
-````
+
+```
 export PEER_ADDR=/ip4/192.18.129.124/tcp/1235/p2p/QmWXAaSHbbP7mU4GrqDhkgUkX9EscfAHPMCHbrBSUi4A35
 bacalhau serve --peer $PEER_ADDR --ipfs-connect $IPFS_CONNECT --node-type compute
 ```
