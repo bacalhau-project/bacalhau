@@ -136,6 +136,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
+	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
 		Fatal(cmd, "Unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack.", 1)
 	}
