@@ -39,6 +39,7 @@ import TabItem from '@theme/TabItem';
 </TabItem>
 <TabItem value="Docker">
 
+    docker image rm -f ghcr.io/bacalhau-project/bacalhau:latest # Remove old image if it exists
     docker pull ghcr.io/bacalhau-project/bacalhau:latest
 
 </TabItem>
