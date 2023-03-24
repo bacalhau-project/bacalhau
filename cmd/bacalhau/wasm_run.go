@@ -14,11 +14,27 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"k8s.io/kubectl/pkg/util/i18n"
+)
+
+var (
+	wasmRunLong = templates.LongDesc(i18n.T(`
+		Runs a job that was compiled to WASM
+		`))
+
+	wasmRunExample = templates.Examples(i18n.T(`
+		# Runs the <localfile.wasm> module in bacalhau 
+		bacalhau wasm run <localfile.wasm>
+
+		# Fetches the wasm module from <cid> and executes it.
+		bacalhau wasm run <cid>		
+		`))
 )
 
 const null rune = 0
@@ -64,8 +80,8 @@ func newRunWasmCmd() *cobra.Command {
 	runWasmCommand := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:   "Run a WASM job on the network",
-		Long:    languageRunLong,
-		Example: languageRunExample,
+		Long:    wasmRunLong,
+		Example: wasmRunExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, args []string) error {
