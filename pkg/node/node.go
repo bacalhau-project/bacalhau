@@ -17,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -255,15 +256,11 @@ func NewNode(
 		}
 		nodeInfoPublisher.Stop(ctx)
 		cleanupErr := nodeInfoPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
-		}
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()
-		if cleanupErr != nil {
-			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close host")
-		}
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "host")
 		return cleanupErr
 	})
 

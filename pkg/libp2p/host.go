@@ -55,7 +55,7 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		return m.Encapsulate(p2pAddr)
 	})
 
-	log.Info().
+	log.Debug().
 		Stringers("listening-addresses", addresses).
 		Stringers("p2p-addresses", p2pAddresses).
 		Stringer("host-id", h.ID()).
