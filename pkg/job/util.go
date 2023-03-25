@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/rs/zerolog/log"
@@ -42,8 +43,28 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
-func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
-	var jobInputs []model.StorageSpec
+func NewNoopStateLoader() StateLoader {
+	stateLoader := func(ctx context.Context, id string) (model.JobState, error) {
+		return model.JobState{}, nil
+	}
+	return stateLoader
+}
+
+func buildJobInputs(inputVolumes, inputUrls, inputRepos []string) ([]model.StorageSpec, error) {
+	jobInputs := []model.StorageSpec{}
+
+	for _, inputRepo := range inputRepos {
+		u, err := clone.IsValidGitRepoURL(inputRepo)
+
+		if err != nil {
+			return []model.StorageSpec{}, err
+		}
+		jobInputs = append(jobInputs, model.StorageSpec{
+			StorageSource: model.StorageSourceRepoClone,
+			Repo:          u.String(),
+			Path:          "/inputs",
+		})
+	}
 
 	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
 	for _, inputURL := range inputUrls {

@@ -53,6 +53,7 @@ type DockerRunOptions struct {
 	Verifier         string   // Verifier - verifier.Verifier
 	Publisher        string   // Publisher - publisher.Publisher
 	Inputs           []string // Array of input CIDs
+	InputRepos       []string // Array of input Repos
 	InputUrls        []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
@@ -91,6 +92,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Verifier:           "noop",
 		Publisher:          "estuary",
 		Inputs:             []string{},
+		InputRepos:         []string{},
 		InputUrls:          []string{},
 		InputVolumes:       []string{},
 		OutputVolumes:      []string{},
@@ -157,6 +159,14 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Inputs, "inputs", "i", ODR.Inputs,
 		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+	)
+
+	//nolint:lll // Documentation, ok if long.
+	// #TODO support mounting from a branch or a commit
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&ODR.InputRepos, "input-repos", "r", ODR.InputRepos,
+		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/bacalhau-project/bacalhau.git'
+		mounts the repo at '/inputs/bacalhau-project/bacalhau').`,
 	)
 
 	//nolint:lll // Documentation, ok if long.
@@ -300,8 +310,8 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-//nolint:funlen // CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) {
+// CreateJob creates a job object from the given command line arguments and options.
+func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
@@ -347,7 +357,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 			scheme := func(URI string) *url.URL {
 				parsed, err1 := url.Parse(URI)
 				if err1 != nil {
-					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err)
+					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err1)
 					log.Fatal(errMsg)
 				}
 				return parsed
@@ -355,20 +365,29 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 
 			switch scheme.Scheme {
 			case "http":
+				isGitURL := strings.HasSuffix(i, ".git")
+				if isGitURL {
+					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
+				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "https":
+				isGitURL := strings.HasSuffix(i, ".git")
+				if isGitURL {
+					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+				}
 				odr.InputUrls = append(odr.InputUrls, i)
 			case "ipfs":
 				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
+			case "git":
+				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
+			case "gitlfs":
+				lfsConstraint := "git-lfs=True"
+				if odr.NodeSelector == "" {
+					odr.NodeSelector = lfsConstraint
+				}
+				odr.NodeSelector = lfsConstraint + "," + odr.NodeSelector
+				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
 			// unimplemented schemes
-			// case "git":
-			//     // Handle git scheme
-			//     fmt.Println("Handling git scheme...")
-			// case "gitlfs":
-			// lfsConstraint:= "git-lfs=True"
-			// odr.Labels = append(odr.Labels,lfsConstraint )
-			//     // Handle git scheme
-			//     fmt.Println("Handling git scheme...")
 			// case "s3":
 			//     // Handle s3 scheme
 			//     fmt.Println("Handling s3 scheme...")
@@ -407,6 +426,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.Networking,
 		odr.NetworkDomains,
 		odr.InputUrls,
+		odr.InputRepos,
 		odr.InputVolumes,
 		odr.OutputVolumes,
 		odr.Env,

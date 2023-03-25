@@ -17,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -26,6 +27,7 @@ type StandardStorageProviderOptions struct {
 	API                  ipfs.Client
 	FilecoinUnsealedPath string
 	DownloadPath         string
+	EstuaryAPIKey        string
 }
 
 type StandardExecutorOptions struct {
@@ -49,6 +51,11 @@ func NewStandardStorageProvider(
 	}
 
 	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage, options.EstuaryAPIKey)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +104,7 @@ func NewStandardStorageProvider(
 		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
 		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
+		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
 	}), nil
 }
 
