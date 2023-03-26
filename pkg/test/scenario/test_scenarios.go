@@ -4,6 +4,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/env"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/exit_code"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
@@ -210,6 +211,24 @@ var WasmCsvTransform = Scenario{
 	},
 }
 
+var WasmDynamicLink = Scenario{
+	Inputs: StoredFile(
+		"../../../testdata/wasm/easter/main.wasm",
+		"/inputs",
+	),
+	ResultsChecker: FileEquals(
+		model.DownloadFilenameStdout,
+		"17\n",
+	),
+	Spec: model.Spec{
+		Engine: model.EngineWasm,
+		Wasm: model.JobSpecWasm{
+			EntryPoint:  "_start",
+			EntryModule: InlineData(dynamic.Program()),
+		},
+	},
+}
+
 func GetAllScenarios() map[string]Scenario {
 	return map[string]Scenario{
 		"cat_file_to_stdout": CatFileToStdout,
@@ -221,5 +240,6 @@ func GetAllScenarios() map[string]Scenario {
 		"wasm_env_vars":      WasmEnvVars,
 		"wasm_csv_transform": WasmCsvTransform,
 		"wasm_exit_code":     WasmExitCode,
+		"wasm_dynamic_link":  WasmDynamicLink,
 	}
 }

@@ -113,7 +113,7 @@ func NewNoopStorageProvider(
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
-	noopStorage := noop_storage.NewNoopStorage(config)
+	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
 	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
 }
 
