@@ -70,7 +70,7 @@ func (t tracedRuntime) InstantiateModule(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateModule")
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.delegate.InstantiateModule(ctx, compiled, config))
-	if module != nil {
+	if err == nil && module != nil {
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
 		}

@@ -40,7 +40,7 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 
 	verifier_mock, err := noop_verifier.NewNoopVerifier(context.Background(), cm)
 	require.NoError(t, err)
-	storage_mock := noop_storage.NewNoopStorage(noop_storage.StorageConfig{})
+	storage_mock := noop_storage.NewNoopStorage()
 	require.NoError(t, err)
 	store := inmemory.NewJobStore()
 	endpoint := NewBaseEndpoint(&BaseEndpointParams{

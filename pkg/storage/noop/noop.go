@@ -38,9 +38,9 @@ type NoopStorage struct {
 	Config StorageConfig
 }
 
-func NewNoopStorage(config StorageConfig) *NoopStorage {
+func NewNoopStorage() *NoopStorage {
 	storageHandler := &NoopStorage{
-		Config: config,
+		Config: StorageConfig{},
 	}
 	return storageHandler
 }
