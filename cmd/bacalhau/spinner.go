@@ -43,6 +43,7 @@ type Spinner struct {
 	actionChannel chan SpinActionType
 	doneChannel   chan bool
 	signalChannel chan os.Signal
+	complete      bool
 }
 
 // NewSpinner creates a new `Spinner` using the provided io.Writer
@@ -107,15 +108,16 @@ func (s *Spinner) Done(success bool) {
 	s.cancel()
 
 	_, _ = s.cfg.Writer.Write([]byte("\n"))
+	s.complete = true
 }
 
 // NextStep completes the current line (if any) and
 // progresses to the next line, starting a new timer.
-// If failure is passed, then the Done text/image is
-// displayed as err, X - and it is expected that the
-// process has completed and Done will be called
-// immediately.
 func (s *Spinner) NextStep(line string) {
+	if s.complete {
+		return
+	}
+
 	// Stop the spinner and wait until it is stopped
 	if s.spin.Status() == yacspin.SpinnerRunning {
 		s.actionChannel <- SpinActionStop
@@ -193,10 +195,7 @@ func (s *Spinner) Run() {
 				log.Ctx(s.ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if signal == os.Interrupt {
 					s.ticker.Stop()
-
 					s.Done(false)
-					_, _ = os.Stderr.WriteString("\n\rPrintout canceled.")
-
 					os.Exit(0)
 				}
 			}
