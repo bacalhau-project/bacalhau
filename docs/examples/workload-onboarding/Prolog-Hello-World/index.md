@@ -12,7 +12,8 @@ Prolog is intended primarily as a declarative programming language: the program 
 Prolog is well-suited for specific tasks that benefit from rule-based logical queries such as searching databases, voice control systems, and filling templates.
 In this example we will run a hello world prolog script on bacalhau
 
-
+## TD;LR
+Run Prolog programming language on Bacalhau
 
 ## Running Locally​
 
