@@ -183,10 +183,17 @@ func (s *ServeSuite) TestGetPeers() {
 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
 	for envName, envData := range system.Envs {
+		// skip checking environments other than test, because
+		// system.GetEnvironment() in getPeers() always returns "test" while testing
+		if envName.String() != "test" {
+			continue
+		}
+
 		OS = NewServeOptions()
 		OS.PeerConnect = "env"
 		peers, err = getPeers(OS)
 		s.NoError(err)
+		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")
 		// search each peer in env BootstrapAddresses
 		for _, peer := range peers {
 			found := false

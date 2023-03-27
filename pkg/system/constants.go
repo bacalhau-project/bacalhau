@@ -58,4 +58,14 @@ var Envs = map[Environment]EnvironmentData{
 			"/ip4/34.125.197.225/tcp/1235/p2p/QmS8wQaZqyRXP83rZQtNsmLzgU9ZJYxAVVTDETFdEFZXGA",
 		},
 	},
+	EnvironmentTest: {
+		APIPort: 9999,
+		APIHost: "test",
+		BootstrapAddresses: []string{
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+		},
+		IPFSSwarmAddresses: []string{
+			"/ip4/0.0.0.0/tcp/1235/p2p/QmRbFXwNRamB8z3SXvSg6KPCHGDAyYKjggARU1KBTxWeMz",
+		},
+	},
 }
