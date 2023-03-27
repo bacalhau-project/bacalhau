@@ -113,21 +113,6 @@ jobs:
             go version
             which go
 
-      - run:
-          name: Install Pre-commit
-          command: |
-            make install-pre-commit
-
-      - run:
-          name: Cache Precommit
-          command: |
-            cp .pre-commit-config.yaml pre-commit-cache-key.txt
-            poetry run python --version --version >> pre-commit-cache-key.txt
-
-      - restore_cache:
-          name: Restoring pre-commit cache
-          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
-
       - restore_cache:
           name: Restoring Go cache
           key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
@@ -329,6 +314,11 @@ jobs:
       - checkout
 
       - run:
+          name: Init tools
+          command: |
+            make init
+
+      - run:
           name: Set GOVER
           command: |
             go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
@@ -356,56 +346,24 @@ jobs:
             golangci-lint version
 
       - run:
-          name: Run linter
+          name: Install Pre-commit
           command: |
-            make lint
+            make install-pre-commit
 
       - run:
-          name: Run go mod tidy check diff
-          command: make modtidy check-diff
+          name: Cache Precommit
+          command: |
+            cp .pre-commit-config.yaml pre-commit-cache-key.txt
+            poetry run python --version --version >> pre-commit-cache-key.txt
 
-  # deploy:
-  #   docker:
-  #     - image: google/cloud-sdk:392.0.0
-  #   parameters:
-  #     rollout_stage:
-  #       type: string
-  #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE:
-  #       type: string
-  #   environment:
-  #     GCLOUD_VERSION: 392.0.0
-  #     TERRAFORM_VERSION: 1.2.4
-  #     GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_CREDENTIALS.json"
-  #   steps:
-  #     - checkout
-  #     - run:
-  #         name: Setup GCloud
-  #         command: |
-  #           # Create service account and get credentials here
-  #           # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
-  #           echo "$<< parameters.GOOGLE_APPLICATION_CREDENTIALS_VARIABLE >>" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
-  #           echo "Using GCloud: $GCLOUD_VERSION"
+      - restore_cache:
+          name: Restoring pre-commit cache
+          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
 
-  #     - run:
-  #         name: Authenticate to Google Cloud
-  #         command: |
-  #           gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
-
-  #     - run:
-  #         name: Install terraform
-  #         command: |
-  #           echo "Insalling Terraform: $TERRAFORM_VERSION"
-  #           apt-get install -y software-properties-common
-  #           curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
-  #           apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-  #           apt-get -y update && apt-get -y install terraform=$TERRAFORM_VERSION
-
-  #     - run:
-  #         name: Deploy cluster
-  #         command: |
-  #           cd ops/terraform && terraform init && \
-  #                               terraform workspace select << parameters.rollout_stage >> && \
-  #                               terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+      - run:
+          name: Run linter
+          command: |
+            make precommit
 
   performance_job:
     resource_class: bacalhau-project/self-hosted-bacalhau

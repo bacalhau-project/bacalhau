@@ -8,12 +8,8 @@ from bacalhau_apiclient.models.list_request import ListRequest
 from bacalhau_apiclient.models.state_request import StateRequest
 from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.rest import ApiException
-from bacalhau_sdk.config import (
-    get_client_id,
-    get_client_public_key,
-    init_config,
-    sign_for_client,
-)
+
+from bacalhau_sdk.config import get_client_id, get_client_public_key, init_config, sign_for_client
 
 conf = init_config()
 client = job_api.ApiClient(conf)

@@ -33,7 +33,6 @@ REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
-PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
 
@@ -68,39 +67,14 @@ install-pre-commit:
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit: buildenvcorrect
+precommit:
 	${PRECOMMIT} run --all
 	cd python && make pre-commit
 
-.PHONY: buildenvcorrect
-buildenvcorrect:
-	@echo "Checking build environment..."
-# Checking GO
-# @echo "Checking for go..."
-# @which go
-# @echo "Checking for go version..."
-# @go version
-# @echo "Checking for go env..."
-# @go env
-# @echo "Checking for go env GOOS..."
-# @go env GOOS
-# @echo "Checking for go env GOARCH..."
-# @go env GOARCH
-# @echo "Checking for go env GO111MODULE..."
-# @go env GO111MODULE
-# @echo "Checking for go env GOPATH..."
-# @go env GOPATH
-# @echo "Checking for go env GOCACHE..."
-# @go env GOCACHE
-# ===============
-# Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
-# before each commit.
-# Error if it's empty or not found.
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
-	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
-	@exit 1
+$(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it.")
 endif
-	@echo "Build environment correct."
 
 ################################################################################
 # Target: swagger-docs
@@ -178,7 +152,7 @@ release-bacalhau-airflow:
 # Target: build
 ################################################################################
 .PHONY: build
-build: buildenvcorrect build-bacalhau
+build: build-bacalhau
 
 .PHONY: build-ci
 build-ci: build-bacalhau

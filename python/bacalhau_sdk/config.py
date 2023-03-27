@@ -59,12 +59,8 @@ def init_config():
 
     conf = Configuration()
     if os.getenv("BACALHAU_API_HOST") and os.getenv("BACALHAU_API_PORT"):
-        conf.host = "http://{}:{}".format(
-            os.getenv("BACALHAU_API_HOST"), os.getenv("BACALHAU_API_PORT")
-        )
-        log.debug(
-            "Using BACALHAU_API_HOST and BACALHAU_API_PORT to set host: %s", conf.host
-        )
+        conf.host = "http://{}:{}".format(os.getenv("BACALHAU_API_HOST"), os.getenv("BACALHAU_API_PORT"))
+        log.debug("Using BACALHAU_API_HOST and BACALHAU_API_PORT to set host: %s", conf.host)
 
     # Remove trailing slash from host
     if conf.host[-1] == "/":
