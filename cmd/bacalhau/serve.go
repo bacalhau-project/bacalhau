@@ -434,9 +434,12 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
-		nodeType := ""
-		if !isRequesterNode {
-			nodeType = "--node-type requester "
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		nodeType := "--node-type compute"
+
+		if isComputeNode && !isRequesterNode {
+			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
 
 		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
@@ -455,7 +458,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		cmd.Println()
 		cmd.Println("To connect another node to this private one, run the following command in your shell:")
 		cmd.Printf(
-			"%s serve %s--private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
+			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 
