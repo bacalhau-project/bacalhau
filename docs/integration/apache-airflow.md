@@ -159,25 +159,25 @@ Now the we understand what the example DAG is supposed to do, let's just run it!
 Head over to http://0.0.0.0:8080 were Airflow UI is being served.
 The screenshot below shows our hello world has been loaded correctly.
 
-![](/docs/integration/apache-image/airflow_01.png)
+![](../../static/img/apache-image/airflow_01.png)
 
 When you inspect a DAG, Airflow will render a graph depicting a color-coded topology (see image below).
 For active (i.e. running) pipelines, this will be useful to oversee what the status of each task is.
 
 To trigger a DAG please enable the toggle shown below.
 
-![](/docs/integration/apache-image/airflow_02.png)
+![](../../static/img/apache-image/airflow_02.png)
 
 When all tasks have completed, we want to fetch the output of our pipeline.
 To do so we need to retrieve the job-id of the last task.
 Click on a green box in the `task_2` line and then open the XCom tab.
 
-![](/docs/integration/apache-image/airflow_03.png)
+![](../../static/img/apache-image/airflow_03.png)
 
 Here we find the `bacalhau_job_id`.
 Select that value and copy into your clipboard.
 
-![](/docs/integration/apache-image/airflow_04.png)
+![](../../static/img/apache-image/airflow_04.png)
 
 Lastly, we can use the bacalhau cli `get` command to fetch the output data as follows:
 
