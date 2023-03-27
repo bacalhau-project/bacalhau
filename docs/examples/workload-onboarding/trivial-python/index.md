@@ -1,7 +1,7 @@
 ---
 sidebar_label: "Python - Hello World"
 sidebar_position: 1
-description: How to run a Python file hosted on Bacalhau
+description: How to run a Python file in Bacalhau
 ---
 # Python Hello World
 
@@ -10,7 +10,8 @@ description: How to run a Python file hosted on Bacalhau
 
 This example tutorial serves as an introduction to Bacalhau. Here, you'll be running a Python file hosted on a website on Bacalhau.
 
-
+## TD;LR
+Running a Python file in Bacalhau
 
 ## Prerequisites
 
