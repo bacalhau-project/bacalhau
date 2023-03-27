@@ -25,7 +25,7 @@ Second, Apache Airflow provides a solid solution to reliably orchestrate your DA
 ## Requirements
 
 - Python 3.8+
-- [`bacalhau-sdk` 0.1.6](https://pypi.org/project/bacalhau-sdk/)
+- [`bacalhau-sdk` 0.3.25+](https://pypi.org/project/bacalhau-sdk/)
 - `apache-airflow` 2.3+
 
 ## Installation
@@ -72,7 +72,7 @@ $ airflow db init
 
 Then, we need to point Airflow to the absolute path of the folder where your pipelines live.
 To do that we edit the `dags_folder` field in `${AIRFLOW_HOME}/airflow.cfg` file.
-In this example I'm going to use the `hello_world.py` DAG shipped with this repository;
+In this example I'm going to use [the `hello_world.py` DAG shipped with this repository](https://github.com/bacalhau-project/bacalhau/tree/main/integration/airflow/example_dags);
 for the sake of completeness, the next section will walk you through the actual code.
 
 My config file looks like what follows:
