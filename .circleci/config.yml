@@ -153,6 +153,9 @@ jobs:
                   make test-and-report
 
                 no_output_timeout: 20m
+            - run:
+              name: "Setup BACALHAU_ENVIRONMENT environment variable"
+              command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
             - store_test_results:
                 path: .
             - persist_to_workspace:
