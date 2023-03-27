@@ -69,11 +69,12 @@ func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error)
 func (noopVerifier *NoopVerifier) GetResultPath(
 	ctx context.Context,
 	job model.Job,
+	executorID string,
 ) (string, error) {
 	if noopVerifier.externalHooks.GetResultPath != nil {
 		return noopVerifier.externalHooks.GetResultPath(ctx, job)
 	}
-	return noopVerifier.results.EnsureResultsDir(job.ID())
+	return noopVerifier.results.EnsureResultsDir(job.ID(), executorID)
 }
 
 func (noopVerifier *NoopVerifier) GetProposal(

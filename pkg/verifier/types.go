@@ -33,6 +33,7 @@ type Verifier interface {
 	GetResultPath(
 		ctx context.Context,
 		job model.Job,
+		executorID string,
 	) (string, error)
 
 	// compute node

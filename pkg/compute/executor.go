@@ -86,7 +86,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job, e.ID)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
@@ -162,7 +162,7 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job, e.ID)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
