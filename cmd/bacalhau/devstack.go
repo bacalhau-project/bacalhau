@@ -224,7 +224,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 
 	<-ctx.Done() // block until killed
 
-	cmd.Println("Shutting down devstack")
+	cmd.Println("\nShutting down devstack")
 	return nil
 }
 

@@ -520,7 +520,7 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 			return ipfs.Client{}, fmt.Errorf("error looking up IPFS addresses: %s", err)
 		}
 
-		log.Ctx(ctx).Info().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
+		log.Ctx(ctx).Debug().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
 		return client, nil
 	}
 

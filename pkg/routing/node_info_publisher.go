@@ -59,7 +59,7 @@ func (n *NodeInfoPublisher) publishBackgroundTask() {
 				}
 			}()
 		case <-n.stopChannel:
-			log.Ctx(ctx).Info().Msg("stopped publishing node info")
+			log.Ctx(ctx).Debug().Msg("stopped publishing node info")
 			ticker.Stop()
 			return
 		}
@@ -71,5 +71,5 @@ func (n *NodeInfoPublisher) Stop(ctx context.Context) {
 	n.stopOnce.Do(func() {
 		n.stopChannel <- struct{}{}
 	})
-	log.Ctx(ctx).Info().Msg("done stopping compute node info publisher")
+	log.Ctx(ctx).Debug().Msg("done stopping compute node info publisher")
 }

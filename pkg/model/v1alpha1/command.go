@@ -1,3 +1,4 @@
+//nolint
 package v1alpha1
 
 type RunCommandResult struct {

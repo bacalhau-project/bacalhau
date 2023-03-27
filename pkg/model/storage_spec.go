@@ -20,6 +20,9 @@ type StorageSpec struct {
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
 
+	// URL of the git Repo to clone
+	Repo string `json:"Repo,omitempty"`
+
 	// The path of the host data if we are using local directory paths
 	SourcePath string `json:"SourcePath,omitempty"`
 

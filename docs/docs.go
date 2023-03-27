@@ -1527,7 +1527,8 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8
+                8,
+                9
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
@@ -1536,6 +1537,7 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "storageSourceUnknown",
                 "StorageSourceIPFS",
+                "StorageSourceRepoClone",
                 "StorageSourceURLDownload",
                 "StorageSourceFilecoinUnsealed",
                 "StorageSourceFilecoin",
@@ -1564,6 +1566,10 @@ const docTemplate = `{
                     "description": "Name of the spec's data, for reference.",
                     "type": "string",
                     "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+                },
+                "Repo": {
+                    "description": "URL of the git Repo to clone",
+                    "type": "string"
                 },
                 "SourcePath": {
                     "description": "The path of the host data if we are using local directory paths",

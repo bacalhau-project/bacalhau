@@ -10,18 +10,19 @@ func _() {
 	var x [1]struct{}
 	_ = x[storageSourceUnknown-0]
 	_ = x[StorageSourceIPFS-1]
-	_ = x[StorageSourceURLDownload-2]
-	_ = x[StorageSourceFilecoinUnsealed-3]
-	_ = x[StorageSourceFilecoin-4]
-	_ = x[StorageSourceEstuary-5]
-	_ = x[StorageSourceInline-6]
-	_ = x[StorageSourceLocalDirectory-7]
-	_ = x[storageSourceDone-8]
+	_ = x[StorageSourceRepoClone-2]
+	_ = x[StorageSourceURLDownload-3]
+	_ = x[StorageSourceFilecoinUnsealed-4]
+	_ = x[StorageSourceFilecoin-5]
+	_ = x[StorageSourceEstuary-6]
+	_ = x[StorageSourceInline-7]
+	_ = x[StorageSourceLocalDirectory-8]
+	_ = x[storageSourceDone-9]
 }
 
-const _StorageSourceType_name = "storageSourceUnknownIPFSURLDownloadFilecoinUnsealedFilecoinEstuaryInlineLocalDirectorystorageSourceDone"
+const _StorageSourceType_name = "storageSourceUnknownIPFSRepoCloneURLDownloadFilecoinUnsealedFilecoinEstuaryInlineLocalDirectorystorageSourceDone"
 
-var _StorageSourceType_index = [...]uint8{0, 20, 24, 35, 51, 59, 66, 72, 86, 103}
+var _StorageSourceType_index = [...]uint8{0, 20, 24, 33, 44, 60, 68, 75, 81, 95, 112}
 
 func (i StorageSourceType) String() string {
 	if i < 0 || i >= StorageSourceType(len(_StorageSourceType_index)-1) {

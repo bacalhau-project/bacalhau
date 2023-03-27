@@ -47,6 +47,6 @@ func (s LoggingSensor) sense(ctx context.Context) {
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to marshal execution summaries")
 	} else {
-		log.Ctx(ctx).Info().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
+		log.Ctx(ctx).Debug().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
 	}
 }
