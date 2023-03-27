@@ -203,6 +203,8 @@ func (s *ServeSuite) TestGetPeers() {
 					break
 				}
 			}
+			fmt.Println("system.GetEnvironment()")
+			fmt.Println(system.GetEnvironment())
 			s.Require().True(found, "Peer %s not found in env %s", peer, envName)
 		}
 	}
