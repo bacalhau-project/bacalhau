@@ -13,6 +13,9 @@ sidebar_position: 3
 
 In this tutorial example, we will walk you through building your own docker container and running the container on the bacalhau network.
 
+## TD;LR
+Run Python custom custom container on Bacalhau 
+
 ## Prerequisites
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
