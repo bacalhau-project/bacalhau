@@ -141,6 +141,9 @@ jobs:
             equal: [true, << parameters.run_tests >>]
           steps:
             - run:
+                name: "Setup BACALHAU_ENVIRONMENT environment variable"
+                command: echo 'export BACALHAU_ENVIRONMENT=test' >> "$BASH_ENV"
+            - run:
                 name: Test Go
                 environment:
                   LOG_LEVEL: debug

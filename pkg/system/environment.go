@@ -24,7 +24,7 @@ func (e Environment) String() string {
 
 func (e Environment) IsKnown() bool {
 	switch e {
-	case EnvironmentStaging, EnvironmentProd, EnvironmentDev:
+	case EnvironmentStaging, EnvironmentProd, EnvironmentDev, EnvironmentTest:
 		return true
 	}
 	return false

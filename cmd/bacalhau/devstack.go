@@ -55,6 +55,11 @@ func newDevStackOptions() *devstack.DevStackOptions {
 func newDevStackCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	OS := NewServeOptions()
+
+	// make sure serve options point to local mode
+	OS.PeerConnect = DefaultPeerConnect
+	OS.PrivateInternalIPFS = true
+
 	IsNoop := false
 
 	devstackCmd := &cobra.Command{
@@ -130,6 +135,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	ctx := cmd.Context()
 
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
+
+	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
+	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
+		Fatal(cmd, "Unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack.", 1)
+	}
 
 	if config.DevstackShouldWriteEnvFile() {
 		cm.RegisterCallback(cleanupDevstackDotEnv)

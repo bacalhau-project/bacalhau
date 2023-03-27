@@ -32,6 +32,7 @@ import (
 var DefaultSwarmPort = 1235
 
 const NvidiaCLI = "nvidia-container-cli"
+const DefaultPeerConnect = "none"
 
 var (
 	serveLong = templates.LongDesc(i18n.T(`
@@ -39,18 +40,21 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a bacalhau compute node
+		# Start a private bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve
 		# or
-		bacalhau serve --node-type compute
-
-		# Start a bacalhau requester node
-		bacalhau serve --node-type requester
-
-		# Start a bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve --node-type compute --node-type requester
 		# or
 		bacalhau serve --node-type compute,requester
+
+		# Start a private bacalhau requester node
+		bacalhau serve --node-type requester
+
+		# Start a private bacalhau node with a persistent local Ipds node
+		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
+
+		# Start a (public!) bacalhau node
+		bacalhau serve --peer env --private-internal-ipfs=false
 `))
 )
 
@@ -86,8 +90,8 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                        []string{"compute"},
-		PeerConnect:                     "",
+		NodeType:                        []string{"requester", "compute"},
+		PeerConnect:                     DefaultPeerConnect,
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
 		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
@@ -106,6 +110,7 @@ func NewServeOptions() *ServeOptions {
 		LimitJobGPU:                     "",
 		LotusFilecoinPathDirectory:      os.Getenv("LOTUS_PATH"),
 		LotusFilecoinMaximumPing:        2 * time.Second,
+		PrivateInternalIPFS:             true,
 	}
 }
 
@@ -166,7 +171,9 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`The libp2p multiaddress to connect to.`,
+		`A comma-separated list of libp2p multiaddress to connect to. `+
+			`Use "none" to avoid connecting to any peer, `+
+			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var).`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
@@ -180,9 +187,9 @@ func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 
 func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
-	if OS.PeerConnect == "none" {
+	if OS.PeerConnect == DefaultPeerConnect {
 		peersStrings = []string{}
-	} else if OS.PeerConnect == "" {
+	} else if OS.PeerConnect == "env" {
 		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
@@ -300,7 +307,9 @@ func newServeCmd() *cobra.Command {
 	serveCmd.PersistentFlags().BoolVar(
 		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
 		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
-			"cannot be used with --ipfs-connect.",
+			"cannot be used with --ipfs-connect. "+
+			"Use \"--private-internal-ipfs=false\" to disable. "+
+			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
 	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
@@ -424,10 +433,13 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		fmt.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
 	}
 
-	if OS.PrivateInternalIPFS && OS.PeerConnect == "none" {
-		nodeType := ""
-		if !isRequesterNode {
-			nodeType = "--node-type requester "
+	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		nodeType := "--node-type compute"
+
+		if isComputeNode && !isRequesterNode {
+			cmd.Println("Make sure there's at least one requester node in your network.")
 		}
 
 		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
@@ -446,7 +458,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		cmd.Println()
 		cmd.Println("To connect another node to this private one, run the following command in your shell:")
 		cmd.Printf(
-			"%s serve %s--private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
+			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 
@@ -499,6 +511,9 @@ func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager
 		ipfsNode, err := newNode(ctx, cm, OS.IPFSSwarmAddresses)
 		if err != nil {
 			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
+		}
+		if OS.PrivateInternalIPFS {
+			log.Ctx(ctx).Debug().Msgf("ipfs_node_apiport: %d", ipfsNode.APIPort)
 		}
 		cm.RegisterCallbackWithContext(ipfsNode.Close)
 		client := ipfsNode.Client()
