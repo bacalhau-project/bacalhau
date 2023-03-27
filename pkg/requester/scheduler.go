@@ -490,6 +490,7 @@ func (s *BaseScheduler) handleExecutionFailure(ctx context.Context, executionID 
 			State:  model.ExecutionStateFailed,
 			Status: failure.Error(),
 		},
+		Comment: failure.Error(),
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[handleExecutionFailure] failed to update execution")
