@@ -1,5 +1,5 @@
 ---
-sidebar_label: "How To's"
+sidebar_label: "Workload Onboarding"
 sidebar_position: 1
 ---
 # How To Work With Bacalhau

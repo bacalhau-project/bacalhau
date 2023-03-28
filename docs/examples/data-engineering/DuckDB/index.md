@@ -20,8 +20,6 @@ DuckDB is suited for the following use cases:
 In this example tutorial, we will show how to use DuckDB with Bacalhau. The advantage of using DuckDB with Bacalhau is that you don’t need to install,  there is no need to download the datasets since the datasets are
 already there on IPFS or on the web.
 
-## TD;LR
-Integrate with Bacalhau and run a job on a database.
 
 ## Prerequisites
 

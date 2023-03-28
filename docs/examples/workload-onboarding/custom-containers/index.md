@@ -9,9 +9,6 @@ sidebar_position: 10
 
 Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
 
-##TD;LR
-Running Bacalhau jobs on custom containers
-
 ### Prerequisites
 
 * This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.

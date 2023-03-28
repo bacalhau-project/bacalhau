@@ -14,9 +14,6 @@ For this example, we ran an Ethereum node for a week and allowed it to synchroni
 
 But there's still a lot of data and these types of analyses typically need repeating or refining. So it makes absolute sense to use a decentralised network like Bacalhau to process the data in a scalable way.
 
-## TD;LR
-Run Ethereum node in Bacalhau
-
 ### Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)

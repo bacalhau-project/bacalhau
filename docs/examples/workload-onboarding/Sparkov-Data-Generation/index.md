@@ -19,9 +19,6 @@ In this example we will generate synthetic credit card transaction data using th
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## TD;LR
-Running Bacalhau on synthetic dataset 
-
 ## Running Sparkov Locally​
 
 To run Sparkov locally, you'll need to clone the repo and install dependencies.
