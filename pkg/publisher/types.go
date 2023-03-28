@@ -28,8 +28,8 @@ type Publisher interface {
 	// (e.g. notify slack)
 	PublishResult(
 		ctx context.Context,
+		executionID string,
 		job model.Job,
-		hostID string,
 		resultPath string,
 	) (model.StorageSpec, error)
 }

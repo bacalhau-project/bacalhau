@@ -17,7 +17,6 @@ type LogStreamServer struct {
 }
 
 type LogStreamRequest struct {
-	JobID       string
 	ExecutionID string
 	WithHistory bool
 	Follow      bool

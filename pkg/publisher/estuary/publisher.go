@@ -47,8 +47,8 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 // PublishResult implements publisher.Publisher
 func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,
+	executionID string,
 	j model.Job,
-	hostID string,
 	resultPath string,
 ) (model.StorageSpec, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
@@ -91,7 +91,7 @@ func (e *estuaryPublisher) PublishResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetPublishedStorageSpec(j, model.StorageSourceEstuary, hostID, addCarResponse.Cid)
+	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
 	spec.URL = addCarResponse.EstuaryRetrievalUrl
 
 	return spec, nil

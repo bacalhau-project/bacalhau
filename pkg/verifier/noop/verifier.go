@@ -11,7 +11,7 @@ import (
 )
 
 type VerifierHandlerIsInstalled func(ctx context.Context) (bool, error)
-type VerifierHandlerGetResultPath func(ctx context.Context, job model.Job) (string, error)
+type VerifierHandlerGetResultPath func(ctx context.Context, executionID string, job model.Job) (string, error)
 type VerifierHandlerGetProposal func(context.Context, model.Job, string) ([]byte, error)
 type VerifierHandlerVerify func(context.Context, model.Job, []model.ExecutionState) ([]verifier.VerifierResult, error)
 
@@ -68,12 +68,13 @@ func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error)
 
 func (noopVerifier *NoopVerifier) GetResultPath(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 ) (string, error) {
 	if noopVerifier.externalHooks.GetResultPath != nil {
-		return noopVerifier.externalHooks.GetResultPath(ctx, job)
+		return noopVerifier.externalHooks.GetResultPath(ctx, executionID, job)
 	}
-	return noopVerifier.results.EnsureResultsDir(job.ID())
+	return noopVerifier.results.EnsureResultsDir(executionID)
 }
 
 func (noopVerifier *NoopVerifier) GetProposal(

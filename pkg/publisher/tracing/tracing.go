@@ -30,12 +30,12 @@ func (t *tracingPublisher) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (t *tracingPublisher) PublishResult(
-	ctx context.Context, j model.Job, hostID string, resultPath string,
+	ctx context.Context, executionID string, j model.Job, resultPath string,
 ) (model.StorageSpec, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
 	defer span.End()
 
-	return t.delegate.PublishResult(ctx, j, hostID, resultPath)
+	return t.delegate.PublishResult(ctx, executionID, j, resultPath)
 }
 
 var _ publisher.Publisher = &tracingPublisher{}

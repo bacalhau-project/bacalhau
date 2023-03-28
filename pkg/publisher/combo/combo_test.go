@@ -26,7 +26,7 @@ func (m *mockPublisher) IsInstalled(context.Context) (bool, error) {
 }
 
 // PublishResult implements publisher.Publisher
-func (m *mockPublisher) PublishResult(context.Context, model.Job, string, string) (model.StorageSpec, error) {
+func (m *mockPublisher) PublishResult(context.Context, string, model.Job, string) (model.StorageSpec, error) {
 	time.Sleep(m.sleepTime)
 	return m.PublishedResult, m.PublishedResultErr
 }
@@ -55,7 +55,7 @@ func runTestCase(t *testing.T, name string, testCase comboTestCase) {
 		require.Equal(t, testCase.expectPublisher.isInstalled, result)
 	})
 	t.Run(name+"/PublishResult", func(t *testing.T) {
-		result, err := testCase.publisher.PublishResult(context.Background(), model.Job{}, "", "")
+		result, err := testCase.publisher.PublishResult(context.Background(), "", model.Job{}, "")
 		require.Equal(t, testCase.expectPublisher.PublishedResultErr == nil, err == nil, err)
 		require.Equal(t, testCase.expectPublisher.PublishedResult, result)
 	})

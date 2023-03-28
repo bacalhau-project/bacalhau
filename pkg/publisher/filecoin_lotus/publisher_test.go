@@ -113,7 +113,7 @@ func (s *PublisherTestSuite) TestPublishToLotus() {
 	resultsDir := s.T().TempDir()
 	s.Require().NoError(os.WriteFile(filepath.Join(resultsDir, "hello.txt"), []byte("world"), 0644))
 
-	spec, err := s.executor.PublishResult(context.Background(), model.Job{Metadata: model.Metadata{ID: "foo"}}, "1234", resultsDir)
+	spec, err := s.executor.PublishResult(context.Background(), "1234", model.Job{Metadata: model.Metadata{ID: "foo"}}, resultsDir)
 	s.Require().NoError(err)
 
 	s.Equal(contentCid.String(), spec.CID)

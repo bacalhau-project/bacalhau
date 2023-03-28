@@ -130,7 +130,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 	defer client.Close()
 
-	err = client.Connect(ctx, payload.JobID, payload.ExecutionID, payload.WithHistory, payload.Follow)
+	err = client.Connect(ctx, payload.ExecutionID, payload.WithHistory, payload.Follow)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
 		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))
