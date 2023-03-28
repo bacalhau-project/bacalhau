@@ -46,7 +46,7 @@ func TestStorageBidStrategy(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			noop_storage := noop.NewNoopStorage(noop.StorageConfig{
+			noop_storage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
 					IsInstalled: func(ctx context.Context) (bool, error) {
 						return testCase.installed, nil

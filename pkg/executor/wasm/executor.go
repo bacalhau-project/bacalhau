@@ -24,8 +24,8 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
+	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 )
 
@@ -141,7 +141,6 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	return rootFs, nil
 }
 
-//nolint:funlen  // Will be made shorter when we do more module linking
 func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
@@ -165,11 +164,6 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	module, err := LoadRemoteModule(ctx, engine, e.StorageProvider, job.Spec.Wasm.EntryModule)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
 	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
@@ -182,7 +176,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	args := append([]string{module.Name()}, job.Spec.Wasm.Parameters...)
+	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
 
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
@@ -199,38 +193,15 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	}
 
 	// Load and instantiate imported modules
-	var importedModules []wazero.CompiledModule
-	for _, wasmSpec := range job.Spec.Wasm.ImportModules {
-		importedWasi, err := LoadRemoteModule(ctx, engine, e.StorageProvider, wasmSpec)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-		importedModules = append(importedModules, importedWasi)
-
-		if _, err := engine.InstantiateModule(ctx, importedWasi, config); err != nil {
-			return executor.FailResult(err)
-		}
+	loader := NewModuleLoader(engine, config, e.StorageProvider)
+	for _, importModule := range job.Spec.Wasm.ImportModules {
+		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
+		err = multierr.Append(err, ierr)
 	}
 
-	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
+	// Load and instantiate the entry module.
+	instance, err := loader.InstantiateRemoteModule(ctx, job.Spec.Wasm.EntryModule)
 	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	if _, err := engine.InstantiateModule(ctx, wasi, config); err != nil {
-		return executor.FailResult(err)
-	}
-
-	// Now instantiate the module and run the entry point.
-	instance, err := engine.InstantiateModule(ctx, module, config)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-
-	// Check that all WASI modules conform to our requirements.
-	importedModules = append(importedModules, wasi)
-
-	if err := ValidateModuleAgainstJob(module, job.Spec, importedModules...); err != nil {
 		return executor.FailResult(err)
 	}
 

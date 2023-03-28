@@ -11,7 +11,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -29,11 +31,11 @@ var (
 		`))
 
 	wasmRunExample = templates.Examples(i18n.T(`
-		# Runs the <localfile.wasm> module in bacalhau 
+		# Runs the <localfile.wasm> module in bacalhau
 		bacalhau wasm run <localfile.wasm>
 
 		# Fetches the wasm module from <cid> and executes it.
-		bacalhau wasm run <cid>		
+		bacalhau wasm run <cid>
 		`))
 )
 
@@ -261,11 +263,13 @@ func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
 	programPath := args[0]
 	entryPoint := wasmJob.Spec.Wasm.EntryPoint
 
-	config := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
-	engine := wazero.NewRuntimeWithConfig(ctx, config)
+	engine := wazero.NewRuntime(ctx)
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	module, err := wasm.LoadModule(ctx, engine, programPath)
+	config := wazero.NewModuleConfig()
+	storage := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop.NewNoopStorage())
+	loader := wasm.NewModuleLoader(engine, config, storage)
+	module, err := loader.Load(ctx, programPath)
 	if err != nil {
 		Fatal(cmd, err.Error(), 1)
 		return err
