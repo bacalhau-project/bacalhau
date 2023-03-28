@@ -23,13 +23,12 @@ func NewResults() (*Results, error) {
 	}, nil
 }
 
-func (results *Results) GetResultsDir(jobID string) string {
-	//TODO: include executionID or a nuance to avoid collisions during retries
-	return fmt.Sprintf("%s/%s", results.ResultsDir, jobID)
+func (results *Results) GetResultsDir(executionID string) string {
+	return fmt.Sprintf("%s/%s", results.ResultsDir, executionID)
 }
 
-func (results *Results) EnsureResultsDir(jobID string) (string, error) {
-	dir := results.GetResultsDir(jobID)
+func (results *Results) EnsureResultsDir(executionID string) (string, error) {
+	dir := results.GetResultsDir(executionID)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	if err != nil {
 		return "", fmt.Errorf("error creating results dir %s: %w", dir, err)
@@ -38,7 +37,7 @@ func (results *Results) EnsureResultsDir(jobID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error getting results dir %s info: %w", dir, err)
 	}
-	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
+	log.Trace().Msgf("Created execution results dir (%s). Permissions: %s", dir, info.Mode())
 	return dir, err
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,16 +35,17 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	job.Metadata.ID = "logstreamtest-docker"
 
 	node.RequesterNode.JobStore.CreateJob(ctx, *job)
+	executionID := uuid.New().String()
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, _ = exec.Run(ctx, *job, "/tmp")
+		_, _ = exec.Run(ctx, executionID, *job, "/tmp")
 		fail <- true
 	}()
 
 	go func() {
-		reader, err := waitForOutputStream(ctx, *job, true, true, exec)
+		reader, err := waitForOutputStream(ctx, executionID, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
 

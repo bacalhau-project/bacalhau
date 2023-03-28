@@ -31,12 +31,12 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, _ = exec.Run(s.ctx, job, "/tmp")
+		_, _ = exec.Run(s.ctx, execution.ID, job, "/tmp")
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when
 	// the logstream requests it
-	reader, err := waitForOutputStream(s.ctx, job, true, true, exec)
+	reader, err := waitForOutputStream(s.ctx, execution.ID, true, true, exec)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
@@ -61,7 +61,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	defer client.Close()
 
-	client.Connect(s.ctx, job.ID(), execution.ID, true, true)
+	client.Connect(s.ctx, execution.ID, true, true)
 
 	frame, err := client.ReadDataFrame(s.ctx)
 	require.NoError(s.T(), err)

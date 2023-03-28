@@ -86,7 +86,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
@@ -101,7 +101,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	var runCommandResult *model.RunCommandResult
 
 	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.Run(ctx, execution.Job, resultFolder)
+		runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
 		if err != nil {
 			jobsFailed.Add(ctx, 1)
 		} else {
@@ -162,7 +162,7 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.Job)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
@@ -172,7 +172,7 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.Publisher, err)
 		return
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution.Job, e.ID, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, execution.Job, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to publish result: %w", err)
 		return

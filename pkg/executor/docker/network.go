@@ -60,6 +60,7 @@ var (
 
 func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
@@ -74,7 +75,7 @@ func (e *Executor) setupNetworkForJob(
 	case model.NetworkHTTP:
 		var internalNetwork *types.NetworkResource
 		var proxyAddr *net.TCPAddr
-		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job)
+		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, executionID, job)
 		if err != nil {
 			return
 		}
@@ -89,8 +90,10 @@ func (e *Executor) setupNetworkForJob(
 	return
 }
 
+//nolint:funlen
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
@@ -100,12 +103,12 @@ func (e *Executor) createHTTPGateway(
 	}
 
 	// Create an internal only bridge network to join our gateway and job container
-	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(job, "network"), types.NetworkCreate{
+	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(executionID, job, "network"), types.NetworkCreate{
 		Driver:     "bridge",
 		Scope:      "local",
 		Internal:   true,
 		Attachable: true,
-		Labels:     e.jobContainerLabels(job),
+		Labels:     e.containerLabels(executionID, job),
 	})
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating network")
@@ -131,15 +134,16 @@ func (e *Executor) createHTTPGateway(
 			fmt.Sprintf("BACALHAU_HTTP_CLIENTS=%s", clientList),
 			fmt.Sprintf("BACALHAU_HTTP_DOMAINS=%s", domainList),
 			fmt.Sprintf("BACALHAU_JOB_ID=%s", job.ID()),
+			fmt.Sprintf("BACALHAU_EXECUTION_ID=%s", executionID),
 		},
 		Healthcheck:     &container.HealthConfig{}, //TODO
 		NetworkDisabled: false,
-		Labels:          e.jobContainerLabels(job),
+		Labels:          e.containerLabels(executionID, job),
 	}, &container.HostConfig{
 		NetworkMode: dockerNetworkBridge,
 		CapAdd:      gatewayCapabilities,
 		ExtraHosts:  []string{dockerHostAddCommand},
-	}, nil, nil, e.dockerObjectName(job, "gateway"))
+	}, nil, nil, e.dockerObjectName(executionID, job, "gateway"))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error creating gateway container")
 	}

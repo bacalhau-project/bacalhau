@@ -48,8 +48,8 @@ func TestUpload(t *testing.T) {
 	publisher := getPublisherWithGoodConfig(t)
 	spec, err := publisher.PublishResult(
 		context.Background(),
+		"execution-id",
 		model.Job{},
-		"host",
 		tempDir,
 	)
 	require.NoError(t, err)

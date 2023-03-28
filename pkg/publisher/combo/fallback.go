@@ -57,11 +57,11 @@ func (f *fallbackPublisher) IsInstalled(ctx context.Context) (bool, error) {
 // PublishResult implements publisher.Publisher
 func (f *fallbackPublisher) PublishResult(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
-	hostID string,
 	resultPath string,
 ) (model.StorageSpec, error) {
 	return fallback(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishResult(ctx, job, hostID, resultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 }
