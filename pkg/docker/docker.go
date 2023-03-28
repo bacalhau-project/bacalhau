@@ -3,14 +3,17 @@ package docker
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/docker/docker/api/types"
@@ -233,18 +236,46 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	}, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, image string) error {
+func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {
 	_, _, err := c.ImageInspectWithRaw(ctx, image)
 	if err == nil {
+		// If there is no error, then return immediately as it means we have the docker image
+		// being discussed. No need to pull it.
 		return nil
 	}
+
 	if !dockerclient.IsErrNotFound(err) {
+		// The only error we wanted to see was a not found error which means we don't have
+		// the image being requested.
 		return err
 	}
 
 	log.Ctx(ctx).Debug().Str("image", image).Msg("Pulling image as it wasn't found")
 
-	output, err := c.ImagePull(ctx, image, types.ImagePullOptions{})
+	pullOptions := types.ImagePullOptions{}
+	if dockerCreds.IsValid() {
+		// We only currently support auth for the default registry, so any
+		// pulls for `image` or `user/image` should be okay, anything trying
+		// to pull `repo/user/image` should not.
+		if strings.Count(image, "/") < 2 {
+			authConfig := types.AuthConfig{
+				Username: dockerCreds.Username,
+				Password: dockerCreds.Password,
+			}
+
+			encodedJSON, err := json.Marshal(authConfig)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to encode docker credentials")
+			} else {
+				log.Ctx(ctx).Info().Msg("authenticated pull from docker registry")
+				pullOptions.RegistryAuth = base64.URLEncoding.EncodeToString(encodedJSON)
+			}
+		} else {
+			log.Ctx(ctx).Info().Msg("cannot authenticate for custom registry")
+		}
+	}
+
+	output, err := c.ImagePull(ctx, image, pullOptions)
 	if err != nil {
 		return err
 	}
