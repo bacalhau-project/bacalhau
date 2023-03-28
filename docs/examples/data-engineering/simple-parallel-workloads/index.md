@@ -10,6 +10,9 @@ description: "Parallel Video Resizing via File Sharding"
 
 Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this example tutorial, we will use the [Bacalhau Sharding](https://docs.bacalhau.org/next-steps/parallel-workloads) to run a simple video filter on a large number of video files.
 
+## TD;LR
+Using Bacalhau to process large video files
+
 ## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
