@@ -29,6 +29,26 @@ function install-docker() {
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 }
 
+function install-git() {
+  echo "Installing Git..."
+  sudo apt-get update -y
+  sudo apt-get install -y git
+  echo "...Git installation is complete!"
+}
+
+function install-git-lfs() {
+  echo "Installing Git Large File Storage (LFS)..."
+  # Update package lists
+  sudo apt-get update
+  # Add git-lfs package repository
+  curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+  # Install git-lfs
+  sudo apt-get install -y git-lfs
+  # Initialize git-lfs
+  git lfs install
+  echo "...Git-LFS installation is complete!"
+}
+
 function install-gpu() {
   echo "Installing GPU drivers"
   if [[ "${GPU_NODE}" = "true" ]]; then
@@ -378,6 +398,8 @@ function start-services() {
 function install() {
   install-go
   install-docker
+  install-git
+  install-git-lfs
   install-gpu
   install-healthcheck
   install-ipfs
