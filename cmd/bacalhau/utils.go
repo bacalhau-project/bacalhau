@@ -42,26 +42,13 @@ const (
 	DefaultTimeout               = 30 * time.Minute
 )
 
-var eventsWorthPrinting = map[model.ExecutionStateType]eventStruct{
-	model.ExecutionStateNew: {Message: "Creating job for submission", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Job is on Requester
-	model.ExecutionStateAskForBid: {Message: "Finding node(s) for the job", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Job is on ComputeNode
-	model.ExecutionStateBidAccepted: {Message: "Running the job", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Need to add a carriage return to the end of the line, but only this one
-	model.ExecutionStateFailed: {Message: "Error while executing the job", IsTerminal: true, PrintDownload: false, IsError: true},
-
-	// Job is on StorageNode
-	model.ExecutionStateResultProposed: {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.ExecutionStateResultRejected: {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
-	model.ExecutionStateResultAccepted: {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.ExecutionStateCompleted:      {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
-
-	// Job is canceled by the user
-	model.ExecutionStateCanceled: {Message: "Job canceled by the user.", IsTerminal: true, PrintDownload: false, IsError: true},
+var eventsWorthPrinting = map[model.JobStateType]eventStruct{
+	model.JobStateNew:        {Message: "Creating job for submission", IsTerminal: false, PrintDownload: false, IsError: false},
+	model.JobStateQueued:     {Message: "Finding node(s) for the job", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateInProgress: {Message: "Running the job", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateError:      {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
+	model.JobStateCancelled:  {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateCompleted:  {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
 }
 
 type eventStruct struct {
@@ -552,8 +539,8 @@ To get more information at any time, run:
 
 	// Create a map of job state types -> boolean, this is a record of what has been printed
 	// so far.
-	printedEventsTracker := make(map[model.ExecutionStateType]bool)
-	for _, jobEventType := range model.ExecutionStateTypes() {
+	printedEventsTracker := make(map[model.JobStateType]bool)
+	for _, jobEventType := range model.JobStateTypes() {
 		printedEventsTracker[jobEventType] = false
 	}
 
@@ -577,7 +564,7 @@ To get more information at any time, run:
 		}
 	}
 
-	spinner, err := NewSpinner(ctx, writer, widestString)
+	spinner, err := NewSpinner(ctx, writer, widestString, false)
 	if err != nil {
 		Fatal(cmd, err.Error(), 1)
 	}
@@ -593,7 +580,6 @@ To get more information at any time, run:
 		cancel()
 	}()
 
-	finishedRunning := false
 	cmdShuttingDown := false
 	var returnError error = nil
 
@@ -602,28 +588,26 @@ To get more information at any time, run:
 	go func() {
 		log.Ctx(ctx).Trace().Msgf("Signal goreturn")
 
-		select {
-		case s := <-signalChan: // first signal, cancel context
-			log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
-			if s == os.Interrupt {
-				spinner.Done(true)
-				cmdShuttingDown = true
+		for {
+			select {
+			case s := <-signalChan: // first signal, cancel context
+				log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
+				if s == os.Interrupt {
+					cmdShuttingDown = true
+					spinner.Done(true)
 
-				// If finishedRunning is true, then we go term signal
-				// because the loop finished normally.
-				if !finishedRunning {
 					if !quiet {
 						cmd.Println("\n\n\rPrintout canceled (the job is still running).")
 						cmd.Println(getMoreInfoString)
 					}
 					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+				} else {
+					cmd.Println("Unexpected signal received. Exiting.")
 				}
-			} else {
-				cmd.Println("Unexpected signal received. Exiting.")
+				cancel()
+			case <-ctx.Done():
+				return
 			}
-			cancel()
-		case <-ctx.Done():
-			return
 		}
 	}()
 
@@ -635,34 +619,21 @@ To get more information at any time, run:
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 				// We're done, the user canceled the job
-				break
+				cmdShuttingDown = true
+				continue
 			} else {
 				return errors.Wrap(err, "Error getting job events")
 			}
 		}
 
 		// Iterate through the events, looking for ones we have not yet processed
-		for i, event := range jobEvents {
-			if event.Type == model.JobHistoryTypeJobLevel {
-				if event.JobState.New.IsTerminal() {
-					finishedRunning = true
-					cmdShuttingDown = true
-					spinner.Done(true)
-				}
-
-				// When we get an error, then we will use this to exit
-				if event.JobState.New == model.JobStateError {
-					err := errors.New(event.Comment)
-					spinner.Done(false)
-					signalChan <- os.Interrupt
-					return err
-				}
-
+		for _, event := range jobEvents {
+			if event.Type != model.JobHistoryTypeJobLevel {
 				continue
 			}
 
 			if !quiet {
-				jet := jobEvents[i].ExecutionState.New
+				jet := event.JobState.New // Get the type of the new state
 				wasPrinted := printedEventsTracker[jet]
 
 				// If it hasn't been printed yet, we'll print this event.
@@ -670,27 +641,30 @@ To get more information at any time, run:
 				if !wasPrinted && eventsWorthPrinting[jet].Message != "" {
 					printedEventsTracker[jet] = true
 
-					if eventsWorthPrinting[jet].IsError {
-						// We shouldn't do anything with execution errors, we only
-						// care about job errors (which should contain )
-
-						// spinner.NextStep(eventsWorthPrinting[jet].Message)
-						// spinner.Done(false)
-						// return fmt.Errorf(event.Comment)
-					} else if eventsWorthPrinting[jet].IsTerminal {
-						cmd.Printf("\n%s\n", eventsWorthPrinting[jet].Message)
-						// cmd.Printf(eventsWorthPrinting[jet].PrintDownload)
-						return nil
-					} else {
+					// We shouldn't do anything with execution errors because there could
+					// be retries following, so for now we will
+					if !eventsWorthPrinting[jet].IsError && !eventsWorthPrinting[jet].IsTerminal {
 						spinner.NextStep(eventsWorthPrinting[jet].Message)
 					}
 				}
+			}
+
+			if event.JobState.New == model.JobStateError {
+				err := errors.New(event.Comment)
+				spinner.Done(false)
+				cancel()
+				return err
+			}
+
+			if event.JobState.New.IsTerminal() {
+				cmdShuttingDown = true
+				spinner.Done(true)
+				break
 			}
 		}
 
 		// Have we been cancel(l)ed?
 		if condition := ctx.Err(); condition != nil {
-			signalChan <- os.Interrupt
 			break
 		}
 

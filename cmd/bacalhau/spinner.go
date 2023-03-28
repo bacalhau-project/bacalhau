@@ -44,20 +44,22 @@ type Spinner struct {
 	doneChannel   chan bool
 	signalChannel chan os.Signal
 	complete      bool
+	handleSigint  bool
 }
 
 // NewSpinner creates a new `Spinner` using the provided io.Writer
 // and expecting a message of no more than `maxWidth` characters.
 // The `maxWidth` is required to ensure that following steps in
 // the lifetime of the spinner line up.
-func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error) {
+func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint bool) (*Spinner, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	s := &Spinner{
-		maxWidth:    maxWidth,
-		doneChannel: make(chan bool),
-		ctx:         ctx,
-		cancel:      cancel,
+		maxWidth:     maxWidth,
+		doneChannel:  make(chan bool),
+		ctx:          ctx,
+		cancel:       cancel,
+		handleSigint: handleSigint,
 	}
 
 	spacer := 8
@@ -90,8 +92,10 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error
 		return nil, fmt.Errorf("failed to set charset: %v", err)
 	}
 
-	s.signalChannel = make(chan os.Signal, 2)
-	signal.Notify(s.signalChannel, ShutdownSignals...)
+	if s.handleSigint {
+		s.signalChannel = make(chan os.Signal, 2)
+		signal.Notify(s.signalChannel, ShutdownSignals...)
+	}
 
 	return s, nil
 }
@@ -99,6 +103,8 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error
 // Done stops the spinner, igoring any errors as there
 // is no further use for the spinner.
 func (s *Spinner) Done(success bool) {
+	s.complete = true
+
 	if !success {
 		s.msg.Failure = true
 		s.updateText(time.Duration(0) * time.Millisecond)
@@ -108,7 +114,6 @@ func (s *Spinner) Done(success bool) {
 	s.cancel()
 
 	_, _ = s.cfg.Writer.Write([]byte("\n"))
-	s.complete = true
 }
 
 // NextStep completes the current line (if any) and
@@ -178,7 +183,7 @@ func (s *Spinner) Run() {
 
 					err := s.spin.Start()
 					if err != nil {
-						log.Ctx(s.ctx).Err(err)
+						log.Ctx(s.ctx).Err(err).Msg("failed to start spinner")
 					}
 
 					s.doneChannel <- true
@@ -187,7 +192,7 @@ func (s *Spinner) Run() {
 
 					err := s.spin.Stop()
 					if err != nil {
-						log.Ctx(s.ctx).Err(err)
+						log.Ctx(s.ctx).Err(err).Msg("failed to stop spinner")
 					}
 					s.doneChannel <- true
 				}

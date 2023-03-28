@@ -53,6 +53,14 @@ func (s *JobStateType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
+func JobStateTypes() []JobStateType {
+	var res []JobStateType
+	for typ := JobStateNew; typ <= JobStateQueued; typ++ {
+		res = append(res, typ)
+	}
+	return res
+}
+
 // JobState The state of a job across the whole network that represents an aggregate view across
 // the executions and nodes.
 type JobState struct {
