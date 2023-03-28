@@ -41,9 +41,9 @@ func (s *LogStreamTestSuite) TearDownSuite() {
 	s.cm.Cleanup(s.ctx)
 }
 
-func waitForOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {
+func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {
 	for i := 0; i < 10; i++ {
-		reader, err := exec.GetOutputStream(ctx, job, withHistory, follow)
+		reader, err := exec.GetOutputStream(ctx, executionID, withHistory, follow)
 		if err != nil {
 			if strings.Contains(err.Error(), "not implemented") {
 				return nil, err

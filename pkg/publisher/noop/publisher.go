@@ -8,10 +8,11 @@ import (
 )
 
 type PublisherHandlerIsInstalled func(ctx context.Context) (bool, error)
-type PublisherHandlerPublishResult func(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error)
+type PublisherHandlerPublishResult func(
+	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error)
 
 func ErrorResultPublisher(err error) PublisherHandlerPublishResult {
-	return func(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
+	return func(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
 		return model.StorageSpec{}, err
 	}
 }
@@ -47,9 +48,9 @@ func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (publisher *NoopPublisher) PublishResult(
-	ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
+	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
 	if publisher.externalHooks.PublishResult != nil {
-		return publisher.externalHooks.PublishResult(ctx, job, hostID, resultPath)
+		return publisher.externalHooks.PublishResult(ctx, executionID, job, resultPath)
 	}
 	return model.StorageSpec{}, nil
 }

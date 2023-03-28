@@ -142,7 +142,7 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 }
 
 //nolint:funlen  // Will be made shorter when we do more module linking
-func (e *Executor) Run(ctx context.Context, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
+func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
@@ -253,7 +253,7 @@ func (e *Executor) Run(ctx context.Context, job model.Job, jobResultsDir string)
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for wasm executor")
 }
 

@@ -107,7 +107,7 @@ func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, er
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
 	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
-	return s.executor.Run(ctx, j, result)
+	return s.executor.Run(ctx, name, j, result)
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {
@@ -347,8 +347,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 		done <- true
 	}()
 
-	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
-	reader, err := s.executor.GetOutputStream(ctx, job, true, true)
+	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
 
 	<-done
 	require.Nil(s.T(), reader)
@@ -382,8 +381,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	// be nothing to retrieve the output from.
 	time.Sleep(time.Duration(500) * time.Millisecond)
 
-	job := model.Job{Metadata: model.Metadata{ID: id}, Spec: spec}
-	reader, err := s.executor.GetOutputStream(ctx, job, true, true)
+	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
 
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)

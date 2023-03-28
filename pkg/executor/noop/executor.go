@@ -94,6 +94,7 @@ func (e *NoopExecutor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrat
 
 func (e *NoopExecutor) Run(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
@@ -105,7 +106,7 @@ func (e *NoopExecutor) Run(
 	return &model.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (e *NoopExecutor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 

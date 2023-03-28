@@ -33,15 +33,15 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 
 func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
+	executionID string,
 	j model.Job,
-	hostID string,
 	resultPath string,
 ) (model.StorageSpec, error) {
 	cid, err := publisher.IPFSClient.Put(ctx, resultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return job.GetPublishedStorageSpec(j, model.StorageSourceIPFS, hostID, cid), nil
+	return job.GetPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
 }
 
 // Compile-time check that Verifier implements the correct interface:
