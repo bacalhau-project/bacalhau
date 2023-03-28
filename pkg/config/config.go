@@ -215,7 +215,6 @@ type DockerCredentials struct {
 }
 
 func (d *DockerCredentials) IsValid() bool {
-	fmt.Printf(">>>%+v\n", d)
 	return d.Username != "" && d.Password != ""
 }
 
