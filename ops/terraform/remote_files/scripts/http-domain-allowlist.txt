@@ -126,3 +126,6 @@ polygon-rpc.com
 eth.public-rpc.com
 bscrpc.com
 filecoin.public-rpc.com
+
+# github
+github.com
