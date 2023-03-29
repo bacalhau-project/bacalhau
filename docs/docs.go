@@ -1696,6 +1696,11 @@ const docTemplate = `{
                 "job_id": {
                     "type": "string",
                     "example": "9304c616-291f-41ad-b862-54e133c0149e"
+                },
+                "since": {
+                    "description": "Records the number of seconds since the unix epoch (UTC)",
+                    "type": "integer",
+                    "example": 1679933805
                 }
             }
         },

@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/gorilla/websocket"
@@ -43,7 +44,7 @@ func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *ht
 
 	if jobID != "" {
 		// list events for job out of localDB and send them to the client
-		events, err := s.jobStore.GetJobHistory(context.Background(), jobID)
+		events, err := s.jobStore.GetJobHistory(context.Background(), jobID, time.Unix(0, 0))
 		if err != nil {
 			log.Ctx(req.Context()).Error().Msgf("error listing job events: %s\n", err.Error())
 			return
