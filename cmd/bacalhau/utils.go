@@ -617,7 +617,7 @@ To get more information at any time, run:
 		// TODO: This would be more useful if we could GetEvents since t, which
 		// would be the timestamp recorded on a previous event (to avoid clock
 		// issues).
-		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, strconv.FormatInt(lastSeenTimestamp+1, 10))
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, strconv.FormatInt(lastSeenTimestamp, 10))
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 				// We're done, the user canceled the job
