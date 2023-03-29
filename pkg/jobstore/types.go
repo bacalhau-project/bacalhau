@@ -2,7 +2,6 @@ package jobstore
 
 import (
 	"context"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -26,7 +25,7 @@ type Store interface {
 	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
 	GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error)
-	GetJobHistory(ctx context.Context, jobID string, since time.Time) ([]model.JobHistory, error)
+	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error)
 	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	CreateJob(ctx context.Context, j model.Job) error
 	// UpdateJobState updates the Job state
@@ -97,4 +96,17 @@ func (condition UpdateExecutionCondition) Validate(execution model.ExecutionStat
 		}
 	}
 	return nil
+}
+
+type JobHistoryFilterOptions struct {
+	Since                 int64 `json:"since"`
+	IncludeExecutionLevel bool  `json:"include_execution_level"`
+	IncludeJobLevel       bool  `json:"include_job_level"`
+}
+
+func NewJobHistoryFilterOptions() JobHistoryFilterOptions {
+	return JobHistoryFilterOptions{
+		IncludeExecutionLevel: true,
+		IncludeJobLevel:       true,
+	}
 }

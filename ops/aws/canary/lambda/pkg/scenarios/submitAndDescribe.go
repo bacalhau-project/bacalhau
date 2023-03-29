@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,7 +40,7 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, "")
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, publicapi.NewEventFilterOptions())
 	if err != nil {
 		return err
 	}
