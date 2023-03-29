@@ -12,6 +12,7 @@ In this example we will be training a MNIST model
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/model-training/Training-Tensorflow-Model/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=model-training/Training-Tensorflow-Model/index.ipynb)
+[![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 ## Training Tensorflow models Locally 
 This section is from  [TensorFlow 2 quickstart for beginners]( https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/quickstart/beginner.ipynb)
