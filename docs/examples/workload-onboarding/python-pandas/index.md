@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Python - Pandas"
-sidebar_position: 2
+sidebar_position: 6
 ---
 # Running Pandas on Bacalhau
 
@@ -10,6 +10,9 @@ sidebar_position: 2
 ### Introduction
 
 Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
+
+## TD;LR
+Running pandas script in Bacalhau
 
 ## Prerequisite
 
@@ -71,7 +74,7 @@ python3 read_csv.py
     [4 rows x 15 columns]
 
 
-## Ingesting data to IPFS
+## Ingesting data
 
 To run pandas on Bacalhau you must store your assets in a location that Bacalhau has access to. We usually default to storing data on IPFS and code in a container, but you can also easily upload your script to IPFS too.
 

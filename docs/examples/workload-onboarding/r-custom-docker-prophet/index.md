@@ -1,6 +1,6 @@
 ---
-sidebar_label: "R - Facebook Prophet - Custom Container"
-sidebar_position: 51
+sidebar_label: "R-Custom Container"
+sidebar_position: 8
 ---
 # Building and Running your Custom R Containers on Bacalhau
 
@@ -9,11 +9,11 @@ sidebar_position: 51
 
 ## Introduction
 
-This example will walk you through building Time Series Forecasting using [Prophet](https://github.com/facebook/prophet).
-
-Prophet is a forecasting procedure implemented in R and Python. It is fast and provides completely automated forecasts that can be tuned by hand by data scientists and analysts.
+This example will walk you through building Time Series Forecasting using [Prophet](https://github.com/facebook/prophet). Prophet is a forecasting procedure implemented in R and Python. It is fast and provides completely automated forecasts that can be tuned by hand by data scientists and analysts.
 
 ### TL;DR
+
+Quick script to run custom R container in Bacalhau
 
 ```bash
 bacalhau docker run -v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_wp_log_R.csv ghcr.io/bacalhau-project/examples/r-prophet:0.0.2 -- Rscript Saturating-Forecasts.R "/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
@@ -21,15 +21,11 @@ bacalhau docker run -v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_w
 
 ## Prerequisites
 
-* A working R environment
-* [Docker](https://docs.docker.com/get-docker/)
-* [Bacalhau](https://docs.bacalhau.org/getting-started/installation)
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## 1. Running Prophet in R Locally
+## Running Prophet in R Locally
 
-Open R studio or R supported IDE. If you want to run this on a notebook server, then make sure you use an R kernel.
-
-Prophet is a CRAN package so you can use install.packages to install the prophet package.
+Open R studio or R supported IDE. If you want to run this on a notebook server, then make sure you use an R kernel. Prophet is a CRAN package so you can use install.packages to install the prophet package.
 
 
 ```bash
@@ -108,13 +104,13 @@ dev.off()
 Rscript Saturating-Forecasts.R "example_wp_log_R.csv" "outputs/output0.pdf" "outputs/output1.pdf"
 ```
 
-## 2. Running R Prophet on Bacalhau
+## Running R Prophet on Bacalhau
 
 To use Bacalhau, you need to package your code in an appropriate format. The developers have already pushed a container for you to use, but if you want to build your own, you can follow the steps below. You can view a [dedicated container example](../custom-containers/index.md) in the documentation.
 
-### Dockerfile
+## Containerize Script with Docker
 
-In this step, you will create a `Dockerfile` to create an image. The `Dockerfile` is a text document that contains the commands used to assemble the image. First, create the `Dockerfile`.
+To build your own docker container, create a `Dockerfile`, which contains instructions to build your image.
 
 ```
 FROM r-base
@@ -125,17 +121,46 @@ COPY Saturating-Forecasts.R R
 WORKDIR /R
 ```
 
-Next, add your desired configuration to the `Dockerfile`. These commands specify how the image will be built, and what extra requirements will be included. We use r-base as the base image, and then install the prophet package. We then copy the R script into the container and set the working directory to the R folder.
+These commands specify how the image will be built, and what extra requirements will be included. We use r-base as the base image, and then install the prophet package. We then copy the R script into the container and set the working directory to the R folder.
 
-We've already pushed this image to GHCR, but for posterity, you'd use a command like this to update it:
+
+### Build the container
+
+We will run `docker build` command to build the container;
+
+```
+docker build -t <hub-user>/<repo-name>:<tag> .
+```
+
+Before running the command replace;
+
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+
+- **repo-name** with the name of the container, you can name it anything you want
+
+- **tag** this is not required but you can use the latest tag
+
+In our case:
 
 ```bash
 docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/examples/r-prophet:0.0.1 .
 ```
 
-After you have built the container successfully, the next step is to test it locally and then push it docker hub
+### Push the container
 
-### Fitting a Prophet Model on Bacalhau
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+
+```
+docker push <hub-user>/<repo-name>:<tag>
+```
+
+In our case:
+
+```bash
+docker push --platform linux/amd64 --push -t ghcr.io/bacalhau-project/examples/r-prophet:0.0.1 .
+```
+
+## Running a Job on Bacalhau
 
 The following command passes a prompt to the model and generates the results in the outputs directory. It takes approximately 2 minutes to run.
 
@@ -150,7 +175,27 @@ bacalhau docker run \
     -- Rscript Saturating-Forecasts.R "/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
 ```
 
-Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
+### Structure of the command
+
+Let's look closely at the command above:
+
+* `bacalhau docker run`: call to bacalhau 
+  
+* `-v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+
+* `ghcr.io/bacalhau-project/examples/r-prophet:0.0.2`: the name and the tag of the docker image we are using
+
+* `/example_wp_log_R.csv `: path to input dataset
+
+* `/outputs/output0.pdf....`: path to output
+
+* `Rscript Saturating-Forecasts.R`: execute the R script
+
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -158,14 +203,9 @@ Running the commands will output a UUID that represents the job that was created
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 15:10:22 [0m[97;40m 0316d0c2 [0m[97;40m Docker jsace/r-proph... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmYwR3uaSnhLpE... [0m
+When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-
-
-Where it says `Completed`, that means the job is done, and we can get the results.
-
-To find out more information about your job, run the following command:
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -173,81 +213,7 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-    APIVersion: V1alpha1
-    ClientID: 77cf46c04f88ffb1c3e0e4b6e443724e8d2d87074d088ef1a6294a448fa85d2e
-    CreatedAt: "2022-11-11T15:10:22.177011613Z"
-    Deal:
-      Concurrency: 1
-    ExecutionPlan:
-      ShardsTotal: 1
-    ID: 0316d0c2-162d-4c57-9c10-391c908f981d
-    JobState:
-      Nodes:
-        QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3:
-          Shards:
-            "0":
-              NodeId: QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-              PublishedResults: {}
-              State: Cancelled
-              VerificationResult: {}
-        QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
-          Shards:
-            "0":
-              NodeId: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-              PublishedResults:
-                CID: QmYwR3uaSnhLpEZYDdUGXQMVCuCmsd8Rc4LHsuHL6pSUz3
-                Name: job-0316d0c2-162d-4c57-9c10-391c908f981d-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-                StorageSource: IPFS
-              RunOutput:
-                exitCode: 0
-                runnerError: ""
-                stderr: |-
-                  Loading required package: Rcpp
-                  Loading required package: rlang
-                  Disabling daily seasonality. Run prophet with daily.seasonality=TRUE to override this.
-                  Disabling daily seasonality. Run prophet with daily.seasonality=TRUE to override this.
-                stderrtruncated: false
-                stdout: "[1] \"example_wp_log_R.csv\" \"outputs/output0.pdf\"  \"outputs/output1.pdf\"
-                  \nnull device \n          1 \nnull device \n          1"
-                stdouttruncated: false
-              State: Completed
-              Status: 'Got results proposal of length: 0'
-              VerificationResult:
-                Complete: true
-                Result: true
-    RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
-    Spec:
-      Docker:
-        Entrypoint:
-        - Rscript
-        - Saturating-Forecasts.R
-        - example_wp_log_R.csv
-        - outputs/output0.pdf
-        - outputs/output1.pdf
-        Image: jsace/r-prophet
-      Engine: Docker
-      Language:
-        JobContext: {}
-      Publisher: Estuary
-      Resources:
-        GPU: ""
-      Sharding:
-        BatchSize: 1
-        GlobPatternBasePath: /inputs
-      Verifier: Noop
-      Wasm: {}
-      inputs:
-      - CID: QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt
-        StorageSource: IPFS
-        path: /example_wp_log_R.csv
-      outputs:
-      - Name: outputs
-        StorageSource: IPFS
-        path: /outputs
-
-
-If you see that the job has completed and there are no errors, then you can download the results with the following command:
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -256,13 +222,9 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job '0316d0c2-162d-4c57-9c10-391c908f981d'...
-    Results for job '0316d0c2-162d-4c57-9c10-391c908f981d' have been written to...
-    results
+## Viewing your Job Output
 
-
-After the download has finished you should 
-see the following contents in results directory
+Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
 
 
 ```bash

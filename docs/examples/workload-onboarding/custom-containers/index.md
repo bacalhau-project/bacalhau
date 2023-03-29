@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Custom Containers"
-sidebar_position: 10
+sidebar_position: 3
 ---
 # How To Work With Custom Containers in Bacalhau
 
@@ -9,12 +9,16 @@ sidebar_position: 10
 
 Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
 
-### Prerequisites
+## TD;LR
+Running Custom Containers in Bacalhau
 
-* This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
-* The Bacalhau client - [Installation instructions](https://docs.bacalhau.org/getting-started/installation)
+## Prerequisite
 
-## 1. Running Containers in Bacalhau
+- To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+- This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
+
+
+##  Running Containers in Bacalhau
 
 You're probably used to running docker commands to run a container.
 
@@ -49,33 +53,26 @@ The `--wait` flag tells Bacalhau to wait for the job to finish before returning.
 
 Another difference is that by default Bacalhau overwrites the default entrypoint for the container so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
 
+### Running a Bacalhau Job
+
 
 ```bash
 %%bash --out job_id
 bacalhau docker run --wait --id-only docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
+
 
 ```bash
 %%bash
 rm -rf results && mkdir -p results
-```
-
-To Download the results of your job, run the following command:
-
-
-```bash
-%%bash
 bacalhau get ${JOB_ID}  --output-dir results
 ```
 
-    Fetching results of job '1fd678f4-edb5-4516-91b7-2fcd7965ff63'...
-    Results for job '1fd678f4-edb5-4516-91b7-2fcd7965ff63' have been written to...
-    results
-
-
-    2022/11/23 14:13:09 CleanupManager.fnsMutex violation CRITICAL section took 20.239ms 20239000 (threshold 10ms)
-
+Viewing your job output
 
 
 ```bash
@@ -99,7 +96,7 @@ cat ./results/combined_results/stdout
               \____\______/   
 
 
-## 2. Building Your Own Custom Container For Bacalhau
+## Building Your Own Custom Container For Bacalhau
 
 To use your own custom container, you must publish the container to a container registry that is accessible from the Bacalhau network. At this time, only public container registries are supported.
 
@@ -128,9 +125,6 @@ $the_cow = <<"EOC";
 EOC
 ```
 
-    Overwriting cod.cow
-
-
 Next, the Dockerfile adds the script and sets the entrypoint.
 
 
@@ -144,9 +138,6 @@ RUN echo '#!/bin/bash\ncowsay "${@:1}"' > /usr/bin/codsay && \
     chmod +x /usr/bin/codsay
 COPY cod.cow /usr/share/cowsay/cows/default.cow
 ```
-
-    Overwriting Dockerfile
-
 
 Now let's build and test the container locally.
 
@@ -191,7 +182,7 @@ Once your container is working as expected then you should push it to a public c
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/codsay:latest .
 ```
 
-## 3. Running Your Custom Container on Bacalhau
+##  Running Your Custom Container on Bacalhau
 
 Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results and prints the stdout.
 
@@ -209,27 +200,18 @@ bacalhau docker run \
     -- bash -c 'codsay Look at all this data'
 ```
 
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+Download your job results directly by using `bacalhau get` command.
+
 
 ```bash
 %%bash
 rm -rf results && mkdir -p results
-```
-
-To Download the results of your job, run the following command:
-
-
-```bash
-%%bash
 bacalhau get ${JOB_ID}  --output-dir results
 ```
 
-    Fetching results of job '4dac91df-a7ad-4019-80e1-88201e007a01'...
-    Results for job '4dac91df-a7ad-4019-80e1-88201e007a01' have been written to...
-    results
-
-
-    2022/11/23 14:14:44 CleanupManager.fnsMutex violation CRITICAL section took 19.803ms 19803000 (threshold 10ms)
-
+View your job output
 
 
 ```bash

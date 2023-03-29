@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Bacalhau Docker Image"
-sidebar_position: 99
+sidebar_position: 1
 description: How to use the Bacalhau Docker image
 ---
 # Bacalhau Docker Image
@@ -12,9 +12,9 @@ This example shows you how to run some common client-side Bacalhau tasks using t
 
 ## Prerequisites
 
-* [Install Docker](https://docs.docker.com/get-docker/)
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
-## Pull the Container
+## Pull the Docker image
 
 The first step is to pull the Bacalhau Docker image from the [Github container registry](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau).
 
@@ -23,12 +23,6 @@ The first step is to pull the Bacalhau Docker image from the [Github container r
 %%bash
 docker pull ghcr.io/bacalhau-project/bacalhau:latest
 ```
-
-    latest: Pulling from bacalhau-project/bacalhau
-    Digest: sha256:bdf27fb3af4accee119941eefa719d4d2892b6774f1be603a02e6da6bb56c492
-    Status: Image is up to date for ghcr.io/bacalhau-project/bacalhau:latest
-    ghcr.io/bacalhau-project/bacalhau:latest
-
 
 You can also pull a specific version of the image, e.g.:
 
@@ -40,13 +34,10 @@ docker pull ghcr.io/bacalhau-project/bacalhau:v0.3.16
 Remember that the "latest" tag is just a string. It doesn't refer to the latest version of the Bacalhau client, it refers to an image that has the "latest" tag. Therefore, if your machine has already downloaded the "latest" image, it won't download it again. To force a download, you can use the `--no-cache` flag.
 :::
 
-## Running Common Bacalhau Commands
+## Check version
 
-Now we're ready to run some common Bacalhau tasks.
+Check the version of the Bacalhau client you are using.
 
-### Check the Version
-
-It's always a good idea to check the version of the client you're using. Mismatched versions can cause unexpected behaviour; a bit like trying to shove a US quarter into a UK pound coin slot. It works, but you're probably not getting your coin back.
 
 
 ```bash
@@ -54,15 +45,9 @@ It's always a good idea to check the version of the client you're using. Mismatc
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest version
 ```
 
-    Client Version: v0.3.16
-    Server Version: v0.3.16
+## Running a Bacalhau Job
 
-
-### Submit a Docker Job
-
-Yes, that's right, we can submit a Docker job using the Bacalhau Docker image...
-
-In this example, I run an ubuntu-based job that echo's some stuff.
+To submit a bi to Bacalhau, we use the `bacalhau docker run` command. 
 
 
 ```bash
@@ -75,8 +60,19 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
             sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
-    env: JOB_ID=a53f290c-1b45-4454-be6e-050c0f4e8741
+In this example, I run an ubuntu-based job that echo's some stuff.
 
+### Structure of the command
+
+-  `--id-only......`: Output only the job id
+
+- `ubuntu:latest.` Ubuntu container
+
+- `ghcr.io/bacalhau-project/bacalhau:latest `: Name of the Bacalhau Docker image
+
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+To print out the content of the Job ID, run the following command:
 
 
 ```bash
@@ -91,9 +87,9 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
                     Hello from Docker Bacalhau!
 
 
-### Sumbit a Job With Output Files
+## Sumbit a Job With Output Files
 
-One inconvenience that you'll see is that you'll need to mount directories into the container to access files. This is because the container is running in a separate environment to your host machine. The example below steals one of the examples from the stable-diffusion demo.
+One inconvenience that you'll see is that you'll need to mount directories into the container to access files. This is because the container is running in a separate environment to your host machine. Let's take a look at the example below:
 
 The first part of the example should look familiar, except for the Docker commands.
 
@@ -109,10 +105,34 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
             python main.py --o ./outputs --p "A Docker whale and a cod having a conversation about the state of the ocean"
 ```
 
-    env: JOB_ID=ca7cd1b8-9a84-4f1c-b180-a30785fb0990
+
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
 
 
-This is where things get a bit more spicy. We need to mount a directory into the container so when you retrieve the results they are copied to the host machine.
+```bash
+%%bash
+docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
+    list $JOB_ID \
+        | grep -A 2 "stdout: |"
+```
+
+When it says `Completed`, that means the job is done, and we can get the results.
+
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
+
+
+```bash
+%%bash
+docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
+    describe $JOB_ID \
+        | grep -A 2 "stdout: |"
+```
+
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -121,22 +141,16 @@ docker run -t -v $(pwd)/results:/results ghcr.io/bacalhau-project/bacalhau:lates
     get $JOB_ID --output-dir /results
 ```
 
-    Fetching results of job 'ca7cd1b8-9a84-4f1c-b180-a30785fb0990'...
-    2023/01/25 14:12:58 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-    Results for job 'ca7cd1b8-9a84-4f1c-b180-a30785fb0990' have been written to...
-    /results
-
+After the download has finished you should see the following contents in results directory. 
 
 
 
 
     
-![png](index_files/index_16_0.png)
+![png](index_files/index_24_0.png)
     
 
 
-
-I'm not entirely sure what's going on with that image. It looks like half an Orca on a beach holiday. But it's a good example of how to mount the results directory into the container. This pattern should work with any job that produces output files.
 
 ## Need Support?
 

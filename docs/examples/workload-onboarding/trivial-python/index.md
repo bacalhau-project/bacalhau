@@ -1,16 +1,17 @@
 ---
-sidebar_label: "Python - Hello World"
+sidebar_label: "Python Script"
 sidebar_position: 1
 description: How to run a Python file hosted on Bacalhau
 ---
-# Python Hello World
+# Running a Python Script
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/trivial-python/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/trivial-python/index.ipynb)
 
 This example tutorial serves as an introduction to Bacalhau. Here, you'll be running a Python file hosted on a website on Bacalhau.
 
-
+## TD;LR
+A quick guide on how to run a hello world script on Bacalhau
 
 ## Prerequisites
 
@@ -76,97 +77,6 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 bacalhau describe ${JOB_ID}
 ```
 
-    APIVersion: V1beta1
-    Metadata:
-      ClientID: 77cf46c04f88ffb1c3e0e4b6e443724e8d2d87074d088ef1a6294a448fa85d2e
-      CreatedAt: "2023-01-20T13:24:59.165644684Z"
-      ID: c2f245d6-43a6-43ec-9a3b-7ce9b6242c88
-    Spec:
-      Deal:
-        Concurrency: 1
-      Docker:
-        Entrypoint:
-        - python3
-        - /inputs/hello-world.py
-        Image: python:3.10-slim
-      Engine: Docker
-      ExecutionPlan:
-        ShardsTotal: 1
-      Language:
-        JobContext: {}
-      Publisher: Estuary
-      Resources:
-        GPU: ""
-      Sharding:
-        BatchSize: 1
-        GlobPatternBasePath: /inputs
-      Timeout: 1800
-      Verifier: Noop
-      Wasm: {}
-      inputs:
-      - StorageSource: URLDownload
-        URL: https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py
-        path: /inputs
-      outputs:
-      - Name: outputs
-        StorageSource: IPFS
-        path: /outputs
-    Status:
-      JobState:
-        Nodes:
-          QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT:
-            Shards:
-              "0":
-                NodeId: QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT
-                PublishedResults: {}
-                State: Cancelled
-                VerificationResult: {}
-          QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG:
-            Shards:
-              "0":
-                NodeId: QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
-                PublishedResults: {}
-                State: Cancelled
-                VerificationResult: {}
-          QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF:
-            Shards:
-              "0":
-                NodeId: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
-                PublishedResults: {}
-                State: Cancelled
-                VerificationResult: {}
-          QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3:
-            Shards:
-              "0":
-                NodeId: QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-                PublishedResults: {}
-                State: Cancelled
-                VerificationResult: {}
-          QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
-            Shards:
-              "0":
-                NodeId: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-                PublishedResults:
-                  CID: QmehTNF6ogbESt26EgrSw9YGrApneSWhPesqw1A5T6ezBe
-                  Name: job-c2f245d6-43a6-43ec-9a3b-7ce9b6242c88-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-                  StorageSource: IPFS
-                RunOutput:
-                  exitCode: 0
-                  runnerError: ""
-                  stderr: ""
-                  stderrtruncated: false
-                  stdout: |
-                    Hello, world!
-                  stdouttruncated: false
-                State: Completed
-                VerificationResult:
-                  Complete: true
-                  Result: true
-      Requester:
-        RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-        RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
-
-
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
@@ -195,9 +105,6 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 cat results/combined_results/stdout
 
 ```
-
-    Hello, world!
-
 
 ## Need Support?
 
