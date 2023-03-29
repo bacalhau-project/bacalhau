@@ -20,7 +20,7 @@ Architecturally, the CPU is composed of just a few cores with lots of cache memo
 Computations like matrix multiplication could be done much faster on GPU than on CPU
 
 ## TD;LR
-Running CUDA programs on Bacalhau
+Running CUDA programs on Bacalhau.
 
 ## Prerequisite
 
