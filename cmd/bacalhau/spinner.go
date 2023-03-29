@@ -107,7 +107,8 @@ func (s *Spinner) Done(success bool) {
 
 	if !success {
 		s.msg.Failure = true
-		s.updateText(time.Duration(0) * time.Millisecond)
+		s.spin.Message(fmt.Sprintf("%s %s", SpacerText, s.msg.TimerString))
+		s.spin.StopMessage(s.msg.PrintError())
 	}
 
 	_ = s.spin.Stop()
