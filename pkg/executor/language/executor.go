@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -19,9 +20,9 @@ import (
 )
 
 type Executor struct {
-	Jobs map[string]*model.Job
-
-	executors executor.ExecutorProvider
+	Jobs               map[string]*model.Job
+	executors          executor.ExecutorProvider
+	delegatedExecutors generic.SyncMap[string, executor.Executor]
 }
 
 type LanguageSpec struct {
@@ -62,6 +63,7 @@ func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error
 
 func (e *Executor) Run(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
@@ -69,15 +71,16 @@ func (e *Executor) Run(
 	if err != nil {
 		return nil, err
 	}
-	return executor.Run(ctx, job, jobResultsDir)
+	e.delegatedExecutors.Put(executionID, executor)
+	return executor.Run(ctx, executionID, job, jobResultsDir)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
-	executor, err := e.getDelegateExecutor(ctx, job)
-	if err != nil {
-		return nil, err
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	executor, exists := e.delegatedExecutors.Get(executionID)
+	if !exists {
+		return nil, fmt.Errorf("execution %v not found", executionID)
 	}
-	return executor.GetOutputStream(ctx, job, withHistory, follow)
+	return executor.GetOutputStream(ctx, executionID, withHistory, follow)
 }
 
 func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (executor.Executor, error) {

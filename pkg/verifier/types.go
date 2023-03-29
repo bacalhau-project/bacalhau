@@ -32,6 +32,7 @@ type Verifier interface {
 	// the results after verification
 	GetResultPath(
 		ctx context.Context,
+		executionID string,
 		job model.Job,
 	) (string, error)
 

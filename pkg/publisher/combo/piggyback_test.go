@@ -110,13 +110,13 @@ func TestPiggybackedPublisher_PublishResult(t *testing.T) {
 			subject := NewPiggybackedPublisher(primary, piggyback)
 
 			job := model.Job{}
-			hostId := "host"
+			executionID := "1234"
 			resultsPath := "/some/path"
 
-			primary.On("PublishResult", mock.Anything, job, hostId, resultsPath).Return(test.primary...)
-			piggyback.On("PublishResult", mock.Anything, job, hostId, resultsPath).Return(test.piggyback...)
+			primary.On("PublishResult", mock.Anything, executionID, job, resultsPath).Return(test.primary...)
+			piggyback.On("PublishResult", mock.Anything, executionID, job, resultsPath).Return(test.piggyback...)
 
-			actual, err := subject.PublishResult(context.Background(), job, hostId, resultsPath)
+			actual, err := subject.PublishResult(context.Background(), executionID, job, resultsPath)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, test.expected, actual)
 		})
@@ -132,8 +132,8 @@ func (t *testifyPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (t *testifyPublisher) PublishResult(ctx context.Context, job model.Job, hostID string, resultPath string) (model.StorageSpec, error) {
-	args := t.Called(ctx, job, hostID, resultPath)
+func (t *testifyPublisher) PublishResult(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
+	args := t.Called(ctx, executionID, job, resultPath)
 	return args.Get(0).(model.StorageSpec), args.Error(1)
 }
 

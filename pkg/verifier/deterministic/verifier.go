@@ -46,9 +46,10 @@ func (deterministicVerifier *DeterministicVerifier) IsInstalled(context.Context)
 
 func (deterministicVerifier *DeterministicVerifier) GetResultPath(
 	_ context.Context,
+	executionID string,
 	job model.Job,
 ) (string, error) {
-	return deterministicVerifier.results.EnsureResultsDir(job.ID())
+	return deterministicVerifier.results.EnsureResultsDir(executionID)
 }
 
 func (deterministicVerifier *DeterministicVerifier) GetProposal(

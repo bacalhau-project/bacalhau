@@ -186,10 +186,9 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	return verifiedSummary
 }
 
-func GetPublishedStorageSpec(job model.Job, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
-	//TODO: include executionID or a nuance to avoid collisions during retries
+func GetPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
 	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-host-%s", job.ID(), hostID),
+		Name:          fmt.Sprintf("job-%s-execution-%s", job.ID(), executionID),
 		StorageSource: storageType,
 		CID:           cid,
 		Metadata:      map[string]string{},

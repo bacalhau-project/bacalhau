@@ -39,7 +39,7 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID)
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, "")
 	if err != nil {
 		return err
 	}

@@ -37,10 +37,10 @@ func (c *piggybackedPublisher) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (c *piggybackedPublisher) PublishResult(
-	ctx context.Context, job model.Job, hostID string, resultPath string,
+	ctx context.Context, executionID string, job model.Job, resultPath string,
 ) (model.StorageSpec, error) {
 	results, err := callAllPublishers(c.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishResult(ctx, job, hostID, resultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 	if err != nil {
 		return model.StorageSpec{}, err

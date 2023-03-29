@@ -34,6 +34,7 @@ const NanoCPUCoefficient = 1000000000
 const (
 	labelExecutorName = "bacalhau-executor"
 	labelJobName      = "bacalhau-jobID"
+	labelExecutionID  = "bacalhau-executionID"
 )
 
 type Executor struct {
@@ -106,13 +107,14 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
-	defer e.cleanupJob(ctx, job)
+	defer e.cleanupExecution(ctx, executionID)
 
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
 	if err != nil {
@@ -201,7 +203,7 @@ func (e *Executor) Run(
 		Tty:        false,
 		Env:        useEnv,
 		Entrypoint: job.Spec.Docker.Entrypoint,
-		Labels:     e.jobContainerLabels(job),
+		Labels:     e.containerLabels(executionID, job),
 		WorkingDir: job.Spec.Docker.WorkingDirectory,
 	}
 
@@ -231,7 +233,7 @@ func (e *Executor) Run(
 	}
 
 	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, job, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, executionID, job, containerConfig, hostConfig)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -242,7 +244,7 @@ func (e *Executor) Run(
 		hostConfig,
 		nil,
 		nil,
-		e.jobContainerName(job),
+		e.containerName(executionID, job),
 	)
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
@@ -299,8 +301,8 @@ func (e *Executor) Run(
 	)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
-	ctrID, err := e.client.FindContainer(ctx, labelJobName, e.labelJobValue(job))
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	ctrID, err := e.client.FindContainer(ctx, labelExecutionID, e.labelExecutionValue(executionID))
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +323,7 @@ func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHisto
 	return reader, nil
 }
 
-func (e *Executor) cleanupJob(ctx context.Context, job model.Job) {
+func (e *Executor) cleanupExecution(ctx context.Context, executionID string) {
 	// Use a detached context in case the current one has already been canceled
 	separateCtx, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 1*time.Minute)
 	defer cancel()
@@ -329,7 +331,7 @@ func (e *Executor) cleanupJob(ctx context.Context, job model.Job) {
 		return
 	}
 
-	err := e.client.RemoveObjectsWithLabel(separateCtx, labelJobName, e.labelJobValue(job))
+	err := e.client.RemoveObjectsWithLabel(separateCtx, labelExecutionID, e.labelExecutionValue(executionID))
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up job Docker resources")
 }
@@ -349,26 +351,30 @@ func (e *Executor) cleanupAll(ctx context.Context) error {
 	return nil
 }
 
-func (e *Executor) dockerObjectName(job model.Job, parts ...string) string {
-	// TODO: should include executor id or random string to avoid collisions during retries
-	strs := []string{"bacalhau", e.ID, job.ID()}
+func (e *Executor) dockerObjectName(executionID string, job model.Job, parts ...string) string {
+	strs := []string{"bacalhau", e.ID, job.ID(), executionID}
 	strs = append(strs, parts...)
 	return strings.Join(strs, "-")
 }
 
-func (e *Executor) jobContainerName(job model.Job) string {
-	return e.dockerObjectName(job, "executor")
+func (e *Executor) containerName(executionID string, job model.Job) string {
+	return e.dockerObjectName(executionID, job, "executor")
 }
 
-func (e *Executor) jobContainerLabels(job model.Job) map[string]string {
+func (e *Executor) containerLabels(executionID string, job model.Job) map[string]string {
 	return map[string]string{
 		labelExecutorName: e.ID,
 		labelJobName:      e.labelJobValue(job),
+		labelExecutionID:  e.labelExecutionValue(executionID),
 	}
 }
 
 func (e *Executor) labelJobValue(job model.Job) string {
 	return e.ID + job.ID()
+}
+
+func (e *Executor) labelExecutionValue(executionID string) string {
+	return e.ID + executionID
 }
 
 // Compile-time interface check:

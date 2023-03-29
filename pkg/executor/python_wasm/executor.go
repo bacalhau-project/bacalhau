@@ -57,7 +57,7 @@ func (e *Executor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy,
 	return dockerExecutor.GetBidStrategy(ctx)
 }
 
-func (e *Executor) Run(ctx context.Context, job model.Job, resultsDir string) (
+func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, resultsDir string) (
 	*model.RunCommandResult, error) {
 	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
@@ -86,15 +86,15 @@ func (e *Executor) Run(ctx context.Context, job model.Job, resultsDir string) (
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.Run(ctx, job, resultsDir)
+	return dockerExecutor.Run(ctx, executionID, job, resultsDir)
 }
 
-func (e *Executor) GetOutputStream(ctx context.Context, job model.Job, withHistory bool, follow bool) (io.ReadCloser, error) {
+func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.GetOutputStream(ctx, job, withHistory, follow)
+	return dockerExecutor.GetOutputStream(ctx, executionID, withHistory, follow)
 }
 
 // Compile-time check that Executor implements the Executor interface.

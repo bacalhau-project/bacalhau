@@ -69,8 +69,7 @@ func RunTestCase(
 	}
 
 	resultsDirectory := t.TempDir()
-
-	runnerOutput, err := executor.Run(ctx, job, resultsDirectory)
+	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
 	require.NoError(t, err)
 	require.Empty(t, runnerOutput.ErrorMsg)
 

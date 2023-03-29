@@ -115,15 +115,15 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 // PublishResult implements publisher.Publisher
 func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,
+	executionID string,
 	job model.Job,
-	hostID string,
 	resultPath string,
 ) (model.StorageSpec, error) {
 	var err error
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishResult(ctx, job, hostID, resultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)

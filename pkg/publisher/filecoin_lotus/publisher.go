@@ -82,13 +82,13 @@ func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 
 func (l *Publisher) PublishResult(
 	ctx context.Context,
+	executionID string,
 	j model.Job,
-	hostID string,
 	resultPath string,
 ) (model.StorageSpec, error) {
 	log.Ctx(ctx).Debug().
 		Stringer("job", j).
-		Str("host", hostID).
+		Str("executionID", executionID).
 		Str("resultPath", resultPath).
 		Msg("Uploading results folder to filecoin lotus")
 
@@ -107,7 +107,7 @@ func (l *Publisher) PublishResult(
 		return model.StorageSpec{}, err
 	}
 
-	spec := job.GetPublishedStorageSpec(j, model.StorageSourceFilecoin, hostID, contentCid.String())
+	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
 	spec.Metadata["deal_cid"] = dealCid
 	return spec, nil
 }
