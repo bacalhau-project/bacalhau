@@ -39,7 +39,7 @@ function install-git() {
 function install-git-lfs() {
   echo "Installing Git Large File Storage (LFS)..."
   # Update package lists
-  sudo apt-get update
+  sudo apt-get update -y
   # Add git-lfs package repository
   curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
   # Install git-lfs
