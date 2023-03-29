@@ -40,7 +40,7 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, publicapi.NewEventFilterOptions())
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, publicapi.EventFilterOptions{})
 	if err != nil {
 		return err
 	}

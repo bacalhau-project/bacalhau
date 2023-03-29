@@ -100,13 +100,6 @@ func (condition UpdateExecutionCondition) Validate(execution model.ExecutionStat
 
 type JobHistoryFilterOptions struct {
 	Since                 int64 `json:"since"`
-	IncludeExecutionLevel bool  `json:"include_execution_level"`
-	IncludeJobLevel       bool  `json:"include_job_level"`
-}
-
-func NewJobHistoryFilterOptions() JobHistoryFilterOptions {
-	return JobHistoryFilterOptions{
-		IncludeExecutionLevel: true,
-		IncludeJobLevel:       true,
-	}
+	ExcludeExecutionLevel bool  `json:"exclude_execution_level"`
+	ExcludeJobLevel       bool  `json:"exclude_job_level"`
 }

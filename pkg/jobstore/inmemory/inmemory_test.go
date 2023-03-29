@@ -38,7 +38,7 @@ func (s *InMemoryTestSuite) SetupTest() {
 		{
 			id:              "1",
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCanceled},
+			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateFailed, model.ExecutionStateCanceled},
 		},
 	}
 
@@ -78,47 +78,49 @@ func (s *InMemoryTestSuite) SetupTest() {
 }
 
 func (s *InMemoryTestSuite) TestUnfilteredJobHistory() {
-	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.NewJobHistoryFilterOptions())
+	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 6, len(history))
+	require.Equal(s.T(), 7, len(history))
 }
 
 func (s *InMemoryTestSuite) TestJobHistoryOrdering() {
-	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.NewJobHistoryFilterOptions())
+	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 6, len(history))
+	require.Equal(s.T(), 7, len(history))
 
 	values := make([]int64, len(history))
 	for i, h := range history {
 		values[i] = h.Time.Unix()
 	}
 
-	require.Equal(s.T(), []int64{0, 1, 2, 3, 4, 5}, values)
-
+	require.Equal(s.T(), []int64{0, 1, 2, 3, 4, 5, 6}, values)
 }
 
 func (s *InMemoryTestSuite) TestTimeFilteredJobHistory() {
-	options := jobstore.NewJobHistoryFilterOptions()
-	options.Since = 3
+	options := jobstore.JobHistoryFilterOptions{
+		Since: 3,
+	}
 
 	history, err := s.store.GetJobHistory(s.ctx, "1", options)
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 3, len(history))
+	require.Equal(s.T(), 4, len(history))
 }
 
 func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	jobOptions := jobstore.JobHistoryFilterOptions{
-		IncludeJobLevel: true,
+		ExcludeExecutionLevel: true,
 	}
 	execOptions := jobstore.JobHistoryFilterOptions{
-		IncludeExecutionLevel: true,
+		ExcludeJobLevel: true,
 	}
 
 	history, err := s.store.GetJobHistory(s.ctx, "1", jobOptions)
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 3, len(history))
+	require.Equal(s.T(), model.JobStateQueued, history[0].JobState.New)
 
 	history, err = s.store.GetJobHistory(s.ctx, "1", execOptions)
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 3, len(history))
+	require.Equal(s.T(), 4, len(history))
+	require.Equal(s.T(), model.ExecutionStateAskForBid, history[0].ExecutionState.New)
 }

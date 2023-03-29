@@ -21,13 +21,6 @@ type eventsResponse struct {
 
 type EventFilterOptions = jobstore.JobHistoryFilterOptions
 
-func NewEventFilterOptions() EventFilterOptions {
-	return EventFilterOptions{
-		IncludeExecutionLevel: true,
-		IncludeJobLevel:       true,
-	}
-}
-
 // events godoc
 //
 //	@ID						pkg/requester/publicapi/events

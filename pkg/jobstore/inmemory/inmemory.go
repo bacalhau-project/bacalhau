@@ -154,11 +154,11 @@ func (d *JobStore) GetJobHistory(_ context.Context, jobID string, options jobsto
 	sinceTime := options.Since
 	eventList := make([]model.JobHistory, 0, len(history))
 	for _, event := range history {
-		if !options.IncludeExecutionLevel && event.Type == model.JobHistoryTypeExecutionLevel {
+		if options.ExcludeExecutionLevel && event.Type == model.JobHistoryTypeExecutionLevel {
 			continue
 		}
 
-		if !options.IncludeJobLevel && event.Type == model.JobHistoryTypeJobLevel {
+		if options.ExcludeJobLevel && event.Type == model.JobHistoryTypeJobLevel {
 			continue
 		}
 
