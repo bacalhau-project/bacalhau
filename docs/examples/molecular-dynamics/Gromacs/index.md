@@ -1,4 +1,9 @@
-# Molecular Dynamics with Bacalhau
+---
+sidebar_label: "Gromacs"
+sidebar_position: 4
+---
+
+# Gromacs
 
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/Gromacs/BIDS/index.ipynb)
@@ -7,15 +12,15 @@
 
 ## Introduction
 
-GROMACS is a package for high-performance molecular dynamics and output analysis.
-
-Molecular dynamics is a computer simulation method for analyzing the physical movements of atoms and molecules
+GROMACS is a package for high-performance molecular dynamics and output analysis. Molecular dynamics is a computer simulation method for analyzing the physical movements of atoms and molecules
 
 In this example we will make use of [gmx pdb2gmx](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html#description) program to add hydrogens to the molecules and generates coordinates in Gromacs (Gromos) format and a topology in Gromacs format
 
+## TD;LR
+Running Gromacs package with Bacalhau
 
 
-### **Downloading datasets**
+### Downloading datasets
 
 Datasets can be found here [https://www.rcsb.org](https://www.rcsb.org), In this example we use [RCSB PDB - 1AKI](https://www.rcsb.org/structure/1AKI) dataset. After downloading place it in a folder called “input”
 
@@ -26,7 +31,7 @@ input
 ```
 
 
-### **Uploading the datasets to IPFS**
+### Uploading the datasets
 
 Upload the directory to IPFS using IPFS CLI ([Installation Instructions](https://docs.ipfs.tech/install/command-line/#official-distributions)) [Not recommended]
 
@@ -38,20 +43,12 @@ added QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9 input
  113.59 KiB / 113.59 KiB [============================================================================================] 100.00%
 ```
 
-Copy the CID in the end which is `QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9 `
-
-Upload the directory to IPFS using [Pinata](https://app.pinata.cloud/) (Recommended)
-
-Click on the upload folder button and select the datasets folder that you want to upload
-![](https://i.imgur.com/TfNP9Lv.png)
-
-After the Upload has finished copy the CID (highlighted part)
-
-![](https://i.imgur.com/WO6QlN4.png)
+Copy the CID in the end which is `QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9 ` Upload the directory to IPFS using [Pinata](https://app.pinata.cloud/) (Recommended)
 
 
 
-#### **Running the command on Bacalhau**
+
+## Running Bacalhau Job
 
 This command converts coordinate files to topology and FF-compliant coordinate files:
 
@@ -150,12 +147,6 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    [90m12:19:36.609 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'ab354ccc-f02e-4262-ad0b-f33ec78803cc'...
-    2022/09/18 12:19:37 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-    [90m12:19:47.364 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m12:19:51.091 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/content/results'
-
-
 After the download has finished you should 
 see the following contents in results directory
 
@@ -164,8 +155,5 @@ see the following contents in results directory
 %%bash
 ls results/
 ```
-
-    shards	stderr	stdout	volumes
-
 
 Rach repository contains selfexplanatory results.

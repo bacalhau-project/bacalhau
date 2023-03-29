@@ -1,6 +1,6 @@
 ---
 sidebar_label: Stable Diffusion - GPU
-sidebar_position: 1
+sidebar_position: 6
 ---
 # Stable Diffusion on a GPU
 
@@ -10,6 +10,11 @@ sidebar_position: 1
 
 This example tutorial demonstrates how to use stable diffusion on a GPU and run it on the [Bacalhau](https://www.bacalhau.org/) network.[Stable Diffusion](https://github.com/CompVis/stable-diffusion) is a state of the art text-to-image model that generates images from text and was developed as an open source alternative to [DALL·E 2](https://openai.com/dall-e-2/). It is based on a [Diffusion Probabilistic Model](https://arxiv.org/abs/2102.09672) and uses a [Transformer](https://arxiv.org/abs/1706.03762) to generate images from text. 
 
+## TD;LR
+
+```
+bacalhau docker run --id-only --gpu 1 ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 -- python main.py --o ./outputs --p "meme about tensorflow"
+```
 ## Prerequisite
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)

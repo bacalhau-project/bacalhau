@@ -186,74 +186,6 @@ Let's run it!
 python bacalhau.py
 ```
 
-    submitting 10 jobs
-    job submitted: dead536c-286a-4632-9105-d4fdf81b9863
-    job submitted: 42dabff1-4116-46df-9be7-5b2fc015a3fe
-    job submitted: 82f1f934-8acd-4e56-919f-f09928323b19
-    job submitted: 3cbc3334-d3a2-4980-8bad-4e4347814040
-    job submitted: 2d2c3b70-2739-49b0-b8af-05236a836630
-    job submitted: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
-    job submitted: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
-    job submitted: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
-    job submitted: e8d83d77-ea16-41fb-8c20-7e2e809a187b
-    job submitted: b6b49a8b-6145-4728-a16b-f3e657464e67
-    waiting for jobs to complete...
-    job not completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe - Waiting
-    job not completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4 - Waiting
-    job not completed: 82f1f934-8acd-4e56-919f-f09928323b19 - Waiting
-    job not completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3 - Waiting
-    job not completed: dead536c-286a-4632-9105-d4fdf81b9863 - Waiting
-    job not completed: 2d2c3b70-2739-49b0-b8af-05236a836630 - Waiting
-    job not completed: 3cbc3334-d3a2-4980-8bad-4e4347814040 - Waiting
-    job not completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02 - Waiting
-    job not completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b - Waiting
-    job not completed: b6b49a8b-6145-4728-a16b-f3e657464e67 - Waiting
-    0/10 jobs completed
-    job not completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3 - Waiting
-    job not completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02 - Waiting
-    job not completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4 - Waiting
-    job not completed: 2d2c3b70-2739-49b0-b8af-05236a836630 - Waiting
-    job not completed: 82f1f934-8acd-4e56-919f-f09928323b19 - Waiting
-    job not completed: dead536c-286a-4632-9105-d4fdf81b9863 - Waiting
-    job not completed: 3cbc3334-d3a2-4980-8bad-4e4347814040 - Waiting
-    job completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe
-    job not completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b - Waiting
-    job not completed: b6b49a8b-6145-4728-a16b-f3e657464e67 - Waiting
-    1/10 jobs completed
-    job completed: 42dabff1-4116-46df-9be7-5b2fc015a3fe
-    job completed: dead536c-286a-4632-9105-d4fdf81b9863
-    job completed: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
-    job completed: 3cbc3334-d3a2-4980-8bad-4e4347814040
-    job completed: 82f1f934-8acd-4e56-919f-f09928323b19
-    job completed: 2d2c3b70-2739-49b0-b8af-05236a836630
-    job completed: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
-    job completed: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
-    job completed: b6b49a8b-6145-4728-a16b-f3e657464e67
-    job completed: e8d83d77-ea16-41fb-8c20-7e2e809a187b
-    all jobs completed, saving results...
-    getting results for job: dead536c-286a-4632-9105-d4fdf81b9863
-    getting results for job: 82f1f934-8acd-4e56-919f-f09928323b19
-    getting results for job: 2d2c3b70-2739-49b0-b8af-05236a836630
-    getting results for job: 3cbc3334-d3a2-4980-8bad-4e4347814040
-    getting results for job: 42dabff1-4116-46df-9be7-5b2fc015a3fe
-    getting results for job: c399b0c9-0f9c-4d74-afc0-f8cfcecc8d02
-    getting results for job: 7289b1ee-5863-4274-ae0f-4db0ac2dd3b3
-    getting results for job: fb5ddaa5-d0ca-4c77-8bb3-a5af78a327f4
-    getting results for job: e8d83d77-ea16-41fb-8c20-7e2e809a187b
-    getting results for job: b6b49a8b-6145-4728-a16b-f3e657464e67
-    finished saving results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpacgvy7wu/combined_results/outputs/transactions_00000000_00049999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp05iwhtpp/combined_results/outputs/transactions_00050000_00099999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp6t87xlzc/combined_results/outputs/transactions_00100000_00149999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp75fer_gp/combined_results/outputs/transactions_00150000_00199999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmphpikbnbj/combined_results/outputs/transactions_00200000_00249999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp8951a72p/combined_results/outputs/transactions_00250000_00299999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp9baglzje/combined_results/outputs/transactions_00300000_00349999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpa13amd3g/combined_results/outputs/transactions_00350000_00399999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmp4v6lqc80/combined_results/outputs/transactions_00400000_00449999.csv to results
-    moving /var/folders/kr/pl4p96k11b55hp5_p9l_t8kr0000gn/T/tmpqgm5ka1s/combined_results/outputs/transactions_00450000_00499999.csv to results
-
-
 Hopefully the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see csv files:
 
 
@@ -261,19 +193,6 @@ Hopefully the results directory contains all the combined results from the jobs 
 %%bash
 ls -l results
 ```
-
-    total 40
-    -rw-r--r-- 3 phil staff  55 Jan 12 13:48 transactions_00000000_00049999.csv
-    -rw-r--r-- 3 phil staff 387 Jan 12 13:49 transactions_00050000_00099999.csv
-    -rw-r--r-- 3 phil staff 388 Jan 12 13:50 transactions_00100000_00149999.csv
-    -rw-r--r-- 3 phil staff 426 Jan 12 13:48 transactions_00150000_00199999.csv
-    -rw-r--r-- 3 phil staff 393 Jan 12 13:49 transactions_00200000_00249999.csv
-    -rw-r--r-- 3 phil staff 384 Jan 12 13:48 transactions_00250000_00299999.csv
-    -rw-r--r-- 3 phil staff 421 Jan 12 13:48 transactions_00300000_00349999.csv
-    -rw-r--r-- 3 phil staff 390 Jan 12 13:48 transactions_00350000_00399999.csv
-    -rw-r--r-- 3 phil staff 347 Jan 12 13:48 transactions_00400000_00449999.csv
-    -rw-r--r-- 3 phil staff 386 Jan 12 13:48 transactions_00450000_00499999.csv
-
 
 Success! We've now executed a bunch of jobs in parallel using Python. This is a great way to execute lots of jobs in a repeatable manner. You can alter the file above for your purposes.
 

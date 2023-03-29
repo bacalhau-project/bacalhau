@@ -1,6 +1,6 @@
 ---
 sidebar_label: "DuckDB"
-sidebar_position: 1
+sidebar_position: 3
 ---
 # Using Bacalhau with DuckDB
 
@@ -21,6 +21,8 @@ DuckDB is suited for the following use cases:
 In this example tutorial, we will show how to use DuckDB with Bacalhau. The advantage of using DuckDB with Bacalhau is that you don’t need to install,  there is no need to download the datasets since the datasets are
 already there on IPFS or on the web.
 
+## TD;lR
+Running a relational database(DUCKDB) on Bacalhau
 
 ## Prerequisites
 

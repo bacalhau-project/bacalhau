@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Oceanography - Data Conversion"
-sidebar_position: 10
+sidebar_position: 5
 description: "Oceanography data conversion with Bacalhau"
 ---
 # Oceanography - Data Conversion
@@ -12,6 +12,9 @@ description: "Oceanography data conversion with Bacalhau"
 The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO2 in seawater around the globe. But to calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to the partial pressure of CO2. We will convert the units by combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
 
 In this example tutorial, we will investigate the data and convert the workload so that it can be executed on the Bacalhau network, to take advantage of the distributed storage and compute resources.
+
+## TD;LR
+Running oceanography dataseet with Bacalhau
 
 ## Prerequisites
 

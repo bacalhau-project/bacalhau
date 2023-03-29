@@ -1,6 +1,6 @@
 ---
-sidebar_label: "Rust - WASM"
-sidebar_position: 15
+sidebar_label: "Rust WASM"
+sidebar_position: 10
 ---
 # Running Rust programs as WebAssembly (WASM)
 
@@ -10,14 +10,17 @@ sidebar_position: 15
 
 Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org/) program rather than using a Docker container. This examples demonstrates how to compile a [Rust](https://www.rust-lang.org/) project into WebAssembly and run the program on Bacalhau.
 
+## TD;LR
+Run WASM job on Bacalhau
+
 ### Prerequisites
 
-* You'll need the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
+* To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 * A working Rust installation with the `wasm32-wasi` target. For example, you can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets.
 
 For those using the notebook, these are installed in hidden cells below.
 
-## 1. Develop a Rust Program Locally
+## Develop a Rust Program Locally
 
 We can use `cargo` (which will have been installed by `rustup`) to start a new project and compile it. 
 
@@ -26,9 +29,6 @@ We can use `cargo` (which will have been installed by `rustup`) to start a new p
 %%bash
 cargo init my-program
 ```
-
-         Created binary (application) package
-
 
 We can then write a Rust program. Rust programs that run on Bacalhau can read and write files, access a simple clock and make use of psudeo-random numbers. They cannot memory-map files or run code on multiple threads.
 
@@ -100,9 +100,6 @@ fn main() {
 }
 ```
 
-    Overwriting ./my-program/src/main.rs
-
-
 We also need to install the `imageproc` and `image` libraries and switch off the default features to make sure that multi-threading is disabled.
 
 
@@ -134,60 +131,9 @@ We can now build the Rust program into a WASM blob using `cargo`.
 cd my-program && cargo build --target wasm32-wasi --release
 ```
 
-        Updating crates.io index
-       Compiling autocfg v1.1.0
-       Compiling cfg-if v1.0.0
-       Compiling getrandom v0.1.16
-       Compiling bytemuck v1.12.3
-       Compiling wasi v0.9.0+wasi-snapshot-preview1
-       Compiling adler v1.0.2
-       Compiling crc32fast v1.3.2
-       Compiling typenum v1.15.0
-       Compiling ppv-lite86 v0.2.17
-       Compiling miniz_oxide v0.5.4
-       Compiling safe_arch v0.6.0
-       Compiling miniz_oxide v0.6.2
-       Compiling wide v0.7.5
-       Compiling num-traits v0.2.15
-       Compiling num-integer v0.1.45
-       Compiling num-bigint v0.4.3
-       Compiling num-rational v0.4.1
-       Compiling rand_core v0.5.1
-       Compiling num-iter v0.1.43
-       Compiling flate2 v1.0.24
-       Compiling rand_chacha v0.2.2
-       Compiling bitflags v1.3.2
-       Compiling ttf-parser v0.15.2
-       Compiling paste v1.0.9
-       Compiling rawpointer v0.2.1
-       Compiling matrixmultiply v0.3.2
-       Compiling png v0.17.7
-       Compiling num-complex v0.4.2
-       Compiling approx v0.5.1
-       Compiling simba v0.7.3
-       Compiling rand v0.7.3
-       Compiling color_quant v1.1.0
-       Compiling either v1.8.0
-       Compiling byteorder v1.4.3
-       Compiling ab_glyph_rasterizer v0.1.7
-       Compiling jpeg-decoder v0.3.0
-       Compiling custom_derive v0.1.7
-       Compiling owned_ttf_parser v0.15.2
-       Compiling conv v0.3.3
-       Compiling rusttype v0.9.3
-       Compiling image v0.24.5
-       Compiling num v0.4.0
-       Compiling rand_distr v0.2.2
-       Compiling itertools v0.10.5
-       Compiling nalgebra v0.30.1
-       Compiling imageproc v0.23.0
-       Compiling my-program v0.1.0 (/Users/phil/source/bacalhau-project/examples/workload-onboarding/rust-wasm/my-program)
-        Finished release [optimized] target(s) in 17.81s
-
-
 This will generate a WASM file at `./my-program/target/wasm32-wasi/my-program.wasm` which can now be run on Bacalhau.
 
-## 2. Running WASM on Bacalhau
+## Running WASM on Bacalhau
 Now that we have a WASM binary, we can upload it to IPFS and use it as input to a Bacalhau job.
 
 The -v switch allows specifying an IPFS CID to mount as a named volume in the job. There is also a -u switch which can download inputs via HTTP.
@@ -201,23 +147,6 @@ bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start
     -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
 
-    Uploading "./my-program/target/wasm32-wasi/release/my-program.wasm" to server to execute command in context, press Ctrl+C to cancel
-    Job successfully submitted. Job ID: 702cb81f-cf50-4d4f-b60d-b06e62f36de3
-    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
-    
-    	       Creating job for submission ... done ✅
-    	       Finding node(s) for the job ... done ✅
-    	             Node accepted the job ... done ✅
-    	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... Job Results By Node:
-    
-    To download the results, execute:
-      bacalhau get 702cb81f-cf50-4d4f-b60d-b06e62f36de3
-    
-    To get more details about the run, execute:
-      bacalhau describe 702cb81f-cf50-4d4f-b60d-b06e62f36de3
-
-
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.
 
 
@@ -227,33 +156,12 @@ rm -rf wasm_results && mkdir -p wasm_results
 bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
 
-    Fetching results of job '702cb81f-cf50-4d4f-b60d-b06e62f36de3'...
-    Results for job '702cb81f-cf50-4d4f-b60d-b06e62f36de3' have been written to...
-    wasm_results
-
-
-    11:05:14.218 | ??? providerquerymanager/providerquerymanager.go:344 > ERROR bitswap Received provider (12D3KooWGE4R98vokeLsRVdTv8D6jhMnifo81mm7NMRV8WJPNVHb) for cid (QmaxyTrc3zSb6ggUVYgXb9yxVJZ9cXv6Y6u55Czm2eqaWD) not requested
-    
-
+## Viewing Job Output
 
 
 ```python
 import IPython.display as display
 display.Image("./wasm_results/combined_results/outputs/original.png")
-```
-
-
-
-
-    
-![png](index_files/index_16_0.png)
-    
-
-
-
-
-```python
-display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
 ```
 
 
@@ -267,7 +175,7 @@ display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
 
 
 ```python
-display.Image("./wasm_results/combined_results/outputs/shrunk.png")
+display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
 ```
 
 
@@ -275,6 +183,20 @@ display.Image("./wasm_results/combined_results/outputs/shrunk.png")
 
     
 ![png](index_files/index_18_0.png)
+    
+
+
+
+
+```python
+display.Image("./wasm_results/combined_results/outputs/shrunk.png")
+```
+
+
+
+
+    
+![png](index_files/index_19_0.png)
     
 
 

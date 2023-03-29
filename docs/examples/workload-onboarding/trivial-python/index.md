@@ -1,6 +1,6 @@
 ---
-sidebar_label: "Python Script"
-sidebar_position: 1
+sidebar_label: "Python File"
+sidebar_position: 12
 description: How to run a Python file hosted on Bacalhau
 ---
 # Running a Python Script
@@ -86,14 +86,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir results
 bacalhau get ${JOB_ID} --output-dir results
 ```
-
-    Fetching results of job 'c2f245d6-43a6-43ec-9a3b-7ce9b6242c88'...
-    Results for job 'c2f245d6-43a6-43ec-9a3b-7ce9b6242c88' have been written to...
-    results
-
-
-    2023/01/20 13:25:06 CleanupManager.fnsMutex violation CRITICAL section took 43.424ms 43424000 (threshold 10ms)
-
 
 ## Viewing your Job Output
 

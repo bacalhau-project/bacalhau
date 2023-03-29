@@ -1,5 +1,9 @@
-# Running Genomics on Bacalhau
+---
+sidebar_label: Genomics
+sidebar_position: 3
+---
 
+# Running Genomics on Bacalhau
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/Genomics/BIDS/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=miscellaneous/Genomics/index.ipynb)
@@ -8,6 +12,9 @@
 # Introduction
 
 Kipoi _(pronounce: kípi; from the Greek κήποι: gardens)_ is an API and a repository of ready-to-use trained models for genomics. It currently contains 2201 different models, covering canonical predictive tasks in transcriptional and post-transcriptional gene regulation. Kipoi's API is implemented as a [python package](https://github.com/kipoi/kipoi) and it is also accessible from the command line.
+
+## TD;lR
+Running genomics model on Bacalhau
 
 
 ## Prerequisite

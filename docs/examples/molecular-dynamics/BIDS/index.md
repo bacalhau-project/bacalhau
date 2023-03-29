@@ -1,3 +1,8 @@
+---
+sidebar_label: BIDS
+sidebar_position: 1
+---
+
 # Running BIDS Apps on Bacalhau
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/miscellaneous/BIDS/index.ipynb)
@@ -5,6 +10,9 @@
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 In this example tutorial, we will look at how to run BIDS App on Bacalhau. BIDS (Brain Imaging Data Structure) is an emerging standard for organizing and describing neuroimaging datasets.  [BIDS App](https://bids-apps.neuroimaging.io/about/) is a container image capturing a neuroimaging pipeline that takes a BIDS formatted dataset as input. Each BIDS App has the same core set of command line arguments, making them easy to run and integrate into automated platforms. BIDS Apps are constructed in a way that does not depend on any software outside of the image other than the container engine.
+
+## TD;LR
+Running imaging data structure with Bacalhau
 
 ## Prerequisite
 

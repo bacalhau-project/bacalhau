@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Simulation with OpenMM"
-sidebar_position: 1
+sidebar_position: 5
 ---
 # Molecular Simulation with OpenMM and Bacalhau 
 
@@ -10,6 +10,8 @@ sidebar_position: 1
 
 In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. It is a physic based libraries that is useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
 
+## TD;LR
+Running OpenMM m molecular simulation with Bacalhau
 
 ## Prerequisite
 

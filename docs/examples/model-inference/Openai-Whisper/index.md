@@ -1,6 +1,9 @@
+---
+sidebar_label: Speech Recognition using Whisper
+sidebar_position: 3
+---
+
 # Speech Recognition using Whisper
-
-
 
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/DuckDB/index.ipynb)
@@ -11,7 +14,8 @@ Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours
 
 The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of Videos, Audio for automatic speech recognition, Using our sharding feature you can do distributed inference very easily and if you have the data stored on IPFS you don't need to move the data you can do compute where the data is located, and the cost of compute is much cheaper than managed services 
 
-## Prerequisites
+## TD:LR
+Using OpenAI whisper with Bacalhau to process audio files
 
 ## Prerequisite
 

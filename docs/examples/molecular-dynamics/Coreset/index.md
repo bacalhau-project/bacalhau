@@ -1,3 +1,8 @@
+---
+sidebar_label: Coresets On Bacalhau 
+sidebar_position: 2
+---
+
 # Coresets On Bacalhau 
 
 
@@ -8,6 +13,9 @@
 [Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets. In this case, we use the coreset method which can lead to a fast speed in solving the k-means problem among the big data with high accuracy in the meantime.
 
 We construct a small coreset for arbitrary shapes of numerical data with a decent time cost. The implementation was mainly based on the coreset construction algorithm that was proposed by Braverman et al. (SODA 2021).
+
+## TD:LR
+Running compressed dataset with Bacalhau
 
 
 ## Running Locally

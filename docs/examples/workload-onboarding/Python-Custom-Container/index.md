@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Python-Custom-Container"
+sidebar_label: "Python Custom Container"
 sidebar_position: 5
 ---
 # Building and Running Custom Python  Container
@@ -13,6 +13,9 @@ sidebar_position: 5
 
 
 In this tutorial example, we will walk you through building your own docker container and running the container on the bacalhau network.
+
+## TD;LR
+Running python container on Bacalhau
 
 ## Prerequisites
 

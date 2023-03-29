@@ -1,5 +1,5 @@
 ---
-sidebar_label: "R-Custom Container"
+sidebar_label: "R Custom Container"
 sidebar_position: 8
 ---
 # Building and Running your Custom R Containers on Bacalhau

@@ -1,6 +1,6 @@
 ---
 sidebar_label: Ethereum Blockchain Analysis
-sidebar_position: 3
+sidebar_position: 1
 ---
 # Ethereum Blockchain Analysis with Ethereum-ETL and Bacalhau
 
@@ -13,6 +13,9 @@ Mature blockchains are difficult to analyze because of their size. Ethereum-ETL 
 For this example, we ran an Ethereum node for a week and allowed it to synchronise. We then ran ethereum-etl to extract the information and pinned it on Filecoin. This means that we can both now access the data without having to run another ethereum node.
 
 But there's still a lot of data and these types of analyses typically need repeating or refining. So it makes absolute sense to use a decentralised network like Bacalhau to process the data in a scalable way.
+
+## TD;LR
+Runnning Ethereum-etl tool on Bacalhau to extract Ethereum node.
 
 ### Prerequisite
 

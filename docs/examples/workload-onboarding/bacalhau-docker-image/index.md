@@ -11,6 +11,9 @@ description: How to use the Bacalhau Docker image
 
 This example shows you how to run some common client-side Bacalhau tasks using the Bacalhau Docker image.
 
+## TD;LR
+Running Docker image on Bacalhau
+
 ## Prerequisites
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)

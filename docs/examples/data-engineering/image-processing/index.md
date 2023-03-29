@@ -1,6 +1,6 @@
 ---
 sidebar_label: Simple Image Processing
-sidebar_position: 1
+sidebar_position: 4
 description: "How to process images stored in IPFS with Bacalhau"
 ---
 # Simple Image Processing
@@ -12,6 +12,9 @@ description: "How to process images stored in IPFS with Bacalhau"
 In this example tutorial, we will show you how to use Bacalhau to process images on a [Landsat dataset](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72/). 
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
+
+## TD;LR
+Processing of images from a dataset using Bacalhau
 
 ## Prerequisite
 

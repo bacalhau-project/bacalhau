@@ -1,6 +1,6 @@
 ---
 sidebar_label: "EasyOCR"
-sidebar_position: 10
+sidebar_position: 1
 ---
 # EasyOCR (Optical Character Recognition) on bacalhau
 
@@ -13,7 +13,7 @@ sidebar_position: 10
 In this example tutorial, we use Bacalhau and Easy OCR to digitize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pretrained models or use your own fine tuned model.
 
 ## TD:LR
-Using Bacalhau and Easy OCR to extract text data from images stored on IPFS/Filecoin or on the web.
+Using Bacalhau and Easy OCR to extract text data from images stored on the web.
 
 ## Prerequisite
 

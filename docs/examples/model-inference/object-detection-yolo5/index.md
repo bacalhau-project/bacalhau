@@ -1,6 +1,6 @@
 ---
 sidebar_label: Object Detection - YOLOv5
-sidebar_position: 3
+sidebar_position: 2
 ---
 # Object Detection with YOLOv5 on Bacalhau
 
@@ -14,11 +14,14 @@ Traditionally, models like YOLO required enormous amounts of training data to yi
 
 In this tutorial you will perform an end-to-end object detection inference, using the [YOLOv5 Docker Image developed by Ultralytics.](https://github.com/ultralytics/yolov5/wiki/Docker-Quickstart)
 
-### Prerequisites
+## TD;LR
+Performing object detection inference using Yolov5 and Bacalhau
 
-* You'll need the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
+## Prerequisite
 
-## 1. Running Object Detection Jobs on Bacalhau
+To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
+
+## Running Object Detection Jobs on Bacalhau
 
 Bacalhau is a highly scalable decentralised computing platform and is well suited to running massive object detection jobs. In this example, you can take advantage of the GPUs available on the Bacalhau network.
 
@@ -64,18 +67,27 @@ ultralytics/yolov5:v6.2 \
 This should output a UUID (like `59c59bfb-4ef8-45ac-9f4b-f0e9afd26e70`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
+## Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
+
 
 ```bash
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 15:53:15 [0m[97;40m b1e831bb [0m[97;40m Docker ultralytics/y... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmdPzJLDZeepW2... [0m
+When it says `Completed`, that means the job is done, and we can get the results.
+
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
+```bash
+%%bash
+bacalhau describe ${JOB_ID}
+```
 
-Where it says `Completed`, that means the job is done, and we can get the results. If it says `Error` you can debug the issue with the `bacalhau describe ${JOB_ID}` command.
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -84,10 +96,7 @@ rm -rf results && mkdir results
 bacalhau get ${JOB_ID} --output-dir results
 ```
 
-    Fetching results of job 'b1e831bb-2ca0-4663-bc7b-fe3c3cd179d8'...
-    Results for job 'b1e831bb-2ca0-4663-bc7b-fe3c3cd179d8' have been written to...
-    results
-
+## Viewing Output
 
 After the download has finished we can see the results:
 
@@ -97,17 +106,6 @@ import IPython.display as display
 display.Image("results/combined_results/outputs/exp/bus.jpg")
 display.Image("results/combined_results/outputs/exp/zidane.jpg")
 ```
-
-
-
-
-    
-![jpeg](index_files/index_9_0.jpg)
-    
-
-
-
-Football makes people angry!
 
 ## Using custom Images as an input
 
@@ -134,15 +132,19 @@ ultralytics/yolov5:v6.2 \
 -- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source /datasets --project /outputs'
 ```
 
+When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
+
+### Checking the State of your Jobs
+
+- **Job status**: You can check the status of the job using `bacalhau list`. 
+
 
 ```bash
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
 
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 16:03:34 [0m[97;40m 7e2c5c13 [0m[97;40m Docker ultralytics/y... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmYbEH1wkfq9RM... [0m
-
+- **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
 
 ```bash
@@ -151,10 +153,7 @@ rm -rf custom-results && mkdir custom-results
 bacalhau get ${JOB_ID} --output-dir custom-results
 ```
 
-    Fetching results of job '7e2c5c13-40e6-473d-a76b-229416c3c04e'...
-    Results for job '7e2c5c13-40e6-473d-a76b-229416c3c04e' have been written to...
-    custom-results
-
+### Viewing Job Output
 
 
 ```python
@@ -163,63 +162,3 @@ from IPython.display import Image, display
 for file in glob.glob('custom-results/combined_results/outputs/exp/*.jpg'):
     display(Image(filename=file))
 ```
-
-
-    
-![jpeg](index_files/index_15_0.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_1.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_2.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_3.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_4.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_5.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_6.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_7.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_8.jpg)
-    
-
-
-
-    
-![jpeg](index_files/index_15_9.jpg)
-    
-
