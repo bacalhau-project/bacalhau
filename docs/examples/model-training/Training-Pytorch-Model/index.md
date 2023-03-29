@@ -12,7 +12,7 @@ In this example tutorial, we will show you how to train a Pytorch RNN MNIST neur
 
 ## TD;LR
 
-Running any tpye of Pytorch models with Bacalhau
+Running any type of Pytorch models with Bacalhau
 
 ## Prerequisite
 

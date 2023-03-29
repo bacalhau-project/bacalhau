@@ -15,7 +15,7 @@ For this example, we ran an Ethereum node for a week and allowed it to synchroni
 But there's still a lot of data and these types of analyses typically need repeating or refining. So it makes absolute sense to use a decentralised network like Bacalhau to process the data in a scalable way.
 
 ## TD;LR
-Runnning Ethereum-etl tool on Bacalhau to extract Ethereum node.
+Running Ethereum-etl tool on Bacalhau to extract Ethereum node.
 
 ### Prerequisite
 
