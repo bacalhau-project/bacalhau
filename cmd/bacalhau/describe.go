@@ -114,7 +114,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, innerErr := GetAPIClient().GetEvents(ctx, j.Job.Metadata.ID)
+		jobEvents, innerErr := GetAPIClient().GetEvents(ctx, j.Job.Metadata.ID, "")
 		if innerErr != nil {
 			Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Job.Metadata.ID, innerErr), 1)
 		}
