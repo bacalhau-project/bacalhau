@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -45,7 +46,8 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 		return nil, err
 	}
 
-	if err := dockerClient.PullImage(ctx, image); err != nil {
+	creds := config.GetDockerCredentials()
+	if err := dockerClient.PullImage(ctx, image, creds); err != nil {
 		closer.CloseWithLogOnError("docker", dockerClient)
 		return nil, err
 	}
