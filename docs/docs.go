@@ -1635,6 +1635,20 @@ const docTemplate = `{
                 }
             }
         },
+        "publicapi.EventFilterOptions": {
+            "type": "object",
+            "properties": {
+                "exclude_execution_level": {
+                    "type": "boolean"
+                },
+                "exclude_job_level": {
+                    "type": "boolean"
+                },
+                "since": {
+                    "type": "integer"
+                }
+            }
+        },
         "publicapi.VersionRequest": {
             "type": "object",
             "properties": {
@@ -1693,14 +1707,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
                 },
+                "filters": {
+                    "description": "Records the number of seconds since the unix epoch (UTC)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/publicapi.EventFilterOptions"
+                        }
+                    ]
+                },
                 "job_id": {
                     "type": "string",
                     "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "since": {
-                    "description": "Records the number of seconds since the unix epoch (UTC)",
-                    "type": "integer",
-                    "example": 1679933805
                 }
             }
         },
