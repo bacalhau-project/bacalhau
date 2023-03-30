@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -614,10 +613,11 @@ To get more information at any time, run:
 
 	var lastSeenTimestamp int64 = 0
 	for !cmdShuttingDown {
-		// TODO: This would be more useful if we could GetEvents since t, which
-		// would be the timestamp recorded on a previous event (to avoid clock
-		// issues).
-		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, strconv.FormatInt(lastSeenTimestamp, 10))
+		// Get the job level history events that happened since the last one we saw
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
+			Since:                 lastSeenTimestamp,
+			ExcludeExecutionLevel: true,
+		})
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 				// We're done, the user canceled the job
