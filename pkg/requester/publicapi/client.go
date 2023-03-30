@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -201,7 +200,10 @@ func (apiClient *RequesterAPIClient) GetJobStateResolver() *job.StateResolver {
 	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
-func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string, since string) (events []model.JobHistory, err error) {
+func (apiClient *RequesterAPIClient) GetEvents(
+	ctx context.Context,
+	jobID string,
+	options EventFilterOptions) (events []model.JobHistory, err error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
 	defer span.End()
 
@@ -212,15 +214,7 @@ func (apiClient *RequesterAPIClient) GetEvents(ctx context.Context, jobID string
 	req := eventsRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
-		Since:    0, // default to the start of time
-	}
-
-	if since != "" {
-		sinceVal, err := strconv.ParseInt(since, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse '%s' as unix timestamp", since)
-		}
-		req.Since = sinceVal
+		Options:  options,
 	}
 
 	// Test if the context has been canceled before making the request.

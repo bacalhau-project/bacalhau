@@ -614,7 +614,7 @@ To get more information at any time, run:
 
 	time.Sleep(1 * time.Second)
 
-	jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, "")
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{})
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Metadata.ID, err), 1)
 	}
@@ -758,7 +758,7 @@ To get more information at any time, run:
 			signalChan <- os.Interrupt
 			break
 		} else {
-			jobEvents, err = GetAPIClient().GetEvents(ctx, j.Metadata.ID, "")
+			jobEvents, err = GetAPIClient().GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{})
 			if err != nil {
 				if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 					// We're done, the user canceled the job

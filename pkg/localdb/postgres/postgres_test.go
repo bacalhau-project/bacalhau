@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -32,7 +33,7 @@ func TestPostgresSuite(t *testing.T) {
 		assert.NoError(t, client.Close())
 	})
 
-	require.NoError(t, client.PullImage(ctx, "postgres"))
+	require.NoError(t, client.PullImage(ctx, "postgres", config.GetDockerCredentials()))
 	c, err := client.ContainerCreate(ctx, &container.Config{
 		Image:        "postgres",
 		ExposedPorts: map[nat.Port]struct{}{},

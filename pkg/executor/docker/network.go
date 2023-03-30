@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/docker/docker/api/types"
@@ -97,7 +98,7 @@ func (e *Executor) createHTTPGateway(
 	job model.Job,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage)
+	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error pulling gateway image")
 	}
