@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/env"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/exit_code"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/logtest"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
 )
 
@@ -229,6 +230,29 @@ var WasmDynamicLink = Scenario{
 	},
 }
 
+var WasmLogTest = Scenario{
+	Inputs: StoredFile(
+		"../../../testdata/wasm/logtest/inputs/",
+		"/inputs",
+	),
+	ResultsChecker: FileContains(
+		"stdout",
+		"https://www.gutenberg.org", // end of the file
+		5217,                        //nolint:gomnd // magic number appropriate for test
+	),
+	Spec: model.Spec{
+		Engine: model.EngineWasm,
+		Wasm: model.JobSpecWasm{
+			EntryPoint:  "_start",
+			EntryModule: InlineData(logtest.Program()),
+			Parameters: []string{
+				"inputs/cosmic_computer.txt",
+				"--slow",
+			},
+		},
+	},
+}
+
 func GetAllScenarios() map[string]Scenario {
 	return map[string]Scenario{
 		"cat_file_to_stdout": CatFileToStdout,
@@ -236,6 +260,7 @@ func GetAllScenarios() map[string]Scenario {
 		"grep_file":          GrepFile,
 		"sed_file":           SedFile,
 		"awk_file":           AwkFile,
+		"logtest":            WasmLogTest,
 		"wasm_hello_world":   WasmHelloWorld,
 		"wasm_env_vars":      WasmEnvVars,
 		"wasm_csv_transform": WasmCsvTransform,

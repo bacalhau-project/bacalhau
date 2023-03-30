@@ -1,33 +1,31 @@
-use std::{env, thread, time};
-use std::process;
-use std::io::{BufRead, BufReader};
-use std::fs::File;
 use std::error::Error;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::process;
+use std::{env, thread, time};
 
 const COLOR_RESET: &str = "\x1B[0m";
 const COLOR_RED: &str = "\x1B[31m";
 const COLOR_GREEN: &str = "\x1B[32m";
 
-
-// No rand()/srand() in std, and rather than add a dependency that may 
+// No rand()/srand() in std, and rather than add a dependency that may
 // possibly be problematic this just adds our own random number generator
-// using https://en.wikipedia.org/wiki/Linear_congruential_generator. 
-// 
+// using https://en.wikipedia.org/wiki/Linear_congruential_generator.
 struct LCG {
-    seed: u64, 
-    a: u64, 
-    c: u64, 
+    seed: u64,
+    a: u64,
+    c: u64,
     modulous: u64,
 }
 
 impl LCG {
     // New LCG using the Visual Basic starting params
     fn new(seed: u64) -> Self {
-        LCG {  
-            seed, 
-            a: 1140671485, 
-            c: 12820163, 
-            modulous: 16777216, 
+        LCG {
+            seed,
+            a: 1140671485,
+            c: 12820163,
+            modulous: 16777216,
         }
     }
 
@@ -37,44 +35,63 @@ impl LCG {
     }
 }
 
-
-fn logtest(path: &String) -> Result<(), Box<dyn Error>> {
+fn logtest(path: &String, pauser: Box<dyn Fn(&mut LCG)>) -> Result<(), Box<dyn Error>> {
     let file = File::open(path)?;
+    let mut lcg = LCG::new(12345);
 
-    let mut lcg = LCG::new(1234);
+    BufReader::new(file)
+        .lines()
+        .map(|line| line.unwrap())
+        .for_each(|line| {
+            if line.len() % 2 == 0 {
+                println!("{}{}", COLOR_GREEN, line);
+            } else {
+                eprintln!("{}{}", COLOR_RED, line);
+            };
 
-    BufReader::new(file).lines().map(
-        |line| 
-        line.unwrap() 
-    ).for_each(|line|  {
-        if line.len() % 2 == 0 {
-            println!("{}{}",COLOR_GREEN, line);
-        } else {
-            eprintln!("{}{}",COLOR_RED, line);
-        };
-
-        let duration = time::Duration::from_millis(lcg.next(400));        
-        thread::sleep(duration);
-    });
+            pauser(&mut lcg);
+        });
 
     Ok(())
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        let default = String::from("logtest");
-        let program_name = args.first().unwrap_or(&default);
-        eprintln!("Usage: {} input-txt", program_name);
-        process::exit(1);
-    } 
 
-    let input_path = &args[1];
-    if let Err(err) = logtest(input_path) {
+    let mut slow = false;
+    let file: String;
+
+    match args.len() {
+        2 => {
+            file = args[1].clone();
+        }
+        3 => {
+            file = args[1].clone();
+            slow = args[2] == "--slow";
+        }
+        _ => {
+            eprintln!("Usage: logtest input-txt [--slow]");
+            process::exit(1);
+        }
+    }
+
+    // Create a closure that will either do nothing, or if we specify
+    // --slow then will pause for up to 400ms between lines.
+    let mut pauser: Box<dyn Fn(&mut LCG)> = Box::new(|_lcg: &mut LCG| {});
+    if slow {
+        pauser = Box::new(|lcg: &mut LCG| {
+            let millis = lcg.next(400);
+            let duration = time::Duration::from_millis(millis);
+            thread::sleep(duration);
+        });
+    }
+
+    if let Err(err) = logtest(&file, pauser) {
         eprintln!("error: {}", err);
         process::exit(1);
     }
 
     println!("{}", COLOR_RESET);
 
-    process::exit(0)}
+    process::exit(0)
+}
