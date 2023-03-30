@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/BTBurke/k8sresource v1.2.0
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/XSAM/otelsql v0.20.0
 	github.com/antihax/optional v1.0.0
@@ -42,6 +43,7 @@ require (
 	github.com/ipld/go-car/v2 v2.7.0
 	github.com/ipld/go-codec-dagpb v1.6.0
 	github.com/ipld/go-ipld-prime v0.20.0
+	github.com/jackc/pgtype v1.6.2
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.7
@@ -87,6 +89,8 @@ require (
 	golang.org/x/crypto v0.6.0
 	golang.org/x/exp v0.0.0-20230223210539-50820d90acfd
 	golang.org/x/mod v0.7.0
+	gorm.io/driver/sqlite v1.4.4
+	gorm.io/gorm v1.24.0
 	k8s.io/apimachinery v0.26.1
 	k8s.io/kubectl v0.26.1
 	modernc.org/sqlite v1.20.2
@@ -100,8 +104,12 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
