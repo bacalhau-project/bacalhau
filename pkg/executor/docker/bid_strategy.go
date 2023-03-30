@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"go.uber.org/multierr"
@@ -27,7 +28,7 @@ func (s *imagePlatformBidStrategy) ShouldBid(
 	}
 
 	supported, serr := s.client.SupportedPlatforms(ctx)
-	platforms, ierr := s.client.ImagePlatforms(ctx, request.Job.Spec.Docker.Image)
+	platforms, ierr := s.client.ImagePlatforms(ctx, request.Job.Spec.Docker.Image, config.GetDockerCredentials())
 	err := multierr.Combine(serr, ierr)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{

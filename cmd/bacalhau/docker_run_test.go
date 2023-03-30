@@ -916,7 +916,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 
 	s.Len(info.State.Executions, 1)
 	s.Equal(model.ExecutionStateAskForBidRejected, info.State.Executions[0].State)
-	s.Contains(info.State.Executions[0].Status, `Could not pull image "@" - could be due to repo/image not existing`)
+	s.Contains(info.State.Executions[0].Status, `Could not inspect image "@" - could be due to repo/image not existing`)
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {

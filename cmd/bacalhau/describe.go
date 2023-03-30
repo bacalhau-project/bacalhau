@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -114,7 +115,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, innerErr := GetAPIClient().GetEvents(ctx, j.Job.Metadata.ID, "")
+		jobEvents, innerErr := GetAPIClient().GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
 		if innerErr != nil {
 			Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Job.Metadata.ID, innerErr), 1)
 		}
