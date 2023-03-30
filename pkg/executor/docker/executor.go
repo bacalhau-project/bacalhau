@@ -178,7 +178,8 @@ func (e *Executor) Run(
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image); pullErr != nil {
+		dockerCreds := config.GetDockerCredentials()
+		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image, dockerCreds); pullErr != nil {
 			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
 			return executor.FailResult(pullErr)
 		}

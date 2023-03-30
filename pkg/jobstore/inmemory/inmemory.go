@@ -142,7 +142,7 @@ func (d *JobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, 
 	return result, nil
 }
 
-func (d *JobStore) GetJobHistory(_ context.Context, jobID string, since time.Time) ([]model.JobHistory, error) {
+func (d *JobStore) GetJobHistory(_ context.Context, jobID string, options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	history, ok := d.history[jobID]
@@ -151,14 +151,24 @@ func (d *JobStore) GetJobHistory(_ context.Context, jobID string, since time.Tim
 	}
 
 	// We want to filter events to only those that happened after the timestamp provided
-	sinceTime := since.Unix()
+	sinceTime := options.Since
 	eventList := make([]model.JobHistory, 0, len(history))
 	for _, event := range history {
+		if options.ExcludeExecutionLevel && event.Type == model.JobHistoryTypeExecutionLevel {
+			continue
+		}
+
+		if options.ExcludeJobLevel && event.Type == model.JobHistoryTypeJobLevel {
+			continue
+		}
+
 		if event.Time.Unix() >= sinceTime {
 			eventList = append(eventList, event)
 		}
 	}
+
 	history = eventList
+	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })
 
 	return history, nil
 }

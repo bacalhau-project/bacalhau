@@ -3,21 +3,23 @@ package publicapi
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 )
 
 type eventsRequest struct {
-	ClientID string `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	JobID    string `json:"job_id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	Since    int64  `json:"since" example:"1679933805"` // Records the number of seconds since the unix epoch (UTC)
+	ClientID string             `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	JobID    string             `json:"job_id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	Options  EventFilterOptions `json:"filters"` // Records the number of seconds since the unix epoch (UTC)
 }
 
 type eventsResponse struct {
 	Events []model.JobHistory `json:"events"`
 }
+
+type EventFilterOptions = jobstore.JobHistoryFilterOptions
 
 // events godoc
 //
@@ -45,7 +47,7 @@ func (s *RequesterAPIServer) events(res http.ResponseWriter, req *http.Request) 
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
 	ctx := req.Context()
-	events, err := s.jobStore.GetJobHistory(ctx, eventsReq.JobID, time.Unix(eventsReq.Since, 0))
+	events, err := s.jobStore.GetJobHistory(ctx, eventsReq.JobID, eventsReq.Options)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
