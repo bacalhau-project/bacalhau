@@ -37,7 +37,7 @@ impl LCG {
 
 fn logtest(path: &String, pauser: Box<dyn Fn(&mut LCG)>) -> Result<(), Box<dyn Error>> {
     let file = File::open(path)?;
-    let mut lcg = LCG::new(12345);
+    let mut lcg = LCG::new(&file as *const _ as u64);
 
     BufReader::new(file)
         .lines()
