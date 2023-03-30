@@ -33,6 +33,9 @@ import (
 const ImagePullError = `Could not pull image %q - could be due to repo/image not existing, ` +
 	`or registry needing authorization`
 
+const DistributionInspectError = `Could not inspect image %q - could be due to repo/image not existing, ` +
+	`or registry needing authorization`
+
 type Client struct {
 	tracing.TracedClient
 }
@@ -207,10 +210,11 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) ImagePlatforms(ctx context.Context, image string) ([]v1.Platform, error) {
-	distribution, err := c.DistributionInspect(ctx, image)
+func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
+	authToken := getAuthToken(ctx, image, dockerCreds)
+	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, errors.Wrapf(err, ImagePullError, image)
+		return nil, errors.Wrapf(err, DistributionInspectError, image)
 	}
 
 	return distribution.Platforms, nil
@@ -252,27 +256,8 @@ func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config
 
 	log.Ctx(ctx).Debug().Str("image", image).Msg("Pulling image as it wasn't found")
 
-	pullOptions := types.ImagePullOptions{}
-	if dockerCreds.IsValid() {
-		// We only currently support auth for the default registry, so any
-		// pulls for `image` or `user/image` should be okay, anything trying
-		// to pull `repo/user/image` should not.
-		if strings.Count(image, "/") < 2 {
-			authConfig := types.AuthConfig{
-				Username: dockerCreds.Username,
-				Password: dockerCreds.Password,
-			}
-
-			encodedJSON, err := json.Marshal(authConfig)
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("failed to encode docker credentials")
-			} else {
-				log.Ctx(ctx).Info().Msg("authenticated pull from docker registry")
-				pullOptions.RegistryAuth = base64.URLEncoding.EncodeToString(encodedJSON)
-			}
-		} else {
-			log.Ctx(ctx).Info().Msg("cannot authenticate for custom registry")
-		}
+	pullOptions := types.ImagePullOptions{
+		RegistryAuth: getAuthToken(ctx, image, dockerCreds),
 	}
 
 	output, err := c.ImagePull(ctx, image, pullOptions)
@@ -355,4 +340,30 @@ func logImagePullStatus(ctx context.Context, m *sync.Map) {
 	}
 
 	e.Msg("Pulling layers")
+}
+
+func getAuthToken(ctx context.Context, image string, dockerCreds config.DockerCredentials) string {
+	if dockerCreds.IsValid() {
+		// We only currently support auth for the default registry, so any
+		// pulls for `image` or `user/image` should be okay, anything trying
+		// to pull `repo/user/image` should not.
+		if strings.Count(image, "/") < 2 {
+			authConfig := types.AuthConfig{
+				Username: dockerCreds.Username,
+				Password: dockerCreds.Password,
+			}
+
+			encodedJSON, err := json.Marshal(authConfig)
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to encode docker credentials")
+			} else {
+				log.Ctx(ctx).Info().Msg("authenticated inspect from docker registry")
+				return base64.URLEncoding.EncodeToString(encodedJSON)
+			}
+		} else {
+			log.Ctx(ctx).Info().Msg("cannot authenticate for custom registry")
+		}
+	}
+
+	return ""
 }
