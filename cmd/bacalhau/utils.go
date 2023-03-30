@@ -43,12 +43,13 @@ const (
 )
 
 var eventsWorthPrinting = map[model.JobStateType]eventStruct{
-	model.JobStateNew:        {Message: "Creating job for submission", IsTerminal: false, PrintDownload: false, IsError: false},
-	model.JobStateQueued:     {Message: "Finding node(s) for the job", PrintDownload: true, IsTerminal: false, IsError: false},
-	model.JobStateInProgress: {Message: "Running the job", PrintDownload: true, IsTerminal: false, IsError: false},
-	model.JobStateError:      {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
-	model.JobStateCancelled:  {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
-	model.JobStateCompleted:  {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateNew:                {Message: "Creating job for submission", IsTerminal: false, PrintDownload: false, IsError: false},
+	model.JobStateQueued:             {Message: "Finding node(s) for the job", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateInProgress:         {Message: "Running the job", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateError:              {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
+	model.JobStateCancelled:          {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateCompleted:          {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateCompletedPartially: {Message: "Job complete but some executions did not succeed", PrintDownload: false, IsTerminal: true, IsError: true},
 }
 
 type eventStruct struct {
