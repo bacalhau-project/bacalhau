@@ -29,6 +29,8 @@ services:
     restart: always
   api:
     image: ${IMAGE_API}
+    ports:
+      - 1000:80
     restart: always
     depends_on:
       - postgres
