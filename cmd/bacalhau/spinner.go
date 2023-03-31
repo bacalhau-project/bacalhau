@@ -62,7 +62,7 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint boo
 		handleSigint: handleSigint,
 	}
 
-	spacer := 8
+	spacer := 6
 
 	var spinnerCharSet []string
 	for _, emoji := range SpinnerEmoji {
