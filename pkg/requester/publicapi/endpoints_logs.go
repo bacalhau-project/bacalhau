@@ -19,13 +19,6 @@ import (
 
 type logRequest = SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
 
-type LogStreamRequest struct {
-	JobID       string
-	ExecutionID string
-	WithHistory bool
-	Follow      bool
-}
-
 type Msg struct {
 	Tag  uint8
 	Data string
