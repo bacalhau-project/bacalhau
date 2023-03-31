@@ -20,6 +20,8 @@ type StorageSpec struct {
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
 
+	S3 *S3StorageSpec `json:"S3,omitempty"`
+
 	// URL of the git Repo to clone
 	Repo string `json:"Repo,omitempty"`
 
@@ -34,6 +36,13 @@ type StorageSpec struct {
 
 	// Additional properties specific to each driver
 	Metadata map[string]string `json:"Metadata,omitempty"`
+}
+
+type S3StorageSpec struct {
+	Bucket   string `json:"Bucket,omitempty"`
+	Key      string `json:"Key,omitempty"`
+	Endpoint string `json:"Endpoint,omitempty"`
+	Region   string `json:"Region,omitempty"`
 }
 
 // PublishedStorageSpec is a wrapper for a StorageSpec that has been published

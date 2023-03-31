@@ -2,7 +2,10 @@ package util
 
 import (
 	"context"
+	"fmt"
+	"os"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
@@ -18,6 +21,7 @@ import (
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -62,6 +66,11 @@ func NewStandardStorageProvider(
 
 	inlineStorage := inline.NewStorage()
 
+	s3Storage, err := configureS3StorageProvider(cm)
+	if err != nil {
+		return nil, err
+	}
+
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
 	// if we are using a FilecoinUnsealedPath then construct a combo
@@ -105,7 +114,32 @@ func NewStandardStorageProvider(
 		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
 		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
+		model.StorageSourceS3:               tracing.Wrap(s3Storage),
 	}), nil
+}
+
+func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3")
+	if err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to clean up S3 storage directory: %w", err)
+		}
+		return nil
+	})
+
+	cfg, err := s3.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	s3Storage := s3.NewStorage(s3.StorageProviderParams{
+		LocalDir:  dir,
+		AWSConfig: cfg,
+	})
+	return s3Storage, nil
 }
 
 func NewNoopStorageProvider(
