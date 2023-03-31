@@ -4,6 +4,14 @@ import (
 	"context"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/google/uuid"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -12,12 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type BaseSchedulerParams struct {
@@ -136,8 +138,10 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 	// persist the intent to ask the node for a bid, which is helpful to avoid asking an unresponsive node again during retries.
 	// we persist the intent for all nodes before asking any node to bid, so that we don't fail the job if the first node we ask rejects the
 	// the bid before we persist the intent to ask the other nodes.
-	for _, node := range nodes {
-		err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
+	exeIds := make([]string, len(nodes))
+	for i, node := range nodes {
+		executionID := "e" + uuid.NewString()
+		err := s.jobStore.CreateExecution(ctx, executionID, model.ExecutionState{
 			JobID:  job.Metadata.ID,
 			NodeID: node.NodeInfo.PeerInfo.ID.String(),
 			State:  model.ExecutionStateAskForBid,
@@ -146,21 +150,23 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
 			return
 		}
+		exeIds[i] = executionID
 	}
 
 	newCtx := util.NewDetachedContext(ctx)
-	for _, node := range nodes {
-		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo.PeerInfo.ID.String())
+	for i, node := range nodes {
+		go s.doNotifyAskForBid(newCtx, link, job, exeIds[i], node.NodeInfo.PeerInfo.ID.String())
 	}
 }
 
-func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job model.Job, targetPeerID string) {
+func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job model.Job, executionID string, targetPeerID string) {
 	request := compute.AskForBidRequest{
 		Job: job,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: targetPeerID,
 		},
+		ExecutionID: executionID,
 	}
 	bid, err := s.computeService.AskForBid(ctx, request)
 	if err != nil {
@@ -371,8 +377,9 @@ func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
 	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
 	executionID := model.ExecutionID{
-		JobID:  response.JobID,
-		NodeID: request.TargetPeerID,
+		JobID:       request.Job.ID(),
+		NodeID:      request.TargetPeerID,
+		ExecutionID: request.ExecutionID,
 	}
 	newState := model.ExecutionStateAskForBidRejected
 	if response.Accepted {
@@ -384,9 +391,10 @@ func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			ComputeReference: response.ExecutionID,
-			State:            newState,
-			Status:           response.Reason,
+			AcceptedAskForBid: response.Accepted,
+			ComputeReference:  response.ExecutionID,
+			State:             newState,
+			Status:            response.Reason,
 		},
 	})
 	if err != nil {

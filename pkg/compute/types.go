@@ -73,6 +73,8 @@ type AskForBidRequest struct {
 	RoutingMetadata
 	// Job specifies the job to be executed.
 	Job model.Job
+	// ExecutionID dictated by the requester node.
+	ExecutionID string
 }
 
 type AskForBidResponse struct {

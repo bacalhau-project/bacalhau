@@ -6,6 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -22,8 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeSuite struct {
@@ -96,7 +98,8 @@ func TestComputeSuite(t *testing.T) {
 
 func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
 	response, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		Job: job,
+		Job:         job,
+		ExecutionID: "e" + uuid.NewString(),
 	})
 	s.NoError(err)
 

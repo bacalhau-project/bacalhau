@@ -3,11 +3,12 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -40,13 +41,15 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
-	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
-	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
-		State:            model.ExecutionStateBidAccepted,
-		JobID:            job.ID(),
-		ComputeReference: execution.ID,
-		NodeID:           node.Host.ID().Pretty(),
+	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, execution.ID, model.ExecutionState{
+		State:             model.ExecutionStateBidAccepted,
+		JobID:             job.ID(),
+		AcceptedAskForBid: true,
+		ComputeReference:  execution.ID,
+		NodeID:            node.Host.ID().Pretty(),
 	})
+	require.NoError(s.T(), err)
+	err = node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
 	require.NoError(s.T(), err)
 
 	logRequest := requester.ReadLogsRequest{
@@ -61,7 +64,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	defer client.Close()
 
-	client.Connect(s.ctx, execution.ID, true, true)
+	err = client.Connect(s.ctx, execution.ID, true, true)
+	require.NoError(s.T(), err)
 
 	frame, err := client.ReadDataFrame(s.ctx)
 	require.NoError(s.T(), err)

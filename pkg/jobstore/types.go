@@ -31,7 +31,7 @@ type Store interface {
 	// UpdateJobState updates the Job state
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 	// CreateExecution creates a new execution for a given job
-	CreateExecution(ctx context.Context, execution model.ExecutionState) error
+	CreateExecution(ctx context.Context, executionID string, execution model.ExecutionState) error
 	// UpdateExecution updates the Job state
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
 }

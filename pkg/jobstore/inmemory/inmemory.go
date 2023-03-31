@@ -266,7 +266,7 @@ func (d *JobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobS
 	return nil
 }
 
-func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionState) error {
+func (d *JobStore) CreateExecution(_ context.Context, executionID string, execution model.ExecutionState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	jobState, ok := d.states[execution.JobID]
@@ -275,7 +275,11 @@ func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionS
 	}
 	for _, e := range jobState.Executions {
 		if e.ID() == execution.ID() {
-			return jobstore.NewErrExecutionAlreadyExists(execution.ID())
+			return jobstore.NewErrExecutionAlreadyExists(model.ExecutionID{
+				JobID:       execution.JobID,
+				NodeID:      execution.NodeID,
+				ExecutionID: executionID,
+			})
 		}
 	}
 	if execution.CreateTime.IsZero() {
@@ -286,6 +290,9 @@ func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionS
 	}
 	if execution.Version == 0 {
 		execution.Version = 1
+	}
+	if execution.ComputeReference == "" {
+		execution.ComputeReference = executionID
 	}
 	jobState.Executions = append(jobState.Executions, execution)
 	d.states[execution.JobID] = jobState

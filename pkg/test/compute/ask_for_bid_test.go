@@ -5,6 +5,8 @@ package compute
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -94,9 +96,11 @@ func (s *ComputeSuite) runAskForBidTest(testCase bidResponseTestCase) compute.As
 		job = generateJob()
 	}
 
+	executionID := "e" + uuid.NewString()
 	// issue the request
 	request := compute.AskForBidRequest{
-		Job: job,
+		Job:         job,
+		ExecutionID: executionID,
 	}
 	response, err := s.node.LocalEndpoint.AskForBid(ctx, request)
 	s.NoError(err)
