@@ -23,7 +23,6 @@ type StorageTestSuite struct {
 }
 
 func (s *StorageTestSuite) SetupSuite() {
-	os.Setenv("AWS_PROFILE", "osoul")
 	cfg, err := DefaultAWSConfig()
 	s.Require().NoError(err)
 	if !HasValidCredentials(cfg) {

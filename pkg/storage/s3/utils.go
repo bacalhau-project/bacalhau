@@ -23,6 +23,7 @@ func DefaultAWSConfig() (aws.Config, error) {
 	)
 }
 
+// HasValidCredentials returns true if the AWS config has valid credentials.
 func HasValidCredentials(config aws.Config) bool {
 	credentials, err := config.Credentials.Retrieve(context.Background())
 	if err != nil {
@@ -32,6 +33,9 @@ func HasValidCredentials(config aws.Config) bool {
 	return credentials.HasKeys()
 }
 
+// IsEC2Instance returns true if the current process is running on an EC2 instance.
+// This requires checking the EC2 instance metadata service, which takes a few seconds to resolve. This is why we are only calling it
+// once and caching the result.
 func IsEC2Instance(ctx context.Context) bool {
 	isEC2InstanceOnce.Do(func() {
 		cfg, err := config.LoadDefaultConfig(ctx)

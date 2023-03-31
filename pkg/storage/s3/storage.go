@@ -115,40 +115,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 	prefixTokens := strings.Split(s.sanitizeKey(storageSpec.S3.Key), "/")
 
 	for _, object := range objects {
-		// trim the user supplied prefix from the object local path
-		objectTokens := strings.Split(*object.key, "/")
-		startingIndex := 0
-		for i := 0; i < len(prefixTokens)-1; i++ {
-			if prefixTokens[i] == objectTokens[i] {
-				startingIndex++
-			} else {
-				break
-			}
-		}
-		outputPath := filepath.Join(outputDir, filepath.Join(objectTokens[startingIndex:]...))
-
-		if object.isDir {
-			if err := os.MkdirAll(outputPath, model.DownloadFolderPerm); err != nil {
-				return storage.StorageVolume{}, err
-			}
-			continue
-		}
-
-		// create all parent directories if needed
-		err = os.MkdirAll(filepath.Dir(outputPath), model.DownloadFolderPerm)
-		if err != nil {
-			return storage.StorageVolume{}, err
-		}
-		// create the file to download to
-		outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
-		if err != nil {
-			return storage.StorageVolume{}, err
-		}
-		log.Debug().Msgf("Downloading %s to %s", *object.key, outputFile.Name())
-		_, err = client.downloader.Download(ctx, outputFile, &s3.GetObjectInput{
-			Bucket: aws.String(storageSpec.S3.Bucket),
-			Key:    object.key,
-		})
+		err = s.downloadObject(ctx, client, storageSpec, object, outputDir, prefixTokens)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
@@ -161,6 +128,52 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 	}
 
 	return volume, nil
+}
+
+// downloadObject downloads a single object from S3 to local disk
+func (s *StorageProvider) downloadObject(ctx context.Context,
+	client *s3ClientWrapper,
+	storageSpec model.StorageSpec,
+	object s3ObjectSummary,
+	parentDir string,
+	prefixTokens []string) error {
+	// trim the user supplied prefix from the object local path
+	objectTokens := strings.Split(*object.key, "/")
+	startingIndex := 0
+	for i := 0; i < len(prefixTokens)-1; i++ {
+		if prefixTokens[i] == objectTokens[i] {
+			startingIndex++
+		} else {
+			break
+		}
+	}
+
+	// relative output path to the supplied prefix
+	outputPath := filepath.Join(parentDir, filepath.Join(objectTokens[startingIndex:]...))
+
+	if object.isDir {
+		return os.MkdirAll(outputPath, model.DownloadFolderPerm)
+	}
+
+	// create all parent directories if needed
+	err := os.MkdirAll(filepath.Dir(outputPath), model.DownloadFolderPerm)
+	if err != nil {
+		return err
+	}
+
+	// create the file to download to
+	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
+	if err != nil {
+		return err
+	}
+	defer outputFile.Close() //nolint:errcheck
+
+	log.Debug().Msgf("Downloading %s to %s", *object.key, outputFile.Name())
+	_, err = client.downloader.Download(ctx, outputFile, &s3.GetObjectInput{
+		Bucket: aws.String(storageSpec.S3.Bucket),
+		Key:    object.key,
+	})
+	return err
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ model.StorageSpec, volume storage.StorageVolume) error {
