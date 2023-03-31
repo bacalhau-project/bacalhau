@@ -72,7 +72,8 @@ func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 type AskForBidRequest struct {
 	RoutingMetadata
 	// Job specifies the job to be executed.
-	Job model.Job
+	Job         model.Job
+	ExecutionID string
 }
 
 type AskForBidResponse struct {

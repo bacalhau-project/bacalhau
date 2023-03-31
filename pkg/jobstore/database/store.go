@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"sort"
@@ -39,14 +40,126 @@ func NewDatabaseStore(dial gorm.Dialector) (*DatabaseStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&Job{}, &JobState{}, &JobExecution{}, &NodeExecution{}, &ExecutionState{}, &ExecutionOutput{}, &ExecutionVerificationProposal{}, &ExecutionVerificationResult{}, &ExecutionPublishResult{}); err != nil {
+	if err := db.AutoMigrate(&Job{}, &JobState{}, &ExecutionState{}); err != nil {
 		return nil, err
 	}
 	return &DatabaseStore{Db: db}, nil
 }
 
+// Static check to ensure that Transport implements Transport:
+var _ jobstore.Store = (*DatabaseStore)(nil)
+
 type DatabaseStore struct {
 	Db *gorm.DB
+}
+
+func (d *DatabaseStore) CreateExecutionBid(ctx context.Context, jobID string, nodeID string) error {
+	var jobModel Job
+	res := d.Db.Limit(1).Find(&jobModel, "job_id = ?", jobID)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return jobstore.NewErrJobNotFound(jobID)
+	}
+
+	var bid ExecutionBid
+	res = d.Db.Limit(1).Find(&bid, "job_id = ? and node_id = ?", jobID, nodeID)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected != 0 {
+		return jobstore.NewErrExecutionAlreadyExists(model.ExecutionID{
+			JobID:       jobID,
+			NodeID:      nodeID,
+			ExecutionID: "",
+		})
+	}
+
+	return d.Db.Create(&ExecutionBid{
+		JobID:     jobID,
+		NodeID:    nodeID,
+		CreatedAt: time.Now(),
+		State:     int(model.ExecutionStateAskForBid),
+	}).Error
+}
+
+func (d *DatabaseStore) UpdateExecutionBid(ctx context.Context, jobID, nodeID string, request jobstore.UpdateExecutionBidRequest) error {
+	var jobModel Job
+	res := d.Db.Limit(1).Find(&jobModel, "job_id = ?", jobID)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return jobstore.NewErrJobNotFound(jobID)
+	}
+
+	var bid ExecutionBid
+	res = d.Db.Limit(1).Find(&bid, "job_id = ? and node_id = ?", jobID, nodeID)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return jobstore.NewErrExecutionNotFound(model.ExecutionID{
+			JobID:       jobID,
+			NodeID:      nodeID,
+			ExecutionID: "",
+		})
+	}
+	return d.Db.Transaction(func(tx *gorm.DB) error {
+		// remove bid and create an ExecutionState from it. Then create a second execution state to represent the current state.
+		// We delete it to allow the same node to re-bid later without an ErrAlreadyExists returned. I am not condident on this and
+		// the fact that a complete "executionID" doesn't exist when the execution is created is very painful, as its missing the ComputeReference.
+		if err := d.Db.Delete(bid).Error; err != nil {
+			return err
+		}
+		if err := d.Db.Create(ExecutionState{
+			JobID:            jobID,
+			NodeID:           nodeID,
+			ComputeReference: request.ComputeReference,
+			CurrentState:     bid.State,
+			PreviousState:    bid.State,
+			Version:          1,
+			CreatedAt:        bid.CreatedAt,
+		}).Error; err != nil {
+			return err
+		}
+		return d.Db.Create(ExecutionState{
+			JobID:            jobID,
+			NodeID:           nodeID,
+			ComputeReference: request.ComputeReference,
+			Comment:          request.Comment,
+			CurrentState:     int(request.NewState),
+			PreviousState:    bid.State,
+			Version:          2,
+			CreatedAt:        time.Now(),
+		}).Error
+	})
+}
+
+func (d *DatabaseStore) UpdateExecutionState(ctx context.Context, id model.ExecutionID, request jobstore.UpdateExecutionStateRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DatabaseStore) UpdateExecutionOutputs(ctx context.Context, id model.ExecutionID, request jobstore.UpdateExecutionOutputRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DatabaseStore) UpdateExecutionVerification(ctx context.Context, id model.ExecutionID, request jobstore.UpdateExecutionVerificationRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DatabaseStore) ExecutionComplete(ctx context.Context, id model.ExecutionID, request jobstore.ExecutionCompleteRequest) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *DatabaseStore) ExecutionFailed(ctx context.Context, id model.ExecutionID, request jobstore.ExecutionFailedRequest) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (d *DatabaseStore) CreateJob(ctx context.Context, j model.Job) error {
@@ -218,53 +331,26 @@ func (d *DatabaseStore) GetJobState(ctx context.Context, jobID string) (model.Jo
 	if res.RowsAffected == 0 {
 		return model.JobState{}, jobstore.NewErrJobNotFound(jobID)
 	}
-	var executionStateModels []ExecutionState
-	query := d.Db.Table("execution_states AS es").Select("es.job_id, es.node_id, es.compute_reference, es.execution_id, es.status, es.version, es.current_state, es.previous_state, es.created_at")
-	query = query.Joins("JOIN (SELECT job_id, execution_id, MAX(version) AS latest_version FROM execution_states WHERE job_id = ? GROUP BY job_id, execution_id) AS mv ON es.job_id = mv.job_id AND es.execution_id = mv.execution_id AND es.version = mv.latest_version", jobID)
-	query = query.Order("es.version DESC")
-	if err := query.Find(&executionStateModels).Error; err != nil {
-		return model.JobState{}, err
-	}
-	/*
-		var executionStateModels []ExecutionState
-		res = d.Db.Order("version desc").Where("job_id = ?", jobID).Find(&executionStateModels)
-		if res.Error != nil {
-			return model.JobState{}, res.Error
-		}
 
-	*/
-	var executions []model.ExecutionState
-	for _, exe := range executionStateModels {
-		runOutput, err := d.getExecutionOutput(ctx, exe.ExecutionID, exe.Version)
-		if err != nil {
-			return model.JobState{}, err
-		}
-		proposal, err := d.getExecutionProposal(ctx, exe.ExecutionID, exe.Version)
-		if err != nil {
-			return model.JobState{}, err
-		}
-		result, err := d.getExecutionResult(ctx, exe.ExecutionID, exe.Version)
-		if err != nil {
-			return model.JobState{}, err
-		}
-		publish, err := d.getExecutionPublish(ctx, exe.ExecutionID, exe.Version)
-		if err != nil {
-			return model.JobState{}, err
-		}
-		executions = append(executions, model.ExecutionState{
-			JobID:                exe.JobID,
-			NodeID:               exe.NodeID,
-			ComputeReference:     exe.ComputeReference,
-			State:                model.ExecutionStateType(exe.CurrentState),
-			Status:               exe.Status,
-			VerificationProposal: proposal,
-			VerificationResult:   result,
-			PublishedResult:      publish,
-			RunOutput:            runOutput,
-			Version:              exe.Version,
-			CreateTime:           exe.CreatedAt,
-		})
+	var latestExecutionStates []ExecutionState
+	query := d.Db.Table("execution_states AS es").Select("es.*")
+	query = query.Joins("JOIN (SELECT node_id, MAX(version) AS latest_version FROM execution_states WHERE job_id = ? GROUP BY node_id) AS mv ON es.job_id = ? AND es.node_id = mv.node_id AND es.version = mv.latest_version", jobID, jobID)
+	res = query.Find(&latestExecutionStates)
+	if res.Error != nil {
+		return model.JobState{}, res.Error
 	}
+
+	var executions []model.ExecutionState
+	for _, e := range latestExecutionStates {
+		var tmp model.ExecutionState
+		if err := e.Execution.AssignTo(&tmp); err != nil {
+			return model.JobState{}, err
+		}
+		tmp.Version = e.Version
+		tmp.CreateTime = e.CreatedAt
+		executions = append(executions, tmp)
+	}
+
 	job, err := d.GetJob(ctx, jobID)
 	if err != nil {
 		return model.JobState{}, err
@@ -278,67 +364,6 @@ func (d *DatabaseStore) GetJobState(ctx context.Context, jobID string) (model.Jo
 		UpdateTime: jobStateModel.CreatedAt,
 		TimeoutAt:  jobStateModel.CreatedAt.Add(time.Duration(job.Spec.Timeout)),
 	}, nil
-}
-
-func (d *DatabaseStore) getExecutionPublish(ctx context.Context, exeID string, version int) (model.StorageSpec, error) {
-	var exeModel ExecutionPublishResult
-	res := d.Db.Where("execution_id = ? AND version = ?", exeID, version).Find(&exeModel)
-	if res.Error != nil {
-		return model.StorageSpec{}, nil
-	}
-	if res.RowsAffected == 0 {
-		return model.StorageSpec{}, nil
-	}
-	var out model.StorageSpec
-	if err := exeModel.Result.AssignTo(&out); err != nil {
-		return model.StorageSpec{}, err
-	}
-	return out, nil
-}
-
-func (d *DatabaseStore) getExecutionResult(ctx context.Context, exeID string, version int) (model.VerificationResult, error) {
-	var exeModel ExecutionVerificationResult
-	res := d.Db.Where("execution_id = ? AND version = ?", exeID, version).Find(&exeModel)
-	if res.Error != nil {
-		return model.VerificationResult{}, res.Error
-	}
-	if res.RowsAffected == 0 {
-		return model.VerificationResult{}, nil
-	}
-	return model.VerificationResult{
-		Complete: exeModel.Complete,
-		Result:   exeModel.Result,
-	}, nil
-}
-
-func (d *DatabaseStore) getExecutionOutput(ctx context.Context, exeID string, version int) (*model.RunCommandResult, error) {
-	var exeOutputModel ExecutionOutput
-	res := d.Db.Where("execution_id = ? AND version = ?", exeID, version).Find(&exeOutputModel)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	// TODO this means there isnt any output yet
-	if res.RowsAffected == 0 {
-		return nil, nil
-	}
-	out := new(model.RunCommandResult)
-	if err := exeOutputModel.Output.AssignTo(out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (d *DatabaseStore) getExecutionProposal(ctx context.Context, exeID string, version int) ([]byte, error) {
-	var exeModel ExecutionVerificationProposal
-	res := d.Db.Where("execution_id = ? AND version = ?", exeID, version).Find(&exeModel)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	// TODO this means there isnt any output yet
-	if res.RowsAffected == 0 {
-		return nil, nil
-	}
-	return exeModel.Proposal, nil
 }
 
 func (d *DatabaseStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
@@ -401,10 +426,8 @@ func (d *DatabaseStore) GetJobHistory(ctx context.Context, jobID string, since t
 
 	for _, es := range executionStates {
 		out = append(out, model.JobHistory{
-			Type:             model.JobHistoryTypeExecutionLevel,
-			JobID:            jobID,
-			NodeID:           es.NodeID,
-			ComputeReference: es.ComputeReference,
+			Type:  model.JobHistoryTypeExecutionLevel,
+			JobID: jobID,
 			ExecutionState: &model.StateChange[model.ExecutionStateType]{
 				Previous: model.ExecutionStateType(es.PreviousState),
 				New:      model.ExecutionStateType(es.CurrentState),
@@ -435,7 +458,7 @@ func (d *DatabaseStore) GetJobsCount(ctx context.Context, query jobstore.JobQuer
 
 func (d *DatabaseStore) CreateExecution(ctx context.Context, execution model.ExecutionState) error {
 	var jobModel Job
-	res := d.Db.Find(&jobModel, "job_id = ?", execution.JobID)
+	res := d.Db.Limit(1).Find(&jobModel, "job_id = ?", execution.JobID)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -443,8 +466,8 @@ func (d *DatabaseStore) CreateExecution(ctx context.Context, execution model.Exe
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
 
-	var exeStateModel ExecutionState
-	res = d.Db.Find(&exeStateModel, "execution_id = ?", execution.ID().String())
+	var state ExecutionState
+	res = d.Db.Limit(1).Find(&state, "job_id = ? and node_id = ?", execution.JobID, execution.NodeID)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -452,40 +475,28 @@ func (d *DatabaseStore) CreateExecution(ctx context.Context, execution model.Exe
 		return jobstore.NewErrExecutionAlreadyExists(execution.ID())
 	}
 
-	now := time.Now()
-	return d.Db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&ExecutionState{
-			JobID:            execution.JobID,
-			NodeID:           execution.NodeID,
-			ComputeReference: execution.ComputeReference,
-			Status:           execution.Status,
-			Version:          1,
-			CurrentState:     int(execution.State),
-			PreviousState:    int(execution.State),
-			CreatedAt:        now,
-		}).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&JobExecution{
-			JobID:       execution.JobID,
-			ExecutionID: execution.ID().String(),
-		}).Error; err != nil {
-			return err
-		}
-		if err := tx.Create(&NodeExecution{
-			NodeID:      execution.NodeID,
-			ExecutionID: execution.ID().String(),
-		}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	eb, err := json.Marshal(execution)
+	if err != nil {
+		return err
+	}
+	return d.Db.Create(&ExecutionState{
+		JobID:            execution.JobID,
+		NodeID:           execution.NodeID,
+		ComputeReference: execution.ComputeReference,
+		CurrentState:     int(execution.State),
+		PreviousState:    int(execution.State),
+		Version:          1,
+		CreatedAt:        time.Now(),
+		Execution: pgtype.JSONB{
+			Bytes:  eb,
+			Status: pgtype.Present,
+		},
+	}).Error
 }
 
 func (d *DatabaseStore) UpdateExecution(ctx context.Context, request jobstore.UpdateExecutionRequest) error {
 	var jobModel Job
-	// TODO order by
-	res := d.Db.Find(&jobModel, "job_id = ?", request.ExecutionID.JobID)
+	res := d.Db.Limit(1).Find(&jobModel, "job_id = ?", request.ExecutionID.JobID)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -493,115 +504,41 @@ func (d *DatabaseStore) UpdateExecution(ctx context.Context, request jobstore.Up
 		return jobstore.NewErrJobNotFound(request.ExecutionID.JobID)
 	}
 
-	var exeStateModel ExecutionState
-	// TODO order by
-	res = d.Db.Find(&exeStateModel, "execution_id = ?", request.ExecutionID.String())
+	// we found a job and bid for this execution, safe to say it has been created.
+	// check if it has an existing state
+	var latestExecution ExecutionState
+	query := d.Db.Table("execution_states AS es").Select("es.*")
+	query = query.Joins("JOIN (SELECT job_id, node_id, MAX(version) AS latest_version FROM execution_states WHERE job_id = ? AND node_id = ? GROUP BY job_id, node_id) AS mv ON es.job_id = mv.job_id AND es.node_id = mv.node_id AND es.version = mv.latest_version", request.ExecutionID.JobID, request.ExecutionID.NodeID)
+	res = query.First(&latestExecution)
 	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
+		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return res.Error
+		}
 		return jobstore.NewErrExecutionNotFound(request.ExecutionID)
 	}
-
-	if err := ValidateExecutionRequest(request, exeStateModel); err != nil {
+	if err := ValidateExecutionRequest(request, latestExecution); err != nil {
 		return err
 	}
-
-	if model.ExecutionStateType(exeStateModel.CurrentState).IsTerminal() {
-		return jobstore.NewErrExecutionAlreadyTerminal(request.ExecutionID, model.ExecutionStateType(exeStateModel.CurrentState), request.NewValues.State)
+	if model.ExecutionStateType(latestExecution.CurrentState).IsTerminal() {
+		return jobstore.NewErrExecutionAlreadyTerminal(request.ExecutionID, model.ExecutionStateType(latestExecution.CurrentState), request.NewValues.State)
 	}
-
-	now := time.Now()
-	version := exeStateModel.Version + 1
-	return d.Db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&ExecutionState{
-			JobID:  request.ExecutionID.JobID,
-			NodeID: request.ExecutionID.NodeID,
-			// TODO unsure if this is right
-			ComputeReference: request.NewValues.ComputeReference,
-			Status:           request.NewValues.Status,
-			Version:          version,
-			CurrentState:     int(request.NewValues.State),
-			PreviousState:    exeStateModel.CurrentState,
-			CreatedAt:        now,
-		}).Error; err != nil {
-			return err
-		}
-		if request.NewValues.RunOutput != nil {
-			m, err := newExecutionOutputModel(request.ExecutionID, version, now, request.NewValues.RunOutput)
-			if err != nil {
-				return err
-			}
-			if err := tx.Create(m).Error; err != nil {
-				return err
-			}
-		}
-		if len(request.NewValues.VerificationProposal) > 0 {
-			if err := tx.Create(&ExecutionVerificationProposal{
-				ExecutionID: request.ExecutionID.String(),
-				Version:     version,
-				Proposal:    request.NewValues.VerificationProposal,
-				CreatedAt:   now,
-			}).Error; err != nil {
-				return err
-			}
-		}
-		if request.NewValues.State == model.ExecutionStateResultRejected ||
-			request.NewValues.State == model.ExecutionStateResultAccepted {
-			if err := tx.Create(&ExecutionVerificationResult{
-				ExecutionID: request.ExecutionID.String(),
-				Version:     version,
-				Complete:    request.NewValues.VerificationResult.Complete,
-				Result:      request.NewValues.VerificationResult.Result,
-				CreatedAt:   now,
-			}).Error; err != nil {
-				return err
-			}
-		}
-		if request.NewValues.State == model.ExecutionStateCompleted {
-			m, err := newExecutionPublishResultMode(request.ExecutionID, version, now, request.NewValues.PublishedResult)
-			if err != nil {
-				return err
-			}
-			if err := tx.Create(m).Error; err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-}
-
-func newExecutionOutputModel(executionID model.ExecutionID, version int, now time.Time, output *model.RunCommandResult) (*ExecutionOutput, error) {
-	jr, err := json.Marshal(output)
+	eb, err := json.Marshal(request.NewValues)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &ExecutionOutput{
-		ExecutionID: executionID.String(),
-		Version:     version,
-		Output: pgtype.JSONB{
-			Bytes:  jr,
+	return d.Db.Create(&ExecutionState{
+		JobID:            request.ExecutionID.JobID,
+		NodeID:           request.ExecutionID.NodeID,
+		ComputeReference: request.ExecutionID.ExecutionID,
+		CurrentState:     int(request.NewValues.State),
+		PreviousState:    latestExecution.CurrentState,
+		Version:          latestExecution.Version + 1,
+		CreatedAt:        time.Now(),
+		Execution: pgtype.JSONB{
+			Bytes:  eb,
 			Status: pgtype.Present,
 		},
-		CreatedAt: now,
-	}, nil
-}
-
-func newExecutionPublishResultMode(executionID model.ExecutionID, version int, now time.Time, result model.StorageSpec) (*ExecutionPublishResult, error) {
-	js, err := json.Marshal(result)
-	if err != nil {
-		return nil, err
-	}
-	return &ExecutionPublishResult{
-		ExecutionID: executionID.String(),
-		Version:     version,
-		Result: pgtype.JSONB{
-			Bytes:  js,
-			Status: pgtype.Present,
-		},
-		CreatedAt: now,
-	}, nil
+	}).Error
 }
 
 func ValidateJobRequest(request jobstore.UpdateJobStateRequest, state JobState) error {

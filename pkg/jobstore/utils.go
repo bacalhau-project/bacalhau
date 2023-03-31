@@ -3,9 +3,10 @@ package jobstore
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
 )
 
 func GetStateResolver(db Store) *jobutils.StateResolver {
@@ -48,18 +49,15 @@ func StopJob(ctx context.Context, db Store, jobID string, reason string, userReq
 	cancelledExecutions := make([]model.ExecutionState, 0)
 	for _, execution := range jobState.Executions {
 		if !execution.State.IsTerminal() {
-			err = db.UpdateExecution(ctx, UpdateExecutionRequest{
-				ExecutionID: execution.ID(),
+			err = db.UpdateExecutionState(ctx, execution.ID(), UpdateExecutionStateRequest{
 				Condition: UpdateExecutionCondition{
 					UnexpectedStates: []model.ExecutionStateType{
 						model.ExecutionStateFailed,
 						model.ExecutionStateCompleted,
 					},
 				},
-				NewValues: model.ExecutionState{
-					State:  model.ExecutionStateCanceled,
-					Status: reason,
-				},
+				NewState: model.ExecutionStateCanceled,
+				Comment:  reason,
 			})
 			if err != nil {
 				log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to Canceled. %s", execution)

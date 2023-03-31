@@ -4,6 +4,13 @@ import (
 	"context"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -12,12 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type BaseSchedulerParams struct {
@@ -136,12 +137,10 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 	// persist the intent to ask the node for a bid, which is helpful to avoid asking an unresponsive node again during retries.
 	// we persist the intent for all nodes before asking any node to bid, so that we don't fail the job if the first node we ask rejects the
 	// the bid before we persist the intent to ask the other nodes.
+	var executionID string
+	var err error
 	for _, node := range nodes {
-		err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
-			JobID:  job.Metadata.ID,
-			NodeID: node.NodeInfo.PeerInfo.ID.String(),
-			State:  model.ExecutionStateAskForBid,
-		})
+		executionID, err = s.jobStore.CreateExecutionBid(ctx, job.Metadata.ID, node.NodeInfo.PeerInfo.ID.String())
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
 			return
@@ -150,17 +149,18 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 
 	newCtx := util.NewDetachedContext(ctx)
 	for _, node := range nodes {
-		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo.PeerInfo.ID.String())
+		go s.doNotifyAskForBid(newCtx, link, job, executionID, node.NodeInfo.PeerInfo.ID.String())
 	}
 }
 
-func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job model.Job, targetPeerID string) {
+func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job model.Job, executionID, targetPeerID string) {
 	request := compute.AskForBidRequest{
 		Job: job,
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: targetPeerID,
 		},
+		ExecutionID: executionID,
 	}
 	bid, err := s.computeService.AskForBid(ctx, request)
 	if err != nil {
@@ -172,15 +172,13 @@ func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, 
 
 func (s *BaseScheduler) updateAndNotifyBidAccepted(ctx context.Context, execution model.ExecutionState) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidAccepted for bid: %s", s.id, execution.ComputeReference)
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: execution.ID(),
+	err := s.jobStore.UpdateExecutionState(ctx, execution.ID(), jobstore.UpdateExecutionStateRequest{
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedState:   execution.State,
 			ExpectedVersion: execution.Version,
 		},
-		NewValues: model.ExecutionState{
-			State: model.ExecutionStateBidAccepted,
-		},
+		NewState: model.ExecutionStateBidAccepted,
+		Comment:  "",
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to BidAccepted. %s", execution)
@@ -205,15 +203,13 @@ func (s *BaseScheduler) updateAndNotifyBidAccepted(ctx context.Context, executio
 
 func (s *BaseScheduler) updateAndNotifyBidRejected(ctx context.Context, execution model.ExecutionState) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidRejected for bid: %s", s.id, execution.ComputeReference)
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: execution.ID(),
+	err := s.jobStore.UpdateExecutionState(ctx, execution.ID(), jobstore.UpdateExecutionStateRequest{
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedState:   execution.State,
 			ExpectedVersion: execution.Version,
 		},
-		NewValues: model.ExecutionState{
-			State: model.ExecutionStateBidRejected,
-		},
+		NewState: model.ExecutionStateBidRejected,
+		Comment:  "",
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to BidRejected. %s", execution)
@@ -237,17 +233,14 @@ func (s *BaseScheduler) updateAndNotifyBidRejected(ctx context.Context, executio
 
 func (s *BaseScheduler) updateAndNotifyResultAccepted(ctx context.Context, result verifier.VerifierResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with ResultAccepted for bid: %s", s.id, result.Execution.ID())
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: result.Execution.ID(),
+	err := s.jobStore.UpdateExecutionVerification(ctx, result.Execution.ID(), jobstore.UpdateExecutionVerificationRequest{
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedState: model.ExecutionStateResultProposed,
 		},
-		NewValues: model.ExecutionState{
-			VerificationResult: model.VerificationResult{
-				Complete: true,
-				Result:   true,
-			},
-			State: model.ExecutionStateResultAccepted,
+		NewState: model.ExecutionStateResultAccepted,
+		Result: model.VerificationResult{
+			Complete: true,
+			Result:   true,
 		},
 	})
 	if err != nil {
@@ -273,17 +266,14 @@ func (s *BaseScheduler) updateAndNotifyResultAccepted(ctx context.Context, resul
 
 func (s *BaseScheduler) updateAndNotifyResultRejected(ctx context.Context, result verifier.VerifierResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with ResultRejected for bid: %s", s.id, result.Execution.ID())
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: result.Execution.ID(),
+	err := s.jobStore.UpdateExecutionVerification(ctx, result.Execution.ID(), jobstore.UpdateExecutionVerificationRequest{
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedState: model.ExecutionStateResultProposed,
 		},
-		NewValues: model.ExecutionState{
-			VerificationResult: model.VerificationResult{
-				Complete: true,
-				Result:   false,
-			},
-			State: model.ExecutionStateResultRejected,
+		NewState: model.ExecutionStateResultRejected,
+		Result: model.VerificationResult{
+			Complete: true,
+			Result:   false,
 		},
 	})
 	if err != nil {
@@ -370,24 +360,18 @@ func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
 	response compute.AskForBidResponse) {
 	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
-	executionID := model.ExecutionID{
-		JobID:  response.JobID,
-		NodeID: request.TargetPeerID,
-	}
 	newState := model.ExecutionStateAskForBidRejected
 	if response.Accepted {
 		newState = model.ExecutionStateAskForBidAccepted
 	}
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: executionID,
+
+	err := s.jobStore.UpdateExecutionBid(ctx, response.JobID, request.TargetPeerID, jobstore.UpdateExecutionBidRequest{
+		ComputeReference: response.ExecutionID,
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
-		NewValues: model.ExecutionState{
-			ComputeReference: response.ExecutionID,
-			State:            newState,
-			Status:           response.Reason,
-		},
+		NewState: newState,
+		Comment:  response.Reason,
 	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[handleAskForBidResponse] failed to update execution")
@@ -399,7 +383,7 @@ func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
 	if response.Accepted {
 		s.eventEmitter.EmitBidReceived(ctx, request, response)
 	}
-	s.transitionJobState(ctx, executionID.JobID)
+	s.transitionJobState(ctx, response.JobID)
 }
 
 func (s *BaseScheduler) OnRunComplete(ctx context.Context, result compute.RunResult) {
@@ -407,22 +391,20 @@ func (s *BaseScheduler) OnRunComplete(ctx context.Context, result compute.RunRes
 		s.id, result.ExecutionID, result.SourcePeerID)
 	s.eventEmitter.EmitRunComplete(ctx, result)
 
-	// update execution state
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
+	err := s.jobStore.UpdateExecutionOutputs(ctx,
+		model.ExecutionID{
 			JobID:       result.JobID,
 			NodeID:      result.SourcePeerID,
 			ExecutionID: result.ExecutionID,
 		},
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateBidAccepted,
-		},
-		NewValues: model.ExecutionState{
-			VerificationProposal: result.ResultProposal,
-			RunOutput:            result.RunCommandResult,
-			State:                model.ExecutionStateResultProposed,
-		},
-	})
+		jobstore.UpdateExecutionOutputRequest{
+			Condition: jobstore.UpdateExecutionCondition{
+				ExpectedState: model.ExecutionStateBidAccepted,
+			},
+			NewState: model.ExecutionStateResultProposed,
+			Proposal: result.ResultProposal,
+			Output:   *result.RunCommandResult,
+		})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to update execution")
 		return
@@ -439,20 +421,18 @@ func (s *BaseScheduler) OnPublishComplete(ctx context.Context, result compute.Pu
 	//  publish the result and not all the compute nodes.
 
 	// update execution state
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
+	err := s.jobStore.ExecutionComplete(ctx,
+		model.ExecutionID{
 			JobID:       result.JobID,
 			NodeID:      result.SourcePeerID,
 			ExecutionID: result.ExecutionID,
 		},
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateResultAccepted,
-		},
-		NewValues: model.ExecutionState{
-			PublishedResult: result.PublishResult,
-			State:           model.ExecutionStateCompleted,
-		},
-	})
+		jobstore.ExecutionCompleteRequest{
+			Condition: jobstore.UpdateExecutionCondition{
+				ExpectedState: model.ExecutionStateResultAccepted,
+			},
+			Results: result.PublishResult,
+		})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnPublishComplete] failed to update execution")
 		return
@@ -478,17 +458,12 @@ func (s *BaseScheduler) OnComputeFailure(ctx context.Context, result compute.Com
 
 func (s *BaseScheduler) handleExecutionFailure(ctx context.Context, executionID model.ExecutionID, failure error) {
 	// update execution state
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: executionID,
+	err := s.jobStore.ExecutionFailed(ctx, executionID, jobstore.ExecutionFailedRequest{
 		Condition: jobstore.UpdateExecutionCondition{
 			UnexpectedStates: []model.ExecutionStateType{
 				model.ExecutionStateCompleted,
 				model.ExecutionStateCanceled,
 			},
-		},
-		NewValues: model.ExecutionState{
-			State:  model.ExecutionStateFailed,
-			Status: failure.Error(),
 		},
 		Comment: failure.Error(),
 	})

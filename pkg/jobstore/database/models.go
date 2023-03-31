@@ -23,28 +23,26 @@ type JobState struct {
 	CreatedAt time.Time
 }
 
-type JobExecution struct {
-	JobID       string
-	ExecutionID string
-}
-
-type NodeExecution struct {
-	NodeID      string
-	ExecutionID string
+type ExecutionBid struct {
+	JobID     string    //PK
+	NodeID    string    //PK
+	CreatedAt time.Time //PK
+	State     int
 }
 
 type ExecutionState struct {
 	JobID            string
 	NodeID           string
 	ComputeReference string
-	Status           string
-	Version          int
-	CurrentState     int
-	PreviousState    int
 
-	CreatedAt time.Time
+	Comment       string
+	CurrentState  int
+	PreviousState int
+	Version       int
+	CreatedAt     time.Time
 }
 
+/*
 type ExecutionOutput struct {
 	ExecutionID string
 	Version     int
@@ -79,3 +77,5 @@ type ExecutionPublishResult struct {
 
 	CreatedAt time.Time
 }
+
+*/

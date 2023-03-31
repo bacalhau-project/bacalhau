@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type BaseEndpointParams struct {
@@ -104,7 +104,7 @@ func (s BaseEndpoint) prepareAskForBidResponse(
 	}
 
 	execution := *store.NewExecution(
-		"e-"+uuid.NewString(),
+		request.ExecutionID,
 		request.Job,
 		request.SourcePeerID,
 		resourceUsage,

@@ -27,6 +27,11 @@ type JobStore struct {
 	mtx        sync.RWMutex
 }
 
+func (d *JobStore) CreateExecutionBid(ctx context.Context, jobID string, nodeID string, state model.ExecutionStateType) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewJobStore() *JobStore {
 	res := &JobStore{
 		jobs:       make(map[string]model.Job),

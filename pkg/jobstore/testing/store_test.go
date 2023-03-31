@@ -33,7 +33,7 @@ func newDatabaseStore(t *testing.T) jobstore.Store {
 	dial := sqlite.Open(dbname)
 	ds, err := database.NewDatabaseStore(dial)
 	require.NoError(t, err)
-	truncateTables(t, ds.Db, "jobs", "job_states", "job_executions", "execution_outputs", "execution_publish_results", "execution_states", "execution_verification_proposals", "execution_verification_results", "node_executions")
+	truncateTables(t, ds.Db, "jobs", "job_states", "execution_states")
 	return ds
 }
 

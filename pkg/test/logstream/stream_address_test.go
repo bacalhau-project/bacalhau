@@ -3,11 +3,12 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -40,6 +41,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
+	// TODO will need to bid first with interface changes landing
 	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
 		State:            model.ExecutionStateBidAccepted,

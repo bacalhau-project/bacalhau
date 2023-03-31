@@ -31,10 +31,17 @@ type Store interface {
 	CreateJob(ctx context.Context, j model.Job) error
 	// UpdateJobState updates the Job state
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
+
 	// CreateExecution creates a new execution for a given job
 	CreateExecution(ctx context.Context, execution model.ExecutionState) error
-	// UpdateExecution updates the Job state
-	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+	CreateExecutionBid(ctx context.Context, jobID string, nodeID string) (string, error)
+	UpdateExecutionBid(ctx context.Context, jobID, nodeID string, request UpdateExecutionBidRequest) error
+
+	UpdateExecutionState(ctx context.Context, id model.ExecutionID, request UpdateExecutionStateRequest) error
+	UpdateExecutionOutputs(ctx context.Context, id model.ExecutionID, request UpdateExecutionOutputRequest) error
+	UpdateExecutionVerification(ctx context.Context, id model.ExecutionID, request UpdateExecutionVerificationRequest) error
+	ExecutionComplete(ctx context.Context, id model.ExecutionID, request ExecutionCompleteRequest) error
+	ExecutionFailed(ctx context.Context, id model.ExecutionID, request ExecutionFailedRequest) error
 }
 
 type UpdateJobStateRequest struct {
@@ -42,6 +49,42 @@ type UpdateJobStateRequest struct {
 	Condition UpdateJobCondition
 	NewState  model.JobStateType
 	Comment   string
+}
+
+type UpdateExecutionBidRequest struct {
+	ComputeReference string
+	Condition        UpdateExecutionCondition
+	NewState         model.ExecutionStateType
+	Comment          string
+}
+
+type ExecutionFailedRequest struct {
+	Condition UpdateExecutionCondition
+	Comment   string
+}
+
+type UpdateExecutionOutputRequest struct {
+	Condition UpdateExecutionCondition
+	NewState  model.ExecutionStateType
+	Proposal  []byte
+	Output    model.RunCommandResult
+}
+
+type UpdateExecutionVerificationRequest struct {
+	Condition UpdateExecutionCondition
+	NewState  model.ExecutionStateType
+	Result    model.VerificationResult
+}
+
+type UpdateExecutionStateRequest struct {
+	Condition UpdateExecutionCondition
+	NewState  model.ExecutionStateType
+	Comment   string
+}
+
+type ExecutionCompleteRequest struct {
+	Condition UpdateExecutionCondition
+	Results   model.StorageSpec
 }
 
 type UpdateExecutionRequest struct {
