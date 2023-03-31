@@ -34,6 +34,7 @@ production.tfvars
 ops/terraform/*.out
 dashboard/terraform/.terraform
 dashboard/frontend/dist
+dashboard/pgdata
 *_unit.json
 .trunk/logs
 benchmark/results

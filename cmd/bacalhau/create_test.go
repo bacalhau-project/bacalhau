@@ -40,6 +40,7 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		testFiles := []string{
 			"../../testdata/job-noop.json",
 			"../../testdata/job-noop.yaml",
+			"../../testdata/job-s3.yaml",
 			"../../testdata/job-noop-url.yaml",
 			"../../pkg/model/tasks/docker_task.json",
 			"../../pkg/model/tasks/task_with_config.json",

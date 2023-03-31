@@ -22,6 +22,7 @@ const (
 	StorageSourceEstuary
 	StorageSourceInline
 	StorageSourceLocalDirectory
+	StorageSourceS3
 	storageSourceDone // must be last
 )
 
