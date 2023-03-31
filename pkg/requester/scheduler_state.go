@@ -88,7 +88,12 @@ func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.
 				if lastFailedExecution.NodeID != "" {
 					finalErr = fmt.Errorf("node %s failed due to: %s", lastFailedExecution.NodeID, lastFailedExecution.Status)
 				}
-				s.stopJob(ctx, job.ID(), finalErr.Error(), false)
+
+				errMsg := ""
+				if finalErr != nil {
+					errMsg = finalErr.Error()
+				}
+				s.stopJob(ctx, job.ID(), errMsg, false)
 			}
 		}()
 		if s.retryStrategy.ShouldRetry(ctx, RetryRequest{JobID: job.ID()}) {
