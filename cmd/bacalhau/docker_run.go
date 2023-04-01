@@ -156,9 +156,17 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		&ODR.Publisher, "publisher", ODR.Publisher,
 		`What publisher engine to use to publish the job results`,
 	)
+	//nolint:lll // Documentation, ok if long.
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Inputs, "inputs", "i", ODR.Inputs,
-		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+		`Mount CIDs as the inputs (e.g. -i QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72. Mounts data at '/inputs')
+
+Mount URIs as the inputs:
+CID using the IPFS URI (-i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72. Mounts data at '/inputs')
+Http/Https URL (e.g. '-i https://example.com/bar.tar.gz' mounts 'bar.tar.gz' at '/inputs/bar.tar.gz')
+Git repo (e.g. '-i git://github.com/bacalhau-project/bacalhau.git' URI must end with .git . mounts the repo at '/inputs/bacalhau-project/bacalhau')
+Git-LFS repo (e.g. '-i gitlfs://huggingface.co/bigscience/test-bloomd.git' URI must end with .git . mounts the repo at '/inputs/bigscience/test-bloomd').
+		`,
 	)
 
 	//nolint:lll // Documentation, ok if long.
