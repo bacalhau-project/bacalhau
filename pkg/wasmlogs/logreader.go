@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+
+	"github.com/rs/zerolog/log"
 )
 
 type LogReader struct {
@@ -31,6 +33,7 @@ type LogReaderOptions struct {
 func NewLogReader(options LogReaderOptions) (*LogReader, error) {
 	file, err := os.OpenFile(options.filename, os.O_RDONLY, DefaultFilePerms)
 	if err != nil {
+		log.Ctx(options.ctx).Err(err).Msg("unable to open logfile")
 		return nil, err
 	}
 
@@ -65,6 +68,8 @@ func (r *LogReader) Read(b []byte) (int, error) {
 	}
 
 	if r.endOfFileReached && r.follow {
+		r.wantLiveStream <- true
+
 		select {
 		case m, more := <-r.liveStream:
 			if more {
@@ -92,7 +97,6 @@ func (r *LogReader) readFile(b []byte) (int, error) {
 		data, err := r.reader.ReadBytes('\n')
 		if err == io.EOF {
 			r.endOfFileReached = true
-			r.wantLiveStream <- true
 			return 0, err
 		}
 		if err != nil {

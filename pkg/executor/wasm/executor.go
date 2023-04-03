@@ -175,8 +175,6 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// that we can later include them in the job results. We don't want to
 	// execute any start functions automatically as we will do it manually
 	// later. Finally, add the filesystem which contains our input and output.
-	// stdout := new(bytes.Buffer)
-	// stderr := new(bytes.Buffer)
 
 	stdoutWritePipe, stderrWritePipe := e.setupOutputStreams(ctx, job.ID())
 	defer e.cleanupOutputStreams(ctx, job.ID())
