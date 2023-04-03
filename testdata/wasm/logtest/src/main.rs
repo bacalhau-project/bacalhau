@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fs::File;
+use std::fs;
 use std::io::{BufRead, BufReader};
 use std::process;
 use std::{env, thread, time};
@@ -36,7 +36,14 @@ impl LCG {
 }
 
 fn logtest(path: &String, pauser: Box<dyn Fn(&mut LCG)>) -> Result<(), Box<dyn Error>> {
-    let file = File::open(path)?;
+    let file = match fs::File::open(path) {
+        Ok(f) => f, 
+        Err(e) => {
+            eprintln!("failed to open file : {path}");
+            return Err(Box::new(e)) // Return the error after reboxing it
+        }
+    };
+
     let mut lcg = LCG::new(&file as *const _ as u64);
 
     BufReader::new(file)
@@ -81,12 +88,15 @@ fn main() {
         });
     }
 
-    if let Err(err) = logtest(&file, pauser) {
-        eprintln!("error: {}", err);
-        process::exit(1);
+    match logtest(&file, pauser) {
+        Err(err) => {
+            eprintln!("Error: {err:?} : failed to open {file}");
+            process::exit(2);
+        }
+        Ok(()) => {
+            println!("{}", COLOR_RESET);
+        }
     }
-
-    println!("{}", COLOR_RESET);
 
     process::exit(0)
 }

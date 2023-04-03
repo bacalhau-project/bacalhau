@@ -171,13 +171,12 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		return executor.FailResult(err)
 	}
 
-	// Configure the modules. We will write STDOUT and STDERR to a buffer so
-	// that we can later include them in the job results. We don't want to
-	// execute any start functions automatically as we will do it manually
-	// later. Finally, add the filesystem which contains our input and output.
+	// We don't want to execute any start functions automatically as we will
+	// do it manually later. Finally, add the filesystem which contains our
+	// input and output.
 
-	stdoutWritePipe, stderrWritePipe := e.setupOutputStreams(ctx, job.ID())
-	defer e.cleanupOutputStreams(ctx, job.ID())
+	stdoutWritePipe, stderrWritePipe := e.setupOutputStreams(ctx, executionID)
+	defer e.cleanupOutputStreams(ctx, executionID)
 
 	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
 
@@ -224,45 +223,51 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		wasmErr = nil
 	}
 
-	logmanager, _ := e.LogManagerMap.Get(job.ID())
+	logmanager, _ := e.LogManagerMap.Get(executionID)
 	stdout, stderr, _ := logmanager.GetReaders(false)
+
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Println("ALL finished")
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("not implemented for wasm executor")
+	logmanager, present := e.LogManagerMap.Get(executionID)
+	if !present {
+		return nil, fmt.Errorf("no logs available for execution {executionID}")
+	}
+
+	stdout, stderr, _ := logmanager.GetReaders(true)
+	return wasmlogs.NewStreamMerger(ctx, stdout, stderr), nil
 }
 
-func (e *Executor) setupOutputStreams(ctx context.Context, jobID string) (io.Writer, io.Writer) {
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s_log.json", jobID))
+func (e *Executor) setupOutputStreams(ctx context.Context, executionID string) (io.Writer, io.Writer) {
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s_log.json", executionID))
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("failed to created tmp file for wasm logs")
 		return nil, nil
 	}
-
-	fmt.Println("------------------------------")
-	fmt.Println(tmpFile.Name())
-	fmt.Println("------------------------------")
 
 	logmanager, err := wasmlogs.NewLogManager(ctx, tmpFile.Name())
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to create new wasm log manager")
 		return nil, nil
 	}
-	e.LogManagerMap.Put(jobID, logmanager)
+	e.LogManagerMap.Put(executionID, logmanager)
 	return logmanager.GetWriters()
 }
 
-func (e *Executor) cleanupOutputStreams(ctx context.Context, jobID string) {
-	logmanager, present := e.LogManagerMap.Get(jobID)
+func (e *Executor) cleanupOutputStreams(ctx context.Context, executionID string) {
+	logmanager, present := e.LogManagerMap.Get(executionID)
 	if !present {
-		log.Ctx(ctx).Debug().Msgf("expected to find logmanager for %s but not found", jobID)
+		log.Ctx(ctx).Debug().Msgf("expected to find logmanager for %s but not found", executionID)
 		return
 	}
 
 	logmanager.Close()
-	e.LogManagerMap.Delete(jobID)
+	e.LogManagerMap.Delete(executionID)
 }
 
 // Compile-time check that Executor implements the Executor interface.

@@ -2,6 +2,7 @@ package wasmlogs
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -69,6 +70,10 @@ func (mgr *LogManager) readWriters() {
 	stdoutReady := false
 	stderrReady := false
 
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Println("Writers are active")
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
 	// TODO: Properly cache recent messages and track the last
 	// timestamp we sent so that when a reader wants a livestream
 	// we can make sure they don't miss out.
@@ -76,6 +81,10 @@ func (mgr *LogManager) readWriters() {
 	lastStdErr := Message{}
 
 	for {
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		fmt.Println("Writers are actively selecting")
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
 		select {
 		case <-mgr.stdoutWantLive:
 			stdoutReady = true
@@ -104,6 +113,10 @@ func (mgr *LogManager) readWriters() {
 				mgr.stdoutLive <- m
 			}
 		case <-mgr.ctx.Done():
+			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+			fmt.Println("Writers are cancelled")
+			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
 			return
 		}
 	}
