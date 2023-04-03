@@ -36,21 +36,21 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 Understand Bacalhau in 1 minute 
 
-Go to the folder directory that you want to store your job results
-
-Install the bacalhau client
+Install the bacalhau client:
 
 ```bash
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
-Submit a "Hello World" job
+Submit a "Hello World" job:
 
 ```bash
 bacalhau docker run ubuntu echo Hello World
 ```
 
-Download your result
+The job runs on the global Bacalhau network.
+
+Download your result:
 
 ```bash
 bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
@@ -63,7 +63,7 @@ For a more detailed tutorial, check out our [Getting Started tutorial](https://d
 
 ## How it works
 
-The goal of the Bacalhau project is to make it easy to perform distributed, decentralised computation next to where the data resides. So a key step in this process is making your data accessible. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
+The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
 
 - [Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)
 - [Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)
@@ -90,7 +90,7 @@ For more tutorials, visit our [example page](https://docs.bacalhau.org/examples/
 
 ## Roadmap
 
-Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time, Bacalhau will expand to other Compute workloads. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)!
+Our mission is to transform the way that compute is run globally. You can find Bacalhau's [Public Roadmap here](https://starmap.site/roadmap/github.com/bacalhau-project/bacalhau/issues/1151)!
 
 ## Community
 
