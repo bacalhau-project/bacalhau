@@ -12,7 +12,7 @@ sidebar_position: 3
 
 Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of multilingual and multitask supervised data collected from the web. We show that the use of such a large and diverse dataset leads to improved robustness to accents, background noise and technical language. Moreover, it enables transcription in multiple languages, as well as translation from those languages into English. We are open-sourcing models and inference code to serve as a foundation for building useful applications and for further research on robust speech processing. In this example we will transcribe an audio clip locally, containerize the script and then run the container on bacalhau
 
-The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of Videos, Audio for automatic speech recognition, Using our sharding feature you can do distributed inference very easily and if you have the data stored on IPFS you don't need to move the data you can do compute where the data is located, and the cost of compute is much cheaper than managed services 
+The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of videos or audio for automatic speech recognition
 
 ## TD:LR
 Using OpenAI whisper with Bacalhau to process audio files
