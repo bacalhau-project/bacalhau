@@ -13,7 +13,7 @@ hide_title: true
 
 Bacalhau is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau, you can streamline your existing workflows without the need of extensive rewriting by running  arbitrary Docker containers and WebAssembly (wasm) images as tasks. This architecture is also referred to as **Compute Over Data** (or CoD). _[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) was coined from the Portuguese word for salted Cod fish_. 
 
-Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals with the project center around creating an open, collaborative Compute ecosystem. We believe that the same benefits of open collaboration on datasets should be available to generic storage compute tasks.  **At the moment we are free volunteer network, enjoy;)**
+Bacalhau seeks to transform data processing for large-scale datasets to improve cost and efficiency, and to open up data processing to larger audiences. Our goals is to create an open, collaborative compute ecosystem that enables unparalleled collaboration. **At the moment we are free volunteer network, enjoy;)**
 
 ## Why Bacalhau?
 
@@ -21,11 +21,11 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
-💸 Bacalhau **eliminates ingress/egress costs** since jobs are processed closer to the source. 
+💸 Bacalhau **reduces ingress/egress costs** since jobs are processed closer to the source. 
 
 🤓  You can [mount your data anywhere](https://docs.bacalhau.org/#how-it-works) on your machine, and Bacalhau will be able to run against that data.
 
-💥 You can integrate with Bacalhau and run a job on a [database](https://docs.bacalhau.org/examples/data-engineering/DuckDB/).
+💥 You can integrate with services running on nodes to run a jobs, such as on [DuckDB](https://docs.bacalhau.org/examples/data-engineering/DuckDB/).
 
 📚 Bacalhau operates on a network of **open compute resources** made available to serve any data processing workload. With Bacalhau you can batch process petabytes (quadrillion bytes) of data.
 
