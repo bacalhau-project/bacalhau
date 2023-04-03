@@ -1,0 +1,26 @@
+APIVersion: v1beta1
+Spec:
+  Engine: Docker
+  Verifier: Noop
+  Publisher: Noop
+  Docker:
+    Image: ubuntu:latest
+    Entrypoint:
+      - /bin/bash
+      - -c
+      - ls /input_custom
+  inputs:
+    - StorageSource: S3
+      S3:
+        Bucket: bacalhau-test-datasets
+        Key: integration-tests-do-not-delete/set1/
+        Region: eu-west-1
+      path: /input_custom
+  outputs:
+    - StorageSource: IPFS
+      Name: output_custom
+      path: /output_custom
+  Deal:
+    Concurrency: 1
+    Confidence: 0
+    MinBids: 0

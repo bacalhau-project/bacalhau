@@ -1396,6 +1396,23 @@ const docTemplate = `{
                 }
             }
         },
+        "model.S3StorageSpec": {
+            "type": "object",
+            "properties": {
+                "Bucket": {
+                    "type": "string"
+                },
+                "Endpoint": {
+                    "type": "string"
+                },
+                "Key": {
+                    "type": "string"
+                },
+                "Region": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Spec": {
             "type": "object",
             "properties": {
@@ -1528,7 +1545,8 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9
+                9,
+                10
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
@@ -1544,6 +1562,7 @@ const docTemplate = `{
                 "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",
+                "StorageSourceS3",
                 "storageSourceDone"
             ]
         },
@@ -1570,6 +1589,9 @@ const docTemplate = `{
                 "Repo": {
                     "description": "URL of the git Repo to clone",
                     "type": "string"
+                },
+                "S3": {
+                    "$ref": "#/definitions/model.S3StorageSpec"
                 },
                 "SourcePath": {
                     "description": "The path of the host data if we are using local directory paths",
