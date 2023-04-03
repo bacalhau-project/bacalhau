@@ -1,7 +1,7 @@
 ---
 sidebar_label: 'Video Processing'
 sidebar_position: 6
-description: "Parallel Video Resizing via File Sharding"
+description: "Parallel Video Resizing"
 ---
 # Video Processing
 
@@ -9,7 +9,7 @@ description: "Parallel Video Resizing via File Sharding"
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fsimple-parallel-workloads%2Findex.ipynb)
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this example tutorial, we will use the [Bacalhau Sharding](https://docs.bacalhau.org/next-steps/parallel-workloads) to run a simple video filter on a large number of video files.
+Many data engineering workloads consist of embarrassingly parallel workloads where you want to run a simple execution on a large number of files. In this example tutorial, we will use the run a simple video filter on a large number of video files.
 
 ## TD;LR
 Running video files with Bacalhau
