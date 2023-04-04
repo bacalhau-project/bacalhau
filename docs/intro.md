@@ -63,7 +63,10 @@ For a more detailed tutorial, check out our [Getting Started tutorial](https://d
 
 ## How it works
 
-The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
+The goal of the Bacalhau project is to make it easy to perform distributed computation next to where the data resides. In order to do this, first you need to ingest some data. 
+
+### Data ingestion
+Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Here are some options that can help you mount your data:
 
 - [Copy data from a URL to public storage](https://docs.bacalhau.org/data-ingestion/from-url)
 - [Pin Data to public storage](https://docs.bacalhau.org/data-ingestion/pin)
@@ -73,7 +76,14 @@ The goal of the Bacalhau project is to make it easy to perform distributed compu
 The options are not limited to the above mentioned. You can mount your data anywhere on your machine, and Bacalhau will be able to run against that data
 :::
 
+### Security on Bacalhau
+You can also use things like env variable, endpoints, etc to provide credentials.
+
+### Workloads is Bacalhau best suited for
+For running on the public web (this is not for private workloads) you should choose a trusted provider (e.g. GCP, AWS, etc) to provide the compute, and provision your nodes
+
 ### Use Cases
+Basically, anywhere you have more than 10 devices with/generating data around 100GB, you're probably running into a compute over data problem. Bacalhau can serve in various industries such as: security, web serving, financial services, IoT, Edge, Fog, multi-cloud, etc. 
 
 Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
 
