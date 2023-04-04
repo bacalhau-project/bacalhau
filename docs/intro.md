@@ -77,15 +77,18 @@ The options are not limited to the above mentioned. You can mount your data anyw
 :::
 
 ### Security on Bacalhau
-You can also use things like env variable, endpoints, etc to provide credentials.
+You could use environment variables to store sensitive data such as access tokens, API keys, or passwords. These variables can be accessed by Bacalhau at runtime and are not visible to anyone who has access to the code or the server.
+Endpoints can also be used to provide secure access to Bacalhau. This way, the client can authenticate with Bacalhau using the token without exposing their credentials.
 
 ### Workloads is Bacalhau best suited for
-For running on the public web (this is not for private workloads) you should choose a trusted provider (e.g. GCP, AWS, etc) to provide the compute, and provision your nodes
+Bacalhau can be used for a variety of data processing workloads, including machine learning, data analytics, and scientific computing. It is well-suited for workloads that require processing large amounts of data in a distributed and parallelized manner.
+
+If you plan to run Bacalhau on the public web, it is important to choose a trusted provider such as GCP or AWS to provide the compute infrastructure. These providers have extensive experience in running large-scale distributed systems and can offer the necessary compute, storage, and networking resources to support your workload. To provision your node on a trusted provider, you will typically need to create a virtual machine or container instance that is configured with the necessary software and dependencies to run Bacalhau. You may also need to configure network settings and security policies to ensure that your workload is properly protected.
+
+It is important to ensure that you properly configure your compute infrastructure and apply appropriate security controls to protect your data and applications. This may include setting up firewalls, applying access controls, and encrypting sensitive data.
 
 ### Use Cases
-Basically, anywhere you have more than 10 devices with/generating data around 100GB, you're probably running into a compute over data problem. Bacalhau can serve in various industries such as: security, web serving, financial services, IoT, Edge, Fog, multi-cloud, etc. 
-
-Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
+Once you have more than 10 devices generating or storing around 100GB of data, you're likely to face challenges with processing that data efficiently. Traditional computing approaches may struggle to handle such large volumes, and that's where distributed computing solutions like Bacalhau can be extremely useful. Bacalhau can be used in various industries, including security, web serving, financial services, IoT, Edge, Fog, and multi-cloud. Bacalhau shines when it comes to data-intensive applications like [data engineering](https://docs.bacalhau.org/examples/data-engineering/), [model training](https://docs.bacalhau.org/examples/model-training/), [model inference](https://docs.bacalhau.org/examples/model-inference/), [model training](https://docs.bacalhau.org/examples/model-training/), [model dynanmics](https://docs.bacalhau.org/examples/molecular-dynamics/), etc.
 
 Here are some example tutorials on how you can process your data with Bacalhau:
 - [Stable Diffusion AI](https://docs.bacalhau.org/examples/model-inference/stable-diffusion-gpu/)
