@@ -106,6 +106,9 @@ func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
+	if u.Scheme == "gitlfs" || u.Scheme == "git" {
+		u.Scheme = "https"
+	}
 	// Check if the URL is a Git repository URL
 	if u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "ssh" {
 		return nil, fmt.Errorf("URL must use HTTPS, HTTP, or SSH scheme")
