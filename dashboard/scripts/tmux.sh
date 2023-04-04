@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 IFS=$'\n\t'
+
+DIR="$(dirname "$0")"
+cd $DIR/../../
+
 SESSION=bacalhau-dashboard
 export APP=${APP:=""}
 export PREDICTABLE_API_PORT=1

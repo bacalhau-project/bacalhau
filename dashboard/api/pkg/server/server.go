@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	bacmodel "github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
@@ -50,27 +52,45 @@ func NewServer(
 	}, nil
 }
 
+func (apiServer *DashboardAPIServer) URL() *url.URL {
+	url, err := url.Parse(fmt.Sprintf("http://%s:%d/", apiServer.Options.Host, apiServer.Options.Port))
+	if err != nil {
+		panic(err)
+	}
+	return url
+}
+
 func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
+	authnHandler := func(handler httpErrorFunc) httpErrorFunc {
+		return requiresLogin(apiServer.API, apiServer.Options.JWTSecret, handler)
+	}
+
 	router := mux.NewRouter()
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
-	subrouter.HandleFunc("/nodes", apiServer.nodes).Methods("GET")
+	subrouter.HandleFunc("/nodes", handleError(returnsJSON(expectsNothing(apiServer.API.GetNodes)))).Methods("GET")
 	subrouter.HandleFunc("/run", apiServer.run).Methods("POST")
 	subrouter.HandleFunc("/stablediffusion", apiServer.stablediffusion).Methods("POST")
-	subrouter.HandleFunc("/jobs", apiServer.jobs).Methods("POST")
-	subrouter.HandleFunc("/jobs/count", apiServer.jobsCount).Methods("POST")
-	subrouter.HandleFunc("/job/{id}", apiServer.job).Methods("GET")
-	subrouter.HandleFunc("/job/{id}/info", apiServer.jobInfo).Methods("GET")
-	subrouter.HandleFunc("/summary/annotations", apiServer.annotations).Methods("GET")
-	subrouter.HandleFunc("/summary/jobmonths", apiServer.jobmonths).Methods("GET")
-	subrouter.HandleFunc("/summary/jobexecutors", apiServer.jobexecutors).Methods("GET")
-	subrouter.HandleFunc("/summary/totaljobs", apiServer.totaljobs).Methods("GET")
-	subrouter.HandleFunc("/summary/totaljobevents", apiServer.totaljobevents).Methods("GET")
-	subrouter.HandleFunc("/summary/totalusers", apiServer.totalusers).Methods("GET")
-	subrouter.HandleFunc("/summary/totalexecutors", apiServer.totalexecutors).Methods("GET")
+	subrouter.HandleFunc("/jobs", handleError(returnsJSON(expectsJSON(apiServer.API.GetJobs)))).Methods("POST")
+	subrouter.HandleFunc("/jobs/count", handleError(returnsJSON(expectsJSON(apiServer.jobsCount)))).Methods("POST")
+	subrouter.HandleFunc("/jobs/shouldrun", handleError(returnsJSON(expectsJSON(apiServer.API.ShouldExecuteJob)))).Methods("POST")
 
-	subrouter.HandleFunc("/admin/login", apiServer.adminlogin).Methods("POST")
-	subrouter.HandleFunc("/admin/status", apiServer.adminstatus).Methods("GET")
-	subrouter.HandleFunc("/admin/moderate", apiServer.adminmoderate).Methods("POST")
+	jobrouter := subrouter.PathPrefix("/job/{id}").Subrouter()
+	jobrouter.HandleFunc("/", handleError(returnsJSON(apiServer.job))).Methods("GET")
+	jobrouter.HandleFunc("/info", handleError(returnsJSON(apiServer.jobInfo))).Methods("GET")
+	jobrouter.HandleFunc("/datacap", handleError(authnHandler(returnsJSON(apiServer.moderateJobDatacap)))).Methods("POST")
+	jobrouter.HandleFunc("/exec", handleError(authnHandler(returnsJSON(apiServer.moderateJobRequest)))).Methods("POST")
+
+	statrouter := subrouter.PathPrefix("/summary").Subrouter()
+	statrouter.HandleFunc("/annotations", handleError(returnsJSON(expectsNothing(apiServer.API.GetAnnotationSummary)))).Methods("GET")
+	statrouter.HandleFunc("/jobmonths", handleError(returnsJSON(expectsNothing(apiServer.API.GetJobMonthSummary)))).Methods("GET")
+	statrouter.HandleFunc("/jobexecutors", handleError(returnsJSON(expectsNothing(apiServer.API.GetJobExecutorSummary)))).Methods("GET")
+	statrouter.HandleFunc("/totaljobs", handleError(returnsJSON(expectsNothing(apiServer.API.GetTotalJobsCount)))).Methods("GET")
+	statrouter.HandleFunc("/totaljobevents", handleError(returnsJSON(expectsNothing(apiServer.API.GetTotalEventCount)))).Methods("GET")
+	statrouter.HandleFunc("/totalusers", handleError(returnsJSON(expectsNothing(apiServer.API.GetTotalUserCount)))).Methods("GET")
+	statrouter.HandleFunc("/totalexecutors", handleError(returnsJSON(expectsNothing(apiServer.API.GetTotalExecutorCount)))).Methods("GET")
+
+	subrouter.HandleFunc("/admin/login", handleError(returnsJSON(expectsJSON(apiServer.adminlogin)))).Methods("POST")
+	subrouter.HandleFunc("/admin/status", handleError(authnHandler(returnsJSON(apiServer.adminstatus)))).Methods("GET")
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", apiServer.Options.Host, apiServer.Options.Port),
@@ -80,6 +100,7 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 		IdleTimeout:       time.Minute * 60,
 		Handler:           router,
 	}
+	cm.RegisterCallbackWithContext(srv.Shutdown)
 	return srv.ListenAndServe()
 }
 
@@ -136,291 +157,79 @@ func (apiServer *DashboardAPIServer) stablediffusion(res http.ResponseWriter, re
 	}
 }
 
-func (apiServer *DashboardAPIServer) annotations(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetAnnotationSummary(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for annotations route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for annotations route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) jobmonths(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetJobMonthSummary(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job months route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job months route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) jobexecutors(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetJobExecutorSummary(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job executors route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job executors route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) totaljobs(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetTotalJobsCount(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) totaljobevents(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetTotalEventCount(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job event totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job event totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) totalusers(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetTotalUserCount(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job user totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job user totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) totalexecutors(res http.ResponseWriter, req *http.Request) {
-	data, err := apiServer.API.GetTotalExecutorCount(context.Background())
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job executors totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job executors totals route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) nodes(res http.ResponseWriter, req *http.Request) {
-	nodes, err := apiServer.API.GetNodes(context.Background())
-	if err == nil {
-		err = json.NewEncoder(res).Encode(nodes)
-	}
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for nodes route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (apiServer *DashboardAPIServer) jobs(res http.ResponseWriter, req *http.Request) {
-	query, err := GetRequestBody[localdb.JobQuery](res, req)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	results, err := apiServer.API.GetJobs(context.Background(), *query)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(res).Encode(results)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 type jobsCountResponse struct {
 	Count int `json:"count"`
 }
 
-func (apiServer *DashboardAPIServer) jobsCount(res http.ResponseWriter, req *http.Request) {
-	query, err := GetRequestBody[localdb.JobQuery](res, req)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobs route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	count, err := apiServer.API.GetJobsCount(context.Background(), *query)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobsCount route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(res).Encode(jobsCountResponse{
-		Count: count,
-	})
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobsCount route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func (apiServer *DashboardAPIServer) jobsCount(ctx context.Context, query localdb.JobQuery) (*jobsCountResponse, error) {
+	count, err := apiServer.API.GetJobsCount(ctx, query)
+	return &jobsCountResponse{Count: count}, err
 }
 
-func (apiServer *DashboardAPIServer) job(res http.ResponseWriter, req *http.Request) {
+func (apiServer *DashboardAPIServer) job(ctx context.Context, req *http.Request) (*v1beta1.Job, error) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	data, err := apiServer.API.GetJob(context.Background(), id)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for job route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return apiServer.API.GetJob(ctx, id)
 }
 
-func (apiServer *DashboardAPIServer) jobInfo(res http.ResponseWriter, req *http.Request) {
+func (apiServer *DashboardAPIServer) jobInfo(ctx context.Context, req *http.Request) (*types.JobInfo, error) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	data, err := apiServer.API.GetJobInfo(context.Background(), id)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobInfo route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = json.NewEncoder(res).Encode(data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for jobInfo route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return apiServer.API.GetJobInfo(ctx, id)
 }
 
 type loginResponse struct {
 	Token string `json:"token"`
 }
 
-func (apiServer *DashboardAPIServer) adminlogin(res http.ResponseWriter, req *http.Request) {
+func (apiServer *DashboardAPIServer) adminlogin(ctx context.Context, loginRequest types.LoginRequest) (*loginResponse, error) {
 	// decode the request body into a LoginRequest struct
-	var loginRequest types.LoginRequest
-	err := json.NewDecoder(req.Body).Decode(&loginRequest)
+	user, err := apiServer.API.Login(ctx, loginRequest)
 	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	user, err := apiServer.API.Login(context.Background(), loginRequest)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		log.Ctx(ctx).Warn().Err(err).Str("user", loginRequest.Username).Msg("User authentication failed")
+		return nil, err
 	}
 	token, err := generateJWT(apiServer.Options.JWTSecret, user.Username)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = json.NewEncoder(res).Encode(loginResponse{
-		Token: token,
-	})
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for login route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return &loginResponse{Token: token}, err
 }
 
-func (apiServer *DashboardAPIServer) adminstatus(res http.ResponseWriter, req *http.Request) {
-	user, err := getUserFromRequest(apiServer.API, req, apiServer.Options.JWTSecret)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for adminstatus route: %s", err.Error())
-		http.Error(res, fmt.Sprintf("error for adminstatus route: %s", err.Error()), http.StatusUnauthorized)
-		return
-	}
-	err = json.NewEncoder(res).Encode(user)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for status route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func (apiServer *DashboardAPIServer) adminstatus(ctx context.Context, req *http.Request) (*types.User, error) {
+	return ctx.Value(userContextKey{}).(*types.User), nil
 }
 
-func (apiServer *DashboardAPIServer) adminmoderate(res http.ResponseWriter, req *http.Request) {
-	user, err := getUserFromRequest(apiServer.API, req, apiServer.Options.JWTSecret)
-	if err != nil || user == nil {
-		log.Ctx(req.Context()).Error().Msgf("access denied: %s", err.Error())
-		http.Error(res, fmt.Sprintf("access denied: %s", err.Error()), http.StatusUnauthorized)
-		return
-	}
-	data, err := GetRequestBody[types.JobModeration](res, req)
+type moderateRequest struct {
+	Reason   string `json:"reason"`
+	Approved bool   `json:"approved"`
+}
+
+type moderateResult struct {
+	Success bool `json:"success"`
+}
+
+func (apiServer *DashboardAPIServer) moderateJobDatacap(ctx context.Context, req *http.Request) (*moderateResult, error) {
+	user := ctx.Value(userContextKey{}).(*types.User)
+	jobID := mux.Vars(req)["id"]
+
+	data, err := GetRequestBody[moderateRequest](req)
 	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = apiServer.API.CreateJobModeration(context.Background(), *data)
-	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	err = json.NewEncoder(res).Encode(struct {
-		Success bool `json:"success"`
-	}{
-		Success: true,
-	})
+	err = apiServer.API.ModerateJobWithoutRequest(ctx, jobID, data.Reason, data.Approved, types.ModerationTypeDatacap, user)
+	return &moderateResult{Success: err == nil}, err
+}
+
+func (apiServer *DashboardAPIServer) moderateJobRequest(ctx context.Context, req *http.Request) (*moderateResult, error) {
+	user := ctx.Value(userContextKey{}).(*types.User)
+	jobID := mux.Vars(req)["id"]
+
+	data, err := GetRequestBody[moderateRequest](req)
 	if err != nil {
-		log.Ctx(req.Context()).Error().Msgf("error for adminmoderate route: %s", err.Error())
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
+
+	err = apiServer.API.ModerateJobWithoutRequest(ctx, jobID, data.Reason, data.Approved, types.ModerationTypeExecution, user)
+	return &moderateResult{Success: err == nil}, err
 }

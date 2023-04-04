@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
@@ -18,6 +19,9 @@ func NewRootCmd() *cobra.Command {
 		Use:   getCommandLineExecutable(),
 		Short: "Dashboard",
 		Long:  `Dashboard`,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			logger.ConfigureLogging(logger.LogModeDefault)
+		},
 	}
 	RootCmd.AddCommand(newServeCmd())
 	RootCmd.AddCommand(newUserCmd())

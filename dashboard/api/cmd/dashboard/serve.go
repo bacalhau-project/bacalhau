@@ -110,7 +110,7 @@ func serve(cmd *cobra.Command, options *ServeOptions) error {
 	if err != nil {
 		return fmt.Errorf("error creating libp2p host: %w", err)
 	}
-	options.ModelOptions.Host = libp2pHost
+	options.ModelOptions.Libp2pHost = libp2pHost
 	model, err := model.NewModelAPI(options.ModelOptions)
 	if err != nil {
 		return err

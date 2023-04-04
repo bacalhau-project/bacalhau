@@ -3,16 +3,21 @@ package model
 import (
 	"context"
 	"fmt"
-	"sync"
+	"strconv"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
 	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/pkg/errors"
+	"go.ptx.dk/multierrgroup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -21,11 +26,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/exp/slices"
 )
 
 type ModelOptions struct {
-	Host             host.Host
+	Libp2pHost       host.Host
 	PostgresHost     string
 	PostgresPort     int
 	PostgresDatabase string
@@ -101,7 +108,7 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 }
 
 func (api *ModelAPI) Start(ctx context.Context) error {
-	if api.options.Host == nil {
+	if api.options.Libp2pHost == nil {
 		return fmt.Errorf("libp2p host is required")
 	}
 	var err error
@@ -112,14 +119,15 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 		}
 	}()
 
-	gossipSub, err := libp2p_pubsub.NewGossipSub(ctx, api.options.Host)
+	gossipSub, err := libp2p_pubsub.NewGossipSub(ctx, api.options.Libp2pHost)
 	if err != nil {
 		return err
 	}
 
 	// PubSub to read node info from the network
+	log.Debug().Str("Topic", node.NodeInfoTopic).Msg("Subscribing")
 	nodeInfoPubSub, err := libp2p.NewPubSub[bacalhau_model.NodeInfo](libp2p.PubSubParams{
-		Host:      api.options.Host,
+		Host:      api.options.Libp2pHost,
 		TopicName: node.NodeInfoTopic,
 		PubSub:    gossipSub,
 	})
@@ -132,8 +140,9 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 	}
 
 	// PubSub to read job events from the network
+	log.Debug().Str("Topic", node.JobEventsTopic).Msg("Subscribing")
 	libp2p2JobEventPubSub, err := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
-		Host:      api.options.Host,
+		Host:      api.options.Libp2pHost,
 		TopicName: node.JobEventsTopic,
 		PubSub:    gossipSub,
 	})
@@ -209,53 +218,30 @@ func (api *ModelAPI) GetJobInfo(ctx context.Context, id string) (*types.JobInfo,
 	// let's use that for subsequent queries
 	loadedID := job.Metadata.ID
 
-	errorChan := make(chan error, 1)
-	doneChan := make(chan bool, 1)
-	var wg sync.WaitGroup
-	//nolint:gomnd
-	wg.Add(4)
-	go func() {
-		events, err := api.localDB.GetJobEvents(ctx, loadedID)
-		if err != nil {
-			errorChan <- err
-		}
-		info.Events = events
-		wg.Done()
-	}()
-	go func() {
-		state, err := api.stateResolver.GetJobState(ctx, loadedID)
-		if err != nil {
-			errorChan <- err
-		}
-		info.State = state
-		wg.Done()
-	}()
-	go func() {
-		results, err := api.stateResolver.GetResults(ctx, loadedID)
-		if err != nil {
-			errorChan <- err
-		}
-		info.Results = results
-		wg.Done()
-	}()
-	go func() {
-		results, err := api.GetModerationSummary(ctx, loadedID)
-		if err != nil {
-			errorChan <- err
-		}
-		info.Moderation = *results
-		wg.Done()
-	}()
-	go func() {
-		wg.Wait()
-		doneChan <- true
-	}()
-	select {
-	case <-doneChan:
-		return info, nil
-	case err := <-errorChan:
-		return nil, err
-	}
+	var wg multierrgroup.Group
+	wg.Go(func() (err error) {
+		info.Events, err = api.localDB.GetJobEvents(ctx, loadedID)
+		return
+	})
+	wg.Go(func() (err error) {
+		info.State, err = api.stateResolver.GetJobState(ctx, loadedID)
+		return
+	})
+	wg.Go(func() (err error) {
+		info.Results, err = api.stateResolver.GetResults(ctx, loadedID)
+		return
+	})
+	wg.Go(func() (err error) {
+		info.Moderations, err = api.store.GetJobModerations(ctx, loadedID)
+		return
+	})
+	wg.Go(func() (err error) {
+		info.Requests, err = api.store.GetModerationRequestsForJob(ctx, loadedID)
+		return
+	})
+
+	err = wg.Wait()
+	return info, err
 }
 
 func (api *ModelAPI) GetAnnotationSummary(
@@ -365,31 +351,112 @@ func (api *ModelAPI) Login(
 	return user, nil
 }
 
-func (api *ModelAPI) GetModerationSummary(
+func (api *ModelAPI) ShouldExecuteJob(
 	ctx context.Context,
-	jobID string,
-) (*types.JobModerationSummary, error) {
-	moderation, err := api.store.GetJobModeration(ctx, jobID)
+	probe *bidstrategy.JobSelectionPolicyProbeData,
+) (*bidstrategy.BidStrategyResponse, error) {
+	// Do we have an approval for the job? If so, return it.
+	resp, err := api.store.GetJobModerations(ctx, probe.JobID)
+	idx := slices.IndexFunc(resp, func(moderation types.JobModerationSummary) bool {
+		return moderation.Request.Type == types.ModerationTypeExecution
+	})
 	if err != nil {
 		return nil, err
+	} else if idx >= 0 {
+		return api.shouldExecuteFromJobModeration(resp[idx].Moderation), nil
 	}
-	if moderation == nil {
-		return &types.JobModerationSummary{}, nil
+
+	// No approval found. Is there an approval request?
+	request, err := api.store.GetModerationRequestByJob(ctx, probe.JobID, types.ModerationTypeExecution)
+	if err == nil && request == nil {
+		// No request. Create one.
+		// TODO: we should probably reject requests for jobs that are already running.
+		// TODO: we also don't create the job in the localdb because we don't have all
+		// the required information. Will the front-end need it??
+		var callback *types.URL
+		if probe.Callback != nil {
+			callback = &types.URL{URL: *probe.Callback}
+		}
+		_, err = api.store.CreateJobModerationRequest(ctx, probe.JobID, types.ModerationTypeExecution, callback)
 	}
-	user, err := api.store.LoadUserByID(ctx, moderation.UserAccountID)
-	if err != nil {
-		return nil, err
-	}
-	user.HashedPassword = ""
-	return &types.JobModerationSummary{
-		Moderation: moderation,
-		User:       user,
-	}, nil
+
+	return &bidstrategy.BidStrategyResponse{
+		ShouldBid:  false,
+		ShouldWait: true,
+		Reason:     "Awaiting human approval",
+	}, err
 }
 
-func (api *ModelAPI) CreateJobModeration(
+func (api *ModelAPI) shouldExecuteFromJobModeration(resp *types.JobModeration) *bidstrategy.BidStrategyResponse {
+	return &bidstrategy.BidStrategyResponse{
+		ShouldBid:  resp.Status,
+		ShouldWait: false,
+		Reason:     resp.Notes,
+	}
+}
+
+func (api *ModelAPI) ModerateJob(
 	ctx context.Context,
-	moderation types.JobModeration,
+	requestID int64,
+	reason string,
+	approved bool,
+	user *types.User,
 ) error {
-	return api.store.CreateJobModeration(ctx, moderation)
+	moderation := types.JobModeration{
+		RequestID:     requestID,
+		UserAccountID: user.ID,
+		Status:        approved,
+		Notes:         reason,
+	}
+	err := api.store.CreateJobModeration(ctx, moderation)
+	if err != nil {
+		return err
+	}
+
+	request, err := api.store.GetModerationRequest(ctx, requestID)
+	if err != nil {
+		return err
+	}
+
+	if request.Callback.IsAbs() {
+		log.Ctx(ctx).Debug().Stringer("Callback", &request.Callback.URL).Msg("Returning moderation response")
+
+		req := bidstrategy.ModerateJobRequest{
+			ClientID: system.GetClientID(),
+			JobID:    request.JobID,
+			Response: *api.shouldExecuteFromJobModeration(&moderation),
+		}
+
+		port, err := strconv.ParseUint(request.Callback.Port(), 10, 16)
+		if err != nil {
+			return err
+		}
+
+		client := publicapi.NewAPIClient(request.Callback.Hostname(), uint16(port))
+		return errors.Wrap(client.PostSigned(ctx, request.Callback.RequestURI(), req, nil), "response from callback")
+	}
+
+	return nil
+}
+
+func (api *ModelAPI) ModerateJobWithoutRequest(
+	ctx context.Context,
+	jobID, reason string,
+	approved bool,
+	moderationType types.ModerationType,
+	user *types.User,
+) error {
+	// Do we have a moderation request for this already?
+	request, err := api.store.GetModerationRequestByJob(ctx, jobID, moderationType)
+	if err != nil {
+		return err
+	} else if request == nil {
+		// No request. Create one.
+		request, err = api.store.CreateJobModerationRequest(ctx, jobID, moderationType, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	return api.ModerateJob(ctx, request.ID, reason, approved, user)
 }
