@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -27,17 +28,15 @@ var (
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
-	Deterministic bool     // Execute this job deterministically
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	Confidence    int      // Minimum number of nodes that must agree on a verification result
-	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
-	Timeout       float64  // Job execution timeout in seconds
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+	Deterministic bool            // Execute this job deterministically
+	Inputs        opts.StorageOpt // Array of inputs
+	OutputVolumes []string        // Array of output volumes in 'name:mount point' form
+	Env           []string        // Array of environment variables
+	Concurrency   int             // Number of concurrent jobs to run
+	Confidence    int             // Minimum number of nodes that must agree on a verification result
+	MinBids       int             // Minimum number of bids that must be received before any are accepted (at random)
+	Timeout       float64         // Job execution timeout in seconds
+	Labels        []string        // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
 	RequirementsPath string // Path for requirements.txt for executing with Python
@@ -55,9 +54,7 @@ type LanguageRunOptions struct {
 func NewLanguageRunOptions() *LanguageRunOptions {
 	return &LanguageRunOptions{
 		Deterministic:    true,
-		Inputs:           []string{},
-		InputUrls:        []string{},
-		InputVolumes:     []string{},
+		Inputs:           opts.StorageOpt{},
 		OutputVolumes:    []string{},
 		Env:              []string{},
 		Concurrency:      1,
@@ -100,15 +97,8 @@ func newRunPythonCmd() *cobra.Command {
 			`in an environment where only some libraries are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
-	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&OLR.Inputs, "inputs", "i", OLR.Inputs,
-		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
-	)
+	runPythonCmd.PersistentFlags().VarP(&OLR.Inputs, "input", "i", inputUsageMsg)
 
-	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&OLR.InputVolumes, "input-volumes", "v", OLR.InputVolumes,
-		`CID:path of the input data volumes`,
-	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&OLR.OutputVolumes, "output-volumes", "o", OLR.OutputVolumes,
 		`name:path of the output data volumes`,
@@ -180,10 +170,6 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		Fatal(cmd, "Please specify an inline command or a path to a python file.", 1)
 	}
 
-	for _, i := range OLR.Inputs {
-		OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-	}
-
 	language := "python"
 	version := "3.10"
 
@@ -192,8 +178,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 	// manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
 		ctx,
-		OLR.InputVolumes,
-		OLR.InputUrls,
+		OLR.Inputs.Values(),
 		OLR.OutputVolumes,
 		OLR.Concurrency,
 		OLR.Confidence,

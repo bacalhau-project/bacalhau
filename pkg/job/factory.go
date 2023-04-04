@@ -21,9 +21,7 @@ func ConstructDockerJob( //nolint:funlen
 	cpu, memory, gpu string,
 	network model.Network,
 	domains []string,
-	inputUrls []string,
-	inputRepos []string,
-	inputVolumes []string,
+	inputs []model.StorageSpec,
 	outputVolumes []string,
 	env []string,
 	entrypoint []string,
@@ -42,25 +40,6 @@ func ConstructDockerJob( //nolint:funlen
 		GPU:    gpu,
 	}
 
-	// for _, url := range inputRepos {
-	// 	repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url)
-	// 	// if err != nil {
-	// 	// 	fmt.Print(err)
-	// 	// }
-	// 	if repoCID != "" {
-	// 		inputRepos = clone.RemoveFromSlice(inputRepos, url)
-	// 		repoCIDPATH := repoCID + ":/inputs"
-
-	// 		SHAtoCID := []string{}
-	// 		SHAtoCID = append(SHAtoCID, repoCIDPATH)
-	// 		inputVolumes = append(inputVolumes, SHAtoCID...)
-	// 	}
-	// }
-
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, inputRepos)
-	if err != nil {
-		return &model.Job{}, err
-	}
 	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
@@ -115,7 +94,7 @@ func ConstructDockerJob( //nolint:funlen
 		},
 		Timeout:       timeout,
 		Resources:     jobResources,
-		Inputs:        jobInputs,
+		Inputs:        inputs,
 		Outputs:       jobOutputs,
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
@@ -137,8 +116,7 @@ func ConstructDockerJob( //nolint:funlen
 
 func ConstructLanguageJob(
 	ctx context.Context,
-	inputVolumes []string,
-	inputUrls []string,
+	inputs []model.StorageSpec,
 	outputVolumes []string,
 	concurrency int,
 	confidence int,
@@ -155,10 +133,6 @@ func ConstructLanguageJob(
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls, nil)
-	if err != nil {
-		return &model.Job{}, err
-	}
 	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
@@ -196,7 +170,7 @@ func ConstructLanguageJob(
 		RequirementsPath: requirementsPath,
 	}
 	j.Spec.Timeout = timeout
-	j.Spec.Inputs = jobInputs
+	j.Spec.Inputs = inputs
 	j.Spec.Outputs = jobOutputs
 	j.Spec.Annotations = jobAnnotations
 

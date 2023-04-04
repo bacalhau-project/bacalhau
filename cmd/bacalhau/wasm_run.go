@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -41,6 +42,24 @@ var (
 
 const null rune = 0
 
+type WasmRunOptions struct {
+	Job             *model.Job
+	RunTimeSettings RunTimeSettings
+	DownloadFlags   model.DownloaderSettings
+	NodeSelector    string // Selector (label query) to filter nodes on which this job can be executed
+	Inputs          opts.StorageOpt
+}
+
+func NewRunWasmOptions() *WasmRunOptions {
+	return &WasmRunOptions{
+		Job:             defaultWasmJobSpec(),
+		RunTimeSettings: *NewRunTimeSettings(),
+		DownloadFlags:   *util.NewDownloadSettings(),
+		NodeSelector:    "",
+		Inputs:          opts.StorageOpt{},
+	}
+}
+
 func defaultWasmJobSpec() *model.Job {
 	wasmJob, _ := model.NewJobWithSaneProductionDefaults()
 	wasmJob.Spec.Engine = model.EngineWasm
@@ -74,12 +93,9 @@ func newWasmCmd() *cobra.Command {
 }
 
 func newRunWasmCmd() *cobra.Command {
-	wasmJob := defaultWasmJobSpec()
-	runtimeSettings := NewRunTimeSettings()
-	downloadSettings := util.NewDownloadSettings()
-	var nodeSelector string
+	ODR := NewRunWasmOptions()
 
-	runWasmCommand := &cobra.Command{
+	wasmRunCmd := &cobra.Command{
 		Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:   "Run a WASM job on the network",
 		Long:    wasmRunLong,
@@ -87,102 +103,88 @@ func newRunWasmCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, wasmJob, runtimeSettings, downloadSettings, nodeSelector)
+			return runWasm(cmd, args, ODR)
 		},
 	}
 
-	settingsFlags := NewRunTimeSettingsFlags(runtimeSettings)
-	runWasmCommand.Flags().AddFlagSet(settingsFlags)
+	wasmRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
 
-	downloadFlags := NewIPFSDownloadFlags(downloadSettings)
-	runWasmCommand.Flags().AddFlagSet(downloadFlags)
-
-	runWasmCommand.PersistentFlags().StringVarP(
-		&nodeSelector, "selector", "s", nodeSelector,
+	wasmRunCmd.PersistentFlags().StringVarP(
+		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
 		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	runWasmCommand.PersistentFlags().Var(
-		VerifierFlag(&wasmJob.Spec.Verifier), "verifier",
+	wasmRunCmd.PersistentFlags().Var(
+		VerifierFlag(&ODR.Job.Spec.Verifier), "verifier",
 		`What verification engine to use to run the job`,
 	)
-	runWasmCommand.PersistentFlags().Var(
-		PublisherFlag(&wasmJob.Spec.Publisher), "publisher",
+	wasmRunCmd.PersistentFlags().Var(
+		PublisherFlag(&ODR.Job.Spec.Publisher), "publisher",
 		`What publisher engine to use to publish the job results`,
 	)
-	runWasmCommand.PersistentFlags().IntVarP(
-		&wasmJob.Spec.Deal.Concurrency, "concurrency", "c", wasmJob.Spec.Deal.Concurrency,
+	wasmRunCmd.PersistentFlags().IntVarP(
+		&ODR.Job.Spec.Deal.Concurrency, "concurrency", "c", ODR.Job.Spec.Deal.Concurrency,
 		`How many nodes should run the job`,
 	)
-	runWasmCommand.PersistentFlags().IntVar(
-		&wasmJob.Spec.Deal.Confidence, "confidence", wasmJob.Spec.Deal.Confidence,
+	wasmRunCmd.PersistentFlags().IntVar(
+		&ODR.Job.Spec.Deal.Confidence, "confidence", ODR.Job.Spec.Deal.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
-	runWasmCommand.PersistentFlags().IntVar(
-		&wasmJob.Spec.Deal.MinBids, "min-bids", wasmJob.Spec.Deal.MinBids,
+	wasmRunCmd.PersistentFlags().IntVar(
+		&ODR.Job.Spec.Deal.MinBids, "min-bids", ODR.Job.Spec.Deal.MinBids,
 		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
-	runWasmCommand.PersistentFlags().Float64Var(
-		&wasmJob.Spec.Timeout, "timeout", wasmJob.Spec.Timeout,
+	wasmRunCmd.PersistentFlags().Float64Var(
+		&ODR.Job.Spec.Timeout, "timeout", ODR.Job.Spec.Timeout,
 		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
 	)
-	runWasmCommand.PersistentFlags().StringVar(
-		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
+	wasmRunCmd.PersistentFlags().StringVar(
+		&ODR.Job.Spec.Wasm.EntryPoint, "entry-point", ODR.Job.Spec.Wasm.EntryPoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
-	runWasmCommand.PersistentFlags().VarP(
-		NewURLStorageSpecArrayFlag(&wasmJob.Spec.Inputs), "input-urls", "u",
-		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
-		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
-		and supports both HTTP and HTTPS.`,
-	)
-	runWasmCommand.PersistentFlags().VarP(
-		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Inputs), "input-volumes", "v",
-		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
-	)
-	runWasmCommand.PersistentFlags().VarP(
-		EnvVarMapFlag(&wasmJob.Spec.Wasm.EnvironmentVariables), "env", "e",
+	wasmRunCmd.PersistentFlags().VarP(&ODR.Inputs, "input", "i", inputUsageMsg)
+	wasmRunCmd.PersistentFlags().VarP(
+		EnvVarMapFlag(&ODR.Job.Spec.Wasm.EnvironmentVariables), "env", "e",
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
-	runWasmCommand.PersistentFlags().VarP(
-		NewURLStorageSpecArrayFlag(&wasmJob.Spec.Wasm.ImportModules), "import-module-urls", "U",
+	wasmRunCmd.PersistentFlags().VarP(
+		NewURLStorageSpecArrayFlag(&ODR.Job.Spec.Wasm.ImportModules), "import-module-urls", "U",
 		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
 			`the 'wget' command, and supports both HTTP and HTTPS.`,
 	)
-	runWasmCommand.PersistentFlags().VarP(
-		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Wasm.ImportModules), "import-module-volumes", "I",
+	wasmRunCmd.PersistentFlags().VarP(
+		NewIPFSStorageSpecArrayFlag(&ODR.Job.Spec.Wasm.ImportModules), "import-module-volumes", "I",
 		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
 	)
 
-	return runWasmCommand
+	return wasmRunCmd
 }
 
 func runWasm(
 	cmd *cobra.Command,
 	args []string,
-	wasmJob *model.Job,
-	runtimeSettings *RunTimeSettings,
-	downloadSettings *model.DownloaderSettings,
-	nodeSelector string,
+	ODR *WasmRunOptions,
 ) error {
 	ctx := cmd.Context()
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	wasmCidOrPath := args[0]
-	wasmJob.Spec.Wasm.Parameters = args[1:]
+	ODR.Job.Spec.Wasm.Parameters = args[1:]
 
-	nodeSelectorRequirements, err := job.ParseNodeSelector(nodeSelector)
+	nodeSelectorRequirements, err := job.ParseNodeSelector(ODR.NodeSelector)
 	if err != nil {
 		return err
 	}
-	wasmJob.Spec.NodeSelectors = nodeSelectorRequirements
+	ODR.Job.Spec.NodeSelectors = nodeSelectorRequirements
+	ODR.Job.Spec.Inputs = ODR.Inputs.Values()
 
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(wasmCidOrPath)
 	if err == nil {
 		// It is a valid CID – proceed to create IPFS context.
-		wasmJob.Spec.Wasm.EntryModule = model.StorageSpec{
+		ODR.Job.Spec.Wasm.EntryModule = model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           wasmCid.String(),
 		}
@@ -214,18 +216,18 @@ func runWasm(
 		if err != nil {
 			return err
 		}
-		wasmJob.Spec.Wasm.EntryModule = inlineData
+		ODR.Job.Spec.Wasm.EntryModule = inlineData
 	}
 
 	// We can only use a Deterministic verifier if we have multiple nodes running the job
 	// If the user has selected a Deterministic verifier (or we are using it by default)
 	// then switch back to a Noop Verifier if the concurrency is too low.
-	if wasmJob.Spec.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
-		wasmJob.Spec.Verifier = model.VerifierNoop
+	if ODR.Job.Spec.Deal.Concurrency <= 1 && ODR.Job.Spec.Verifier == model.VerifierDeterministic {
+		ODR.Job.Spec.Verifier = model.VerifierNoop
 	}
 
 	// See wazero.ModuleConfig.WithEnv
-	for key, value := range wasmJob.Spec.Wasm.EnvironmentVariables {
+	for key, value := range ODR.Job.Spec.Wasm.EnvironmentVariables {
 		for _, str := range []string{key, value} {
 			if str == "" || strings.ContainsRune(str, null) {
 				return fmt.Errorf("invalid environment variable %s=%s", key, value)
@@ -233,7 +235,7 @@ func runWasm(
 		}
 	}
 
-	return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings)
+	return ExecuteJob(ctx, cm, cmd, ODR.Job, ODR.RunTimeSettings, ODR.DownloadFlags)
 }
 
 func newValidateWasmCmd() *cobra.Command {
