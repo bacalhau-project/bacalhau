@@ -139,6 +139,10 @@ func (d *JobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, 
 			State: d.states[id],
 		})
 	}
+	// sorts the slice such that earlier times come before later times.
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Job.Metadata.CreatedAt.Before(result[j].Job.Metadata.CreatedAt)
+	})
 	return result, nil
 }
 
