@@ -898,6 +898,32 @@ const docTemplate = `{
                 }
             }
         },
+        "model.JobCreatePayload": {
+            "type": "object",
+            "required": [
+                "APIVersion",
+                "ClientID",
+                "Spec"
+            ],
+            "properties": {
+                "APIVersion": {
+                    "type": "string",
+                    "example": "V1beta1"
+                },
+                "ClientID": {
+                    "description": "the id of the client that is submitting the job",
+                    "type": "string"
+                },
+                "Spec": {
+                    "description": "The specification of this job.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
+                }
+            }
+        },
         "model.JobHistory": {
             "type": "object",
             "properties": {
@@ -1883,11 +1909,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "payload": {
-                    "description": "The data needed to submit and run a job on the network:",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCreatePayload"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",
