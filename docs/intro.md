@@ -80,7 +80,7 @@ The options are not limited to the above mentioned. You can mount your data anyw
 You could use environment variables to store sensitive data such as access tokens, API keys, or passwords. These variables can be accessed by Bacalhau at runtime and are not visible to anyone who has access to the code or the server.
 Endpoints can also be used to provide secure access to Bacalhau. This way, the client can authenticate with Bacalhau using the token without exposing their credentials.
 
-### Workloads is Bacalhau best suited for
+### Workloads Bacalhau is best suited for
 Bacalhau can be used for a variety of data processing workloads, including machine learning, data analytics, and scientific computing. It is well-suited for workloads that require processing large amounts of data in a distributed and parallelized manner.
 
 ### Use Cases
