@@ -41,7 +41,7 @@ func NewGenericSQLDatastore(
 		db:               db,
 	}
 	datastore.mtx.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
+		Threshold: 100 * time.Millisecond,
 		Id:        fmt.Sprintf("GenericSQLDatastore[%s].mtx", name),
 	})
 	return datastore, nil
