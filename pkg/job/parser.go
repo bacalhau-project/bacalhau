@@ -13,6 +13,8 @@ import (
 const defaultStoragePath = "/inputs"
 
 func ParseStorageString(sourceURI, destinationPath string, options map[string]string) (model.StorageSpec, error) {
+	sourceURI = strings.Trim(sourceURI, " '\"")
+	destinationPath = strings.Trim(destinationPath, " '\"")
 	parsedURI, err := url.Parse(sourceURI)
 	if err != nil {
 		return model.StorageSpec{}, err
