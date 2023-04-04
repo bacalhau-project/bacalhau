@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -17,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	"github.com/stretchr/testify/require"
 )
 
 type mockBidStrategy struct {
@@ -47,11 +48,10 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 	store := inmemory.NewJobStore()
 	scheduler := &mockScheduler{
 		handleStartJob: func(ctx context.Context, sjr StartJobRequest) error {
-			store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+			return store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 				JobID:    sjr.Job.Metadata.ID,
 				NewState: model.JobStateInProgress,
 			})
-			return nil
 		},
 	}
 
