@@ -3,17 +3,15 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/url"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -29,7 +27,7 @@ var (
 	dockerRunExample = templates.Examples(i18n.T(`
 		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container. All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
-			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+			-i src=ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72,dst=/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 
@@ -49,20 +47,17 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine           string   // Executor - executor.Executor
-	Verifier         string   // Verifier - verifier.Verifier
-	Publisher        string   // Publisher - publisher.Publisher
-	Inputs           []string // Array of input CIDs
-	InputRepos       []string // Array of input Repos
-	InputUrls        []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
-	Env              []string // Array of environment variables
-	IDOnly           bool     // Only print the job ID
-	Concurrency      int      // Number of concurrent jobs to run
-	Confidence       int      // Minimum number of nodes that must agree on a verification result
-	MinBids          int      // Minimum number of bids before they will be accepted (at random)
-	Timeout          float64  // Job execution timeout in seconds
+	Engine           string          // Executor - executor.Executor
+	Verifier         string          // Verifier - verifier.Verifier
+	Publisher        string          // Publisher - publisher.Publisher
+	Inputs           opts.StorageOpt // Array of inputs
+	OutputVolumes    []string        // Array of output volumes in 'name:mount point' form
+	Env              []string        // Array of environment variables
+	IDOnly           bool            // Only print the job ID
+	Concurrency      int             // Number of concurrent jobs to run
+	Confidence       int             // Minimum number of nodes that must agree on a verification result
+	MinBids          int             // Minimum number of bids before they will be accepted (at random)
+	Timeout          float64         // Job execution timeout in seconds
 	CPU              string
 	Memory           string
 	GPU              string
@@ -91,10 +86,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Engine:             "docker",
 		Verifier:           "noop",
 		Publisher:          "estuary",
-		Inputs:             []string{},
-		InputRepos:         []string{},
-		InputUrls:          []string{},
-		InputVolumes:       []string{},
+		Inputs:             opts.StorageOpt{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
 		Concurrency:        1,
@@ -156,38 +148,8 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		&ODR.Publisher, "publisher", ODR.Publisher,
 		`What publisher engine to use to publish the job results`,
 	)
-	//nolint:lll // Documentation, ok if long.
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.Inputs, "inputs", "i", ODR.Inputs,
-		`Mount CIDs as the inputs (e.g. -i QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72. Mounts data at '/inputs')
+	dockerRunCmd.PersistentFlags().VarP(&ODR.Inputs, "input", "i", inputUsageMsg)
 
-Mount URIs as the inputs:
-CID using the IPFS URI (-i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72. Mounts data at '/inputs')
-Http/Https URL (e.g. '-i https://example.com/bar.tar.gz' mounts 'bar.tar.gz' at '/inputs/bar.tar.gz')
-Git repo (e.g. '-i git://github.com/bacalhau-project/bacalhau.git' URI must end with .git . mounts the repo at '/inputs/bacalhau-project/bacalhau')
-Git-LFS repo (e.g. '-i gitlfs://huggingface.co/bigscience/test-bloomd.git' URI must end with .git . mounts the repo at '/inputs/bigscience/test-bloomd').
-		`,
-	)
-
-	//nolint:lll // Documentation, ok if long.
-	// #TODO support mounting from a branch or a commit
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.InputRepos, "input-repos", "r", ODR.InputRepos,
-		`URL of the input git repos to be cloned from a URL. Mounts data at '/inputs' (e.g. '-r https://github.com/bacalhau-project/bacalhau.git'
-		mounts the repo at '/inputs/bacalhau-project/bacalhau').`,
-	)
-
-	//nolint:lll // Documentation, ok if long.
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.InputUrls, "input-urls", "u", ODR.InputUrls,
-		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u https://example.com/bar.tar.gz'
-		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
-		and supports both HTTP and HTTPS.`,
-	)
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.InputVolumes, "input-volumes", "v", ODR.InputVolumes,
-		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
-	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.OutputVolumes, "output-volumes", "o", ODR.OutputVolumes,
 		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
@@ -350,64 +312,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		return &model.Job{}, err
 	}
 
-	for _, i := range odr.Inputs {
-		isValidCID := func(i string) bool {
-			c, er := cid.Decode(i)
-			if er != nil {
-				return false // invalid CID format
-			}
-			return c.Type() == cid.Raw || c.Type() == cid.DagProtobuf // check CID version
-		}(i)
-		isTheCIDValid := isValidCID
-		if isTheCIDValid {
-			odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-		} else {
-			scheme := func(URI string) *url.URL {
-				parsed, err1 := url.Parse(URI)
-				if err1 != nil {
-					errMsg := fmt.Sprintf("Error parsing URI %s: %v", URI, err1)
-					log.Fatal(errMsg)
-				}
-				return parsed
-			}(i)
-
-			switch scheme.Scheme {
-			case "http":
-				isGitURL := strings.HasSuffix(i, ".git")
-				if isGitURL {
-					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("http://%s", scheme.Host+scheme.Path))
-				}
-				odr.InputUrls = append(odr.InputUrls, i)
-			case "https":
-				isGitURL := strings.HasSuffix(i, ".git")
-				if isGitURL {
-					odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
-				}
-				odr.InputUrls = append(odr.InputUrls, i)
-			case "ipfs":
-				odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", scheme.Host))
-			case "git":
-				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
-			case "gitlfs":
-				lfsConstraint := "git-lfs=True"
-				if odr.NodeSelector == "" {
-					odr.NodeSelector = lfsConstraint
-				}
-				odr.NodeSelector = lfsConstraint + "," + odr.NodeSelector
-				odr.InputRepos = append(odr.InputRepos, fmt.Sprintf("https://%s", scheme.Host+scheme.Path))
-			// unimplemented schemes
-			// case "s3":
-			//     // Handle s3 scheme
-			//     fmt.Println("Handling s3 scheme...")
-			// case "file":
-			//     // Handle file scheme
-			//     fmt.Println("Handling file scheme...")
-			default:
-				fmt.Println("Unknown scheme or scheme not currently supported...")
-			}
-		}
-	}
-
 	if len(odr.WorkingDirectory) > 0 {
 		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
@@ -433,9 +337,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.GPU,
 		odr.Networking,
 		odr.NetworkDomains,
-		odr.InputUrls,
-		odr.InputRepos,
-		odr.InputVolumes,
+		odr.Inputs.Values(),
 		odr.OutputVolumes,
 		odr.Env,
 		odr.Entrypoint,
