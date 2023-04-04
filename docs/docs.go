@@ -1546,7 +1546,8 @@ const docTemplate = `{
                 7,
                 8,
                 9,
-                10
+                10,
+                11
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
@@ -1556,6 +1557,7 @@ const docTemplate = `{
                 "storageSourceUnknown",
                 "StorageSourceIPFS",
                 "StorageSourceRepoClone",
+                "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
                 "StorageSourceFilecoinUnsealed",
                 "StorageSourceFilecoin",
