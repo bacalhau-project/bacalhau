@@ -227,20 +227,22 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	stdout, stderr, _ := logmanager.GetReaders(false)
 
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Println("ALL finished")
+	fmt.Println("Got readers from new logfile format")
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	logmanager, present := e.LogManagerMap.Get(executionID)
-	if !present {
-		return nil, fmt.Errorf("no logs available for execution {executionID}")
-	}
+	// logmanager, present := e.LogManagerMap.Get(executionID)
+	// if !present {
+	// 	return nil, fmt.Errorf("no logs available for execution {executionID}")
+	// }
 
-	stdout, stderr, _ := logmanager.GetReaders(true)
-	return wasmlogs.NewStreamMerger(ctx, stdout, stderr), nil
+	// stdout, stderr, _ := logmanager.GetReaders(true)
+
+	// return wasmlogs.NewStreamMerger(ctx, stdout, stderr), nil
+	return nil, nil
 }
 
 func (e *Executor) setupOutputStreams(ctx context.Context, executionID string) (io.Writer, io.Writer) {

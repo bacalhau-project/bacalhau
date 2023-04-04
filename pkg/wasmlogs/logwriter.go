@@ -30,7 +30,13 @@ func (w *LogWriter) Write(p []byte) (int, error) {
 
 	w.template.Timestamp = time.Now().Unix()
 	w.template.Data = append([]byte(nil), p...)
-	w.ch <- w.template
 
-	return len(p), nil
+	// Only write if we wouldn't block. If we would block then
+	// drop the message
+	if len(w.ch) < DefaultMessageChannelSize {
+		w.ch <- w.template
+		return len(p), nil
+	}
+
+	return 0, nil
 }

@@ -91,7 +91,7 @@ fn main() {
     match logtest(&file, pauser) {
         Err(err) => {
             eprintln!("Error: {err:?} : failed to open {file}");
-            process::exit(2);
+            process::exit(1);
         }
         Ok(()) => {
             println!("{}", COLOR_RESET);

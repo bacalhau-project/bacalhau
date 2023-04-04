@@ -18,3 +18,7 @@ func NewMessage(stream string, data []byte) *Message {
 	msg.Data = append([]byte(nil), data...)
 	return msg
 }
+
+func (m Message) GetDataSize() int64 {
+	return int64(len(m.Data))
+}

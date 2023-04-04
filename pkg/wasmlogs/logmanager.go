@@ -2,7 +2,6 @@ package wasmlogs
 
 import (
 	"context"
-	"fmt"
 	"sync"
 )
 
@@ -15,10 +14,11 @@ const (
 )
 
 type LogManager struct {
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-	logfile        *LogFile
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	logfile *LogFile
+	//	mbuffer        *generic.MessageBuffer[*Message]
 	inChannel      chan Message
 	stdoutLive     chan Message
 	stderrLive     chan Message
@@ -70,10 +70,6 @@ func (mgr *LogManager) readWriters() {
 	stdoutReady := false
 	stderrReady := false
 
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Println("Writers are active")
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
 	// TODO: Properly cache recent messages and track the last
 	// timestamp we sent so that when a reader wants a livestream
 	// we can make sure they don't miss out.
@@ -81,10 +77,6 @@ func (mgr *LogManager) readWriters() {
 	lastStdErr := Message{}
 
 	for {
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-		fmt.Println("Writers are actively selecting")
-		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
 		select {
 		case <-mgr.stdoutWantLive:
 			stdoutReady = true
@@ -113,14 +105,18 @@ func (mgr *LogManager) readWriters() {
 				mgr.stdoutLive <- m
 			}
 		case <-mgr.ctx.Done():
-			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-			fmt.Println("Writers are cancelled")
-			fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
 			return
 		}
 	}
 }
+
+// func (mgr *LogManager) GetMuxedReader(follow bool) (*LogReader, error) {
+// 	r1, r2, err := GetReaders(follow)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+
+// }
 
 // GetReaders returns two LogReader structs which will read all of the
 // data from the LogFile, and then once it is up to date, will 'read'
