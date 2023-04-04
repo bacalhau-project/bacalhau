@@ -28,6 +28,16 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name:  "ipfs with path",
+			input: "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA:/mount/path",
+			expected: model.StorageSpec{
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+				Path:          "/mount/path",
+				CID:           "QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+			},
+		},
+		{
 			name:  "ipfs with explicit dst path",
 			input: "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA,dst=/mount/path",
 			expected: model.StorageSpec{
@@ -40,6 +50,16 @@ func TestParse(t *testing.T) {
 		{
 			name:  "ipfs with explicit src and dst",
 			input: "src=ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA,dst=/mount/path",
+			expected: model.StorageSpec{
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+				Path:          "/mount/path",
+				CID:           "QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+			},
+		},
+		{
+			name:  "ipfs with explicit dst overrides",
+			input: "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA:/input,dst=/mount/path",
 			expected: model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
@@ -72,6 +92,19 @@ func TestParse(t *testing.T) {
 					Key:      "dir/file-001.txt",
 					Endpoint: "http://localhost:9000",
 					Region:   "us-east-1",
+				},
+			},
+		},
+		{
+			name:  "s3 with multiple colons",
+			input: "s3://myBucket/dir:file:001.txt:/mount/path",
+			expected: model.StorageSpec{
+				StorageSource: model.StorageSourceS3,
+				Name:          "s3://myBucket/dir:file:001.txt",
+				Path:          "/mount/path",
+				S3: &model.S3StorageSpec{
+					Bucket: "myBucket",
+					Key:    "dir:file:001.txt",
 				},
 			},
 		},

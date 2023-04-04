@@ -3,6 +3,7 @@ package opts
 import (
 	"encoding/csv"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -29,8 +30,22 @@ func (o *StorageOpt) Set(value string) error {
 		key, val, ok := strings.Cut(field, "=")
 
 		if !ok {
+			// parsing simple format of source:destination
 			if i == 0 {
-				sourceURI = field
+				parsedURI, err := url.Parse(field)
+				if err != nil {
+					return err
+				}
+				// find the last colon, excluding the schema part
+				schema := parsedURI.Scheme
+				trimmedURI := strings.TrimPrefix(field, schema+"://")
+				index := strings.LastIndex(trimmedURI, ":")
+				if index == -1 {
+					sourceURI = field
+				} else {
+					sourceURI = schema + "://" + trimmedURI[:index]
+					destination = trimmedURI[index+1:]
+				}
 				continue
 			} else {
 				return fmt.Errorf("invalid storage option: %s. Must be a key=value pair", field)
