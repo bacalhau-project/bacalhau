@@ -11,6 +11,9 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+// compile-time check to ensure type implements the flag.Value interface
+var _ flag.Value = &StorageOpt{}
+
 type StorageOpt struct {
 	values []model.StorageSpec
 }
@@ -80,7 +83,7 @@ func (o *StorageOpt) Type() string {
 }
 
 func (o *StorageOpt) String() string {
-	storages := make([]string, len(o.values))
+	storages := make([]string, 0, len(o.values))
 	for _, storage := range o.values {
 		repr := fmt.Sprintf("%s %s %s", storage.StorageSource, storage.Name, storage.Path)
 		storages = append(storages, repr)
@@ -91,6 +94,3 @@ func (o *StorageOpt) String() string {
 func (o *StorageOpt) Values() []model.StorageSpec {
 	return o.values
 }
-
-// compile-time check to ensure type implements the flag.Value interface
-var _ flag.Value = &StorageOpt{}

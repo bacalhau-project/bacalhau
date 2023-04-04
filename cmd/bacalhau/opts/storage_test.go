@@ -3,6 +3,7 @@
 package opts
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -109,6 +110,26 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name:  "http with port",
+			input: "https://example.com:9000/file:/mount/path",
+			expected: model.StorageSpec{
+				StorageSource: model.StorageSourceURLDownload,
+				Name:          "https://example.com:9000/file",
+				Path:          "/mount/path",
+				URL:           "https://example.com:9000/file",
+			},
+		},
+		{
+			name:  "http with port and explicit format",
+			input: "src=https://example.com:9000/file,dst=/mount/path",
+			expected: model.StorageSpec{
+				StorageSource: model.StorageSourceURLDownload,
+				Name:          "https://example.com:9000/file",
+				Path:          "/mount/path",
+				URL:           "https://example.com:9000/file",
+			},
+		},
+		{
 			name:  "empty",
 			input: "",
 			error: true,
@@ -130,4 +151,14 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseMultipleInputs(t *testing.T) {
+	opt := StorageOpt{}
+	require.NoError(t, opt.Set("ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA"))
+	require.NoError(t, opt.Set("s3://myBucket/dir/file-001.txt"))
+	assert.Equal(t, 2, len(opt.Values()))
+	assert.Equal(t, model.StorageSourceIPFS, opt.Values()[0].StorageSource)
+	assert.Equal(t, model.StorageSourceS3, opt.Values()[1].StorageSource)
+	assert.Equal(t, 2, len(strings.Split(opt.String(), ",")))
 }
