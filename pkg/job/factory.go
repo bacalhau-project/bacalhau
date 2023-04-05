@@ -162,22 +162,28 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []st
 		return &model.Job{}, err
 	}
 	j.APIVersion = a.String()
+
+	var spec model.JobSpecDocker
+
 	//If entrypoint is specified, construct a 1 element slice for it. Otherwise don't pass anything for that field
-	var entrypointSlice []string
 	if entrypoint == "" {
-		entrypointSlice = []string{}
+		//tell docker to use default entrypoint, which can be defined in the Dockerfile
+		spec = model.JobSpecDocker{
+			Image:                image,
+			EnvironmentVariables: env,
+		}
 	} else {
-		entrypointSlice = []string{entrypoint}
+		spec = model.JobSpecDocker{
+			Image:                image,
+			Entrypoint:           []string{entrypoint},
+			EnvironmentVariables: env,
+		}
 	}
 	j.Spec = model.Spec{
 		Engine:        e,
 		Verifier:      v,
 		PublisherSpec: p,
-		Docker: model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypointSlice,
-			EnvironmentVariables: env,
-		},
+		Docker:        spec,
 		Network: model.NetworkConfig{
 			Type:    network,
 			Domains: domains,
