@@ -26,15 +26,15 @@ type LogReader struct {
 	subscriptionCh        chan *LogMessage
 	subscribed            bool
 	endOfFileReached      bool
-	streamName            string
 	follow                bool
+	streamName            LogStreamType
 }
 
 type LogReaderOptions struct {
 	ctx                   context.Context
 	filename              string
 	follow                bool
-	streamName            string
+	streamName            LogStreamType
 	rawMessageTransformer LogMessageTransformer
 	broadcaster           *generic.Broadcaster[*LogMessage]
 }

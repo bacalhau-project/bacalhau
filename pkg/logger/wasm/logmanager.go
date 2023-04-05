@@ -120,19 +120,19 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 }
 
 func (lm *LogManager) GetWriters() (io.Writer, io.Writer) {
-	writerFunc := func(name string) func([]byte) *LogMessage {
+	writerFunc := func(strm LogStreamType) func([]byte) *LogMessage {
 		return func(b []byte) *LogMessage {
 			m := LogMessage{
 				Timestamp: time.Now().Unix(),
-				Stream:    name,
+				Stream:    strm,
 			}
 			m.Data = append([]byte(nil), b...)
 			return &m
 		}
 	}
 
-	stdout := NewLogWriter(lm.buffer, writerFunc("stdout"))
-	stderr := NewLogWriter(lm.buffer, writerFunc("stderr"))
+	stdout := NewLogWriter(lm.buffer, writerFunc(LogStreamStdout))
+	stderr := NewLogWriter(lm.buffer, writerFunc(LogStreamStderr))
 	return stdout, stderr
 }
 
@@ -143,7 +143,7 @@ func (lm *LogManager) GetDefaultReaders(follow bool) (io.Reader, io.Reader) {
 		follow:                follow,
 		rawMessageTransformer: nil,
 		broadcaster:           lm.broadcaster,
-		streamName:            "stdout",
+		streamName:            LogStreamStdout,
 	})
 
 	stderr := NewLogReader(LogReaderOptions{
@@ -152,7 +152,7 @@ func (lm *LogManager) GetDefaultReaders(follow bool) (io.Reader, io.Reader) {
 		follow:                follow,
 		rawMessageTransformer: nil,
 		broadcaster:           lm.broadcaster,
-		streamName:            "stderr",
+		streamName:            LogStreamStderr,
 	})
 
 	return stdout, stderr
@@ -161,7 +161,7 @@ func (lm *LogManager) GetDefaultReaders(follow bool) (io.Reader, io.Reader) {
 func (lm *LogManager) GetMuxedReader(follow bool) io.ReadCloser {
 	transformer := func(msg *LogMessage) []byte {
 		tag := logger.StdoutStreamTag
-		if msg.Stream == "stderr" {
+		if msg.Stream == LogStreamStderr {
 			tag = logger.StderrStreamTag
 		}
 		df := logger.NewDataFrameFromData(tag, msg.Data)
@@ -174,7 +174,7 @@ func (lm *LogManager) GetMuxedReader(follow bool) io.ReadCloser {
 		follow:                follow,
 		rawMessageTransformer: transformer,
 		broadcaster:           lm.broadcaster,
-		streamName:            "stdout",
+		streamName:            LogStreamStdout,
 	})
 }
 
