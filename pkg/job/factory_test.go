@@ -78,7 +78,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					[]model.StorageSpec{}, // inputs
 					outputVolumes,
 					[]string{}, // env
-					[]string{}, // entrypoint
+					"",         // entrypoint
 					[]string{}, // cmd
 					"",         // image
 					model.Deal{

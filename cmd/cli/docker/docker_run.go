@@ -48,6 +48,7 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
+	Entrypoint       []string
 	WorkingDirectory string // Working directory for docker
 
 	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
@@ -65,6 +66,7 @@ const (
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
+		Entrypoint:       nil,
 		WorkingDirectory: "",
 
 		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
@@ -107,6 +109,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringVarP(
 		&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
+	)
+
+	dockerRunCmd.PersistentFlags().StringSliceVar(
+		&opts.Entrypoint, "entrypoint", opts.Entrypoint,
+		`Override the default ENTRYPOINT of the image`,
 	)
 
 	dockerRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
@@ -165,7 +172,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
 	image := cmdArgs[0]
-	entrypoint := cmdArgs[1:]
+	parameters := cmdArgs[1:]
 
 	verifierType, err := model.ParseVerifier(opts.SpecSettings.Verifier)
 	if err != nil {
@@ -188,7 +195,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 	}
 
 	spec, err := jobutils.MakeDockerSpec(
-		image, opts.WorkingDirectory, entrypoint, opts.SpecSettings.EnvVar, []string{},
+		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
 		jobutils.WithVerifier(verifierType),
 		jobutils.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		jobutils.WithResources(

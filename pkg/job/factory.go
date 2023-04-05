@@ -9,7 +9,39 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
+<<<<<<< HEAD
 type SpecOpt func(s *model.Spec) error
+=======
+// these are util methods for the CLI
+// to pass in the collection of CLI args as strings
+// and have a Job struct returned
+func ConstructDockerJob( //nolint:funlen
+	ctx context.Context,
+	a model.APIVersion,
+	e model.Engine,
+	v model.Verifier,
+	p model.PublisherSpec,
+	cpu, memory, gpu string,
+	network model.Network,
+	domains []string,
+	inputs []model.StorageSpec,
+	outputVolumes []string,
+	env []string,
+	entrypoint string,
+	cmd []string,
+	image string,
+	deal model.Deal,
+	timeout float64,
+	annotations []string,
+	nodeSelector string,
+	workingDir string,
+) (*model.Job, error) {
+	jobResources := model.ResourceUsageConfig{
+		CPU:    cpu,
+		Memory: memory,
+		GPU:    gpu,
+	}
+>>>>>>> fbbf47f7 (Change entrypoint to be a string and other things...)
 
 func WithVerifier(v model.Verifier) SpecOpt {
 	return func(s *model.Spec) error {
@@ -94,6 +126,7 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []st
 		if err := system.ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
 		}
+<<<<<<< HEAD
 		s.Engine = model.EngineDocker
 		s.Docker = model.JobSpecDocker{
 			Image:                image,
@@ -103,6 +136,59 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []st
 			WorkingDirectory:     workdir,
 		}
 		return nil
+=======
+	}
+
+	if len(unSafeAnnotations) > 0 {
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+			RegexString,
+			strings.Join(unSafeAnnotations, ", "))
+	}
+
+	nodeSelectorRequirements, err := ParseNodeSelector(nodeSelector)
+	if err != nil {
+		return &model.Job{}, err
+	}
+
+	if len(workingDir) > 0 {
+		err = system.ValidateWorkingDir(workingDir)
+		if err != nil {
+			return &model.Job{}, err
+		}
+	}
+
+	j, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		return &model.Job{}, err
+	}
+	j.APIVersion = a.String()
+	//If entrypoint is specified, construct a 1 element slice for it. Otherwise don't pass anything for that field
+	var entrypointSlice []string
+	if entrypoint == "" {
+		entrypointSlice = []string{}
+	} else {
+		entrypointSlice = []string{entrypoint}
+	}
+	j.Spec = model.Spec{
+		Engine:        e,
+		Verifier:      v,
+		PublisherSpec: p,
+		Docker: model.JobSpecDocker{
+			Image:                image,
+			Entrypoint:           entrypointSlice,
+			EnvironmentVariables: env,
+		},
+		Network: model.NetworkConfig{
+			Type:    network,
+			Domains: domains,
+		},
+		Timeout:       timeout,
+		Resources:     jobResources,
+		Inputs:        inputs,
+		Outputs:       jobOutputs,
+		Annotations:   jobAnnotations,
+		NodeSelectors: nodeSelectorRequirements,
+>>>>>>> fbbf47f7 (Change entrypoint to be a string and other things...)
 	}
 }
 
