@@ -7,9 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -48,52 +46,6 @@ func NewNoopStateLoader() StateLoader {
 		return model.JobState{}, nil
 	}
 	return stateLoader
-}
-
-func buildJobInputs(inputVolumes, inputUrls, inputRepos []string) ([]model.StorageSpec, error) {
-	jobInputs := []model.StorageSpec{}
-
-	for _, inputRepo := range inputRepos {
-		u, err := clone.IsValidGitRepoURL(inputRepo)
-
-		if err != nil {
-			return []model.StorageSpec{}, err
-		}
-		jobInputs = append(jobInputs, model.StorageSpec{
-			StorageSource: model.StorageSourceRepoClone,
-			Repo:          u.String(),
-			Path:          "/inputs",
-		})
-	}
-
-	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
-	for _, inputURL := range inputUrls {
-		// should loop through all available storage providers?
-		u, err := urldownload.IsURLSupported(inputURL)
-		if err != nil {
-			return []model.StorageSpec{}, err
-		}
-		jobInputs = append(jobInputs, model.StorageSpec{
-			StorageSource: model.StorageSourceURLDownload,
-			URL:           u.String(),
-			Path:          "/inputs",
-		})
-	}
-
-	for _, inputVolume := range inputVolumes {
-		slices := strings.Split(inputVolume, ":")
-		if len(slices) != 2 {
-			return []model.StorageSpec{}, fmt.Errorf("invalid input volume: %s", inputVolume)
-		}
-		jobInputs = append(jobInputs, model.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			StorageSource: model.StorageSourceIPFS,
-			CID:           slices[0],
-			Path:          slices[1],
-		})
-	}
-	return jobInputs, nil
 }
 
 func buildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {

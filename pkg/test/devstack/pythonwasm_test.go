@@ -99,7 +99,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
-		"-v", fmt.Sprintf("%s:%s", fileCid, inputPath),
+		"-i", fmt.Sprintf("ipfs://%s,dst=%s", fileCid, inputPath),
 		"-o", fmt.Sprintf("%s:%s", "output", outputPath),
 		"python",
 		"--deterministic",

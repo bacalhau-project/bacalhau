@@ -10,17 +10,20 @@ import (
 
 type queue struct {
 	scheduler Scheduler
+	emitter   EventEmitter
 	store     jobstore.Store
 }
 
-func NewQueue(store jobstore.Store, scheduler Scheduler) Queue {
+func NewQueue(store jobstore.Store, scheduler Scheduler, emitter EventEmitter) Queue {
 	return &queue{
 		scheduler: scheduler,
+		emitter:   emitter,
 		store:     store,
 	}
 }
 
 func (q *queue) EnqueueJob(ctx context.Context, job model.Job) error {
+	defer q.emitter.EmitJobCreated(ctx, job)
 	return q.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 		JobID: job.Metadata.ID,
 		Condition: jobstore.UpdateJobCondition{
@@ -58,5 +61,6 @@ func (q *queue) CancelJob(ctx context.Context, req CancelJobRequest) (CancelJobR
 	if err != nil && errors.As(err, &invalidJobErr) {
 		return q.scheduler.CancelJob(ctx, req)
 	}
+	defer q.emitter.EmitJobCanceled(ctx, req)
 	return CancelJobResult{}, err
 }

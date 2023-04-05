@@ -44,6 +44,16 @@ func (e EventEmitter) EmitJobCreated(
 	e.EmitEventSilently(ctx, event)
 }
 
+func (e EventEmitter) EmitJobCanceled(ctx context.Context, req CancelJobRequest) {
+	event := model.JobEvent{
+		JobID:     req.JobID,
+		EventName: model.JobEventCanceled,
+		Status:    req.Reason,
+		EventTime: time.Now(),
+	}
+	e.EmitEventSilently(ctx, event)
+}
+
 func (e EventEmitter) EmitBidReceived(
 	ctx context.Context, request compute.AskForBidRequest, response compute.AskForBidResponse) {
 	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)

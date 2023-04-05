@@ -2,13 +2,13 @@ package publicapi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -101,34 +101,14 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 
 	// Create a payload before signing it with our local key (for verification on the
 	// server).
-	payload := model.JobCancelPayload{
+	req := model.JobCancelPayload{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 		Reason:   reason,
 	}
 
-	jsonData, err := model.JSONMarshalWithMax(payload)
-	if err != nil {
-		return &model.JobState{}, err
-	}
-	rawPayloadJSON := json.RawMessage(jsonData)
-	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
-
-	// sign the raw bytes representation of model.JobCreatePayload
-	signature, err := system.SignForClient(rawPayloadJSON)
-	if err != nil {
-		return &model.JobState{}, err
-	}
-	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
-
-	req := signedRequest{
-		Payload:         &rawPayloadJSON,
-		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
-	}
-
 	var res cancelResponse
-	if err := apiClient.Post(ctx, APIPrefix+"cancel", req, &res); err != nil {
+	if err := apiClient.PostSigned(ctx, APIPrefix+"cancel", req, &res); err != nil {
 		return &model.JobState{}, err
 	}
 
@@ -273,33 +253,30 @@ func (apiClient *RequesterAPIClient) Submit(
 		Spec:       &j.Spec,
 	}
 
-	jsonData, err := model.JSONMarshalWithMax(data)
-	if err != nil {
-		return &model.Job{}, err
-	}
-	jsonRaw := json.RawMessage(jsonData)
-	log.Ctx(ctx).Trace().RawJSON("json", jsonRaw).Msgf("jsonRaw")
-
-	// sign the raw bytes representation of model.JobCreatePayload
-	signature, err := system.SignForClient(jsonRaw)
-	if err != nil {
-		return &model.Job{}, err
-	}
-	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
-
 	var res submitResponse
-	req := submitRequest{
-		JobCreatePayload: &jsonRaw,
-		ClientSignature:  signature,
-		ClientPublicKey:  system.GetClientPublicKey(),
-	}
-
-	err = apiClient.Post(ctx, APIPrefix+"submit", req, &res)
+	err := apiClient.PostSigned(ctx, APIPrefix+"submit", data, &res)
 	if err != nil {
 		return &model.Job{}, err
 	}
 
 	return res.Job, nil
+}
+
+func (apiClient *RequesterAPIClient) Approve(
+	ctx context.Context,
+	jobID string,
+	response bidstrategy.BidStrategyResponse,
+) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Approve")
+	defer span.End()
+
+	data := bidstrategy.ModerateJobRequest{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+		Response: response,
+	}
+
+	return apiClient.PostSigned(ctx, APIPrefix+ApprovalRoute, data, nil)
 }
 
 // Logs will retrieve the address of an endpoint where a client connection can be
@@ -344,24 +321,9 @@ func (apiClient *RequesterAPIClient) Logs(
 		Follow:      follow,
 	}
 
-	jsonData, err := model.JSONMarshalWithMax(payload)
+	req, err := publicapi.SignRequest(payload)
 	if err != nil {
 		return nil, err
-	}
-	rawPayloadJSON := json.RawMessage(jsonData)
-	log.Ctx(ctx).Trace().RawJSON("json", rawPayloadJSON).Msgf("jsonRaw")
-
-	// sign the raw bytes representation of model.JobCreatePayload
-	signature, err := system.SignForClient(rawPayloadJSON)
-	if err != nil {
-		return nil, err
-	}
-	log.Ctx(ctx).Trace().Str("signature", signature).Msgf("signature")
-
-	req := signedRequest{
-		Payload:         &rawPayloadJSON,
-		ClientSignature: signature,
-		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
 	u, _ := url.Parse(apiClient.APIClient.BaseURI.String())

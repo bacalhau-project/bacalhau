@@ -13,6 +13,7 @@ import (
 )
 
 const APIPrefix = "requester/"
+const ApprovalRoute = "approve"
 
 type RequesterAPIServerParams struct {
 	APIServer          *publicapi.APIServer
@@ -51,7 +52,7 @@ func (s *RequesterAPIServer) RegisterAllHandlers() error {
 		{URI: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
 		{URI: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
 		{URI: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
-		{URI: "/" + APIPrefix + "approve", Handler: http.HandlerFunc(s.approve)},
+		{URI: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
 		{URI: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
 		{URI: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
 		{URI: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},

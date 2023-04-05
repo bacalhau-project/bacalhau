@@ -49,9 +49,15 @@ func (c *ChainedBidStrategy) delegate(
 				reflect.TypeOf(strategy).String())
 			return BidStrategyResponse{}, err
 		}
-		if !response.ShouldBid {
-			log.Ctx(ctx).Debug().Msgf("bidding strategy %s returned should not bid due to: %s",
-				reflect.TypeOf(strategy).String(), response.Reason)
+		var status string
+		if response.ShouldWait {
+			status = "should wait"
+		} else if !response.ShouldBid {
+			status = "should not bid"
+		}
+		if status != "" {
+			log.Ctx(ctx).Debug().Msgf("bidding strategy %s returned %s due to: %s",
+				reflect.TypeOf(strategy).String(), status, response.Reason)
 			return response, nil
 		}
 	}

@@ -113,7 +113,8 @@ func NewStandardStorageProvider(
 		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
 		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
+		model.StorageSourceRepoClone:	     tracing.Wrap(repoCloneStorage),
+		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
 		model.StorageSourceS3:               tracing.Wrap(s3Storage),
 	}), nil
 }

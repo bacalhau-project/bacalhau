@@ -3,6 +3,7 @@ package requester
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 type BaseEndpointParams struct {
 	ID                         string
 	PublicKey                  []byte
-	Scheduler                  Scheduler
+	Queue                      Queue
 	Selector                   bidstrategy.BidStrategy
 	Store                      jobstore.Store
 	ComputeEndpoint            compute.Endpoint
@@ -31,6 +32,7 @@ type BaseEndpointParams struct {
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
+	GetBiddingCallback         func() *url.URL
 }
 
 // BaseEndpoint base implementation of requester Endpoint
@@ -40,6 +42,7 @@ type BaseEndpoint struct {
 	store      jobstore.Store
 	computesvc compute.Endpoint
 	selector   bidstrategy.BidStrategy
+	callback   func() *url.URL
 	transforms []jobtransform.Transformer
 }
 
@@ -51,14 +54,14 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 	}
 
-	queue := NewQueue(params.Store, params.Scheduler)
 	return &BaseEndpoint{
 		id:         params.ID,
-		queue:      queue,
+		queue:      params.Queue,
 		computesvc: params.ComputeEndpoint,
 		selector:   params.Selector,
 		store:      params.Store,
 		transforms: transforms,
+		callback:   params.GetBiddingCallback,
 	}
 }
 
@@ -117,6 +120,10 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	}
 
 	selectRequest := bidstrategy.BidStrategyRequest{NodeID: node.id, Job: *job}
+	if url := node.callback(); url != nil {
+		selectRequest.Callback = url
+	}
+
 	response, err := node.selector.ShouldBid(ctx, selectRequest)
 	if err != nil {
 		return job, err
@@ -125,7 +132,7 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	return job, node.handleBidResponse(ctx, *job, response)
 }
 
-func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval ApproveJobRequest) error {
+func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval bidstrategy.ModerateJobRequest) error {
 	// We deliberately expect this to be the empty string if unset. This is so
 	// that if this env variable is (accidentally) left unset, no jobs can be
 	// approved because an empty ClientID is invalid.

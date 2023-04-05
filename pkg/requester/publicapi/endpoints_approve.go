@@ -3,30 +3,23 @@ package publicapi
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/rs/zerolog/log"
 )
 
-type JobApprovePayload struct {
-	requester.ApproveJobRequest
-}
-
-func (j JobApprovePayload) GetClientID() string {
-	return j.ApproveJobRequest.ClientID
-}
-
 func (s *RequesterAPIServer) approve(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	approval, err := unmarshalSignedJob[JobApprovePayload](ctx, req.Body)
+	approval, err := publicapi.UnmarshalSigned[bidstrategy.ModerateJobRequest](ctx, req.Body)
 	if err != nil {
-		httpError(ctx, res, err, http.StatusBadRequest)
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
-	ctx = log.Ctx(ctx).With().Str("JobID", approval.ApproveJobRequest.JobID).Logger().WithContext(ctx)
-	err = s.requester.ApproveJob(ctx, approval.ApproveJobRequest)
+	ctx = log.Ctx(ctx).With().Str("JobID", approval.JobID).Logger().WithContext(ctx)
+	err = s.requester.ApproveJob(ctx, approval)
 	if err != nil {
-		httpError(ctx, res, err, http.StatusBadRequest)
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 }

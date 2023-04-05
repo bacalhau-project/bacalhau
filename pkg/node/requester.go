@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -123,6 +124,9 @@ func NewRequesterNode(
 		NodeDiscoverer: nodeDiscoveryChain,
 		NodeRanker:     nodeRankerChain,
 	})
+	emitter := requester.NewEventEmitter(requester.EventEmitterParams{
+		EventConsumer: localJobEventConsumer,
+	})
 	scheduler := requester.NewBaseScheduler(requester.BaseSchedulerParams{
 		ID:                   host.ID().String(),
 		Host:                 host,
@@ -133,10 +137,9 @@ func NewRequesterNode(
 		ComputeEndpoint:      computeProxy,
 		Verifiers:            verifiers,
 		StorageProviders:     storageProviders,
-		EventEmitter: requester.NewEventEmitter(requester.EventEmitterParams{
-			EventConsumer: localJobEventConsumer,
-		}),
+		EventEmitter:         emitter,
 	})
+	queue := requester.NewQueue(jobStore, scheduler, emitter)
 
 	publicKey := host.Peerstore().PubKey(host.ID())
 	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
@@ -152,11 +155,14 @@ func NewRequesterNode(
 		Selector:                   selectionStrategy,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
-		Scheduler:                  scheduler,
+		Queue:                      queue,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+		GetBiddingCallback: func() *url.URL {
+			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.ApprovalRoute)
+		},
 	})
 
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{

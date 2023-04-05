@@ -37,24 +37,41 @@ type JobExecutorSummary struct {
 	Count    int    `json:"count"`
 }
 
+type ModerationType string
+
+const (
+	ModerationTypeDatacap   ModerationType = "datacap"
+	ModerationTypeExecution ModerationType = "execution"
+)
+
+type JobModerationRequest struct {
+	ID       int64          `json:"id"`
+	JobID    string         `json:"job_id"`
+	Type     ModerationType `json:"type"`
+	Created  time.Time      `json:"created"`
+	Callback URL            `json:"callback"`
+}
+
 type JobModeration struct {
-	ID            int       `json:"id"`
-	JobID         string    `json:"job_id"`
+	ID            int64     `json:"id"`
+	RequestID     int64     `json:"request_id"`
 	UserAccountID int       `json:"user_account_id"`
 	Created       time.Time `json:"created"`
-	Status        string    `json:"status"`
+	Status        bool      `json:"status"`
 	Notes         string    `json:"notes"`
 }
 
 type JobModerationSummary struct {
-	Moderation *JobModeration `json:"moderation"`
-	User       *User          `json:"user"`
+	Moderation *JobModeration        `json:"moderation"`
+	Request    *JobModerationRequest `json:"request"`
+	User       *User                 `json:"user"`
 }
 
 type JobInfo struct {
-	Job        bacalhau_model.Job               `json:"job"`
-	State      bacalhau_model.JobState          `json:"state"`
-	Events     []bacalhau_model.JobEvent        `json:"events"`
-	Results    []bacalhau_model.PublishedResult `json:"results"`
-	Moderation JobModerationSummary             `json:"moderation"`
+	Job         bacalhau_model.Job               `json:"job"`
+	State       bacalhau_model.JobState          `json:"state"`
+	Events      []bacalhau_model.JobEvent        `json:"events"`
+	Results     []bacalhau_model.PublishedResult `json:"results"`
+	Requests    []JobModerationRequest           `json:"requests"`
+	Moderations []JobModerationSummary           `json:"moderations"`
 }

@@ -290,8 +290,8 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		testURLs := []struct {
 			inputURL InputURL
 		}{
-			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/README.md", pathInContainer: "/inputs", filename: "README.md", flag: "-u"}},
-			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-u"}},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/README.md", pathInContainer: "/inputs", filename: "README.md", flag: "-i"}},
+			{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-i"}},
 		}
 
 		for _, turls := range testURLs {
@@ -636,7 +636,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"--api-host", s.host,
 		"--api-port", fmt.Sprint(s.port),
 		"--wait",
-		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
+		"-i", fmt.Sprintf("ipfs://%s,dst=/inputs", directoryCid),
 		"ubuntu", "echo", "hello",
 	}
 
@@ -657,7 +657,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 			"docker", "run",
 			"--api-host", host,
 			"--api-port", port,
-			"-v", "123:/",
 			"--verifier", "deterministic",
 			"--concurrency", strconv.Itoa(args.NodeCount),
 			"--confidence", strconv.Itoa(args.Confidence),
@@ -800,19 +799,13 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 		},
 		{
 			1,
-			[]string{"-u", "http://127.0.0.1:/inputs/url1.txt"},
+			[]string{"-i", "http://127.0.0.1/url1,dst=/inputs/url1.txt"},
 		},
 		{
 			2,
 			[]string{
-				"-u", "http://127.0.0.1:/inputs/url1.txt",
-				"-u", "http://127.0.0.1:/inputs/url2.txt",
-			},
-		},
-		{
-			2,
-			[]string{
-				"-u", "http://127.0.0.1:/inputs/url1.txt,http://127.0.0.1:/inputs/url2.txt",
+				"-i", "http://127.0.0.1/url1.txt,dst=/inputs/url1.txt",
+				"-i", "http://127.0.0.1/url2.txt,dst=/inputs/url2.txt",
 			},
 		},
 	}

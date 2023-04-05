@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"embed"
 	"time"
@@ -10,13 +11,24 @@ import (
 	"database/sql"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 )
 
+//go:embed queries/*.sql
+var queries embed.FS
+
+func SQL(path string) string {
+	b, err := queries.ReadFile(filepath.Join("queries", path+".sql"))
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
 type PostgresStore struct {
-	mtx              sync.RWMutex
 	connectionString string
 	db               *sql.DB
 }
@@ -38,10 +50,6 @@ func NewPostgresStore(
 		connectionString: connectionString,
 		db:               db,
 	}
-	store.mtx.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "PostgresStore.mtx",
-	})
 	if autoMigrate {
 		err = store.MigrateUp()
 		if err != nil {
@@ -55,8 +63,6 @@ func (d *PostgresStore) LoadUser(
 	ctx context.Context,
 	username string,
 ) (*types.User, error) {
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
 	var id int
 	var created time.Time
 	var hashedPassword string
@@ -81,8 +87,6 @@ func (d *PostgresStore) LoadUserByID(
 	ctx context.Context,
 	queryID int,
 ) (*types.User, error) {
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
 	var username string
 	var created time.Time
 	var hashedPassword string
@@ -103,35 +107,31 @@ func (d *PostgresStore) LoadUserByID(
 	}, nil
 }
 
-func (d *PostgresStore) GetJobModeration(
+func (d *PostgresStore) GetJobModerations(
 	ctx context.Context,
 	queryJobID string,
-) (*types.JobModeration, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	var id int
-	var jobID string
-	var userAccountID int
-	var created time.Time
-	var status string
-	var notes string
-	row := d.db.QueryRow("select id, job_id, useraccount_id, created, status, notes from job_moderation where job_id = $1 limit 1", queryJobID)
-	err := row.Scan(&id, &jobID, &userAccountID, &created, &status, &notes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		} else {
-			return nil, err
+) (results []types.JobModerationSummary, err error) {
+	results = make([]types.JobModerationSummary, 0)
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_moderations"), queryJobID)
+	for err == nil && rows != nil && rows.Next() {
+		moderation := new(types.JobModeration)
+		request := new(types.JobModerationRequest)
+		user := new(types.User)
+
+		err = rows.Scan(&moderation.ID, &moderation.RequestID, &moderation.UserAccountID,
+			&moderation.Created, &moderation.Status, &moderation.Notes,
+			&user.ID, &user.Created, &user.Username,
+			&request.ID, &request.JobID, &request.Type,
+			&request.Created, &request.Callback)
+		if err == nil {
+			results = append(results, types.JobModerationSummary{
+				Moderation: moderation,
+				Request:    request,
+				User:       user,
+			})
 		}
 	}
-	return &types.JobModeration{
-		ID:            id,
-		JobID:         jobID,
-		UserAccountID: userAccountID,
-		Created:       created,
-		Status:        status,
-		Notes:         notes,
-	}, nil
+	return results, multierr.Append(err, rows.Err())
 }
 
 func (d *PostgresStore) GetAnnotationSummary(
@@ -316,8 +316,6 @@ func (d *PostgresStore) AddUser(
 	username string,
 	hashedPassword string,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `
 INSERT INTO useraccount (username, hashed_password)
 VALUES ($1, $2)`
@@ -337,8 +335,6 @@ func (d *PostgresStore) UpdateUserPassword(
 	username string,
 	hashedPassword string,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `UPDATE useraccount SET hashed_password = $1 WHERE username = $2`
 	_, err := d.db.Exec(
 		sqlStatement,
@@ -352,19 +348,18 @@ func (d *PostgresStore) CreateJobModeration(
 	ctx context.Context,
 	moderation types.JobModeration,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `
 INSERT INTO job_moderation (
-	job_id,
+	request_id,
 	useraccount_id,
-	status,
+	approved,
 	notes
 )
 VALUES ($1, $2, $3, $4)`
-	_, err := d.db.Exec(
+	_, err := d.db.ExecContext(
+		ctx,
 		sqlStatement,
-		moderation.JobID,
+		moderation.RequestID,
 		moderation.UserAccountID,
 		moderation.Status,
 		moderation.Notes,
@@ -373,6 +368,77 @@ VALUES ($1, $2, $3, $4)`
 		return err
 	}
 	return nil
+}
+
+func (d *PostgresStore) GetModerationRequest(
+	ctx context.Context,
+	requestID int64,
+) (result *types.JobModerationRequest, err error) {
+	result = new(types.JobModerationRequest)
+	sqlStatement := `
+SELECT id, job_id, request_type, created, callback
+FROM job_moderation_request
+WHERE id = $1;`
+	row := d.db.QueryRowContext(ctx, sqlStatement, requestID)
+	err = row.Scan(&result.ID, &result.JobID, &result.Type, &result.Created, &result.Callback)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return result, err
+}
+
+func (d *PostgresStore) GetModerationRequestByJob(
+	ctx context.Context,
+	jobID string,
+	moderationType types.ModerationType,
+) (result *types.JobModerationRequest, err error) {
+	result = new(types.JobModerationRequest)
+	sqlStatement := `
+SELECT id, job_id, request_type, created, callback
+FROM job_moderation_request
+WHERE job_id = $1 AND request_type = $2
+ORDER BY created DESC LIMIT 1;`
+	row := d.db.QueryRowContext(ctx, sqlStatement, jobID, moderationType)
+	err = row.Scan(&result.ID, &result.JobID, &result.Type, &result.Created, &result.Callback)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return result, err
+}
+
+func (d *PostgresStore) GetModerationRequestsForJob(
+	ctx context.Context,
+	jobID string,
+) (results []types.JobModerationRequest, err error) {
+	results = make([]types.JobModerationRequest, 0, 1)
+	sqlStatement := `
+SELECT id, job_id, request_type, created, callback
+FROM job_moderation_request
+WHERE job_id = $1;`
+	rows, err := d.db.QueryContext(ctx, sqlStatement, jobID)
+	for err == nil && rows != nil && rows.Next() {
+		result := types.JobModerationRequest{}
+		err = rows.Scan(&result.ID, &result.JobID, &result.Type, &result.Created, &result.Callback)
+		results = append(results, result)
+	}
+	return
+}
+
+func (d *PostgresStore) CreateJobModerationRequest(
+	ctx context.Context,
+	jobID string,
+	moderationType types.ModerationType,
+	callback *types.URL,
+) (result *types.JobModerationRequest, err error) {
+	sqlStatement := `
+INSERT INTO job_moderation_request (job_id, request_type, callback)
+VALUES ($1, $2, $3);`
+	_, err = d.db.ExecContext(ctx, sqlStatement, jobID, moderationType, callback)
+	if err != nil {
+		return
+	}
+
+	return d.GetModerationRequestByJob(ctx, jobID, moderationType)
 }
 
 //go:embed migrations/*.sql

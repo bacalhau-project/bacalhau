@@ -4,9 +4,11 @@ package requester
 
 import (
 	"context"
+	"net/url"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -43,20 +45,28 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 	storage_mock := noop_storage.NewNoopStorage()
 	require.NoError(t, err)
 	store := inmemory.NewJobStore()
-	endpoint := NewBaseEndpoint(&BaseEndpointParams{
-		Scheduler: &mockScheduler{
-			handleStartJob: func(ctx context.Context, sjr StartJobRequest) error {
-				store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
-					JobID:    sjr.Job.Metadata.ID,
-					NewState: model.JobStateInProgress,
-				})
-				return nil
-			},
+	scheduler := &mockScheduler{
+		handleStartJob: func(ctx context.Context, sjr StartJobRequest) error {
+			store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+				JobID:    sjr.Job.Metadata.ID,
+				NewState: model.JobStateInProgress,
+			})
+			return nil
 		},
-		Selector:         strategy,
-		Store:            store,
-		Verifiers:        model.NewNoopProvider[model.Verifier, verifier.Verifier](verifier_mock),
-		StorageProviders: model.NewNoopProvider[model.StorageSourceType, storage.Storage](storage_mock),
+	}
+
+	emitter := NewEventEmitter(EventEmitterParams{
+		EventConsumer: eventhandler.JobEventHandlerFunc(func(ctx context.Context, event model.JobEvent) error {
+			return nil
+		}),
+	})
+	endpoint := NewBaseEndpoint(&BaseEndpointParams{
+		Queue:              NewQueue(store, scheduler, emitter),
+		Selector:           strategy,
+		Store:              store,
+		Verifiers:          model.NewNoopProvider[model.Verifier, verifier.Verifier](verifier_mock),
+		StorageProviders:   model.NewNoopProvider[model.StorageSourceType, storage.Storage](storage_mock),
+		GetBiddingCallback: func() *url.URL { return nil },
 	})
 
 	return endpoint, store
@@ -118,7 +128,7 @@ func TestEndpointAcceptsApprovals(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, model.JobStateQueued, state.State)
 
-		err = endpoint.ApproveJob(context.Background(), ApproveJobRequest{
+		err = endpoint.ApproveJob(context.Background(), bidstrategy.ModerateJobRequest{
 			ClientID: "",
 			JobID:    job.Metadata.ID,
 			Response: bidstrategy.BidStrategyResponse{ShouldBid: shouldBid},

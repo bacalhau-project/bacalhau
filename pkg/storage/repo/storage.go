@@ -249,8 +249,5 @@ func RemoveFromSlice(arr []string, item string) []string {
 
 func checkGitLFS() error {
 	_, err := exec.LookPath("git-lfs")
-	if err != nil {
-		return fmt.Errorf("git-lfs is not installed. Please install it first")
-	}
-	return nil
+	return err
 }
