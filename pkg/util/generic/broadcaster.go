@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	SafeWriteTimeout = time.Duration(100) * time.Millisecond
+)
+
 var errBroadcasterClosed error = fmt.Errorf("broadcaster is closed")
 
 type Broadcaster[T any] struct {
@@ -26,6 +30,10 @@ func NewBroadcaster[T any](bufferSize int) *Broadcaster[T] {
 
 func (b *Broadcaster[T]) SetAutoclose(val bool) {
 	b.autoClose = val
+}
+
+func (b *Broadcaster[T]) IsClosed() bool {
+	return b.closed
 }
 
 // Subscribe allows a client to request future entries and
@@ -108,7 +116,7 @@ func (b *Broadcaster[T]) safeChannelSend(ch chan T, value T) (isClosed bool) {
 		return
 	}
 
-	timer := time.NewTimer(time.Duration(100) * time.Millisecond)
+	timer := time.NewTimer(SafeWriteTimeout)
 
 	select {
 	case ch <- value:

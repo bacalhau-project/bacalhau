@@ -1,12 +1,13 @@
 //go:build unit || !integration
 
-package generic
+package generic_test
 
 import (
 	"testing"
 	"time"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -20,7 +21,7 @@ func TestRingBufferTestSuite(t *testing.T) {
 }
 
 func (s *RingBufferTestSuite) TestRingBufferSimple() {
-	rb := NewRingBuffer[int](10)
+	rb := generic.NewRingBuffer[int](10)
 
 	for i := 0; i < 10; i++ {
 		rb.Enqueue(i)
@@ -33,7 +34,7 @@ func (s *RingBufferTestSuite) TestRingBufferSimple() {
 }
 
 func (s *RingBufferTestSuite) TestRingBufferCycle() {
-	rb := NewRingBuffer[int](3)
+	rb := generic.NewRingBuffer[int](3)
 
 	for i := 0; i < 3; i++ {
 		rb.Enqueue(i)
@@ -46,7 +47,7 @@ func (s *RingBufferTestSuite) TestRingBufferCycle() {
 }
 
 func (s *RingBufferTestSuite) TestRingBufferBlock() {
-	rb := NewRingBuffer[int](3)
+	rb := generic.NewRingBuffer[int](3)
 
 	go func() {
 		x := rb.Dequeue()
@@ -58,7 +59,7 @@ func (s *RingBufferTestSuite) TestRingBufferBlock() {
 }
 
 func (s *RingBufferTestSuite) TestRingBufferOverwrite() {
-	rb := NewRingBuffer[string](3)
+	rb := generic.NewRingBuffer[string](3)
 
 	done := make(chan bool, 1)
 
@@ -79,6 +80,6 @@ func (s *RingBufferTestSuite) TestRingBufferOverwrite() {
 
 	// Ensure that we haven't expanded the ring at all
 	count := 0
-	rb.readRing().Do(func(r any) { count += 1 })
+	rb.Each(func(r any) { count += 1 })
 	require.Equal(s.T(), 3, count)
 }

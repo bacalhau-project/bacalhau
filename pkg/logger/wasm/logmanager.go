@@ -91,7 +91,7 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) {
 	lm.lifetimeBytes += int64(len(msg.Data))
 
 	// Broadcast the message to anybody that might be listening
-	lm.broadcaster.Broadcast(msg)
+	_ = lm.broadcaster.Broadcast(msg)
 
 	// Convert the message to JSON and write it to the log file
 	data, err := json.Marshal(msg)

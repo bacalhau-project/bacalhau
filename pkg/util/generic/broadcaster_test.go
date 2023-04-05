@@ -1,18 +1,19 @@
 //go:build unit || !integration
 
-package generic
+package generic_test
 
 import (
 	"testing"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type BroadcasterTestSuite struct {
 	suite.Suite
-	broadcaster *Broadcaster[string]
+	broadcaster *generic.Broadcaster[string]
 }
 
 func TestBroadcasterTestSuite(t *testing.T) {
@@ -20,7 +21,7 @@ func TestBroadcasterTestSuite(t *testing.T) {
 }
 
 func (s *BroadcasterTestSuite) SetupTest() {
-	s.broadcaster = NewBroadcaster[string](3)
+	s.broadcaster = generic.NewBroadcaster[string](3)
 }
 
 func (s *BroadcasterTestSuite) TestBroadcasterSimple() {
@@ -43,7 +44,7 @@ func (s *BroadcasterTestSuite) TestBroadcasterAutoclose() {
 	require.NoError(s.T(), err)
 
 	s.broadcaster.Unsubscribe(ch)
-	require.Equal(s.T(), true, s.broadcaster.closed)
+	require.Equal(s.T(), true, s.broadcaster.IsClosed())
 
 	err = s.broadcaster.Broadcast("err?")
 	require.Error(s.T(), err)
