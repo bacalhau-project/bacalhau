@@ -1,7 +1,6 @@
 package wasm
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,12 +12,14 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
 	"github.com/c2h5oh/datasize"
@@ -31,6 +32,7 @@ import (
 
 type Executor struct {
 	StorageProvider storage.StorageProvider
+	logManagers     generic.SyncMap[string, *wasmlogs.LogManager]
 }
 
 func NewExecutor(_ context.Context, storageProvider storage.StorageProvider) (*Executor, error) {
@@ -169,12 +171,26 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		return executor.FailResult(err)
 	}
 
-	// Configure the modules. We will write STDOUT and STDERR to a buffer so
-	// that we can later include them in the job results. We don't want to
-	// execute any start functions automatically as we will do it manually
-	// later. Finally, add the filesystem which contains our input and output.
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
+	// Create a new log manager and obtain some writers that we can pass to the wasm
+	// configuration
+	logs, err := wasmlogs.NewLogManager(ctx, executionID)
+	if err != nil {
+		return executor.FailResult(err)
+	}
+	stdout, stderr := logs.GetWriters()
+
+	// Store the LogManager for the lifetime of the execution, making sure to tidy up
+	// once complete.
+	e.logManagers.Put(executionID, logs)
+	defer func() {
+		log.Ctx(ctx).Debug().Msgf("cleaning up logmanager for execution %s", executionID)
+		logs.Close()
+		e.logManagers.Delete(executionID)
+	}()
+
+	// Configure the modules. We don't want to execute any start functions
+	// automatically as we will do it manually later. Finally, add the
+	// filesystem which contains our input and output.
 
 	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
 
@@ -183,6 +199,9 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		WithStdout(stdout).
 		WithStderr(stderr).
 		WithArgs(args...).
+		WithSysNanosleep().
+		WithSysNanotime().
+		WithSysWalltime().
 		WithFS(rootFs)
 
 	keys := maps.Keys(job.Spec.Wasm.EnvironmentVariables)
@@ -221,11 +240,19 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		wasmErr = nil
 	}
 
-	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
+	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
+
+	return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("not implemented for wasm executor")
+	logs, present := e.logManagers.Get(executionID)
+	if !present {
+		log.Ctx(ctx).Debug().Msgf("logmanager for wasm execution %s was already removed", executionID)
+		return nil, fmt.Errorf("logmanager has completed, no logs available")
+	}
+
+	return logs.GetMuxedReader(follow), nil
 }
 
 // Compile-time check that Executor implements the Executor interface.
