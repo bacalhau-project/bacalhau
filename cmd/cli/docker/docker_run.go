@@ -188,7 +188,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 	}
 
 	spec, err := jobutils.MakeDockerSpec(
-		image, entrypoint, opts.SpecSettings.EnvVar, opts.WorkingDirectory,
+		image, opts.WorkingDirectory, entrypoint, opts.SpecSettings.EnvVar, []string{},
 		jobutils.WithVerifier(verifierType),
 		jobutils.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		jobutils.WithResources(

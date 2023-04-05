@@ -89,7 +89,7 @@ func WithNodeSelector(selector []model.LabelSelectorRequirement) SpecOpt {
 	}
 }
 
-func WithDockerEngine(image, workdir string, entrypoint, envvar []string) SpecOpt {
+func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []string) SpecOpt {
 	return func(s *model.Spec) error {
 		if err := system.ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
@@ -98,6 +98,7 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar []string) SpecOp
 		s.Docker = model.JobSpecDocker{
 			Image:                image,
 			Entrypoint:           entrypoint,
+			Parameters:           parameters,
 			EnvironmentVariables: envvar,
 			WorkingDirectory:     workdir,
 		}
@@ -106,10 +107,10 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar []string) SpecOp
 }
 
 func MakeDockerSpec(
-	image string, entrypoint []string, envvar []string, workingdir string,
+	image, workingdir string, entrypoint, envvar, parameters []string,
 	opts ...SpecOpt,
 ) (model.Spec, error) {
-	spec, err := MakeSpec(append(opts, WithDockerEngine(image, workingdir, entrypoint, envvar))...)
+	spec, err := MakeSpec(append(opts, WithDockerEngine(image, workingdir, entrypoint, envvar, parameters))...)
 	if err != nil {
 		return model.Spec{}, err
 	}
