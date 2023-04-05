@@ -297,7 +297,7 @@ type JobSpecDocker struct {
 	Image string `json:"Image,omitempty"`
 	// optionally override the default entrypoint
 	Entrypoint []string `json:"Entrypoint,omitempty"`
-	// Parameters holds the default arguments that are passed to the ENTRYPOINT when the container is run.
+	// Parameters holds additional commandline arguments
 	Parameters []string `json:"Parameters,omitempty"`
 	// a map of env to run the container with
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
