@@ -21,6 +21,7 @@ type LogManager struct {
 	buffer        *generic.RingBuffer[*LogMessage]
 	broadcaster   *generic.Broadcaster[*LogMessage]
 	file          *os.File
+	filename      string
 	keepReading   bool
 	lifetimeBytes int64
 }
@@ -29,7 +30,7 @@ func NewLogManager(ctx context.Context, filenameUniquer string) (*LogManager, er
 	mgr := &LogManager{
 		ctx:         ctx,
 		buffer:      generic.NewRingBuffer[*LogMessage](0),
-		broadcaster: generic.NewBroadcaster[*LogMessage](0), // use default buffer size
+		broadcaster: generic.NewBroadcaster[*LogMessage](0), // Use default size
 		keepReading: true,
 	}
 	mgr.wg.Add(1)
@@ -40,10 +41,7 @@ func NewLogManager(ctx context.Context, filenameUniquer string) (*LogManager, er
 		return nil, err
 	}
 	mgr.file = tmpFile
-
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Println(tmpFile.Name())
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	mgr.filename = tmpFile.Name()
 
 	return mgr, nil
 }
@@ -52,7 +50,6 @@ func NewLogManager(ctx context.Context, filenameUniquer string) (*LogManager, er
 // buffer and write them to the logfile and broadcast to any subscribing
 // channels
 func (lm *LogManager) logWriter() {
-	lm.wg.Add(1)
 	defer lm.wg.Done()
 
 	var compactBuffer bytes.Buffer
@@ -69,23 +66,24 @@ func (lm *LogManager) logWriter() {
 				continue
 			}
 
-			lm.processItem(msg, compactBuffer)
+			lm.keepReading = lm.processItem(msg, compactBuffer)
 		}
 	}
 
 	// We need to drain the remaining items and flush them to the broadcaster
 	// and the file
 	extra := lm.buffer.Drain()
+	log.Ctx(lm.ctx).Debug().Msgf("draining wasm log buffer of %d items", len(extra))
 	for _, m := range extra {
 		lm.processItem(m, compactBuffer)
 	}
 }
 
-func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) {
+func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) bool {
 	if msg == nil {
 		// We have a sentinel on close so make sure we don't try and
 		// process it.
-		return
+		return false
 	}
 
 	lm.lifetimeBytes += int64(len(msg.Data))
@@ -97,13 +95,13 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		log.Ctx(lm.ctx).Err(err).Msg("failed to unmarshall a wasm log message")
-		return
+		return true
 	}
 
 	err = json.Compact(&compactBuffer, data)
 	if err != nil {
 		log.Ctx(lm.ctx).Err(err).Msg("failed to compact wasm log message")
-		return
+		return true
 	}
 	compactBuffer.Write([]byte{'\n'})
 
@@ -111,12 +109,14 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) {
 	wrote, err := lm.file.Write(compactBuffer.Bytes())
 	if err != nil {
 		log.Ctx(lm.ctx).Err(err).Msgf("failed to write wasm log to file: %s", lm.file.Name())
-		return
+		return true
 	}
 	if wrote == 0 {
 		log.Ctx(lm.ctx).Debug().Msgf("zero byte write in wasm logging to: %s", lm.file.Name())
-		return
+		return true
 	}
+
+	return true
 }
 
 func (lm *LogManager) GetWriters() (io.Writer, io.Writer) {
@@ -181,5 +181,6 @@ func (lm *LogManager) GetMuxedReader(follow bool) io.ReadCloser {
 func (lm *LogManager) Close() {
 	lm.keepReading = false
 	lm.buffer.Enqueue(nil)
+	os.Remove(lm.filename) // Delete the logfile
 	lm.wg.Wait()
 }

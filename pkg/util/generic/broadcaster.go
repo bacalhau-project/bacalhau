@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	SafeWriteTimeout = time.Duration(100) * time.Millisecond
+	SafeWriteTimeout            = time.Duration(100) * time.Millisecond
+	DefaultBroadcastChannelSize = 8
 )
 
 var errBroadcasterClosed error = fmt.Errorf("broadcaster is closed")
@@ -21,6 +22,10 @@ type Broadcaster[T any] struct {
 }
 
 func NewBroadcaster[T any](bufferSize int) *Broadcaster[T] {
+	if bufferSize == 0 {
+		bufferSize = DefaultBroadcastChannelSize
+	}
+
 	return &Broadcaster[T]{
 		clients:    make(map[chan T]struct{}),
 		closed:     false,

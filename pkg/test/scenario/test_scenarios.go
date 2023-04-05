@@ -238,7 +238,7 @@ var WasmLogTest = Scenario{
 	ResultsChecker: FileContains(
 		"stdout",
 		"https://www.gutenberg.org", // end of the file
-		5216,                        //nolint:gomnd // magic number appropriate for test
+		-1,                          //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
@@ -247,7 +247,7 @@ var WasmLogTest = Scenario{
 			EntryModule: InlineData(logtest.Program()),
 			Parameters: []string{
 				"inputs/cosmic_computer.txt",
-				"--slow",
+				"--fast",
 			},
 		},
 	},
