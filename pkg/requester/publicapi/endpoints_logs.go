@@ -9,6 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
@@ -152,7 +153,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 }
 
-func (s *RequesterAPIServer) writeDataFrame(ctx context.Context, conn *websocket.Conn, frame logstream.DataFrame) error {
+func (s *RequesterAPIServer) writeDataFrame(ctx context.Context, conn *websocket.Conn, frame logger.DataFrame) error {
 	msg := Msg{
 		Tag:  uint8(frame.Tag),
 		Data: string(frame.Data),
@@ -179,8 +180,8 @@ func (s *RequesterAPIServer) writeTerminatedJobOutput(
 	for _, exec := range jobState.Executions {
 		if exec.ComputeReference == executionID {
 			if exec.RunOutput.STDOUT != "" {
-				df := logstream.DataFrame{
-					Tag:  logstream.StdoutStreamTag,
+				df := logger.DataFrame{
+					Tag:  logger.StdoutStreamTag,
 					Size: len(exec.RunOutput.STDOUT),
 					Data: []byte(exec.RunOutput.STDOUT),
 				}
@@ -188,8 +189,8 @@ func (s *RequesterAPIServer) writeTerminatedJobOutput(
 			}
 
 			if exec.RunOutput.STDERR != "" {
-				df := logstream.DataFrame{
-					Tag:  logstream.StderrStreamTag,
+				df := logger.DataFrame{
+					Tag:  logger.StderrStreamTag,
 					Size: len(exec.RunOutput.STDERR),
 					Data: []byte(exec.RunOutput.STDERR),
 				}

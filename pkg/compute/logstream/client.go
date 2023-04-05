@@ -12,6 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -92,18 +94,18 @@ func (c *LogStreamClient) Close() {
 }
 
 // ReadDataFrame reads a single dataframe from the client's stream (if connected)
-func (c *LogStreamClient) ReadDataFrame(ctx context.Context) (DataFrame, error) {
+func (c *LogStreamClient) ReadDataFrame(ctx context.Context) (logger.DataFrame, error) {
 	if !c.connected {
-		return EmptyDataFrame, fmt.Errorf("logstream client connection state is %t", c.connected)
+		return logger.EmptyDataFrame, fmt.Errorf("logstream client connection state is %t", c.connected)
 	}
 
-	frame, err := NewDataFrameFromReader(c.stream)
+	frame, err := logger.NewDataFrameFromReader(c.stream)
 	if err == io.EOF {
-		return EmptyDataFrame, fmt.Errorf("logstreamclient connection closed by peer: %s", err)
+		return logger.EmptyDataFrame, fmt.Errorf("logstreamclient connection closed by peer: %s", err)
 	}
 
 	if err != nil {
-		return EmptyDataFrame, fmt.Errorf("logstreamclient error reading dataframe: %s", err)
+		return logger.EmptyDataFrame, fmt.Errorf("logstreamclient error reading dataframe: %s", err)
 	}
 
 	return frame, nil

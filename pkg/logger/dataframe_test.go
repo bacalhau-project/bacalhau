@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package logstream
+package logger
 
 import (
 	"bytes"
