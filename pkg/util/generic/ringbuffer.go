@@ -71,6 +71,6 @@ func (r *RingBuffer[T]) Drain() []T {
 	return ret
 }
 
-func (r *RingBuffer[T]) readRing() *ring.Ring {
-	return r.readR
+func (r *RingBuffer[T]) Each(f func(any)) {
+	r.readR.Do(f)
 }
