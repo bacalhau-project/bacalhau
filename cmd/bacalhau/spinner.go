@@ -43,23 +43,26 @@ type Spinner struct {
 	actionChannel chan SpinActionType
 	doneChannel   chan bool
 	signalChannel chan os.Signal
+	complete      bool
+	handleSigint  bool
 }
 
 // NewSpinner creates a new `Spinner` using the provided io.Writer
 // and expecting a message of no more than `maxWidth` characters.
 // The `maxWidth` is required to ensure that following steps in
 // the lifetime of the spinner line up.
-func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error) {
+func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint bool) (*Spinner, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	s := &Spinner{
-		maxWidth:    maxWidth,
-		doneChannel: make(chan bool),
-		ctx:         ctx,
-		cancel:      cancel,
+		maxWidth:     maxWidth,
+		doneChannel:  make(chan bool),
+		ctx:          ctx,
+		cancel:       cancel,
+		handleSigint: handleSigint,
 	}
 
-	spacer := 8
+	spacer := 6
 
 	var spinnerCharSet []string
 	for _, emoji := range SpinnerEmoji {
@@ -89,8 +92,10 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error
 		return nil, fmt.Errorf("failed to set charset: %v", err)
 	}
 
-	s.signalChannel = make(chan os.Signal, 2)
-	signal.Notify(s.signalChannel, ShutdownSignals...)
+	if s.handleSigint {
+		s.signalChannel = make(chan os.Signal, 2)
+		signal.Notify(s.signalChannel, ShutdownSignals...)
+	}
 
 	return s, nil
 }
@@ -98,9 +103,12 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int) (*Spinner, error
 // Done stops the spinner, igoring any errors as there
 // is no further use for the spinner.
 func (s *Spinner) Done(success bool) {
+	s.complete = true
+
 	if !success {
 		s.msg.Failure = true
-		s.updateText(time.Duration(0) * time.Millisecond)
+		s.spin.Message(fmt.Sprintf("%s %s", SpacerText, s.msg.TimerString))
+		s.spin.StopMessage(s.msg.PrintError())
 	}
 
 	_ = s.spin.Stop()
@@ -111,11 +119,11 @@ func (s *Spinner) Done(success bool) {
 
 // NextStep completes the current line (if any) and
 // progresses to the next line, starting a new timer.
-// If failure is passed, then the Done text/image is
-// displayed as err, X - and it is expected that the
-// process has completed and Done will be called
-// immediately.
 func (s *Spinner) NextStep(line string) {
+	if s.complete {
+		return
+	}
+
 	// Stop the spinner and wait until it is stopped
 	if s.spin.Status() == yacspin.SpinnerRunning {
 		s.actionChannel <- SpinActionStop
@@ -176,7 +184,7 @@ func (s *Spinner) Run() {
 
 					err := s.spin.Start()
 					if err != nil {
-						log.Ctx(s.ctx).Err(err)
+						log.Ctx(s.ctx).Err(err).Msg("failed to start spinner")
 					}
 
 					s.doneChannel <- true
@@ -185,7 +193,7 @@ func (s *Spinner) Run() {
 
 					err := s.spin.Stop()
 					if err != nil {
-						log.Ctx(s.ctx).Err(err)
+						log.Ctx(s.ctx).Err(err).Msg("failed to stop spinner")
 					}
 					s.doneChannel <- true
 				}
@@ -193,10 +201,7 @@ func (s *Spinner) Run() {
 				log.Ctx(s.ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if signal == os.Interrupt {
 					s.ticker.Stop()
-
 					s.Done(false)
-					_, _ = os.Stderr.WriteString("\n\rPrintout canceled.")
-
 					os.Exit(0)
 				}
 			}

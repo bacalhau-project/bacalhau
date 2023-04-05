@@ -854,7 +854,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "ubuntu",        // Good image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Error while executing the job",
+			errStringContains: "Error submitting job",
 		},
 		"bad-image-bad-executable": {
 			imageName:         "badimage",      // Bad image

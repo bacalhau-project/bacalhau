@@ -88,7 +88,8 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	if options.Quiet {
 		writer = io.Discard
 	}
-	spinner, err := NewSpinner(ctx, writer, widestString)
+	// Create a spinner that will exit if/when it sees ctrl-c
+	spinner, err := NewSpinner(ctx, writer, widestString, true)
 	if err != nil {
 		Fatal(cmd, err.Error(), 1)
 	}

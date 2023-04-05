@@ -236,7 +236,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execut
 	})
 
 	if updateError != nil {
-		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution state to failed: %s", execution)
+		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	} else {
 		e.callback.OnComputeFailure(ctx, ComputeError{
 			ExecutionMetadata: NewExecutionMetadata(execution),

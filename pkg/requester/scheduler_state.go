@@ -81,14 +81,19 @@ func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.
 	}
 
 	if nonDiscardedExecutionsCount < minExecutions {
+		var finalErr error = nil
 		retried := false
 		defer func() {
 			if !retried {
-				var errorMessage string
 				if lastFailedExecution.NodeID != "" {
-					errorMessage = fmt.Sprintf("node %s failed due to: %s", lastFailedExecution.NodeID, lastFailedExecution.Status)
+					finalErr = fmt.Errorf("node %s failed due to: %s", lastFailedExecution.NodeID, lastFailedExecution.Status)
 				}
-				s.stopJob(ctx, job.ID(), errorMessage, false)
+
+				errMsg := ""
+				if finalErr != nil {
+					errMsg = finalErr.Error()
+				}
+				s.stopJob(ctx, job.ID(), errMsg, false)
 			}
 		}()
 		if s.retryStrategy.ShouldRetry(ctx, RetryRequest{JobID: job.ID()}) {
@@ -96,6 +101,7 @@ func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.
 			rankedNodes, err := s.nodeSelector.SelectNodes(ctx, job, desiredNodeCount, desiredNodeCount)
 			if err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("[transitionJobState] failed to find enough nodes to retry")
+				finalErr = err // So the deferred function can use it for the jobstate
 				return
 			}
 			s.notifyAskForBid(ctx, trace.LinkFromContext(ctx), job, rankedNodes[:desiredNodeCount])
