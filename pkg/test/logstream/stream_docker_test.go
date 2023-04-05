@@ -6,8 +6,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/google/uuid"
@@ -49,7 +49,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
 
-		dataframe, err := logstream.NewDataFrameFromReader(reader)
+		dataframe, err := logger.NewDataFrameFromReader(reader)
 		require.NoError(s.T(), err)
 
 		require.Contains(s.T(), string(dataframe.Data), "logstreamoutput")

@@ -12,7 +12,7 @@
 //
 // SIZE1, SIZE2, SIZE3, and SIZE4 are four bytes of uint32 encoded as big endian.
 // This is the size of OUTPUT.
-package logstream
+package logger
 
 import (
 	"encoding/binary"
