@@ -4,6 +4,7 @@ package logstream
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -39,10 +40,11 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, err = exec.Run(ctx, job, "/tmp")
+		dir, _ := os.MkdirTemp("", "test")
+		_, err = exec.Run(ctx, "test-execution", job, dir)
 		require.NoError(s.T(), err)
 	}()
 
-	_, err = waitForOutputStream(ctx, job, true, true, exec)
+	_, err = waitForOutputStream(ctx, "test-execution", true, true, exec)
 	require.NotNil(s.T(), err)
 }

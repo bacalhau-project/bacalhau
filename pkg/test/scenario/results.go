@@ -15,7 +15,8 @@ import (
 type CheckResults func(resultsDir string) error
 
 // FileContains returns a CheckResults that asserts that the expected string is
-// in the output file and that the file itself is of the correct size.
+// in the output file and that the file itself is of the correct size. If
+// expectedLine is set to -1 then a line-check is not performed.
 func FileContains(
 	outputFilePath string,
 	expectedString string,
@@ -29,7 +30,8 @@ func FileContains(
 		}
 
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
-		if actualLineCount != expectedLines {
+		if expectedLines != -1 && actualLineCount != expectedLines {
+			fmt.Println(string(resultsContent[actualLineCount-100:]))
 			return fmt.Errorf("%s: count mismatch:\nExpected: %d\nActual: %d", outputFile, expectedLines, actualLineCount)
 		}
 
