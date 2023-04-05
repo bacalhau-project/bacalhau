@@ -58,13 +58,11 @@ fn logtest(path: &String, pauser: Box<dyn Fn(&mut LCG)>) -> Result<(), Box<dyn E
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let slow: bool;
     let file: &String;
+    let slow = true;
 
-    (file, slow) = if let [_program, filename, slowflag] = &args[..] {
-        (filename, slowflag == "--slow")
-    } else if let [_program, filename] = &args[..] {
-        (filename, false)
+    file = if let [_program, filename] = &args[..] {
+        filename
     } else {
         eprintln!("Usage: logtest input-txt [--slow]");
         process::exit(1);
