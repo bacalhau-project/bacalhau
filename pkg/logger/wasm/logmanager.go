@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 )
@@ -22,21 +23,23 @@ type LogManager struct {
 	broadcaster   *generic.Broadcaster[*LogMessage]
 	file          *os.File
 	filename      string
+	executionID   string
 	keepReading   bool
 	lifetimeBytes int64
 }
 
-func NewLogManager(ctx context.Context, filenameUniquer string) (*LogManager, error) {
+func NewLogManager(ctx context.Context, executionID string) (*LogManager, error) {
 	mgr := &LogManager{
 		ctx:         ctx,
 		buffer:      generic.NewRingBuffer[*LogMessage](0),
 		broadcaster: generic.NewBroadcaster[*LogMessage](0), // Use default size
 		keepReading: true,
+		executionID: executionID,
 	}
 	mgr.wg.Add(1)
 	go mgr.logWriter()
 
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s_log.json", filenameUniquer))
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s_log.json", executionID))
 	if err != nil {
 		return nil, err
 	}
@@ -188,6 +191,11 @@ func (lm *LogManager) Close() {
 	// Wait for completion before we remove the log file
 	lm.wg.Wait()
 
-	log.Ctx(lm.ctx).Debug().Msgf("logmanager removing logfile: %s", lm.filename)
-	os.Remove(lm.filename)
+	go func(ctx context.Context, executionID string, filename string) {
+		tensecs := time.After(time.Duration(10) * time.Second) //nolint:gomnd
+		<-tensecs
+
+		log.Ctx(ctx).Debug().Msgf("logmanager removing logfile for %s: %s", executionID, filename)
+		os.Remove(lm.filename)
+	}(util.NewDetachedContext(lm.ctx), lm.executionID, lm.filename)
 }
