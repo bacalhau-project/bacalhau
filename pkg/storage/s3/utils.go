@@ -37,21 +37,21 @@ func HasValidCredentials(config aws.Config) bool {
 // This requires checking the EC2 instance metadata service, which takes a few seconds to resolve. This is why we are only calling it
 // once and caching the result.
 func IsEC2Instance(ctx context.Context) bool {
-	isEC2InstanceOnce.Do(func() {
-		cfg, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			isEC2Instance = false
-			return
-		}
+	// isEC2InstanceOnce.Do(func() {
+	// 	cfg, err := config.LoadDefaultConfig(ctx)
+	// 	if err != nil {
+	// 		isEC2Instance = false
+	// 		return
+	// 	}
 
-		client := imds.NewFromConfig(cfg)
-		_, err = client.GetMetadata(ctx, &imds.GetMetadataInput{
-			Path: "instance-id",
-		})
-		if err != nil {
-			isEC2Instance = false
-		}
-		isEC2Instance = true
-	})
+	// 	client := imds.NewFromConfig(cfg)
+	// 	_, err = client.GetMetadata(ctx, &imds.GetMetadataInput{
+	// 		Path: "instance-id",
+	// 	})
+	// 	if err != nil {
+	// 		isEC2Instance = false
+	// 	}
+	// 	isEC2Instance = true
+	// })
 	return isEC2Instance
 }
