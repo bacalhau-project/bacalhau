@@ -55,7 +55,7 @@ func (s *RetriesSuite) SetupSuite() {
 				"name": "bid-rejector",
 			},
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				BidStrategy: bidstrategy.NewFixedBidStrategy(false),
+				BidStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 			}),
 		},
 		{

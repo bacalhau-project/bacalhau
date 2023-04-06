@@ -42,6 +42,7 @@ type Executor interface {
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
 type Callback interface {
+	OnBidComplete(ctx context.Context, result BidResult)
 	OnRunComplete(ctx context.Context, result RunResult)
 	OnPublishComplete(ctx context.Context, result PublishResult)
 	OnCancelComplete(ctx context.Context, result CancelResult)
@@ -70,6 +71,7 @@ func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 }
 
 type AskForBidRequest struct {
+	ExecutionMetadata
 	RoutingMetadata
 	// Job specifies the job to be executed.
 	Job model.Job
@@ -77,8 +79,6 @@ type AskForBidRequest struct {
 
 type AskForBidResponse struct {
 	ExecutionMetadata
-	Accepted bool
-	Reason   string
 }
 
 type BidAcceptedRequest struct {
@@ -146,6 +146,15 @@ type ExecutionLogsResponse struct {
 ///////////////////////////////////
 // Callback result models
 ///////////////////////////////////
+
+// BidResult is the result of the compute node bidding on a job that is returned
+// to the caller through a Callback.
+type BidResult struct {
+	RoutingMetadata
+	ExecutionMetadata
+	Accepted bool
+	Reason   string
+}
 
 // RunResult Result of a job execution that is returned to the caller through a Callback.
 type RunResult struct {

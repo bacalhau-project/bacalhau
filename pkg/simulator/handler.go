@@ -44,22 +44,7 @@ func (e *RequestHandler) AskForBid(ctx context.Context, request compute.AskForBi
 		return compute.AskForBidResponse{}, err
 	}
 
-	response, err := e.computeProxy.AskForBid(ctx, request)
-	if err != nil {
-		return compute.AskForBidResponse{}, err
-	}
-
-	if response.Accepted {
-		event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
-		// we flip senders to mimic a bid was received instead of being asked
-		event.SourceNodeID = request.RoutingMetadata.TargetPeerID
-		err = e.wallets.addEvent(event)
-		if err != nil {
-			return compute.AskForBidResponse{}, err
-		}
-		e.executionStore[response.ExecutionMetadata.ExecutionID] = response.ExecutionMetadata
-	}
-	return response, nil
+	return e.computeProxy.AskForBid(ctx, request)
 }
 
 func (e *RequestHandler) BidAccepted(ctx context.Context, request compute.BidAcceptedRequest) (compute.BidAcceptedResponse, error) {
@@ -120,6 +105,21 @@ func (e *RequestHandler) CancelExecution(
 func (e *RequestHandler) ExecutionLogs(
 	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
 	return e.computeProxy.ExecutionLogs(ctx, request)
+}
+
+func (e *RequestHandler) OnBidComplete(ctx context.Context, result compute.BidResult) {
+	e.executionStore[result.ExecutionMetadata.ExecutionID] = result.ExecutionMetadata
+	if result.Accepted {
+		event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventBid)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventBid, result.ExecutionID)
+		}
+		err = e.wallets.addEvent(event)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventBid, result.ExecutionID)
+		}
+	}
+	e.requesterProxy.OnBidComplete(ctx, result)
 }
 
 func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunResult) {
