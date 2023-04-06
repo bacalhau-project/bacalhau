@@ -2,7 +2,6 @@ package noop
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -39,12 +38,6 @@ func NewNoopVerifier(
 		return nil, err
 	}
 
-	cm.RegisterCallback(func() error {
-		if err := results.Close(); err != nil {
-			return fmt.Errorf("unable to remove results folder: %w", err)
-		}
-		return nil
-	})
 	return &NoopVerifier{
 		results: results,
 	}, nil
