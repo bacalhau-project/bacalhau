@@ -40,20 +40,20 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a private bacalhau hybrid node that acts as both compute and requester
+		# Start a private bacalhau requester node
 		bacalhau serve
 		# or
+		bacalhau serve --node-type requester
+
+		# Start a private bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve --node-type compute --node-type requester
 		# or
 		bacalhau serve --node-type compute,requester
 
-		# Start a private bacalhau requester node
-		bacalhau serve --node-type requester
-
-		# Start a private bacalhau node with a persistent local Ipds node
+		# Start a private bacalhau node with a persistent local IPFS node
 		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
 
-		# Start a (public!) bacalhau node
+		# Start a public bacalhau requester node
 		bacalhau serve --peer env --private-internal-ipfs=false
 `))
 )
@@ -90,7 +90,7 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                        []string{"requester", "compute"},
+		NodeType:                        []string{"requester"},
 		PeerConnect:                     DefaultPeerConnect,
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",

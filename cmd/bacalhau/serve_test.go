@@ -130,8 +130,7 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {
-	// no need to passing node-type options to serve because it creates a requester and compute node by default
-	port := s.serve()
+	port := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := publicapi.NewRequesterAPIClient("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
@@ -207,7 +206,7 @@ func (s *ServeSuite) TestGetPeers() {
 		}
 	}
 
-	// if we pass multiaddresses it should return them
+	// if we pass multiaddresses it should just return them
 	OS = NewServeOptions()
 	inputPeers := []string{
 		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
