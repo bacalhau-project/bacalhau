@@ -324,28 +324,61 @@ Flags:
 ## Serve
 
 ```
-Start the bacalhau campute node.
+Start a bacalhau node.
 
 Usage:
   bacalhau serve [flags]
 
+Examples:
+  # Start a private bacalhau hybrid node that acts as both compute and requester
+  bacalhau serve
+  # or
+  bacalhau serve --node-type compute --node-type requester
+  # or
+  bacalhau serve --node-type compute,requester
+  
+  # Start a private bacalhau requester node
+  bacalhau serve --node-type requester
+  
+  # Start a private bacalhau node with a persistent local Ipds node
+  BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
+  
+  # Start a (public!) bacalhau node
+  bacalhau serve --peer env --private-internal-ipfs=false
+
 Flags:
-      --estuary-api-key string               The API key used when using the estuary API.
-      --filecoin-unsealed-path string        The go template that can turn a filecoin CID into a local filepath with the unsealed data.
-  -h, --help                                 help for serve
-      --host string                          The host to listen on (for both api and swarm connections). (default "0.0.0.0")
-      --ipfs-connect string                  The ipfs host multiaddress to connect to.
-      --job-selection-data-locality string   Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")
-      --job-selection-probe-exec string      Use the result of a exec an external program to decide if we should take on the job.
-      --job-selection-probe-http string      Use the result of a HTTP POST to decide if we should take on the job.
-      --job-selection-reject-stateless       Reject jobs that don't specify any data.
-      --limit-job-cpu string                 Job CPU core limit for single job (e.g. 500m, 2, 8).
-      --limit-job-gpu string                 Job GPU limit for single job (e.g. 1, 2, or 8).
-      --limit-job-memory string              Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).
-      --limit-total-cpu string               Total CPU core limit to run all jobs (e.g. 500m, 2, 8).
-      --limit-total-gpu string               Total GPU limit to run all jobs (e.g. 1, 2, or 8).
-      --limit-total-memory string            Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).
-      --metrics-port int                     The port to serve prometheus metrics on. (default 2112)
-      --peer string                          The libp2p multiaddress to connect to.
-      --swarm-port int                       The port to listen on for swarm connections. (default 1235)
+      --estuary-api-key string                           The API key used when using the estuary API.
+      --filecoin-unsealed-path string                    The go template that can turn a filecoin CID into a local filepath with the unsealed data.
+  -h, --help                                             help for serve
+      --host string                                      The host to listen on (for both api and swarm connections). (default "0.0.0.0")
+      --ipfs-connect string                              The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.
+      --ipfs-swarm-addr strings                          IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.
+      --job-execution-timeout-bypass-client-id strings   List of IDs of clients that are allowed to bypass the job execution timeout check
+      --job-selection-accept-networked                   Accept jobs that require network access.
+      --job-selection-data-locality string               Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")
+      --job-selection-probe-exec string                  Use the result of a exec an external program to decide if we should take on the job.
+      --job-selection-probe-http string                  Use the result of a HTTP POST to decide if we should take on the job.
+      --job-selection-reject-stateless                   Reject jobs that don't specify any data.
+      --labels stringToString                            Labels to be associated with the node that can be used for node selection and filtering. (e.g. --labels key1=value1,key2=value2) (default [])
+      --limit-job-cpu string                             Job CPU core limit for single job (e.g. 500m, 2, 8).
+      --limit-job-gpu string                             Job GPU limit for single job (e.g. 1, 2, or 8).
+      --limit-job-memory string                          Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).
+      --limit-total-cpu string                           Total CPU core limit to run all jobs (e.g. 500m, 2, 8).
+      --limit-total-gpu string                           Total GPU limit to run all jobs (e.g. 1, 2, or 8).
+      --limit-total-memory string                        Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).
+      --lotus-max-ping duration                          The highest ping a Filecoin miner could have when selecting. (default 2s)
+      --lotus-path-directory string                      Location of the Lotus Filecoin configuration directory.
+      --lotus-storage-duration duration                  Duration to store data in Lotus Filecoin for.
+      --lotus-upload-directory string                    Directory to use when uploading content to Lotus Filecoin.
+      --node-type strings                                Whether the node is a compute, requester or both. (default [requester,compute])
+      --peer string                                      A comma-separated list of libp2p multiaddress to connect to. Use "none" to avoid connecting to any peer, "env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var). (default "none")
+      --private-internal-ipfs                            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
+      --swarm-port int                                   The port to listen on for swarm connections. (default 1235)
+
+Global Flags:
+      --api-host string         The host for the client and server to communicate on (via REST).
+                                Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
+      --api-port int            The port for the client and server to communicate on (via REST).
+                                Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
+      --log-mode logging-mode   Log format: 'default','station','json','combined','event' (default default)
 ```
