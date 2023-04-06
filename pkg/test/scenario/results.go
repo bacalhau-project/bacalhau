@@ -31,7 +31,6 @@ func FileContains(
 
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
 		if expectedLines != -1 && actualLineCount != expectedLines {
-			fmt.Println(string(resultsContent[actualLineCount-100:]))
 			return fmt.Errorf("%s: count mismatch:\nExpected: %d\nActual: %d", outputFile, expectedLines, actualLineCount)
 		}
 
