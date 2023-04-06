@@ -43,6 +43,8 @@ func NewLogManager(ctx context.Context, filenameUniquer string) (*LogManager, er
 	mgr.file = tmpFile
 	mgr.filename = tmpFile.Name()
 
+	log.Ctx(ctx).Debug().Msgf("logmanager created logfile: %s", mgr.filename)
+
 	return mgr, nil
 }
 
@@ -83,6 +85,7 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	if msg == nil {
 		// We have a sentinel on close so make sure we don't try and
 		// process it.
+		log.Ctx(lm.ctx).Debug().Msg("logmanager received sentinel exit message")
 		return false
 	}
 
@@ -181,6 +184,9 @@ func (lm *LogManager) GetMuxedReader(follow bool) io.ReadCloser {
 func (lm *LogManager) Close() {
 	lm.keepReading = false
 	lm.buffer.Enqueue(nil)
-	os.Remove(lm.filename) // Delete the logfile
+
+	log.Ctx(lm.ctx).Debug().Msgf("logmanager removing logfile: %s", lm.filename)
+	os.Remove(lm.filename)
+
 	lm.wg.Wait()
 }
