@@ -185,8 +185,9 @@ func (lm *LogManager) Close() {
 	lm.keepReading = false
 	lm.buffer.Enqueue(nil)
 
+	// Wait for completion before we remove the log file
+	lm.wg.Wait()
+
 	log.Ctx(lm.ctx).Debug().Msgf("logmanager removing logfile: %s", lm.filename)
 	os.Remove(lm.filename)
-
-	lm.wg.Wait()
 }
