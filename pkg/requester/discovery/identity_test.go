@@ -1,16 +1,17 @@
-//go:build integration
+//go:build integration || !unit
 
 package discovery
 
 import (
 	"context"
+	"testing"
+
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type IdentityNodeDiscovererSuite struct {

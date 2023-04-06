@@ -11,9 +11,9 @@ set -o pipefail
 # Turn on traces, useful while debugging but commented out by default
 #set -o xtrace
 
-files_without_header=$(grep --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* | xargs grep --files-without-match -e '//go:build integration' -e '//go:build unit || !integration' --)
+files_without_header=$(grep --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* | xargs grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' --)
 
 if [[ -n "${files_without_header}"  ]]; then
-  printf "Test files missing '//go:build integration' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
+  printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
   exit 1
 fi
