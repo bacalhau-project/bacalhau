@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -19,7 +17,7 @@ type BaseEndpointParams struct {
 	ID              string
 	ExecutionStore  store.ExecutionStore
 	UsageCalculator capacity.UsageCalculator
-	BidStrategy     bidstrategy.BidStrategy
+	Bidder          Bidder
 	Executor        Executor
 	LogServer       logstream.LogStreamServer
 }
@@ -29,7 +27,7 @@ type BaseEndpoint struct {
 	id              string
 	executionStore  store.ExecutionStore
 	usageCalculator capacity.UsageCalculator
-	bidStrategy     bidstrategy.BidStrategy
+	bidder          Bidder
 	executor        Executor
 	logServer       logstream.LogStreamServer
 }
@@ -39,7 +37,7 @@ func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
 		id:              params.ID,
 		executionStore:  params.ExecutionStore,
 		usageCalculator: params.UsageCalculator,
-		bidStrategy:     params.BidStrategy,
+		bidder:          params.Bidder,
 		executor:        params.Executor,
 		logServer:       params.LogServer,
 	}
@@ -55,81 +53,28 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)
 
-	// ask the bidding strategy if we should bid on this job
-	bidStrategyRequest := bidstrategy.BidStrategyRequest{
-		NodeID: s.id,
-		Job:    request.Job,
-	}
-
-	// Check bidding strategies before having to calculate resource usage
-	bidStrategyResponse, err := s.bidStrategy.ShouldBid(ctx, bidStrategyRequest)
+	resourceUsage, err := s.usageCalculator.Calculate(ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
 	if err != nil {
-		return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
-	}
-
-	var jobRequirements model.ResourceUsageData
-	if bidStrategyResponse.ShouldBid {
-		// calculate resource requirements for this job
-		jobRequirements, err = s.usageCalculator.Calculate(
-			ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
-		if err != nil {
-			return AskForBidResponse{}, fmt.Errorf("error calculating job requirements: %w", err)
-		}
-
-		// Check bidding strategies after calculating resource usage
-		bidStrategyResponse, err = s.bidStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, jobRequirements)
-		if err != nil {
-			return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
-		}
-	}
-
-	return s.prepareAskForBidResponse(ctx, request, jobRequirements, bidStrategyResponse)
-}
-
-// Enqueues the job in the execution executionStore, and returns the response.
-// Failure to enqueue the job will return BOTH an error and a response with Accepted=false.
-func (s BaseEndpoint) prepareAskForBidResponse(
-	ctx context.Context,
-	request AskForBidRequest,
-	resourceUsage model.ResourceUsageData,
-	bidStrategyResponse bidstrategy.BidStrategyResponse) (AskForBidResponse, error) {
-	if !bidStrategyResponse.ShouldBid {
-		return AskForBidResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				JobID: request.Job.Metadata.ID,
-			},
-			Accepted: false,
-			Reason:   bidStrategyResponse.Reason,
-		}, nil
+		return AskForBidResponse{}, err
 	}
 
 	execution := *store.NewExecution(
-		"e-"+uuid.NewString(),
+		request.ExecutionID,
 		request.Job,
 		request.SourcePeerID,
 		resourceUsage,
 	)
 
-	err := s.executionStore.CreateExecution(ctx, execution)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error adding job %s to backlog", execution.Job)
-		return AskForBidResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				JobID: request.Job.Metadata.ID,
-			},
-			Accepted: false,
-			Reason:   "error adding job to backlog",
-		}, err
-	} else {
-		log.Ctx(ctx).Debug().Msgf("bidding for job %s with execution %s", execution.Job, execution.ID)
-		return AskForBidResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				ExecutionID: execution.ID,
-				JobID:       request.Job.Metadata.ID,
-			},
-			Accepted: true,
-		}, nil
+	err = s.executionStore.CreateExecution(ctx, execution)
+	levels := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}
+	level := levels[err == nil]
+
+	if err == nil {
+		go s.bidder.RunBidding(ctx, execution) // TODO: context shareable?
 	}
+
+	log.Ctx(ctx).WithLevel(level).Err(err).Str("JobID", execution.Job.ID()).Str("ExecutionID", execution.ID).Msg("adding job to backlog")
+	return AskForBidResponse{ExecutionMetadata: NewExecutionMetadata(execution)}, err
 }
 
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {

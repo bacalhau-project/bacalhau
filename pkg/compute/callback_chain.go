@@ -17,6 +17,12 @@ func NewChainedCallback(params ChainedCallbackParams) *ChainedCallback {
 	}
 }
 
+func (c ChainedCallback) OnBidComplete(ctx context.Context, result BidResult) {
+	for _, callback := range c.callbacks {
+		callback.OnBidComplete(ctx, result)
+	}
+}
+
 func (c ChainedCallback) OnRunComplete(ctx context.Context, result RunResult) {
 	for _, callback := range c.callbacks {
 		callback.OnRunComplete(ctx, result)

@@ -4,14 +4,24 @@ package compute
 
 import (
 	"context"
+	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
-func (s *ComputeSuite) TestBidAccepted() {
+type BidAcceptedSuite struct {
+	ComputeSuite
+}
+
+func TestBidAcceptedSuite(t *testing.T) {
+	suite.Run(t, new(BidAcceptedSuite))
+}
+
+func (s *BidAcceptedSuite) TestBidAccepted() {
 	ctx := context.Background()
 	executionID := s.prepareAndAskForBid(ctx, generateJob())
 
@@ -21,13 +31,13 @@ func (s *ComputeSuite) TestBidAccepted() {
 	s.NoError(err)
 }
 
-func (s *ComputeSuite) TestBidAccepted_DoesntExist() {
+func (s *BidAcceptedSuite) TestDoesntExist() {
 	ctx := context.Background()
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
-func (s *ComputeSuite) TestBidAccepted_WrongState() {
+func (s *BidAcceptedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`

@@ -44,6 +44,12 @@ func (p *CallbackProxy) RegisterLocalComputeCallback(callback compute.Callback) 
 	p.localCallback = callback
 }
 
+func (p *CallbackProxy) OnBidComplete(ctx context.Context, result compute.BidResult) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnBidComplete, result, func(ctx2 context.Context) {
+		p.localCallback.OnBidComplete(ctx2, result)
+	})
+}
+
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
 	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnRunComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnRunComplete(ctx2, result)

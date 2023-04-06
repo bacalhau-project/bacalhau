@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -137,36 +138,43 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 	// we persist the intent for all nodes before asking any node to bid, so that we don't fail the job if the first node we ask rejects the
 	// the bid before we persist the intent to ask the other nodes.
 	for _, node := range nodes {
+		executionID := model.ExecutionID{
+			JobID:       job.Metadata.ID,
+			NodeID:      node.NodeInfo.PeerInfo.ID.String(),
+			ExecutionID: "e-" + uuid.NewString(),
+		}
+
 		err := s.jobStore.CreateExecution(ctx, model.ExecutionState{
-			JobID:  job.Metadata.ID,
-			NodeID: node.NodeInfo.PeerInfo.ID.String(),
-			State:  model.ExecutionStateAskForBid,
+			JobID:            executionID.JobID,
+			NodeID:           executionID.NodeID,
+			ComputeReference: executionID.ExecutionID,
+			State:            model.ExecutionStateAskForBid,
 		})
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
 			return
 		}
-	}
 
-	newCtx := util.NewDetachedContext(ctx)
-	for _, node := range nodes {
-		go s.doNotifyAskForBid(newCtx, link, job, node.NodeInfo.PeerInfo.ID.String())
+		newCtx := util.NewDetachedContext(ctx)
+		go s.doNotifyAskForBid(newCtx, job, executionID)
 	}
 }
 
-func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, link trace.Link, job model.Job, targetPeerID string) {
+func (s *BaseScheduler) doNotifyAskForBid(ctx context.Context, job model.Job, executionID model.ExecutionID) {
 	request := compute.AskForBidRequest{
 		Job: job,
+		ExecutionMetadata: compute.ExecutionMetadata{
+			ExecutionID: executionID.ExecutionID,
+			JobID:       executionID.JobID,
+		},
 		RoutingMetadata: compute.RoutingMetadata{
 			SourcePeerID: s.id,
-			TargetPeerID: targetPeerID,
+			TargetPeerID: executionID.NodeID,
 		},
 	}
-	bid, err := s.computeService.AskForBid(ctx, request)
+	_, err := s.computeService.AskForBid(ctx, request)
 	if err != nil {
-		s.handleExecutionFailure(ctx, model.ExecutionID{JobID: job.ID(), NodeID: targetPeerID}, err)
-	} else {
-		s.handleAskForBidResponse(ctx, request, bid)
+		s.handleExecutionFailure(ctx, executionID, err)
 	}
 }
 
@@ -365,15 +373,16 @@ func (s *BaseScheduler) verifyResult(
 // Compute callback handlers //
 // /////////////////////////////
 
-func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
-	request compute.AskForBidRequest,
-	response compute.AskForBidResponse) {
+// OnBidComplete implements compute.Callback
+func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
 	executionID := model.ExecutionID{
-		JobID:  response.JobID,
-		NodeID: request.TargetPeerID,
+		JobID:       response.JobID,
+		NodeID:      response.SourcePeerID,
+		ExecutionID: response.ExecutionID,
 	}
+
 	newState := model.ExecutionStateAskForBidRejected
 	if response.Accepted {
 		newState = model.ExecutionStateAskForBidAccepted
@@ -384,20 +393,19 @@ func (s *BaseScheduler) handleAskForBidResponse(ctx context.Context,
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			ComputeReference: response.ExecutionID,
-			State:            newState,
-			Status:           response.Reason,
+			State:  newState,
+			Status: response.Reason,
 		},
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[handleAskForBidResponse] failed to update execution")
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to update execution")
 		return
 	}
 
 	// decide if we should notify compute node of the bid decision
 	// we only notify if we've already received more than MinBids
 	if response.Accepted {
-		s.eventEmitter.EmitBidReceived(ctx, request, response)
+		s.eventEmitter.EmitBidReceived(ctx, response)
 	}
 	s.transitionJobState(ctx, executionID.JobID)
 }

@@ -55,10 +55,10 @@ func (e EventEmitter) EmitJobCanceled(ctx context.Context, req CancelJobRequest)
 }
 
 func (e EventEmitter) EmitBidReceived(
-	ctx context.Context, request compute.AskForBidRequest, response compute.AskForBidResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
+	ctx context.Context, result compute.BidResult) {
+	event := e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, model.JobEventBid)
 	// we flip senders to mimic a bid was received instead of being asked
-	event.SourceNodeID = request.RoutingMetadata.TargetPeerID
+	event.SourceNodeID = result.RoutingMetadata.SourcePeerID
 	event.TargetNodeID = "" // localdb don't assume a target node for events coming from compute nodes
 	e.EmitEventSilently(ctx, event)
 }

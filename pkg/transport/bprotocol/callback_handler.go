@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/rs/zerolog/log"
@@ -24,39 +25,30 @@ type CallbackHandler struct {
 	callback compute.Callback
 }
 
+type callbackHandler[Request any] func(context.Context, Request)
+
 func NewCallbackHandler(params CallbackHandlerParams) *CallbackHandler {
 	handler := &CallbackHandler{
 		host:     params.Host,
 		callback: params.Callback,
 	}
 
-	handler.host.SetStreamHandler(OnRunComplete, handler.onRunSuccess)
-	handler.host.SetStreamHandler(OnPublishComplete, handler.onPublishSuccess)
-	handler.host.SetStreamHandler(OnCancelComplete, handler.onCancelSuccess)
-	handler.host.SetStreamHandler(OnComputeFailure, handler.onComputeFailure)
+	host := handler.host
+	host.SetStreamHandler(OnBidComplete, handleCallback(host, handler.callback.OnBidComplete))
+	host.SetStreamHandler(OnRunComplete, handleCallback(host, handler.callback.OnRunComplete))
+	host.SetStreamHandler(OnPublishComplete, handleCallback(host, handler.callback.OnPublishComplete))
+	host.SetStreamHandler(OnCancelComplete, handleCallback(host, handler.callback.OnCancelComplete))
+	host.SetStreamHandler(OnComputeFailure, handleCallback(host, handler.callback.OnComputeFailure))
 	return handler
 }
 
-func (h *CallbackHandler) onRunSuccess(stream network.Stream) {
-	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleCallbackStream[compute.RunResult](ctx, stream, h.callback.OnRunComplete)
-}
-func (h *CallbackHandler) onPublishSuccess(stream network.Stream) {
-	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleCallbackStream[compute.PublishResult](ctx, stream, h.callback.OnPublishComplete)
+func handleCallback[Request any](host host.Host, f callbackHandler[Request]) func(network.Stream) {
+	return func(stream network.Stream) {
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), host.ID().String())
+		handleCallbackStream(ctx, stream, f)
+	}
 }
 
-func (h *CallbackHandler) onCancelSuccess(stream network.Stream) {
-	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleCallbackStream[compute.CancelResult](ctx, stream, h.callback.OnCancelComplete)
-}
-
-func (h *CallbackHandler) onComputeFailure(stream network.Stream) {
-	ctx := logger.ContextWithNodeIDLogger(context.Background(), h.host.ID().String())
-	handleCallbackStream[compute.ComputeError](ctx, stream, h.callback.OnComputeFailure)
-}
-
-//nolint:errcheck
 func handleCallbackStream[Request any](
 	ctx context.Context,
 	stream network.Stream,
@@ -75,7 +67,7 @@ func handleCallbackStream[Request any](
 		_ = stream.Reset()
 		return
 	}
-	defer stream.Close() //nolint:errcheck
+	defer closer.CloseWithLogOnError("stream", stream)
 
 	// TODO: validate which context to use here, and whether running in a goroutine is ok
 	newCtx := logger.ContextWithNodeIDLogger(context.Background(), stream.Conn().LocalPeer().String())
