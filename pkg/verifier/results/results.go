@@ -42,5 +42,9 @@ func (results *Results) EnsureResultsDir(executionID string) (string, error) {
 }
 
 func (results *Results) Close() error {
+	if _, err := os.Stat(results.ResultsDir); os.IsNotExist(err) {
+		return nil
+	}
+
 	return os.RemoveAll(results.ResultsDir)
 }
