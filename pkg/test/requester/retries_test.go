@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package requester
 
@@ -64,7 +64,7 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					noop_executor.ExecutorConfigExternalHooks{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 						JobHandler: noop_executor.ErrorJobHandler(executionErr),
 					},
 				}),
@@ -76,7 +76,7 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					noop_executor.ExecutorConfigExternalHooks{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 							return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader(""), 0, nil)
 						},
@@ -90,7 +90,7 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					noop_executor.ExecutorConfigExternalHooks{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 							return executor.WriteJobResults(resultsDir, strings.NewReader("oranges"), strings.NewReader(""), 0, nil)
 						},
@@ -104,7 +104,7 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				PublishersFactory: devstack.NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{
-					noop_publisher.PublisherExternalHooks{
+					ExternalHooks: noop_publisher.PublisherExternalHooks{
 						PublishResult: noop_publisher.ErrorResultPublisher(publishErr),
 					},
 				}),
@@ -116,7 +116,7 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					noop_executor.ExecutorConfigExternalHooks{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 						JobHandler: noop_executor.DelayedJobHandler(slowExecutorSleep),
 					},
 				}),

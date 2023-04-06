@@ -1,9 +1,10 @@
-//go:build integration && linux
+//go:build integration || !unit
 
 package sqlite
 
 import (
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
@@ -13,6 +14,10 @@ import (
 )
 
 func TestSQLiteSuite(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skipf("Test only runs on linux and not %s", runtime.GOOS)
+	}
+
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
 		datafile, err := os.CreateTemp("", "sqlite-test-*.db")
