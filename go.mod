@@ -11,8 +11,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.17.7
 	github.com/aws/aws-sdk-go-v2/config v1.18.19
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.1
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.59
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.31.0
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.60
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.31.1
 	github.com/bacalhau-project/golang-mutex-tracer v0.0.0-20230214151516-bb996d6e8b46
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
