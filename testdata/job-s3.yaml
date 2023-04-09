@@ -2,7 +2,12 @@ APIVersion: v1beta1
 Spec:
   Engine: Docker
   Verifier: Noop
-  Publisher: Noop
+  PublisherSpec:
+    Type: S3
+    Config:
+      Bucket: bacalhau-test-datasets
+      Key: integration-tests-published-result/job-{jobID}
+      Region: eu-west-1
   Docker:
     Image: ubuntu:latest
     Entrypoint:

@@ -17,6 +17,9 @@ type PublisherProvider interface {
 type Publisher interface {
 	model.Providable
 
+	// Validate the job's publisher configuration
+	ValidateJob(ctx context.Context, j model.Job) error
+
 	// compute node
 	//
 	// once the results have been verified we publish them

@@ -2,7 +2,9 @@ package s3
 
 import (
 	"context"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,15 +14,19 @@ import (
 
 var isEC2Instance bool
 var isEC2InstanceOnce sync.Once
+var isEC2InstanceTimeout = 2 * time.Second
 
 func DefaultAWSConfig() (aws.Config, error) {
-	imdsMode := imds.ClientEnabled
-	if !IsEC2Instance(context.Background()) {
-		imdsMode = imds.ClientDisabled
+	// Set a default IMDC TTL of 1 hour if not set to avoid hitting the metadata service too often, which can slow down the
+	// node's startup time.
+	if _, ok := os.LookupEnv("AWS_EC2_METADATA_TTL"); !ok {
+		err := os.Setenv("AWS_EC2_METADATA_TTL", "3600")
+		if err != nil {
+			return aws.Config{}, err
+		}
 	}
-	return config.LoadDefaultConfig(context.Background(),
-		config.WithEC2IMDSClientEnableState(imdsMode),
-	)
+	var optFns []func(*config.LoadOptions) error
+	return config.LoadDefaultConfig(context.Background(), optFns...)
 }
 
 // HasValidCredentials returns true if the AWS config has valid credentials.
@@ -38,14 +44,16 @@ func HasValidCredentials(config aws.Config) bool {
 // once and caching the result.
 func IsEC2Instance(ctx context.Context) bool {
 	isEC2InstanceOnce.Do(func() {
-		cfg, err := config.LoadDefaultConfig(ctx)
+		ctx2, cancel := context.WithTimeout(ctx, isEC2InstanceTimeout)
+		defer cancel()
+		cfg, err := config.LoadDefaultConfig(ctx2)
 		if err != nil {
 			isEC2Instance = false
 			return
 		}
 
 		client := imds.NewFromConfig(cfg)
-		_, err = client.GetMetadata(ctx, &imds.GetMetadataInput{
+		_, err = client.GetMetadata(ctx2, &imds.GetMetadataInput{
 			Path: "instance-id",
 		})
 		if err != nil {

@@ -47,6 +47,10 @@ func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func (publisher *NoopPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	return nil
+}
+
 func (publisher *NoopPublisher) PublishResult(
 	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
 	if publisher.externalHooks.PublishResult != nil {

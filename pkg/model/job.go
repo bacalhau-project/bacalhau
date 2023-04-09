@@ -137,6 +137,11 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
+type PublisherSpec struct {
+	Type   Publisher              `json:"Type,omitempty"`
+	Config map[string]interface{} `json:"Config,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
@@ -146,7 +151,8 @@ type Spec struct {
 	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher Publisher `json:"Publisher,omitempty"`
+	Publisher     Publisher     `json:"Publisher,omitempty"`
+	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty"`

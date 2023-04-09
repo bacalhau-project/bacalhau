@@ -52,6 +52,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
+		jobtransform.NewPublisherMigrator(),
 	}
 
 	return &BaseEndpoint{

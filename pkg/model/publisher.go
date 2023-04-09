@@ -13,6 +13,7 @@ const (
 	PublisherIpfs
 	PublisherFilecoin
 	PublisherEstuary
+	PublisherS3
 	publisherDone // must be last
 )
 

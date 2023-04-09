@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -29,6 +30,15 @@ func NewIPFSPublisher(
 func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	_, err := publisher.IPFSClient.ID(ctx)
 	return err == nil, err
+}
+
+func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	switch j.Spec.PublisherSpec.Type {
+	case model.PublisherIpfs, model.PublisherEstuary, model.PublisherFilecoin:
+		return nil
+	default:
+		return fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type)
+	}
 }
 
 func (publisher *IPFSPublisher) PublishResult(

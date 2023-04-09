@@ -50,6 +50,12 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 				res.S3.Endpoint = value
 			case "region":
 				res.S3.Region = value
+			case "versionID", "version-id", "version_id":
+				res.S3.VersionID = value
+			case "checksum-256", "checksum256", "checksum_256":
+				res.S3.ChecksumSHA256 = value
+			default:
+				return model.StorageSpec{}, fmt.Errorf("unknown option %s", key)
 			}
 		}
 	case "git", "gitlfs":

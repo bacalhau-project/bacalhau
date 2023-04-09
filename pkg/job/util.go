@@ -138,9 +138,13 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	return verifiedSummary
 }
 
+func GetPublishedStorageName(executionID string, job model.Job) string {
+	return fmt.Sprintf("job-%s-execution-%s", job.ID(), executionID)
+}
+
 func GetPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
 	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-execution-%s", job.ID(), executionID),
+		Name:          GetPublishedStorageName(executionID, job),
 		StorageSource: storageType,
 		CID:           cid,
 		Metadata:      map[string]string{},

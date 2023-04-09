@@ -44,6 +44,14 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
+func (e *estuaryPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	if j.Spec.PublisherSpec.Type != model.PublisherEstuary {
+		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+			model.PublisherEstuary, j.Spec.PublisherSpec.Type)
+	}
+	return nil
+}
+
 // PublishResult implements publisher.Publisher
 func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,

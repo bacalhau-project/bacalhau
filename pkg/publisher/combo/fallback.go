@@ -54,6 +54,13 @@ func (f *fallbackPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	})
 }
 
+func (f *fallbackPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	_, err := fallback(ctx, f.publishers, func(p publisher.Publisher) (interface{}, error) {
+		return nil, p.ValidateJob(ctx, j)
+	})
+	return err
+}
+
 // PublishResult implements publisher.Publisher
 func (f *fallbackPublisher) PublishResult(
 	ctx context.Context,
