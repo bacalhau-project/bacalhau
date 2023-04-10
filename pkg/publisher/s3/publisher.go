@@ -152,7 +152,7 @@ func (publisher *Publisher) publishDirectory(
 		// Upload the file to S3.
 		res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
 			Bucket:            aws.String(spec.Bucket),
-			Key:               aws.String(key + "/" + filepath.ToSlash(relativePath)),
+			Key:               aws.String(key + filepath.ToSlash(relativePath)),
 			Body:              data,
 			ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 		})

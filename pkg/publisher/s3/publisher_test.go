@@ -139,6 +139,9 @@ func (s *PublisherTestSuite) TestPublish() {
 		s.T().Skip("No valid AWS credentials found")
 	}
 
+	// to fast skip remaining tests in case we don't have valid credentials with enough permissions
+	skipMessage := ""
+
 	for _, tc := range []struct {
 		name        string
 		key         string
@@ -191,6 +194,9 @@ func (s *PublisherTestSuite) TestPublish() {
 		},
 	} {
 		s.Run(tc.name, func() {
+			if skipMessage != "" {
+				s.T().Skip(skipMessage)
+			}
 			ctx := context.Background()
 			storageSpec, err := s.publish(ctx, PublisherConfig{
 				Bucket:  bucket,
@@ -202,7 +208,8 @@ func (s *PublisherTestSuite) TestPublish() {
 			if err != nil {
 				var ae smithy.APIError
 				if errors.As(err, &ae) && ae.ErrorCode() == "AccessDenied" {
-					s.T().Skip("No access to bucket " + bucket)
+					skipMessage = "No access to S3 bucket " + bucket
+					s.T().Skip(skipMessage)
 				}
 			}
 			s.Require().NoError(err)
@@ -319,7 +326,10 @@ func (s *PublisherTestSuite) delete(key string) {
 	listPaginator := s3.NewListObjectsV2Paginator(svc, listInput)
 	for listPaginator.HasMorePages() {
 		output, err := listPaginator.NextPage(context.Background())
-		s.Require().NoError(err)
+		if err != nil {
+			s.T().Logf("Failed to list objects while deleting %s: %v", key, err)
+			return
+		}
 		for _, obj := range output.Contents {
 			objects = append(objects, types.ObjectIdentifier{
 				Key: obj.Key,
@@ -336,7 +346,9 @@ func (s *PublisherTestSuite) delete(key string) {
 		},
 	}
 	_, err := svc.DeleteObjects(context.Background(), deleteInput)
-	s.Require().NoError(err)
+	if err != nil {
+		s.T().Logf("Failed to delete objects while deleting %s: %v", key, err)
+	}
 }
 
 func unarchiveToDirectory(sourcePath string, targetDir string) error {

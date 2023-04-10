@@ -155,7 +155,8 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	}
 	defer outputFile.Close() //nolint:errcheck
 
-	log.Debug().Msgf("Downloading %s to %s", *object.key, outputFile.Name())
+	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
+		storageSpec.S3.Bucket, aws.ToString(object.key), aws.ToString(object.versionID), aws.ToString(object.eTag), outputFile.Name())
 	_, err = client.Downloader.Download(ctx, outputFile, &s3.GetObjectInput{
 		Bucket:    aws.String(storageSpec.S3.Bucket),
 		Key:       object.key,
@@ -197,12 +198,15 @@ func (s *StorageProvider) explodeKey(
 				storageSpec.Bucket, storageSpec.Key, storageSpec.ChecksumSHA256, aws.ToString(headResp.ChecksumSHA256))
 		}
 		if headResp.ContentType != nil && !strings.HasPrefix(*headResp.ContentType, "application/x-directory") {
-			return []s3ObjectSummary{{
-				key:       aws.String(storageSpec.Key),
-				size:      headResp.ContentLength,
-				eTag:      headResp.ETag,
-				versionID: headResp.VersionId,
-			}}, nil
+			objectSummary := s3ObjectSummary{
+				key:  aws.String(storageSpec.Key),
+				size: headResp.ContentLength,
+				eTag: headResp.ETag,
+			}
+			if storageSpec.VersionID != "" {
+				objectSummary.versionID = aws.String(storageSpec.VersionID)
+			}
+			return []s3ObjectSummary{objectSummary}, nil
 		}
 	}
 
