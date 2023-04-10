@@ -81,3 +81,46 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 	}
 	return res, nil
 }
+
+func ParsePublisherString(destinationURI string, options map[string]interface{}) (model.PublisherSpec, error) {
+	destinationURI = strings.Trim(destinationURI, " '\"")
+	parsedURI, err := url.Parse(destinationURI)
+	if err != nil {
+		return model.PublisherSpec{}, err
+	}
+
+	// handle scenarios where the destinationURI is just the scheme/publisher type, e.g. ipfs
+	if parsedURI.Scheme == "" {
+		parsedURI.Scheme = parsedURI.Path
+	}
+
+	var res model.PublisherSpec
+	switch parsedURI.Scheme {
+	case "ipfs":
+		res = model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}
+	case "lotus":
+		res = model.PublisherSpec{
+			Type: model.PublisherFilecoin,
+		}
+	case "estuary":
+		res = model.PublisherSpec{
+			Type: model.PublisherEstuary,
+		}
+	case "s3":
+		if _, ok := options["bucket"]; !ok {
+			options["bucket"] = parsedURI.Host
+		}
+		if _, ok := options["key"]; !ok {
+			options["key"] = strings.TrimLeft(parsedURI.Path, "/")
+		}
+		res = model.PublisherSpec{
+			Type:   model.PublisherS3,
+			Params: options,
+		}
+	default:
+		return model.PublisherSpec{}, fmt.Errorf("unknown publisher type: %s", parsedURI.Scheme)
+	}
+	return res, nil
+}

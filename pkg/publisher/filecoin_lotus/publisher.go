@@ -115,7 +115,7 @@ func (l *Publisher) PublishResult(
 		return model.StorageSpec{}, err
 	}
 
-	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
 	spec.Metadata["deal_cid"] = dealCid
 	return spec, nil
 }

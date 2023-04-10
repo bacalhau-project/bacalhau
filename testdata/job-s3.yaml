@@ -4,7 +4,7 @@ Spec:
   Verifier: Noop
   PublisherSpec:
     Type: S3
-    Config:
+    Params:
       Bucket: bacalhau-test-datasets
       Key: integration-tests-published-result/job-{jobID}
       Region: eu-west-1

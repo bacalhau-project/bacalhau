@@ -60,9 +60,11 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:    EngineDocker,
-			Verifier:  VerifierNoop,
-			Publisher: PublisherEstuary,
+			Engine:   EngineDocker,
+			Verifier: VerifierNoop,
+			PublisherSpec: PublisherSpec{
+				Type: PublisherEstuary,
+			},
 			Deal: Deal{
 				Concurrency: 1,
 				Confidence:  0,
@@ -139,7 +141,7 @@ type LabelSelectorRequirement struct {
 
 type PublisherSpec struct {
 	Type   Publisher              `json:"Type,omitempty"`
-	Config map[string]interface{} `json:"Config,omitempty"`
+	Params map[string]interface{} `json:"Params,omitempty"`
 }
 
 // Spec is a complete specification of a job that can be run on some

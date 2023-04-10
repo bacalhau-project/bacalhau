@@ -47,17 +47,17 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine           string          // Executor - executor.Executor
-	Verifier         string          // Verifier - verifier.Verifier
-	Publisher        string          // Publisher - publisher.Publisher
-	Inputs           opts.StorageOpt // Array of inputs
-	OutputVolumes    []string        // Array of output volumes in 'name:mount point' form
-	Env              []string        // Array of environment variables
-	IDOnly           bool            // Only print the job ID
-	Concurrency      int             // Number of concurrent jobs to run
-	Confidence       int             // Minimum number of nodes that must agree on a verification result
-	MinBids          int             // Minimum number of bids before they will be accepted (at random)
-	Timeout          float64         // Job execution timeout in seconds
+	Engine           string            // Executor - executor.Executor
+	Verifier         string            // Verifier - verifier.Verifier
+	Publisher        opts.PublisherOpt // Publisher - publisher.Publisher
+	Inputs           opts.StorageOpt   // Array of inputs
+	OutputVolumes    []string          // Array of output volumes in 'name:mount point' form
+	Env              []string          // Array of environment variables
+	IDOnly           bool              // Only print the job ID
+	Concurrency      int               // Number of concurrent jobs to run
+	Confidence       int               // Minimum number of nodes that must agree on a verification result
+	MinBids          int               // Minimum number of bids before they will be accepted (at random)
+	Timeout          float64           // Job execution timeout in seconds
 	CPU              string
 	Memory           string
 	GPU              string
@@ -85,7 +85,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
 		Engine:             "docker",
 		Verifier:           "noop",
-		Publisher:          "estuary",
+		Publisher:          opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
 		Inputs:             opts.StorageOpt{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
@@ -144,9 +144,8 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		&ODR.Verifier, "verifier", ODR.Verifier,
 		`What verification engine to use to run the job`,
 	)
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.Publisher, "publisher", ODR.Publisher,
-		`What publisher engine to use to publish the job results`,
+	dockerRunCmd.PersistentFlags().VarP(&ODR.Publisher, "publisher", "p",
+		`Where to publish the result of the job`,
 	)
 	dockerRunCmd.PersistentFlags().VarP(&ODR.Inputs, "input", "i", inputUsageMsg)
 
@@ -307,11 +306,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		return &model.Job{}, err
 	}
 
-	publisherType, err := model.ParsePublisher(odr.Publisher)
-	if err != nil {
-		return &model.Job{}, err
-	}
-
 	if len(odr.WorkingDirectory) > 0 {
 		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
@@ -331,7 +325,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		model.APIVersionLatest(),
 		engineType,
 		verifierType,
-		publisherType,
+		odr.Publisher.Value(),
 		odr.CPU,
 		odr.Memory,
 		odr.GPU,

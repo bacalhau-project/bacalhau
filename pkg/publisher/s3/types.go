@@ -2,43 +2,57 @@ package s3
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 )
 
-type PublisherConfig struct {
+type Params struct {
 	Bucket   string `json:"Bucket"`
 	Key      string `json:"Key"`
 	Endpoint string `json:"Endpoint"`
 	Region   string `json:"Region"`
-	Archive  bool   `json:"Compress"`
+	Compress bool   `json:"Compress"`
 }
 
-func DecodeConfig(spec model.PublisherSpec) (PublisherConfig, error) {
+func DecodeSpec(spec model.PublisherSpec) (Params, error) {
 	if spec.Type != model.PublisherS3 {
-		return PublisherConfig{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+		return Params{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
 			model.PublisherS3, spec.Type)
 	}
-	var c PublisherConfig
-	if err := mapstructure.Decode(spec.Config, &c); err != nil {
+	inputParams := spec.Params
+	if inputParams == nil {
+		return Params{}, fmt.Errorf("invalid publisher params. cannot be nil")
+	}
+
+	// convert compress to bool
+	if _, ok := inputParams["Compress"]; ok && reflect.TypeOf(inputParams["Compress"]).Kind() == reflect.String {
+		inputParams["Compress"] = inputParams["Compress"] == "true"
+	}
+	if _, ok := inputParams["compress"]; ok && reflect.TypeOf(inputParams["compress"]).Kind() == reflect.String {
+		inputParams["compress"] = inputParams["compress"] == "true"
+	}
+
+	var c Params
+	if err := mapstructure.Decode(spec.Params, &c); err != nil {
 		return c, err
 	}
 
 	return c, c.Validate()
 }
 
-func (c PublisherConfig) Validate() error {
+func (c Params) Validate() error {
 	if c.Bucket == "" {
-		return fmt.Errorf("invalid publisher config. bucket cannot be empty")
+		return fmt.Errorf("invalid s3 params. bucket cannot be empty")
 	}
 	if c.Key == "" {
-		return fmt.Errorf("invalid publisher config. key cannot be empty")
+		return fmt.Errorf("invalid s3 params. key cannot be empty")
 	}
 	return nil
 }
 
-func (c PublisherConfig) ToMap() map[string]interface{} {
+func (c Params) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }

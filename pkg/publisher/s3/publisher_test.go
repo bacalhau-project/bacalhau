@@ -39,6 +39,9 @@ type PublisherTestSuite struct {
 func (s *PublisherTestSuite) SetupSuite() {
 	cfg, err := s3helper.DefaultAWSConfig()
 	s.Require().NoError(err)
+	if !s3helper.HasValidCredentials(cfg) {
+		s.T().Skip("No valid AWS credentials found")
+	}
 
 	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
 		AWSConfig: cfg,
@@ -68,18 +71,18 @@ func (s *PublisherTestSuite) TestIsInstalled() {
 func (s *PublisherTestSuite) TestValidateJob() {
 	for _, tc := range []struct {
 		name    string
-		config  PublisherConfig
+		config  Params
 		invalid bool
 	}{
 		{
 			name: "valid",
-			config: PublisherConfig{
+			config: Params{
 				Bucket: bucket,
 				Key:    prefix + uuid.New().String(),
 			},
 		}, {
 			name: "valid with endpoint and region",
-			config: PublisherConfig{
+			config: Params{
 				Bucket:   bucket,
 				Key:      prefix + uuid.New().String(),
 				Endpoint: "http://localhost:4566",
@@ -88,14 +91,14 @@ func (s *PublisherTestSuite) TestValidateJob() {
 		},
 		{
 			name: "invalid bucket",
-			config: PublisherConfig{
+			config: Params{
 				Bucket: "",
 				Key:    prefix + uuid.New().String(),
 			},
 			invalid: true,
 		}, {
 			name: "invalid key",
-			config: PublisherConfig{
+			config: Params{
 				Bucket: bucket,
 				Key:    "",
 			},
@@ -107,7 +110,7 @@ func (s *PublisherTestSuite) TestValidateJob() {
 				Spec: model.Spec{
 					PublisherSpec: model.PublisherSpec{
 						Type:   model.PublisherS3,
-						Config: tc.config.ToMap(),
+						Params: tc.config.ToMap(),
 					},
 				},
 			})
@@ -125,7 +128,7 @@ func (s *PublisherTestSuite) TestInvalidValidateJobType() {
 		Spec: model.Spec{
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-				Config: PublisherConfig{
+				Params: Params{
 					Bucket: bucket,
 					Key:    prefix + uuid.New().String(),
 				}.ToMap(),
@@ -198,11 +201,11 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.T().Skip(skipMessage)
 			}
 			ctx := context.Background()
-			storageSpec, err := s.publish(ctx, PublisherConfig{
-				Bucket:  bucket,
-				Key:     tc.key,
-				Region:  region,
-				Archive: tc.archived,
+			storageSpec, err := s.publish(ctx, Params{
+				Bucket:   bucket,
+				Key:      tc.key,
+				Region:   region,
+				Compress: tc.archived,
 			})
 
 			if err != nil {
@@ -239,7 +242,7 @@ func (s *PublisherTestSuite) TestPublish() {
 	}
 }
 
-func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig PublisherConfig) (model.StorageSpec, error) {
+func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (model.StorageSpec, error) {
 	resultPath, err := os.MkdirTemp(s.tempDir, "")
 	s.Require().NoError(err)
 
@@ -264,7 +267,7 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Publis
 		Spec: model.Spec{
 			PublisherSpec: model.PublisherSpec{
 				Type:   model.PublisherS3,
-				Config: publisherConfig.ToMap(),
+				Params: publisherConfig.ToMap(),
 			},
 		},
 	}

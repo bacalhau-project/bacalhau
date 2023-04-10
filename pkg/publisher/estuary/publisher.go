@@ -99,7 +99,7 @@ func (e *estuaryPublisher) PublishResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
 	spec.URL = addCarResponse.EstuaryRetrievalUrl
 
 	return spec, nil

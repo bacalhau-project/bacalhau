@@ -51,7 +51,7 @@ func (publisher *IPFSPublisher) PublishResult(
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return job.GetPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
+	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

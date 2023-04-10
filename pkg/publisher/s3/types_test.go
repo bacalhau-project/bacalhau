@@ -11,35 +11,83 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type PublisherConfigTestSuite struct {
+type ParamsTestSuite struct {
 	suite.Suite
 }
 
-func TestPublisherConfigTestSuite(t *testing.T) {
-	suite.Run(t, new(PublisherConfigTestSuite))
+func TestParamsTestSuite(t *testing.T) {
+	suite.Run(t, new(ParamsTestSuite))
 }
 
-func (s *PublisherConfigTestSuite) TestDecodeMap() {
-	expected := PublisherConfig{
+func (s *ParamsTestSuite) TestDecodeMap() {
+	expected := Params{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
-		Endpoint: "endpoint",
-		Region:   "region",
+		Endpoint: "localhost:9000",
+		Region:   "us-east-1",
+		Compress: true,
 	}
-	decoded, err := DecodeConfig(model.PublisherSpec{
+	decoded, err := DecodeSpec(model.PublisherSpec{
 		Type:   model.PublisherS3,
-		Config: expected.ToMap(),
+		Params: expected.ToMap(),
 	})
 	s.Require().NoError(err)
 	s.Equal(expected, decoded)
 }
 
-func (s *PublisherConfigTestSuite) TestDecodeJson() {
-	expected := PublisherConfig{
+func (s *ParamsTestSuite) TestDecodeInterface() {
+	expected := Params{
 		Bucket:   "bucket",
 		Key:      uuid.NewString(),
-		Endpoint: "endpoint",
-		Region:   "region",
+		Endpoint: "localhost:9000",
+		Region:   "us-east-1",
+		Compress: true,
+	}
+	params := map[string]interface{}{
+		"Bucket":   expected.Bucket,
+		"Key":      expected.Key,
+		"Endpoint": expected.Endpoint,
+		"Region":   expected.Region,
+		"Compress": "true",
+	}
+	decoded, err := DecodeSpec(model.PublisherSpec{
+		Type:   model.PublisherS3,
+		Params: params,
+	})
+	s.Require().NoError(err)
+	s.Equal(expected, decoded)
+}
+
+func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
+	expected := Params{
+		Bucket:   "bucket",
+		Key:      uuid.NewString(),
+		Endpoint: "localhost:9000",
+		Region:   "us-east-1",
+		Compress: true,
+	}
+	params := map[string]interface{}{
+		"bucket":   expected.Bucket,
+		"key":      expected.Key,
+		"endpoint": expected.Endpoint,
+		"region":   expected.Region,
+		"compress": "true",
+	}
+	decoded, err := DecodeSpec(model.PublisherSpec{
+		Type:   model.PublisherS3,
+		Params: params,
+	})
+	s.Require().NoError(err)
+	s.Equal(expected, decoded)
+}
+
+func (s *ParamsTestSuite) TestDecodeJson() {
+	expected := Params{
+		Bucket:   "bucket",
+		Key:      uuid.NewString(),
+		Endpoint: "localhost:9000",
+		Region:   "us-east-1",
+		Compress: true,
 	}
 	bytes, err := json.Marshal(expected)
 	s.Require().NoError(err)
@@ -51,22 +99,22 @@ func (s *PublisherConfigTestSuite) TestDecodeJson() {
 	if err != nil {
 		return
 	}
-	decoded, err := DecodeConfig(model.PublisherSpec{
+	decoded, err := DecodeSpec(model.PublisherSpec{
 		Type:   model.PublisherS3,
-		Config: unmarshalled,
+		Params: unmarshalled,
 	})
 	s.Require().NoError(err)
 	s.Equal(expected, decoded)
 }
 
-func (s *PublisherConfigTestSuite) TestDecodeInvalidType() {
-	_, err := DecodeConfig(model.PublisherSpec{
+func (s *ParamsTestSuite) TestDecodeInvalidType() {
+	_, err := DecodeSpec(model.PublisherSpec{
 		Type: model.PublisherIpfs,
 	})
 	s.Require().Error(err)
 }
 
-func (s *PublisherConfigTestSuite) TestDecodeInvalidConfig() {
+func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 	for _, tc := range []struct {
 		name string
 		spec model.PublisherSpec
@@ -75,7 +123,7 @@ func (s *PublisherConfigTestSuite) TestDecodeInvalidConfig() {
 			name: "empty bucket",
 			spec: model.PublisherSpec{
 				Type: model.PublisherS3,
-				Config: map[string]interface{}{
+				Params: map[string]interface{}{
 					"Bucket": "",
 					"Key":    uuid.NewString(),
 				},
@@ -85,7 +133,7 @@ func (s *PublisherConfigTestSuite) TestDecodeInvalidConfig() {
 			name: "empty key",
 			spec: model.PublisherSpec{
 				Type: model.PublisherS3,
-				Config: map[string]interface{}{
+				Params: map[string]interface{}{
 					"Bucket": "bucket",
 					"Key":    "",
 				},
@@ -93,7 +141,7 @@ func (s *PublisherConfigTestSuite) TestDecodeInvalidConfig() {
 		},
 	} {
 		s.Run(tc.name, func() {
-			_, err := DecodeConfig(tc.spec)
+			_, err := DecodeSpec(tc.spec)
 			s.Require().Error(err)
 		})
 	}

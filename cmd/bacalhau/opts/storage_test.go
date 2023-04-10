@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParse(t *testing.T) {
+func TestParseStorage(t *testing.T) {
 	for _, test := range []struct {
 		name     string
 		input    string
@@ -153,7 +153,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestParseMultipleInputs(t *testing.T) {
+func TestParseMultipleStorageInputs(t *testing.T) {
 	opt := StorageOpt{}
 	require.NoError(t, opt.Set("ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA"))
 	require.NoError(t, opt.Set("s3://myBucket/dir/file-001.txt"))
