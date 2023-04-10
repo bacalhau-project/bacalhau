@@ -133,8 +133,10 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	if !model.IsValidVerifier(j.Spec.Verifier) {
 		j.Spec.Verifier = model.VerifierNoop
 	}
-	if !model.IsValidPublisher(j.Spec.Publisher) {
-		j.Spec.Publisher = model.PublisherIpfs
+	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
+		j.Spec.PublisherSpec = model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}
 	}
 
 	j.Spec.Deal = scenario.Deal

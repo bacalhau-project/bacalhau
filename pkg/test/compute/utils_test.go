@@ -17,9 +17,11 @@ func generateJob() model.Job {
 		},
 		APIVersion: model.APIVersionLatest().String(),
 		Spec: model.Spec{
-			Engine:    model.EngineNoop,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
+			Engine:   model.EngineNoop,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherNoop,
+			},
 		},
 	}
 }

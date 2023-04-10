@@ -170,7 +170,7 @@ func NewComputeNode(
 			),
 			bidstrategy.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
 				publishers,
-				func(j *model.Job) model.Publisher { return j.Spec.Publisher },
+				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
 			),
 			storage_bidstrategy.NewStorageInstalledBidStrategy(storages),
 			bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{

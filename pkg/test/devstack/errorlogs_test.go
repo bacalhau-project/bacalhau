@@ -27,12 +27,16 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 var executorTestCases = []model.Spec{
 	{
-		Engine:    model.EngineNoop,
-		Publisher: model.PublisherIpfs,
+		Engine: model.EngineNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 	},
 	{
-		Engine:    model.EngineDocker,
-		Publisher: model.PublisherIpfs,
+		Engine: model.EngineDocker,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 		Docker: model.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"},

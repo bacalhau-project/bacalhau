@@ -32,9 +32,11 @@ const exampleText = "hello world"
 var testcase = scenario.Scenario{
 	ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
 	Spec: model.Spec{
-		Engine:    model.EngineWasm,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
+		Engine:   model.EngineWasm,
+		Verifier: model.VerifierNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 		Wasm: model.JobSpecWasm{
 			EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 			EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
