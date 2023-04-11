@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
+	"go.ptx.dk/multierrgroup"
+
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -16,19 +19,18 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/pkg/errors"
-	"go.ptx.dk/multierrgroup"
+
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/slices"
 )
 
 type ModelOptions struct {
@@ -201,6 +203,18 @@ func (api *ModelAPI) GetNodes(ctx context.Context) (map[string]bacalhau_model.No
 		}
 	}
 	return nodesMap, nil
+}
+
+func (api *ModelAPI) GetJobsProducingJobInput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	return api.store.GetJobsProducingJobInput(ctx, id)
+}
+
+func (api *ModelAPI) GetJobsOperatingOnJobOutput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	return api.store.GetJobsOperatingOnJobOutput(ctx, id)
+}
+
+func (api *ModelAPI) GetJobsOperatingOnCID(ctx context.Context, cid string) ([]*types.JobDataIO, error) {
+	return api.store.GetJobsOperatingOnCID(ctx, cid)
 }
 
 func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model_beta.Job, error) {

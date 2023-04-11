@@ -75,3 +75,14 @@ type JobInfo struct {
 	Requests    []JobModerationRequest           `json:"requests"`
 	Moderations []JobModerationSummary           `json:"moderations"`
 }
+
+type JobRelation struct {
+	JobID string `json:"job_id,omitempty"`
+	CID   string `json:"cid,omitempty"`
+}
+
+type JobDataIO struct {
+	JobID       string `json:"job_id,omitempty"`
+	InputOutput string `json:"input_output,omitempty"`
+	IsInput     bool   `json:"is_input"`
+}

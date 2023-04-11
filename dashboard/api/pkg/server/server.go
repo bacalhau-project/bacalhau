@@ -9,15 +9,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
+	"github.com/gorilla/mux"
+
 	bacmodel "github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
-	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/gorilla/mux"
 )
 
 type ServerOptions struct {
@@ -77,8 +79,13 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	jobrouter := subrouter.PathPrefix("/job/{id}").Subrouter()
 	jobrouter.HandleFunc("/", handleError(returnsJSON(apiServer.job))).Methods("GET")
 	jobrouter.HandleFunc("/info", handleError(returnsJSON(apiServer.jobInfo))).Methods("GET")
+	jobrouter.HandleFunc("/inputs", handleError(returnsJSON(apiServer.jobProducingInputs))).Methods("GET")
+	jobrouter.HandleFunc("/outputs", handleError(returnsJSON(apiServer.jobOperatingOnOutputs))).Methods("GET")
 	jobrouter.HandleFunc("/datacap", handleError(authnHandler(returnsJSON(apiServer.moderateJobDatacap)))).Methods("POST")
 	jobrouter.HandleFunc("/exec", handleError(authnHandler(returnsJSON(apiServer.moderateJobRequest)))).Methods("POST")
+
+	cidrouter := subrouter.PathPrefix("/cid/{cid}").Subrouter()
+	cidrouter.HandleFunc("/jobs", handleError(returnsJSON(apiServer.findJobsOperatingOnCID))).Methods("GET")
 
 	statrouter := subrouter.PathPrefix("/summary").Subrouter()
 	statrouter.HandleFunc("/annotations", handleError(returnsJSON(expectsNothing(apiServer.API.GetAnnotationSummary)))).Methods("GET")
@@ -171,6 +178,27 @@ func (apiServer *DashboardAPIServer) job(ctx context.Context, req *http.Request)
 	id := vars["id"]
 
 	return apiServer.API.GetJob(ctx, id)
+}
+
+func (apiServer *DashboardAPIServer) jobProducingInputs(ctx context.Context, req *http.Request) ([]*types.JobRelation, error) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	return apiServer.API.GetJobsProducingJobInput(ctx, id)
+}
+
+func (apiServer *DashboardAPIServer) jobOperatingOnOutputs(ctx context.Context, req *http.Request) ([]*types.JobRelation, error) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	return apiServer.API.GetJobsOperatingOnJobOutput(ctx, id)
+}
+
+func (apiServer *DashboardAPIServer) findJobsOperatingOnCID(ctx context.Context, req *http.Request) ([]*types.JobDataIO, error) {
+	vars := mux.Vars(req)
+	cid := vars["cid"]
+
+	return apiServer.API.GetJobsOperatingOnCID(ctx, cid)
 }
 
 func (apiServer *DashboardAPIServer) jobInfo(ctx context.Context, req *http.Request) (*types.JobInfo, error) {
