@@ -162,7 +162,7 @@ Please find more code snippets in [the examples folder](./examples) (more exampl
 
 ## Devstack
 
-You can set the environment variables `BACALHAU_API_HOST` and `BACALHAU_API_PORT` to point this SDK to your Bacalhau API (e.g. [local devstack](/docs/running_locally.md)).
+You can set the environment variables `BACALHAU_API_HOST` and `BACALHAU_API_PORT` to point this SDK to your Bacalhau API local devstack
 
 ## Developers guide
 
