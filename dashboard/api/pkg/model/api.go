@@ -38,6 +38,7 @@ type ModelOptions struct {
 	PostgresDatabase string
 	PostgresUser     string
 	PostgresPassword string
+	SelectionPolicy  bacalhau_model.JobSelectionPolicy
 }
 
 type ModelAPI struct {
@@ -47,6 +48,7 @@ type ModelAPI struct {
 	store           *store.PostgresStore
 	stateResolver   *localdb.StateResolver
 	jobEventHandler *jobEventHandler
+	jobSelector     bidstrategy.BidStrategy
 	cleanupFunc     func(context.Context)
 }
 
@@ -96,12 +98,20 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 
 	stateResolver := localdb.GetStateResolver(postgresDB)
 
+	// Allow good jobs to be processed immediately but hold bad jobs for moderation.
+	jobSelector := bidstrategy.NewWaitingStrategy(
+		bidstrategy.FromJobSelectionPolicy(options.SelectionPolicy),
+		false,
+		true,
+	)
+
 	api := &ModelAPI{
 		options:         options,
 		localDB:         postgresDB,
 		nodeDB:          nodeDB,
 		store:           dashboardstore,
 		stateResolver:   stateResolver,
+		jobSelector:     jobSelector,
 		jobEventHandler: newJobEventHandler(postgresDB),
 	}
 	return api, nil
@@ -351,6 +361,12 @@ func (api *ModelAPI) Login(
 	return user, nil
 }
 
+// Response returned to signal that a job will be moderated.
+var waitResponse = bidstrategy.BidStrategyResponse{
+	ShouldWait: true,
+	Reason:     "Awaiting human approval",
+}
+
 func (api *ModelAPI) ShouldExecuteJob(
 	ctx context.Context,
 	probe *bidstrategy.JobSelectionPolicyProbeData,
@@ -368,23 +384,33 @@ func (api *ModelAPI) ShouldExecuteJob(
 
 	// No approval found. Is there an approval request?
 	request, err := api.store.GetModerationRequestByJob(ctx, probe.JobID, types.ModerationTypeExecution)
-	if err == nil && request == nil {
-		// No request. Create one.
-		// TODO: we should probably reject requests for jobs that are already running.
-		// TODO: we also don't create the job in the localdb because we don't have all
-		// the required information. Will the front-end need it??
-		var callback *types.URL
-		if probe.Callback != nil {
-			callback = &types.URL{URL: *probe.Callback}
-		}
-		_, err = api.store.CreateJobModerationRequest(ctx, probe.JobID, types.ModerationTypeExecution, callback)
+	if err == nil && request != nil {
+		// There is an open request – we are just waiting for it to be handled.
+		return &waitResponse, err
 	}
 
-	return &bidstrategy.BidStrategyResponse{
-		ShouldBid:  false,
-		ShouldWait: true,
-		Reason:     "Awaiting human approval",
-	}, err
+	// No request. Firstly let's run our selection strategy.
+	bidResponse, err := api.jobSelector.ShouldBid(ctx, bidstrategy.BidStrategyRequest{
+		NodeID: probe.NodeID,
+		Job: bacalhau_model.Job{
+			Metadata: bacalhau_model.Metadata{ID: probe.JobID},
+			Spec:     probe.Spec,
+		},
+		Callback: probe.Callback,
+	})
+	if !bidResponse.ShouldWait {
+		// We can respond immediately.
+		return &bidResponse, err
+	}
+
+	// Our own strategy says this must be moderated.
+	// TODO: we should probably reject requests for jobs that are already running.
+	var callback *types.URL
+	if probe.Callback != nil {
+		callback = &types.URL{URL: *probe.Callback}
+	}
+	_, err = api.store.CreateJobModerationRequest(ctx, probe.JobID, types.ModerationTypeExecution, callback)
+	return &waitResponse, err
 }
 
 func (api *ModelAPI) shouldExecuteFromJobModeration(resp *types.JobModeration) *bidstrategy.BidStrategyResponse {

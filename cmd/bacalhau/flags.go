@@ -228,6 +228,15 @@ func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	}
 }
 
+func DataLocalityFlag(value *model.JobSelectionDataLocality) *ValueFlag[model.JobSelectionDataLocality] {
+	return &ValueFlag[model.JobSelectionDataLocality]{
+		value:    value,
+		parser:   model.ParseJobSelectionDataLocality,
+		stringer: func(l *model.JobSelectionDataLocality) string { return l.String() },
+		typeStr:  "local|anywhere",
+	}
+}
+
 func LoggingFlag(value *logger.LogMode) *ValueFlag[logger.LogMode] {
 	return &ValueFlag[logger.LogMode]{
 		value:    value,
@@ -276,4 +285,31 @@ func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedT
 		stringer: func(t *model.ExcludedTag) string { return string(*t) },
 		typeStr:  "tag",
 	}
+}
+
+func JobSelectionCLIFlags(policy *model.JobSelectionPolicy) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Job Selection Policy", pflag.ContinueOnError)
+
+	flags.Var(
+		DataLocalityFlag(&policy.Locality), "job-selection-data-locality",
+		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
+	)
+	flags.BoolVar(
+		&policy.RejectStatelessJobs, "job-selection-reject-stateless", policy.RejectStatelessJobs,
+		`Reject jobs that don't specify any data.`,
+	)
+	flags.BoolVar(
+		&policy.AcceptNetworkedJobs, "job-selection-accept-networked", policy.AcceptNetworkedJobs,
+		`Accept jobs that require network access.`,
+	)
+	flags.StringVar(
+		&policy.ProbeHTTP, "job-selection-probe-http", policy.ProbeHTTP,
+		`Use the result of a HTTP POST to decide if we should take on the job.`,
+	)
+	flags.StringVar(
+		&policy.ProbeExec, "job-selection-probe-exec", policy.ProbeExec,
+		`Use the result of a exec an external program to decide if we should take on the job.`,
+	)
+
+	return flags
 }

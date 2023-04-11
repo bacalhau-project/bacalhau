@@ -125,7 +125,7 @@ func newDevStackCmd() *cobra.Command {
 		"File to save memory profiling to",
 	)
 
-	setupJobSelectionCLIFlags(devstackCmd, OS)
+	devstackCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	setupCapacityManagerCLIFlags(devstackCmd, OS)
 
 	return devstackCmd
