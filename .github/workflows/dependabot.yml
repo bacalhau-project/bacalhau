@@ -1,0 +1,48 @@
+name: Dependabot
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-go-package-metadata:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Detect Go version
+        id: runtimes
+        run: echo "::set-output name=golang-version::$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)"
+
+      - name: Install Golang
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ steps.runtimes.outputs.golang-version }}
+
+      - name: Update go package metadata
+        run: go vet
+
+      - name: Commit any changes
+        continue-on-error: true
+        run: git commit -a -m "Update go metadata" && git push origin
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v1
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Enable auto-merge for Dependabot PRs
+        if: ${{contains(steps.metadata.outputs.dependency-names, 'my-dependency') && steps.metadata.outputs.update-type == 'version-update:semver-patch'}}
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
