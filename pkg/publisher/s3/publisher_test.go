@@ -26,6 +26,7 @@ import (
 const bucket = "bacalhau-test-datasets"
 const prefix = "integration-tests-publisher/"
 const region = "eu-west-1"
+const endpoint = "https://s3-eu-west-1.amazonaws.com"
 
 var jobID = uuid.NewString()
 var executionID = uuid.NewString()
@@ -150,6 +151,9 @@ func (s *PublisherTestSuite) TestPublish() {
 		key         string
 		expectedKey string
 		archived    bool
+		region      string
+		endpoint    string
+		shouldFail  bool
 	}{
 		{
 			name:        "uncompressed",
@@ -190,10 +194,32 @@ func (s *PublisherTestSuite) TestPublish() {
 			archived:    true,
 		},
 		{
-			name:        "compressed with naming patter",
+			name:        "compressed with naming pattern",
 			key:         prefix + "pattern_compressed/{jobID}/{executionID}",
 			expectedKey: prefix + "pattern_compressed/" + jobID + "/" + executionID + ".tar.gz",
 			archived:    true,
+		},
+		{
+			name:        "explicit endpoint",
+			key:         prefix + "simple_compressed_endpoint.tar.gz",
+			expectedKey: prefix + "simple_compressed_endpoint.tar.gz",
+			endpoint:    endpoint,
+			archived:    true,
+		},
+		{
+			name:        "explicit endpoint and region",
+			key:         prefix + "simple_compressed_endpoint_and_region.tar.gz",
+			expectedKey: prefix + "simple_compressed_endpoint_and_region.tar.gz",
+			endpoint:    endpoint,
+			region:      region,
+			archived:    true,
+		},
+		{
+			name:       "explicit wrong region",
+			key:        prefix + "simple_compressed_wrong_region.tar.gz",
+			region:     "us-east-1",
+			archived:   true,
+			shouldFail: true,
 		},
 	} {
 		s.Run(tc.name, func() {
@@ -201,12 +227,18 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.T().Skip(skipMessage)
 			}
 			ctx := context.Background()
-			storageSpec, err := s.publish(ctx, Params{
+			params := Params{
 				Bucket:   bucket,
 				Key:      tc.key,
-				Region:   region,
 				Compress: tc.archived,
-			})
+			}
+			if tc.region == "" && tc.endpoint == "" {
+				params.Region = region
+			} else {
+				params.Region = tc.region
+				params.Endpoint = tc.endpoint
+			}
+			storageSpec, err := s.publish(ctx, params)
 
 			if err != nil {
 				var ae smithy.APIError
@@ -214,12 +246,16 @@ func (s *PublisherTestSuite) TestPublish() {
 					skipMessage = "No access to S3 bucket " + bucket
 					s.T().Skip(skipMessage)
 				}
+				if tc.shouldFail {
+					return
+				}
 			}
 			s.Require().NoError(err)
 
 			s.Equal(tc.expectedKey, storageSpec.S3.Key)
 			s.Equal(bucket, storageSpec.S3.Bucket)
-			s.Equal(region, storageSpec.S3.Region)
+			s.Equal(params.Region, storageSpec.S3.Region)
+			s.Equal(params.Endpoint, storageSpec.S3.Endpoint)
 
 			if tc.archived {
 				s.NotEmptyf(storageSpec.S3.ChecksumSHA256, "ChecksumSHA256 should not be empty")

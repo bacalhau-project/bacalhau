@@ -449,22 +449,20 @@ func downloadResultsHandler(
 		return err
 	}
 
-	noSupportedDownloader := false
+	// check if we don't support downloading the results
 	for _, result := range results {
 		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
-			noSupportedDownloader = true
-			break
+			cmd.PrintErrln(
+				"No supported downloader found for the published results. You will have to download the results differently.")
+			b, err := json.MarshalIndent(results, "", "    ")
+			if err != nil {
+				return err
+			}
+			cmd.PrintErrln(string(b))
+			return nil
 		}
 	}
-	if noSupportedDownloader {
-		cmd.PrintErrln("No supported downloader found for the published results. You will have to download the results differently.")
-		b, err := json.MarshalIndent(results, "", "    ")
-		if err != nil {
-			return err
-		}
-		cmd.PrintErrln(string(b))
-		return nil
-	}
+
 	err = downloader.DownloadResults(
 		ctx,
 		results,

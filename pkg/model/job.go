@@ -153,6 +153,7 @@ type Spec struct {
 	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
+	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 

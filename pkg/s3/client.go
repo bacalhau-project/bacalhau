@@ -25,7 +25,7 @@ type ClientProviderParams struct {
 type ClientProvider struct {
 	awsConfig aws.Config
 	clients   map[string]*ClientWrapper
-	mu        sync.RWMutex
+	clientsMu sync.RWMutex
 }
 
 func NewClientProvider(params ClientProviderParams) *ClientProvider {
@@ -34,9 +34,9 @@ func NewClientProvider(params ClientProviderParams) *ClientProvider {
 		clients:   make(map[string]*ClientWrapper),
 	}
 
-	c.mu.EnableTracerWithOpts(sync.Opts{
+	c.clientsMu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 50 * time.Millisecond,
-		Id:        "S3SClientProvider.mu",
+		Id:        "S3SClients.mu",
 	})
 	return c
 }
@@ -53,15 +53,15 @@ func (s *ClientProvider) GetConfig() aws.Config {
 
 func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 	clientIdentifier := fmt.Sprintf("%s-%s", endpoint, region)
-	s.mu.RLock()
+	s.clientsMu.RLock()
 	client, ok := s.clients[clientIdentifier]
-	s.mu.RUnlock()
+	s.clientsMu.RUnlock()
 	if ok {
 		return client
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.clientsMu.Lock()
+	defer s.clientsMu.Unlock()
 
 	// Check again in case another goroutine created the client while we were waiting for the lock.
 	client, ok = s.clients[clientIdentifier]
@@ -75,14 +75,14 @@ func (s *ClientProvider) GetClient(endpoint, region string) *ClientWrapper {
 	}
 	if endpoint != "" {
 		s3Config.EndpointResolverWithOptions =
-			aws.EndpointResolverWithOptionsFunc(func(service, region2 string, options ...any) (aws.Endpoint, error) {
-				if region2 != "" {
-					region2 = region
+			aws.EndpointResolverWithOptionsFunc(func(service, resolvedRegion string, options ...any) (aws.Endpoint, error) {
+				if region != "" {
+					resolvedRegion = region
 				}
 				return aws.Endpoint{
 					PartitionID:       "aws",
 					URL:               endpoint,
-					SigningRegion:     region2,
+					SigningRegion:     resolvedRegion,
 					HostnameImmutable: true,
 				}, nil
 			})

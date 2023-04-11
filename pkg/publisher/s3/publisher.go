@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -59,9 +60,8 @@ func (publisher *Publisher) PublishResult(
 
 	if spec.Compress {
 		return publisher.publishArchive(ctx, spec, executionID, j, resultPath)
-	} else {
-		return publisher.publishDirectory(ctx, spec, executionID, j, resultPath)
 	}
+	return publisher.publishDirectory(ctx, spec, executionID, j, resultPath)
 }
 
 func (publisher *Publisher) publishArchive(
@@ -87,18 +87,17 @@ func (publisher *Publisher) publishArchive(
 		return model.StorageSpec{}, err
 	}
 
-	// reopen the archived file to upload it
-	toUploadFile, err := os.Open(targetFile.Name())
+	// reset the archived file to read and upload it
+	_, err = targetFile.Seek(0, io.SeekStart)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	defer toUploadFile.Close()
 
 	// Upload the GZIP archive to S3.
 	res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:            aws.String(spec.Bucket),
 		Key:               aws.String(key),
-		Body:              toUploadFile,
+		Body:              targetFile,
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 	})
 	if err != nil {

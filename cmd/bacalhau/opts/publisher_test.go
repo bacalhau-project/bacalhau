@@ -50,13 +50,25 @@ func TestParsePublisher(t *testing.T) {
 			},
 		},
 		{
+			name:  "s3 non URI",
+			input: "s3,opt=bucket=myBucket,opt=key=dir/file-001.txt,opt=region=us-east-1",
+			expected: model.PublisherSpec{
+				Type: model.PublisherS3,
+				Params: map[string]interface{}{
+					"bucket": "myBucket",
+					"key":    "dir/file-001.txt",
+					"region": "us-east-1",
+				},
+			},
+		},
+		{
 			name:  "empty",
 			input: "",
 			error: true,
 		},
 		{
 			name:  "invalid flags",
-			input: "x=ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA,y=/mount/path",
+			input: "s3://myBucket/dir/file-001.txt,y=/mount/path",
 			error: true,
 		},
 	} {
