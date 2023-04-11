@@ -27,8 +27,8 @@ jobs:
       - name: Commit any changes
         continue-on-error: true
         run: |
-          git config user.name  "$(git log --format='%aN' HEAD...HEAD^1)"
-          git config user.email "$(git log --format='%aE' HEAD...HEAD^1)"
+          git config user.name  "$(git show -s --format='%aN' HEAD)"
+          git config user.email "$(git show -s --format='%aE' HEAD)"
           git commit -a -m "Update go metadata" && git push origin
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
