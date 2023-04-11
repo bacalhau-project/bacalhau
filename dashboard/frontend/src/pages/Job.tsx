@@ -14,7 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 
 import useApi from '../hooks/useApi'
 import {
-  JobInfo,
+  JobInfo, JobRelation,
   ModerateRequest,
   ModerationType,
 } from '../types'
@@ -28,9 +28,6 @@ import ShardState from '../components/job/ShardState'
 import JobProgram from '../components/job/JobProgram'
 import FilPlus from '../components/job/FilPlus'
 
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
-
 import {
   SmallText,
   SmallLink,
@@ -38,19 +35,23 @@ import {
   BoldSectionTitle,
   RequesterNode,
 } from '../components/widgets/GeneralText'
+import Accordion from "@mui/material/Accordion"
+import AccordionDetails from "@mui/material/AccordionDetails"
+import AccordionSummary from "@mui/material/AccordionSummary"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Link from "@mui/material/Link";
+import ModerationPanel from '../components/widgets/ModerationSummary'
+import ModerationWindow from '../components/widgets/ModerationWindow'
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell"
+import TableContainer from "@mui/material/TableContainer"
+import TableRow from "@mui/material/TableRow";
 import TerminalWindow from '../components/widgets/TerminalWindow'
 import useLoadingErrorHandler from '../hooks/useLoadingErrorHandler'
-import { UserContext } from '../contexts/user'
-import ModerationWindow from '../components/widgets/ModerationWindow'
 import useSnackbar from '../hooks/useSnackbar'
-import ModerationPanel from '../components/widgets/ModerationSummary'
-import {Accordion, AccordionDetails, AccordionSummary, TableCell, TableContainer, TableHead} from "@mui/material";
-import Table from "@mui/material/Table";
-import TableRow from "@mui/material/TableRow";
-import TableBody from "@mui/material/TableBody";
+import { UserContext } from '../contexts/user'
 import {styled} from "@mui/system";
-import Link from "@mui/material/Link";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 
 type JSONWindowConfig = {
@@ -106,9 +107,11 @@ const JobPage: FC<{
   const snackbar = useSnackbar()
   const [ datacapWindowOpen, setDatacapWindowOpen ] = useState(false)
   const [ execModWindowOpen, setExecModWindowOpen ] = useState(false)
+
   const [ jobInfo, setJobInfo ] = useState<JobInfo>()
-  const [jobInputRelation, setJobInputRelation] = useState([]); // Add this state for JobRelation
-  const [jobOutputRelation, setJobOutputRelation] = useState([]); // Add this state for JobRelation
+  const [ jobOutputRelation, setJobOutputRelation] = useState<JobRelation[]>([]);
+  const [jobInputRelation, setJobInputRelation] = useState<JobRelation[]>([]);
+
   const [ jsonWindow, setJsonWindow ] = useState<JSONWindowConfig>()
   const api = useApi()
   const loadingErrorHandler = useLoadingErrorHandler()
@@ -151,7 +154,9 @@ const JobPage: FC<{
       setJobInfo(info)
     })
     await handler()
-  }, [])
+  }, [
+      id,
+  ])
 
   const loadInputRelationInfo = useCallback(async () => {
     const handler = loadingErrorHandler(async () => {
@@ -159,7 +164,9 @@ const JobPage: FC<{
       setJobInputRelation(info);
     });
     await handler();
-  }, []);
+  }, [
+     id,
+  ]);
 
   const loadOutputRelationInfo = useCallback(async () => {
     const handler = loadingErrorHandler(async () => {
@@ -167,7 +174,9 @@ const JobPage: FC<{
       setJobOutputRelation(info);
     });
     await handler();
-  }, []);
+  }, [
+     id,
+  ]);
 
   const groupByCID = (jobRelation) => {
     const groups = {};
@@ -226,7 +235,7 @@ const JobPage: FC<{
     loadInfo();
     loadInputRelationInfo();
     loadOutputRelationInfo();
-  }, [loadInfo, loadInputRelationInfo]);
+  }, [id]);
 
   if(!jobInfo) return null
 
