@@ -46,7 +46,7 @@ func NewLogManager(ctx context.Context, executionID string) (*LogManager, error)
 	mgr.file = tmpFile
 	mgr.filename = tmpFile.Name()
 
-	log.Ctx(ctx).Debug().Msgf("logmanager created logfile: %s", mgr.filename)
+	log.Ctx(ctx).Debug().Str("Execution", executionID).Msgf("logmanager created logfile: %s", mgr.filename)
 
 	return mgr, nil
 }
@@ -88,7 +88,7 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	if msg == nil {
 		// We have a sentinel on close so make sure we don't try and
 		// process it.
-		log.Ctx(lm.ctx).Debug().Msg("logmanager received sentinel exit message")
+		log.Ctx(lm.ctx).Debug().Str("Execution", lm.executionID).Msg("logmanager received sentinel exit message")
 		return false
 	}
 
@@ -100,13 +100,13 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	// Convert the message to JSON and write it to the log file
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Ctx(lm.ctx).Err(err).Msg("failed to unmarshall a wasm log message")
+		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msg("failed to unmarshall a wasm log message")
 		return true
 	}
 
 	err = json.Compact(&compactBuffer, data)
 	if err != nil {
-		log.Ctx(lm.ctx).Err(err).Msg("failed to compact wasm log message")
+		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msg("failed to compact wasm log message")
 		return true
 	}
 	compactBuffer.Write([]byte{'\n'})
@@ -114,11 +114,11 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	// write msg to file and also broadcast the message
 	wrote, err := lm.file.Write(compactBuffer.Bytes())
 	if err != nil {
-		log.Ctx(lm.ctx).Err(err).Msgf("failed to write wasm log to file: %s", lm.file.Name())
+		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msgf("failed to write wasm log to file: %s", lm.file.Name())
 		return true
 	}
 	if wrote == 0 {
-		log.Ctx(lm.ctx).Debug().Msgf("zero byte write in wasm logging to: %s", lm.file.Name())
+		log.Ctx(lm.ctx).Debug().Str("Execution", lm.executionID).Msgf("zero byte write in wasm logging to: %s", lm.file.Name())
 		return true
 	}
 

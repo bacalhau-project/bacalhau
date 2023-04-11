@@ -183,7 +183,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// once complete.
 	e.logManagers.Put(executionID, logs)
 	defer func() {
-		log.Ctx(ctx).Debug().Msgf("cleaning up logmanager for execution %s", executionID)
+		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("cleaning up logmanager for execution")
 		logs.Close()
 		e.logManagers.Delete(executionID)
 	}()
@@ -230,6 +230,8 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// though do not set an exit code, so we use a default of -1.
 	log.Ctx(ctx).Debug().
 		Str("entryPoint", job.Spec.Wasm.EntryPoint).
+		Str("job", job.ID()).
+		Str("execution", executionID).
 		Msg("Running WASM job")
 	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
 	exitCode := -1
@@ -248,7 +250,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
 	logs, present := e.logManagers.Get(executionID)
 	if !present {
-		log.Ctx(ctx).Debug().Msgf("logmanager for wasm execution %s was already removed", executionID)
+		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("logmanager for wasm execution was already removed")
 		return nil, fmt.Errorf("logmanager has completed, no logs available")
 	}
 
