@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'Running a Private Cluster'
-sidebar_position: 35
+sidebar_position: 6
 ---
 
 # Deploy a private cluster
