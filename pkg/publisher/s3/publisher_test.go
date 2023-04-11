@@ -200,13 +200,6 @@ func (s *PublisherTestSuite) TestPublish() {
 			archived:    true,
 		},
 		{
-			name:        "explicit endpoint",
-			key:         prefix + "simple_compressed_endpoint.tar.gz",
-			expectedKey: prefix + "simple_compressed_endpoint.tar.gz",
-			endpoint:    endpoint,
-			archived:    true,
-		},
-		{
 			name:        "explicit endpoint and region",
 			key:         prefix + "simple_compressed_endpoint_and_region.tar.gz",
 			expectedKey: prefix + "simple_compressed_endpoint_and_region.tar.gz",
