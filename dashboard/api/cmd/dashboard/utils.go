@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"strings"
 
+	bacalhau_cmd "github.com/bacalhau-project/bacalhau/cmd/bacalhau"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
@@ -54,6 +56,7 @@ func newModelOptions() model.ModelOptions {
 		PostgresDatabase: getDefaultServeOptionString("POSTGRES_DATABASE", "bacalhau"),
 		PostgresUser:     getDefaultServeOptionString("POSTGRES_USER", ""),
 		PostgresPassword: getDefaultServeOptionString("POSTGRES_PASSWORD", ""),
+		SelectionPolicy:  bacalhau_model.NewDefaultJobSelectionPolicy(),
 	}
 }
 
@@ -77,6 +80,9 @@ func setupModelOptions(cmd *cobra.Command, opts *model.ModelOptions) {
 	cmd.PersistentFlags().StringVar(
 		&opts.PostgresPassword, "postgres-password", opts.PostgresPassword,
 		`The password for the postgres server.`,
+	)
+	cmd.PersistentFlags().AddFlagSet(
+		bacalhau_cmd.JobSelectionCLIFlags(&opts.SelectionPolicy),
 	)
 }
 
