@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -74,14 +75,6 @@ func (lm *LogManager) logWriter() {
 			lm.keepReading = lm.processItem(msg, compactBuffer)
 		}
 	}
-
-	// We need to drain the remaining items and flush them to the broadcaster
-	// and the file
-	extra := lm.buffer.Drain()
-	log.Ctx(lm.ctx).Debug().Msgf("draining wasm log buffer of %d items", len(extra))
-	for _, m := range extra {
-		lm.processItem(m, compactBuffer)
-	}
 }
 
 func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) bool {
@@ -123,6 +116,30 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	}
 
 	return true
+}
+
+func (lm *LogManager) Drain() {
+	lm.keepReading = false
+	lm.buffer.Enqueue(nil)
+
+	var compactBuffer bytes.Buffer
+
+	// We need to drain the remaining items and flush them to the broadcaster
+	// and the file
+	extra := lm.buffer.Drain()
+	log.Ctx(lm.ctx).Debug().Str("Execution", lm.executionID).Msgf("draining wasm log buffer of %d items", len(extra))
+	for _, m := range extra {
+		lm.processItem(m, compactBuffer)
+	}
+
+	info, err := lm.file.Stat()
+	if err == nil {
+		log.Ctx(lm.ctx).
+			Debug().
+			Str("Size", strconv.Itoa(int(info.Size()))).
+			Str("Execution", lm.executionID).
+			Msg("finished writing to logfile")
+	}
 }
 
 func (lm *LogManager) GetWriters() (io.Writer, io.Writer) {

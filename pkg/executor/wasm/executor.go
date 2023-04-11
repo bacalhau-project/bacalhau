@@ -186,6 +186,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("cleaning up logmanager for execution")
 		logs.Close()
 		e.logManagers.Delete(executionID)
+		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("logmanager being removed")
 	}()
 
 	// Configure the modules. We don't want to execute any start functions
@@ -241,6 +242,10 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		exitCode = int(errExit.ExitCode())
 		wasmErr = nil
 	}
+
+	// execution has finished and there's nothing else to read from so inform
+	// the logs that it is time to drain any remaining items.
+	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
 
