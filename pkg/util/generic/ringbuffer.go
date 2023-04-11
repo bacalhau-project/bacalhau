@@ -54,6 +54,11 @@ func (r *RingBuffer[T]) Dequeue() T {
 	data := r.readR.Value
 	r.readR = r.readR.Next()
 	r.readCount += 1
+
+	if data == nil {
+		return *new(T)
+	}
+
 	return data.(T)
 }
 
