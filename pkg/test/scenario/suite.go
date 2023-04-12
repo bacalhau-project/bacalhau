@@ -164,32 +164,32 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	// Check outputs
-	s.T().Log("Checking output")
-	results, err := apiClient.GetResults(s.Ctx, submittedJob.Metadata.ID)
-	s.Require().NoError(err)
-
-	resultsDir = s.T().TempDir()
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
-	s.Require().NoError(err)
-
-	downloaderSettings := &model.DownloaderSettings{
-		Timeout:        time.Second * 10,
-		OutputDir:      resultsDir,
-		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
-		LocalIPFS:      true,
-	}
-
-	ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
-	s.Require().NoError(err)
-
-	downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-		model.StorageSourceIPFS: ipfsDownloader,
-	})
-
-	err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)
-	s.Require().NoError(err)
-
 	if scenario.ResultsChecker != nil {
+		s.T().Log("Checking output")
+		results, err := apiClient.GetResults(s.Ctx, submittedJob.Metadata.ID)
+		s.Require().NoError(err)
+
+		resultsDir = s.T().TempDir()
+		swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
+		s.Require().NoError(err)
+
+		downloaderSettings := &model.DownloaderSettings{
+			Timeout:        time.Second * 10,
+			OutputDir:      resultsDir,
+			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
+			LocalIPFS:      true,
+		}
+
+		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
+		s.Require().NoError(err)
+
+		downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
+			model.StorageSourceIPFS: ipfsDownloader,
+		})
+
+		err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)
+		s.Require().NoError(err)
+
 		err = scenario.ResultsChecker(resultsDir)
 		s.Require().NoError(err)
 	}

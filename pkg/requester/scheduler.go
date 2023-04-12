@@ -393,8 +393,9 @@ func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidR
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			State:  newState,
-			Status: response.Reason,
+			AcceptedAskForBid: response.Accepted,
+			State:             newState,
+			Status:            response.Reason,
 		},
 	})
 	if err != nil {

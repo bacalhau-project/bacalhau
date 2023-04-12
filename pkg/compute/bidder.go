@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 )
 
 type BidderParams struct {
@@ -47,8 +48,23 @@ func (b Bidder) RunBidding(ctx context.Context, execution store.Execution) {
 
 	response, err := b.doBidding(ctx, bidStrategyRequest, execution.ResourceUsage)
 	if err != nil {
-		// TODO what do we do with it?
+		err = multierr.Append(err, b.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			ExecutionID: execution.ID,
+			NewState:    store.ExecutionStateFailed,
+			Comment:     err.Error(),
+		}))
+
+		b.callback.OnComputeFailure(ctx, ComputeError{
+			RoutingMetadata: RoutingMetadata{
+				SourcePeerID: b.nodeID,
+				TargetPeerID: execution.RequesterNodeID,
+			},
+			ExecutionMetadata: NewExecutionMetadata(execution),
+			Err:               err.Error(),
+		})
+
 		log.Ctx(ctx).Error().Err(err).Msg("Error running bid strategy")
+		return
 	}
 
 	b.ReturnBidResult(ctx, execution, response)
