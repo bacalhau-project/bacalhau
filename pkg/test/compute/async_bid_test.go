@@ -16,7 +16,7 @@ import (
 type AsyncBidSuite struct {
 	ComputeSuite
 
-	strategy *bidstrategy.FixedBidStrategy
+	strategy *bidstrategy.CallbackBidStrategy
 }
 
 func TestAsyncBidSuite(t *testing.T) {
@@ -40,7 +40,9 @@ func (s *AsyncBidSuite) TestAsyncReject() {
 func (s *AsyncBidSuite) runAsyncBidTest(response bool) {
 	job := generateJob()
 
-	s.strategy.Response = response
+	s.strategy.OnShouldBid = func(ctx context.Context, bsr bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+		return bidstrategy.BidStrategyResponse{ShouldBid: response, ShouldWait: true}, nil
+	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
