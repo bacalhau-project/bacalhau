@@ -6,7 +6,7 @@ WITH job_inputs AS (
     FROM
         job,
         json_array_elements(jobdata::json -> 'Spec' -> 'inputs') AS input_element
-    WHERE input_element ->> 'StorageSource' = 'IPFS'
+    WHERE job.apiversion = 'V1beta1' and input_element ->> 'StorageSource' = 'IPFS'
 ),
      job_outputs AS (
          SELECT
@@ -23,7 +23,7 @@ WITH job_inputs AS (
                       value -> 'Shards' -> '0' -> 'PublishedResults' ->> 'StorageSource' as storage_source,
                       value -> 'Shards' -> '0' -> 'PublishedResults' ->> 'CID' as output_cid
                   FROM job, LATERAL jsonb_each(job.statedata::jsonb -> 'Nodes')
-                  WHERE statedata != ''
+                  WHERE job.apiversion = 'V1beta1' and statedata != ''
               ) as node_states
          WHERE node_states.State = 'Completed' and node_states.storage_source = 'IPFS'
      )
