@@ -111,7 +111,8 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if len(completedExecutions) == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("/ipfs/%s", completedExecutions[0].PublishedResult.CID), nil
+
+	return completedExecutions[0].PublishedResult.Name, nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -280,7 +281,7 @@ func GetCompletedExecutionStates(jobState model.JobState) []model.ExecutionState
 func GetCompletedVerifiedExecutionStates(jobState model.JobState) []model.ExecutionState {
 	var ret []model.ExecutionState
 	for _, executionState := range GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted) { //nolint:gocritic
-		if executionState.VerificationResult.Complete && executionState.VerificationResult.Result && executionState.PublishedResult.CID != "" {
+		if executionState.VerificationResult.Complete && executionState.VerificationResult.Result {
 			ret = append(ret, executionState)
 		}
 	}

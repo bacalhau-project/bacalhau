@@ -27,9 +27,11 @@ func getSampleDockerJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
+		Engine:   model.EngineDocker,
+		Verifier: model.VerifierNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
@@ -56,9 +58,11 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
+		Engine:   model.EngineDocker,
+		Verifier: model.VerifierNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{

@@ -58,7 +58,9 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
-	j.Spec.Publisher = model.PublisherFilecoin
+	j.Spec.PublisherSpec = model.PublisherSpec{
+		Type: model.PublisherFilecoin,
+	}
 	j.Spec.Outputs = testCase.Outputs
 	j.Spec.Deal = model.Deal{
 		Concurrency: 1,

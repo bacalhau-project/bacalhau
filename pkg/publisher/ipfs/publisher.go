@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -31,6 +32,15 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
+func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	switch j.Spec.PublisherSpec.Type {
+	case model.PublisherIpfs, model.PublisherEstuary, model.PublisherFilecoin:
+		return nil
+	default:
+		return fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type)
+	}
+}
+
 func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
 	executionID string,
@@ -41,7 +51,7 @@ func (publisher *IPFSPublisher) PublishResult(
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return job.GetPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
+	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

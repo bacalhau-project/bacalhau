@@ -23,9 +23,11 @@ func init() { //nolint:gochecknoinits
 }
 
 var realSpec model.Spec = model.Spec{
-	Engine:    model.EngineDocker,
-	Verifier:  model.VerifierNoop,
-	Publisher: model.PublisherIpfs,
+	Engine:   model.EngineDocker,
+	Verifier: model.VerifierNoop,
+	PublisherSpec: model.PublisherSpec{
+		Type: model.PublisherIpfs,
+	},
 	Docker: model.JobSpecDocker{
 		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
 		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
@@ -45,9 +47,11 @@ var realSpec model.Spec = model.Spec{
 }
 
 var testSpec model.Spec = model.Spec{
-	Engine:    model.EngineDocker,
-	Verifier:  model.VerifierNoop,
-	Publisher: model.PublisherIpfs,
+	Engine:   model.EngineDocker,
+	Verifier: model.VerifierNoop,
+	PublisherSpec: model.PublisherSpec{
+		Type: model.PublisherIpfs,
+	},
 	Docker: model.JobSpecDocker{
 		Image:      "ubuntu",
 		Entrypoint: []string{"echo"},

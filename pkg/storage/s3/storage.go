@@ -6,15 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,41 +28,29 @@ The storage provider supports downloading:
 - a prefix and all objects matching the prefix: s3://myBucket/dir/file-*
 */
 
-type s3ClientWrapper struct {
-	s3         *s3.Client
-	downloader *manager.Downloader
-	endpoint   string
-	region     string
-}
 type s3ObjectSummary struct {
-	key   *string
-	size  int64
-	isDir bool
+	key       *string
+	eTag      *string
+	versionID *string
+	size      int64
+	isDir     bool
 }
 
 type StorageProviderParams struct {
-	LocalDir  string
-	AWSConfig aws.Config
+	LocalDir       string
+	ClientProvider *s3helper.ClientProvider
 }
 
 type StorageProvider struct {
-	localDir  string
-	awsConfig aws.Config
-	clients   map[string]*s3ClientWrapper
-	mu        sync.RWMutex
+	localDir       string
+	clientProvider *s3helper.ClientProvider
 }
 
 func NewStorage(params StorageProviderParams) *StorageProvider {
-	s := &StorageProvider{
-		localDir:  params.LocalDir,
-		awsConfig: params.AWSConfig,
-		clients:   make(map[string]*s3ClientWrapper),
+	return &StorageProvider{
+		localDir:       params.LocalDir,
+		clientProvider: params.ClientProvider,
 	}
-	s.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 50 * time.Millisecond,
-		Id:        "S3StorageProvider.mu",
-	})
-	return s
 }
 
 // IsInstalled checks if the storage provider is installed
@@ -72,7 +59,7 @@ func NewStorage(params StorageProviderParams) *StorageProvider {
 // - Configuring credentials in ~/.aws/credentials
 // - Configuring credentials in the EC2 instance metadata service, assuming the host is running on EC2
 func (s *StorageProvider) IsInstalled(_ context.Context) (bool, error) {
-	return HasValidCredentials(s.awsConfig), nil
+	return s.clientProvider.IsInstalled(), nil
 }
 
 // HasStorageLocally checks if the requested content is hosted locally.
@@ -85,8 +72,8 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Storag
 	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
 	defer cancel()
 
-	client := s.getClient(volume)
-	objects, err := s.explodeKey(ctx, client, volume.S3.Bucket, volume.S3.Key)
+	client := s.clientProvider.GetClient(volume.S3.Endpoint, volume.S3.Region)
+	objects, err := s.explodeKey(ctx, client, volume.S3)
 	if err != nil {
 		return 0, err
 	}
@@ -106,8 +93,8 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 		return storage.StorageVolume{}, err
 	}
 
-	client := s.getClient(storageSpec)
-	objects, err := s.explodeKey(ctx, client, storageSpec.S3.Bucket, storageSpec.S3.Key)
+	client := s.clientProvider.GetClient(storageSpec.S3.Endpoint, storageSpec.S3.Region)
+	objects, err := s.explodeKey(ctx, client, storageSpec.S3)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -132,7 +119,7 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.
 
 // downloadObject downloads a single object from S3 to local disk
 func (s *StorageProvider) downloadObject(ctx context.Context,
-	client *s3ClientWrapper,
+	client *s3helper.ClientWrapper,
 	storageSpec model.StorageSpec,
 	object s3ObjectSummary,
 	parentDir string,
@@ -168,10 +155,13 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	}
 	defer outputFile.Close() //nolint:errcheck
 
-	log.Debug().Msgf("Downloading %s to %s", *object.key, outputFile.Name())
-	_, err = client.downloader.Download(ctx, outputFile, &s3.GetObjectInput{
-		Bucket: aws.String(storageSpec.S3.Bucket),
-		Key:    object.key,
+	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
+		storageSpec.S3.Bucket, aws.ToString(object.key), aws.ToString(object.versionID), aws.ToString(object.eTag), outputFile.Name())
+	_, err = client.Downloader.Download(ctx, outputFile, &s3.GetObjectInput{
+		Bucket:    aws.String(storageSpec.S3.Bucket),
+		Key:       object.key,
+		VersionId: object.versionID,
+		IfMatch:   object.eTag,
 	})
 	return err
 }
@@ -184,80 +174,49 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (model.StorageSpec
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-// getClient creates and cached client for the given storage spec endpoint and region
-func (s *StorageProvider) getClient(storageSpec model.StorageSpec) *s3ClientWrapper {
-	clientIdentifier := fmt.Sprintf("%s-%s", storageSpec.S3.Endpoint, storageSpec.S3.Region)
-	s.mu.RLock()
-	client, ok := s.clients[clientIdentifier]
-	s.mu.RUnlock()
-	if ok {
-		return client
-	}
+func (s *StorageProvider) explodeKey(
+	ctx context.Context, client *s3helper.ClientWrapper, storageSpec *model.S3StorageSpec) ([]s3ObjectSummary, error) {
+	if !strings.HasSuffix(storageSpec.Key, "*") {
+		request := &s3.HeadObjectInput{
+			Bucket: aws.String(storageSpec.Bucket),
+			Key:    aws.String(storageSpec.Key),
+		}
+		if storageSpec.VersionID != "" {
+			request.VersionId = aws.String(storageSpec.VersionID)
+		}
+		if storageSpec.ChecksumSHA256 != "" {
+			request.ChecksumMode = types.ChecksumModeEnabled
+		}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Check again in case another goroutine created the client while we were waiting for the lock.
-	client, ok = s.clients[clientIdentifier]
-	if ok {
-		return client
-	}
-
-	s3Config := s.awsConfig.Copy()
-	if storageSpec.S3.Region != "" {
-		s3Config.Region = storageSpec.S3.Region
-	}
-	if storageSpec.S3.Endpoint != "" {
-		s3Config.EndpointResolverWithOptions =
-			aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...any) (aws.Endpoint, error) {
-				if storageSpec.S3.Region != "" {
-					region = storageSpec.S3.Region
-				}
-				return aws.Endpoint{
-					PartitionID:       "aws",
-					URL:               storageSpec.S3.Endpoint,
-					SigningRegion:     region,
-					HostnameImmutable: true,
-				}, nil
-			})
-	}
-	s3Client := s3.NewFromConfig(s3Config)
-
-	client = &s3ClientWrapper{
-		s3:         s3Client,
-		downloader: manager.NewDownloader(s3Client),
-		endpoint:   storageSpec.S3.Endpoint,
-		region:     storageSpec.S3.Region,
-	}
-	s.clients[clientIdentifier] = client
-	return client
-}
-
-func (s *StorageProvider) explodeKey(ctx context.Context, client *s3ClientWrapper, bucket, key string) ([]s3ObjectSummary, error) {
-	if !strings.HasSuffix(key, "*") {
-		headResp, err := client.s3.HeadObject(ctx, &s3.HeadObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-		})
+		headResp, err := client.S3.HeadObject(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
+		if storageSpec.ChecksumSHA256 != "" && storageSpec.ChecksumSHA256 != aws.ToString(headResp.ChecksumSHA256) {
+			return nil, fmt.Errorf("checksum mismatch for s3://%s/%s, expected %s, got %s",
+				storageSpec.Bucket, storageSpec.Key, storageSpec.ChecksumSHA256, aws.ToString(headResp.ChecksumSHA256))
+		}
 		if headResp.ContentType != nil && !strings.HasPrefix(*headResp.ContentType, "application/x-directory") {
-			return []s3ObjectSummary{{
-				key:  aws.String(key),
+			objectSummary := s3ObjectSummary{
+				key:  aws.String(storageSpec.Key),
 				size: headResp.ContentLength,
-			}}, nil
+				eTag: headResp.ETag,
+			}
+			if storageSpec.VersionID != "" {
+				objectSummary.versionID = aws.String(storageSpec.VersionID)
+			}
+			return []s3ObjectSummary{objectSummary}, nil
 		}
 	}
 
 	// if the key is a directory, or ends with a wildcard, we need to list the objects starting with the key
-	sanitizedKey := s.sanitizeKey(key)
+	sanitizedKey := s.sanitizeKey(storageSpec.Key)
 	res := make([]s3ObjectSummary, 0)
 	var continuationToken *string
 	for {
-		resp, err := client.s3.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-			Bucket:            aws.String(bucket),
+		resp, err := client.S3.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(storageSpec.Bucket),
 			Prefix:            aws.String(sanitizedKey),
 			ContinuationToken: continuationToken,
 		})

@@ -47,6 +47,7 @@ type WasmRunOptions struct {
 	RunTimeSettings RunTimeSettings
 	DownloadFlags   model.DownloaderSettings
 	NodeSelector    string // Selector (label query) to filter nodes on which this job can be executed
+	Publisher       opts.PublisherOpt
 	Inputs          opts.StorageOpt
 }
 
@@ -56,6 +57,7 @@ func NewRunWasmOptions() *WasmRunOptions {
 		RunTimeSettings: *NewRunTimeSettings(),
 		DownloadFlags:   *util.NewDownloadSettings(),
 		NodeSelector:    "",
+		Publisher:       opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
 		Inputs:          opts.StorageOpt{},
 	}
 }
@@ -119,9 +121,8 @@ func newRunWasmCmd() *cobra.Command {
 		VerifierFlag(&ODR.Job.Spec.Verifier), "verifier",
 		`What verification engine to use to run the job`,
 	)
-	wasmRunCmd.PersistentFlags().Var(
-		PublisherFlag(&ODR.Job.Spec.Publisher), "publisher",
-		`What publisher engine to use to publish the job results`,
+	wasmRunCmd.PersistentFlags().VarP(&ODR.Publisher, "publisher", "p",
+		`Where to publish the result of the job`,
 	)
 	wasmRunCmd.PersistentFlags().IntVarP(
 		&ODR.Job.Spec.Deal.Concurrency, "concurrency", "c", ODR.Job.Spec.Deal.Concurrency,
@@ -179,6 +180,7 @@ func runWasm(
 	}
 	ODR.Job.Spec.NodeSelectors = nodeSelectorRequirements
 	ODR.Job.Spec.Inputs = ODR.Inputs.Values()
+	ODR.Job.Spec.PublisherSpec = ODR.Publisher.Value()
 
 	// Try interpreting this as a CID.
 	wasmCid, err := cid.Parse(wasmCidOrPath)

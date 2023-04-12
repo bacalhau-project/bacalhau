@@ -73,7 +73,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					model.APIVersionLatest(),
 					model.EngineNoop,
 					model.VerifierNoop,
-					model.PublisherNoop,
+					model.PublisherSpec{Type: model.PublisherNoop},
 					"1",                   // cpu
 					"1",                   // memory
 					"0",                   // gpu

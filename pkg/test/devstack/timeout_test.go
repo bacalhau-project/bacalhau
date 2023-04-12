@@ -74,10 +74,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: model.Spec{
-				Engine:    model.EngineNoop,
-				Verifier:  model.VerifierNoop,
-				Publisher: model.PublisherNoop,
-				Timeout:   testCase.jobTimeout.Seconds(),
+				Engine:   model.EngineNoop,
+				Verifier: model.VerifierNoop,
+				PublisherSpec: model.PublisherSpec{
+					Type: model.PublisherIpfs,
+				},
+				Timeout: testCase.jobTimeout.Seconds(),
 			},
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,

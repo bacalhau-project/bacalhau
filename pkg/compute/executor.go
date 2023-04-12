@@ -168,9 +168,9 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
-	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.Publisher)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
 	if err != nil {
-		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.Publisher, err)
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
 		return
 	}
 	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, execution.Job, resultFolder)

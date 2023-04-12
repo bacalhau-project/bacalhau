@@ -39,10 +39,12 @@ type StorageSpec struct {
 }
 
 type S3StorageSpec struct {
-	Bucket   string `json:"Bucket,omitempty"`
-	Key      string `json:"Key,omitempty"`
-	Endpoint string `json:"Endpoint,omitempty"`
-	Region   string `json:"Region,omitempty"`
+	Bucket         string `json:"Bucket,omitempty"`
+	Key            string `json:"Key,omitempty"`
+	ChecksumSHA256 string `json:"Checksum,omitempty"`
+	VersionID      string `json:"VersionID,omitempty"`
+	Endpoint       string `json:"Endpoint,omitempty"`
+	Region         string `json:"Region,omitempty"`
 }
 
 // PublishedStorageSpec is a wrapper for a StorageSpec that has been published

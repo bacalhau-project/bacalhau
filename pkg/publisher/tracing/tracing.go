@@ -29,6 +29,10 @@ func (t *tracingPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return t.delegate.IsInstalled(ctx)
 }
 
+func (t *tracingPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	return t.delegate.ValidateJob(ctx, j)
+}
+
 func (t *tracingPublisher) PublishResult(
 	ctx context.Context, executionID string, j model.Job, resultPath string,
 ) (model.StorageSpec, error) {

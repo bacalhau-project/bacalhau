@@ -211,6 +211,12 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		j.Metadata.Requester.RequesterPublicKey = nil
 	}
 
+	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
+		j.Spec.PublisherSpec = model.PublisherSpec{
+			Type: j.Spec.Publisher,
+		}
+	}
+
 	// Warn on fields with data that will be ignored
 	if len(unusedFieldList) > 0 {
 		cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))

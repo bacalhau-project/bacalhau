@@ -62,9 +62,11 @@ func MakeJob(
 	j := model.NewJob()
 
 	j.Spec = model.Spec{
-		Engine:    engineType,
-		Verifier:  verifierType,
-		Publisher: publisherType,
+		Engine:   engineType,
+		Verifier: verifierType,
+		PublisherSpec: model.PublisherSpec{
+			Type: publisherType,
+		},
 		Docker: model.JobSpecDocker{
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,
