@@ -23,13 +23,75 @@ executors:
       resource_class: windows.xlarge
       shell: bash.exe
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+commands:
+  install_go:
+    description: Install Golang and dependencies.
+    parameters:
+      executor:
+        type: enum
+        enum: ["linux-amd64", "linux-arm64", "darwin-amd64", "windows-amd64"]
+    steps:
+      - run:
+          name: Set GOVER
+          command: |
+            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
+            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
+              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
+            echo "Latest Go version for $go_spec is $version"
+            echo "export GOVER=$version" >> $BASH_ENV
+
+      - when:
+          condition:
+            equal: ["windows-amd64", << parameters.executor >>]
+          steps:
+            - run:
+                name: Install Go
+                command: |
+                  rm -rf /c/Program\ Files/Go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
+
+      - when:
+          condition:
+            or:
+              - equal: ["darwin-amd64", << parameters.executor >>]
+              - equal: ["linux-amd64", << parameters.executor >>]
+              - equal: ["linux-arm64", << parameters.executor >>]
+          steps:
+            - run:
+                name: Install Go
+                command: |
+                  sudo rm -fr /usr/local/go /usr/local/bin/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+
+      - run:
+          name: Set GOCACHE
+          command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
+
+      - restore_cache:
+          name: Restoring Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+
+      - run:
+          name: Install packages
+          command: go get
+
+      - save_cache:
+          name: Saving Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+          paths:
+            - ~/.cache/go-build
+            - ~/go/pkg/mod
+
+
 jobs:
   build:
     parallelism: 1
     environment:
-      IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
@@ -66,45 +128,8 @@ jobs:
                   choco install -y jq
                 shell: powershell.exe
 
-      - run:
-          name: Set GOVER
-          command: |
-            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
-            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
-              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
-            echo "Latest Go version for $go_spec is $version"
-            echo "export GOVER=$version" >> $BASH_ENV
-
-      - when:
-          condition:
-            equal: ["windows", << parameters.target_os >>]
-          steps:
-            - run:
-                name: Install Go
-                command: |
-                  rm -rf /c/Program\ Files/Go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
-
-      - when:
-          condition:
-            or:
-              - equal: ["darwin", << parameters.target_os >>]
-              - equal: ["linux", << parameters.target_os >>]
-          steps:
-            - run:
-                name: Install Go
-                command: |
-                  sudo rm -fr /usr/local/go /usr/local/bin/go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.executor >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-
-      - run:
-          name: Set GOCACHE
-          command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
-
-      - run:
-          name: Set GOPATH
-          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
+      - install_go:
+          executor: << parameters.executor >>
 
       - run:
           name: Init tools
@@ -112,10 +137,6 @@ jobs:
             make init
             go version
             which go
-
-      - restore_cache:
-          name: Restoring Go cache
-          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
 
       - run:
           name: Build
@@ -220,19 +241,6 @@ jobs:
       - store_artifacts:
           path: dist/
 
-      - save_cache:
-          name: Saving pre-commit cache
-          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
-          paths:
-            - ~/.cache/pre-commit
-
-      - save_cache:
-          name: Saving Go cache
-          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
-          paths:
-            - ~/.cache/go-build
-            - ~/go/pkg/mod
-
   build_canary:
     parallelism: 1
     environment:
@@ -243,22 +251,8 @@ jobs:
     steps:
       - checkout
 
-      - run:
-          name: Set GOVER
-          command: |
-            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
-            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
-              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
-            echo "Latest Go version for $go_spec is $version"
-            echo "export GOVER=$version" >> $BASH_ENV
-
-      - run:
-          name: Install golang
-          command: |
-            sudo rm -fr /usr/local/go
-            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-            go version
-            which go
+      - install_go:
+          executor: linux-amd64
 
       - run:
           name: Set canary dependency
@@ -318,22 +312,8 @@ jobs:
           command: |
             make init
 
-      - run:
-          name: Set GOVER
-          command: |
-            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
-            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
-              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
-            echo "Latest Go version for $go_spec is $version"
-            echo "export GOVER=$version" >> $BASH_ENV
-
-      - run:
-          name: Install golang
-          command: |
-            sudo rm -fr /usr/local/go
-            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-            go version
-            which go
+      - install_go:
+          executor: linux-amd64
 
       - run:
           name: Install golangci-lint
@@ -493,37 +473,12 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
-      - run:
-          name: Set GOVER
-          command: |
-            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
-            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
-              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
-            echo "Latest Go version for $go_spec is $version"
-            echo "export GOVER=$version" >> $BASH_ENV
-      - run:
-          name: Install Go
-          command: |
-            sudo rm -fr /usr/local/go /usr/local/bin/go
-            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
-      - run:
-          name: Install golangci-lint
-          command: |
-            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-            # binary will be /usr/local/go/bin/bin/golangci-lint
-            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-            # This breaks normal pathing. So just installing in ./bin/
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-            golangci-lint version
+      - install_go:
+          executor: linux-amd64
       - run:
           name: Install Swagger
           command:
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
-      - run:
-          name: Install Pre-commit
-          command: |
-            make install-pre-commit
       - run:
           name: Build Swagger Docs
           command:
@@ -556,7 +511,7 @@ jobs:
                   # Note: we delete this branch after the PR is merged
                   GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
                   git checkout -b $GH_BRANCH_NAME
-                  if test -n "$(git ls-files --modified |grep -v go.work.sum)"; then
+                  if test -n "$(git ls-files --modified | grep -e '^docs/')"; then
                     git add --verbose -- ./docs
                     COMMIT_MSG="Build swagger reference - this is an automatic commit"
                     git commit -m "[circleci] $COMMIT_MSG [skip ci]"
@@ -580,20 +535,8 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
-      - run:
-          name: Set GOVER
-          command: |
-            go_spec=$(grep 'go [[:digit:]].[[:digit:]]*' go.work | cut -d' ' -f2)
-            version=$(curl --silent --show-error --location --fail "https://go.dev/dl/?mode=json&include=all" | \
-              jq --arg v "$go_spec" --raw-output '[.[] | select(.stable) | select(.version | startswith("go"+$v)) | .version | ltrimstr("go")] | sort_by(split(".") | map(tonumber)) | reverse | .[0]')
-            echo "Latest Go version for $go_spec is $version"
-            echo "export GOVER=$version" >> $BASH_ENV
-      - run:
-          name: Install Go
-          command: |
-            sudo rm -fr /usr/local/go /usr/local/bin/go
-            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
-            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+      - install_go:
+          executor: linux-amd64
       - run:
           name: Build JSONSchema
           command: |
