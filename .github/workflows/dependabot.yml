@@ -29,8 +29,7 @@ jobs:
         run: |
           git config user.name  "$(git show -s --format='%aN' HEAD)"
           git config user.email "$(git show -s --format='%aE' HEAD)"
-          git checkout ${{github.event.pull_request.head.ref}}
-          git commit -a -m "Update go metadata" && git push origin
+          git commit -a -m "Update go metadata" && git push origin HEAD:${{github.event.pull_request.head.ref}}
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
@@ -45,7 +44,7 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Enable auto-merge for Dependabot PRs
-        if: ${{contains(steps.metadata.outputs.dependency-names, 'my-dependency') && steps.metadata.outputs.update-type == 'version-update:semver-patch'}}
+        if: ${{steps.metadata.outputs.update-type == 'version-update:semver-patch'}}
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
