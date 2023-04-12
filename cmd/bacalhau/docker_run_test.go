@@ -458,15 +458,15 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 		CorrectLength int
 		BadCase       bool
 	}{
-		{Name: "1", Annotations: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
-		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 0, BadCase: false},           // Label flag, no value, but correctly quoted
-		{Name: "2", Annotations: []string{"a"}, CorrectLength: 1, BadCase: false},              // Annotations, string
-		{Name: "3", Annotations: []string{"b", "1"}, CorrectLength: 2, BadCase: false},         // Annotations, string and int
-		{Name: "4", Annotations: []string{`''`, `" "`}, CorrectLength: 0, BadCase: false},      // Annotations, some edge case characters
-		{Name: "5", Annotations: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},   // Emojis
-		{Name: "6", Annotations: []string{"ايطاليا"}, CorrectLength: 0, BadCase: false},        // Right to left
-		{Name: "7", Annotations: []string{"‫test‫"}, CorrectLength: 0, BadCase: false},         // Control charactel
-		{Name: "8", Annotations: []string{"사회과학원", "어학연구소"}, CorrectLength: 0, BadCase: false}, // Two-byte characters
+		{Name: "1", Annotations: []string{""}, CorrectLength: 0, BadCase: false},                 // Label flag, no value, but correctly quoted
+		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 0, BadCase: false},             // Label flag, no value, but correctly quoted
+		{Name: "2", Annotations: []string{"a"}, CorrectLength: 1, BadCase: false},                // Annotations, string
+		{Name: "3", Annotations: []string{"b", "1"}, CorrectLength: 2, BadCase: false},           // Annotations, string and int
+		{Name: "4", Annotations: []string{`''`, `" "`}, CorrectLength: 0, BadCase: false},        // Annotations, some edge case characters
+		{Name: "5", Annotations: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},     // Emojis
+		{Name: "6", Annotations: []string{"ايطاليا"}, CorrectLength: 0, BadCase: false},          // Right to left
+		{Name: "7", Annotations: []string{"\u202Btest\u202B"}, CorrectLength: 0, BadCase: false}, // Control charactel
+		{Name: "8", Annotations: []string{"사회과학원", "어학연구소"}, CorrectLength: 0, BadCase: false},   // Two-byte characters
 	}
 
 	// allBadStrings := LoadBadStringsAnnotations()

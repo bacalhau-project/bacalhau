@@ -156,6 +156,8 @@ func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 		settings.Raw, "Download raw result CIDs instead of merging multiple CIDs into a single result")
 	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
 		settings.Timeout, "Timeout duration for IPFS downloads.")
+	flags.StringVar(&settings.Only, "only",
+		settings.OutputDir, "A single file to download, either 'stdout' or 'stderr'")
 	flags.StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")
 	flags.StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",

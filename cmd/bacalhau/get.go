@@ -75,6 +75,19 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 		jobID = string(byteResult)
 	}
 
+	// Verify only options if they are set
+	if OG.IPFSDownloadSettings.Only != "" {
+		only := OG.IPFSDownloadSettings.Only
+		if only != model.DownloadFilenameStdout && only != model.DownloadFilenameStderr {
+			errMessage := fmt.Sprintf(
+				"The 'only' parameter can only be one of: %s, or %s\n",
+				model.DownloadFilenameStdout, model.DownloadFilenameStderr,
+			)
+			Fatal(cmd, errMessage, 1)
+			return errors.New(errMessage)
+		}
+	}
+
 	err = downloadResultsHandler(
 		ctx,
 		cm,

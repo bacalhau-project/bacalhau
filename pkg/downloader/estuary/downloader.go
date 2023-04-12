@@ -31,14 +31,26 @@ func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
 	return ipfsInstalled && httpInstalled, multierr.Combine(ipfsErr, httpErr)
 }
 
-func (downloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
+func (downloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
 	// fallback to ipfs download for old results without URL
 	if result.Data.URL == "" {
-		return downloader.ipfsDownloader.FetchResult(ctx, result, downloadPath)
+		return downloader.ipfsDownloader.DescribeResult(ctx, result)
 	}
 
-	return downloader.httpDownloader.FetchResult(ctx, result, downloadPath)
+	return downloader.httpDownloader.DescribeResult(ctx, result)
+}
+
+func (downloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
+	defer span.End()
+
+	// fallback to ipfs download for old results without URL
+	if item.Identifier == "" {
+		return downloader.ipfsDownloader.FetchResult(ctx, item)
+	}
+
+	return downloader.httpDownloader.FetchResult(ctx, item)
 }
