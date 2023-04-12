@@ -70,6 +70,12 @@ func (r *RingBuffer[T]) Drain() []T {
 
 	ret := make([]T, count)
 	for i := int64(0); i < count; i++ {
+		if r.readR.Value == nil {
+			// If we enqueued nil for some reason, make sure
+			// we skip it when draining the items.
+			continue
+		}
+
 		ret[i] = r.readR.Value.(T)
 		r.readR = r.readR.Next()
 	}
