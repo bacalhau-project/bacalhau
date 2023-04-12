@@ -58,7 +58,8 @@ func TestFetchResult(t *testing.T) {
 
 		item := model.DownloadItem{
 			Name:       result.Data.Name,
-			Identifier: result.Data.CID,
+			CID:        result.Data.CID,
+			URL:        result.Data.URL,
 			SourceType: model.StorageSourceEstuary,
 			Target:     downloadPath,
 		}

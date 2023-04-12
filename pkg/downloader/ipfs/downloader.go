@@ -95,7 +95,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) e
 
 	err = func() error {
 		log.Ctx(ctx).Debug().
-			Str("cid", item.Identifier).
+			Str("cid", item.CID).
 			Str("name", item.Name).
 			Str("path", item.Target).
 			Msg("Downloading result CID")
@@ -103,7 +103,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) e
 		innerCtx, cancel := context.WithTimeout(ctx, d.settings.Timeout)
 		defer cancel()
 
-		return ipfsClient.Get(innerCtx, item.Identifier, item.Target)
+		return ipfsClient.Get(innerCtx, item.CID, item.Target)
 	}()
 
 	if err != nil {

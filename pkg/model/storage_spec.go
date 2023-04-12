@@ -57,7 +57,8 @@ type PublishedResult struct {
 
 type DownloadItem struct {
 	Name       string
-	Identifier string // CID, URL etc
+	CID        string
+	URL        string
 	SourceType StorageSourceType
 	Target     string
 }

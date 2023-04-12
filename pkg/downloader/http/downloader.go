@@ -40,13 +40,13 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, item model.Do
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result URL %s '%s' to '%s'...",
 			item.Name,
-			item.Identifier, item.Target,
+			item.CID, item.Target,
 		)
 
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, item.Identifier, item.Target)
+		return fetch(innerCtx, item.CID, item.Target)
 	}()
 
 	if err != nil {

@@ -47,10 +47,9 @@ func (downloader *Downloader) FetchResult(ctx context.Context, item model.Downlo
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
-	// fallback to ipfs download for old results without URL
-	if item.Identifier == "" {
-		return downloader.ipfsDownloader.FetchResult(ctx, item)
+	if item.CID == "" {
+		return downloader.httpDownloader.FetchResult(ctx, item)
 	}
 
-	return downloader.httpDownloader.FetchResult(ctx, item)
+	return downloader.ipfsDownloader.FetchResult(ctx, item)
 }

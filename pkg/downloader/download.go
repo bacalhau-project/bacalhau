@@ -92,7 +92,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 			// written to.
 			items[cidParentDir] = model.DownloadItem{
 				Name:       settings.Only,
-				Identifier: cid,
+				CID:        cid,
 				SourceType: publishedResult.Data.StorageSource,
 				Target:     filepath.Join(cidParentDir, settings.Only),
 			}
@@ -102,7 +102,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 			cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
 			items[cidDownloadDir] = model.DownloadItem{
 				Name:       publishedResult.Data.Name,
-				Identifier: publishedResult.Data.CID,
+				CID:        publishedResult.Data.CID,
 				SourceType: publishedResult.Data.StorageSource,
 				Target:     cidDownloadDir,
 			}
@@ -116,7 +116,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 			return err
 		}
 
-		downloadedCids[item.Identifier] = path
+		downloadedCids[item.CID] = path
 	}
 
 	if settings.Raw {
