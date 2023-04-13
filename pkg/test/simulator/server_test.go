@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package simulator
 
@@ -30,14 +30,7 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 	nodeCount := 3
 	s := scenario.Scenario{
 		JobCheckers: scenario.WaitUntilSuccessful(3),
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.WasmHelloWorld.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.WasmHelloWorld.Spec.Wasm.EntryModule,
-				Parameters:  []string{},
-			},
-		},
+		Spec:        scenario.WasmHelloWorld.Spec,
 		Deal: model.Deal{
 			Concurrency: 3,
 		},

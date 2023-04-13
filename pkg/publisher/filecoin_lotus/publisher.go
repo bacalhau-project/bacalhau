@@ -80,6 +80,14 @@ func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func (l *Publisher) ValidateJob(ctx context.Context, j model.Job) error {
+	if j.Spec.PublisherSpec.Type != model.PublisherFilecoin {
+		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+			model.PublisherFilecoin, j.Spec.PublisherSpec.Type)
+	}
+	return nil
+}
+
 func (l *Publisher) PublishResult(
 	ctx context.Context,
 	executionID string,
@@ -107,7 +115,7 @@ func (l *Publisher) PublishResult(
 		return model.StorageSpec{}, err
 	}
 
-	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
 	spec.Metadata["deal_cid"] = dealCid
 	return spec, nil
 }

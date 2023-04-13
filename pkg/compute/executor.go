@@ -3,6 +3,7 @@ package compute
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -167,9 +168,9 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
-	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.Publisher)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
 	if err != nil {
-		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.Publisher, err)
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
 		return
 	}
 	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, execution.Job, resultFolder)
@@ -190,6 +191,12 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 	})
 	if err != nil {
 		return
+	}
+
+	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
+	err = os.RemoveAll(resultFolder)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
 	}
 
 	e.callback.OnPublishComplete(ctx, PublishResult{

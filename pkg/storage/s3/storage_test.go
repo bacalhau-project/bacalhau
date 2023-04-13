@@ -8,13 +8,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
 
 const bucket = "bacalhau-test-datasets"
-const prefix1 = "integration-tests-do-not-delete/set1/"
-const prefix2 = "integration-tests-do-not-delete/set2/"
+const root = "integration-tests-do-not-delete/"
+const prefix1 = root + "set1/"
+const prefix2 = root + "set2/"
 const region = "eu-west-1"
 
 type StorageTestSuite struct {
@@ -23,15 +26,18 @@ type StorageTestSuite struct {
 }
 
 func (s *StorageTestSuite) SetupSuite() {
-	cfg, err := DefaultAWSConfig()
+	cfg, err := s3helper.DefaultAWSConfig()
 	s.Require().NoError(err)
-	if !HasValidCredentials(cfg) {
+	if !s3helper.HasValidCredentials(cfg) {
 		s.T().Skip("No valid AWS credentials found")
 	}
 
-	s.storage = NewStorage(StorageProviderParams{
-		LocalDir:  s.T().TempDir(),
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
 		AWSConfig: cfg,
+	})
+	s.storage = NewStorage(StorageProviderParams{
+		LocalDir:       s.T().TempDir(),
+		ClientProvider: clientProvider,
 	})
 }
 
@@ -63,6 +69,9 @@ func (s *StorageTestSuite) TestStorage() {
 		name            string
 		key             string
 		expectedOutputs []expectedOutput
+		checksum        string
+		versionID       string
+		shouldFail      bool
 	}{
 		{
 			name: "single object",
@@ -111,7 +120,7 @@ func (s *StorageTestSuite) TestStorage() {
 		},
 		{
 			name: "directory pattern",
-			key:  "integration-tests-do-not-delete/set*",
+			key:  root + "set*",
 			expectedOutputs: []expectedOutput{
 				{"001", "set1/001.txt"},
 				{"002", "set1/002.txt"},
@@ -123,18 +132,82 @@ func (s *StorageTestSuite) TestStorage() {
 				{"302", "set2/nested/302.txt"},
 			},
 		},
+		{
+			name:     "correct checksum",
+			key:      prefix1 + "001.txt",
+			checksum: "aLgNZhlhklWk0ATVRHbeUfkVes0KnZfNKUoKOGLK090=",
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+			},
+		},
+		{
+			name:       "bad checksum",
+			key:        prefix1 + "001.txt",
+			checksum:   "aLgNZhlhklWk0ATVRHbeUfkVes0KnZfNKUoKOGLK999=",
+			shouldFail: true,
+		},
+		{
+			name:       "no checksum",
+			key:        prefix1 + "002.txt",
+			checksum:   "aLgNZhlhklWk0ATVRHbeUfkVes0KnZfNKUoKOGLK999=",
+			shouldFail: true,
+		},
+		{
+			name: "versioned object - current version",
+			key:  root + "version_file.txt",
+			expectedOutputs: []expectedOutput{
+				{"002", "version_file.txt"},
+			},
+		},
+		{
+			name:      "versioned object - current version explicit",
+			key:       root + "version_file.txt",
+			versionID: "Xwdg4C5YWv1_Hf5kVUIZbE1grU9XkuFA",
+			expectedOutputs: []expectedOutput{
+				{"002", "version_file.txt"},
+			},
+		},
+		{
+			name:      "versioned object - older version explicit",
+			key:       root + "version_file.txt",
+			versionID: "6QFI1rFeNw.GXFc09yPy2G..wMKaLz9C",
+			expectedOutputs: []expectedOutput{
+				{"001", "version_file.txt"},
+			},
+		},
+		{
+			name:       "versioned object - wrong version",
+			key:        root + "version_file.txt",
+			versionID:  "lxVWhWi1Z94vwDBOKYp.E9UlvTELWUEO",
+			shouldFail: true,
+		},
+		{
+			name:      "versioned object and checksum",
+			key:       root + "version_file.txt",
+			versionID: "6QFI1rFeNw.GXFc09yPy2G..wMKaLz9C",
+			checksum:  "aLgNZhlhklWk0ATVRHbeUfkVes0KnZfNKUoKOGLK090=",
+			expectedOutputs: []expectedOutput{
+				{"001", "version_file.txt"},
+			},
+		},
 	} {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
 			storageSpec := model.StorageSpec{
 				StorageSource: model.StorageSourceS3,
 				S3: &model.S3StorageSpec{
-					Bucket: bucket,
-					Key:    tc.key,
-					Region: region,
+					Bucket:         bucket,
+					Key:            tc.key,
+					Region:         region,
+					ChecksumSHA256: tc.checksum,
+					VersionID:      tc.versionID,
 				},
 			}
 			size, err := s.storage.GetVolumeSize(ctx, storageSpec)
+			if tc.shouldFail {
+				s.Error(err)
+				return
+			}
 			s.Require().NoError(err)
 			s.Equal(uint64(len(tc.expectedOutputs)*4), size) // each file is 4 bytes long
 

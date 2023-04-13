@@ -15,7 +15,6 @@ import (
 type ComputeProxyParams struct {
 	Host          host.Host
 	LocalEndpoint compute.Endpoint // optional in case this host is also a compute node and to allow local calls
-
 }
 
 // ComputeProxy is a proxy to a compute node endpoint that will forward requests to remote compute nodes, or

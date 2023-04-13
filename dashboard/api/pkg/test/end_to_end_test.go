@@ -27,6 +27,9 @@ import (
 type EndToEndSuite struct {
 	DashboardTestSuite
 
+	computeHasHook   bool
+	requesterHasHook bool
+
 	stack  *devstack.DevStack
 	host   host.Host
 	client *publicapi.RequesterAPIClient
@@ -35,12 +38,25 @@ type EndToEndSuite struct {
 	jobCalled bool
 }
 
-func TestEndToEnd(t *testing.T) {
-	suite.Run(t, new(EndToEndSuite))
+// Run tests where it is the requester node that has the moderation hook
+// and will call out to the dashboard for moderation.
+func TestEndToEndWithRequesterNodeHook(t *testing.T) {
+	s := EndToEndSuite{computeHasHook: false, requesterHasHook: true}
+	suite.Run(t, &s)
 }
 
-func (e2e *EndToEndSuite) SetupSuite() {
-	e2e.DashboardTestSuite.SetupSuite()
+// Run tests where it is the compute node that has the moderation hook
+// and will call out to the dashboard for moderation.
+func TestEndToEndWithComputeNodeHook(t *testing.T) {
+	s := EndToEndSuite{computeHasHook: true, requesterHasHook: false}
+	suite.Run(t, &s)
+}
+
+// Run tests where both nodes that have the moderation hook.
+// Requester will call out and wait, then compute node will check.
+func TestEndToEndWithBothHooks(t *testing.T) {
+	s := EndToEndSuite{computeHasHook: true, requesterHasHook: true}
+	suite.Run(t, &s)
 }
 
 func (e2e *EndToEndSuite) SetupTest() {
@@ -69,17 +85,35 @@ func (e2e *EndToEndSuite) SetupTest() {
 		e2e.server.ListenAndServe(e2e.ctx, cm)
 	}()
 
+	policy := model.JobSelectionPolicy{
+		ProbeHTTP: e2e.server.URL().JoinPath("/api/v1/jobs/shouldrun").String(),
+	}
+
+	var computeConfig node.ComputeConfig
+	if e2e.computeHasHook {
+		computeConfig = node.NewComputeConfigWith(node.ComputeConfigParams{
+			JobSelectionPolicy: policy,
+		})
+	} else {
+		computeConfig = node.NewComputeConfigWithDefaults()
+	}
+
+	var requesterConfig node.RequesterConfig
+	if e2e.requesterHasHook {
+		requesterConfig = node.NewRequesterConfigWith(node.RequesterConfigParams{
+			JobSelectionPolicy: policy,
+		})
+	} else {
+		requesterConfig = node.NewRequesterConfigWithDefaults()
+	}
+
 	e2e.T().Setenv("BACALHAU_JOB_APPROVER", system.GetClientID())
 	e2e.stack = testutils.SetupTestWithNoopExecutor(
 		e2e.ctx,
 		e2e.T(),
 		devstack.DevStackOptions{NumberOfHybridNodes: 1},
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			JobSelectionPolicy: model.JobSelectionPolicy{
-				ProbeHTTP: e2e.server.URL().JoinPath("/api/v1/jobs/shouldrun").String(),
-			},
-		}),
+		computeConfig,
+		requesterConfig,
 		noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
@@ -124,8 +158,8 @@ func (e2e *EndToEndSuite) WaitForJob(id string) (apiJob *v1beta1.Job) {
 func (e2e *EndToEndSuite) WaitForMoreEvents(id string, numEvents int) {
 	for {
 		info, err := e2e.api.GetJobInfo(e2e.ctx, id)
-		for _, event := range info.Events {
-			e2e.T().Logf("Event %s: %q", event.EventTime, event.EventName)
+		for i, event := range info.Events {
+			e2e.T().Logf("Event %d: %q", i, event.EventName)
 		}
 		if cerr := e2e.ctx.Err(); cerr != nil {
 			e2e.FailNow(cerr.Error(), "waiting for more events")
@@ -162,7 +196,19 @@ func (e2e *EndToEndSuite) TestCanApproveJob() {
 
 	apiJob := e2e.WaitForJob(job.ID())
 	e2e.NotNil(apiJob)
-	e2e.Empty(apiJob.Status.State.Nodes) // not scheduled yet
+	if e2e.requesterHasHook {
+		// The requester is awaiting moderation, so no compute nodes should know
+		// about this yet.
+		e2e.Empty(apiJob.Status.State.Nodes)
+	} else if e2e.computeHasHook {
+		// The compute node is awaiting moderation, so we should be in a
+		// non-execution state.
+		exes, err := e2e.stack.Nodes[0].ComputeNode.ExecutionStore.GetExecutions(e2e.ctx, job.ID())
+		e2e.NoError(err)
+		for _, execution := range exes {
+			e2e.False(execution.State.IsExecuting())
+		}
+	}
 
 	// Request should exist now.
 	info, err := e2e.api.GetJobInfo(e2e.ctx, job.ID())
@@ -190,7 +236,19 @@ func (e2e *EndToEndSuite) TestCanRejectJob() {
 
 	apiJob := e2e.WaitForJob(job.ID())
 	e2e.NotNil(apiJob)
-	e2e.Empty(apiJob.Status.State.Nodes) // not scheduled yet
+	if e2e.requesterHasHook {
+		// The requester is awaiting moderation, so no compute nodes should know
+		// about this yet.
+		e2e.Empty(apiJob.Status.State.Nodes)
+	} else if e2e.computeHasHook {
+		// The compute node is awaiting moderation, so we should be in a
+		// non-execution state.
+		exes, err := e2e.stack.Nodes[0].ComputeNode.ExecutionStore.GetExecutions(e2e.ctx, job.ID())
+		e2e.NoError(err)
+		for _, execution := range exes {
+			e2e.False(execution.State.IsExecuting())
+		}
+	}
 
 	// Request should exist now.
 	info, err := e2e.api.GetJobInfo(e2e.ctx, job.ID())

@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
 	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
@@ -113,14 +114,14 @@ func NewStandardStorageProvider(
 		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
 		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:	     tracing.Wrap(repoCloneStorage),
+		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
 		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
 		model.StorageSourceS3:               tracing.Wrap(s3Storage),
 	}), nil
 }
 
 func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-input")
 	if err != nil {
 		return nil, err
 	}
@@ -132,13 +133,16 @@ func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider,
 		return nil
 	})
 
-	cfg, err := s3.DefaultAWSConfig()
+	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
 		return nil, err
 	}
-	s3Storage := s3.NewStorage(s3.StorageProviderParams{
-		LocalDir:  dir,
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
 		AWSConfig: cfg,
+	})
+	s3Storage := s3.NewStorage(s3.StorageProviderParams{
+		LocalDir:       dir,
+		ClientProvider: clientProvider,
 	})
 	return s3Storage, nil
 }

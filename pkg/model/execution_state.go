@@ -97,6 +97,9 @@ type ExecutionState struct {
 	ComputeReference string `json:"ComputeReference"`
 	// State is the current state of the execution
 	State ExecutionStateType `json:"State"`
+	// Set to true iff the compute node accepted the ask for a bid, and intends
+	// to run the job if the bid is accepted by the requester.
+	AcceptedAskForBid bool `json:"AcceptedAskForBid"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
 	// the proposed results for this execution
@@ -125,8 +128,8 @@ func (e ExecutionState) String() string {
 	return e.ID().String()
 }
 
-// HasAcceptedAskForBid returns true if the execution has been accepted by the node
-// we rely on the value of the ExecutionID to determine if the askForBid has been accepted
+// HasAcceptedAskForBid returns true iff the compute node has accepted an ask
+// for bid, else returns false.
 func (e ExecutionState) HasAcceptedAskForBid() bool {
-	return e.ComputeReference != ""
+	return e.AcceptedAskForBid
 }

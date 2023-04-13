@@ -50,6 +50,12 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 				res.S3.Endpoint = value
 			case "region":
 				res.S3.Region = value
+			case "versionID", "version-id", "version_id":
+				res.S3.VersionID = value
+			case "checksum-256", "checksum256", "checksum_256":
+				res.S3.ChecksumSHA256 = value
+			default:
+				return model.StorageSpec{}, fmt.Errorf("unknown option %s", key)
 			}
 		}
 	case "git", "gitlfs":
@@ -72,6 +78,49 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 	res.Path = destinationPath
 	if res.Path == "" {
 		res.Path = defaultStoragePath
+	}
+	return res, nil
+}
+
+func ParsePublisherString(destinationURI string, options map[string]interface{}) (model.PublisherSpec, error) {
+	destinationURI = strings.Trim(destinationURI, " '\"")
+	parsedURI, err := url.Parse(destinationURI)
+	if err != nil {
+		return model.PublisherSpec{}, err
+	}
+
+	// handle scenarios where the destinationURI is just the scheme/publisher type, e.g. ipfs
+	if parsedURI.Scheme == "" {
+		parsedURI.Scheme = parsedURI.Path
+	}
+
+	var res model.PublisherSpec
+	switch parsedURI.Scheme {
+	case "ipfs":
+		res = model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}
+	case "lotus":
+		res = model.PublisherSpec{
+			Type: model.PublisherFilecoin,
+		}
+	case "estuary":
+		res = model.PublisherSpec{
+			Type: model.PublisherEstuary,
+		}
+	case "s3":
+		if _, ok := options["bucket"]; !ok {
+			options["bucket"] = parsedURI.Host
+		}
+		if _, ok := options["key"]; !ok {
+			options["key"] = strings.TrimLeft(parsedURI.Path, "/")
+		}
+		res = model.PublisherSpec{
+			Type:   model.PublisherS3,
+			Params: options,
+		}
+	default:
+		return model.PublisherSpec{}, fmt.Errorf("unknown publisher type: %s", parsedURI.Scheme)
 	}
 	return res, nil
 }

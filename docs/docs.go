@@ -23,6 +23,41 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/approve": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Approves a job to be run on this compute node.",
+                "operationId": "apiServer/approver",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/debug": {
             "get": {
                 "produces": [
@@ -1334,7 +1369,8 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5
+                5,
+                6
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -1346,8 +1382,21 @@ const docTemplate = `{
                 "PublisherIpfs",
                 "PublisherFilecoin",
                 "PublisherEstuary",
+                "PublisherS3",
                 "publisherDone"
             ]
+        },
+        "model.PublisherSpec": {
+            "type": "object",
+            "properties": {
+                "Params": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "Type": {
+                    "$ref": "#/definitions/model.Publisher"
+                }
+            }
         },
         "model.ResourceUsageConfig": {
             "type": "object",
@@ -1428,6 +1477,9 @@ const docTemplate = `{
                 "Bucket": {
                     "type": "string"
                 },
+                "Checksum": {
+                    "type": "string"
+                },
                 "Endpoint": {
                     "type": "string"
                 },
@@ -1435,6 +1487,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "Region": {
+                    "type": "string"
+                },
+                "VersionID": {
                     "type": "string"
                 }
             }
@@ -1496,12 +1551,15 @@ const docTemplate = `{
                     }
                 },
                 "Publisher": {
-                    "description": "there can be multiple publishers for the job",
+                    "description": "there can be multiple publishers for the job\ndeprecated: use PublisherSpec instead",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Publisher"
                         }
                     ]
+                },
+                "PublisherSpec": {
+                    "$ref": "#/definitions/model.PublisherSpec"
                 },
                 "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",

@@ -1,10 +1,10 @@
-//go:build integration
+//go:build integration || !unit
 
 package compute
 
 import (
 	"context"
-	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -22,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
+	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 )
@@ -35,21 +36,28 @@ type ComputeSuite struct {
 	verifier      *noop_verifier.NoopVerifier
 	publisher     *noop_publisher.NoopPublisher
 	stateResolver resolver.StateResolver
+	bidChannel    chan compute.BidResult
+}
+
+func (s *ComputeSuite) SetupSuite() {
+	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
+		TotalResourceLimits: model.ResourceUsageData{
+			CPU: 2,
+		},
+	})
 }
 
 func (s *ComputeSuite) SetupTest() {
 	var err error
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
-	s.config = node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits: model.ResourceUsageData{
-			CPU: 2,
-		},
-	})
+	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
+
 	s.executor = noop_executor.NewNoopExecutor()
 	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm)
 	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
+	s.bidChannel = make(chan compute.BidResult)
 	s.setupNode()
 }
 
@@ -59,6 +67,7 @@ func (s *ComputeSuite) setupNode() {
 
 	host, err := libp2p.NewHost(libp2pPort)
 	s.NoError(err)
+	s.T().Cleanup(func() { _ = host.Close })
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address: "0.0.0.0",
@@ -69,8 +78,6 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 
 	noopstorage := noop_storage.NewNoopStorage()
-	s.Require().NoError(err)
-
 	s.node, err = node.NewComputeNode(
 		context.Background(),
 		s.cm,
@@ -88,22 +95,42 @@ func (s *ComputeSuite) setupNode() {
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
 		ExecutionStore: s.node.ExecutionStore,
 	})
+
+	s.node.RegisterLocalComputeCallback(compute.CallbackMock{
+		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
+			s.bidChannel <- result
+		},
+	})
+	s.T().Cleanup(func() { close(s.bidChannel) })
 }
 
-func TestComputeSuite(t *testing.T) {
-	suite.Run(t, new(ComputeSuite))
-}
-
-func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
-	response, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
+func (s *ComputeSuite) askForBid(ctx context.Context, job model.Job) compute.BidResult {
+	_, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
+		ExecutionMetadata: compute.ExecutionMetadata{
+			JobID:       job.Metadata.ID,
+			ExecutionID: uuid.NewString(),
+		},
+		RoutingMetadata: compute.RoutingMetadata{
+			TargetPeerID: s.node.ID,
+			SourcePeerID: s.node.ID,
+		},
 		Job: job,
 	})
 	s.NoError(err)
 
-	// check the response
-	s.True(response.Accepted)
+	select {
+	case result := <-s.bidChannel:
+		return result
+	case <-time.After(5 * time.Second):
+		s.FailNow("did not receive a bid response")
+		return compute.BidResult{}
+	}
+}
 
-	return response.ExecutionID
+func (s *ComputeSuite) prepareAndAskForBid(ctx context.Context, job model.Job) string {
+	result := s.askForBid(ctx, job)
+	s.True(result.Accepted)
+	return result.ExecutionID
 }
 
 func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string {

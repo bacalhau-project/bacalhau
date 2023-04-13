@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -28,9 +28,11 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
 		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Engine:   model.EngineWasm,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,

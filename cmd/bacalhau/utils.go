@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -448,6 +449,20 @@ func downloadResultsHandler(
 		return err
 	}
 
+	// check if we don't support downloading the results
+	for _, result := range results {
+		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
+			cmd.PrintErrln(
+				"No supported downloader found for the published results. You will have to download the results differently.")
+			b, err := json.MarshalIndent(results, "", "    ")
+			if err != nil {
+				return err
+			}
+			cmd.PrintErrln(string(b))
+			return nil
+		}
+	}
+
 	err = downloader.DownloadResults(
 		ctx,
 		results,
@@ -459,7 +474,7 @@ func downloadResultsHandler(
 		return err
 	}
 
-	cmd.PrintErrf("Results for job '%s' have been written to...\n", jobID)
+	cmd.Printf("Results for job '%s' have been written to...\n", jobID)
 	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
 
 	return nil

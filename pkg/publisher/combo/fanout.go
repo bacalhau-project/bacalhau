@@ -112,6 +112,15 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
+func (f *fanoutPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	for _, p := range f.publishers {
+		if err := p.ValidateJob(ctx, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // PublishResult implements publisher.Publisher
 func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,

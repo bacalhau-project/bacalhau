@@ -60,81 +60,50 @@ var (
 
 //nolint:lll // Documentation
 type ServeOptions struct {
-	NodeType                              []string          // "compute", "requester" node or both
-	PeerConnect                           string            // The libp2p multiaddress to connect to.
-	IPFSConnect                           string            // The multiaddress to connect to for IPFS.
-	FilecoinUnsealedPath                  string            // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
-	EstuaryAPIKey                         string            // The API key used when using the estuary API.
-	HostAddress                           string            // The host address to listen on.
-	SwarmPort                             int               // The host port for libp2p network.
-	JobSelectionDataLocality              string            // The data locality to use for job selection.
-	JobSelectionDataRejectStateless       bool              // Whether to reject jobs that don't specify any data.
-	JobSelectionDataAcceptNetworked       bool              // Whether to accept jobs that require network access.
-	JobSelectionProbeHTTP                 string            // The HTTP URL to use for job selection.
-	JobSelectionProbeExec                 string            // The executable to use for job selection.
-	LimitTotalCPU                         string            // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                      string            // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                         string            // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                           string            // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                        string            // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                           string            // The amount of GPU the system can be using at one time for a single job.
-	LotusFilecoinStorageDuration          time.Duration     // How long deals should be for the Lotus Filecoin publisher
-	LotusFilecoinPathDirectory            string            // The location of the Lotus configuration directory which contains config.toml, etc
-	LotusFilecoinUploadDirectory          string            // Directory to put files when uploading to Lotus (optional)
-	LotusFilecoinMaximumPing              time.Duration     // The maximum ping allowed when selecting a Filecoin miner
-	JobExecutionTimeoutClientIDBypassList []string          // IDs of clients that can submit jobs more than the configured job execution timeout
-	Labels                                map[string]string // Labels to apply to the node that can be used for node selection and filtering
-	IPFSSwarmAddresses                    []string          // IPFS multiaddresses that the in-process IPFS should connect to
-	PrivateInternalIPFS                   bool              // Whether the in-process IPFS should automatically discover other IPFS nodes
+	NodeType                              []string                 // "compute", "requester" node or both
+	PeerConnect                           string                   // The libp2p multiaddress to connect to.
+	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
+	FilecoinUnsealedPath                  string                   // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                         string                   // The API key used when using the estuary API.
+	HostAddress                           string                   // The host address to listen on.
+	SwarmPort                             int                      // The host port for libp2p network.
+	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
+	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                      string                   // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                         string                   // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                           string                   // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
+	LotusFilecoinStorageDuration          time.Duration            // How long deals should be for the Lotus Filecoin publisher
+	LotusFilecoinPathDirectory            string                   // The location of the Lotus configuration directory which contains config.toml, etc
+	LotusFilecoinUploadDirectory          string                   // Directory to put files when uploading to Lotus (optional)
+	LotusFilecoinMaximumPing              time.Duration            // The maximum ping allowed when selecting a Filecoin miner
+	JobExecutionTimeoutClientIDBypassList []string                 // IDs of clients that can submit jobs more than the configured job execution timeout
+	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
+	IPFSSwarmAddresses                    []string                 // IPFS multiaddresses that the in-process IPFS should connect to
+	PrivateInternalIPFS                   bool                     // Whether the in-process IPFS should automatically discover other IPFS nodes
 }
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                        []string{"requester"},
-		PeerConnect:                     DefaultPeerConnect,
-		IPFSConnect:                     "",
-		FilecoinUnsealedPath:            "",
-		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
-		HostAddress:                     "0.0.0.0",
-		SwarmPort:                       DefaultSwarmPort,
-		JobSelectionDataLocality:        "local",
-		JobSelectionDataRejectStateless: false,
-		JobSelectionDataAcceptNetworked: false,
-		JobSelectionProbeHTTP:           "",
-		JobSelectionProbeExec:           "",
-		LimitTotalCPU:                   "",
-		LimitTotalMemory:                "",
-		LimitTotalGPU:                   "",
-		LimitJobCPU:                     "",
-		LimitJobMemory:                  "",
-		LimitJobGPU:                     "",
-		LotusFilecoinPathDirectory:      os.Getenv("LOTUS_PATH"),
-		LotusFilecoinMaximumPing:        2 * time.Second,
-		PrivateInternalIPFS:             true,
+		NodeType:                   []string{"requester"},
+		PeerConnect:                DefaultPeerConnect,
+		IPFSConnect:                "",
+		FilecoinUnsealedPath:       "",
+		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
+		HostAddress:                "0.0.0.0",
+		SwarmPort:                  DefaultSwarmPort,
+		JobSelectionPolicy:         model.NewDefaultJobSelectionPolicy(),
+		LimitTotalCPU:              "",
+		LimitTotalMemory:           "",
+		LimitTotalGPU:              "",
+		LimitJobCPU:                "",
+		LimitJobMemory:             "",
+		LimitJobGPU:                "",
+		LotusFilecoinPathDirectory: os.Getenv("LOTUS_PATH"),
+		LotusFilecoinMaximumPing:   2 * time.Second,
+		PrivateInternalIPFS:        true,
 	}
-}
-
-func setupJobSelectionCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionDataLocality, "job-selection-data-locality", OS.JobSelectionDataLocality,
-		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
-	)
-	cmd.PersistentFlags().BoolVar(
-		&OS.JobSelectionDataRejectStateless, "job-selection-reject-stateless", OS.JobSelectionDataRejectStateless,
-		`Reject jobs that don't specify any data.`,
-	)
-	cmd.PersistentFlags().BoolVar(
-		&OS.JobSelectionDataAcceptNetworked, "job-selection-accept-networked", OS.JobSelectionDataAcceptNetworked,
-		`Accept jobs that require network access.`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionProbeHTTP, "job-selection-probe-http", OS.JobSelectionProbeHTTP,
-		`Use the result of a HTTP POST to decide if we should take on the job.`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionProbeExec, "job-selection-probe-exec", OS.JobSelectionProbeExec,
-		`Use the result of a exec an external program to decide if we should take on the job.`,
-	)
 }
 
 func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
@@ -206,28 +175,9 @@ func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	return peers, nil
 }
 
-func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
-	// construct the job selection policy from the CLI args
-	typedJobSelectionDataLocality := model.Anywhere
-
-	if OS.JobSelectionDataLocality == "anywhere" {
-		typedJobSelectionDataLocality = model.Anywhere
-	}
-
-	jobSelectionPolicy := model.JobSelectionPolicy{
-		Locality:            typedJobSelectionDataLocality,
-		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
-		AcceptNetworkedJobs: OS.JobSelectionDataAcceptNetworked,
-		ProbeHTTP:           OS.JobSelectionProbeHTTP,
-		ProbeExec:           OS.JobSelectionProbeExec,
-	}
-
-	return jobSelectionPolicy
-}
-
 func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy: getJobSelectionConfig(OS),
+		JobSelectionPolicy: OS.JobSelectionPolicy,
 		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
 			CPU:    OS.LimitTotalCPU,
 			Memory: OS.LimitTotalMemory,
@@ -245,7 +195,7 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 
 func getRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobSelectionPolicy: getJobSelectionConfig(OS),
+		JobSelectionPolicy: OS.JobSelectionPolicy,
 	})
 }
 
@@ -313,7 +263,7 @@ func newServeCmd() *cobra.Command {
 	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
-	setupJobSelectionCLIFlags(serveCmd, OS)
+	serveCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	setupCapacityManagerCLIFlags(serveCmd, OS)
 
 	return serveCmd
@@ -333,10 +283,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		} else {
 			return fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
 		}
-	}
-
-	if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
-		return fmt.Errorf("--job-selection-data-locality must be either 'local' or 'anywhere'")
 	}
 
 	if OS.IPFSConnect != "" && OS.PrivateInternalIPFS {

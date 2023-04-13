@@ -132,6 +132,11 @@ func (t *testifyPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
+func (t *testifyPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	args := t.Called(ctx)
+	return args.Error(0)
+}
+
 func (t *testifyPublisher) PublishResult(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
 	args := t.Called(ctx, executionID, job, resultPath)
 	return args.Get(0).(model.StorageSpec), args.Error(1)

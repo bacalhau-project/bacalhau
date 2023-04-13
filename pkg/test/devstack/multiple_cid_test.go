@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -36,9 +36,11 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Engine:   model.EngineWasm,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,

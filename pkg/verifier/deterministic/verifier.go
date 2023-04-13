@@ -27,12 +27,6 @@ func NewDeterministicVerifier(
 		return nil, err
 	}
 
-	cm.RegisterCallback(func() error {
-		if err := results.Close(); err != nil {
-			return fmt.Errorf("unable to remove results folder: %w", err)
-		}
-		return nil
-	})
 	return &DeterministicVerifier{
 		results:   results,
 		encrypter: encrypter,

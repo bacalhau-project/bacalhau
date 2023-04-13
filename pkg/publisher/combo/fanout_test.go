@@ -12,12 +12,14 @@ import (
 
 var sleepyPublisher = mockPublisher{
 	isInstalled:     true,
+	ValidateJobErr:  nil,
 	PublishedResult: model.StorageSpec{CID: "123"},
 	sleepTime:       50 * time.Millisecond,
 }
 
 var uninstalledPublisher = mockPublisher{
 	isInstalled:        false,
+	ValidateJobErr:     fmt.Errorf("invalid publisher spec"),
 	PublishedResultErr: fmt.Errorf("not installed"),
 	sleepTime:          0,
 }

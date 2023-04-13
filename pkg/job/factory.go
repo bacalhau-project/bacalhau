@@ -17,7 +17,7 @@ func ConstructDockerJob( //nolint:funlen
 	a model.APIVersion,
 	e model.Engine,
 	v model.Verifier,
-	p model.Publisher,
+	p model.PublisherSpec,
 	cpu, memory, gpu string,
 	network model.Network,
 	domains []string,
@@ -80,9 +80,9 @@ func ConstructDockerJob( //nolint:funlen
 	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
-		Engine:    e,
-		Verifier:  v,
-		Publisher: p,
+		Engine:        e,
+		Verifier:      v,
+		PublisherSpec: p,
 		Docker: model.JobSpecDocker{
 			Image:                image,
 			Entrypoint:           entrypoint,

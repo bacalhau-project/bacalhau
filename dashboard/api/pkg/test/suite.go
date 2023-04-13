@@ -58,6 +58,8 @@ func (s *DashboardTestSuite) SetupSuite() {
 		PostgresUser:     "postgres",
 		PostgresPassword: "postgres",
 	}
+	// Option to make dashboard hold test jobs for moderation.
+	s.opts.SelectionPolicy.RejectStatelessJobs = true
 
 	port, err := nat.NewPort("tcp", fmt.Sprint(s.opts.PostgresPort))
 	s.NoError(err)

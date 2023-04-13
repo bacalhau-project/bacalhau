@@ -121,7 +121,7 @@ func ComputeResultsSummary(j *model.JobWithInfo) string {
 	if len(completedExecutionStates) == 0 {
 		resultSummary = ""
 	} else {
-		resultSummary = fmt.Sprintf("/ipfs/%s", completedExecutionStates[0].PublishedResult.CID)
+		resultSummary = completedExecutionStates[0].PublishedResult.Name
 	}
 	return resultSummary
 }
@@ -138,9 +138,9 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	return verifiedSummary
 }
 
-func GetPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
+func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
 	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-execution-%s", job.ID(), executionID),
+		Name:          "ipfs://" + cid,
 		StorageSource: storageType,
 		CID:           cid,
 		Metadata:      map[string]string{},

@@ -44,6 +44,14 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
+func (e *estuaryPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	if j.Spec.PublisherSpec.Type != model.PublisherEstuary {
+		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+			model.PublisherEstuary, j.Spec.PublisherSpec.Type)
+	}
+	return nil
+}
+
 // PublishResult implements publisher.Publisher
 func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,
@@ -91,7 +99,7 @@ func (e *estuaryPublisher) PublishResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
 	spec.URL = addCarResponse.EstuaryRetrievalUrl
 
 	return spec, nil

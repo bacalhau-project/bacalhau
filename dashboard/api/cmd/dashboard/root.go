@@ -10,16 +10,12 @@ import (
 
 var Fatal = FatalErrorHandler
 
-func init() { //nolint:gochecknoinits
-	NewRootCmd()
-}
-
 func NewRootCmd() *cobra.Command {
 	RootCmd := &cobra.Command{
 		Use:   getCommandLineExecutable(),
 		Short: "Dashboard",
 		Long:  `Dashboard`,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger.ConfigureLogging(logger.LogModeDefault)
 		},
 	}

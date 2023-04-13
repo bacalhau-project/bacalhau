@@ -36,6 +36,15 @@ func (c *piggybackedPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+func (c *piggybackedPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	for _, p := range c.publishers {
+		if err := p.ValidateJob(ctx, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *piggybackedPublisher) PublishResult(
 	ctx context.Context, executionID string, job model.Job, resultPath string,
 ) (model.StorageSpec, error) {

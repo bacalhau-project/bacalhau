@@ -2,8 +2,11 @@ package util
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -12,7 +15,9 @@ import (
 	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -52,11 +57,42 @@ func NewIPFSPublishers(
 		}
 	}
 
+	s3Publisher, err := configureS3Publisher(cm)
+	if err != nil {
+		return nil, err
+	}
 	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop:     tracing.Wrap(noopPublisher),
 		model.PublisherIpfs:     tracing.Wrap(ipfsPublisher),
+		model.PublisherS3:       tracing.Wrap(s3Publisher),
 		model.PublisherEstuary:  tracing.Wrap(estuaryPublisher),
 		model.PublisherFilecoin: combo.NewPiggybackedPublisher(tracing.Wrap(ipfsPublisher), tracing.Wrap(lotus)),
+	}), nil
+}
+
+func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
+	if err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to clean up S3 publisher directory: %w", err)
+		}
+		return nil
+	})
+
+	cfg, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+		AWSConfig: cfg,
+	})
+	return s3.NewPublisher(s3.PublisherParams{
+		LocalDir:       dir,
+		ClientProvider: clientProvider,
 	}), nil
 }
 

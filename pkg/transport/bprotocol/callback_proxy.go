@@ -41,6 +41,12 @@ func (p *CallbackProxy) RegisterLocalComputeCallback(callback compute.Callback) 
 	p.localCallback = callback
 }
 
+func (p *CallbackProxy) OnBidComplete(ctx context.Context, result compute.BidResult) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnBidComplete, result, func(ctx2 context.Context) {
+		p.localCallback.OnBidComplete(ctx2, result)
+	})
+}
+
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
 	proxyCallbackRequest(ctx, p, result.RoutingMetadata, OnRunComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnRunComplete(ctx2, result)
@@ -85,7 +91,7 @@ func proxyCallbackRequest(
 		targetPeerID := resultInfo.TargetPeerID
 		peerID, err := peer.Decode(targetPeerID)
 		if err != nil {
-			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to decode peer ID %s", reflect.TypeOf(request), targetPeerID)
+			log.Ctx(ctx).Error().Err(errors.WithStack(err)).Msgf("%s: failed to decode peer ID %q", reflect.TypeOf(request), targetPeerID)
 			return
 		}
 

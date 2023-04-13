@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -33,11 +34,13 @@ import (
 
 type Compute struct {
 	// Visible for testing
+	ID                  string
 	LocalEndpoint       compute.Endpoint
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
 	LogServer           *logstream.LogStreamServer
+	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
 	computeInfoProvider model.ComputeNodeInfoProvider
@@ -167,7 +170,7 @@ func NewComputeNode(
 			),
 			bidstrategy.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
 				publishers,
-				func(j *model.Job) model.Publisher { return j.Spec.Publisher },
+				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
 			),
 			storage_bidstrategy.NewStorageInstalledBidStrategy(storages),
 			bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
@@ -200,11 +203,21 @@ func NewComputeNode(
 		MaxJobRequirements: config.JobResourceLimits,
 	})
 
+	bidder := compute.NewBidder(compute.BidderParams{
+		NodeID:   host.ID().String(),
+		Strategy: biddingStrategy,
+		Store:    executionStore,
+		Callback: computeCallback,
+		GetApproveURL: func() *url.URL {
+			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
+		},
+	})
+
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              host.ID().String(),
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
-		BidStrategy:     biddingStrategy,
+		Bidder:          bidder,
 		Executor:        bufferRunner,
 		LogServer:       *logserver,
 	})
@@ -231,6 +244,8 @@ func NewComputeNode(
 	// register compute public http apis
 	computeAPIServer := compute_publicapi.NewComputeAPIServer(compute_publicapi.ComputeAPIServerParams{
 		APIServer:          apiServer,
+		Bidder:             bidder,
+		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
 	err = computeAPIServer.RegisterAllHandlers()
@@ -244,10 +259,12 @@ func NewComputeNode(
 	}
 
 	return &Compute{
+		ID:                  host.ID().String(),
 		LocalEndpoint:       baseEndpoint,
 		Capacity:            runningCapacityTracker,
 		ExecutionStore:      executionStore,
 		Executors:           executors,
+		Bidder:              bidder,
 		LogServer:           logserver,
 		computeCallback:     standardComputeCallback,
 		cleanupFunc:         cleanupFunc,

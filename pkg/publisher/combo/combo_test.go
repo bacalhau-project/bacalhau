@@ -14,6 +14,7 @@ import (
 type mockPublisher struct {
 	isInstalled        bool
 	isInstalledErr     error
+	ValidateJobErr     error
 	PublishedResult    model.StorageSpec
 	PublishedResultErr error
 	sleepTime          time.Duration
@@ -23,6 +24,12 @@ type mockPublisher struct {
 func (m *mockPublisher) IsInstalled(context.Context) (bool, error) {
 	time.Sleep(m.sleepTime)
 	return m.isInstalled, m.isInstalledErr
+}
+
+// ValidateJob implements publisher.Publisher
+func (m *mockPublisher) ValidateJob(context.Context, model.Job) error {
+	time.Sleep(m.sleepTime)
+	return m.ValidateJobErr
 }
 
 // PublishResult implements publisher.Publisher
