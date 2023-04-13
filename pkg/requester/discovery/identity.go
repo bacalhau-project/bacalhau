@@ -36,7 +36,7 @@ func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) (
 		}
 	}
 
-	for _, peerID := range d.host.Peerstore().Peers() {
+	for _, peerID := range d.host.Peerstore().PeersWithAddrs() {
 		if peerID == d.host.ID() {
 			continue
 		}
