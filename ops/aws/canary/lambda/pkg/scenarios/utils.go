@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -32,7 +33,7 @@ func getSampleDockerJob() (*model.Job, error) {
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"echo",
@@ -63,7 +64,7 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"bash",

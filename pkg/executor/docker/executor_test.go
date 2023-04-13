@@ -14,14 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type ExecutorTestSuite struct {
@@ -93,8 +95,8 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
-	return model.JobSpecDocker{
+func (s *ExecutorTestSuite) curlTask() spec.JobSpecDocker {
+	return spec.JobSpecDocker{
 		Image:      "curlimages/curl",
 		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
@@ -134,7 +136,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
@@ -172,7 +174,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
 		},
@@ -277,7 +279,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "curlimages/curl",
 			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
 		},
@@ -312,7 +314,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 
 	result, err := s.runJobWithContext(ctx, model.Spec{
 		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
@@ -336,7 +338,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
@@ -366,7 +368,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
 		},

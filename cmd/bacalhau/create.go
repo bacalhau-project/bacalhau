@@ -8,17 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	docker_spec "github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -225,7 +227,11 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+			dockerSpec, err := docker_spec.AsDockerSpec(j.Spec.EngineSpec)
+			if err != nil {
+				return err
+			}
+			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", dockerSpec.Image), 1)
 			return err
 		} else {
 			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)

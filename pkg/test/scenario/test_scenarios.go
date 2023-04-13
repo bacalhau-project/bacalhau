@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
@@ -52,7 +53,7 @@ var CatFileToVolume = Scenario{
 	},
 	Spec: model.Spec{
 		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash",
@@ -74,7 +75,7 @@ var GrepFile = Scenario{
 	),
 	Spec: model.Spec{
 		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"grep",
@@ -97,7 +98,7 @@ var SedFile = Scenario{
 	),
 	Spec: model.Spec{
 		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"sed",
@@ -121,7 +122,7 @@ var AwkFile = Scenario{
 	),
 	Spec: model.Spec{
 		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		Docker: spec.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"awk",

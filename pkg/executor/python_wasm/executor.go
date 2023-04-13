@@ -60,16 +60,28 @@ func (e *Executor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy,
 func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, resultsDir string) (
 	*model.RunCommandResult, error) {
 	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
-	// translate language jobspec into a docker run command
-	job.Spec.Docker.Image = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
-	if job.Spec.Language.Command != "" {
-		// pass command through to node wasm wrapper
-		job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", job.Spec.Language.Command}
-	} else if job.Spec.Language.ProgramPath != "" {
-		// pass command through to node wasm wrapper
-		job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", job.Spec.Language.ProgramPath)}
+
+	// TODO(forrest): this is the "python_wasm" executor, but is building a docker engine for execution. seems strange
+	// we are also modifying the contents of the job, doubly strange and could lead to oddities in the dashboard.
+	langSpec, err := job.Spec.EngineSpec.AsLanguageSpec()
+	if err != nil {
+		return nil, err
 	}
-	job.Spec.Engine = model.EngineDocker
+
+	dockerEngineParams := make(map[string]interface{})
+	// translate language jobspec into a docker run command
+	dockerEngineParams[model.DockerEngineImageKey] = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
+	if langSpec.Command != "" {
+		// pass command through to node wasm wrapper
+		dockerEngineParams[model.DockerEngineEntrypointKey] = []string{"node", "n.js", "-c", langSpec.Command}
+	} else if langSpec.ProgramPath != "" {
+		// pass command through to node wasm wrapper
+		dockerEngineParams[model.DockerEngineEntrypointKey] = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", langSpec.ProgramPath)}
+	}
+	job.Spec.EngineSpec = model.EngineSpec{
+		Type:   model.EngineDocker,
+		Params: dockerEngineParams,
+	}
 
 	// prepend a path on each of the user supplied volumes to prevent an accidental
 	// collision with the internal pyodide filesystem

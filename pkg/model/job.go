@@ -60,7 +60,11 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
+			EngineSpec: EngineSpec{
+				Type: EngineDocker,
+				// TODO do we want to return an uninitialized structure?
+				//Params: make(map[string]interface{}),
+			},
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
@@ -147,8 +151,19 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// e.g. docker or language
-	Engine Engine `json:"Engine,omitempty"`
+
+	// deprecated: use EngineSpec instead.
+	//Engine     Engine     `json:"Engine,omitempty"`
+
+	// e.g. docker, WASM, or user defined.
+	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
+
+	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+
+	// executor specific data
+	//Docker JobSpecDocker `json:"Docker,omitempty"`
+	//Language JobSpecLanguage `json:"Language,omitempty"`
+	//Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 
@@ -156,11 +171,6 @@ type Spec struct {
 	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
-
-	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty"`
-	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -200,10 +210,21 @@ func (s *Spec) GetTimeout() time.Duration {
 }
 
 // Return pointers to all the storage specs in the spec.
-func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Language.Context,
-		&s.Wasm.EntryModule,
+func (s *Spec) AllStorageSpecs() ([]*StorageSpec, error) {
+	var storages []*StorageSpec
+	switch s.EngineSpec.Type {
+	case EngineWasm:
+		ws, err := s.EngineSpec.AsWasmSpec()
+		if err != nil {
+			return nil, err
+		}
+		storages = append(storages, &ws.EntryModule)
+	case EngineLanguage:
+		ls, err := s.EngineSpec.AsLanguageSpec()
+		if err != nil {
+			return nil, err
+		}
+		storages = append(storages, &ls.Context)
 	}
 
 	for _, collection := range [][]StorageSpec{
@@ -215,21 +236,10 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 		}
 	}
 
-	return storages
+	return storages, nil
 }
 
-// for VM style executors
-type JobSpecDocker struct {
-	// this should be pullable by docker
-	Image string `json:"Image,omitempty"`
-	// optionally override the default entrypoint
-	Entrypoint []string `json:"Entrypoint,omitempty"`
-	// a map of env to run the container with
-	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
-	// working directory inside the container
-	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
+// TODO remove per: https://www.notion.so/pl-strflt/Job-Schema-521ba6cdc06b4bdb940dbb151c576882?pvs=4#41a132a033964affaa79492ead545cc3
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
 	Language        string `json:"Language,omitempty"`        // e.g. python
@@ -244,28 +254,6 @@ type JobSpecLanguage struct {
 	ProgramPath string `json:"ProgramPath,omitempty"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
 	RequirementsPath string `json:"RequirementsPath,omitempty"`
-}
-
-// Describes a raw WASM job
-type JobSpecWasm struct {
-	// The module that contains the WASM code to start running.
-	EntryModule StorageSpec `json:"EntryModule,omitempty"`
-
-	// The name of the function in the EntryModule to call to run the job. For
-	// WASI jobs, this will always be `_start`, but jobs can choose to call
-	// other WASM functions instead. The EntryPoint must be a zero-parameter
-	// zero-result function.
-	EntryPoint string `json:"EntryPoint,omitempty"`
-
-	// The arguments supplied to the program (i.e. as ARGV).
-	Parameters []string `json:"Parameters,omitempty"`
-
-	// The variables available in the environment of the running program.
-	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
-
-	// TODO #880: Other WASM modules whose exports will be available as imports
-	// to the EntryModule.
-	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
 // we emit these to other nodes so they update their

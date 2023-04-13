@@ -10,8 +10,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -84,9 +85,13 @@ func (e *Executor) GetOutputStream(ctx context.Context, executionID string, with
 }
 
 func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (executor.Executor, error) {
+	ls, err := job.Spec.EngineSpec.AsLanguageSpec()
+	if err != nil {
+		return nil, err
+	}
 	requiredLang := LanguageSpec{
-		Language: job.Spec.Language.Language,
-		Version:  job.Spec.Language.LanguageVersion,
+		Language: ls.Language,
+		Version:  ls.LanguageVersion,
 	}
 
 	engineKey, exists := supportedVersions[requiredLang]
@@ -95,7 +100,7 @@ func (e *Executor) getDelegateExecutor(ctx context.Context, job model.Job) (exec
 		return nil, err
 	}
 
-	if job.Spec.Language.Deterministic {
+	if ls.Deterministic {
 		log.Ctx(ctx).Debug().Msgf("Running deterministic %v", requiredLang)
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?

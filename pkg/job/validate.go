@@ -42,8 +42,8 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("confidence must be >= 0")
 	}
 
-	if !model.IsValidEngine(j.Spec.Engine) {
-		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String())
+	if !model.IsValidEngine(j.Spec.EngineSpec.Type) {
+		return fmt.Errorf("invalid executor type: %s", j.Spec.EngineSpec.Type)
 	}
 
 	if !model.IsValidVerifier(j.Spec.Verifier) {

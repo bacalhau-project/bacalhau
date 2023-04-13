@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // these are util methods for the CLI
@@ -80,14 +81,17 @@ func ConstructDockerJob( //nolint:funlen
 	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
-		Engine:        e,
+		EngineSpec: model.EngineSpec{
+			Type: e,
+			Params: map[string]interface{}{
+				"Image":                image,
+				"Entrypoint":           entrypoint,
+				"EnvironmentVariables": env,
+				"WorkingDirectory":     workingDir,
+			},
+		},
 		Verifier:      v,
 		PublisherSpec: p,
-		Docker: model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypoint,
-			EnvironmentVariables: env,
-		},
 		Network: model.NetworkConfig{
 			Type:    network,
 			Domains: domains,
@@ -98,11 +102,6 @@ func ConstructDockerJob( //nolint:funlen
 		Outputs:       jobOutputs,
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
-	}
-
-	// override working dir if provided
-	if len(workingDir) > 0 {
-		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
 	j.Spec.Deal = model.Deal{
@@ -159,15 +158,17 @@ func ConstructLanguageJob(
 		return &model.Job{}, err
 	}
 
-	j.Spec.Engine = model.EngineLanguage
-	j.Spec.Language = model.JobSpecLanguage{
-		Language:         language,
-		LanguageVersion:  languageVersion,
-		Deterministic:    deterministic,
-		Context:          model.StorageSpec{},
-		Command:          command,
-		ProgramPath:      programPath,
-		RequirementsPath: requirementsPath,
+	j.Spec.EngineSpec = model.EngineSpec{
+		Type: model.EngineLanguage,
+		Params: map[string]interface{}{
+			"Language":         language,
+			"LanguageVersion":  languageVersion,
+			"Deterministic":    deterministic,
+			"Context":          model.StorageSpec{},
+			"Command":          command,
+			"ProgramPath":      programPath,
+			"RequirementsPath": requirementsPath,
+		},
 	}
 	j.Spec.Timeout = timeout
 	j.Spec.Inputs = inputs

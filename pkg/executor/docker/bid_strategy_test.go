@@ -6,17 +6,19 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
 )
 
 func jobForDockerImage(imageID string) model.Job {
 	return model.Job{
 		Spec: model.Spec{
 			Engine: model.EngineDocker,
-			Docker: model.JobSpecDocker{
+			Docker: spec.JobSpecDocker{
 				Image: imageID,
 			},
 		},

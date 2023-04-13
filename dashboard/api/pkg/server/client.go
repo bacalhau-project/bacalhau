@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -28,7 +29,7 @@ var realSpec model.Spec = model.Spec{
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
 	},
-	Docker: model.JobSpecDocker{
+	Docker: spec.JobSpecDocker{
 		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
 		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
 	},
@@ -52,7 +53,7 @@ var testSpec model.Spec = model.Spec{
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
 	},
-	Docker: model.JobSpecDocker{
+	Docker: spec.JobSpecDocker{
 		Image:      "ubuntu",
 		Entrypoint: []string{"echo"},
 	},

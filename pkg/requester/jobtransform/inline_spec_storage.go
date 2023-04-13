@@ -3,10 +3,11 @@ package jobtransform
 import (
 	"context"
 
+	"github.com/c2h5oh/datasize"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/copy"
-	"github.com/c2h5oh/datasize"
 )
 
 // The maximum size that an individual inline storage spec and all inline
@@ -23,10 +24,14 @@ const (
 // exceeded it will move the largest specs into IPFS.
 func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
+		storageSpecs, err := j.Spec.AllStorageSpecs()
+		if err != nil {
+			return false, err
+		}
 		return copy.CopyOversize(
 			ctx,
 			provider,
-			j.Spec.AllStorageSpecs(),
+			storageSpecs,
 			model.StorageSourceInline,
 			model.StorageSourceIPFS,
 			maximumIndividualSpec,

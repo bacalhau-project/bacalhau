@@ -6,6 +6,8 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 )
 
+var _ JobType = (*DockerInputs)(nil)
+
 type DockerInputs struct {
 	Entrypoint []string
 	Workdir    string
@@ -14,33 +16,35 @@ type DockerInputs struct {
 	Env        IPLDMap[string, string]
 }
 
-var _ JobType = (*DockerInputs)(nil)
+func (docker DockerInputs) EngineSpec(with string) (EngineSpec, error) {
+	params := make(map[string]interface{})
+	params["Image"] = with
+	params["EntryPoint"] = docker.Entrypoint
+	params["WorkingDirectory"] = docker.Workdir
 
-func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineDocker
-	spec.Docker = JobSpecDocker{
-		Image:            with,
-		Entrypoint:       docker.Entrypoint,
-		WorkingDirectory: docker.Workdir,
-	}
-
-	spec.Docker.EnvironmentVariables = []string{}
+	envVars := make([]string, 0, len(docker.Env.Values))
 	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
+		envVars = append(envVars, key, val)
 	}
+	params["EnvironmentVariables"] = envVars
 
-	inputData, err := parseInputs(docker.Mounts)
-	if err != nil {
-		return err
-	}
-	spec.Inputs = inputData
+	return EngineSpec{
+		Type:   EngineDocker,
+		Params: params,
+	}, nil
+}
 
-	spec.Outputs = []StorageSpec{}
+func (docker DockerInputs) InputStorageSpecs(_ string) ([]StorageSpec, error) {
+	return parseInputs(docker.Mounts)
+}
+
+func (docker DockerInputs) OutputStorageSpecs(_ string) ([]StorageSpec, error) {
+	outputs := make([]StorageSpec, 0, len(docker.Outputs.Values))
 	for path := range docker.Outputs.Values {
-		spec.Outputs = append(spec.Outputs, StorageSpec{
+		outputs = append(outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),
 		})
 	}
-	return nil
+	return outputs, nil
 }

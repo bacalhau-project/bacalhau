@@ -25,7 +25,7 @@ func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscover
 // FindNodes returns the nodes that support the job's execution engine, and have enough TOTAL capacity to run the job.
 func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	// filter nodes that support the job's engine
-	return d.store.ListForEngine(ctx, job.Spec.Engine)
+	return d.store.ListForEngine(ctx, job.Spec.EngineSpec.Type)
 }
 
 // compile time check that StoreNodeDiscoverer implements NodeDiscoverer

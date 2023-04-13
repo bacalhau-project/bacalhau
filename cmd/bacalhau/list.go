@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	docker_spec "github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
 var (
@@ -235,11 +237,15 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 // Renders job details into a table row
 func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 	jobDesc := []string{
-		j.Job.Spec.Engine.String(),
+		j.Job.Spec.EngineSpec.Type.String(),
 	}
 	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-	if j.Job.Spec.Engine == model.EngineDocker {
-		jobDesc = append(jobDesc, j.Job.Spec.Docker.Image, strings.Join(j.Job.Spec.Docker.Entrypoint, " "))
+	if j.Job.Spec.EngineSpec.Type == model.EngineDocker {
+		dockerEngineSpec, err := docker_spec.AsDockerSpec(j.Job.Spec.EngineSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobDesc = append(jobDesc, dockerEngineSpec.Image, strings.Join(dockerEngineSpec.Entrypoint, " "))
 	}
 
 	// compute state summary

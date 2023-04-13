@@ -3,11 +3,13 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -15,7 +17,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.JobSpecDocker{
+	job := newDockerJob("address-test", spec.JobSpecDocker{
 		Image:      "bash",
 		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
 	})
