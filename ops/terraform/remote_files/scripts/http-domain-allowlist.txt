@@ -120,3 +120,9 @@ scheduler.einsteinathome.org
 einstein.phys.uwm.edu
 einstein-dl.syr.edu
 .aei.uni-hannover.de
+
+# RPC Endpoints
+polygon-rpc.com
+eth.public-rpc.com
+bscrpc.com
+filecoin.public-rpc.com
