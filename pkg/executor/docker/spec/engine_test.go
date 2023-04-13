@@ -1,42 +1,40 @@
-package model
+package spec
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func TestAsDockerSpec(t *testing.T) {
 	tests := []struct {
 		name    string
-		engine  EngineSpec
-		want    *spec.JobSpecDocker
+		engine  model.EngineSpec
+		want    *JobSpecDocker
 		wantErr bool
 	}{
 		{
 			name: "valid docker spec",
-			engine: EngineSpec{
-				Type: EngineDocker,
+			engine: model.EngineSpec{
+				Type: model.EngineDocker,
 				Params: map[string]interface{}{
-					"Image":                "example/image",
-					"Entrypoint":           []string{"entry1", "entry2"},
-					"EnvironmentVariables": []string{"VAR1=value1", "VAR2=value2"},
-					"WorkingDirectory":     "/app",
+					DockerEngineImageKey:      "example/image",
+					DockerEngineEntrypointKey: []string{"entry1", "entry2"},
+					DockerEngineWorkDirKey:    "/app",
 				},
 			},
-			want: &spec.JobSpecDocker{
-				Image:                "example/image",
-				Entrypoint:           []string{"entry1", "entry2"},
-				EnvironmentVariables: []string{"VAR1=value1", "VAR2=value2"},
-				WorkingDirectory:     "/app",
+			want: &JobSpecDocker{
+				Image:            "example/image",
+				Entrypoint:       []string{"entry1", "entry2"},
+				WorkingDirectory: "/app",
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid engine type",
-			engine: EngineSpec{
-				Type:   EngineWasm,
+			engine: model.EngineSpec{
+				Type:   model.EngineWasm,
 				Params: map[string]interface{}{},
 			},
 			want:    nil,
@@ -44,8 +42,8 @@ func TestAsDockerSpec(t *testing.T) {
 		},
 		{
 			name: "uninitialized params",
-			engine: EngineSpec{
-				Type: EngineDocker,
+			engine: model.EngineSpec{
+				Type: model.EngineDocker,
 			},
 			want:    nil,
 			wantErr: true,
@@ -54,7 +52,7 @@ func TestAsDockerSpec(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.engine.AsDockerSpec()
+			got, err := AsDockerSpec(tt.engine)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AsDockerSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return

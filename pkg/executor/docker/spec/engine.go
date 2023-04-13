@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	DockerEngineType          = 2
 	DockerEngineImageKey      = "Image"
 	DockerEngineEntrypointKey = "Entrypoint"
 	DockerEngineWorkDirKey    = "WorkingDirectory"
@@ -35,13 +36,9 @@ func AsDockerSpec(e model.EngineSpec) (*JobSpecDocker, error) {
 		dockerSpec.Image = value
 	}
 
-	if value, ok := e.Params[DockerEngineEntrypointKey].([]interface{}); ok {
+	if value, ok := e.Params[DockerEngineEntrypointKey].([]string); ok {
 		for _, v := range value {
-			if str, ok := v.(string); ok {
-				dockerSpec.Entrypoint = append(dockerSpec.Entrypoint, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v to string", v)
-			}
+			dockerSpec.Entrypoint = append(dockerSpec.Entrypoint, v)
 		}
 	}
 

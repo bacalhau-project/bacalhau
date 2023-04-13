@@ -18,13 +18,14 @@ func TestUnmarshalDocker(t *testing.T) {
 
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
-	require.Equal(t, EngineDocker, spec.Engine)
-	require.Equal(t, "ubuntu", spec.Docker.Image)
-	require.Equal(t, []string{"date"}, spec.Docker.Entrypoint)
-	require.Equal(t, "/", spec.Docker.WorkingDirectory)
-	require.Equal(t, []string{"HELLO", "world"}, spec.Docker.EnvironmentVariables)
+	require.Equal(t, EngineDocker, spec.EngineSpec.Type)
+	require.Equal(t, "ubuntu", spec.EngineSpec.Params[DockerEngineImageKey])
+	require.Equal(t, []string{"date"}, spec.EngineSpec.Params[DockerEngineEntrypointKey])
+	require.Equal(t, "/", spec.EngineSpec.Params[DockerEngineWorkDirKey])
+	//require.Equal(t, []string{"HELLO", "world"}, spec.Docker.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{}, spec.Inputs)
 	require.Equal(t, []StorageSpec{
 		{Path: "/outputs", Name: "outputs"},
 	}, spec.Outputs)
+	t.Fatal("TODO remove env")
 }
