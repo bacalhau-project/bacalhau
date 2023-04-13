@@ -478,10 +478,14 @@ jobs:
       - run:
           name: Install Swagger
           command:
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
       - run:
           name: Build Swagger Docs
           command:
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
             make swagger-docs
       - persist_to_workspace:
           root: docs
