@@ -798,6 +798,10 @@ const docTemplate = `{
         "model.ExecutionState": {
             "type": "object",
             "properties": {
+                "AcceptedAskForBid": {
+                    "description": "Set to true iff the compute node accepted the ask for a bid, and intends\nto run the job if the bid is accepted by the requester.",
+                    "type": "boolean"
+                },
                 "ComputeReference": {
                     "description": "Compute node reference for this job execution",
                     "type": "string"
