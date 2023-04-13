@@ -132,7 +132,7 @@ ipfs daemon
 
 :::info
 
-If you want to run the IPFS daemon as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/ipfs-daemon.service).
+If you want to run the IPFS daemon as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/ipfs.service).
 
 :::
 
@@ -186,7 +186,7 @@ Firewall configuration is very specific to your network and we can't provide gen
 
 :::info
 
-If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau-daemon.service).
+If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
 
 :::
 
@@ -195,8 +195,12 @@ If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/System
 Now we can run our bacalhau node:
 
 ```bash
-LOG_LEVEL=debug bacalhau serve \
-  --ipfs-connect $IPFS_CONNECT
+LOG_LEVEL=debug BACALHAU_ENVIRONMENT=production \
+  bacalhau serve \
+    --node-type compute \
+    --ipfs-connect $IPFS_CONNECT \
+    --private-internal-ipfs=false \
+    --peer env
 ```
 
 Alternatively, you can run the following Docker command:
@@ -204,7 +208,12 @@ Alternatively, you can run the following Docker command:
 ```bash
 docker run -it --rm \
   -e LOG_LEVEL=debug \
-  ghcr.io/bacalhau-project/bacalhau:latest serve --ipfs-connect $IPFS_CONNECT
+  -e BACALHAU_ENVIRONMENT=production \
+  ghcr.io/bacalhau-project/bacalhau:latest serve \
+    --node-type compute \
+    --ipfs-connect $IPFS_CONNECT \
+    --private-internal-ipfs=false \
+    --peer env
 ```
 
 These commands join this node to the public Bacalhau network, congrats! :tada:

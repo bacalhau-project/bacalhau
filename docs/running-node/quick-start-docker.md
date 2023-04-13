@@ -71,10 +71,10 @@ Notes about the command:
 * It mounts the `/tmp` directory
 * It exposes the Bacalhau API ports to the world
 * The container version should match that of the current release
-* The IPFS connect string points to the RPC port of the IPFS node in Docker. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP. If you're running your own node, replace it.
+* The IPFS connect string points to the RPC port of the IPFS node in Docker. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP. If you're running your own node, replace it
 * The `--node-type` flag is set to `compute` because we only want to run a compute node
 * The `--labels` flag is used to set a human-readable label for the node, and so we can run jobs on our machine later
-* We do not specify the `peer` flag, so it defaults to using the public bootstrap nodes
+* We specify the `--peer env` flag so that it uses the environment specified by `BACALHAU_ENVIRONMENT=production` and therefore connects to the public network peers
 
 ```bash
 sudo docker run \
@@ -88,7 +88,9 @@ sudo docker run \
     serve \
         --ipfs-connect /dns4/localhost/tcp/5001 \
         --node-type compute \
-        --labels "owner=docs-quick-start"
+        --labels "owner=docs-quick-start" \
+        --private-internal-ipfs=false \
+        --peer env
 ```
 
 There are several ways to ensure that the Bacalhau compute node is connected to the network.
@@ -197,13 +199,12 @@ Bacalhau consists of two parts: a "requester" that is responsible for operating 
 Notes about the command:
 
 * It runs the Bacalhau container in the specified Docker network
-* It uses the `root` user, which is the default system user that has access to the Docker socket on a mac. You may need to change this to suit your environment.
+* It uses the `root` user, which is the default system user that has access to the Docker socket on a mac. You may need to change this to suit your environment
 * It mounts the Docker Socket
 * It mounts the `/tmp` directory
 * It exposes the Bacalhau API ports to the local host only, to prevent accidentally exposing the API to the public internet
 * The container version should match that of the Bacalhau installed on your system
 * The IPFS connect string points to the RPC port of the IPFS node. Because Bacalhau is running in the same network, it can use DNS to find the IPFS container IP.
-* The `--peer` flag is set to `none` because we don't want to bootstrap to the public network
 * The `--node-type` flag is set to `requester,compute` because we want to run both a requester and a compute node
 
 ```bash
@@ -216,7 +217,6 @@ docker run \
     ghcr.io/bacalhau-project/bacalhau:latest \
     serve \
         --ipfs-connect /dns4/ipfs_host/tcp/5001 \
-        --peer "none" \
         --node-type requester,compute
 ```
 

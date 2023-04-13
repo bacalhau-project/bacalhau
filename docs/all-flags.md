@@ -330,20 +330,20 @@ Usage:
   bacalhau serve [flags]
 
 Examples:
-  # Start a private bacalhau hybrid node that acts as both compute and requester
+  # Start a private bacalhau requester node
   bacalhau serve
   # or
+  bacalhau serve --node-type requester
+  
+  # Start a private bacalhau hybrid node that acts as both compute and requester
   bacalhau serve --node-type compute --node-type requester
   # or
   bacalhau serve --node-type compute,requester
   
-  # Start a private bacalhau requester node
-  bacalhau serve --node-type requester
-  
-  # Start a private bacalhau node with a persistent local Ipds node
+  # Start a private bacalhau node with a persistent local IPFS node
   BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
   
-  # Start a (public!) bacalhau node
+  # Start a public bacalhau requester node
   bacalhau serve --peer env --private-internal-ipfs=false
 
 Flags:
@@ -370,7 +370,7 @@ Flags:
       --lotus-path-directory string                      Location of the Lotus Filecoin configuration directory.
       --lotus-storage-duration duration                  Duration to store data in Lotus Filecoin for.
       --lotus-upload-directory string                    Directory to use when uploading content to Lotus Filecoin.
-      --node-type strings                                Whether the node is a compute, requester or both. (default [requester,compute])
+      --node-type strings                                Whether the node is a compute, requester or both. (default [requester])
       --peer string                                      A comma-separated list of libp2p multiaddress to connect to. Use "none" to avoid connecting to any peer, "env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var). (default "none")
       --private-internal-ipfs                            Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - cannot be used with --ipfs-connect. Use "--private-internal-ipfs=false" to disable. To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path. (default true)
       --swarm-port int                                   The port to listen on for swarm connections. (default 1235)
@@ -378,7 +378,7 @@ Flags:
 Global Flags:
       --api-host string         The host for the client and server to communicate on (via REST).
                                 Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
-      --api-port int            The port for the client and server to communicate on (via REST).
+      --api-port uint16         The port for the client and server to communicate on (via REST).
                                 Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
       --log-mode logging-mode   Log format: 'default','station','json','combined','event' (default default)
 ```
