@@ -477,13 +477,13 @@ jobs:
           executor: linux-amd64
       - run:
           name: Install Swagger
-          command:
+          command: | 
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
       - run:
           name: Build Swagger Docs
-          command:
+          command: |
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH
             make swagger-docs
