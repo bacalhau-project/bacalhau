@@ -137,7 +137,7 @@ release-python-apiclient:
 ################################################################################
 .PHONY: release-python-sdk
 release-python-sdk:
-	cd python && ${MAKE} publish
+	cd python && ${MAKE} build && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
