@@ -164,7 +164,7 @@ To run our analysis on the Ethereum blockchain, we will use the `bacalhau docker
 %%bash --out job_id
 bacalhau docker run \
     --id-only \
-    --input-volumes bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
+    --input ipfs://bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
     ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6
 ```
 
@@ -175,7 +175,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
 
@@ -258,7 +258,7 @@ for h in $(cat hashes.txt); do \
     bacalhau docker run \
     --id-only \
     --wait=false \
-    --input-volumes=$h:/inputs/data.tar.gz \
+    --input ipfs://$h:/inputs/data.tar.gz \
     ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6 >> job_ids.txt 
 done
 ```

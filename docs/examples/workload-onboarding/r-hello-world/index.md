@@ -47,7 +47,7 @@ Now it's time to run the script on the Bacalhau network. To run a job on Bacalha
 bacalhau docker run \
 --wait \
 --id-only \
--v QmQRVx3gXVLaRXywgwo8GCTQ63fHqWV88FiwEqCidmUGhk:/hello.R \
+-i ipfs://QmQRVx3gXVLaRXywgwo8GCTQ63fHqWV88FiwEqCidmUGhk:/hello.R \
 r-base \
 -- Rscript hello.R
 ```
@@ -58,7 +58,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-v QmQRVx3gXVLaRXywgwo8GCTQ63fHqWV88FiwEqCidmUGhk`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+* `-i ipfs://QmQRVx3gXVLaRXywgwo8GCTQ63fHqWV88FiwEqCidmUGhk`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `:/hello.R`: the name and the tag of the docker image we are using
 

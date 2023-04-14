@@ -136,7 +136,7 @@ This will generate a WASM file at `./my-program/target/wasm32-wasi/my-program.wa
 ## Running WASM on Bacalhau
 Now that we have a WASM binary, we can upload it to IPFS and use it as input to a Bacalhau job.
 
-The -v switch allows specifying an IPFS CID to mount as a named volume in the job. There is also a -u switch which can download inputs via HTTP.
+The -i switch allows specifying an IPFS CID to mount as a named volume in the job. The -i switch also accepts URLs and S3 objects.
 
 For this example, we are using an image of the Statue of Liberty that has been pinned to a storage facility.
 
@@ -144,7 +144,7 @@ For this example, we are using an image of the Statue of Liberty that has been p
 ```bash
 %%bash
 bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
-    -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
+    -i bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
 
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.

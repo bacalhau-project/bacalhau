@@ -11,7 +11,7 @@ To upload a file from a URL we will use the `bacalhau docker run` command.
 bacalhau docker run \
     --id-only \
     --wait \
-    --input-urls=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \
+    --input https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \
     ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
@@ -25,9 +25,9 @@ Let's look closely at the command above:
 
 * `ghcr.io/bacalhau-project/examples/upload:v1`: the name and the tag of the docker image we are using
 
-* ` --input-urls=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \`: URL path of the input data volumes downloaded from a URL source. 
+* ` --input=https://raw.githubusercontent.com/filecoin-project/bacalhau/main/README.md \`: URL path of the input data volumes downloaded from a URL source. 
 
-The `bacalhau docker run` command takes advantage of the `--input-urls` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to your public storage via Estuary. In our case we are using Filecoin as our public storage.
+The `bacalhau docker run` command takes advantage of the `--input` parameter. This will download a file from a public URL and place it in the `/inputs` directory of the container (by default). Then we will use a helper container to move that data to the `/outputs` directory so that it is published to your public storage via Estuary. In our case we are using Filecoin as our public storage.
 
 :::tip
 You can find out more about the [helper container in the examples repository](https://github.com/bacalhau-project/examples/tree/main/tools/upload).
@@ -80,7 +80,7 @@ The job will upload the CID to your public storage via Estuary. We will store th
 
 ### Use the CID in a New Bacalhau Job
 
-Now that we have the CID, we can use it in a new job. This time we will use the `--inputs` parameter to tell Bacalhau to use the CID we just uploaded.
+Now that we have the CID, we can use it in a new job. This time we will use the `--input` parameter to tell Bacalhau to use the CID we just uploaded.
 
 In this case, our "job" is just to list the contents of the `/inputs` directory. You can see that the "input" data is located under `/inputs/outputs/README.md`.
 
@@ -90,7 +90,7 @@ In this case, our "job" is just to list the contents of the `/inputs` directory.
 bacalhau docker run \
     --id-only \
     --wait \
-    --inputs=$CID \
+    --input ipfs://$CID \
     ubuntu -- \
     bash -c "set -x; ls -l /inputs; ls -l /inputs/outputs; cat /inputs/outputs/README.md"
 ```

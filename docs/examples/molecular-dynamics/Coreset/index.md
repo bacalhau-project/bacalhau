@@ -146,7 +146,7 @@ After the repo image has been pushed to docker hub, we can now use the container
 
 ```
 bacalhau docker run \
--v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input \
+-i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input \
 jsace/coreset \
 -- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson;
 python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o outputs'
@@ -157,7 +157,7 @@ Backend: Docker backend here for running the job
 
 * `input/liechtenstein-latest.osm.pbf`: Upload the .osm.pbf file 
 
-* `-v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/inpu`: mount dataset to the folder inside the container so it can be used by the script
+* `-i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/inpu`: mount dataset to the folder inside the container so it can be used by the script
 
 * `jsace/coreset`:  the name and the tag of the docker image we are using
 

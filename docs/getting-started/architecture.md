@@ -175,13 +175,13 @@ A job includes the concept of input and output volumes, and the Docker executor 
 ```
 cid=$(ipfs add file.txt)
 bacalhau docker run \
-  -v $cid:/file.txt \
+  -i ipfs://$cid:/file.txt \
   -o apples:/output_folder \
   ubuntu \
   bash -c 'cat /file.txt > /output_folder/file.txt'
 ```
 
-The above example demonstrates an input volume flag `-v $cid:/file.txt`, which mounts the contents of $cid within the docker container at location `/file.txt` (root).
+The above example demonstrates an input volume flag `-i ipfs://$cid:/file.txt`, which mounts the contents of $cid within the docker container at location `/file.txt` (root).
 
 Output volumes are mounted to the Docker container at the location specified. In the example above, any content written to `/output_folder` will be made available within the apples folder in the job results CID.
 

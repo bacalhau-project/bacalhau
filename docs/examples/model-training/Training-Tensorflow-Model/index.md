@@ -334,23 +334,23 @@ bacalhau docker run \
 --wait \
 --id-only \
 -w /inputs  \
--u https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py \
--u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz \
+-i https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py \
+-i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz \
 tensorflow/tensorflow \
 -- python train.py
 ```
 
 Structure the of the command:
 
-* `-u  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
+* `-i  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
 
-* `-u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz`: mount the dataset
+* `-i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz`: mount the dataset
 
 * `tensorflow/tensorflow`: specify the Docker image
 
 * `python train.py`: execute the script
 
-By default whatever URL you mount using the -u flag gets mounted at the path
+By default whatever URL you mount using the -i flag gets mounted at the path
 /inputs so we choose that as our input directory `-w /inputs`
 
 

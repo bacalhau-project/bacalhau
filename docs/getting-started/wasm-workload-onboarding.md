@@ -20,7 +20,7 @@ There is no multi-threading as WASI does not expose any interface for it.
 
 If your program would normally read and write to network endpoints, you'll need to replace this with filesystem operations.
 
-For example, instead of making an HTTP request to `example.com`, instead read from the `/inputs` folder. You can then specify the URL to Bacalhau when you run the job using `--input-urls example.com`.
+For example, instead of making an HTTP request to `example.com`, instead read from the `/inputs` folder. You can then specify the URL to Bacalhau when you run the job using `--input http://example.com`.
 
 You can write results to standard out or standard error pipes or to the filesystem into an output mount. For example, WASM jobs by default will have access to a folder at `/outputs` that will be persisted when the job ends.
 
@@ -59,11 +59,8 @@ The program you specify will be uploaded to a Bacalhau storage node and will be 
 Alternatively, you can specify a WASM program by 
 using a CID, like `bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ`.
 
-Make sure to specify any input data using the `--input-volumes` or `--input-urls` flags.
+Make sure to specify any input data using `--input` flag.
 
-:::tip
-The `--input-urls` flag can only be used once, and will make the contents of the URL available at the `/inputs` directory.
-:::
 
 #### Program arguments
 

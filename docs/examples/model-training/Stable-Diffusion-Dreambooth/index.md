@@ -38,7 +38,7 @@ bacalhau docker run \
 ```
 bacalhau docker run \
  --gpu 1 \
-  -v QmUEJPr5pfV6tRzWQuNSSb3wdcN6tRQS5tdk3dYSCJ55Xs:/SBF.ckpt \
+  -i ipfs://QmUEJPr5pfV6tRzWQuNSSb3wdcN6tRQS5tdk3dYSCJ55Xs:/SBF.ckpt \
    jsacex/stable-diffusion-ckpt \
    -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of sbf without hair" --plms --ckpt ../SBF.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
 ```
@@ -381,9 +381,9 @@ bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--v bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a:/aronchick \
--v <CID-OF-THE-MODEL>:/model 
--u https://gist.githubusercontent.com/js-ts/54b270a36aa3c35fdc270640680b3bd4/raw/7d8e8fa47bc3811ef63772f7fc7f4360aa9d51a8/finetune.sh
+-i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a:/aronchick \
+-i ipfs://<CID-OF-THE-MODEL>:/model 
+-i https://gist.githubusercontent.com/js-ts/54b270a36aa3c35fdc270640680b3bd4/raw/7d8e8fa47bc3811ef63772f7fc7f4360aa9d51a8/finetune.sh
 --wait \
 --id-only \
   jsacex/dreambooth:lite \

@@ -141,7 +141,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --wait \
 --id-only \
--v QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/DavidAronchick.ckpt \
+-i ipfs://QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/DavidAronchick.ckpt \
 jsacex/stable-diffusion-ckpt \
 -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../DavidAronchick.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
 ```
@@ -152,7 +152,7 @@ Let's look closely at the command above:
 
 * `--gpu` : here we request 1 GPU
 
-* `-v QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/DavidAronchick.ckpt`:  Path-to-mount-the-checkpoint 
+* `-i ipfs://QmUCJuFZ2v7KvjBGHRP2K1TMPFce3reTkKVGF2BJY5bXdZ:/DavidAronchick.ckpt`:  Path-to-mount-the-checkpoint 
 
 * `-- conda run --no-capture-output -n ldm`:  since we are using conda we need to specify the name of the environment which we are going to use in this case its `ldm`
 

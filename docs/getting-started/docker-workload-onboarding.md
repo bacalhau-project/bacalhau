@@ -20,8 +20,9 @@ Here are some few things to note before getting started:
 * You must publish the container to a public container registry that is accessible from the Bacalhau network
 * Bacalhau supports only `amd64` images. Does not support `arm64` images
 * Containers must have an `x86_64` CPU architecture
-* The `--inputs` and `--input-volumes` flags do not support CID subpaths only **directories** 
-* The `--input-urls` flag does not support URL directories only **single files** only
+* The `--input ipfs://...` flag does not support CID subpaths only **directories** 
+* The `--input https://...` flag does not support URL directories only **single files** only
+* The `--input s3://...` flag does support S3 keys and prefixes. e.g. `s3://bucket/logs-2023-04*` for all April 2023 logs 
 
 :::tip
 
@@ -49,7 +50,7 @@ We make the assumption that you are reading from a directory called `/inputs`, w
 
 :::tip
 
-You can specify which directory the data is written to with the [`--input-volumes`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
+You can specify which directory the data is written to with the [`--input`](https://docs.bacalhau.org/all-flags#run-python) CLI flag.
 
 :::
 
@@ -134,7 +135,7 @@ You can mount your data anywhere on your machine, and Bacalhau will be able to r
 To run your workload, run the following command:
 
 ```shell
-$ bacalhau docker run --inputs ${CID} ${IMAGE} ${CMD}
+$ bacalhau docker run --input ipfs://${CID} ${IMAGE} ${CMD}
 ```
 To check the status of your job, run the following command:
 
@@ -178,14 +179,14 @@ job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9
 ```
 
 :::caution
-The `--inputs` flag does not support CID subpaths.
+The `--input` flag does not support CID subpaths for `ipfs://` content.
 :::
 
 Alternatively, you can run your workload with a publicly accessible http(s) URL, which will download the data temporarily into your public storage:
 
 ```shell
 $ export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
-$ bacalhau docker run --input-urls ${URL}:/inputs ${IMAGE} ${CMD}
+$ bacalhau docker run --input ${URL} ${IMAGE} ${CMD}
 
 $ bacalhau list 
 
@@ -193,7 +194,7 @@ $ bacalhau get JOB_ID
 ```
 
 :::caution
-The `--input-urls` flag does not support URL directories.
+The `--input` flag does not support URL directories.
 :::
 
 

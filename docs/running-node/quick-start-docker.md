@@ -133,7 +133,7 @@ You can also check that the node is connected by listing the current network pee
 Finally, submit a job with the label you specified when you ran the compute node. If this label is unique, there should be only one node with this label. The job should succeed. Run the following:
 
 ```bash
-bacalhau docker run --input-urls=http://example.org/index.html --selector owner=docs-quick-start ghcr.io/bacalhau-project/examples/upload:v1
+bacalhau docker run --input=http://example.org/index.html --selector owner=docs-quick-start ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
 If instead your job fails with the following error, it means that the compute node is not connected to the network:
@@ -227,13 +227,13 @@ You can now [test that Bacalhau is working](#test-bacalhau).
 Now it's time to run a job. Recall that you exposed the Bacalhau API on the default ports to the local host only. So you'll need to use the `--api-host` flag to tell Bacalhau where to find the API. Everything else is a standard part of the Bacalhau CLI.
 
 ```bash
-bacalhau docker run --api-host=localhost --input-urls=http://example.org/index.html ghcr.io/bacalhau-project/examples/upload:v1
+bacalhau docker run --api-host=localhost --input=http://example.org/index.html ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
 The job should succeed. Run it again but this time capture the job ID to make it easier to retrieve the results.
 
 ```bash
-export JOB_ID=$(bacalhau docker run --api-host=localhost --input-urls=http://example.org/index.html --wait --id-only ghcr.io/bacalhau-project/examples/upload:v1)
+export JOB_ID=$(bacalhau docker run --api-host=localhost --input=http://example.org/index.html --wait --id-only ghcr.io/bacalhau-project/examples/upload:v1)
 ```
 
 ### Retrieve the Results on the Private Network (Insecure)

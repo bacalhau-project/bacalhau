@@ -95,7 +95,7 @@ To submit a job, run the following Bacalhau command:
 ```bash
 %%bash --out job_id
 bacalhau docker run \
--v QmYq9ipYf3vsj7iLv5C67BXZcpLHxZbvFAJbtj7aKN5qii:/helloworld.pl \
+-i ipfs://QmYq9ipYf3vsj7iLv5C67BXZcpLHxZbvFAJbtj7aKN5qii:/helloworld.pl \
 --wait \
 --id-only \
 swipl \
@@ -105,7 +105,7 @@ swipl \
 ### Structure of the Command
 
 
-`-v: < CID >:/< name-of-the-script >`: we will mount the script to the container using the -v flag
+`-i ipfs://< CID >:/< name-of-the-script >`: we will mount the script to the container using the -i flag
 
 `Swipl`: flag
 

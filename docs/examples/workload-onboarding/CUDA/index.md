@@ -102,7 +102,7 @@ To submit a job, run the following Bacalhau command:
 --gpu 1 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
- -u https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu \
+ -i https://raw.githubusercontent.com/tristanpenman/cuda-examples/master/02-cuda-hello-world-faster.cu \
  --id-only \
  --wait \
  nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04 \
@@ -113,7 +113,7 @@ To submit a job, run the following Bacalhau command:
 
 Let's look closely at the command above:
 
-* `-u < Link-To-The-Program >`: The program is mounted by using the `-u` flag you can specify the link there
+* `-i < Link-To-The-Program >`: The program is mounted by using the `-i` flag you can specify the link there
 
 * `nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04`: Docker container for executing CUDA programs you need to choose the right CUDA docker container the container should have the tag of devel in them
 

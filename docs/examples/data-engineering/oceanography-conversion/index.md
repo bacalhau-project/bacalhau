@@ -246,7 +246,7 @@ Now that we have the data in IPFS and the Docker image pushed, next is to run a 
 ```bash
 %%bash  --out job_id
 bacalhau docker run \
-        --inputs bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
+        --input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
         --id-only \
         --wait \
         ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py

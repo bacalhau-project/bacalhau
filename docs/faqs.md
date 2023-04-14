@@ -7,9 +7,9 @@ hide_title: true
 # Bacalhau FAQs
 
 ### Can I use multiple data sources in the same job?
-You can use the `--input-volumes` or `-v` flag multiple times with multiple different CIDs, and give each of them a path to be mounted at. 
+You can use the `--input` or `-i` flag multiple times with multiple different CIDs, URLs or S3 objects, and give each of them a path to be mounted at. 
 
-For example, doing `bacalhau run cat/main.wasm -v CID1:/input1 -v CID2:/input2` will result in both the `input1` and `input2` folders being available to your running WASM with the CID contents. You can use `-v` as many times as you need. 
+For example, doing `bacalhau run cat/main.wasm -i ipfs://CID1:/input1 -i ipfs://CID2:/input2` will result in both the `input1` and `input2` folders being available to your running WASM with the CID contents. You can use `-i` as many times as you need. 
 
 ### How can I submit Job requests through CLI to communicate with my Node directly?
 
