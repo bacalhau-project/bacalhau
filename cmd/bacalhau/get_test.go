@@ -204,10 +204,9 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
-		"--only", "data",
-		jobID,
+		fmt.Sprintf("%s/missing", jobID),
 	)
-	require.Error(s.T(), err, "Accepted invalid option for --only")
+	require.Error(s.T(), err, "Error getting results")
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
@@ -228,13 +227,45 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 		"--api-host", s.node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
-		"--only", "stdout",
-		jobID,
+		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+}
+
+func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.node.Host.ID().String()
+
+	_, getOutput, err := ExecuteTestCobraCommand("get",
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		fmt.Sprintf("%s/data/apples/file.txt", jobID),
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(),
+		filepath.Join(tempDir, getDefaultJobFolder(jobID)),
+		hostID,
+		[]string{
+			"/data",
+			"/data/apples",
+			"/data/apples/file.txt",
+		})
 }
 
 // this tests that when we do get with an --output-dir

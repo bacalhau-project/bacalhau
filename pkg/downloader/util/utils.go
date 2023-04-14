@@ -15,7 +15,7 @@ func NewDownloadSettings() *model.DownloaderSettings {
 	settings := model.DownloaderSettings{
 		Timeout: model.DefaultIPFSTimeout,
 		// we leave this blank so the CLI will auto-create a job folder in pwd
-		Only:           "",
+		SingleFile:     "",
 		OutputDir:      "",
 		IPFSSwarmAddrs: "",
 	}

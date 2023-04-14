@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -75,17 +76,11 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 		jobID = string(byteResult)
 	}
 
-	// Verify only options if they are set
-	if OG.IPFSDownloadSettings.Only != "" {
-		only := OG.IPFSDownloadSettings.Only
-		if only != model.DownloadFilenameStdout && only != model.DownloadFilenameStderr {
-			errMessage := fmt.Sprintf(
-				"The 'only' parameter can only be one of: %s, or %s\n",
-				model.DownloadFilenameStdout, model.DownloadFilenameStderr,
-			)
-			Fatal(cmd, errMessage, 1)
-			return errors.New(errMessage)
-		}
+	// Split the jobID on / to see if the request is for a single file or for the
+	// entire jobid.
+	parts := strings.SplitN(jobID, "/", 2)
+	if len(parts) == 2 {
+		jobID, OG.IPFSDownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
 	err = downloadResultsHandler(

@@ -73,7 +73,8 @@ func (d *Downloader) DescribeResult(ctx context.Context, result model.PublishedR
 
 	for _, node := range nodes {
 		if len(node.Path) > 0 {
-			files[node.Path[0]] = node.Cid.String()
+			p := strings.Join(node.Path, "/")
+			files[p] = node.Cid.String()
 		}
 	}
 

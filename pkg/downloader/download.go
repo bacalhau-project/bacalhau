@@ -80,21 +80,39 @@ func DownloadResults( //nolint:funlen,gocyclo
 	var downloader Downloader
 
 	items := make(map[string]model.DownloadItem)
-	if settings.Only != "" {
+	if settings.SingleFile != "" {
 		for _, publishedResult := range publishedResults {
-			cid, err := findSingleEntry(ctx, publishedResult, downloadProvider, settings.Only)
+			cid, err := findSingleEntry(ctx, publishedResult, downloadProvider, settings.SingleFile)
 			if err != nil {
 				return err
+			}
+
+			// We need to make sure the target folder for this file exists so that we can
+			// write to it.
+			targetFile := filepath.Join(cidParentDir, settings.SingleFile)
+			targetDir := filepath.Dir(targetFile)
+			if len(targetDir) > len(cidParentDir) {
+				log.Ctx(ctx).Debug().
+					Str("Folder", targetDir).
+					Msg("creating target folder for single file download")
+				err = os.MkdirAll(targetDir, model.DownloadFolderPerm)
+				if err != nil {
+					log.Ctx(ctx).
+						Debug().
+						Str("Folder", targetDir).
+						Msg("failed to create folder for single file download")
+					return err
+				}
 			}
 
 			// We want to specify the target directory to copy from as the key
 			// but the DownloadItem itself specifies the target file to be
 			// written to.
 			items[cidParentDir] = model.DownloadItem{
-				Name:       settings.Only,
+				Name:       settings.SingleFile,
 				CID:        cid,
 				SourceType: publishedResult.Data.StorageSource,
-				Target:     filepath.Join(cidParentDir, settings.Only),
+				Target:     targetFile,
 			}
 		}
 	} else {
