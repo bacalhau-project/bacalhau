@@ -19,6 +19,7 @@ const testCID = "bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
 const testURL = "https://api.estuary.tech/gw/ipfs/bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
 
 func TestFetchResult(t *testing.T) {
+	t.Skip("https://github.com/bacalhau-project/bacalhau/issues/2363")
 	// create a new Estuary downloader
 	settings := &model.DownloaderSettings{
 		Timeout: time.Second * 60,
