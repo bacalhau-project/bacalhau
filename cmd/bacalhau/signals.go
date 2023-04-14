@@ -2,8 +2,8 @@
 
 package bacalhau
 
-// import "os"
+import "os"
 
-// var ShutdownSignals = []os.Signal{
-// 	os.Interrupt,
-// }
+var ShutdownSignals = []os.Signal{
+	os.Interrupt,
+}
