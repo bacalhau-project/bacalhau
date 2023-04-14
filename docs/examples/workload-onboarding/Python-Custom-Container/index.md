@@ -249,7 +249,7 @@ Before running the command replace;
 In our case
 
 ```bash
-docker build -t jsace/python-similar-movies
+docker build -t jsace/python-similar-movies .
 ```
 
 ### Push the container
