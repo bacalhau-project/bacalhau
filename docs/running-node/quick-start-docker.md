@@ -407,3 +407,20 @@ bacalhau --api-host=localhost list
 ```
 
 It should return empty.
+
+### <a id="authenticate-with-dockerhub">Authenticate with docker hub</a>
+
+If you are retrieving and running images from [docker hub](https://hub.docker.com/) you
+may encounter issues with rate-limiting. Docker provide higher limits when authenticated, the size of the limit based on the type of your account.
+
+Should you wish to authenticate with docker hub when pulling images, you can do so
+by specifying credentials as environment variables wherever your compute node is running.
+
+|Environment variable|Description|
+|---|---|
+|DOCKER_USERNAME|The username with which you are registered at <https://hub.docker.com/>|
+|DOCKER_PASSWORD|A read-only access token, generated from the page at <https://hub.docker.com/settings/security> |
+
+:::info
+Currently this authentication is only available (and required) by the [docker hub](https://hub.docker.com/)
+:::
