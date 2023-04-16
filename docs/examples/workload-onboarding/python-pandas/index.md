@@ -87,7 +87,7 @@ We've already uploaded the script and data to IPFS to the following CID: `QmfKJT
 
 After mounting the Pandas script and data from IPFS, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
-Now we're ready to run a Bacalhau job, whilst mounting the Pandas script and data from IPFS. We'll use the `bacalhau docker run` command to do this. The `-i` flag allows us to mount a file or directory from IPFS into the container. The `-i` flag takes two arguments, the first is the IPFS CID and the second is the path to the directory in the container. The `-i` flag can be used multiple times to mount multiple directories.
+Now we're ready to run a Bacalhau job, whilst mounting the Pandas script and data from IPFS. We'll use the `bacalhau docker run` command to do this. The `-v` flag allows us to mount a file or directory from IPFS into the container. The `-v` flag takes two arguments, the first is the IPFS CID and the second is the path to the directory in the container. The `-v` flag can be used multiple times to mount multiple directories.
 
 
 ```bash
@@ -95,7 +95,7 @@ Now we're ready to run a Bacalhau job, whilst mounting the Pandas script and dat
  bacalhau docker run \
 --wait \
 --id-only \
--i ipfs://QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files \
+-v QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files \
 -w /files \
 amancevice/pandas \
 -- python read_csv.py
@@ -107,9 +107,9 @@ amancevice/pandas \
 
 - `amancevice/pandas `: Using the official pytorch Docker image
 
-- `-i ipfs://QmfKJT13h5k1b23ja3Z .....`: Mounting the uploaded dataset to path
+- `-v QmfKJT13h5k1b23ja3Z .....`: Mounting the uploaded dataset to path
 
-- `-i https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
+- `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
 
 - `-w /files` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
 

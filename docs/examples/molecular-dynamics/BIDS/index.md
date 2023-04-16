@@ -50,7 +50,7 @@ bacalhau docker run \
 --wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
+-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
 nipreps/mriqc:latest 
 -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
 ```
@@ -61,7 +61,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
+* `-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
 
 * `nipreps/mriqc:latest`: the name and the tag of the docker image we are using
 

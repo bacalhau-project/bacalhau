@@ -42,7 +42,7 @@ The model requires pre-trained weights to run and by default downloads them from
 
 The container has its own options that we must specify:
 
-* `--input` to select which pre-trained weights you desire with details on the [yolov5 release page](https://github.com/ultralytics/yolov5/releases)
+* `--input-urls` to select which pre-trained weights you desire with details on the [yolov5 release page](https://github.com/ultralytics/yolov5/releases)
 * `--project` specifies the output volume that the model will save its results to. Bacalhau defaults to using `/outputs` as the output directory, so we save to there.
 
 For more container flags refer to the [`yolov5/detect.py` file in the YOLO repository](https://github.com/ultralytics/yolov5/blob/master/detect.py#L3-#L25).
@@ -58,7 +58,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --wait \
 --id-only \
---input https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
+--input-urls https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
 ultralytics/yolov5:v6.2 \
 -- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source $(pwd)/data/images --project /outputs'
 ```
@@ -126,8 +126,8 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --wait \
 --id-only \
---input https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
---input ipfs://bafybeicyuddgg4iliqzkx57twgshjluo2jtmlovovlx5lmgp5uoh3zrvpm:/datasets \
+--input-urls https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt \
+--input-volumes bafybeicyuddgg4iliqzkx57twgshjluo2jtmlovovlx5lmgp5uoh3zrvpm:/datasets \
 ultralytics/yolov5:v6.2 \
 -- /bin/bash -c 'find /inputs -type f -exec cp {} /outputs/yolov5s.pt \; ; python detect.py --weights /outputs/yolov5s.pt --source /datasets --project /outputs'
 ```

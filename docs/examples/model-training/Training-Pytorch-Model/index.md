@@ -86,8 +86,8 @@ bacalhau docker run \
 --id-only \
 pytorch/pytorch \
 -w /outputs \
- -i ipfs://QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw:/data \
--i https://raw.githubusercontent.com/pytorch/examples/main/mnist_rnn/main.py \
+ -v QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw:/data \
+-u https://raw.githubusercontent.com/pytorch/examples/main/mnist_rnn/main.py \
 -- python ../inputs/main.py --save-model
 ```
 
@@ -99,9 +99,9 @@ pytorch/pytorch \
 
 - `pytorch/pytorch`: Using the official pytorch Docker image
 
-- `-i ipfs://QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
+- `-v QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
 
-- `-i https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
+- `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
 
 - `-w /outputs:` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
 

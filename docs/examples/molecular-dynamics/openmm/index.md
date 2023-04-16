@@ -205,7 +205,7 @@ Now that we have the data in IPFS and the docker image pushed, we can run a job 
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---input ipfs://bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
+--inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
 --wait \
 --id-only \
 ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py

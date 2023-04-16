@@ -166,7 +166,7 @@ Let's look closely at the command above:
 
 ```
 bacalhau docker run \
--i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
+-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
 jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
@@ -177,7 +177,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
+* `-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 

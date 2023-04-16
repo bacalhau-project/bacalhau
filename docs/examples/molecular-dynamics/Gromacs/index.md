@@ -54,7 +54,7 @@ This command converts coordinate files to topology and FF-compliant coordinate f
 
 ```
 bacalhau docker run \
--i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
+-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
 gromacs/gromacs \
 -- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
 ```
@@ -62,7 +62,7 @@ Lets look at the command above more closely:
 
 * `bacalhau docker run` using the docker backend
 
-* `-i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
+* `-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
 
 * `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs) 
 
@@ -107,7 +107,7 @@ bacalhau docker run \
 --wait \ 
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
+-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
 gromacs/gromacs
 -- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
 ```

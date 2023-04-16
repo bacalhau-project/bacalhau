@@ -31,7 +31,7 @@ bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
   --id-only \
-  -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+  -v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
   dpokidov/imagemagick:7.1.0-47-ubuntu \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
@@ -43,7 +43,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
 
