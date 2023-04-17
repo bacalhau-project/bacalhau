@@ -147,6 +147,14 @@ const config = {
         lightTheme: lightCodeTheme,
         darkTheme: darkCodeTheme,
       },
+      announcementBar: {
+        id: 'event-announcement',
+        content:
+          'Announcing <a target="_blank" rel="noopener noreferrer" href="https://www.codsummit.io/"><strong>COD Summit^3</strong></a> &nbsp; &nbsp; &nbsp; May 9th-10th, 2023 / Boston, MA Support',
+        backgroundColor: '#0055FF',
+        textColor: '#fff',
+        isCloseable: false,
+      },
     }),
 };
 
