@@ -338,6 +338,8 @@ function install-secrets() {
   export GRAFANA_CLOUD_TEMPO_API_KEY=""
   export GRAFANA_CLOUD_LOKI_API_KEY=""
   export ESTUARY_API_KEY=""
+  export AWS_ACCESS_KEY_ID=""
+  export AWS_SECRET_ACCESS_KEY=""
   if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
@@ -355,6 +357,12 @@ function install-secrets() {
   if [[ -n "${SECRETS_ESTUARY_API_KEY}" ]]; then
     export ESTUARY_API_KEY="${SECRETS_ESTUARY_API_KEY}"
   fi
+  if [[ -n "${SECRETS_AWS_ACCESS_KEY_ID}" ]]; then
+    export AWS_ACCESS_KEY_ID="${SECRETS_AWS_ACCESS_KEY_ID}"
+  fi
+  if [[ -n "${SECRETS_AWS_SECRET_ACCESS_KEY}" ]]; then
+    export AWS_SECRET_ACCESS_KEY="${SECRETS_AWS_SECRET_ACCESS_KEY}"
+  fi
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
@@ -362,6 +370,8 @@ export GRAFANA_CLOUD_PROMETHEUS_API_KEY="${GRAFANA_CLOUD_PROMETHEUS_API_KEY}"
 export GRAFANA_CLOUD_TEMPO_API_KEY="${GRAFANA_CLOUD_TEMPO_API_KEY}"
 export GRAFANA_CLOUD_LOKI_API_KEY="${GRAFANA_CLOUD_LOKI_API_KEY}"
 export ESTUARY_API_KEY="${ESTUARY_API_KEY}"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
 EOG
 
   # clean up variables file from any secret

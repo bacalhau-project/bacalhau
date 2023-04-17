@@ -74,6 +74,8 @@ export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_
 export SECRETS_GRAFANA_CLOUD_TEMPO_API_KEY="${var.grafana_cloud_tempo_api_key}"
 export SECRETS_GRAFANA_CLOUD_LOKI_API_KEY="${var.grafana_cloud_loki_api_key}"
 export SECRETS_ESTUARY_API_KEY="${var.estuary_api_key}"
+export SECRETS_AWS_ACCESS_KEY_ID="${var.aws_access_key_id}"
+export SECRETS_AWS_SECRET_ACCESS_KEY="${var.aws_secret_access_key}"
 EOI
 
 ##############################
