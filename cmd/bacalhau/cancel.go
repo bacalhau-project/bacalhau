@@ -31,7 +31,7 @@ var (
 	gettingJobMessage        = i18n.T("Verifying job state")
 	cancellingJobMessage     = i18n.T("Canceling job")
 
-	jobAlreadyCompleteMessage = i18n.T(`Job is already in a terminal state. 
+	jobAlreadyCompleteMessage = i18n.T(`Job is already in a terminal state.
 The current state is: %s
 `)
 )
@@ -115,19 +115,19 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	spinner.NextStep(gettingJobMessage)
 	job, jobFound, err := apiClient.Get(ctx, requestedJobID)
 	if err != nil {
-		spinner.Done(false)
+		spinner.Done(StopFailed)
 		Fatal(cmd, err.Error(), 1)
 		return nil
 	}
 
 	if !jobFound {
-		spinner.Done(false)
+		spinner.Done(StopFailed)
 	}
 
 	// Check status to make sure there is something to be canceled. If it is currently
 	// in a terminal state, then we'll exit immediately
 	if job.State.State.IsTerminal() {
-		spinner.Done(false)
+		spinner.Done(StopFailed)
 		errorMessage := fmt.Sprintf(jobAlreadyCompleteMessage, job.State.State.String())
 		Fatal(cmd, errorMessage, 1)
 		return nil
@@ -139,7 +139,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	jobState, err := apiClient.Cancel(ctx, job.Job.Metadata.ID, "Canceled at user request")
 	if err != nil {
-		spinner.Done(false)
+		spinner.Done(StopFailed)
 
 		if er, ok := err.(*bacerrors.ErrorResponse); ok {
 			Fatal(cmd, er.Error(), 1)
@@ -150,8 +150,8 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 		}
 	}
 
-	spinner.Done(true)
-	cmd.Printf("Job successfully canceled. Job ID: %s\n", jobState.JobID)
+	spinner.Done(StopSuccess)
+	cmd.Printf("\nJob successfully canceled. Job ID: %s\n", jobState.JobID)
 
 	return nil
 }

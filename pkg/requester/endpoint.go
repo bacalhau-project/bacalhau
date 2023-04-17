@@ -200,7 +200,14 @@ func (node *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest)
 
 func (node *BaseEndpoint) handleBidResponse(ctx context.Context, job model.Job, response bidstrategy.BidStrategyResponse) error {
 	if response.ShouldWait {
-		return nil
+		return node.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+			JobID: job.ID(),
+			Condition: jobstore.UpdateJobCondition{
+				ExpectedState: model.JobStateQueued,
+			},
+			NewState: model.JobStateQueued,
+			Comment:  response.Reason,
+		})
 	}
 
 	if response.ShouldBid {
