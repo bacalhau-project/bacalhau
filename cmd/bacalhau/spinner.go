@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/theckman/yacspin"
 )
@@ -29,7 +30,10 @@ const (
 
 var SpinnerEmoji = [...]string{"🐟", "🐠", "🐡"}
 
-const SpacerText = "  ..."
+const (
+	SpacerText  = "  ... "
+	ReverseText = " ...  "
+)
 
 type Spinner struct {
 	cfg           yacspin.Config
@@ -60,6 +64,7 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint boo
 		ctx:          ctx,
 		cancel:       cancel,
 		handleSigint: handleSigint,
+		msg:          NewLineMessage("", maxWidth),
 	}
 
 	spacer := 6
@@ -100,21 +105,28 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint boo
 	return s, nil
 }
 
+type SpinnerStopReason int
+
+const (
+	StopSuccess SpinnerStopReason = iota
+	StopFailed
+	StopCancel
+)
+
 // Done stops the spinner, igoring any errors as there
 // is no further use for the spinner.
-func (s *Spinner) Done(success bool) {
+func (s *Spinner) Done(reason SpinnerStopReason) {
 	s.complete = true
 
-	if !success {
-		s.msg.Failure = true
-		s.spin.Message(fmt.Sprintf("%s %s", SpacerText, s.msg.TimerString))
-		s.spin.StopMessage(s.msg.PrintError())
+	stop := s.spin.Stop
+	if reason == StopSuccess {
+		s.spin.StopMessage(s.msg.PrintOnDone())
+	} else if reason == StopFailed {
+		stop = s.spin.StopFail
 	}
 
-	_ = s.spin.Stop()
+	_ = stop()
 	s.cancel()
-
-	_, _ = s.cfg.Writer.Write([]byte("\n"))
 }
 
 // NextStep completes the current line (if any) and
@@ -126,15 +138,15 @@ func (s *Spinner) NextStep(line string) {
 
 	// Stop the spinner and wait until it is stopped
 	if s.spin.Status() == yacspin.SpinnerRunning {
+		s.spin.StopMessage(s.msg.PrintOnDone())
 		s.actionChannel <- SpinActionStop
 		<-s.doneChannel
 	}
 	s.msgMutex.Lock()
 
 	s.msg = NewLineMessage(line, s.maxWidth)
-	s.cfg.Prefix = s.msg.Message
-
-	s.spin.Prefix(fmt.Sprintf("%s%s", s.msg.Message, SpacerText))
+	s.spin.Prefix(s.msg.SpinnerPrefix() + SpacerText)
+	s.spin.Suffix(ReverseText)
 	s.msgMutex.Unlock()
 
 	s.updateText(time.Duration(0) * time.Millisecond)
@@ -147,8 +159,9 @@ func (s *Spinner) NextStep(line string) {
 
 func (s *Spinner) updateText(duration time.Duration) {
 	s.msg.TimerString = spinnerFmtDuration(duration)
-	s.spin.Message(fmt.Sprintf("%s %s", SpacerText, s.msg.TimerString))
-	s.spin.StopMessage(s.msg.PrintDone())
+	s.spin.Message(s.msg.SpinnerMessage())
+	s.spin.StopMessage(s.msg.PrintOnCancel())
+	s.spin.StopFailMessage(s.msg.PrintOnFail())
 }
 
 // Run starts the spinner running and accepting messages from other
@@ -201,7 +214,7 @@ func (s *Spinner) Run() {
 				log.Ctx(s.ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if signal == os.Interrupt {
 					s.ticker.Stop()
-					s.Done(false)
+					s.Done(StopCancel)
 					os.Exit(0)
 				}
 			}
@@ -209,53 +222,110 @@ func (s *Spinner) Run() {
 	}()
 }
 
+const (
+	StatusNone = "       "
+	StatusDone = "done ✅"
+	StatusWait = "wait ⏳"
+	StatusErr  = "err  ❌"
+)
+
+const (
+	WidthDots   = 16
+	WidthStatus = 6
+	// Don't left pad the timer column because we want it to be left aligned.
+	WidthTimer = 0
+)
+
 type LineMessage struct {
-	Message     string
-	TimerString string
-	StopString  string
-	Width       int
-	Failure     bool
+	Message      string
+	Detail       string
+	TimerString  string
+	Waiting      bool
+	Failure      bool
+	ColumnWidths []uint8
 }
 
 func NewLineMessage(msg string, maxWidth int) LineMessage {
 	return LineMessage{
-		Message:     formatLineMessage(msg, maxWidth),
-		TimerString: spinnerFmtDuration(SpinnerFormatDurationDefault),
-		StopString:  "",
-		Width:       6,
-		Failure:     false,
+		Message:      msg,
+		TimerString:  spinnerFmtDuration(SpinnerFormatDurationDefault),
+		ColumnWidths: []uint8{uint8(maxWidth), WidthDots, WidthStatus, WidthTimer},
 	}
 }
 
-func (f *LineMessage) String() string {
-	return fmt.Sprintf("%s %s ",
+func (f *LineMessage) BlankSpinner(col int) string {
+	return strings.Repeat(".", int(f.ColumnWidths[col]))
+}
+
+func (f *LineMessage) PrintOnDone() string {
+	return "\t" + formatLineMessage(
+		f.ColumnWidths[0:4],
 		f.Message,
-		f.StopString)
+		f.BlankSpinner(1),
+		StatusDone,
+		f.TimerString,
+	)
 }
 
-func (f *LineMessage) PrintDone() string {
-	if f.Failure {
-		return f.PrintError()
+func (f *LineMessage) PrintOnFail() string {
+	return "\t" + formatLineMessage(
+		f.ColumnWidths[0:4],
+		f.Message,
+		f.BlankSpinner(1),
+		StatusErr,
+		f.TimerString,
+	)
+}
+
+func (f *LineMessage) PrintOnCancel() string {
+	status := StatusNone
+	detail := f.TimerString
+	if f.Waiting {
+		status = StatusWait
+		detail = f.Detail
 	}
 
-	return fmt.Sprintf("%s%s%s %s",
-		f.String(),
-		strings.Repeat(".", f.Width+TextLineupSpacing), // extra spacing
-		" done ✅ ",
-		f.TimerString)
+	return "\t" + formatLineMessage(
+		f.ColumnWidths[0:4],
+		f.Message,
+		f.BlankSpinner(1),
+		status,
+		detail,
+	)
 }
 
-func (f *LineMessage) PrintError() string {
-	return fmt.Sprintf("%s%s%s %s",
-		f.String(),
-		strings.Repeat(".", f.Width+TextLineupSpacing), // extra spacing
-		" err  ❌ ",
-		f.TimerString)
+func (f *LineMessage) SpinnerPrefix() string {
+	return "\t" + formatLineMessage(
+		f.ColumnWidths[0:1],
+		f.Message,
+	)
 }
 
-func formatLineMessage(msg string, maxLength int) string {
-	return fmt.Sprintf("\t%s%s",
-		strings.Repeat(" ", maxLength-len(msg)+2), msg)
+func (f *LineMessage) SpinnerMessage() string {
+	status := StatusNone
+	detail := f.TimerString
+	if f.Waiting {
+		status = StatusWait
+		detail = f.Detail
+	}
+
+	return formatLineMessage(
+		f.ColumnWidths[2:4],
+		status,
+		detail,
+	)
+}
+
+func formatLineMessage(widths []uint8, parts ...string) string {
+	paddedParts := make([]string, 0, len(parts))
+	for i, part := range parts {
+		amountToPad := 0
+		if i < len(widths) { // Don't pad last column
+			amountToPad = system.Max(int(widths[i])-len(part), 0)
+		}
+		paddedParts = append(paddedParts, strings.Repeat(" ", amountToPad)+part)
+	}
+	return strings.Join(paddedParts, "  ")
 }
 
 func spinnerFmtDuration(d time.Duration) string {

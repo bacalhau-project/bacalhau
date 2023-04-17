@@ -553,6 +553,10 @@ func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j 
 To get more information at any time, run:
    bacalhau describe %s`, j.Metadata.ID)
 
+	cancelString := fmt.Sprintf(`
+To cancel the job, run:
+   bacalhau cancel %s`, j.Metadata.ID)
+
 	if !quiet {
 		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
 		cmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
@@ -578,11 +582,9 @@ To get more information at any time, run:
 		writer = io.Discard
 	}
 
-	widestString := 0
+	widestString := len(startMessage)
 	for _, v := range eventsWorthPrinting {
-		if len(v.Message) > widestString {
-			widestString = len(v.Message)
-		}
+		widestString = system.Max(widestString, len(v.Message))
 	}
 
 	spinner, err := NewSpinner(ctx, writer, widestString, false)
@@ -615,11 +617,12 @@ To get more information at any time, run:
 				log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if s == os.Interrupt {
 					cmdShuttingDown = true
-					spinner.Done(true)
+					spinner.Done(StopCancel)
 
 					if !quiet {
 						cmd.Println("\n\n\rPrintout canceled (the job is still running).")
 						cmd.Println(getMoreInfoString)
+						cmd.Println(cancelString)
 					}
 					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
 				} else {
@@ -633,6 +636,7 @@ To get more information at any time, run:
 	}()
 
 	var lastSeenTimestamp int64 = 0
+	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
 		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
@@ -673,19 +677,34 @@ To get more information at any time, run:
 					if !eventsWorthPrinting[jet].IsError && !eventsWorthPrinting[jet].IsTerminal {
 						spinner.NextStep(eventsWorthPrinting[jet].Message)
 					}
+
+					if event.JobState.New == model.JobStateQueued {
+						spinner.msgMutex.Lock()
+						spinner.msg.Waiting = true
+						spinner.msg.Detail = event.Comment
+						spinner.msgMutex.Unlock()
+					}
+				} else if wasPrinted && lastEventState == event.JobState.New {
+					// Printing the same again but with new information, so we
+					// can just update the existing message.
+					spinner.msgMutex.Lock()
+					spinner.msg.Detail = event.Comment
+					spinner.msgMutex.Unlock()
 				}
 			}
 
+			lastEventState = event.JobState.New
+
 			if event.JobState.New == model.JobStateError {
 				err := errors.New(event.Comment)
-				spinner.Done(false)
+				spinner.Done(StopFailed)
 				cancel()
 				return err
 			}
 
 			if event.JobState.New.IsTerminal() {
 				cmdShuttingDown = true
-				spinner.Done(true)
+				spinner.Done(StopSuccess)
 				break
 			}
 		}
@@ -698,7 +717,7 @@ To get more information at any time, run:
 		time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
 	}
 
-	spinner.Done(true)
+	spinner.Done(StopSuccess)
 
 	return returnError
 }
