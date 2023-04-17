@@ -194,3 +194,16 @@ variable "otel_collector_endpoint" {
   type    = string
   default = ""
 }
+
+// Credentials for S3 storage source and publisher
+variable "aws_access_key_id" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "aws_secret_access_key" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
