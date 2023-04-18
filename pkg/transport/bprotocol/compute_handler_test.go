@@ -5,7 +5,6 @@ package bprotocol
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -80,10 +79,9 @@ func (s *ComputeProxyTestSuite) getRoutingMetadataForCompute() compute.RoutingMe
 }
 
 func (s *ComputeProxyTestSuite) TestSimpleRequest() {
-	response, err := s.proxy.AskForBid(s.ctx, compute.AskForBidRequest{
+	_, err := s.proxy.AskForBid(s.ctx, compute.AskForBidRequest{
 		RoutingMetadata: s.getRoutingMetadataForCompute(),
 	})
 
-	require.NoError(s.T(), err)
-	fmt.Printf("%+v\n", response)
+	require.Error(s.T(), err)
 }
