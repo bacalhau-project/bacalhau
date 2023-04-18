@@ -1,11 +1,19 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
@@ -18,13 +26,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"k8s.io/kubectl/pkg/util/i18n"
 )
+
+const defaultWasmEntryPoint = "_start"
 
 var (
 	wasmRunLong = templates.LongDesc(i18n.T(`
@@ -49,6 +53,15 @@ type WasmRunOptions struct {
 	NodeSelector    string // Selector (label query) to filter nodes on which this job can be executed
 	Publisher       opts.PublisherOpt
 	Inputs          opts.StorageOpt
+
+	// Engine Params
+
+	Entrypoint           string
+	ImportModules        []model.StorageSpec
+	EnvironmentVariables map[string]string
+	// EntryModule are passed as an argument over the CLI.
+	// Parameters are passed as an argument over CLI.
+
 }
 
 func NewRunWasmOptions() *WasmRunOptions {
@@ -64,11 +77,14 @@ func NewRunWasmOptions() *WasmRunOptions {
 
 func defaultWasmJobSpec() *model.Job {
 	wasmJob, _ := model.NewJobWithSaneProductionDefaults()
-	wasmJob.Spec.Engine = model.EngineWasm
+	wasmJob.Spec.EngineSpec = model.EngineSpec{
+		Type: model.EngineWasm,
+		Spec: map[string]interface{}{
+			model.WasmEngineEntryPointKey: "_start",
+		},
+	}
 	wasmJob.Spec.Verifier = model.VerifierDeterministic
 	wasmJob.Spec.Timeout = DefaultTimeout.Seconds()
-	wasmJob.Spec.Wasm.EntryPoint = "_start"
-	wasmJob.Spec.Wasm.EnvironmentVariables = map[string]string{}
 	wasmJob.Spec.Outputs = []model.StorageSpec{
 		{
 			Name: "outputs",
@@ -136,27 +152,29 @@ func newRunWasmCmd() *cobra.Command {
 		&ODR.Job.Spec.Deal.MinBids, "min-bids", ODR.Job.Spec.Deal.MinBids,
 		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
+	// TODO(forrest): this could (and I'd argue should) instead be a string allowing Spec.Timeout to be an integer specify seconds
+	// sup-second timeout is impractical given RPC/API communication overhead.
 	wasmRunCmd.PersistentFlags().Float64Var(
 		&ODR.Job.Spec.Timeout, "timeout", ODR.Job.Spec.Timeout,
 		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
 	)
 	wasmRunCmd.PersistentFlags().StringVar(
-		&ODR.Job.Spec.Wasm.EntryPoint, "entry-point", ODR.Job.Spec.Wasm.EntryPoint,
+		&ODR.Entrypoint, "entry-point", defaultWasmEntryPoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
 	wasmRunCmd.PersistentFlags().VarP(&ODR.Inputs, "input", "i", inputUsageMsg)
 	wasmRunCmd.PersistentFlags().VarP(
-		EnvVarMapFlag(&ODR.Job.Spec.Wasm.EnvironmentVariables), "env", "e",
+		EnvVarMapFlag(&ODR.EnvironmentVariables), "env", "e",
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
 	wasmRunCmd.PersistentFlags().VarP(
-		NewURLStorageSpecArrayFlag(&ODR.Job.Spec.Wasm.ImportModules), "import-module-urls", "U",
+		NewURLStorageSpecArrayFlag(&ODR.ImportModules), "import-module-urls", "U",
 		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
 			`the 'wget' command, and supports both HTTP and HTTPS.`,
 	)
 	wasmRunCmd.PersistentFlags().VarP(
-		NewIPFSStorageSpecArrayFlag(&ODR.Job.Spec.Wasm.ImportModules), "import-module-volumes", "I",
+		NewIPFSStorageSpecArrayFlag(&ODR.ImportModules), "import-module-volumes", "I",
 		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
 	)
 
@@ -171,9 +189,6 @@ func runWasm(
 	ctx := cmd.Context()
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
-	wasmCidOrPath := args[0]
-	ODR.Job.Spec.Wasm.Parameters = args[1:]
-
 	nodeSelectorRequirements, err := job.ParseNodeSelector(ODR.NodeSelector)
 	if err != nil {
 		return err
@@ -181,45 +196,6 @@ func runWasm(
 	ODR.Job.Spec.NodeSelectors = nodeSelectorRequirements
 	ODR.Job.Spec.Inputs = ODR.Inputs.Values()
 	ODR.Job.Spec.PublisherSpec = ODR.Publisher.Value()
-
-	// Try interpreting this as a CID.
-	wasmCid, err := cid.Parse(wasmCidOrPath)
-	if err == nil {
-		// It is a valid CID – proceed to create IPFS context.
-		ODR.Job.Spec.Wasm.EntryModule = model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           wasmCid.String(),
-		}
-	} else {
-		// Try interpreting this as a path.
-		info, err := os.Stat(wasmCidOrPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return errors.Wrapf(err, "%q is not a valid CID or local file", wasmCidOrPath)
-			} else {
-				return err
-			}
-		}
-
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%q should point to a single file", wasmCidOrPath)
-		}
-
-		err = os.Chdir(filepath.Dir(wasmCidOrPath))
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", wasmCidOrPath)
-		time.Sleep(1 * time.Second)
-
-		storage := inline.NewStorage()
-		inlineData, err := storage.Upload(ctx, info.Name())
-		if err != nil {
-			return err
-		}
-		ODR.Job.Spec.Wasm.EntryModule = inlineData
-	}
 
 	// We can only use a Deterministic verifier if we have multiple nodes running the job
 	// If the user has selected a Deterministic verifier (or we are using it by default)
@@ -229,7 +205,7 @@ func runWasm(
 	}
 
 	// See wazero.ModuleConfig.WithEnv
-	for key, value := range ODR.Job.Spec.Wasm.EnvironmentVariables {
+	for key, value := range ODR.EnvironmentVariables {
 		for _, str := range []string{key, value} {
 			if str == "" || strings.ContainsRune(str, null) {
 				return fmt.Errorf("invalid environment variable %s=%s", key, value)
@@ -237,23 +213,76 @@ func runWasm(
 		}
 	}
 
+	//wasmCidOrPath := args[0]
+	entryModule, err := parseWasmEntryModule(ctx, args[0], cmd)
+	if err != nil {
+		return err
+	}
+
+	engineParams := make(map[string]interface{})
+	//ODR.Job.Spec.Wasm.Parameters = args[1:]
+	engineParams[model.WasmEngineParametersKey] = args[1:]
+	engineParams[model.WasmEngineImportModulesKey] = ODR.ImportModules
+	engineParams[model.WasmEngineEntryPointKey] = ODR.Entrypoint
+	engineParams[model.WasmEngineEntryModuleKey] = entryModule
+	engineParams[model.WasmEngineEnvVarKey] = ODR.EnvironmentVariables
+	ODR.Job.Spec.EngineSpec = model.EngineSpec{
+		Type: model.WasmEngineType,
+		Spec: engineParams,
+	}
+
 	return ExecuteJob(ctx, cm, cmd, ODR.Job, ODR.RunTimeSettings, ODR.DownloadFlags)
 }
 
+func parseWasmEntryModule(ctx context.Context, moduleArg string, cmd *cobra.Command) (model.StorageSpec, error) {
+	// Try interpreting this as a CID.
+	wasmCid, err := cid.Parse(moduleArg)
+	if err == nil {
+		// It is a valid CID – proceed to create IPFS context.
+		return model.StorageSpec{
+			StorageSource: model.StorageSourceIPFS,
+			CID:           wasmCid.String(),
+		}, nil
+	}
+	// Try interpreting this as a path.
+	info, err := os.Stat(moduleArg)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return model.StorageSpec{}, errors.Wrapf(err, "%q is not a valid CID or local file", moduleArg)
+		} else {
+			return model.StorageSpec{}, err
+		}
+	}
+
+	if !info.Mode().IsRegular() {
+		return model.StorageSpec{}, fmt.Errorf("%q should point to a single file", moduleArg)
+	}
+
+	err = os.Chdir(filepath.Dir(moduleArg))
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+
+	cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", moduleArg)
+	time.Sleep(1 * time.Second)
+
+	return inline.NewStorage().Upload(ctx, info.Name())
+}
+
 func newValidateWasmCmd() *cobra.Command {
-	wasmJob := defaultWasmJobSpec()
+	var entrypoint string
 
 	validateWasmCommand := &cobra.Command{
 		Use:   "validate <local.wasm> [--entry-point <string>]",
 		Short: "Check that a WASM program is runnable on the network",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return validateWasm(cmd, args, wasmJob)
+			return validateWasm(cmd, args, entrypoint)
 		},
 	}
 
 	validateWasmCommand.PersistentFlags().StringVar(
-		&wasmJob.Spec.Wasm.EntryPoint, "entry-point", wasmJob.Spec.Wasm.EntryPoint,
+		&entrypoint, "entry-point", defaultWasmEntryPoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
@@ -261,11 +290,10 @@ func newValidateWasmCmd() *cobra.Command {
 	return validateWasmCommand
 }
 
-func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
+func validateWasm(cmd *cobra.Command, args []string, entrypoint string) error {
 	ctx := cmd.Context()
 
 	programPath := args[0]
-	entryPoint := wasmJob.Spec.Wasm.EntryPoint
 
 	engine := wazero.NewRuntime(ctx)
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
@@ -291,7 +319,7 @@ func validateWasm(cmd *cobra.Command, args []string, wasmJob *model.Job) error {
 		return err
 	}
 
-	err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
+	err = wasm.ValidateModuleAsEntryPoint(module, entrypoint)
 	if err != nil {
 		Fatal(cmd, err.Error(), 2)
 		return err

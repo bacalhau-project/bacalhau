@@ -10,16 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -27,6 +17,18 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 const NanoCPUCoefficient = 1000000000
@@ -177,10 +179,15 @@ func (e *Executor) Run(
 		})
 	}
 
+	engineSpec, err := spec.AsJobSpecDocker(job.Spec.EngineSpec)
+	if err != nil {
+		return executor.FailResult(err)
+	}
+
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
+		if pullErr := e.client.PullImage(ctx, engineSpec.Image, dockerCreds); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, engineSpec.Image)
 			return executor.FailResult(pullErr)
 		}
 	}
@@ -195,17 +202,17 @@ func (e *Executor) Run(
 	}
 	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(job.Spec.Docker.EnvironmentVariables,
+	useEnv := append(engineSpec.EnvironmentVariables,
 		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
 	)
 
 	containerConfig := &container.Config{
-		Image:      job.Spec.Docker.Image,
+		Image:      engineSpec.Image,
 		Tty:        false,
 		Env:        useEnv,
-		Entrypoint: job.Spec.Docker.Entrypoint,
+		Entrypoint: engineSpec.Entrypoint,
 		Labels:     e.containerLabels(executionID, job),
-		WorkingDir: job.Spec.Docker.WorkingDirectory,
+		WorkingDir: engineSpec.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

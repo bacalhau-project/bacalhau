@@ -11,8 +11,16 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog/log"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/sys"
+	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -21,12 +29,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
-	"github.com/c2h5oh/datasize"
-	"github.com/rs/zerolog/log"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/sys"
-	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 )
 
 type Executor struct {
@@ -176,7 +178,12 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
-	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
+	engineSpec, err := spec.AsJobSpecWasm(job.Spec.EngineSpec)
+	if err != nil {
+		return executor.FailResult(err)
+	}
+
+	args := append([]string{engineSpec.EntryModule.Name}, engineSpec.Parameters...)
 
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
@@ -185,22 +192,22 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		WithArgs(args...).
 		WithFS(rootFs)
 
-	keys := maps.Keys(job.Spec.Wasm.EnvironmentVariables)
+	keys := maps.Keys(engineSpec.EnvironmentVariables)
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, job.Spec.Wasm.EnvironmentVariables[key])
+		config = config.WithEnv(key, engineSpec.EnvironmentVariables[key])
 	}
 
 	// Load and instantiate imported modules
 	loader := NewModuleLoader(engine, config, e.StorageProvider)
-	for _, importModule := range job.Spec.Wasm.ImportModules {
+	for _, importModule := range engineSpec.ImportModules {
 		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
 		err = multierr.Append(err, ierr)
 	}
 
 	// Load and instantiate the entry module.
-	instance, err := loader.InstantiateRemoteModule(ctx, job.Spec.Wasm.EntryModule)
+	instance, err := loader.InstantiateRemoteModule(ctx, engineSpec.EntryModule)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -210,9 +217,9 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	log.Ctx(ctx).Debug().
-		Str("entryPoint", job.Spec.Wasm.EntryPoint).
+		Str("entryPoint", engineSpec.EntryPoint).
 		Msg("Running WASM job")
-	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
+	entryFunc := instance.ExportedFunction(engineSpec.EntryPoint)
 	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 	var errExit *sys.ExitError

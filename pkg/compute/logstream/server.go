@@ -7,10 +7,11 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/multiformats/go-multiaddr"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -92,12 +93,12 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
-	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %+v", execution.Job.Spec.Engine)
+	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %+v", execution.Job.Spec.EngineSpec)
 
 	jobSpec := execution.Job.Spec
-	e, err := s.executors.Get(s.ctx, jobSpec.Engine)
+	e, err := s.executors.Get(s.ctx, jobSpec.EngineSpec.Type)
 	if err != nil {
-		log.Ctx(s.ctx).Error().Msgf("failed to find executor for engine: %s", jobSpec.Engine)
+		log.Ctx(s.ctx).Error().Msgf("failed to find executor for engine: %s", jobSpec.EngineSpec.Type)
 		_ = stream.Reset()
 		return
 	}

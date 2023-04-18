@@ -3,28 +3,11 @@ package wasm
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"golang.org/x/exp/maps"
 )
-
-// ValidateModuleAgainstJob will return an error if the passed job does not
-// represent a valid WASM executor job or the passed module is not able to be
-// run to fulfill the job.
-func ValidateModuleAgainstJob(
-	module wazero.CompiledModule,
-	job model.Spec,
-	importModules ...wazero.CompiledModule,
-) error {
-	err := ValidateModuleImports(module, importModules...)
-	if err != nil {
-		return err
-	}
-
-	return ValidateModuleAsEntryPoint(module, job.Wasm.EntryPoint)
-}
 
 // ValidateModuleImports will return an error if the passed module requires
 // imports that are not found in any of the passed importModules. Imports have

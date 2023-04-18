@@ -26,6 +26,7 @@ func NewShouldBidResponse() BidStrategyResponse {
 }
 
 type BidStrategy interface {
+	// TODO: remove the error from this interface method return, the response should contain the error as the interface def doesn't allow a nil value return for the response and most imples wrap the error in the response.
 	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
 	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, resourceUsage model.ResourceUsageData) (BidStrategyResponse, error)
 }

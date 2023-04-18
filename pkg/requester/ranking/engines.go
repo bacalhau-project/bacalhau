@@ -3,9 +3,10 @@ package ranking
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/rs/zerolog/log"
 )
 
 type EnginesNodeRanker struct {
@@ -25,14 +26,14 @@ func (s *EnginesNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes 
 		rank := 0
 		if len(node.ComputeNodeInfo.ExecutionEngines) != 0 {
 			for _, engine := range node.ComputeNodeInfo.ExecutionEngines {
-				if engine == job.Spec.Engine {
+				if engine == job.Spec.EngineSpec.Type {
 					rank = 10
 					break
 				}
 			}
 			// engine wasn't found
 			if rank == 0 {
-				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.Engine)
+				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't support engine %s", node.PeerInfo.ID, job.Spec.EngineSpec.Type)
 				rank = -1
 			}
 		}

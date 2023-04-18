@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
+
 	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -241,18 +241,13 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	}
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-			return nil
-		} else {
-			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
-			return nil
-		}
+		Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
+		return nil
 	}
 
 	quiet := ODR.RunTimeSettings.PrintJobIDOnly
 	if !quiet {
-		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
+		containsTag := DockerImageContainsTag(j.Spec.EngineSpec.Spec[model.DockerEngineImageKey].(string))
 		if !containsTag {
 			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
 		}
