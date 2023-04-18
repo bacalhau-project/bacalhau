@@ -3,7 +3,6 @@ package bprotocol
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -156,22 +155,17 @@ func proxyRequest[Request any, Response any](
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	// We are expecting a Result<Response> back from the handler, so we will
-	// construct it ready for decoding
+	// The handler will have wrapped the response in a Result[T] along with
+	// any error that occurred, so we will decode it and pass the
+	// inner response/error on to the caller.
 	result := &Result[Response]{}
-
-	// Now we read the response that was sent from the dest peer
 	err = json.NewDecoder(stream).Decode(result)
 	if err != nil {
 		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	if result.Error == "" {
-		return result.Response, nil
-	}
-
-	return result.Response, errors.New(result.Error)
+	return result.Rehydrate()
 }
 
 // Compile-time interface check:
