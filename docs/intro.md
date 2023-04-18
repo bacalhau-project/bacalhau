@@ -19,9 +19,9 @@ Bacalhau seeks to transform data processing for large-scale datasets to improve 
 
 ⚡️ Bacalhau simplifies the process of managing compute jobs by providing a **unified platform** for managing jobs across different regions, clouds, and edge devices.
 
-🤝 Bacalhau provides reliable and network-partition resistant orchestration, ensuring that your jobs will complete even if there are network disruptions.
+🤝 Bacalhau provides **reliable and network-partition** resistant orchestration, ensuring that your jobs will complete even if there are network disruptions.
 
-🚨 Bacalhau provides a complete and permanent audit log of exactly what happened, so you can be confident that your jobs are being executed securely.
+🚨 Bacalhau provides a **complete and permanent audit log** of exactly what happened, so you can be confident that your jobs are being executed securely.
 
 🔐 You can run [private workloads](https://docs.bacalhau.org/next-steps/private-cluster) to **reduce the chance of leaking private information** or inadvertently sharing your data outside of your organization.
 
