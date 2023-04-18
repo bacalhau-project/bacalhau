@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type EnginesNodeRankerSuite struct {
@@ -47,7 +48,7 @@ func TestEnginesNodeRankerSuite(t *testing.T) {
 }
 
 func (s *EnginesNodeRankerSuite) TestRankNodes_Docker() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineDocker}}
+	job := model.Job{Spec: model.Spec{EngineSpec: model.EngineSpec{Type: model.EngineDocker}}}
 	nodes := []model.NodeInfo{s.dockerPeer, s.wasmPeer, s.comboPeer, s.unknownPeer}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, nodes)
 	s.NoError(err)
@@ -58,7 +59,7 @@ func (s *EnginesNodeRankerSuite) TestRankNodes_Docker() {
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 func (s *EnginesNodeRankerSuite) TestRankNodes_Wasm() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineWasm}}
+	job := model.Job{Spec: model.Spec{EngineSpec: model.EngineSpec{Type: model.EngineWasm}}}
 	nodes := []model.NodeInfo{s.dockerPeer, s.wasmPeer, s.comboPeer, s.unknownPeer}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, nodes)
 	s.NoError(err)
@@ -70,7 +71,7 @@ func (s *EnginesNodeRankerSuite) TestRankNodes_Wasm() {
 }
 
 func (s *EnginesNodeRankerSuite) TestRankNodes_Noop() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineNoop}}
+	job := model.Job{Spec: model.Spec{EngineSpec: model.EngineSpec{Type: model.EngineNoop}}}
 	nodes := []model.NodeInfo{s.dockerPeer, s.wasmPeer, s.comboPeer, s.unknownPeer}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, nodes)
 	s.NoError(err)

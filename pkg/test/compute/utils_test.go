@@ -5,9 +5,10 @@ package compute
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
 )
 
 func generateJob() model.Job {
@@ -17,8 +18,8 @@ func generateJob() model.Job {
 		},
 		APIVersion: model.APIVersionLatest().String(),
 		Spec: model.Spec{
-			Engine:   model.EngineNoop,
-			Verifier: model.VerifierNoop,
+			EngineSpec: model.EngineSpec{Type: model.EngineNoop},
+			Verifier:   model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,
 			},

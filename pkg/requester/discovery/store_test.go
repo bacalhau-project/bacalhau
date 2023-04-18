@@ -7,11 +7,12 @@ import (
 	"math"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 )
 
 type StoreNodeDiscovererSuite struct {
@@ -42,13 +43,13 @@ func (s *StoreNodeDiscovererSuite) TestFindNodes() {
 
 	// both nodes are returned when asked for docker nodes
 	job := model.Job{}
-	job.Spec.Engine = model.EngineDocker
+	job.Spec.EngineSpec = model.EngineSpec{Type: model.EngineDocker}
 	peerIDs, err := s.discoverer.FindNodes(context.Background(), job)
 	s.NoError(err)
 	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
 
 	// only node2 is returned when asked for noop nodes
-	job.Spec.Engine = model.EngineNoop
+	job.Spec.EngineSpec = model.EngineSpec{Type: model.EngineNoop}
 	peerIDs, err = s.discoverer.FindNodes(context.Background(), job)
 	s.NoError(err)
 	s.Empty(peerIDs)

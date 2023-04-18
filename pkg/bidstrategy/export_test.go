@@ -12,7 +12,10 @@ func getBidStrategyRequest() BidStrategyRequest {
 				ID: "job-id",
 			},
 			Spec: model.Spec{
-				Engine: model.EngineNoop,
+				EngineSpec: model.EngineSpec{
+					Type: model.EngineNoop,
+					Spec: make(map[string]interface{}),
+				},
 			},
 		},
 	}

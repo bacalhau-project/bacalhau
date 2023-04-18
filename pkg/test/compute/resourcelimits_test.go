@@ -9,6 +9,11 @@ import (
 	"testing"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -19,10 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeNodeResourceLimitsSuite struct {
@@ -324,8 +325,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{
-			Engine:   model.EngineNoop,
-			Verifier: model.VerifierNoop,
+			EngineSpec: model.EngineSpec{Type: model.EngineNoop},
+			Verifier:   model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,
 			},

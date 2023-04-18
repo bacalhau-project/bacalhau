@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
@@ -62,14 +63,16 @@ func MakeJob(
 	j := model.NewJob()
 
 	j.Spec = model.Spec{
-		Engine:   engineType,
+		EngineSpec: model.EngineSpec{
+			Type: engineType,
+			Spec: map[string]interface{}{
+				model.DockerEngineImageKey:      "ubuntu:latest",
+				model.DockerEngineEntrypointKey: entrypointArray,
+			},
+		},
 		Verifier: verifierType,
 		PublisherSpec: model.PublisherSpec{
 			Type: publisherType,
-		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: entrypointArray,
 		},
 	}
 

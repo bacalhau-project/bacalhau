@@ -11,12 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type URLTestSuite struct {
@@ -45,6 +47,11 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
+	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+		spec.WithParameters(testCase.mount1, testCase.mount2),
+	)
+	require.NoError(suite.T(), err)
+
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -65,18 +72,10 @@ func runURLTest(
 			job.WaitForSuccessfulCompletion(),
 		},
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			EngineSpec: engineSpec,
+			Verifier:   model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					testCase.mount1,
-					testCase.mount2,
-				},
 			},
 		},
 	}
@@ -212,6 +211,11 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
+	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+		spec.WithParameters(urlmount, path.Join(ipfsmount, ipfsfile)),
+	)
+	require.NoError(s.T(), err)
+
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -225,18 +229,10 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			EngineSpec: engineSpec,
+			Verifier:   model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					urlmount,
-					path.Join(ipfsmount, ipfsfile),
-				},
 			},
 		},
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, URLContent+IPFSContent),

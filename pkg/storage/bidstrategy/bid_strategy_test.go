@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	wasm_spec "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -24,7 +26,7 @@ var (
 	EmptySpec       = model.Spec{}
 	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
 	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	SpecWithWasm    = model.Spec{EngineSpec: (&wasm_spec.JobSpecWasm{EntryModule: OneStorageSpec[0]}).AsEngineSpec()}
 )
 
 func TestStorageBidStrategy(t *testing.T) {

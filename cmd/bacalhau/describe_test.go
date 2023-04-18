@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -48,8 +50,12 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for k := 0; k < n.numOfJobs; k++ {
-						j := testutils.MakeNoopJob()
-						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+						j := testutils.MakeGenericJob()
+						var err error
+						j.Spec.EngineSpec, err = spec.MutateEngineSpec(j.Spec.EngineSpec,
+							spec.WithEntrypoint("Entrypoint-Unique-Array", uuid.NewString()),
+						)
+						require.NoError(s.T(), err)
 						job, err := s.client.Submit(ctx, j)
 						require.NoError(s.T(), err)
 						submittedJob = job // Default to the last job submitted, should be fine?
@@ -77,8 +83,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -93,8 +99,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
@@ -109,8 +115,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -189,8 +195,12 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				ctx := context.Background()
 
 				for i := 0; i < n.numOfJobs; i++ {
-					j := testutils.MakeNoopJob()
-					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+					j := testutils.MakeGenericJob()
+					var err error
+					j.Spec.EngineSpec, err = spec.MutateEngineSpec(j.Spec.EngineSpec,
+						spec.WithEntrypoint("Entrypoint-Unique-Array", uuid.NewString()),
+					)
+					require.NoError(s.T(), err)
 					jj, err := s.client.Submit(ctx, j)
 					require.Nil(s.T(), err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
@@ -220,8 +230,8 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
-						submittedJob.Spec.Docker.Entrypoint[0],
-						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+						mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+						mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}
@@ -240,4 +250,12 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 // a normal test function and pass our suite to suite.Run
 func TestDescribeSuite(t *testing.T) {
 	suite.Run(t, new(DescribeSuite))
+}
+
+func mustAsJobSpecDocker(t testing.TB, e model.EngineSpec) *spec.JobSpecDocker {
+	engine, err := spec.AsJobSpecDocker(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return engine
 }

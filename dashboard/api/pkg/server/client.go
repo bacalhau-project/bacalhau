@@ -23,14 +23,16 @@ func init() { //nolint:gochecknoinits
 }
 
 var realSpec model.Spec = model.Spec{
-	Engine:   model.EngineDocker,
+	EngineSpec: model.EngineSpec{
+		Type: model.EngineDocker,
+		Spec: map[string]interface{}{
+			model.DockerEngineImageKey:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
+			model.DockerEngineEntrypointKey: []string{"python", "main.py", "--o", "./outputs", "--p"},
+		},
+	},
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
-	},
-	Docker: model.JobSpecDocker{
-		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
 	},
 	Resources: model.ResourceUsageConfig{
 		GPU: "1",
@@ -47,14 +49,16 @@ var realSpec model.Spec = model.Spec{
 }
 
 var testSpec model.Spec = model.Spec{
-	Engine:   model.EngineDocker,
+	EngineSpec: model.EngineSpec{
+		Type: model.EngineDocker,
+		Spec: map[string]interface{}{
+			model.DockerEngineImageKey:      "ubuntu",
+			model.DockerEngineEntrypointKey: []string{"echo"},
+		},
+	},
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
-	},
-	Docker: model.JobSpecDocker{
-		Image:      "ubuntu",
-		Entrypoint: []string{"echo"},
 	},
 	Outputs: []model.StorageSpec{
 		{
@@ -112,6 +116,10 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	} else {
 		s = realSpec
 	}
-	s.Docker.Entrypoint = append(s.Docker.Entrypoint, prompt)
+	// TODO this is really gross, we can probably do better.
+	if entryPoint, ok := s.EngineSpec.Spec[model.DockerEngineEntrypointKey].([]string); ok {
+		entryPoint = append(entryPoint, prompt)
+		s.EngineSpec.Spec[model.DockerEngineEntrypointKey] = append(s.EngineSpec.Spec[model.DockerEngineEntrypointKey].([]string), entryPoint...)
+	}
 	return runGenericJob(s)
 }

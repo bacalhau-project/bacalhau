@@ -8,7 +8,7 @@ import (
 
 // TODO these are duplicated across the docker executor package and here to avoid dep hell, need a better solution.
 const (
-	DockerEngineType          = 2
+	DockerEngineType          = EngineDocker
 	DockerEngineImageKey      = "Image"
 	DockerEngineEntrypointKey = "Entrypoint"
 	DockerEngineWorkDirKey    = "WorkingDirectory"
