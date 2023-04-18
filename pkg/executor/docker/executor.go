@@ -40,11 +40,10 @@ const (
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
-
 	// the storage providers we can implement for a job
 	StorageProvider storage.StorageProvider
-
-	client *docker.Client
+	activeFlags     map[string]chan struct{}
+	client          *docker.Client
 }
 
 func NewExecutor(
@@ -62,6 +61,7 @@ func NewExecutor(
 		ID:              id,
 		StorageProvider: storageProvider,
 		client:          dockerClient,
+		activeFlags:     make(map[string]chan struct{}),
 	}
 
 	cm.RegisterCallbackWithContext(de.cleanupAll)
@@ -115,6 +115,8 @@ func (e *Executor) Run(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
 	defer e.cleanupExecution(ctx, executionID)
+
+	e.activeFlags[executionID] = make(chan struct{}, 1)
 
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
 	if err != nil {
@@ -253,6 +255,8 @@ func (e *Executor) Run(
 
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
+	e.activeFlags[executionID] <- struct{}{}
+
 	containerStartError := e.client.ContainerStart(
 		ctx,
 		jobContainer.ID,
@@ -303,6 +307,19 @@ func (e *Executor) Run(
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	// We have to wait until the condition is met otherwise we may be here too early and
+	// the container isn't created yet. The channel in the activeFlags map will either have
+	// a value waiting, or have one written to it shortly
+	c, present := e.activeFlags[executionID]
+	if present {
+		log.Ctx(ctx).Debug().Msg("waiting for container to be created to read logs")
+		<-c
+
+		// Delete the channel from the map, any further followers will skip this section
+		// as the absence of the channel suggests the container is already created.
+		delete(e.activeFlags, executionID)
+	}
+
 	ctrID, err := e.client.FindContainer(ctx, labelExecutionID, e.labelExecutionValue(executionID))
 	if err != nil {
 		return nil, err
@@ -330,6 +347,13 @@ func (e *Executor) cleanupExecution(ctx context.Context, executionID string) {
 	defer cancel()
 	if config.ShouldKeepStack() || !e.client.IsInstalled(separateCtx) {
 		return
+	}
+
+	// Attempt to delete the channel that was used to mark that the container exists
+	c, present := e.activeFlags[executionID]
+	if present {
+		close(c)
+		delete(e.activeFlags, executionID)
 	}
 
 	err := e.client.RemoveObjectsWithLabel(separateCtx, labelExecutionID, e.labelExecutionValue(executionID))

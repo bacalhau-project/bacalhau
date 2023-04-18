@@ -111,6 +111,13 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 		return
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			log.Ctx(s.ctx).Error().Msgf("source stream went away when sending logs to client")
+			_ = stream.Reset()
+		}
+	}()
+
 	_, err = io.Copy(stream, reader)
 	if err != nil {
 		log.Ctx(s.ctx).Error().Msgf("problem reading from executor streams: %s", err)
