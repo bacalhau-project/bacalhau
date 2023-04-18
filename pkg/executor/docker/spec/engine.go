@@ -6,6 +6,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+// TODO these are duplicated across the docker executor package and here to avoid dep hell, need a better solution.
+const (
+	DockerEngineType          = 2
+	DockerEngineImageKey      = "Image"
+	DockerEngineEntrypointKey = "Entrypoint"
+	DockerEngineWorkDirKey    = "WorkingDirectory"
+	DockerEngineEnvVarKey     = "EnvironmentVariables"
+)
+
 // JobSpecDocker is for VM style executors.
 type JobSpecDocker struct {
 	// Image is the docker image to run. This must be pull-able by docker.
@@ -22,8 +31,8 @@ type JobSpecDocker struct {
 }
 
 func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
-	if e.Type != model.EngineDocker {
-		return nil, fmt.Errorf("EngineSpec is Type %s, expected %s", e.Type, model.EngineDocker)
+	if e.Type != DockerEngineType {
+		return nil, fmt.Errorf("EngineSpec is Type %d, expected %d", e.Type, DockerEngineType)
 	}
 
 	if e.Spec == nil {
@@ -31,17 +40,17 @@ func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
 	}
 
 	job := &JobSpecDocker{}
-	if value, ok := e.Spec["Image"].(string); ok {
+	if value, ok := e.Spec[DockerEngineImageKey].(string); ok {
 		job.Image = value
 	}
 
-	if value, ok := e.Spec["Entrypoint"].([]string); ok {
+	if value, ok := e.Spec[DockerEngineEntrypointKey].([]string); ok {
 		for _, v := range value {
 			job.Entrypoint = append(job.Entrypoint, v)
 		}
 	}
 
-	if value, ok := e.Spec["EnvironmentVariables"].([]interface{}); ok {
+	if value, ok := e.Spec[DockerEngineEnvVarKey].([]interface{}); ok {
 		for _, v := range value {
 			if str, ok := v.(string); ok {
 				job.EnvironmentVariables = append(job.EnvironmentVariables, str)
@@ -51,7 +60,7 @@ func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
 		}
 	}
 
-	if value, ok := e.Spec["WorkingDirectory"].(string); ok {
+	if value, ok := e.Spec[DockerEngineWorkDirKey].(string); ok {
 		job.WorkingDirectory = value
 	}
 

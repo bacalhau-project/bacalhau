@@ -6,6 +6,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+// TODO these are duplicated across the wasm executor package and here to avoid dep hell, need a better solution.
+const (
+	WasmEngineType             = 3
+	WasmEngineEntryModuleKey   = "EntryModule"
+	WasmEngineEntryPointKey    = "Entrypoint"
+	WasmEngineParametersKey    = "Parameters"
+	WasmEngineEnvVarKey        = "EnvironmentVariables"
+	WasmEngineImportModulesKey = "ImportModules"
+)
+
 // JobSpecWasm describes a raw WASM job.
 type JobSpecWasm struct {
 	// The module that contains the WASM code to start running.
@@ -29,8 +39,8 @@ type JobSpecWasm struct {
 }
 
 func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
-	if e.Type != model.EngineWasm {
-		return nil, fmt.Errorf("EngineSpec is Type %s, expected %s", e.Type, model.EngineWasm)
+	if e.Type != WasmEngineType {
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
 	}
 
 	if e.Spec == nil {
@@ -39,28 +49,28 @@ func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
 
 	job := &JobSpecWasm{}
 
-	if value, ok := e.Spec["EntryModule"].(model.StorageSpec); ok {
+	if value, ok := e.Spec[WasmEngineEntryModuleKey].(model.StorageSpec); ok {
 		job.EntryModule = value
 	}
 
-	if value, ok := e.Spec["EntryPoint"].(string); ok {
+	if value, ok := e.Spec[WasmEngineEntryPointKey].(string); ok {
 		job.EntryPoint = value
 	}
 
-	if value, ok := e.Spec["Parameters"].([]string); ok {
+	if value, ok := e.Spec[WasmEngineParametersKey].([]string); ok {
 		for _, v := range value {
 			job.Parameters = append(job.Parameters, v)
 		}
 	}
 
-	if value, ok := e.Spec["EnvironmentVariables"].(map[string]string); ok {
+	if value, ok := e.Spec[WasmEngineEnvVarKey].(map[string]string); ok {
 		job.EnvironmentVariables = make(map[string]string)
 		for k, v := range value {
 			job.EnvironmentVariables[k] = v
 		}
 	}
 
-	if value, ok := e.Spec["ImportModules"].([]model.StorageSpec); ok {
+	if value, ok := e.Spec[WasmEngineImportModulesKey].([]model.StorageSpec); ok {
 		for _, v := range value {
 			job.ImportModules = append(job.ImportModules, v)
 		}

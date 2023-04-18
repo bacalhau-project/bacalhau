@@ -60,7 +60,10 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
+			EngineSpec: EngineSpec{
+				Type: DockerEngineType,
+				Spec: make(map[string]interface{}),
+			},
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
@@ -154,6 +157,7 @@ type PublisherSpec struct {
 type Spec struct {
 	// deprecated: use PublisherSpec instead
 	// Engine Engine
+
 	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty" json:"Verifier,omitempty"`
@@ -202,9 +206,7 @@ func (s *Spec) GetTimeout() time.Duration {
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Wasm.EntryModule,
-	}
+	var storages []*StorageSpec
 
 	for _, collection := range [][]StorageSpec{
 		s.Inputs,
@@ -215,6 +217,11 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 		}
 	}
 
+	if s.EngineSpec.Type == EngineWasm {
+		if v, ok := s.EngineSpec.Spec[WasmEngineEntryModuleKey].(StorageSpec); ok {
+			storages = append(storages, &v)
+		}
+	}
 	return storages
 }
 
