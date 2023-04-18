@@ -7,14 +7,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	docker_spec "github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackErrorLogsSuite struct {
@@ -27,19 +29,18 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 var executorTestCases = []model.Spec{
 	{
-		Engine: model.EngineNoop,
+		EngineSpec: model.EngineSpec{Type: model.EngineNoop},
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
 	},
 	{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: (&docker_spec.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"},
+		}).AsEngineSpec(),
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
 		},
 	},
 }
@@ -65,8 +66,8 @@ var errorLogsTestCase = scenario.Scenario{
 
 func (suite *DevstackErrorLogsSuite) TestCanGetResultsFromErroredJob() {
 	for _, testCase := range executorTestCases {
-		suite.Run(testCase.Engine.String(), func() {
-			docker.MaybeNeedDocker(suite.T(), testCase.Engine == model.EngineDocker)
+		suite.Run(testCase.EngineSpec.Type.String(), func() {
+			docker.MaybeNeedDocker(suite.T(), testCase.EngineSpec.Type == model.EngineDocker)
 
 			scenario := errorLogsTestCase
 			scenario.Spec = testCase

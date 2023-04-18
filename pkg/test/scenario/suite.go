@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -16,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
 )
 
 type ScenarioTestSuite interface {
@@ -101,18 +102,18 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.MaybeNeedDocker(s.T(), spec.EngineSpec.Type == model.EngineDocker)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
 	// Check that the stack has the appropriate executor installed
 	for _, n := range stack.Nodes {
-		executor, err := n.ComputeNode.Executors.Get(s.Ctx, spec.Engine)
+		executor, err := n.ComputeNode.Executors.Get(s.Ctx, spec.EngineSpec.Type)
 		s.Require().NoError(err)
 
 		isInstalled, err := executor.IsInstalled(s.Ctx)
 		s.Require().NoError(err)
-		s.Require().True(isInstalled, "Expected %v to be installed on node %s", spec.Engine, n.Host.ID().String())
+		s.Require().True(isInstalled, "Expected %v to be installed on node %s", spec.EngineSpec.Type, n.Host.ID().String())
 	}
 
 	// TODO: assert network connectivity
@@ -129,7 +130,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Type))
 	if !model.IsValidVerifier(j.Spec.Verifier) {
 		j.Spec.Verifier = model.VerifierNoop
 	}

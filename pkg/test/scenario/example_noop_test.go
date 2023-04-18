@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/suite"
 )
 
 var noopScenario Scenario = Scenario{
@@ -22,10 +23,7 @@ var noopScenario Scenario = Scenario{
 		},
 	},
 	Spec: model.Spec{
-		Engine: model.EngineNoop,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-		},
+		EngineSpec: model.EngineSpec{Type: model.EngineNoop},
 	},
 	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),

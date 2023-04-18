@@ -30,9 +30,58 @@ type JobSpecDocker struct {
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
+func (ds *JobSpecDocker) AsEngineSpec() model.EngineSpec {
+	engine := model.EngineSpec{
+		Type: DockerEngineType,
+		Spec: make(map[string]interface{}),
+	}
+
+	if ds.Image != "" {
+		engine.Spec[DockerEngineImageKey] = ds.Image
+	}
+	if len(ds.Entrypoint) > 0 {
+		engine.Spec[DockerEngineEntrypointKey] = ds.Entrypoint
+	}
+	if len(ds.EnvironmentVariables) > 0 {
+		engine.Spec[DockerEngineEnvVarKey] = ds.EnvironmentVariables
+	}
+	if ds.WorkingDirectory != "" {
+		engine.Spec[DockerEngineWorkDirKey] = ds.WorkingDirectory
+	}
+	return engine
+}
+
+func WithImage(image string) func(*JobSpecDocker) error {
+	return func(docker *JobSpecDocker) error {
+		docker.Image = image
+		return nil
+	}
+}
+
+func WithEntrypoint(entrypoint ...string) func(*JobSpecDocker) error {
+	return func(docker *JobSpecDocker) error {
+		docker.Entrypoint = entrypoint
+		return nil
+	}
+}
+
+func MutateEngineSpec(e model.EngineSpec, mutate ...func(docker *JobSpecDocker) error) (model.EngineSpec, error) {
+	dockerSpec, err := AsJobSpecDocker(e)
+	if err != nil {
+		return model.EngineSpec{}, err
+	}
+
+	for _, m := range mutate {
+		if err := m(dockerSpec); err != nil {
+			return model.EngineSpec{}, err
+		}
+	}
+	return dockerSpec.AsEngineSpec(), nil
+}
+
 func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
 	if e.Type != DockerEngineType {
-		return nil, fmt.Errorf("EngineSpec is Type %d, expected %d", e.Type, DockerEngineType)
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, DockerEngineType)
 	}
 
 	if e.Spec == nil {
@@ -44,9 +93,14 @@ func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
 		job.Image = value
 	}
 
-	if value, ok := e.Spec[DockerEngineEntrypointKey].([]string); ok {
+	// TODO I think this may be incorrect if there is only a single entry in the value of map.
+	if value, ok := e.Spec[DockerEngineEntrypointKey].([]interface{}); ok {
 		for _, v := range value {
-			job.Entrypoint = append(job.Entrypoint, v)
+			if str, ok := v.(string); ok {
+				job.Entrypoint = append(job.Entrypoint, str)
+			} else {
+				return nil, fmt.Errorf("unable to convert %v to string", v)
+			}
 		}
 	}
 

@@ -9,13 +9,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackSubmitSuite struct {
@@ -58,7 +59,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	require.Error(suite.T(), missingSpecError)
 
 	j = &model.Job{}
-	j.Spec = model.Spec{Engine: model.EngineDocker}
+	j.Spec = model.Spec{EngineSpec: model.EngineSpec{Type: model.EngineDocker}}
 	_, missingDealError := apiClient.Submit(ctx, j)
 	require.Error(suite.T(), missingDealError)
 }

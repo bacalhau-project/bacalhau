@@ -8,13 +8,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComboDriverSuite struct {
@@ -29,31 +31,35 @@ func TestComboDriverSuite(t *testing.T) {
 
 const exampleText = "hello world"
 
-var testcase = scenario.Scenario{
-	ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
-	Spec: model.Spec{
-		Engine:   model.EngineWasm,
-		Verifier: model.VerifierNoop,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
+var testcase scenario.Scenario
+
+func init() {
+	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+		spec.WithParameters(`/inputs/file.txt`),
+	)
+	if err != nil {
+		panic(err)
+	}
+	testcase = scenario.Scenario{
+		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
+		Spec: model.Spec{
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
+			EngineSpec: engineSpec,
 		},
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-			EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-			Parameters: []string{
-				`/inputs/file.txt`,
+		Outputs: []model.StorageSpec{
+			{
+				Name: "outputs",
+				Path: "/outputs/",
 			},
 		},
-	},
-	Outputs: []model.StorageSpec{
-		{
-			Name: "outputs",
-			Path: "/outputs/",
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
 		},
-	},
-	JobCheckers: []job.CheckStatesFunction{
-		job.WaitForSuccessfulCompletion(),
-	},
+	}
+
 }
 
 // Test that the combo driver gives preference to the filecoin unsealed driver

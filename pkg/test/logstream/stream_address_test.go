@@ -3,11 +3,13 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	docker_spec "github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -15,7 +17,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.JobSpecDocker{
+	job := newDockerJob("address-test", docker_spec.JobSpecDocker{
 		Image:      "bash",
 		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
 	})
@@ -40,7 +42,9 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
-	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
+	err = node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
+	require.NoError(s.T(), err)
+
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
 		State:             model.ExecutionStateBidAccepted,
 		JobID:             job.ID(),
@@ -62,7 +66,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	defer client.Close()
 
-	client.Connect(s.ctx, execution.ID, true, true)
+	err = client.Connect(s.ctx, execution.ID, true, true)
+	require.NoError(s.T(), err)
 
 	frame, err := client.ReadDataFrame(s.ctx)
 	require.NoError(s.T(), err)

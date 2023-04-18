@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
 )
 
 type mockBidStrategy func(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error)
@@ -64,7 +65,7 @@ func TestExecutorsBidStrategy(t *testing.T) {
 			strategy := NewExecutorSpecificBidStrategy(noop_provider)
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
 				Job: model.Job{
-					Spec: model.Spec{Engine: model.EngineNoop},
+					Spec: model.Spec{EngineSpec: model.EngineSpec{Type: model.EngineNoop}},
 				},
 			})
 			require.NoError(t, err)

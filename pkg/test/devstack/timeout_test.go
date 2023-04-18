@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -18,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackTimeoutSuite struct {
@@ -74,8 +75,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: model.Spec{
-				Engine:   model.EngineNoop,
-				Verifier: model.VerifierNoop,
+				EngineSpec: model.EngineSpec{Type: model.EngineNoop},
+				Verifier:   model.VerifierNoop,
 				PublisherSpec: model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},

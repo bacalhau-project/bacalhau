@@ -3,24 +3,31 @@ package scenario
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
+
+	wasm_spec "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-var basicScenario Scenario = Scenario{
-	Inputs: ManyStores(
-		StoredText("hello, world!", "/inputs"),
-		StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
-	),
-	Outputs: []model.StorageSpec{},
-	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
+var basicScenario Scenario
+
+func init() {
+	engineSpec := (&wasm_spec.JobSpecWasm{
+		EntryPoint: "_start",
+	}).AsEngineSpec()
+	basicScenario = Scenario{
+		Inputs: ManyStores(
+			StoredText("hello, world!", "/inputs"),
+			StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
+		),
+		Outputs: []model.StorageSpec{},
+		Spec: model.Spec{
+			EngineSpec: engineSpec,
 		},
-	},
-	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
-	JobCheckers:    WaitUntilSuccessful(1),
+		ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
+		JobCheckers:    WaitUntilSuccessful(1),
+	}
+
 }
 
 type ExampleTest struct {

@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/server"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -19,9 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 type EndToEndSuite struct {
@@ -173,7 +174,7 @@ func (e2e *EndToEndSuite) WaitForMoreEvents(id string, numEvents int) {
 
 func (e2e *EndToEndSuite) TestCanSeeJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	job.Spec.EngineSpec = model.EngineSpec{Type: model.EngineNoop}
 	e2e.NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)
@@ -187,7 +188,7 @@ func (e2e *EndToEndSuite) TestCanSeeJob() {
 
 func (e2e *EndToEndSuite) TestCanApproveJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	job.Spec.EngineSpec = model.EngineSpec{Type: model.EngineNoop}
 	e2e.NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)
@@ -227,7 +228,7 @@ func (e2e *EndToEndSuite) TestCanApproveJob() {
 
 func (e2e *EndToEndSuite) TestCanRejectJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	job.Spec.EngineSpec = model.EngineSpec{Type: model.EngineNoop}
 	e2e.NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)

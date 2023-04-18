@@ -38,6 +38,49 @@ type JobSpecWasm struct {
 	ImportModules []model.StorageSpec `json:"ImportModules,omitempty"`
 }
 
+func (ws *JobSpecWasm) AsEngineSpec() model.EngineSpec {
+	engine := model.EngineSpec{
+		Type: WasmEngineType,
+		Spec: make(map[string]interface{}),
+	}
+
+	engine.Spec[WasmEngineEntryModuleKey] = ws.EntryModule
+	if ws.EntryPoint != "" {
+		engine.Spec[WasmEngineEntryPointKey] = ws.EntryPoint
+	}
+	if len(ws.Parameters) > 0 {
+		engine.Spec[WasmEngineParametersKey] = ws.Parameters
+	}
+	if len(ws.EnvironmentVariables) > 0 {
+		engine.Spec[WasmEngineEnvVarKey] = ws.EnvironmentVariables
+	}
+	if len(ws.ImportModules) > 0 {
+		engine.Spec[WasmEngineImportModulesKey] = ws.ImportModules
+	}
+	return engine
+}
+
+func WithParameters(params ...string) func(wasm *JobSpecWasm) error {
+	return func(wasm *JobSpecWasm) error {
+		wasm.Parameters = params
+		return nil
+	}
+}
+
+func MutateEngineSpec(e model.EngineSpec, mutate ...func(*JobSpecWasm) error) (model.EngineSpec, error) {
+	wasmSpec, err := AsJobSpecWasm(e)
+	if err != nil {
+		return model.EngineSpec{}, err
+	}
+
+	for _, m := range mutate {
+		if err := m(wasmSpec); err != nil {
+			return model.EngineSpec{}, err
+		}
+	}
+	return wasmSpec.AsEngineSpec(), nil
+}
+
 func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
 	if e.Type != WasmEngineType {
 		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
