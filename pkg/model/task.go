@@ -50,14 +50,25 @@ type ResourceSpec struct {
 }
 
 type JobType interface {
-	UnmarshalInto(with string, spec *Spec) error
+	EngineSpec(with string) (EngineSpec, error)
+	InputStorageSpecs(with string) ([]StorageSpec, error)
+	OutputStorageSpecs(with string) ([]StorageSpec, error)
 }
 
 type NoopTask struct{}
 
-func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
-	return nil
+func (n NoopTask) EngineSpec(with string) (EngineSpec, error) {
+	return EngineSpec{
+		Type: EngineNoop,
+	}, nil
+}
+
+func (n NoopTask) InputStorageSpecs(with string) ([]StorageSpec, error) {
+	return nil, nil
+}
+
+func (n NoopTask) OutputStorageSpecs(with string) ([]StorageSpec, error) {
+	return nil, nil
 }
 
 var _ JobType = (*NoopTask)(nil)
@@ -79,11 +90,22 @@ func (task *Task) ToSpec() (*Spec, error) {
 		return nil, err
 	}
 
-	spec := new(Spec)
-	err = inputs.UnmarshalInto(task.With, spec)
+	engineSpec, err := inputs.EngineSpec(task.With)
 	if err != nil {
 		return nil, err
 	}
+	inputSpec, err := inputs.InputStorageSpecs(task.With)
+	if err != nil {
+		return nil, err
+	}
+	outputSpec, err := inputs.OutputStorageSpecs(task.With)
+	if err != nil {
+		return nil, err
+	}
+	spec := new(Spec)
+	spec.EngineSpec = engineSpec
+	spec.Inputs = inputSpec
+	spec.Outputs = outputSpec
 
 	for key, node := range task.Meta.Values {
 		switch key {

@@ -6,6 +6,17 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 )
 
+// TODO these are duplicated across the docker executor package and here to avoid dep hell, need a better solution.
+const (
+	DockerEngineType          = 2
+	DockerEngineImageKey      = "Image"
+	DockerEngineEntrypointKey = "Entrypoint"
+	DockerEngineWorkDirKey    = "WorkingDirectory"
+	DockerEngineEnvVarKey     = "EnvironmentVariables"
+)
+
+var _ JobType = (*DockerInputs)(nil)
+
 type DockerInputs struct {
 	Entrypoint []string
 	Workdir    string
@@ -14,33 +25,30 @@ type DockerInputs struct {
 	Env        IPLDMap[string, string]
 }
 
-var _ JobType = (*DockerInputs)(nil)
+func (docker DockerInputs) EngineSpec(with string) (EngineSpec, error) {
+	spec := make(map[string]interface{})
+	spec[DockerEngineImageKey] = with
+	spec[DockerEngineEntrypointKey] = docker.Entrypoint
+	spec[DockerEngineWorkDirKey] = docker.Workdir
+	spec[DockerEngineEnvVarKey] = docker.Env
 
-func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineDocker
-	spec.Docker = JobSpecDocker{
-		Image:            with,
-		Entrypoint:       docker.Entrypoint,
-		WorkingDirectory: docker.Workdir,
-	}
+	return EngineSpec{
+		Type: EngineDocker,
+		Spec: spec,
+	}, nil
+}
 
-	spec.Docker.EnvironmentVariables = []string{}
-	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
-	}
+func (docker DockerInputs) InputStorageSpecs(_ string) ([]StorageSpec, error) {
+	return parseInputs(docker.Mounts)
+}
 
-	inputData, err := parseInputs(docker.Mounts)
-	if err != nil {
-		return err
-	}
-	spec.Inputs = inputData
-
-	spec.Outputs = []StorageSpec{}
+func (docker DockerInputs) OutputStorageSpecs(_ string) ([]StorageSpec, error) {
+	outputs := make([]StorageSpec, 0, len(docker.Outputs.Values))
 	for path := range docker.Outputs.Values {
-		spec.Outputs = append(spec.Outputs, StorageSpec{
+		outputs = append(outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),
 		})
 	}
-	return nil
+	return outputs, nil
 }

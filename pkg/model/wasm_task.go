@@ -6,6 +6,18 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 )
 
+// TODO these are duplicated across the wasm executor package and here to avoid dep hell, need a better solution.
+const (
+	WasmEngineType             = EngineWasm
+	WasmEngineEntryModuleKey   = "EntryModule"
+	WasmEngineEntryPointKey    = "Entrypoint"
+	WasmEngineParametersKey    = "Parameters"
+	WasmEngineEnvVarKey        = "EnvironmentVariables"
+	WasmEngineImportModulesKey = "ImportModules"
+)
+
+var _ JobType = (*WasmInputs)(nil)
+
 type WasmInputs struct {
 	Entrypoint string
 	Parameters []string
@@ -15,42 +27,47 @@ type WasmInputs struct {
 	Env        IPLDMap[string, string]
 }
 
-var _ JobType = (*WasmInputs)(nil)
+func (wasm *WasmInputs) EngineSpec(_ string) (EngineSpec, error) {
+	params := make(map[string]interface{})
+	params[WasmEngineEntryPointKey] = wasm.Entrypoint
+	params[WasmEngineParametersKey] = wasm.Parameters
+	params[WasmEngineEnvVarKey] = wasm.Env.Values
 
-// UnmarshalInto implements taskUnmarshal
-func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineWasm
-	spec.Wasm = JobSpecWasm{
-		EntryPoint:           wasm.Entrypoint,
-		Parameters:           wasm.Parameters,
-		EnvironmentVariables: wasm.Env.Values,
-		ImportModules:        []StorageSpec{},
-	}
-
-	entryModule, err := parseResource(with)
-	if err != nil {
-		return err
-	}
-	spec.Inputs = []StorageSpec{parseStorageSource("/job", entryModule)}
-
+	importModules := make([]StorageSpec, 0, len(wasm.Modules))
 	for _, resource := range wasm.Modules {
 		resource := resource
-		spec.Wasm.ImportModules = append(spec.Wasm.ImportModules, parseStorageSource("", &resource))
+		importModules = append(importModules, parseStorageSource("", &resource))
 	}
+	params[WasmEngineImportModulesKey] = importModules
+
+	return EngineSpec{
+		Type: WasmEngineType,
+		Spec: params,
+	}, nil
+}
+
+func (wasm *WasmInputs) InputStorageSpecs(with string) ([]StorageSpec, error) {
+	entryModule, err := parseResource(with)
+	if err != nil {
+		return nil, err
+	}
+	inputs := []StorageSpec{parseStorageSource("/job", entryModule)}
 
 	inputData, err := parseInputs(wasm.Mounts)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	spec.Inputs = append(spec.Inputs, inputData...)
+	inputs = append(inputs, inputData...)
+	return inputs, nil
+}
 
-	spec.Outputs = []StorageSpec{}
+func (wasm *WasmInputs) OutputStorageSpecs(_ string) ([]StorageSpec, error) {
+	outputs := make([]StorageSpec, 0, len(wasm.Outputs.Values))
 	for path := range wasm.Outputs.Values {
-		spec.Outputs = append(spec.Outputs, StorageSpec{
+		outputs = append(outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),
 		})
 	}
-
-	return nil
+	return outputs, nil
 }
