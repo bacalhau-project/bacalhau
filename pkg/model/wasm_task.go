@@ -6,16 +6,6 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 )
 
-// TODO these are duplicated across the wasm executor package and here to avoid dep hell, need a better solution.
-const (
-	WasmEngineType             = EngineWasm
-	WasmEngineEntryModuleKey   = "EntryModule"
-	WasmEngineEntryPointKey    = "Entrypoint"
-	WasmEngineParametersKey    = "Parameters"
-	WasmEngineEnvVarKey        = "EnvironmentVariables"
-	WasmEngineImportModulesKey = "ImportModules"
-)
-
 var _ JobType = (*WasmInputs)(nil)
 
 type WasmInputs struct {
