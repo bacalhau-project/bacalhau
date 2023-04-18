@@ -2,19 +2,18 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"embed"
 	"fmt"
 	"path/filepath"
-
-	"embed"
 	"time"
 
-	"database/sql"
-
-	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 )
 
 //go:embed queries/*.sql
@@ -482,4 +481,55 @@ func (d *PostgresStore) MigrateDown() error {
 		return err
 	}
 	return nil
+}
+
+func (d *PostgresStore) GetJobsProducingJobInput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_input_relations"), id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var relations []*types.JobRelation
+	for rows.Next() {
+		relation := new(types.JobRelation)
+		if err := rows.Scan(&relation.JobID, &relation.CID); err != nil {
+			return nil, err
+		}
+		relations = append(relations, relation)
+	}
+	return relations, rows.Err()
+}
+
+func (d *PostgresStore) GetJobsOperatingOnJobOutput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_output_relations"), id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var relations []*types.JobRelation
+	for rows.Next() {
+		relation := new(types.JobRelation)
+		if err := rows.Scan(&relation.JobID, &relation.CID); err != nil {
+			return nil, err
+		}
+		relations = append(relations, relation)
+	}
+	return relations, rows.Err()
+}
+
+func (d *PostgresStore) GetJobsOperatingOnCID(ctx context.Context, data string) ([]*types.JobDataIO, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("find_jobs_with_input_or_output"), data)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var jobIOs []*types.JobDataIO
+	for rows.Next() {
+		jobIO := new(types.JobDataIO)
+		if err := rows.Scan(&jobIO.JobID, &jobIO.InputOutput, &jobIO.IsInput); err != nil {
+			return nil, err
+		}
+		jobIOs = append(jobIOs, jobIO)
+	}
+	return jobIOs, rows.Err()
 }

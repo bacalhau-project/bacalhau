@@ -14,7 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 
 import useApi from '../hooks/useApi'
 import {
-  JobInfo,
+  JobInfo, JobRelation,
   ModerateRequest,
   ModerationType,
 } from '../types'
@@ -27,8 +27,6 @@ import JobState from '../components/job/JobState'
 import ShardState from '../components/job/ShardState'
 import JobProgram from '../components/job/JobProgram'
 import FilPlus from '../components/job/FilPlus'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
 
 import {
   SmallText,
@@ -37,12 +35,24 @@ import {
   BoldSectionTitle,
   RequesterNode,
 } from '../components/widgets/GeneralText'
+import Accordion from "@mui/material/Accordion"
+import AccordionDetails from "@mui/material/AccordionDetails"
+import AccordionSummary from "@mui/material/AccordionSummary"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Link from "@mui/material/Link";
+import ModerationPanel from '../components/widgets/ModerationSummary'
+import ModerationWindow from '../components/widgets/ModerationWindow'
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell"
+import TableContainer from "@mui/material/TableContainer"
+import TableRow from "@mui/material/TableRow";
 import TerminalWindow from '../components/widgets/TerminalWindow'
 import useLoadingErrorHandler from '../hooks/useLoadingErrorHandler'
-import { UserContext } from '../contexts/user'
-import ModerationWindow from '../components/widgets/ModerationWindow'
 import useSnackbar from '../hooks/useSnackbar'
-import ModerationPanel from '../components/widgets/ModerationSummary'
+import { UserContext } from '../contexts/user'
+import {styled} from "@mui/system";
+
 
 type JSONWindowConfig = {
   title: string,
@@ -97,7 +107,11 @@ const JobPage: FC<{
   const snackbar = useSnackbar()
   const [ datacapWindowOpen, setDatacapWindowOpen ] = useState(false)
   const [ execModWindowOpen, setExecModWindowOpen ] = useState(false)
+
   const [ jobInfo, setJobInfo ] = useState<JobInfo>()
+  const [ jobOutputRelation, setJobOutputRelation] = useState<JobRelation[]>([]);
+  const [jobInputRelation, setJobInputRelation] = useState<JobRelation[]>([]);
+
   const [ jsonWindow, setJsonWindow ] = useState<JSONWindowConfig>()
   const api = useApi()
   const loadingErrorHandler = useLoadingErrorHandler()
@@ -140,7 +154,45 @@ const JobPage: FC<{
       setJobInfo(info)
     })
     await handler()
-  }, [])
+  }, [
+      id,
+  ])
+
+  const loadInputRelationInfo = useCallback(async () => {
+    const handler = loadingErrorHandler(async () => {
+      const info = await api.get(`/api/v1/job/${id}/inputs`);
+      setJobInputRelation(info);
+    });
+    await handler();
+  }, [
+     id,
+  ]);
+
+  const loadOutputRelationInfo = useCallback(async () => {
+    const handler = loadingErrorHandler(async () => {
+      const info = await api.get(`/api/v1/job/${id}/outputs`);
+      setJobOutputRelation(info);
+    });
+    await handler();
+  }, [
+     id,
+  ]);
+
+  const groupByCID = (jobRelation) => {
+    const groups = {};
+
+    if (jobRelation) {
+      jobRelation.forEach((relation) => {
+        const cid = relation.cid;
+        if (!groups[cid]) {
+          groups[cid] = [];
+        }
+        groups[cid].push(relation);
+      });
+    }
+
+    return groups;
+  };
 
   const submitDatacapModeration = useCallback(async (approved: boolean, reason: string) => {
     if(!user.user) return
@@ -180,8 +232,10 @@ const JobPage: FC<{
   const closeExecModeration = useCallback(async () => { setExecModWindowOpen(false) }, [])
 
   useEffect(() => {
-    loadInfo()
-  }, [])
+    loadInfo();
+    loadInputRelationInfo();
+    loadOutputRelationInfo();
+  }, [id]);
 
   if(!jobInfo) return null
 
@@ -553,6 +607,78 @@ const JobPage: FC<{
           />
         )
       }
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={4}>
+                <Typography variant="h6">Job(s) Producing Input</Typography>
+                {Object.keys(groupByCID(jobInputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobInputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="subtitle1">CID: {cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <Typography variant="body1">No job relations found.</Typography>
+                )}
+            </Grid>
+            <Grid item xs={12} lg={4}>
+                <Typography variant="h6">Job(s) Operating on Output</Typography>
+                {Object.keys(groupByCID(jobOutputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobOutputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="subtitle1">{cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <Typography variant="body1">No job relations found.</Typography>
+                )}
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
     </Container>
   )
 }

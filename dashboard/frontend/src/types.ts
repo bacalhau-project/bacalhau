@@ -201,6 +201,17 @@ export interface JobInfo {
   moderations: JobModerationSummary[],
 }
 
+export interface JobRelation {
+  JobID: string,
+  CID: string,
+}
+
+export interface JobIO {
+  JobID: string,
+  InputOutput: string,
+  IsInput: boolean,
+}
+
 export interface ResourceUsageData {
   CPU?: number,
   Memory?: number,
