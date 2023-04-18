@@ -45,10 +45,10 @@ func (s *ComputeProxyTestSuite) SetupSuite() {
 type TestEndpoint struct{}
 
 func (t *TestEndpoint) AskForBid(context.Context, compute.AskForBidRequest) (compute.AskForBidResponse, error) {
-	return compute.AskForBidResponse{}, errors.New("No test implemenation")
+	return compute.AskForBidResponse{}, errors.New("error raised by AskForBid")
 }
 func (t *TestEndpoint) BidAccepted(context.Context, compute.BidAcceptedRequest) (compute.BidAcceptedResponse, error) {
-	return compute.BidAcceptedResponse{}, errors.New("No test implemenation")
+	return compute.BidAcceptedResponse{ExecutionMetadata: compute.ExecutionMetadata{ExecutionID: "test"}}, nil
 }
 func (t *TestEndpoint) BidRejected(context.Context, compute.BidRejectedRequest) (compute.BidRejectedResponse, error) {
 	return compute.BidRejectedResponse{}, errors.New("No test implemenation")
@@ -78,10 +78,22 @@ func (s *ComputeProxyTestSuite) getRoutingMetadataForCompute() compute.RoutingMe
 	}
 }
 
-func (s *ComputeProxyTestSuite) TestSimpleRequest() {
+func (s *ComputeProxyTestSuite) TestSimpleError() {
 	_, err := s.proxy.AskForBid(s.ctx, compute.AskForBidRequest{
 		RoutingMetadata: s.getRoutingMetadataForCompute(),
 	})
 
 	require.Error(s.T(), err)
+	require.Equal(s.T(), "error raised by AskForBid", err.Error())
+}
+
+func (s *ComputeProxyTestSuite) TestSimpleSuccess() {
+	response, err := s.proxy.BidAccepted(s.ctx, compute.BidAcceptedRequest{
+		RoutingMetadata: s.getRoutingMetadataForCompute(),
+	})
+
+	// Expect a BidAcceptedResponse, err result.
+
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "test", response.ExecutionID)
 }
