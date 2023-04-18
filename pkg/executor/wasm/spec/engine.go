@@ -1,0 +1,70 @@
+package spec
+
+import (
+	"fmt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+)
+
+// JobSpecWasm describes a raw WASM job.
+type JobSpecWasm struct {
+	// The module that contains the WASM code to start running.
+	EntryModule model.StorageSpec `json:"EntryModule,omitempty"`
+
+	// The name of the function in the EntryModule to call to run the job. For
+	// WASI jobs, this will always be `_start`, but jobs can choose to call
+	// other WASM functions instead. The EntryPoint must be a zero-parameter
+	// zero-result function.
+	EntryPoint string `json:"EntryPoint,omitempty"`
+
+	// The arguments supplied to the program (i.e. as ARGV).
+	Parameters []string `json:"Parameters,omitempty"`
+
+	// The variables available in the environment of the running program.
+	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+
+	// TODO #880: Other WASM modules whose exports will be available as imports
+	// to the EntryModule.
+	ImportModules []model.StorageSpec `json:"ImportModules,omitempty"`
+}
+
+func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
+	if e.Type != model.EngineWasm {
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %s", e.Type, model.EngineWasm)
+	}
+
+	if e.Spec == nil {
+		return nil, fmt.Errorf("EngineSpec is uninitalized")
+	}
+
+	job := &JobSpecWasm{}
+
+	if value, ok := e.Spec["EntryModule"].(model.StorageSpec); ok {
+		job.EntryModule = value
+	}
+
+	if value, ok := e.Spec["EntryPoint"].(string); ok {
+		job.EntryPoint = value
+	}
+
+	if value, ok := e.Spec["Parameters"].([]string); ok {
+		for _, v := range value {
+			job.Parameters = append(job.Parameters, v)
+		}
+	}
+
+	if value, ok := e.Spec["EnvironmentVariables"].(map[string]string); ok {
+		job.EnvironmentVariables = make(map[string]string)
+		for k, v := range value {
+			job.EnvironmentVariables[k] = v
+		}
+	}
+
+	if value, ok := e.Spec["ImportModules"].([]model.StorageSpec); ok {
+		for _, v := range value {
+			job.ImportModules = append(job.ImportModules, v)
+		}
+	}
+
+	return job, nil
+}
