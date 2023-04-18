@@ -6,15 +6,6 @@ import (
 	"github.com/ipld/go-ipld-prime/datamodel"
 )
 
-// TODO these are duplicated across the docker executor package and here to avoid dep hell, need a better solution.
-const (
-	DockerEngineType          = EngineDocker
-	DockerEngineImageKey      = "Image"
-	DockerEngineEntrypointKey = "Entrypoint"
-	DockerEngineWorkDirKey    = "WorkingDirectory"
-	DockerEngineEnvVarKey     = "EnvironmentVariables"
-)
-
 var _ JobType = (*DockerInputs)(nil)
 
 type DockerInputs struct {
@@ -30,7 +21,7 @@ func (docker DockerInputs) EngineSpec(with string) (EngineSpec, error) {
 	spec[DockerEngineImageKey] = with
 	spec[DockerEngineEntrypointKey] = docker.Entrypoint
 	spec[DockerEngineWorkDirKey] = docker.Workdir
-	spec[DockerEngineEnvVarKey] = docker.Env
+	spec[DockerEngineEnvVarKey] = docker.Env.Values
 
 	return EngineSpec{
 		Type: EngineDocker,

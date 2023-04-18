@@ -7,8 +7,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
-
-	spec2 "github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 )
 
 func TestUnmarshalDocker(t *testing.T) {
@@ -20,9 +18,11 @@ func TestUnmarshalDocker(t *testing.T) {
 
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
-	require.Equal(t, EngineDocker, spec.EngineSpec.Type)
-	engine, err := spec2.AsJobSpecDocker(spec.EngineSpec)
+
+	engine, err := AsJobSpecDocker(spec.EngineSpec)
 	require.NoError(t, err)
+
+	require.Equal(t, EngineDocker, spec.EngineSpec.Type)
 	require.Equal(t, "ubuntu", engine.Image)
 	require.Equal(t, []string{"date"}, engine.Entrypoint)
 	require.Equal(t, "/", engine.WorkingDirectory)
