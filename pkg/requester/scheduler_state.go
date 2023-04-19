@@ -183,7 +183,7 @@ func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job mod
 			log.Ctx(ctx).Error().Err(err).Msgf("[checkForCompletedExecutions] failed to update job state")
 			return
 		} else {
-			msg := fmt.Sprintf("job %s completed successuflly", job.ID())
+			msg := fmt.Sprintf("job %s completed successfully", job.ID())
 			if newState == model.JobStateCompletedPartially {
 				msg += " partially with some failed executions"
 			}
