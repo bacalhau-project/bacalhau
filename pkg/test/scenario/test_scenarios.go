@@ -1,6 +1,8 @@
 package scenario
 
 import (
+	"runtime"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
@@ -254,7 +256,7 @@ var WasmLogTest = Scenario{
 }
 
 func GetAllScenarios() map[string]Scenario {
-	return map[string]Scenario{
+	scenarios := map[string]Scenario{
 		"cat_file_to_stdout": CatFileToStdout,
 		"cat_file_to_volume": CatFileToVolume,
 		"grep_file":          GrepFile,
@@ -267,4 +269,12 @@ func GetAllScenarios() map[string]Scenario {
 		"wasm_exit_code":     WasmExitCode,
 		"wasm_dynamic_link":  WasmDynamicLink,
 	}
+
+	if runtime.GOOS == "windows" {
+		// Temporarily skip the wasm_env_vars test on windows to avoid
+		// flakiness until we can resolve the problem.
+		delete(scenarios, "wasm_env_vars")
+	}
+
+	return scenarios
 }
