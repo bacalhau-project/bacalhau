@@ -94,13 +94,19 @@ func AsJobSpecDocker(e model.EngineSpec) (*JobSpecDocker, error) {
 	}
 
 	// TODO I think this may be incorrect if there is only a single entry in the value of map.
-	if value, ok := e.Spec[DockerEngineEntrypointKey].([]interface{}); ok {
-		for _, v := range value {
-			if str, ok := v.(string); ok {
-				job.Entrypoint = append(job.Entrypoint, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v to string", v)
+	if _, ok := e.Spec[DockerEngineEntrypointKey]; ok {
+		if value, ok := e.Spec[DockerEngineEntrypointKey].([]interface{}); ok {
+			for _, v := range value {
+				if str, ok := v.(string); ok {
+					job.Entrypoint = append(job.Entrypoint, str)
+				} else {
+					return nil, fmt.Errorf("unable to convert %v to string", v)
+				}
 			}
+		} else if value, ok := e.Spec[DockerEngineEntrypointKey].([]string); ok {
+			job.Entrypoint = value
+		} else {
+			return nil, fmt.Errorf("unknow type for docker entrypoint %T", e.Spec[DockerEngineEntrypointKey])
 		}
 	}
 
