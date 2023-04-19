@@ -6,35 +6,38 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/rs/zerolog/log"
 )
 
 func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
 		inputs := j.Spec.Inputs
-		ModificationCount := 0
+		modificationCount := 0
+
 		for _, inputRepos := range inputs {
 			var repoArray []string
 			if inputRepos.StorageSource == model.StorageSourceRepoClone {
 				repoArray = append(repoArray, inputRepos.Repo)
 			}
 			for _, url := range repoArray {
-				repoCID, _ := clone.RepoExistsOnIPFSGivenURL(url, ctx)
-				// if err != nil {
-				// 	fmt.Print(err)
-				// }
-				if repoCID != "" {
-					inputs = clone.RemoveFromModelStorageSpec(inputs, url)
-
-					inputs = append(inputs, model.StorageSpec{
-						StorageSource: model.StorageSourceIPFS,
-						CID:           repoCID,
-						Path:          "/inputs",
-					})
-					ModificationCount++
+				repoCID, err := clone.RepoExistsOnIPFSGivenURL(ctx, url)
+				log.Ctx(ctx).Error().Err(err).Msg("error checking whether repo exists")
+				if err != nil {
+					continue
 				}
+
+				inputs = clone.RemoveFromModelStorageSpec(inputs, url)
+
+				inputs = append(inputs, model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					CID:           repoCID,
+					Path:          "/inputs",
+				})
+				modificationCount++
 			}
 		}
+
 		j.Spec.Inputs = inputs
-		return ModificationCount != 0, nil
+		return modificationCount != 0, nil
 	}
 }
