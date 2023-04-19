@@ -134,6 +134,16 @@ func DownloadResults( //nolint:funlen,gocyclo
 			}
 
 			cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
+			_, alreadyExists := downloadedCids[publishedResult.Data.CID]
+			if alreadyExists {
+				// We don't want to download the same CID twice, so we will just move
+				// on to the next item
+				log.Ctx(ctx).Debug().
+					Str("CID", publishedResult.Data.CID).
+					Msg("asked to download a CID a second time")
+				continue
+			}
+
 			item := model.DownloadItem{
 				Name:       publishedResult.Data.Name,
 				CID:        publishedResult.Data.CID,
