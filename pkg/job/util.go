@@ -7,9 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -143,7 +144,7 @@ func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType 
 		Name:          "ipfs://" + cid,
 		StorageSource: storageType,
 		CID:           cid,
-		Metadata:      map[string]string{},
+		Metadata:      make([]model.KV, 0),
 	}
 }
 

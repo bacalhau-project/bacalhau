@@ -7,10 +7,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 func TestPiggybackedPublisher_IsInstalled(t *testing.T) {
@@ -85,7 +86,7 @@ func TestPiggybackedPublisher_PublishResult(t *testing.T) {
 			name:        "all_successful",
 			primary:     []interface{}{model.StorageSpec{Name: "primary", StorageSource: model.StorageSourceIPFS, CID: "123"}, nil},
 			piggyback:   []interface{}{model.StorageSpec{Name: "piggy", StorageSource: model.StorageSourceFilecoin, CID: "456"}, nil},
-			expected:    model.StorageSpec{Name: "primary", StorageSource: model.StorageSourceIPFS, CID: "123", Metadata: map[string]string{"Filecoin": "456"}},
+			expected:    model.StorageSpec{Name: "primary", StorageSource: model.StorageSourceIPFS, CID: "123", Metadata: []model.KV{{Key: "Filecoin", Value: "456"}}},
 			expectedErr: nil,
 		},
 		{

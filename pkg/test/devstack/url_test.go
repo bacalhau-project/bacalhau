@@ -47,7 +47,7 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+	engineSpec, err := spec.MutateWasmEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
 		spec.WithParameters(testCase.mount1, testCase.mount2),
 	)
 	require.NoError(suite.T(), err)
@@ -211,7 +211,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
-	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+	engineSpec, err := spec.MutateWasmEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
 		spec.WithParameters(urlmount, path.Join(ipfsmount, ipfsfile)),
 	)
 	require.NoError(s.T(), err)

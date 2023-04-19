@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
-	"github.com/vincent-petithory/dataurl"
 )
 
 // A SetupStorage is a function that return a model.StorageSpec representing
@@ -72,7 +72,7 @@ func StoredFile(
 func InlineData(data []byte) model.StorageSpec {
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceInline,
-		URL:           dataurl.EncodeBytes(data),
+		Inline:        data,
 	}
 }
 

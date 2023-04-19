@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -28,25 +29,32 @@ type JobSpecDocker struct {
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
-func (ds *JobSpecDocker) AsEngineSpec() EngineSpec {
-	engine := EngineSpec{
-		Type: DockerEngineType,
-		Spec: make(map[string]interface{}),
+func (ds *JobSpecDocker) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := ds.MarshalCBOR(buf); err != nil {
+		return nil, err
 	}
+	return buf.Bytes(), nil
+}
 
-	if ds.Image != "" {
-		engine.Spec[DockerEngineImageKey] = ds.Image
+func DecodeJobSpecDocker(b []byte) (*JobSpecDocker, error) {
+	var spec JobSpecDocker
+	if err := spec.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+		return nil, err
 	}
-	if len(ds.Entrypoint) > 0 {
-		engine.Spec[DockerEngineEntrypointKey] = ds.Entrypoint
+	return &spec, nil
+}
+
+func (ds *JobSpecDocker) AsEngineSpec() EngineSpec {
+	data, err := ds.Serialize()
+	if err != nil {
+		// TODO probs should return this to the caller.
+		panic(err)
 	}
-	if len(ds.EnvironmentVariables) > 0 {
-		engine.Spec[DockerEngineEnvVarKey] = ds.EnvironmentVariables
+	return EngineSpec{
+		Type: DockerEngineType,
+		Spec: data,
 	}
-	if ds.WorkingDirectory != "" {
-		engine.Spec[DockerEngineWorkDirKey] = ds.WorkingDirectory
-	}
-	return engine
 }
 
 func WithImage(image string) func(*JobSpecDocker) error {
@@ -59,6 +67,14 @@ func WithImage(image string) func(*JobSpecDocker) error {
 func WithEntrypoint(entrypoint ...string) func(*JobSpecDocker) error {
 	return func(docker *JobSpecDocker) error {
 		docker.Entrypoint = entrypoint
+		return nil
+	}
+}
+
+func AppendEntrypoint(entrypoint ...string) func(docker *JobSpecDocker) error {
+	// TODO should we be sorting this?
+	return func(docker *JobSpecDocker) error {
+		docker.Entrypoint = append(docker.Entrypoint, entrypoint...)
 		return nil
 	}
 }
@@ -86,48 +102,5 @@ func AsJobSpecDocker(e EngineSpec) (*JobSpecDocker, error) {
 		return nil, fmt.Errorf("EngineSpec is uninitalized")
 	}
 
-	job := &JobSpecDocker{}
-	if value, ok := e.Spec[DockerEngineImageKey].(string); ok {
-		job.Image = value
-	}
-
-	// TODO I think this may be incorrect if there is only a single entry in the value of map.
-	if value, ok := e.Spec[DockerEngineEntrypointKey].([]interface{}); ok {
-		for _, v := range value {
-			if str, ok := v.(string); ok {
-				job.Entrypoint = append(job.Entrypoint, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v (%T) to string", v, v)
-			}
-		}
-	} else {
-		if value, ok := e.Spec[DockerEngineEntrypointKey].([]string); ok {
-			job.Entrypoint = value
-		}
-	}
-
-	if value, ok := e.Spec[DockerEngineEnvVarKey].([]interface{}); ok {
-		for _, v := range value {
-			if str, ok := v.(string); ok {
-				job.EnvironmentVariables = append(job.EnvironmentVariables, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v (%T) to string", v, v)
-			}
-		}
-	} else if value, ok := e.Spec[DockerEngineEnvVarKey].([]string); ok {
-		job.EnvironmentVariables = value
-
-	} else if value, ok := e.Spec[DockerEngineEnvVarKey].(map[string]string); ok {
-		for key, val := range value {
-			job.EnvironmentVariables = append(job.EnvironmentVariables, key, val)
-		}
-	} else {
-		return nil, fmt.Errorf("DockerEngineEnvVarKey has an unsupported value type %T", value)
-	}
-
-	if value, ok := e.Spec[DockerEngineWorkDirKey].(string); ok {
-		job.WorkingDirectory = value
-	}
-
-	return job, nil
+	return DecodeJobSpecDocker(e.Spec)
 }

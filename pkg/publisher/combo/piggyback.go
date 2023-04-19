@@ -57,10 +57,17 @@ func (c *piggybackedPublisher) PublishResult(
 
 	result := results[0]
 	if result.Metadata == nil {
-		result.Metadata = map[string]string{}
+		result.Metadata = make([]model.KV, 0)
 	}
+	tmpMap := make(map[string]string)
 	for _, other := range results[1:] {
-		result.Metadata[other.StorageSource.String()] = other.CID
+		tmpMap[other.StorageSource.String()] = other.CID
+	}
+	for k, v := range tmpMap {
+		result.Metadata = append(result.Metadata, model.KV{
+			Key:   k,
+			Value: v,
+		})
 	}
 
 	return result, nil

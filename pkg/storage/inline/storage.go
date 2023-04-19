@@ -32,12 +32,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/c2h5oh/datasize"
 	"github.com/vincent-petithory/dataurl"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 )
 
 // The maximum size that will be stored inline without gzip compression.
@@ -139,7 +140,7 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (model.StorageSpe
 		return model.StorageSpec{}, err
 	}
 
-	var url string
+	var url []byte
 	if info.IsDir() || info.Size() > int64(maximumPlaintextSize.Bytes()) {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -152,7 +153,10 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (model.StorageSpe
 		if err := targzip.Compress(ctx, filepath.Base(path), &buf); err != nil {
 			return model.StorageSpec{}, err
 		}
-		url = dataurl.New(buf.Bytes(), gzipMimeType).String()
+		url, err = dataurl.New(buf.Bytes(), gzipMimeType).MarshalText()
+		if err != nil {
+			return model.StorageSpec{}, err
+		}
 		if err := os.Chdir(cwd); err != nil {
 			return model.StorageSpec{}, err
 		}
@@ -161,12 +165,12 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (model.StorageSpe
 		if err != nil {
 			return model.StorageSpec{}, err
 		}
-		url = dataurl.EncodeBytes(data)
+		url = data
 	}
 
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceInline,
-		URL:           url,
+		Inline:        url,
 	}, err
 }
 

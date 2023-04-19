@@ -33,7 +33,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	fileName1 := "hello-cid-1.txt"
 	fileName2 := "hello-cid-2.txt"
 
-	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+	engineSpec, err := spec.MutateWasmEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
 		spec.WithParameters(filepath.Join(dirCID1, fileName1), filepath.Join(dirCID2, fileName2)),
 	)
 	require.NoError(s.T(), err)

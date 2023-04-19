@@ -81,15 +81,12 @@ func ConstructDockerJob( //nolint:funlen
 	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      image,
-				model.DockerEngineEntrypointKey: entrypoint,
-				model.DockerEngineEnvVarKey:     env,
-				model.DockerEngineWorkDirKey:    workingDir,
-			},
-		},
+		EngineSpec: (&model.JobSpecDocker{
+			Image:                image,
+			Entrypoint:           entrypoint,
+			EnvironmentVariables: env,
+			WorkingDirectory:     workingDir,
+		}).AsEngineSpec(),
 		Verifier:      v,
 		PublisherSpec: p,
 		Network: model.NetworkConfig{

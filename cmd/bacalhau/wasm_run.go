@@ -77,12 +77,12 @@ func NewRunWasmOptions() *WasmRunOptions {
 
 func defaultWasmJobSpec() *model.Job {
 	wasmJob, _ := model.NewJobWithSaneProductionDefaults()
-	wasmJob.Spec.EngineSpec = model.EngineSpec{
-		Type: model.EngineWasm,
-		Spec: map[string]interface{}{
-			model.WasmEngineEntryPointKey: "_start",
-		},
-	}
+
+	wasmEngine := (&model.JobSpecWasm{
+		EntryPoint: "_start",
+	}).AsEngineSpec()
+
+	wasmJob.Spec.EngineSpec = wasmEngine
 	wasmJob.Spec.Verifier = model.VerifierDeterministic
 	wasmJob.Spec.Timeout = DefaultTimeout.Seconds()
 	wasmJob.Spec.Outputs = []model.StorageSpec{
@@ -219,17 +219,23 @@ func runWasm(
 		return err
 	}
 
-	engineParams := make(map[string]interface{})
-	//ODR.Job.Spec.Wasm.Parameters = args[1:]
-	engineParams[model.WasmEngineParametersKey] = args[1:]
-	engineParams[model.WasmEngineImportModulesKey] = ODR.ImportModules
-	engineParams[model.WasmEngineEntryPointKey] = ODR.Entrypoint
-	engineParams[model.WasmEngineEntryModuleKey] = entryModule
-	engineParams[model.WasmEngineEnvVarKey] = ODR.EnvironmentVariables
-	ODR.Job.Spec.EngineSpec = model.EngineSpec{
-		Type: model.WasmEngineType,
-		Spec: engineParams,
+	envVars := make([]model.KV, 0, len(ODR.EnvironmentVariables))
+	for key, value := range ODR.EnvironmentVariables {
+		envVars = append(envVars, model.KV{
+			Key:   key,
+			Value: value,
+		})
 	}
+
+	wasmEngine := (&model.JobSpecWasm{
+		EntryModule:          entryModule,
+		EntryPoint:           ODR.Entrypoint,
+		Parameters:           args[1:],
+		EnvironmentVariables: envVars,
+		ImportModules:        ODR.ImportModules,
+	}).AsEngineSpec()
+
+	ODR.Job.Spec.EngineSpec = wasmEngine
 
 	return ExecuteJob(ctx, cm, cmd, ODR.Job, ODR.RunTimeSettings, ODR.DownloadFlags)
 }

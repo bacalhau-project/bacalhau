@@ -20,6 +20,8 @@ type StorageSpec struct {
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
 
+	Inline []byte `json:"Inline,omitempty"`
+
 	S3 *S3StorageSpec `json:"S3,omitempty"`
 
 	// URL of the git Repo to clone
@@ -35,7 +37,7 @@ type StorageSpec struct {
 	Path string `json:"path,omitempty"`
 
 	// Additional properties specific to each driver
-	Metadata map[string]string `json:"Metadata,omitempty"`
+	Metadata []KV `json:"Metadata,omitempty"`
 }
 
 type S3StorageSpec struct {

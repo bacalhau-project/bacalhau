@@ -8,6 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	big2 "github.com/filecoin-project/go-state-types/big"
+	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-cid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -16,11 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/go-address"
-	big2 "github.com/filecoin-project/go-state-types/big"
-	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
-	"github.com/rs/zerolog/log"
 )
 
 type PublisherConfig struct {
@@ -116,7 +117,10 @@ func (l *Publisher) PublishResult(
 	}
 
 	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
-	spec.Metadata["deal_cid"] = dealCid
+	spec.Metadata = append(spec.Metadata, model.KV{
+		Key:   "deal_cid",
+		Value: dealCid,
+	})
 	return spec, nil
 }
 

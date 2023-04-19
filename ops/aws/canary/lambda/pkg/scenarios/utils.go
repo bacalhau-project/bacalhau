@@ -27,17 +27,16 @@ func getSampleDockerJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: (&model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"echo",
 				defaultEchoMessage,
 			},
+		}).AsEngineSpec(),
+		Verifier: model.VerifierNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
 		},
 		Annotations:   []string{canaryAnnotation},
 		NodeSelectors: nodeSelectors,
@@ -58,18 +57,17 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: (&model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"bash",
 				"-c",
 				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
 			},
+		}).AsEngineSpec(),
+		Verifier: model.VerifierNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
 		},
 		Inputs: []model.StorageSpec{
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account

@@ -28,7 +28,7 @@ func TestPublishOnErrorSuite(t *testing.T) {
 func (s *PublishOnErrorSuite) TestPublishOnError() {
 	stdoutText := "I am a miserable failure\n"
 
-	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+	engineSpec, err := spec.MutateWasmEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
 		spec.WithParameters("data/hello.txt", "does/not/exist.txt"),
 	)
 	require.NoError(s.T(), err)

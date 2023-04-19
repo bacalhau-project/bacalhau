@@ -247,7 +247,11 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 
 	quiet := ODR.RunTimeSettings.PrintJobIDOnly
 	if !quiet {
-		containsTag := DockerImageContainsTag(j.Spec.EngineSpec.Spec[model.DockerEngineImageKey].(string))
+		dockerEngine, err := model.DecodeJobSpecDocker(j.Spec.EngineSpec.Spec)
+		if err != nil {
+			Fatal(cmd, err.Error(), 1)
+		}
+		containsTag := DockerImageContainsTag(dockerEngine.Image)
 		if !containsTag {
 			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
 		}

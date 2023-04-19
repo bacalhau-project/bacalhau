@@ -62,15 +62,16 @@ func MakeJob(
 	entrypointArray []string) *model.Job {
 	j := model.NewJob()
 
+	// FIXME this is named and sometimes used incorrectly. It builds a docker job.
+	dockerEngine := (&model.JobSpecDocker{
+		Image:      "ubuntu:latest",
+		Entrypoint: entrypointArray,
+	}).AsEngineSpec()
+	dockerEngine.Type = engineType
+
 	j.Spec = model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: engineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu:latest",
-				model.DockerEngineEntrypointKey: entrypointArray,
-			},
-		},
-		Verifier: verifierType,
+		EngineSpec: dockerEngine,
+		Verifier:   verifierType,
 		PublisherSpec: model.PublisherSpec{
 			Type: publisherType,
 		},

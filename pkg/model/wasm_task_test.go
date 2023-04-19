@@ -25,7 +25,10 @@ func TestUnmarshalWasm(t *testing.T) {
 	require.Equal(t, EngineWasm, spec.EngineSpec.Type)
 	require.Equal(t, "_start", engine.EntryPoint)
 	require.Equal(t, []string{"/inputs/data.tar.gz"}, engine.Parameters)
-	require.Equal(t, map[string]string{"HELLO": "world"}, engine.EnvironmentVariables)
+	require.Equal(t, []KV{{
+		Key:   "HELLO",
+		Value: "world",
+	}}, engine.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{
 		{Path: "/job", StorageSource: StorageSourceIPFS, CID: "bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi"},
 		{Path: "/inputs", StorageSource: StorageSourceURLDownload, URL: "https://www.example.com/data.tar.gz"},

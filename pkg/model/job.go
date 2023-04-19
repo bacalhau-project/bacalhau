@@ -62,7 +62,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		Spec: Spec{
 			EngineSpec: EngineSpec{
 				Type: DockerEngineType,
-				Spec: make(map[string]interface{}),
 			},
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
@@ -142,11 +141,6 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
-type EngineSpec struct {
-	Type Engine
-	Spec map[string]interface{}
-}
-
 type PublisherSpec struct {
 	Type   Publisher              `json:"Type,omitempty"`
 	Params map[string]interface{} `json:"Params,omitempty"`
@@ -155,7 +149,7 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// deprecated: use PublisherSpec instead
+	// deprecated: use EngineSpec instead
 	// Engine Engine
 
 	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
@@ -218,9 +212,11 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	}
 
 	if s.EngineSpec.Type == EngineWasm {
-		if v, ok := s.EngineSpec.Spec[WasmEngineEntryModuleKey].(StorageSpec); ok {
-			storages = append(storages, &v)
+		wasmEngine, err := DecodeJobSpecWasm(s.EngineSpec.Spec)
+		if err != nil {
+			panic(err)
 		}
+		storages = append(storages, &wasmEngine.EntryModule)
 	}
 	return storages
 }

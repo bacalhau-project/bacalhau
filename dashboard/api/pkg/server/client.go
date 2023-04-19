@@ -23,13 +23,10 @@ func init() { //nolint:gochecknoinits
 }
 
 var realSpec model.Spec = model.Spec{
-	EngineSpec: model.EngineSpec{
-		Type: model.EngineDocker,
-		Spec: map[string]interface{}{
-			model.DockerEngineImageKey:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-			model.DockerEngineEntrypointKey: []string{"python", "main.py", "--o", "./outputs", "--p"},
-		},
-	},
+	EngineSpec: (&model.JobSpecDocker{
+		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
+		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
+	}).AsEngineSpec(),
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
@@ -49,13 +46,10 @@ var realSpec model.Spec = model.Spec{
 }
 
 var testSpec model.Spec = model.Spec{
-	EngineSpec: model.EngineSpec{
-		Type: model.EngineDocker,
-		Spec: map[string]interface{}{
-			model.DockerEngineImageKey:      "ubuntu",
-			model.DockerEngineEntrypointKey: []string{"echo"},
-		},
-	},
+	EngineSpec: (&model.JobSpecDocker{
+		Image:      "ubuntu",
+		Entrypoint: []string{"echo"},
+	}).AsEngineSpec(),
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
@@ -109,6 +103,7 @@ func runGenericJob(s model.Spec) (string, error) {
 	return "", fmt.Errorf("no results found?")
 }
 
+// this method implicitly expects docker
 func runStableDiffusion(prompt string, testing bool) (string, error) {
 	var s model.Spec
 	if testing {
@@ -116,10 +111,10 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	} else {
 		s = realSpec
 	}
-	// TODO this is really gross, we can probably do better.
-	if entryPoint, ok := s.EngineSpec.Spec[model.DockerEngineEntrypointKey].([]string); ok {
-		entryPoint = append(entryPoint, prompt)
-		s.EngineSpec.Spec[model.DockerEngineEntrypointKey] = append(s.EngineSpec.Spec[model.DockerEngineEntrypointKey].([]string), entryPoint...)
+	mutatedEngine, err := model.MutateDockerEngineSpec(s.EngineSpec, model.AppendEntrypoint(prompt))
+	if err != nil {
+		return "", err
 	}
+	s.EngineSpec = mutatedEngine
 	return runGenericJob(s)
 }

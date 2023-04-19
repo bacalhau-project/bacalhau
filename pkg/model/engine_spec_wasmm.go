@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -29,33 +30,44 @@ type JobSpecWasm struct {
 	Parameters []string `json:"Parameters,omitempty"`
 
 	// The variables available in the environment of the running program.
-	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+	EnvironmentVariables []KV `json:"EnvironmentVariables,omitempty"`
 
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
-func (ws *JobSpecWasm) AsEngineSpec() EngineSpec {
-	engine := EngineSpec{
-		Type: WasmEngineType,
-		Spec: make(map[string]interface{}),
-	}
+type KV struct {
+	Key   string
+	Value string
+}
 
-	engine.Spec[WasmEngineEntryModuleKey] = ws.EntryModule
-	if ws.EntryPoint != "" {
-		engine.Spec[WasmEngineEntryPointKey] = ws.EntryPoint
+func (ws *JobSpecWasm) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := ws.MarshalCBOR(buf); err != nil {
+		return nil, err
 	}
-	if len(ws.Parameters) > 0 {
-		engine.Spec[WasmEngineParametersKey] = ws.Parameters
+	return buf.Bytes(), nil
+}
+
+func DecodeJobSpecWasm(b []byte) (*JobSpecWasm, error) {
+	var spec JobSpecWasm
+	if err := spec.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+		return nil, err
 	}
-	if len(ws.EnvironmentVariables) > 0 {
-		engine.Spec[WasmEngineEnvVarKey] = ws.EnvironmentVariables
+	return &spec, nil
+}
+
+func (ws *JobSpecWasm) AsEngineSpec() EngineSpec {
+	data, err := ws.Serialize()
+	if err != nil {
+		// TODO return to caller
+		panic(err)
 	}
-	if len(ws.ImportModules) > 0 {
-		engine.Spec[WasmEngineImportModulesKey] = ws.ImportModules
+	return EngineSpec{
+		Type: WasmEngineType,
+		Spec: data,
 	}
-	return engine
 }
 
 func WithParameters(params ...string) func(wasm *JobSpecWasm) error {
@@ -88,34 +100,5 @@ func AsJobSpecWasm(e EngineSpec) (*JobSpecWasm, error) {
 		return nil, fmt.Errorf("EngineSpec is uninitalized")
 	}
 
-	job := &JobSpecWasm{}
-
-	if value, ok := e.Spec[WasmEngineEntryModuleKey].(StorageSpec); ok {
-		job.EntryModule = value
-	}
-
-	if value, ok := e.Spec[WasmEngineEntryPointKey].(string); ok {
-		job.EntryPoint = value
-	}
-
-	if value, ok := e.Spec[WasmEngineParametersKey].([]string); ok {
-		for _, v := range value {
-			job.Parameters = append(job.Parameters, v)
-		}
-	}
-
-	if value, ok := e.Spec[WasmEngineEnvVarKey].(map[string]string); ok {
-		job.EnvironmentVariables = make(map[string]string)
-		for k, v := range value {
-			job.EnvironmentVariables[k] = v
-		}
-	}
-
-	if value, ok := e.Spec[WasmEngineImportModulesKey].([]StorageSpec); ok {
-		for _, v := range value {
-			job.ImportModules = append(job.ImportModules, v)
-		}
-	}
-
-	return job, nil
+	return DecodeJobSpecWasm(e.Spec)
 }

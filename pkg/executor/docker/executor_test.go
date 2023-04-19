@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -95,13 +96,10 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 }
 
 func (s *ExecutorTestSuite) dockerEngineSpecCurlTask() model.EngineSpec {
-	return model.EngineSpec{
-		Type: model.DockerEngineType,
-		Spec: map[string]interface{}{
-			model.DockerEngineImageKey:      "curlimages/curl",
-			model.DockerEngineEntrypointKey: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
-		},
-	}
+	return (&model.JobSpecDocker{
+		Image:      "curlimages/curl",
+		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
+	}).AsEngineSpec()
 }
 
 func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
@@ -133,13 +131,10 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 	result, err := s.runJobGetStdout(model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu",
-				model.DockerEngineEntrypointKey: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
+		}).AsEngineSpec(),
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
@@ -173,13 +168,10 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 	result, err := s.runJobGetStdout(model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu",
-				model.DockerEngineEntrypointKey: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
+		}).AsEngineSpec(),
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
@@ -278,13 +270,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "curlimages/curl",
-				model.DockerEngineEntrypointKey: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "curlimages/curl",
+			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
+		}).AsEngineSpec(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -314,13 +303,10 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	defer cancel()
 
 	result, err := s.runJobWithContext(ctx, model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu",
-				model.DockerEngineEntrypointKey: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
+		}).AsEngineSpec(),
 	}, "timeout")
 	// The Docker client has changed so that it prioritizes container error message
 	// and not the error message from the context. It does error upon timeout, but not
@@ -340,13 +326,10 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu",
-				model.DockerEngineEntrypointKey: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
+		}).AsEngineSpec(),
 	}
 
 	go func() {
@@ -372,13 +355,10 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		EngineSpec: model.EngineSpec{
-			Type: model.DockerEngineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu",
-				model.DockerEngineEntrypointKey: []string{"bash", "-c", "echo hello && sleep 20"},
-			},
-		},
+		EngineSpec: (&spec.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
+		}).AsEngineSpec(),
 	}
 
 	go func() {

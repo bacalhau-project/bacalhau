@@ -52,7 +52,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 					for k := 0; k < n.numOfJobs; k++ {
 						j := testutils.MakeGenericJob()
 						var err error
-						j.Spec.EngineSpec, err = spec.MutateEngineSpec(j.Spec.EngineSpec,
+						j.Spec.EngineSpec, err = spec.MutateDockerEngineSpec(j.Spec.EngineSpec,
 							spec.WithEntrypoint("Entrypoint-Unique-Array", uuid.NewString()),
 						)
 						require.NoError(s.T(), err)
@@ -197,7 +197,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				for i := 0; i < n.numOfJobs; i++ {
 					j := testutils.MakeGenericJob()
 					var err error
-					j.Spec.EngineSpec, err = spec.MutateEngineSpec(j.Spec.EngineSpec,
+					j.Spec.EngineSpec, err = spec.MutateDockerEngineSpec(j.Spec.EngineSpec,
 						spec.WithEntrypoint("Entrypoint-Unique-Array", uuid.NewString()),
 					)
 					require.NoError(s.T(), err)

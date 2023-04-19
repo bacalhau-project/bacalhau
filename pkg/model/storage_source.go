@@ -10,7 +10,7 @@ import (
 // e.g. ipfs fuse vs ipfs api copy
 //
 //go:generate stringer -type=StorageSourceType --trimprefix=StorageSource
-type StorageSourceType int
+type StorageSourceType uint8
 
 const (
 	storageSourceUnknown StorageSourceType = iota // must be first

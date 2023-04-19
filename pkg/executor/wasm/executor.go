@@ -16,7 +16,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
 	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -192,11 +191,12 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		WithArgs(args...).
 		WithFS(rootFs)
 
-	keys := maps.Keys(engineSpec.EnvironmentVariables)
-	sort.Strings(keys)
-	for _, key := range keys {
+	sort.Slice(engineSpec.EnvironmentVariables, func(i, j int) bool {
+		return engineSpec.EnvironmentVariables[i].Key < engineSpec.EnvironmentVariables[j].Key
+	})
+	for _, kv := range engineSpec.EnvironmentVariables {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, engineSpec.EnvironmentVariables[key])
+		config = config.WithEnv(kv.Key, kv.Value)
 	}
 
 	// Load and instantiate imported modules

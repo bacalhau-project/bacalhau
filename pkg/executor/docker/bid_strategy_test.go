@@ -10,18 +10,16 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func jobForDockerImage(imageID string) model.Job {
 	return model.Job{
 		Spec: model.Spec{
-			EngineSpec: model.EngineSpec{
-				Type: model.DockerEngineType,
-				Spec: map[string]interface{}{
-					model.DockerEngineImageKey: imageID,
-				},
-			},
+			EngineSpec: (&spec.JobSpecDocker{
+				Image: imageID,
+			}).AsEngineSpec(),
 		},
 	}
 }

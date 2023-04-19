@@ -151,10 +151,15 @@ var WasmExitCode = Scenario{
 	),
 	Spec: model.Spec{
 		EngineSpec: (&wasm_spec.JobSpecWasm{
-			EntryPoint:           "_start",
-			EntryModule:          InlineData(exit_code.Program()),
-			Parameters:           []string{},
-			EnvironmentVariables: map[string]string{"EXIT_CODE": "5"},
+			EntryPoint:  "_start",
+			EntryModule: InlineData(exit_code.Program()),
+			Parameters:  []string{},
+			EnvironmentVariables: []wasm_spec.KV{
+				{
+					Key:   "EXIT_CODE",
+					Value: "5",
+				},
+			},
 		}).AsEngineSpec(),
 	},
 }
@@ -169,9 +174,15 @@ var WasmEnvVars = Scenario{
 		EngineSpec: (&wasm_spec.JobSpecWasm{
 			EntryPoint:  "_start",
 			EntryModule: InlineData(env.Program()),
-			EnvironmentVariables: map[string]string{
-				"TEST":    "yes",
-				"AWESOME": "definitely",
+			EnvironmentVariables: []wasm_spec.KV{
+				{
+					Key:   "TEST",
+					Value: "yes",
+				},
+				{
+					Key:   "AWESOME",
+					Value: "definitely",
+				},
 			},
 		}).AsEngineSpec(),
 	},

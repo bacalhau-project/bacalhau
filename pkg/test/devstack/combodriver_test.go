@@ -34,7 +34,7 @@ const exampleText = "hello world"
 var testcase scenario.Scenario
 
 func init() {
-	engineSpec, err := spec.MutateEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
+	engineSpec, err := spec.MutateWasmEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec,
 		spec.WithParameters(`/inputs/file.txt`),
 	)
 	if err != nil {

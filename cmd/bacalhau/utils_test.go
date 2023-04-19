@@ -148,7 +148,7 @@ func (s *UtilsSuite) TestImages() {
 		s.Run(name, func() {
 			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
 			var err error
-			sampleJob.Spec.EngineSpec, err = spec.MutateEngineSpec(sampleJob.Spec.EngineSpec, spec.WithImage(test.Image))
+			sampleJob.Spec.EngineSpec, err = spec.MutateDockerEngineSpec(sampleJob.Spec.EngineSpec, spec.WithImage(test.Image))
 			err = job.VerifyJob(context.TODO(), sampleJob)
 			if test.Valid {
 				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)
