@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -386,9 +386,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	require.NotNil(s.T(), reader)
 	require.NoError(s.T(), err)
 
-	df, err := logstream.NewDataFrameFromReader(reader)
+	df, err := logger.NewDataFrameFromReader(reader)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), string(df.Data), "hello\n")
 	require.Equal(s.T(), df.Size, 6)
-	require.Equal(s.T(), df.Tag, logstream.StdoutStreamTag)
+	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
 }

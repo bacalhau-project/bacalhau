@@ -52,8 +52,8 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
 func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
-		Str("Job", execution.Job.ID()).
-		Str("ExecutionID", execution.ID).
+		Str("job", execution.Job.ID()).
+		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -218,7 +218,7 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (e
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Str("execution", execution.ID).Msg("Canceling execution")
+	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
 	if cancel, found := e.cancellers.Get(execution.ID); found {
 		e.cancellers.Delete(execution.ID)
 		cancel()

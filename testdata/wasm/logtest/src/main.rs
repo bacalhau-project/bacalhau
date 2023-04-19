@@ -58,22 +58,18 @@ fn logtest(path: &String, pauser: Box<dyn Fn(&mut LCG)>) -> Result<(), Box<dyn E
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let slow: bool;
-    let file: &String;
-
-    (file, slow) = if let [_program, filename, slowflag] = &args[..] {
-        (filename, slowflag == "--slow")
-    } else if let [_program, filename] = &args[..] {
-        (filename, false)
-    } else {
-        eprintln!("Usage: logtest input-txt [--slow]");
+    if args.len() < 2 {
+        eprintln!("Usage: logtest input-txt [--fast]");
         process::exit(1);
-    };
+    }
+
+    let file = &args[1];
+    let fast = args.len() == 3 && &args[2] == "--fast";
 
     // Create a closure that will either do nothing, or if we specify
     // --slow then will pause for up to 400ms between lines.
     let mut pauser: Box<dyn Fn(&mut LCG)> = Box::new(|_lcg: &mut LCG| {});
-    if slow {
+    if !fast {
         pauser = Box::new(|lcg: &mut LCG| {
             let millis = lcg.next(400);
             let duration = time::Duration::from_millis(millis);
