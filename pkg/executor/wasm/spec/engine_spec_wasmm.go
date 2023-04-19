@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -92,30 +93,69 @@ func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
 
 	job := &JobSpecWasm{}
 
-	if value, ok := e.Spec[WasmEngineEntryModuleKey].(model.StorageSpec); ok {
-		job.EntryModule = value
-	}
-
-	if value, ok := e.Spec[WasmEngineEntryPointKey].(string); ok {
-		job.EntryPoint = value
-	}
-
-	if value, ok := e.Spec[WasmEngineParametersKey].([]string); ok {
-		for _, v := range value {
-			job.Parameters = append(job.Parameters, v)
+	if entryModule, ok := e.Spec[WasmEngineEntryModuleKey]; ok {
+		if value, ok := entryModule.(map[string]interface{}); ok {
+			data, err := json.Marshal(value)
+			if err != nil {
+				return nil, err
+			}
+			var storageSpec model.StorageSpec
+			if err := json.Unmarshal(data, &storageSpec); err != nil {
+				return nil, err
+			}
+			job.EntryModule = storageSpec
+		} else if value, ok := entryModule.(model.StorageSpec); ok {
+			job.EntryModule = value
+		} else {
+			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEntryModuleKey)
 		}
 	}
 
-	if value, ok := e.Spec[WasmEngineEnvVarKey].(map[string]string); ok {
-		job.EnvironmentVariables = make(map[string]string)
-		for k, v := range value {
-			job.EnvironmentVariables[k] = v
+	if entryPoint, ok := e.Spec[WasmEngineEntryPointKey]; ok {
+		if value, ok := entryPoint.(string); ok {
+			job.EntryPoint = value
+		} else {
+			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEntryPointKey)
 		}
 	}
 
-	if value, ok := e.Spec[WasmEngineImportModulesKey].([]model.StorageSpec); ok {
-		for _, v := range value {
-			job.ImportModules = append(job.ImportModules, v)
+	if params, ok := e.Spec[WasmEngineParametersKey]; ok {
+		if value, ok := params.([]string); ok {
+			for _, v := range value {
+				job.Parameters = append(job.Parameters, v)
+			}
+		} else if value, ok := params.([]interface{}); ok {
+			for _, v := range value {
+				if str, ok := v.(string); ok {
+					job.Parameters = append(job.Parameters, str)
+				} else {
+					return nil, fmt.Errorf("unable to convert %v to string", v)
+				}
+			}
+		} else {
+			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineParametersKey)
+		}
+	}
+
+	if envvar, ok := e.Spec[WasmEngineEnvVarKey]; ok {
+		if value, ok := envvar.(map[string]string); ok {
+			job.EnvironmentVariables = make(map[string]string)
+			for k, v := range value {
+				job.EnvironmentVariables[k] = v
+			}
+		} else {
+			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEnvVarKey)
+		}
+	}
+
+	if importModules, ok := e.Spec[WasmEngineImportModulesKey]; ok {
+		// TODO this assertion will probably break whenever this is used, bytes is stating to look more appearing
+		if value, ok := importModules.([]model.StorageSpec); ok {
+			for _, v := range value {
+				job.ImportModules = append(job.ImportModules, v)
+			}
+		} else {
+			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineImportModulesKey)
 		}
 	}
 
