@@ -191,7 +191,7 @@ func (s *StorageSuite) TestCloneRepo() {
 		if err != nil {
 			fmt.Print(err)
 		}
-		urlhash, _ := UrltoLatestCommitHash(ftc.URL)
+		urlhash, _ := urltoLatestCommitHash(context.Background(), ftc.URL)
 		if urlhash != "" {
 			require.Equal(s.T(), urlhash, hash, "%s: content of file does not match", name)
 		}

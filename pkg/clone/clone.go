@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"strings"
 
@@ -12,20 +13,11 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/rs/zerolog/log"
 
-	//nolint:staticcheck
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
 const baseURL = "http://kv.bacalhau.org/"
-
-type ScriptStruct struct {
-	//nolint:unused
-	path string
-	//nolint:unused
-	arguments []string
-}
 
 type Clone struct {
 	URL string
@@ -41,43 +33,41 @@ func NewCloneClient() (*Clone, error) {
 	}, nil
 }
 
-func RepoExistsOnIPFSGivenURL(urlStr string, ctx context.Context) (string, error) {
-	output, err := GetLatestCommitHash(urlStr)
+func RepoExistsOnIPFSGivenURL(ctx context.Context, urlStr string) (string, error) {
+	output, err := getLatestCommitHash(urlStr)
 	if err != nil {
-		fmt.Println(err)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get latest commit hash")
 		return "", err
 	}
+
 	url := baseURL + output
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		log.Err(err)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to create new http request to kv")
 		return "", err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Err(err)
+		log.Ctx(ctx).Error().Err(err).Msg("failed to make http request to kv")
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to ready body from kv response")
+		return "", err
+	}
+
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to unmarshall kv response")
 		return "", err
 	}
-	return response.CID, nil
-}
 
-func RemoveFromSlice(arr []string, item string) []string {
-	newArr := []string{}
-	for _, s := range arr {
-		if s != item {
-			newArr = append(newArr, s)
-		}
-	}
-	return newArr
+	return response.CID, nil
 }
 
 func RemoveFromModelStorageSpec(inputs []model.StorageSpec, url string) []model.StorageSpec {
@@ -119,7 +109,7 @@ func IsValidGitRepoURL(urlStr string) (*url.URL, error) {
 	return u, nil
 }
 
-func GetLatestCommitHash(URL string) (string, error) {
+func getLatestCommitHash(URL string) (string, error) {
 	// Create a memory storage
 	memStorage := memory.NewStorage()
 
