@@ -19,7 +19,7 @@ type CheckResults func(resultsDir string) error
 // expectedLine is set to -1 then a line-check is not performed.
 func FileContains(
 	outputFilePath string,
-	expectedString string,
+	expectedStrings []string,
 	expectedLines int,
 ) CheckResults {
 	return func(resultsDir string) error {
@@ -34,8 +34,10 @@ func FileContains(
 			return fmt.Errorf("%s: count mismatch:\nExpected: %d\nActual: %d", outputFile, expectedLines, actualLineCount)
 		}
 
-		if !strings.Contains(string(resultsContent), expectedString) {
-			return fmt.Errorf("%s: content mismatch:\nExpected Contains: %q\nActual: %q", outputFile, expectedString, resultsContent)
+		for _, expectedString := range expectedStrings {
+			if !strings.Contains(string(resultsContent), expectedString) {
+				return fmt.Errorf("%s: content mismatch:\nExpected Contains: %q\nActual: %q", outputFile, expectedString, resultsContent)
+			}
 		}
 
 		return nil

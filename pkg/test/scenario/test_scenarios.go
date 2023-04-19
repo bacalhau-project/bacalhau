@@ -69,7 +69,7 @@ var GrepFile = Scenario{
 	),
 	ResultsChecker: FileContains(
 		model.DownloadFilenameStdout,
-		"kiwi is delicious",
+		[]string{"kiwi is delicious"},
 		2,
 	),
 	Spec: model.Spec{
@@ -92,7 +92,7 @@ var SedFile = Scenario{
 	),
 	ResultsChecker: FileContains(
 		model.DownloadFilenameStdout,
-		"LISBON",
+		[]string{"LISBON"},
 		5, //nolint:gomnd // magic number ok for testing
 	),
 	Spec: model.Spec{
@@ -116,7 +116,7 @@ var AwkFile = Scenario{
 	),
 	ResultsChecker: FileContains(
 		model.DownloadFilenameStdout,
-		"LISBON",
+		[]string{"LISBON"},
 		501, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
@@ -167,7 +167,7 @@ var WasmExitCode = Scenario{
 var WasmEnvVars = Scenario{
 	ResultsChecker: FileContains(
 		"stdout",
-		"AWESOME=definitely\nTEST=yes\n",
+		[]string{"AWESOME=definitely", "TEST=yes"},
 		3, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
@@ -190,7 +190,7 @@ var WasmCsvTransform = Scenario{
 	),
 	ResultsChecker: FileContains(
 		"outputs/parents-children.csv",
-		"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva",
+		[]string{"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva"},
 		269, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
@@ -237,8 +237,8 @@ var WasmLogTest = Scenario{
 	),
 	ResultsChecker: FileContains(
 		"stdout",
-		"https://www.gutenberg.org", // end of the file
-		-1,                          //nolint:gomnd // magic number appropriate for test
+		[]string{"https://www.gutenberg.org"}, // end of the file
+		-1,                                    //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
