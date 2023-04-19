@@ -112,7 +112,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	}
 	args = append(args, extraArgs...)
 	args = append(args,
-		"ubuntu:latest",
+		"ubuntu:kinetic",
 		"--",
 		"bash", "-c",
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",

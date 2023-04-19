@@ -8,13 +8,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
 
 type Downloader struct {
 	settings *model.DownloaderSettings
 	cm       *system.CleanupManager
+	node     *ipfs.Node // defaults to nil
 }
 
 func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
@@ -28,27 +28,39 @@ func (d *Downloader) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (d *Downloader) createTemporaryNode(ctx context.Context) (ipfs.Client, *ipfs.Node, error) {
+func (d *Downloader) getClient(ctx context.Context) (ipfs.Client, error) {
 	log.Ctx(ctx).Debug().Msg("creating ipfs node")
 
-	newNode := ipfs.NewNode
-	if d.settings.LocalIPFS {
-		newNode = ipfs.NewLocalNode
+	if d.node == nil {
+		// Only create a temporary ipfs node on the first need for a client
+		newNode := ipfs.NewNode
+		if d.settings.LocalIPFS {
+			newNode = ipfs.NewLocalNode
+		}
+
+		node, err := newNode(ctx, d.cm, strings.Split(d.settings.IPFSSwarmAddrs, ","))
+		if err != nil {
+			return ipfs.Client{}, err
+		}
+
+		d.node = node
+
+		// Cleanup when the Downloader disappears.
+		d.cm.RegisterCallbackWithContext(func(ctx context.Context) error {
+			if d.node != nil {
+				d.node.Close(ctx)
+			}
+			return nil
+		})
 	}
 
-	node, err := newNode(ctx, d.cm, strings.Split(d.settings.IPFSSwarmAddrs, ","))
-	if err != nil {
-		return ipfs.Client{}, nil, err
-	}
-
-	return node.Client(), node, nil
+	return d.node.Client(), nil
 }
 
 func (d *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
-	ipfsClient, node, err := d.createTemporaryNode(ctx)
-	defer closer.ContextCloserWithLogOnError(ctx, "IPFS node", node)
+	ipfsClient, err := d.getClient(ctx)
 
 	if err != nil {
 		return nil, err
@@ -85,10 +97,7 @@ func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) e
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/ipfs.Downloader.FetchResult")
 	defer span.End()
 
-	// NOTE: we have to spin up a temporary IPFS node as we don't
-	// generally have direct access to a remote node's API server.
-	ipfsClient, node, err := d.createTemporaryNode(ctx)
-	defer closer.ContextCloserWithLogOnError(ctx, "IPFS node", node)
+	ipfsClient, err := d.getClient(ctx)
 
 	if err != nil {
 		return err

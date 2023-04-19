@@ -212,6 +212,7 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 
 func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
 	authToken := getAuthToken(ctx, image, dockerCreds)
+
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
 		return nil, errors.Wrapf(err, DistributionInspectError, image)

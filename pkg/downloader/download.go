@@ -79,10 +79,14 @@ func DownloadResults( //nolint:funlen,gocyclo
 	downloadedCids := map[string]string{}
 	var downloader Downloader
 
-	items := make(map[string]model.DownloadItem)
 	if settings.SingleFile != "" {
 		for _, publishedResult := range publishedResults {
-			cid, err := findSingleEntry(ctx, publishedResult, downloadProvider, settings.SingleFile)
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			if err != nil {
+				return err
+			}
+
+			cid, err := findSingleEntry(ctx, publishedResult, downloader, settings.SingleFile)
 			if err != nil {
 				return err
 			}
@@ -108,33 +112,42 @@ func DownloadResults( //nolint:funlen,gocyclo
 			// We want to specify the target directory to copy from as the key
 			// but the DownloadItem itself specifies the target file to be
 			// written to.
-			items[cidParentDir] = model.DownloadItem{
+			item := model.DownloadItem{
 				Name:       settings.SingleFile,
 				CID:        cid,
 				SourceType: publishedResult.Data.StorageSource,
 				Target:     targetFile,
 			}
+
+			err = downloader.FetchResult(ctx, item)
+			if err != nil {
+				return err
+			}
+
+			downloadedCids[item.CID] = cidParentDir
 		}
 	} else {
 		for _, publishedResult := range publishedResults {
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			if err != nil {
+				return err
+			}
+
 			cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
-			items[cidDownloadDir] = model.DownloadItem{
+			item := model.DownloadItem{
 				Name:       publishedResult.Data.Name,
 				CID:        publishedResult.Data.CID,
 				SourceType: publishedResult.Data.StorageSource,
 				Target:     cidDownloadDir,
 			}
-		}
-	}
 
-	for path, item := range items {
-		downloader, _ = downloadProvider.Get(ctx, item.SourceType) //nolint
-		err = downloader.FetchResult(ctx, item)
-		if err != nil {
-			return err
-		}
+			err = downloader.FetchResult(ctx, item)
+			if err != nil {
+				return err
+			}
 
-		downloadedCids[item.CID] = path
+			downloadedCids[item.CID] = cidDownloadDir
+		}
 	}
 
 	if settings.Raw {
@@ -158,8 +171,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 	}
 }
 
-func findSingleEntry(ctx context.Context, result model.PublishedResult, downloadProvider DownloaderProvider, name string) (string, error) {
-	downloader, _ := downloadProvider.Get(ctx, result.Data.StorageSource) //nolint
+func findSingleEntry(ctx context.Context, result model.PublishedResult, downloader Downloader, name string) (string, error) {
 	filemap, err := downloader.DescribeResult(ctx, result)
 	if err != nil {
 		return "", err
