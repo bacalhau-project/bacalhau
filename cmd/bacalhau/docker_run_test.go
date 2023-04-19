@@ -108,7 +108,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			var j *model.Job
 			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(mustAsJobSpecDocker(s.T(), j.Spec.EngineSpec).Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
+			s.Require().Equal(testutils.MustAsJobSpecDocker(s.T(), j.Spec.EngineSpec).Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }
@@ -602,7 +602,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				s.Require().Equal(tc.workdir, mustAsJobSpecDocker(s.T(), j.Spec.EngineSpec).WorkingDirectory, "Job workdir != test workdir.")
+				s.Require().Equal(tc.workdir, testutils.MustAsJobSpecDocker(s.T(), j.Spec.EngineSpec).WorkingDirectory, "Job workdir != test workdir.")
 				s.Require().NoError(err, "Error in running command.")
 			}
 		}()

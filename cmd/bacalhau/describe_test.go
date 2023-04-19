@@ -83,8 +83,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
-					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -99,8 +99,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
-					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
@@ -115,8 +115,8 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
-					mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
-					mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+					testutils.MustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -230,8 +230,8 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
-						mustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
-						mustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
+						testutils.MustAsJobSpecDocker(s.T(), submittedJob.Spec.EngineSpec).Entrypoint[0],
+						testutils.MustAsJobSpecDocker(s.T(), returnedJobDescription.Job.Spec.EngineSpec).Entrypoint[0],
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}
@@ -250,12 +250,4 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 // a normal test function and pass our suite to suite.Run
 func TestDescribeSuite(t *testing.T) {
 	suite.Run(t, new(DescribeSuite))
-}
-
-func mustAsJobSpecDocker(t testing.TB, e model.EngineSpec) *spec.JobSpecDocker {
-	engine, err := spec.AsJobSpecDocker(e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return engine
 }
