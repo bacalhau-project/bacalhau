@@ -80,7 +80,7 @@ func defaultWasmJobSpec() *model.Job {
 	wasmJob.Spec.EngineSpec = model.EngineSpec{
 		Type: model.EngineWasm,
 		Spec: map[string]interface{}{
-			model.WasmEngineEntryPointKey: "_start",
+			model.WasmEngineEntryPointKey: defaultWasmEntryPoint,
 		},
 	}
 	wasmJob.Spec.Verifier = model.VerifierDeterministic
@@ -213,14 +213,12 @@ func runWasm(
 		}
 	}
 
-	//wasmCidOrPath := args[0]
 	entryModule, err := parseWasmEntryModule(ctx, args[0], cmd)
 	if err != nil {
 		return err
 	}
 
 	engineParams := make(map[string]interface{})
-	//ODR.Job.Spec.Wasm.Parameters = args[1:]
 	engineParams[model.WasmEngineParametersKey] = args[1:]
 	engineParams[model.WasmEngineImportModulesKey] = ODR.ImportModules
 	engineParams[model.WasmEngineEntryPointKey] = ODR.Entrypoint

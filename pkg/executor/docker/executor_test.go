@@ -94,7 +94,7 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (s *ExecutorTestSuite) dockerEngineSpecCurlTask() model.EngineSpec {
+func (s *ExecutorTestSuite) curlTask() model.EngineSpec {
 	return model.EngineSpec{
 		Type: model.DockerEngineType,
 		Spec: map[string]interface{}{
@@ -195,7 +195,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	result, err := s.runJob(model.Spec{
 		Network:    model.NetworkConfig{Type: model.NetworkFull},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -205,7 +205,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 	result, err := s.runJob(model.Spec{
 		Network:    model.NetworkConfig{Type: model.NetworkNone},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err)
 	require.Empty(s.T(), result.STDOUT)
@@ -219,7 +219,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -235,7 +235,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 				"bacalhau.org",
 			},
 		},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -251,7 +251,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{hostname, hostroot},
 		},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -264,7 +264,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{"bacalhau.org"},
 		},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -302,7 +302,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		EngineSpec: s.dockerEngineSpecCurlTask(),
+		EngineSpec: s.curlTask(),
 	})
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), "test", result.STDOUT, result.STDOUT)

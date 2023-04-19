@@ -143,8 +143,8 @@ type LabelSelectorRequirement struct {
 }
 
 type EngineSpec struct {
-	Type Engine
-	Spec map[string]interface{}
+	Type Engine                 `json:"Type,omitempty"`
+	Spec map[string]interface{} `json:"Spec,omitempty"`
 }
 
 type PublisherSpec struct {
@@ -155,48 +155,48 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// deprecated: use PublisherSpec instead
+	// deprecated: use EngineSpec instead
 	// Engine Engine
 
 	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
 
-	Verifier Verifier `json:"Verifier,omitempty" json:"Verifier,omitempty"`
+	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
 	// deprecated: use PublisherSpec instead
-	Publisher     Publisher     `json:"Publisher,omitempty" json:"Publisher,omitempty"`
-	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty" json:"PublisherSpec"`
+	Publisher     Publisher     `json:"Publisher,omitempty"`
+	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
-	Resources ResourceUsageConfig `json:"Resources,omitempty" json:"Resources"`
+	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
 	// The type of networking access that the job needs
-	Network NetworkConfig `json:"Network,omitempty" json:"Network"`
+	Network NetworkConfig `json:"Network,omitempty"`
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
-	Timeout float64 `json:"Timeout,omitempty" json:"Timeout,omitempty"`
+	Timeout float64 `json:"Timeout,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty" json:"Inputs,omitempty"`
+	Inputs []StorageSpec `json:"inputs,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty" json:"Outputs,omitempty"`
+	Outputs []StorageSpec `json:"outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
-	Annotations []string `json:"Annotations,omitempty" json:"Annotations,omitempty"`
+	Annotations []string `json:"Annotations,omitempty"`
 
 	// NodeSelectors is a selector which must be true for the compute node to run this job.
-	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty" json:"NodeSelectors,omitempty"`
+	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
 
 	// Do not track specified by the client
-	DoNotTrack bool `json:"DoNotTrack,omitempty" json:"DoNotTrack,omitempty"`
+	DoNotTrack bool `json:"DoNotTrack,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal Deal `json:"Deal,omitempty" json:"Deal"`
+	Deal Deal `json:"Deal,omitempty"`
 }
 
 // Return timeout duration
