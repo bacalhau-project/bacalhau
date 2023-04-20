@@ -39,6 +39,7 @@ type DevStackOptions struct {
 	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
+	DisabledFeatures           node.FeatureConfig
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -270,6 +271,7 @@ func NewDevStack(
 				"env":  "devstack",
 			},
 			DependencyInjector: injector,
+			DisabledFeatures:   options.DisabledFeatures,
 		}
 
 		if lotus != nil {

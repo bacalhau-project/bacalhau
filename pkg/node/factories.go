@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -73,7 +74,7 @@ type StandardStorageProvidersFactory struct{}
 func (f *StandardStorageProvidersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig) (storage.StorageProvider, error) {
-	return executor_util.NewStandardStorageProvider(
+	provider, err := executor_util.NewStandardStorageProvider(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardStorageProviderOptions{
@@ -81,6 +82,10 @@ func (f *StandardStorageProvidersFactory) Get(
 			FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
 		},
 	)
+	return model.NewConfiguredProvider[model.StorageSourceType, storage.Storage](
+		provider,
+		nodeConfig.DisabledFeatures.Storages,
+	), err
 }
 
 func NewStandardStorageProvidersFactory() *StandardStorageProvidersFactory {
@@ -89,10 +94,8 @@ func NewStandardStorageProvidersFactory() *StandardStorageProvidersFactory {
 
 type StandardExecutorsFactory struct{}
 
-func (f *StandardExecutorsFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-	return executor_util.NewStandardExecutorProvider(
+func (f *StandardExecutorsFactory) Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+	provider, err := executor_util.NewStandardExecutorProvider(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardExecutorOptions{
@@ -104,6 +107,7 @@ func (f *StandardExecutorsFactory) Get(
 			},
 		},
 	)
+	return model.NewConfiguredProvider[model.Engine, executor.Executor](provider, nodeConfig.DisabledFeatures.Engines), err
 }
 
 func NewStandardExecutorsFactory() *StandardExecutorsFactory {
@@ -116,12 +120,13 @@ func (f *StandardVerifiersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
 	encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
-	return verifier_util.NewStandardVerifiers(
+	provider, err := verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
 		encrypter.Encrypt,
 		encrypter.Decrypt,
 	)
+	return model.NewConfiguredProvider[model.Verifier, verifier.Verifier](provider, nodeConfig.DisabledFeatures.Verifiers), err
 }
 
 func NewStandardVerifiersFactory() *StandardVerifiersFactory {
@@ -133,13 +138,14 @@ type StandardPublishersFactory struct{}
 func (f *StandardPublishersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-	return publisher_util.NewIPFSPublishers(
+	provider, err := publisher_util.NewIPFSPublishers(
 		ctx,
 		nodeConfig.CleanupManager,
 		nodeConfig.IPFSClient,
 		nodeConfig.EstuaryAPIKey,
 		nodeConfig.LotusConfig,
 	)
+	return model.NewConfiguredProvider[model.Publisher, publisher.Publisher](provider, nodeConfig.DisabledFeatures.Publishers), err
 }
 
 func NewStandardPublishersFactory() *StandardPublishersFactory {

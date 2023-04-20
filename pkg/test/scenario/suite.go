@@ -105,18 +105,6 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	stack, cm := s.setupStack(scenario.Stack)
 
-	// Check that the stack has the appropriate executor installed
-	for _, n := range stack.Nodes {
-		executor, err := n.ComputeNode.Executors.Get(s.Ctx, spec.Engine)
-		s.Require().NoError(err)
-
-		isInstalled, err := executor.IsInstalled(s.Ctx)
-		s.Require().NoError(err)
-		s.Require().True(isInstalled, "Expected %v to be installed on node %s", spec.Engine, n.Host.ID().String())
-	}
-
-	// TODO: assert network connectivity
-
 	s.T().Log("Setting up storage")
 	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
 	spec.Outputs = scenario.Outputs

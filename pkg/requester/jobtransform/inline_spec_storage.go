@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/copy"
 	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog/log"
 )
 
 // The maximum size that an individual inline storage spec and all inline
@@ -23,6 +24,13 @@ const (
 // exceeded it will move the largest specs into IPFS.
 func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
+		hasInline := provider.Has(ctx, model.StorageSourceInline)
+		hasIPFS := provider.Has(ctx, model.StorageSourceIPFS)
+		if !hasInline || !hasIPFS {
+			log.Ctx(ctx).Warn().Msg("Skipping inline data transform because storage not installed")
+			return false, nil
+		}
+
 		return copy.CopyOversize(
 			ctx,
 			provider,

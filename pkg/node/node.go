@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
@@ -32,6 +33,13 @@ const JobEventsTopic = "bacalhau-job-events"
 const NodeInfoTopic = "bacalhau-node-info"
 const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
+type FeatureConfig struct {
+	Engines    []model.Engine
+	Verifiers  []model.Verifier
+	Publishers []model.Publisher
+	Storages   []model.StorageSourceType
+}
+
 // Node configuration
 type NodeConfig struct {
 	IPFSClient                ipfs.Client
@@ -42,6 +50,7 @@ type NodeConfig struct {
 	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   uint16
+	DisabledFeatures          FeatureConfig
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
@@ -131,8 +140,13 @@ func NewNode(
 	// A single gossipSub instance that will be used by all topics
 	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
 	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
+	defer func() {
+		if err != nil {
+			gossipSubCancel()
+		}
+	}()
+
 	if err != nil {
-		gossipSubCancel()
 		return nil, err
 	}
 
@@ -143,14 +157,12 @@ func NewNode(
 		PubSub:    gossipSub,
 	})
 	if err != nil {
-		gossipSubCancel()
 		return nil, err
 	}
 
 	// node info provider
 	basicHost, ok := config.Host.(*basichost.BasicHost)
 	if !ok {
-		gossipSubCancel()
 		return nil, fmt.Errorf("host is not a basic host")
 	}
 	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
@@ -182,7 +194,6 @@ func NewNode(
 	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
 	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
-		gossipSubCancel()
 		return nil, err
 	}
 
@@ -195,7 +206,6 @@ func NewNode(
 		NodeInfoProvider: nodeInfoProvider,
 	})
 	if err != nil {
-		gossipSubCancel()
 		return nil, err
 	}
 
@@ -219,7 +229,6 @@ func NewNode(
 			nodeInfoStore,
 		)
 		if err != nil {
-			gossipSubCancel()
 			return nil, err
 		}
 	}
@@ -240,7 +249,6 @@ func NewNode(
 			publishers,
 		)
 		if err != nil {
-			gossipSubCancel()
 			return nil, err
 		}
 		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
