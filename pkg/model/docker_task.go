@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -17,16 +18,12 @@ type DockerInputs struct {
 }
 
 func (docker DockerInputs) EngineSpec(with string) (EngineSpec, error) {
-	spec := make(map[string]interface{})
-	spec[DockerEngineImageKey] = with
-	spec[DockerEngineEntrypointKey] = docker.Entrypoint
-	spec[DockerEngineWorkDirKey] = docker.Workdir
-	spec[DockerEngineEnvVarKey] = docker.Env.Values
-
-	return EngineSpec{
-		Type: EngineDocker,
-		Spec: spec,
-	}, nil
+	return (&JobSpecDocker{
+		Image:                with,
+		Entrypoint:           docker.Entrypoint,
+		EnvironmentVariables: FlattenIPLDMap(docker.Env),
+		WorkingDirectory:     docker.Workdir,
+	}).AsEngineSpec(), nil
 }
 
 func (docker DockerInputs) InputStorageSpecs(_ string) ([]StorageSpec, error) {
@@ -42,4 +39,21 @@ func (docker DockerInputs) OutputStorageSpecs(_ string) ([]StorageSpec, error) {
 		})
 	}
 	return outputs, nil
+}
+
+func FlattenIPLDMap[K comparable, V any](ipldMap IPLDMap[K, V]) []string {
+	flatMap := []string{}
+	for _, key := range ipldMap.Keys {
+		value := ipldMap.Values[key]
+
+		// Convert key and value to string
+		keyString := fmt.Sprintf("%v", key)
+		valueString := fmt.Sprintf("%v", value)
+
+		// Append to flatMap
+		flatMap = append(flatMap, keyString)
+		flatMap = append(flatMap, valueString)
+	}
+
+	return flatMap
 }

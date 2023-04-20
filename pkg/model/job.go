@@ -62,7 +62,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		Spec: Spec{
 			EngineSpec: EngineSpec{
 				Type: DockerEngineType,
-				Spec: make(map[string]interface{}),
 			},
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
@@ -218,9 +217,12 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	}
 
 	if s.EngineSpec.Type == EngineWasm {
-		if v, ok := s.EngineSpec.Spec[WasmEngineEntryModuleKey].(StorageSpec); ok {
-			storages = append(storages, &v)
+		wasmEngine, err := AsJobSpecWasm(s.EngineSpec)
+		if err != nil {
+			// TODO(frrist): return an error and plumb through callers.
+			panic(err)
 		}
+		storages = append(storages, &wasmEngine.EntryModule)
 	}
 	return storages
 }

@@ -63,6 +63,13 @@ func WithEntrypoint(entrypoint ...string) func(*JobSpecDocker) error {
 	}
 }
 
+func AppendEntrypoint(entrypoint ...string) func(*JobSpecDocker) error {
+	return func(docker *JobSpecDocker) error {
+		docker.Entrypoint = append(docker.Entrypoint, entrypoint...)
+		return nil
+	}
+}
+
 func MutateDockerEngineSpec(e EngineSpec, mutate ...func(docker *JobSpecDocker) error) (EngineSpec, error) {
 	dockerSpec, err := AsJobSpecDocker(e)
 	if err != nil {

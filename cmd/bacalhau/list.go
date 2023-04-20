@@ -240,7 +240,11 @@ func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 	}
 	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
 	if j.Job.Spec.EngineSpec.Type == model.EngineDocker {
-		jobDesc = append(jobDesc, j.Job.Spec.EngineSpec.Spec[model.DockerEngineImageKey].(string), strings.Join(j.Job.Spec.EngineSpec.Spec[model.DockerEngineEntrypointKey].([]string), " "))
+		dockerEngine, err := model.AsJobSpecDocker(j.Job.Spec.EngineSpec)
+		if err != nil {
+			return nil, err
+		}
+		jobDesc = append(jobDesc, dockerEngine.Image, strings.Join(dockerEngine.Entrypoint, " "))
 	}
 
 	// compute state summary

@@ -18,22 +18,19 @@ type WasmInputs struct {
 }
 
 func (wasm *WasmInputs) EngineSpec(_ string) (EngineSpec, error) {
-	params := make(map[string]interface{})
-	params[WasmEngineEntryPointKey] = wasm.Entrypoint
-	params[WasmEngineParametersKey] = wasm.Parameters
-	params[WasmEngineEnvVarKey] = wasm.Env.Values
-
 	importModules := make([]StorageSpec, 0, len(wasm.Modules))
 	for _, resource := range wasm.Modules {
 		resource := resource
 		importModules = append(importModules, parseStorageSource("", &resource))
 	}
-	params[WasmEngineImportModulesKey] = importModules
 
-	return EngineSpec{
-		Type: WasmEngineType,
-		Spec: params,
-	}, nil
+	return (&JobSpecWasm{
+		EntryPoint:           wasm.Entrypoint,
+		Parameters:           wasm.Parameters,
+		EnvironmentVariables: wasm.Env.Values,
+		ImportModules:        importModules,
+	}).AsEngineSpec(), nil
+
 }
 
 func (wasm *WasmInputs) InputStorageSpecs(with string) ([]StorageSpec, error) {

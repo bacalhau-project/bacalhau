@@ -16,12 +16,9 @@ import (
 func jobForDockerImage(imageID string) model.Job {
 	return model.Job{
 		Spec: model.Spec{
-			EngineSpec: model.EngineSpec{
-				Type: model.DockerEngineType,
-				Spec: map[string]interface{}{
-					model.DockerEngineImageKey: imageID,
-				},
-			},
+			EngineSpec: (&model.JobSpecDocker{
+				Image: imageID,
+			}).AsEngineSpec(),
 		},
 	}
 }

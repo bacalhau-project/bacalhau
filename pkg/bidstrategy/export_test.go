@@ -14,7 +14,6 @@ func getBidStrategyRequest() BidStrategyRequest {
 			Spec: model.Spec{
 				EngineSpec: model.EngineSpec{
 					Type: model.EngineNoop,
-					Spec: make(map[string]interface{}),
 				},
 			},
 		},

@@ -62,15 +62,21 @@ func MakeJob(
 	entrypointArray []string) *model.Job {
 	j := model.NewJob()
 
+	var engineSpec model.EngineSpec
+	if engineType == model.EngineNoop {
+		engineSpec = model.EngineSpec{Type: engineType}
+	} else if engineType == model.DockerEngineType {
+		engineSpec = (&model.JobSpecDocker{
+			Image:      "ubuntu:latest",
+			Entrypoint: entrypointArray,
+		}).AsEngineSpec()
+	} else {
+		panic(fmt.Sprintf("testing method MakeJob doesn't support engine type: %s", engineType))
+	}
+
 	j.Spec = model.Spec{
-		EngineSpec: model.EngineSpec{
-			Type: engineType,
-			Spec: map[string]interface{}{
-				model.DockerEngineImageKey:      "ubuntu:latest",
-				model.DockerEngineEntrypointKey: entrypointArray,
-			},
-		},
-		Verifier: verifierType,
+		EngineSpec: engineSpec,
+		Verifier:   verifierType,
 		PublisherSpec: model.PublisherSpec{
 			Type: publisherType,
 		},
