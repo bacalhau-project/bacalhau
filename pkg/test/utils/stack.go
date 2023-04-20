@@ -78,8 +78,14 @@ func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConf
 		return nil, err
 	}
 
-	stdProvider.(*model.MappedProvider[model.Engine, executor.Executor]).Add(model.EngineNoop, noopExecutor)
-	return stdProvider, nil
+	return &model.ChainedProvider[model.Engine, executor.Executor]{
+		Providers: []model.Provider[model.Engine, executor.Executor]{
+			stdProvider,
+			model.NewMappedProvider(map[model.Engine]executor.Executor{
+				model.EngineNoop: noopExecutor,
+			}),
+		},
+	}, nil
 }
 
 var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)

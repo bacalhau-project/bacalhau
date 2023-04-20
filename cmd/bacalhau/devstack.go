@@ -126,6 +126,7 @@ func newDevStackCmd() *cobra.Command {
 	)
 
 	devstackCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
+	devstackCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
 	setupCapacityManagerCLIFlags(devstackCmd, OS)
 
 	return devstackCmd

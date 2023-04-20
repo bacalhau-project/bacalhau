@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/spf13/pflag"
 )
@@ -101,6 +102,19 @@ func (s *ArrayValueFlag[T]) String() string {
 // Type implements pflag.Value
 func (s *ArrayValueFlag[T]) Type() string {
 	return s.typeStr
+}
+
+// Converts a value flag into a flag that can accept multiple of the same value.
+func ArrayValueFlagFrom[T any](singleFlag func(*T) *ValueFlag[T]) func(*[]T) *ArrayValueFlag[T] {
+	flag := singleFlag(nil)
+	return func(value *[]T) *ArrayValueFlag[T] {
+		return &ArrayValueFlag[T]{
+			value:    value,
+			parser:   flag.parser,
+			stringer: flag.stringer,
+			typeStr:  flag.typeStr,
+		}
+	}
 }
 
 var _ pflag.Value = (*ArrayValueFlag[int])(nil)
@@ -201,6 +215,15 @@ func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mode
 	}
 }
 
+func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
+	return &ValueFlag[model.Engine]{
+		value:    value,
+		parser:   model.ParseEngine,
+		stringer: func(e *model.Engine) string { return e.String() },
+		typeStr:  "engine",
+	}
+}
+
 func VerifierFlag(value *model.Verifier) *ValueFlag[model.Verifier] {
 	return &ValueFlag[model.Verifier]{
 		value:    value,
@@ -218,6 +241,22 @@ func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 		typeStr:  "publisher",
 	}
 }
+
+func StorageSourceFlag(value *model.StorageSourceType) *ValueFlag[model.StorageSourceType] {
+	return &ValueFlag[model.StorageSourceType]{
+		value:    value,
+		parser:   model.ParseStorageSourceType,
+		stringer: func(s *model.StorageSourceType) string { return s.String() },
+		typeStr:  "storage-source",
+	}
+}
+
+var (
+	EnginesFlag        = ArrayValueFlagFrom(EngineFlag)
+	VerifiersFlag      = ArrayValueFlagFrom(VerifierFlag)
+	PublishersFlag     = ArrayValueFlagFrom(PublisherFlag)
+	StorageSourcesFlag = ArrayValueFlagFrom(StorageSourceFlag)
+)
 
 func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	return &ValueFlag[model.Network]{
@@ -310,6 +349,17 @@ func JobSelectionCLIFlags(policy *model.JobSelectionPolicy) *pflag.FlagSet {
 		&policy.ProbeExec, "job-selection-probe-exec", policy.ProbeExec,
 		`Use the result of a exec an external program to decide if we should take on the job.`,
 	)
+
+	return flags
+}
+
+func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Disabled Features", pflag.ContinueOnError)
+
+	flags.Var(EnginesFlag(&config.Engines), "disable-engine", "An engine type to disable.")
+	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
+	flags.Var(VerifiersFlag(&config.Verifiers), "disable-verifier", "A verifier to disable.")
+	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
 
 	return flags
 }

@@ -74,6 +74,7 @@ type ServeOptions struct {
 	LimitJobCPU                           string                   // The amount of CPU the system can be using at one time for a single job.
 	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
 	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
+	DisabledFeatures                      node.FeatureConfig       // What feautres should not be enbaled even if installed
 	LotusFilecoinStorageDuration          time.Duration            // How long deals should be for the Lotus Filecoin publisher
 	LotusFilecoinPathDirectory            string                   // The location of the Lotus configuration directory which contains config.toml, etc
 	LotusFilecoinUploadDirectory          string                   // Directory to put files when uploading to Lotus (optional)
@@ -263,6 +264,7 @@ func newServeCmd() *cobra.Command {
 	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
+	serveCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&OS.DisabledFeatures))
 	serveCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	setupCapacityManagerCLIFlags(serveCmd, OS)
 
@@ -336,6 +338,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		Host:                 libp2pHost,
 		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 		EstuaryAPIKey:        OS.EstuaryAPIKey,
+		DisabledFeatures:     OS.DisabledFeatures,
 		HostAddress:          OS.HostAddress,
 		APIPort:              apiPort,
 		ComputeConfig:        getComputeConfig(OS),
