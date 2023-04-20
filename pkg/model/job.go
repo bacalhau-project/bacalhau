@@ -62,6 +62,7 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		Spec: Spec{
 			EngineSpec: EngineSpec{
 				Type: DockerEngineType,
+				Spec: make(map[string]interface{}),
 			},
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
