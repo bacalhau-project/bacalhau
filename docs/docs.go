@@ -746,8 +746,26 @@ const docTemplate = `{
                 "MaxJobRequirements": {
                     "$ref": "#/definitions/model.ResourceUsageData"
                 },
+                "Publishers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Publisher"
+                    }
+                },
                 "RunningExecutions": {
                     "type": "integer"
+                },
+                "StorageSources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSourceType"
+                    }
+                },
+                "Verifiers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Verifier"
+                    }
                 }
             }
         },
