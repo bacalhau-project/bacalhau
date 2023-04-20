@@ -69,13 +69,21 @@ func handleStream[Request, Response any](ctx context.Context, stream network.Str
 	defer closer.CloseWithLogOnError("stream", stream)
 
 	response, err := f(ctx, *request)
-	if err != nil {
-		log.Ctx(ctx).Error().Msgf("error delegating %s: %s", reflect.TypeOf(request), err)
-		_ = stream.Reset()
-		return
+
+	// We will wrap up the response/error in a bprotocol Result type which
+	// can be decoded by the proxy itself.
+	result := Result[Response]{
+		Response: response,
 	}
 
-	err = json.NewEncoder(stream).Encode(response)
+	// We can log the error here, but we should not bail as we want the error to be sent
+	// back to the caller.
+	if err != nil {
+		result.Error = err.Error()
+		log.Ctx(ctx).Debug().Err(err).Msgf("error delegating %s", reflect.TypeOf(request))
+	}
+
+	err = json.NewEncoder(stream).Encode(result)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error encoding %s: %s", reflect.TypeOf(response), err)
 		_ = stream.Reset()
