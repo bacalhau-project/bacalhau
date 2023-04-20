@@ -25,6 +25,22 @@ type Provider[Key ProviderKey, Value Providable] interface {
 	Has(context.Context, Key) bool
 }
 
+// InstalledTypes returns all of the keys which the passed provider has
+// installed.
+func InstalledTypes[Key ProviderKey, Value Providable](
+	ctx context.Context,
+	provider Provider[Key, Value],
+	allKeys []Key,
+) []Key {
+	var installedTypes []Key
+	for _, key := range allKeys {
+		if provider.Has(ctx, key) {
+			installedTypes = append(installedTypes, key)
+		}
+	}
+	return installedTypes
+}
+
 // A MappedProvider is a Provider that stores the providables in a simple map,
 // and caches permanently the results of checking installation status
 type MappedProvider[Key ProviderKey, Value Providable] struct {

@@ -198,6 +198,9 @@ func NewComputeNode(
 	// node info
 	nodeInfoProvider := compute.NewNodeInfoProvider(compute.NodeInfoProviderParams{
 		Executors:          executors,
+		Verifiers:          verifiers,
+		Publisher:          publishers,
+		Storages:           storages,
 		CapacityTracker:    runningCapacityTracker,
 		ExecutorBuffer:     bufferRunner,
 		MaxJobRequirements: config.JobResourceLimits,

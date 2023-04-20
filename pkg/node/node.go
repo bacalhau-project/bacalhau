@@ -270,11 +270,12 @@ func NewNode(
 		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
 	}
 
-	// eagerly publish node info to the network
-	err = nodeInfoPublisher.Publish(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// Eagerly publish node info to the network. Do this in a goroutine so that
+	// slow plugins don't slow down the node from booting.
+	go func() {
+		err = nodeInfoPublisher.Publish(ctx)
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Eagerly published node info")
+	}()
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,

@@ -100,6 +100,9 @@ func NewRequesterNode(
 	nodeRankerChain.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
 		ranking.NewEnginesNodeRanker(),
+		ranking.NewVerifiersNodeRanker(),
+		ranking.NewPublishersNodeRanker(),
+		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
 		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
