@@ -143,6 +143,7 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	return rootFs, nil
 }
 
+//nolint:funlen
 func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
@@ -237,6 +238,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
 	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
+
 	var errExit *sys.ExitError
 	if errors.As(wasmErr, &errExit) {
 		exitCode = int(errExit.ExitCode())
@@ -248,7 +250,6 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-
 	return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 

@@ -1,9 +1,8 @@
 package wasmlogs
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
+)
+
+const (
+	DefaultBufferChannelLen = 4096
 )
 
 type LogManager struct {
@@ -58,26 +61,47 @@ func NewLogManager(ctx context.Context, executionID string) (*LogManager, error)
 func (lm *LogManager) logWriter() {
 	defer lm.wg.Done()
 
-	var compactBuffer bytes.Buffer
+	messageCount := 0
+
+	// Use a goroutine to dequeue from the ringbuffer, and write to the channel
+	// we gave it
+	messageChan := make(chan *LogMessage, DefaultBufferChannelLen)
+	lm.wg.Add(1)
+	go lm.dequeueToChannel(messageChan)
 
 	for lm.keepReading {
 		select {
 		case <-lm.ctx.Done():
 			lm.keepReading = false
-		default:
-			compactBuffer.Reset()
-
-			msg := lm.buffer.Dequeue()
-			if !lm.keepReading {
+		case msg, more := <-messageChan:
+			if !more {
+				lm.keepReading = false
 				continue
 			}
 
-			lm.keepReading = lm.processItem(msg, compactBuffer)
+			lm.keepReading = lm.processItem(msg)
+			messageCount += 1
 		}
 	}
 }
 
-func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) bool {
+// Reads from the ringbuffer as quickly as it can and then writes
+// the messages down the buffered channel as quickly as possible.
+func (lm *LogManager) dequeueToChannel(ch chan *LogMessage) {
+	defer lm.wg.Done()
+
+	for lm.keepReading {
+		msg := lm.buffer.Dequeue()
+		if msg == nil {
+			break
+		}
+		ch <- msg
+	}
+
+	close(ch)
+}
+
+func (lm *LogManager) processItem(msg *LogMessage) bool {
 	if msg == nil {
 		// We have a sentinel on close so make sure we don't try and
 		// process it.
@@ -90,22 +114,15 @@ func (lm *LogManager) processItem(msg *LogMessage, compactBuffer bytes.Buffer) b
 	// Broadcast the message to anybody that might be listening
 	_ = lm.broadcaster.Broadcast(msg)
 
-	// Convert the message to JSON and write it to the log file
-	data, err := json.Marshal(msg)
-	if err != nil {
-		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msg("failed to unmarshall a wasm log message")
-		return true
-	}
-
-	err = json.Compact(&compactBuffer, data)
-	if err != nil {
-		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msg("failed to compact wasm log message")
-		return true
-	}
-	compactBuffer.Write([]byte{'\n'})
+	// Don't bother encoding to json when we know what the json line looks like, we
+	// may as well just sprintf it into place and base64 encoding the bytes
+	str := fmt.Sprintf("{\"s\":%d,\"d\":\"%s\",\"t\":%d}\n",
+		msg.Stream,
+		base64.StdEncoding.EncodeToString(msg.Data),
+		msg.Timestamp)
 
 	// write msg to file and also broadcast the message
-	wrote, err := lm.file.Write(compactBuffer.Bytes())
+	wrote, err := lm.file.Write([]byte(str))
 	if err != nil {
 		log.Ctx(lm.ctx).Err(err).Str("Execution", lm.executionID).Msgf("failed to write wasm log to file: %s", lm.file.Name())
 		return true
@@ -122,15 +139,16 @@ func (lm *LogManager) Drain() {
 	lm.keepReading = false
 	lm.buffer.Enqueue(nil)
 
-	var compactBuffer bytes.Buffer
-
 	// We need to drain the remaining items and flush them to the broadcaster
 	// and the file
 	extra := lm.buffer.Drain()
 	log.Ctx(lm.ctx).Debug().Str("Execution", lm.executionID).Msgf("draining wasm log buffer of %d items", len(extra))
 	for _, m := range extra {
-		lm.processItem(m, compactBuffer)
+		lm.processItem(m)
 	}
+
+	// Ask the file to sync to disk
+	_ = lm.file.Sync()
 
 	info, err := lm.file.Stat()
 	if err == nil {
@@ -142,7 +160,7 @@ func (lm *LogManager) Drain() {
 	}
 }
 
-func (lm *LogManager) GetWriters() (io.Writer, io.Writer) {
+func (lm *LogManager) GetWriters() (io.WriteCloser, io.WriteCloser) {
 	writerFunc := func(strm LogStreamType) func([]byte) *LogMessage {
 		return func(b []byte) *LogMessage {
 			m := LogMessage{
@@ -202,10 +220,9 @@ func (lm *LogManager) GetMuxedReader(follow bool) io.ReadCloser {
 }
 
 func (lm *LogManager) Close() {
+	// Wait for completion before we remove the log file
 	lm.keepReading = false
 	lm.buffer.Enqueue(nil)
-
-	// Wait for completion before we remove the log file
 	lm.wg.Wait()
 
 	go func(ctx context.Context, executionID string, filename string) {
