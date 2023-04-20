@@ -60,10 +60,9 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			EngineSpec: EngineSpec{
-				Type: DockerEngineType,
-				Spec: make(map[string]interface{}),
-			},
+			EngineSpec: (&JobSpecDocker{
+				Image: "ubuntu",
+			}).AsEngineSpec(),
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
