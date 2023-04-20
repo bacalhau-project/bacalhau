@@ -64,6 +64,14 @@ func init() { //nolint:gochecknoinits
 	configureLogging(bufferLogs())
 }
 
+func ErrOrDebug(err error) zerolog.Level {
+	if err == nil {
+		return zerolog.DebugLevel
+	} else {
+		return zerolog.ErrorLevel
+	}
+}
+
 type tTesting interface {
 	zerolog.TestingLog
 	Cleanup(f func())
