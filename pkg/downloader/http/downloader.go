@@ -28,21 +28,25 @@ func (httpDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
+func (httpDownloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
+	return nil, errors.New("not implemented for httpdownloader")
+}
+
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
 	defer span.End()
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result URL %s '%s' to '%s'...",
-			result.Data.Name,
-			result.Data.URL, downloadPath,
+			item.Name,
+			item.CID, item.Target,
 		)
 
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, result.Data.URL, downloadPath)
+		return fetch(innerCtx, item.CID, item.Target)
 	}()
 
 	if err != nil {

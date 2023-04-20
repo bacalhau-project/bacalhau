@@ -39,7 +39,7 @@ func (s *GetSuite) SetupTest() {
 	s.BaseSuite.SetupTest()
 }
 
-func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
+func testResultsFolderStructure(t *testing.T, baseFolder, hostID string, expectedFiles []string) {
 	var files []string
 	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
@@ -50,15 +50,21 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	})
 	require.NoError(t, err, "Error walking results directory")
 
-	expected := []string{
-		"/data",
-		"/data/apples",
-		"/data/apples/file.txt",
-		"/data/file.txt",
-		"/exitCode",
-		"/outputs",
-		"/" + model.DownloadFilenameStderr,
-		"/" + model.DownloadFilenameStdout,
+	var expected []string
+	if expectedFiles != nil {
+		expected = expectedFiles
+	} else {
+		// Default folder structure if nothing was provided
+		expected = []string{
+			"/data",
+			"/data/apples",
+			"/data/apples/file.txt",
+			"/data/file.txt",
+			"/exitCode",
+			"/outputs",
+			"/" + model.DownloadFilenameStderr,
+			"/" + model.DownloadFilenameStdout,
+		}
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
@@ -71,7 +77,7 @@ func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
 	), "Job ID not found in output")
 	require.True(t, strings.Contains(
 		cmdOutput,
-		fmt.Sprintf("%s", outputDir),
+		outputDir,
 	), "Download location not found in output")
 
 }
@@ -106,7 +112,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	}
 	args = append(args, extraArgs...)
 	args = append(args,
-		"ubuntu:latest",
+		"ubuntu:kinetic",
 		"--",
 		"bash", "-c",
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",
@@ -131,7 +137,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	hostID := s.node.Host.ID().String()
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), outputFolder, hostID)
+	testResultsFolderStructure(s.T(), outputFolder, hostID, nil)
 
 }
 
@@ -151,7 +157,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.node.Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID)
+	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
 }
 
 // this tests that when we do get with no --output-dir
@@ -180,7 +186,86 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	require.NoError(s.T(), err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID, nil)
+}
+
+func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+
+	_, _, err = ExecuteTestCobraCommand("get",
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		fmt.Sprintf("%s/missing", jobID),
+	)
+	require.Error(s.T(), err, "Error getting results")
+}
+
+func (s *GetSuite) TestGetSingleFileFromOutput() {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.node.Host.ID().String()
+
+	_, getOutput, err := ExecuteTestCobraCommand("get",
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		fmt.Sprintf("%s/stdout", jobID),
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+}
+
+func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
+	swarmAddresses, err := s.node.IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := s.getDockerRunArgs([]string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := s.node.Host.ID().String()
+
+	_, getOutput, err := ExecuteTestCobraCommand("get",
+		"--api-host", s.node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.node.APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		fmt.Sprintf("%s/data/apples/file.txt", jobID),
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(),
+		filepath.Join(tempDir, getDefaultJobFolder(jobID)),
+		hostID,
+		[]string{
+			"/data",
+			"/data/apples",
+			"/data/apples/file.txt",
+		})
 }
 
 // this tests that when we do get with an --output-dir
@@ -211,5 +296,5 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
-	testResultsFolderStructure(s.T(), tempDir, hostID)
+	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
 }

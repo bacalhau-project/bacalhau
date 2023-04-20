@@ -54,3 +54,11 @@ type PublishedResult struct {
 	NodeID string      `json:"NodeID,omitempty"`
 	Data   StorageSpec `json:"Data,omitempty"`
 }
+
+type DownloadItem struct {
+	Name       string
+	CID        string
+	URL        string
+	SourceType StorageSourceType
+	Target     string
+}
