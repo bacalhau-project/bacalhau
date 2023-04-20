@@ -1,17 +1,13 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
 // TODO these are duplicated across the wasm executor package and here to avoid dep hell, need a better solution.
 const (
-	WasmEngineType             = 3
-	WasmEngineEntryModuleKey   = "EntryModule"
-	WasmEngineEntryPointKey    = "Entrypoint"
-	WasmEngineParametersKey    = "Parameters"
-	WasmEngineEnvVarKey        = "EnvironmentVariables"
-	WasmEngineImportModulesKey = "ImportModules"
+	WasmEngineType = 3
 )
 
 // JobSpecWasm describes a raw WASM job.
@@ -37,25 +33,30 @@ type JobSpecWasm struct {
 }
 
 func (ws *JobSpecWasm) AsEngineSpec() EngineSpec {
-	engine := EngineSpec{
+	data, err := json.Marshal(ws)
+	if err != nil {
+		panic(err)
+	}
+	return EngineSpec{
 		Type: WasmEngineType,
-		Spec: make(map[string]interface{}),
+		Spec: data,
+	}
+}
+
+func AsJobSpecWasm(e EngineSpec) (*JobSpecWasm, error) {
+	if e.Type != WasmEngineType {
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
 	}
 
-	engine.Spec[WasmEngineEntryModuleKey] = ws.EntryModule
-	if ws.EntryPoint != "" {
-		engine.Spec[WasmEngineEntryPointKey] = ws.EntryPoint
+	if e.Spec == nil {
+		return nil, fmt.Errorf("EngineSpec is uninitalized")
 	}
-	if len(ws.Parameters) > 0 {
-		engine.Spec[WasmEngineParametersKey] = ws.Parameters
+
+	out := new(JobSpecWasm)
+	if err := json.Unmarshal(e.Spec, out); err != nil {
+		return nil, err
 	}
-	if len(ws.EnvironmentVariables) > 0 {
-		engine.Spec[WasmEngineEnvVarKey] = ws.EnvironmentVariables
-	}
-	if len(ws.ImportModules) > 0 {
-		engine.Spec[WasmEngineImportModulesKey] = ws.ImportModules
-	}
-	return engine
+	return out, nil
 }
 
 func WithParameters(params ...string) func(wasm *JobSpecWasm) error {
@@ -77,45 +78,4 @@ func MutateWasmEngineSpec(e EngineSpec, mutate ...func(*JobSpecWasm) error) (Eng
 		}
 	}
 	return wasmSpec.AsEngineSpec(), nil
-}
-
-func AsJobSpecWasm(e EngineSpec) (*JobSpecWasm, error) {
-	if e.Type != WasmEngineType {
-		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
-	}
-
-	if e.Spec == nil {
-		return nil, fmt.Errorf("EngineSpec is uninitalized")
-	}
-
-	job := &JobSpecWasm{}
-
-	if value, ok := e.Spec[WasmEngineEntryModuleKey].(StorageSpec); ok {
-		job.EntryModule = value
-	}
-
-	if value, ok := e.Spec[WasmEngineEntryPointKey].(string); ok {
-		job.EntryPoint = value
-	}
-
-	if value, ok := e.Spec[WasmEngineParametersKey].([]string); ok {
-		for _, v := range value {
-			job.Parameters = append(job.Parameters, v)
-		}
-	}
-
-	if value, ok := e.Spec[WasmEngineEnvVarKey].(map[string]string); ok {
-		job.EnvironmentVariables = make(map[string]string)
-		for k, v := range value {
-			job.EnvironmentVariables[k] = v
-		}
-	}
-
-	if value, ok := e.Spec[WasmEngineImportModulesKey].([]StorageSpec); ok {
-		for _, v := range value {
-			job.ImportModules = append(job.ImportModules, v)
-		}
-	}
-
-	return job, nil
 }

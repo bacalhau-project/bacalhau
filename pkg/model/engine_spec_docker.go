@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -29,24 +30,30 @@ type JobSpecDocker struct {
 }
 
 func (ds *JobSpecDocker) AsEngineSpec() EngineSpec {
-	engine := EngineSpec{
+	data, err := json.Marshal(ds)
+	if err != nil {
+		panic(err)
+	}
+	return EngineSpec{
 		Type: DockerEngineType,
-		Spec: make(map[string]interface{}),
+		Spec: data,
+	}
+}
+
+func AsJobSpecDocker(e EngineSpec) (*JobSpecDocker, error) {
+	if e.Type != DockerEngineType {
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, DockerEngineType)
 	}
 
-	if ds.Image != "" {
-		engine.Spec[DockerEngineImageKey] = ds.Image
+	if e.Spec == nil {
+		return nil, fmt.Errorf("EngineSpec is uninitalized")
 	}
-	if len(ds.Entrypoint) > 0 {
-		engine.Spec[DockerEngineEntrypointKey] = ds.Entrypoint
+
+	out := new(JobSpecDocker)
+	if err := json.Unmarshal(e.Spec, out); err != nil {
+		return nil, err
 	}
-	if len(ds.EnvironmentVariables) > 0 {
-		engine.Spec[DockerEngineEnvVarKey] = ds.EnvironmentVariables
-	}
-	if ds.WorkingDirectory != "" {
-		engine.Spec[DockerEngineWorkDirKey] = ds.WorkingDirectory
-	}
-	return engine
+	return out, nil
 }
 
 func WithImage(image string) func(*JobSpecDocker) error {
@@ -82,59 +89,4 @@ func MutateDockerEngineSpec(e EngineSpec, mutate ...func(docker *JobSpecDocker) 
 		}
 	}
 	return dockerSpec.AsEngineSpec(), nil
-}
-
-func AsJobSpecDocker(e EngineSpec) (*JobSpecDocker, error) {
-	if e.Type != DockerEngineType {
-		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, DockerEngineType)
-	}
-
-	if e.Spec == nil {
-		return nil, fmt.Errorf("EngineSpec is uninitalized")
-	}
-
-	job := &JobSpecDocker{}
-	if value, ok := e.Spec[DockerEngineImageKey].(string); ok {
-		job.Image = value
-	}
-
-	// TODO I think this may be incorrect if there is only a single entry in the value of map.
-	if value, ok := e.Spec[DockerEngineEntrypointKey].([]interface{}); ok {
-		for _, v := range value {
-			if str, ok := v.(string); ok {
-				job.Entrypoint = append(job.Entrypoint, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v (%T) to string", v, v)
-			}
-		}
-	} else {
-		if value, ok := e.Spec[DockerEngineEntrypointKey].([]string); ok {
-			job.Entrypoint = value
-		}
-	}
-
-	if value, ok := e.Spec[DockerEngineEnvVarKey].([]interface{}); ok {
-		for _, v := range value {
-			if str, ok := v.(string); ok {
-				job.EnvironmentVariables = append(job.EnvironmentVariables, str)
-			} else {
-				return nil, fmt.Errorf("unable to convert %v (%T) to string", v, v)
-			}
-		}
-	} else if value, ok := e.Spec[DockerEngineEnvVarKey].([]string); ok {
-		job.EnvironmentVariables = value
-
-	} else if value, ok := e.Spec[DockerEngineEnvVarKey].(map[string]string); ok {
-		for key, val := range value {
-			job.EnvironmentVariables = append(job.EnvironmentVariables, key, val)
-		}
-	} else {
-		return nil, fmt.Errorf("DockerEngineEnvVarKey has an unsupported value type %T", value)
-	}
-
-	if value, ok := e.Spec[DockerEngineWorkDirKey].(string); ok {
-		job.WorkingDirectory = value
-	}
-
-	return job, nil
 }

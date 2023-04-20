@@ -40,25 +40,30 @@ type JobSpecWasm struct {
 }
 
 func (ws *JobSpecWasm) AsEngineSpec() model.EngineSpec {
-	engine := model.EngineSpec{
+	data, err := json.Marshal(ws)
+	if err != nil {
+		panic(err)
+	}
+	return model.EngineSpec{
 		Type: WasmEngineType,
-		Spec: make(map[string]interface{}),
+		Spec: data,
+	}
+}
+
+func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
+	if e.Type != WasmEngineType {
+		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
 	}
 
-	engine.Spec[WasmEngineEntryModuleKey] = ws.EntryModule
-	if ws.EntryPoint != "" {
-		engine.Spec[WasmEngineEntryPointKey] = ws.EntryPoint
+	if e.Spec == nil {
+		return nil, fmt.Errorf("EngineSpec is uninitalized")
 	}
-	if len(ws.Parameters) > 0 {
-		engine.Spec[WasmEngineParametersKey] = ws.Parameters
+
+	out := new(JobSpecWasm)
+	if err := json.Unmarshal(e.Spec, out); err != nil {
+		return nil, err
 	}
-	if len(ws.EnvironmentVariables) > 0 {
-		engine.Spec[WasmEngineEnvVarKey] = ws.EnvironmentVariables
-	}
-	if len(ws.ImportModules) > 0 {
-		engine.Spec[WasmEngineImportModulesKey] = ws.ImportModules
-	}
-	return engine
+	return out, nil
 }
 
 func WithParameters(params ...string) func(wasm *JobSpecWasm) error {
@@ -80,84 +85,4 @@ func MutateEngineSpec(e model.EngineSpec, mutate ...func(*JobSpecWasm) error) (m
 		}
 	}
 	return wasmSpec.AsEngineSpec(), nil
-}
-
-func AsJobSpecWasm(e model.EngineSpec) (*JobSpecWasm, error) {
-	if e.Type != WasmEngineType {
-		return nil, fmt.Errorf("EngineSpec is Type %s, expected %d", e.Type, WasmEngineType)
-	}
-
-	if e.Spec == nil {
-		return nil, fmt.Errorf("EngineSpec is uninitalized")
-	}
-
-	job := &JobSpecWasm{}
-
-	if entryModule, ok := e.Spec[WasmEngineEntryModuleKey]; ok {
-		if value, ok := entryModule.(map[string]interface{}); ok {
-			data, err := json.Marshal(value)
-			if err != nil {
-				return nil, err
-			}
-			var storageSpec model.StorageSpec
-			if err := json.Unmarshal(data, &storageSpec); err != nil {
-				return nil, err
-			}
-			job.EntryModule = storageSpec
-		} else if value, ok := entryModule.(model.StorageSpec); ok {
-			job.EntryModule = value
-		} else {
-			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEntryModuleKey)
-		}
-	}
-
-	if entryPoint, ok := e.Spec[WasmEngineEntryPointKey]; ok {
-		if value, ok := entryPoint.(string); ok {
-			job.EntryPoint = value
-		} else {
-			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEntryPointKey)
-		}
-	}
-
-	if params, ok := e.Spec[WasmEngineParametersKey]; ok {
-		if value, ok := params.([]string); ok {
-			for _, v := range value {
-				job.Parameters = append(job.Parameters, v)
-			}
-		} else if value, ok := params.([]interface{}); ok {
-			for _, v := range value {
-				if str, ok := v.(string); ok {
-					job.Parameters = append(job.Parameters, str)
-				} else {
-					return nil, fmt.Errorf("unable to convert %v to string", v)
-				}
-			}
-		} else {
-			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineParametersKey)
-		}
-	}
-
-	if envvar, ok := e.Spec[WasmEngineEnvVarKey]; ok {
-		if value, ok := envvar.(map[string]string); ok {
-			job.EnvironmentVariables = make(map[string]string)
-			for k, v := range value {
-				job.EnvironmentVariables[k] = v
-			}
-		} else {
-			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineEnvVarKey)
-		}
-	}
-
-	if importModules, ok := e.Spec[WasmEngineImportModulesKey]; ok {
-		// TODO this assertion will probably break whenever this is used, bytes is stating to look more appearing
-		if value, ok := importModules.([]model.StorageSpec); ok {
-			for _, v := range value {
-				job.ImportModules = append(job.ImportModules, v)
-			}
-		} else {
-			return nil, fmt.Errorf("unknow type %T in %s", value, WasmEngineImportModulesKey)
-		}
-	}
-
-	return job, nil
 }

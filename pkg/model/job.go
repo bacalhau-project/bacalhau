@@ -143,8 +143,8 @@ type LabelSelectorRequirement struct {
 }
 
 type EngineSpec struct {
-	Type Engine                 `json:"Type,omitempty"`
-	Spec map[string]interface{} `json:"Spec,omitempty"`
+	Type Engine `json:"Type,omitempty"`
+	Spec []byte `json:"Spec,omitempty"`
 }
 
 type PublisherSpec struct {
