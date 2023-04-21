@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const DefaultRingBufferSize = 8192
+const DefaultRingBufferSize = 16384
 
 type RingBuffer[T any] struct {
 	writeR     *ring.Ring
@@ -63,6 +63,9 @@ func (r *RingBuffer[T]) Dequeue() T {
 }
 
 func (r *RingBuffer[T]) Drain() []T {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	count := r.wroteCount - r.readCount
 	if count <= 0 {
 		return nil

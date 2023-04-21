@@ -136,7 +136,9 @@ func (r *LogReader) readFile(b []byte) (int, error) {
 		}
 
 		// It's possible the caller wants a different transforms of the
-		// LogMessage than returning the message data.
+		// LogMessage than just returning the message data. If we were
+		// given one of those functions, use it to transform the data
+		// into a format we want.
 		if r.rawMessageTransformer != nil {
 			data := r.rawMessageTransformer(&msg)
 			copied := copy(b, data)
