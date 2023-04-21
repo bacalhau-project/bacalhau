@@ -37,7 +37,9 @@ type ComputeConfigParams struct {
 
 	SimulatorConfig model.SimulatorConfigCompute
 
-	BidStrategy bidstrategy.BidStrategy
+	BidSemanticStrategy bidstrategy.SemanticBidStrategy
+
+	BidResourceStrategy bidstrategy.ResourceBidStrategy
 }
 
 type ComputeConfig struct {
@@ -75,7 +77,9 @@ type ComputeConfig struct {
 
 	SimulatorConfig model.SimulatorConfigCompute
 
-	BidStrategy bidstrategy.BidStrategy
+	BidSemanticStrategy bidstrategy.SemanticBidStrategy
+
+	BidResourceStrategy bidstrategy.ResourceBidStrategy
 }
 
 func NewComputeConfigWithDefaults() ComputeConfig {
@@ -157,7 +161,8 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
 		SimulatorConfig:              params.SimulatorConfig,
-		BidStrategy:                  params.BidStrategy,
+		BidSemanticStrategy:          params.BidSemanticStrategy,
+		BidResourceStrategy:          params.BidResourceStrategy,
 	}
 
 	validateConfig(config, physicalResources)

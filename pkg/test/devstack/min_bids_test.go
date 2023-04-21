@@ -13,11 +13,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type MinBidsSuite struct {
@@ -43,7 +44,7 @@ type minBidsTestCase struct {
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 	responses := atomic.Uint32{}
 	computeConfig := node.DefaultComputeConfig
-	computeConfig.BidStrategy = &bidstrategy.CallbackBidStrategy{
+	globalBidStrat := &bidstrategy.CallbackBidStrategy{
 		OnShouldBid: func(ctx context.Context, bsr bidstrategy.BidStrategyRequest) (r bidstrategy.BidStrategyResponse, err error) {
 			r = bidstrategy.NewShouldBidResponse()
 			if num := responses.Add(1); num <= testCase.errorNodes {
@@ -56,6 +57,8 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 			return bidstrategy.NewShouldBidResponse(), nil
 		},
 	}
+	computeConfig.BidResourceStrategy = globalBidStrat
+	computeConfig.BidSemanticStrategy = globalBidStrat
 
 	// We have to turn off retries for this test so that we can check what
 	// happens when not enough bids are received If retries are switched on, the

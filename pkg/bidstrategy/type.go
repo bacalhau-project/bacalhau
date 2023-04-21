@@ -25,6 +25,14 @@ func NewShouldBidResponse() BidStrategyResponse {
 	}
 }
 
+type SemanticBidStrategy interface {
+	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
+}
+
+type ResourceBidStrategy interface {
+	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error)
+}
+
 type BidStrategy interface {
 	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
 	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, resourceUsage model.ResourceUsageData) (BidStrategyResponse, error)

@@ -5,69 +5,104 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 )
 
 type BidderParams struct {
-	NodeID        string
-	Strategy      bidstrategy.BidStrategy
-	Store         store.ExecutionStore
-	Callback      Callback
-	GetApproveURL func() *url.URL
+	NodeID           string
+	SemanticStrategy bidstrategy.SemanticBidStrategy
+	ResourceStrategy bidstrategy.ResourceBidStrategy
+	Store            store.ExecutionStore
+	Callback         Callback
+	GetApproveURL    func() *url.URL
 }
 
 type Bidder struct {
 	nodeID        string
-	strategy      bidstrategy.BidStrategy
 	store         store.ExecutionStore
 	callback      Callback
 	getApproveURL func() *url.URL
+
+	semanticStrategy bidstrategy.SemanticBidStrategy
+	resourceStrategy bidstrategy.ResourceBidStrategy
 }
 
 func NewBidder(params BidderParams) Bidder {
 	return Bidder{
-		nodeID:        params.NodeID,
-		strategy:      params.Strategy,
-		store:         params.Store,
-		getApproveURL: params.GetApproveURL,
-		callback:      params.Callback,
+		nodeID:           params.NodeID,
+		store:            params.Store,
+		getApproveURL:    params.GetApproveURL,
+		callback:         params.Callback,
+		semanticStrategy: params.SemanticStrategy,
+		resourceStrategy: params.ResourceStrategy,
 	}
 }
 
-func (b Bidder) RunBidding(ctx context.Context, execution store.Execution) {
-	// ask the bidding strategy if we should bid on this job
-	bidStrategyRequest := bidstrategy.BidStrategyRequest{
-		NodeID:   b.nodeID,
-		Job:      execution.Job,
-		Callback: b.getApproveURL(),
-	}
+func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageCalc capacity.UsageCalculator) {
+	go func() {
+		// ask the bidding strategy if we should bid on this job
+		bidStrategyRequest := bidstrategy.BidStrategyRequest{
+			NodeID:   b.nodeID,
+			Job:      request.Job,
+			Callback: b.getApproveURL(),
+		}
 
-	response, err := b.doBidding(ctx, bidStrategyRequest, execution.ResourceUsage)
-	if err != nil {
-		err = multierr.Append(err, b.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-			ExecutionID: execution.ID,
-			NewState:    store.ExecutionStateFailed,
-			Comment:     err.Error(),
-		}))
+		response, resourceUsage, err := b.doBidding(ctx, bidStrategyRequest, usageCalc)
+		if err != nil {
+			b.callback.OnComputeFailure(ctx, ComputeError{
+				RoutingMetadata: RoutingMetadata{
+					// TODO double check these.
+					SourcePeerID: b.nodeID,
+					TargetPeerID: request.SourcePeerID,
+				},
+				ExecutionMetadata: ExecutionMetadata{
+					ExecutionID: request.ExecutionID,
+					JobID:       request.JobID,
+				},
+				Err: err.Error(),
+			})
 
-		b.callback.OnComputeFailure(ctx, ComputeError{
+			log.Ctx(ctx).Error().Err(err).Msg("Error running bid strategy")
+			return
+		}
+
+		result := BidResult{
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: b.nodeID,
-				TargetPeerID: execution.RequesterNodeID,
+				TargetPeerID: request.SourcePeerID,
 			},
-			ExecutionMetadata: NewExecutionMetadata(execution),
-			Err:               err.Error(),
-		})
+			ExecutionMetadata: ExecutionMetadata{
+				ExecutionID: request.ExecutionID,
+				JobID:       request.JobID,
+			},
+			Accepted: response.ShouldBid,
+			Reason:   response.Reason,
+		}
 
-		log.Ctx(ctx).Error().Err(err).Msg("Error running bid strategy")
-		return
-	}
+		// if we are not bidding and not wait return a response, we can't do this job.
+		if !response.ShouldBid && !response.ShouldWait {
+			b.callback.OnBidComplete(ctx, result)
+		}
 
-	b.ReturnBidResult(ctx, execution, response)
+		// if we are bidding or waiting create an execution
+		if response.ShouldWait || response.ShouldBid {
+			execution := store.NewExecution(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
+			if err := b.store.CreateExecution(ctx, *execution); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
+				return
+			}
+		}
+
+		// were not waiting return a response.
+		if !response.ShouldWait {
+			b.callback.OnBidComplete(ctx, result)
+		}
+	}()
 }
 
 func (b Bidder) ReturnBidResult(ctx context.Context, execution store.Execution, response *bidstrategy.BidStrategyResponse) {
@@ -104,21 +139,27 @@ func (b Bidder) ReturnBidResult(ctx context.Context, execution store.Execution, 
 func (b Bidder) doBidding(
 	ctx context.Context,
 	bidStrategyRequest bidstrategy.BidStrategyRequest,
-	jobRequirements model.ResourceUsageData,
-) (*bidstrategy.BidStrategyResponse, error) {
+	calculator capacity.UsageCalculator,
+) (*bidstrategy.BidStrategyResponse, *model.ResourceUsageData, error) {
+
 	// Check bidding strategies before having to calculate resource usage
-	bidStrategyResponse, err := b.strategy.ShouldBid(ctx, bidStrategyRequest)
+	bidStrategyResponse, err := b.semanticStrategy.ShouldBid(ctx, bidStrategyRequest)
 	if err != nil {
-		return nil, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+		return nil, nil, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
 	}
 
+	var resourceUsage model.ResourceUsageData
 	if bidStrategyResponse.ShouldBid {
-		// Check bidding strategies after calculating resource usage
-		bidStrategyResponse, err = b.strategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, jobRequirements)
+		resourceUsage, err = calculator.Calculate(ctx, bidStrategyRequest.Job, capacity.ParseResourceUsageConfig(bidStrategyRequest.Job.Spec.Resources))
 		if err != nil {
-			return nil, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
+			return nil, nil, fmt.Errorf("error calculating resource requirements for job: %w", err)
+		}
+		// Check bidding strategies after calculating resource usage
+		bidStrategyResponse, err = b.resourceStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, resourceUsage)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
 		}
 	}
 
-	return &bidStrategyResponse, nil
+	return &bidStrategyResponse, &resourceUsage, nil
 }
