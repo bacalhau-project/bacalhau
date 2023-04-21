@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/stretchr/testify/suite"
 )
 
 type AsyncBidSuite struct {
@@ -26,7 +27,8 @@ func TestAsyncBidSuite(t *testing.T) {
 func (s *AsyncBidSuite) SetupSuite() {
 	s.ComputeSuite.SetupSuite()
 	s.strategy = bidstrategy.NewFixedBidStrategy(true, true)
-	s.config.BidStrategy = s.strategy
+	s.config.BidSemanticStrategy = s.strategy
+	s.config.BidResourceStrategy = s.strategy
 }
 
 func (s *AsyncBidSuite) TestAsyncApproval() {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/libp2p/go-libp2p/core/host"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	compute_bidstrategies "github.com/bacalhau-project/bacalhau/pkg/compute/bidstrategy"
@@ -29,7 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
@@ -143,17 +144,10 @@ func NewComputeNode(
 		},
 	})
 
-	biddingStrategy := config.BidStrategy
-	if biddingStrategy == nil {
-		biddingStrategy = bidstrategy.NewChainedBidStrategy(
+	semanticBidStrat := config.BidSemanticStrategy
+	if semanticBidStrat == nil {
+		semanticBidStrat = bidstrategy.NewChainedBidStrategy(
 			bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy),
-			compute_bidstrategies.NewMaxCapacityStrategy(compute_bidstrategies.MaxCapacityStrategyParams{
-				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			compute_bidstrategies.NewAvailableCapacityStrategy(ctx, compute_bidstrategies.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
-			}),
 			// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 			//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
 			bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
@@ -178,6 +172,20 @@ func NewComputeNode(
 				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
 				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
 			}),
+		)
+	}
+
+	resourceBidStrat := config.BidResourceStrategy
+	if resourceBidStrat == nil {
+		resourceBidStrat = bidstrategy.NewChainedBidStrategy(
+			compute_bidstrategies.NewMaxCapacityStrategy(compute_bidstrategies.MaxCapacityStrategyParams{
+				MaxJobRequirements: config.JobResourceLimits,
+			}),
+			compute_bidstrategies.NewAvailableCapacityStrategy(ctx, compute_bidstrategies.AvailableCapacityStrategyParams{
+				RunningCapacityTracker:  runningCapacityTracker,
+				EnqueuedCapacityTracker: enqueuedCapacityTracker,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
 		)
 	}
 
@@ -207,10 +215,11 @@ func NewComputeNode(
 	})
 
 	bidder := compute.NewBidder(compute.BidderParams{
-		NodeID:   host.ID().String(),
-		Strategy: biddingStrategy,
-		Store:    executionStore,
-		Callback: computeCallback,
+		NodeID:           host.ID().String(),
+		SemanticStrategy: semanticBidStrat,
+		ResourceStrategy: resourceBidStrat,
+		Store:            executionStore,
+		Callback:         computeCallback,
 		GetApproveURL: func() *url.URL {
 			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
 		},

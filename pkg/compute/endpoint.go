@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type BaseEndpointParams struct {
@@ -53,28 +53,12 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)
 
-	resourceUsage, err := s.usageCalculator.Calculate(ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
-	if err != nil {
-		return AskForBidResponse{}, err
-	}
+	s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
 
-	execution := *store.NewExecution(
-		request.ExecutionID,
-		request.Job,
-		request.SourcePeerID,
-		resourceUsage,
-	)
-
-	err = s.executionStore.CreateExecution(ctx, execution)
-	levels := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}
-	level := levels[err == nil]
-
-	if err == nil {
-		go s.bidder.RunBidding(ctx, execution) // TODO: context shareable?
-	}
-
-	log.Ctx(ctx).WithLevel(level).Err(err).Str("JobID", execution.Job.ID()).Str("ExecutionID", execution.ID).Msg("adding job to backlog")
-	return AskForBidResponse{ExecutionMetadata: NewExecutionMetadata(execution)}, err
+	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
+		ExecutionID: request.ExecutionID,
+		JobID:       request.JobID,
+	}}, nil
 }
 
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {

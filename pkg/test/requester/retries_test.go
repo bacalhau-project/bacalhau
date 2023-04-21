@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/selection"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -21,8 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 var executionErr = errors.New("I am a bad executor")
@@ -55,7 +56,8 @@ func (s *RetriesSuite) SetupSuite() {
 				"name": "bid-rejector",
 			},
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				BidStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 			}),
 		},
 		{
