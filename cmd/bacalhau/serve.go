@@ -504,7 +504,7 @@ func AutoOutputLabels() map[string]string {
 			m[key] = name
 			key = fmt.Sprintf("GPU-%d-Memory", i)
 			memory := strings.Replace(gpuMemory[i], " ", "-", -1) // Replace spaces with dashes
-			m[key] = gpuMemory[i]
+			m[key] = memory
 		}
 	}
 	// Get list of installed packages (Only works for linux, make it work for every platform)
