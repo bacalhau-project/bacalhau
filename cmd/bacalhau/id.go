@@ -5,11 +5,13 @@ import (
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 
 type IDInfo struct {
-	ID string `json:"ID"`
+	ID       string `json:"ID"`
+	ClientID string `json:"ClientID"`
 }
 
 func newIDCmd() *cobra.Command {
@@ -39,7 +41,8 @@ func id(_ *cobra.Command, OS *ServeOptions) error {
 	}
 
 	info := IDInfo{
-		ID: libp2pHost.ID().String(),
+		ID:       libp2pHost.ID().String(),
+		ClientID: system.GetClientID(),
 	}
 	_ = libp2pHost.Close()
 
