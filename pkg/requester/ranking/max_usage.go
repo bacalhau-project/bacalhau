@@ -26,7 +26,7 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes
 	jobResourceUsageSet := !jobResourceUsage.IsZero()
 	for i, node := range nodes {
 		rank := 0
-		if jobResourceUsageSet {
+		if jobResourceUsageSet && node.ComputeNodeInfo != nil {
 			if jobResourceUsage.LessThanEq(node.ComputeNodeInfo.MaxJobRequirements) {
 				rank = 10
 			} else {

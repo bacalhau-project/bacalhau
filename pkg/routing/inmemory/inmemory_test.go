@@ -167,7 +167,7 @@ func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
 			ID: peer.ID(id),
 		},
 		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: model.ComputeNodeInfo{
+		ComputeNodeInfo: &model.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}

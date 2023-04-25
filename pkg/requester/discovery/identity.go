@@ -55,7 +55,7 @@ func (d *IdentityNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInf
 		nodeInfos[i] = model.NodeInfo{
 			PeerInfo:        d.host.Peerstore().PeerInfo(peerID),
 			NodeType:        model.NodeTypeCompute,
-			ComputeNodeInfo: model.ComputeNodeInfo{},
+			ComputeNodeInfo: nil,
 		}
 	}
 	return nodeInfos, nil
