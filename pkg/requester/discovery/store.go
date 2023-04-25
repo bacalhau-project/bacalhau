@@ -28,5 +28,10 @@ func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]m
 	return d.store.ListForEngine(ctx, job.Spec.Engine)
 }
 
+// ListNodes implements requester.NodeDiscoverer
+func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
+	return d.store.List(ctx)
+}
+
 // compile time check that StoreNodeDiscoverer implements NodeDiscoverer
 var _ requester.NodeDiscoverer = (*StoreNodeDiscoverer)(nil)

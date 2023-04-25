@@ -36,6 +36,7 @@ type Requester struct {
 	// Visible for testing
 	Endpoint           requester.Endpoint
 	JobStore           jobstore.Store
+	NodeDiscoverer     requester.NodeDiscoverer
 	computeProxy       *bprotocol.ComputeProxy
 	localCallback      compute.Callback
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
@@ -190,7 +191,9 @@ func NewRequesterNode(
 	}
 
 	// register debug info providers for the /debug endpoint
-	debugInfoProviders := []model.DebugInfoProvider{}
+	debugInfoProviders := []model.DebugInfoProvider{
+		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
+	}
 
 	// register requester public http apis
 	requesterAPIServer := requester_publicapi.NewRequesterAPIServer(requester_publicapi.RequesterAPIServerParams{
@@ -265,6 +268,7 @@ func NewRequesterNode(
 	return &Requester{
 		Endpoint:           endpoint,
 		localCallback:      scheduler,
+		NodeDiscoverer:     nodeDiscoveryChain,
 		JobStore:           jobStore,
 		computeProxy:       standardComputeProxy,
 		cleanupFunc:        cleanupFunc,
