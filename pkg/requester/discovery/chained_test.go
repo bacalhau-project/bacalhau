@@ -88,6 +88,10 @@ func (f *fixedDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInf
 	return f.peerIDs, nil
 }
 
+func (f *fixedDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
+	return f.peerIDs, nil
+}
+
 // node discoverer that always returns an error
 type badDiscoverer struct{}
 
@@ -96,5 +100,9 @@ func newBadDiscoverer() *badDiscoverer {
 }
 
 func (b *badDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
+	return nil, errors.New("bad discoverer")
+}
+
+func (b *badDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }

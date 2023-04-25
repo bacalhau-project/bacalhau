@@ -25,7 +25,7 @@ func NewIdentityNodeDiscoverer(params IdentityNodeDiscovererParams) *IdentityNod
 	}
 }
 
-func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (d *IdentityNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
 	var peers []peer.ID
 
 	// check local protocols in case the current node is also a compute node
@@ -59,6 +59,11 @@ func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) (
 		}
 	}
 	return nodeInfos, nil
+}
+
+// ListNodes implements requester.NodeDiscoverer
+func (d *IdentityNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+	return d.ListNodes(ctx)
 }
 
 // compile time check that IdentityNodeDiscoverer implements NodeDiscoverer

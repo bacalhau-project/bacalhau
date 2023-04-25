@@ -33,6 +33,7 @@ type Queue interface {
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
 type NodeDiscoverer interface {
+	ListNodes(ctx context.Context) ([]model.NodeInfo, error)
 	FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error)
 }
 
