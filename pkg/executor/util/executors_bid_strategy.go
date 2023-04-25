@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -14,13 +15,20 @@ type bidStrategyFromExecutor struct {
 
 func NewExecutorSpecificBidStrategy(provider executor.ExecutorProvider) bidstrategy.BidStrategy {
 	return bidstrategy.NewChainedBidStrategy(
-		bidstrategy.NewProviderInstalledStrategy[model.Engine, executor.Executor](
-			provider,
-			func(j *model.Job) model.Engine { return j.Spec.Engine },
+		bidstrategy.WithSemantics(
+			semantic.NewProviderInstalledStrategy[model.Engine, executor.Executor](
+				provider,
+				func(j *model.Job) model.Engine { return j.Spec.Engine },
+			),
+			&bidStrategyFromExecutor{
+				provider: provider,
+			},
 		),
-		&bidStrategyFromExecutor{
-			provider: provider,
-		},
+		bidstrategy.WithResources(
+			&bidStrategyFromExecutor{
+				provider: provider,
+			},
+		),
 	)
 }
 
@@ -34,7 +42,7 @@ func (p *bidStrategyFromExecutor) ShouldBid(
 		return bidstrategy.BidStrategyResponse{}, err
 	}
 
-	strategy, err := executor.GetBidStrategy(ctx)
+	strategy, err := executor.GetSemanticBidStrategy(ctx)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}
@@ -53,7 +61,7 @@ func (p *bidStrategyFromExecutor) ShouldBidBasedOnUsage(
 		return bidstrategy.BidStrategyResponse{}, err
 	}
 
-	strategy, err := executor.GetBidStrategy(ctx)
+	strategy, err := executor.GetResourceBidStrategy(ctx)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}
@@ -61,4 +69,5 @@ func (p *bidStrategyFromExecutor) ShouldBidBasedOnUsage(
 	return strategy.ShouldBidBasedOnUsage(ctx, request, resourceUsage)
 }
 
-var _ bidstrategy.BidStrategy = (*bidStrategyFromExecutor)(nil)
+var _ bidstrategy.ResourceBidStrategy = (*bidStrategyFromExecutor)(nil)
+var _ bidstrategy.SemanticBidStrategy = (*bidStrategyFromExecutor)(nil)

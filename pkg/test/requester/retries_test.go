@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -56,8 +56,8 @@ func (s *RetriesSuite) SetupSuite() {
 				"name": "bid-rejector",
 			},
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidSemanticStrategy: testing2.NewFixedBidStrategy(false, false),
+				BidResourceStrategy: testing2.NewFixedBidStrategy(false, false),
 			}),
 		},
 		{

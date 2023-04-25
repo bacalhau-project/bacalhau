@@ -5,7 +5,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -26,10 +31,6 @@ import (
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/rs/zerolog/log"
 )
 
 type Requester struct {
@@ -151,7 +152,7 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	selectionStrategy := bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy)
+	selectionStrategy := semantic.FromJobSelectionPolicy(config.JobSelectionPolicy)
 
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),

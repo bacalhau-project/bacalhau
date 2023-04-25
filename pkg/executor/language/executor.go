@@ -10,8 +10,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -57,8 +60,12 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec)
 	return 0, nil
 }
 
-func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
-	return bidstrategy.NewChainedBidStrategy(), nil
+func (e *Executor) GetSemanticBidStrategy(ctx context.Context) (bidstrategy.SemanticBidStrategy, error) {
+	return semantic.NewChainedSemanticBidStrategy(), nil
+}
+
+func (e *Executor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error) {
+	return resource.NewChainedResourceBidStrategy(), nil
 }
 
 func (e *Executor) Run(
