@@ -29,6 +29,8 @@ const maxTestTime = 10 * time.Second
 type ServeSuite struct {
 	suite.Suite
 
+	out, err strings.Builder
+
 	ipfsPort int
 	ctx      context.Context
 }
@@ -63,6 +65,8 @@ func (s *ServeSuite) serve(extraArgs ...string) uint16 {
 	port := uint16(bigPort)
 
 	cmd := NewRootCmd()
+	cmd.SetOut(&s.out)
+	cmd.SetErr(&s.err)
 
 	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
 	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
@@ -127,6 +131,18 @@ func (s *ServeSuite) TestHealthcheck() {
 	var healthzJSON types.HealthInfo
 	s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
 	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
+}
+
+func (s *ServeSuite) TestAPIPrintedForComputeNode() {
+	port := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
+	s.Require().Contains(s.out.String(), expectedURL)
+}
+
+func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
+	port := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
+	s.Require().NotContains(s.out.String(), expectedURL)
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {
