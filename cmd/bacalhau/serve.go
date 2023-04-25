@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -378,8 +378,8 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// only in station logging output
-	if loggingMode == logger.LogModeStation {
-		fmt.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(publicapi.APIPrefix, publicapi.APIDebugSuffix))
+	if loggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
+		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
 	}
 
 	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
