@@ -50,8 +50,9 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) model.NodeInfo {
 		Labels: n.labels,
 	}
 	if n.computeInfoProvider != nil {
+		info := n.computeInfoProvider.GetComputeInfo(ctx)
 		res.NodeType = model.NodeTypeCompute
-		res.ComputeNodeInfo = n.computeInfoProvider.GetComputeInfo(ctx)
+		res.ComputeNodeInfo = &info
 	}
 	return res
 }

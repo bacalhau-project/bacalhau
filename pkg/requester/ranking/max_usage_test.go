@@ -22,15 +22,15 @@ type MaxUsageNodeRankerSuite struct {
 func (s *MaxUsageNodeRankerSuite) SetupSuite() {
 	s.smallPeer = model.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("small")},
-		ComputeNodeInfo: model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 1}},
+		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 1}},
 	}
 	s.medPeer = model.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("med")},
-		ComputeNodeInfo: model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 2}},
+		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 2}},
 	}
 	s.largePeer = model.NodeInfo{
 		PeerInfo:        peer.AddrInfo{ID: peer.ID("large")},
-		ComputeNodeInfo: model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 3}},
+		ComputeNodeInfo: &model.ComputeNodeInfo{MaxJobRequirements: model.ResourceUsageData{CPU: 3}},
 	}
 }
 

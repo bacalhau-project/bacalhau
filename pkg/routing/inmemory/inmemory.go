@@ -49,19 +49,23 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 	// delete node from previous engines if it already exists to replace old engines with new ones if they've changed
 	existingNodeInfo, ok := r.nodeInfoMap[nodeInfo.PeerInfo.ID]
 	if ok {
-		for _, engine := range existingNodeInfo.ComputeNodeInfo.ExecutionEngines {
-			delete(r.engineNodeIDMap[engine], nodeInfo.PeerInfo.ID)
+		if existingNodeInfo.ComputeNodeInfo != nil {
+			for _, engine := range existingNodeInfo.ComputeNodeInfo.ExecutionEngines {
+				delete(r.engineNodeIDMap[engine], nodeInfo.PeerInfo.ID)
+			}
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store", nodeInfo.PeerInfo.ID)
 	}
 
 	// TODO: use data structure that maintains nodes in descending order based on available capacity.
-	for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
-		if _, ok := r.engineNodeIDMap[engine]; !ok {
-			r.engineNodeIDMap[engine] = make(map[peer.ID]struct{})
+	if nodeInfo.ComputeNodeInfo != nil {
+		for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
+			if _, ok := r.engineNodeIDMap[engine]; !ok {
+				r.engineNodeIDMap[engine] = make(map[peer.ID]struct{})
+			}
+			r.engineNodeIDMap[engine][nodeInfo.PeerInfo.ID] = struct{}{}
 		}
-		r.engineNodeIDMap[engine][nodeInfo.PeerInfo.ID] = struct{}{}
 	}
 
 	// add or update the node info

@@ -35,7 +35,10 @@ func (c *Chain) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
 	return c.ChainDiscovery(ctx, func(r requester.NodeDiscoverer) ([]model.NodeInfo, error) { return r.ListNodes(ctx) })
 }
 
-func (c *Chain) ChainDiscovery(ctx context.Context, getNodes func(requester.NodeDiscoverer) ([]model.NodeInfo, error)) ([]model.NodeInfo, error) {
+func (c *Chain) ChainDiscovery(
+	ctx context.Context,
+	getNodes func(requester.NodeDiscoverer) ([]model.NodeInfo, error),
+) ([]model.NodeInfo, error) {
 	var err error
 	uniqueNodes := make(map[peer.ID]model.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {

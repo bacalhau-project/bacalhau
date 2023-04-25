@@ -23,31 +23,31 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 	return []model.NodeInfo{
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("docker")},
-			ComputeNodeInfo: model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineDocker}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineDocker}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("wasm")},
-			ComputeNodeInfo: model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineWasm}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineWasm}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("ipfs")},
-			ComputeNodeInfo: model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceIPFS}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceIPFS}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("url")},
-			ComputeNodeInfo: model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceURLDownload}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceURLDownload}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("deterministic")},
-			ComputeNodeInfo: model.ComputeNodeInfo{Verifiers: []model.Verifier{model.VerifierDeterministic}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{Verifiers: []model.Verifier{model.VerifierDeterministic}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("estuary")},
-			ComputeNodeInfo: model.ComputeNodeInfo{Publishers: []model.Publisher{model.PublisherEstuary}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{Publishers: []model.Publisher{model.PublisherEstuary}},
 		},
 		{
 			PeerInfo: peer.AddrInfo{ID: peer.ID("combo")},
-			ComputeNodeInfo: model.ComputeNodeInfo{
+			ComputeNodeInfo: &model.ComputeNodeInfo{
 				ExecutionEngines: []model.Engine{model.EngineDocker, model.EngineWasm},
 				Verifiers:        []model.Verifier{model.VerifierNoop, model.VerifierDeterministic},
 				Publishers:       []model.Publisher{model.PublisherIpfs, model.PublisherEstuary},

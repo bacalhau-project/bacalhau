@@ -26,7 +26,7 @@ type NodeInfo struct {
 	PeerInfo        peer.AddrInfo     `json:"PeerInfo"`
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
-	ComputeNodeInfo ComputeNodeInfo   `json:"ComputeNodeInfo"`
+	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo"`
 }
 
 // IsComputeNode returns true if the node is a compute node
