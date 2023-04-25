@@ -10,7 +10,16 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog/log"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/sys"
+	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -22,12 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
-	"github.com/c2h5oh/datasize"
-	"github.com/rs/zerolog/log"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/sys"
-	"go.uber.org/multierr"
-	"golang.org/x/exp/maps"
 )
 
 type Executor struct {
@@ -70,8 +73,12 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 }
 
 // GetBidStrategy implements executor.Executor
-func (*Executor) GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error) {
-	return bidstrategy.NewChainedBidStrategy(), nil
+func (*Executor) GetSemanticBidStrategy(context.Context) (bidstrategy.SemanticBidStrategy, error) {
+	return semantic.NewChainedSemanticBidStrategy(), nil
+}
+
+func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBidStrategy, error) {
+	return resource.NewChainedResourceBidStrategy(), nil
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that

@@ -6,10 +6,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/suite"
 )
 
 type AskForBidSuite struct {
@@ -87,10 +88,10 @@ func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.
 
 	// check execution state
 	execution, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
-	s.NoError(err)
 	if testCase.rejected {
-		s.Equal(store.ExecutionStateCancelled, execution.State)
+		s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
 	} else {
+		s.NoError(err)
 		s.Equal(store.ExecutionStateCreated, execution.State)
 	}
 

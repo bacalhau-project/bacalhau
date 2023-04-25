@@ -7,6 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -15,17 +20,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type BaseEndpointParams struct {
 	ID                         string
 	PublicKey                  []byte
 	Queue                      Queue
-	Selector                   bidstrategy.BidStrategy
+	Selector                   bidstrategy.SemanticBidStrategy
 	Store                      jobstore.Store
 	ComputeEndpoint            compute.Endpoint
 	Verifiers                  verifier.VerifierProvider
@@ -41,7 +42,7 @@ type BaseEndpoint struct {
 	queue      Queue
 	store      jobstore.Store
 	computesvc compute.Endpoint
-	selector   bidstrategy.BidStrategy
+	selector   bidstrategy.SemanticBidStrategy
 	callback   func() *url.URL
 	transforms []jobtransform.Transformer
 }

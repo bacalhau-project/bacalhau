@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
 )
 
 type mockBidStrategy func(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error)

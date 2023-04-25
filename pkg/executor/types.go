@@ -24,7 +24,9 @@ type Executor interface {
 
 	// A BidStrategy that should return a positive response if the executor
 	// could run the job or a negative response otherwise.
-	GetBidStrategy(context.Context) (bidstrategy.BidStrategy, error)
+	GetSemanticBidStrategy(context.Context) (bidstrategy.SemanticBidStrategy, error)
+
+	GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error)
 
 	//    tells us how much storage the given volume would consume
 	//    which we then use to calculate if there is capacity

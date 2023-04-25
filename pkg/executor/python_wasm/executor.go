@@ -49,12 +49,20 @@ func (e *Executor) GetVolumeSize(context.Context, model.StorageSpec) (uint64, er
 	return 0, nil
 }
 
-func (e *Executor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy, error) {
+func (e *Executor) GetSemanticBidStrategy(ctx context.Context) (bidstrategy.SemanticBidStrategy, error) {
 	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.GetBidStrategy(ctx)
+	return dockerExecutor.GetSemanticBidStrategy(ctx)
+}
+
+func (e *Executor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error) {
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.GetResourceBidStrategy(ctx)
 }
 
 func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, resultsDir string) (

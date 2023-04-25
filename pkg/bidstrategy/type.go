@@ -25,17 +25,17 @@ func NewShouldBidResponse() BidStrategyResponse {
 	}
 }
 
+type BidStrategy interface {
+	SemanticBidStrategy
+	ResourceBidStrategy
+}
+
 type SemanticBidStrategy interface {
 	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
 }
 
 type ResourceBidStrategy interface {
 	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage model.ResourceUsageData) (BidStrategyResponse, error)
-}
-
-type BidStrategy interface {
-	ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error)
-	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, resourceUsage model.ResourceUsageData) (BidStrategyResponse, error)
 }
 
 // the JSON data we send to http or exec probes
@@ -48,7 +48,7 @@ type JobSelectionPolicyProbeData struct {
 }
 
 // Return JobSelectionPolicyProbeData for the given request
-func getJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
+func GetJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
 	return JobSelectionPolicyProbeData{
 		NodeID:   request.NodeID,
 		JobID:    request.Job.Metadata.ID,

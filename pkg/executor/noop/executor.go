@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -84,12 +86,20 @@ func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSp
 	return 0, nil
 }
 
-func (e *NoopExecutor) GetBidStrategy(ctx context.Context) (bidstrategy.BidStrategy, error) {
+func (e *NoopExecutor) GetSemanticBidStrategy(ctx context.Context) (bidstrategy.SemanticBidStrategy, error) {
 	if e.Config.ExternalHooks.GetBidStrategy != nil {
 		handler := e.Config.ExternalHooks.GetBidStrategy
 		return handler(ctx)
 	}
-	return bidstrategy.NewChainedBidStrategy(), nil
+	return semantic.NewChainedSemanticBidStrategy(), nil
+}
+
+func (e *NoopExecutor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error) {
+	if e.Config.ExternalHooks.GetBidStrategy != nil {
+		handler := e.Config.ExternalHooks.GetBidStrategy
+		return handler(ctx)
+	}
+	return resource.NewChainedResourceBidStrategy(), nil
 }
 
 func (e *NoopExecutor) Run(

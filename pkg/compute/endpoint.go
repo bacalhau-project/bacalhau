@@ -53,7 +53,7 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)
 
-	s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
+	go s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
 
 	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
 		ExecutionID: request.ExecutionID,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -80,6 +81,8 @@ type ComputeConfig struct {
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
+
+	ExecutionStore store.ExecutionStore
 }
 
 func NewComputeConfigWithDefaults() ComputeConfig {
