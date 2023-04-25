@@ -218,6 +218,8 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 		return nil, errors.Wrapf(err, DistributionInspectError, image)
 	}
 
+	// TODO: Cache the distribution.Digest against the image name
+
 	return distribution.Platforms, nil
 }
 
@@ -239,6 +241,61 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 			OS:           engine["Os"],
 		},
 	}, nil
+}
+
+// ImageDigest fetches the digest for the specified image by asking docker to
+// fetch the distribution manifest from the registry. The digest retrieved
+// may not appear accurate when compared to the hub website but this is
+// expected.
+//
+// cf:
+//   - https://github.com/moby/moby/issues/40636)
+//   - https://github.com/docker/roadmap/issues/262
+//
+// When a docker image is available on only a single platform, the digest
+// shown will be the digest pointing directly at the manifest for that image
+// on that platform (as shown by the docker hub).  Where multiple platforms
+// are available, the digest is pointing to a top level document describing
+// all of the different platform manifests available.
+//
+// In either case, `docker pull` will do the correct thing and download the
+// image for your platform. For example:
+//
+// $ docker manifest inspect  bitnami/rabbitmq@sha256:0be0d2a2 ...
+//
+//	"manifests": [ {
+//		  "digest": "sha256:959a02013e8ab5538167f9....",
+//		  "platform": { "architecture": "amd64", "os": "linux" }
+//		},
+//		{
+//		  "digest": "sha256:11ee2c7e9e69e3a8311a19....",
+//		  "platform": { "architecture": "arm64", "os": "linux"}
+//		}]
+//
+// $ docker pull bitnami/rabbitmq@sha256:0be0d2a2 ...
+// $ docker image ls
+// bitnami/rabbitmq ... 48603925e10c
+//
+// The digest 486039 can be found in manifest sha256:11ee2c7e which is the manifest for
+// the current authors machine.
+//
+// $ docker manifest inspect bitnami/rabbitmq@sha256:11ee2c7e
+//
+//	  "config": {
+//		   "size": 7383,
+//		   "digest": "sha256:48603925e10c01936ea4258f...."
+//	  }
+//
+// This is the image that will finally be installed.
+func (c *Client) ImageDigest(ctx context.Context, image string, dockerCreds config.DockerCredentials) (string, error) {
+	authToken := getAuthToken(ctx, image, dockerCreds)
+
+	dist, err := c.DistributionInspect(ctx, image, authToken)
+	if err != nil {
+		return "", err
+	}
+
+	return dist.Descriptor.Digest.Encoded(), nil
 }
 
 func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {
