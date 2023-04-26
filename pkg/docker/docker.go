@@ -210,17 +210,16 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	return nil
 }
 
+// ImagePlatforms will retrieve the manifest describing the platforms that are
+// usable by the provided image. This currently retrieves the information via
+// a call to ImageDistribution which provides the same information.
 func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
-	authToken := getAuthToken(ctx, image, dockerCreds)
-
-	distribution, err := c.DistributionInspect(ctx, image, authToken)
+	manifest, err := c.ImageDistribution(ctx, image, dockerCreds)
 	if err != nil {
-		return nil, errors.Wrapf(err, DistributionInspectError, image)
+		return nil, err
 	}
 
-	// TODO: Cache the distribution.Digest against the image name
-
-	return distribution.Platforms, nil
+	return manifest.platforms, nil
 }
 
 func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) {
@@ -243,10 +242,10 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	}, nil
 }
 
-// ImageDigest fetches the digest for the specified image by asking docker to
-// fetch the distribution manifest from the registry. The digest retrieved
-// may not appear accurate when compared to the hub website but this is
-// expected.
+// ImageDistribution fetches the details for the specified image by asking
+// docker to fetch the distribution manifest from the registry. The digest
+// retrieved may not appear accurate when compared to the hub website but
+// this is expected.
 //
 // cf:
 //   - https://github.com/moby/moby/issues/40636)
@@ -287,15 +286,19 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 //	  }
 //
 // This is the image that will finally be installed.
-func (c *Client) ImageDigest(ctx context.Context, image string, dockerCreds config.DockerCredentials) (string, error) {
+func (c *Client) ImageDistribution(ctx context.Context, image string, dockerCreds config.DockerCredentials) (*ImageManifest, error) {
 	authToken := getAuthToken(ctx, image, dockerCreds)
 
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return dist.Descriptor.Digest.Encoded(), nil
+	manifest := &ImageManifest{
+		digest: dist.Descriptor.Digest.Encoded(),
+	}
+	copy(manifest.platforms, dist.Platforms)
+	return manifest, nil
 }
 
 func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {

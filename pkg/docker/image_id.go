@@ -3,6 +3,8 @@ package docker
 import (
 	"fmt"
 	"strings"
+
+	"github.com/docker/distribution/reference"
 )
 
 type EmptyTag struct{}
@@ -18,12 +20,10 @@ func (EmptyTag) Separator() string { return "" }
 func (EmptyTag) String() string    { return "" }
 
 func (NameTag) Separator() string { return ":" }
-
-func (n NameTag) String() string { return string(n) }
+func (n NameTag) String() string  { return string(n) }
 
 func (DigestTag) Separator() string { return "@" }
-
-func (n DigestTag) String() string { return string(n) }
+func (n DigestTag) String() string  { return string(n) }
 
 func ParseImageTag(s string) (string, ImageTag) {
 	// Check for a digest, and if not look for a tag
@@ -49,31 +49,29 @@ type ImageID struct {
 	tag ImageTag
 }
 
-func NewImageID(imageID string) ImageID {
-	id := ImageID{}
+func NewImageID(imageID string) (*ImageID, error) {
+	id := &ImageID{}
 
-	parts := strings.Split(imageID, "/")
-
-	// Check the head for what looks like a domain, e.g. ghcr.io
-	if strings.Contains(parts[0], ".") {
-		id.repository = parts[0]
+	repo, err := reference.Parse(imageID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Parse the name and tag from the last element. Once done
-	// we will replace the last element with the name (so that
-	// we can use it later).
-	id.name, id.tag = ParseImageTag(parts[len(parts)-1])
-	parts[len(parts)-1] = id.name
-
-	// Strip the repository off the front if it exists so we
-	// can safely join the remaining parts to get the name
-	if id.repository != "" {
-		parts = parts[1:]
+	if named, ok := repo.(reference.Named); ok {
+		id.repository = reference.Domain(named)
+		id.name = reference.Path(named)
 	}
 
-	id.name = strings.Join(parts, "/")
+	if digested, ok := repo.(reference.Digested); ok {
+		digest := fmt.Sprintf("sha256:%s", digested.Digest().Encoded())
+		id.tag = DigestTag(digest)
+	} else if tagged, ok := repo.(reference.Tagged); ok {
+		id.tag = NameTag(tagged.Tag())
+	} else {
+		id.tag = EmptyTag{}
+	}
 
-	return id
+	return id, nil
 }
 
 func (i *ImageID) HasDigest() bool {
