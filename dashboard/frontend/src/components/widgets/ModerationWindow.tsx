@@ -1,12 +1,13 @@
 import { FC, useCallback, useState } from "react";
 import { FormControl, FormControlLabel, FormLabel, Grid, Radio, RadioGroup, TextField, Typography } from "@mui/material";
 import Window, { WindowProps } from "./Window";
+import { JobModerationRequest, ModerateRequest } from "../../types";
 
 type ModerationWindowProps = {
   title: string,
   prompt: string,
   onModerate: {
-    (approved: boolean, reason: string): void,
+    (decision: ModerateRequest): void,
   },
 } & WindowProps
 
@@ -29,7 +30,7 @@ const ModerationWindow: FC<ModerationWindowProps> = ({
   }, [])
 
   const submitModeration = useCallback(async () => {
-    onModerate(moderationResult, moderationNotes)
+    onModerate({approved: moderationResult, reason: moderationNotes})
     windowProps.onSubmit?.()
   }, [moderationResult, moderationNotes])
 

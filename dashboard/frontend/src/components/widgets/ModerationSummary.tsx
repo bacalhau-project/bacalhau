@@ -1,6 +1,6 @@
 import { Button, Divider, Grid, Typography } from "@mui/material";
 import { Stack } from "@mui/system";
-import { FC } from "react";
+import React, { FC } from "react";
 import { JobModerationSummary, ModerationType } from "../../types";
 import { BoldSectionTitle } from "./GeneralText";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -13,6 +13,7 @@ type ModerationPanelProps = {
   user: IUserContext
   icon: any
   onClick: () => void
+  children?: React.ReactNode
 }
 
 const ModerationPanel: FC<ModerationPanelProps> = ({
@@ -21,9 +22,9 @@ const ModerationPanel: FC<ModerationPanelProps> = ({
   user,
   icon,
   onClick,
+  children,
 }) => {
-  var myModerations = moderations.filter(moderation => { return moderation.request.type == moderationType })
-  var moderationRows = myModerations.map(moderation => {
+  var moderationRows = moderations.map(moderation => {
     return <Stack direction="row" alignItems="center">
       {
         moderation.moderation.status == true ? (
@@ -54,6 +55,9 @@ const ModerationPanel: FC<ModerationPanelProps> = ({
         {icon}
       </Grid>
       <Grid item xs={12}>
+        {children}
+      </Grid>
+      <Grid item xs={12}>
         <Divider sx={{
           mt: 1,
           mb: 1,
@@ -61,7 +65,7 @@ const ModerationPanel: FC<ModerationPanelProps> = ({
       </Grid>
       <Grid item xs={12}>
         {
-          myModerations.length > 0 ? (
+          moderations.length > 0 ? (
             moderationRows
           ) : (
             <Typography variant="caption" sx={{ color: '#666' }}>
@@ -83,7 +87,7 @@ const ModerationPanel: FC<ModerationPanelProps> = ({
               <Button
                 variant="outlined"
                 color="primary"
-                disabled={myModerations.length > 0}
+                disabled={moderations.length > 0}
                 onClick={onClick}
               >
                 Moderate Job
