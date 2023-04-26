@@ -12,27 +12,27 @@ import (
 // features (engines, publishers, verifiers, storage sources) are installed.
 type featureNodeRanker[Key model.ProviderKey] struct {
 	getJobRequirement   func(model.Job) []Key
-	getNodeProvidedKeys func(model.NodeInfo) []Key
+	getNodeProvidedKeys func(model.ComputeNodeInfo) []Key
 }
 
 func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
 	return &featureNodeRanker[model.Engine]{
 		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
-		getNodeProvidedKeys: func(ni model.NodeInfo) []model.Engine { return ni.ComputeNodeInfo.ExecutionEngines },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
 	}
 }
 
 func NewVerifiersNodeRanker() *featureNodeRanker[model.Verifier] {
 	return &featureNodeRanker[model.Verifier]{
 		getJobRequirement:   func(j model.Job) []model.Verifier { return []model.Verifier{j.Spec.Verifier} },
-		getNodeProvidedKeys: func(ni model.NodeInfo) []model.Verifier { return ni.ComputeNodeInfo.Verifiers },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Verifier { return ni.Verifiers },
 	}
 }
 
 func NewPublishersNodeRanker() *featureNodeRanker[model.Publisher] {
 	return &featureNodeRanker[model.Publisher]{
 		getJobRequirement:   func(j model.Job) []model.Publisher { return []model.Publisher{j.Spec.PublisherSpec.Type} },
-		getNodeProvidedKeys: func(ni model.NodeInfo) []model.Publisher { return ni.ComputeNodeInfo.Publishers },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Publisher { return ni.Publishers },
 	}
 }
 
@@ -48,7 +48,7 @@ func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
 			}
 			return types
 		},
-		getNodeProvidedKeys: func(ni model.NodeInfo) []model.StorageSourceType { return ni.ComputeNodeInfo.StorageSources },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.StorageSourceType { return ni.StorageSources },
 	}
 }
 
@@ -57,14 +57,14 @@ func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
 // - Rank 0: We don't have information on what the node supports.
 // - Rank -1: Node is not supporting a type the job is requiring.
 func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeInfo, requiredKeys []Key) int {
-	providedKeys := s.getNodeProvidedKeys(node)
-	if len(providedKeys) == 0 {
+	if node.ComputeNodeInfo == nil {
 		// Node supported types are not set, or the node was discovered not
 		// through nodeInfoPublisher (e.g. identity protocol). We will give the
 		// node the benefit of the doubt and ask it to bid.
 		return 0
 	}
 
+	providedKeys := s.getNodeProvidedKeys(*node.ComputeNodeInfo)
 	for _, requiredKey := range requiredKeys {
 		found := false
 		for _, providedKey := range providedKeys {

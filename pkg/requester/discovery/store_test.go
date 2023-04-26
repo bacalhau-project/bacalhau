@@ -69,7 +69,7 @@ func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
 			},
 		},
 		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: model.ComputeNodeInfo{
+		ComputeNodeInfo: &model.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}

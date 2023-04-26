@@ -2,12 +2,14 @@ package discovery
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
 )
 
 type Chain struct {
@@ -26,29 +28,37 @@ func (c *Chain) Add(discoverer ...requester.NodeDiscoverer) {
 }
 
 func (c *Chain) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+	return c.ChainDiscovery(ctx, func(r requester.NodeDiscoverer) ([]model.NodeInfo, error) { return r.FindNodes(ctx, job) })
+}
+
+func (c *Chain) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
+	return c.ChainDiscovery(ctx, func(r requester.NodeDiscoverer) ([]model.NodeInfo, error) { return r.ListNodes(ctx) })
+}
+
+func (c *Chain) ChainDiscovery(
+	ctx context.Context,
+	getNodes func(requester.NodeDiscoverer) ([]model.NodeInfo, error),
+) ([]model.NodeInfo, error) {
+	var err error
 	uniqueNodes := make(map[peer.ID]model.NodeInfo, 0)
 	for _, discoverer := range c.discoverers {
-		nodeInfos, err := discoverer.FindNodes(ctx, job)
-		if err != nil {
-			if !c.ignoreErrors {
-				return nil, err
-			} else {
-				log.Ctx(ctx).Warn().Err(err).Msgf("ignoring error finding nodes by %s", reflect.TypeOf(discoverer))
-			}
-		}
+		nodeInfos, discoverErr := getNodes(discoverer)
+		err = multierr.Append(err, errors.Wrapf(discoverErr, "error finding nodes from %T", discoverer))
 		currentNodesCount := len(uniqueNodes)
 		for _, nodeInfo := range nodeInfos {
 			if _, ok := uniqueNodes[nodeInfo.PeerInfo.ID]; !ok {
 				uniqueNodes[nodeInfo.PeerInfo.ID] = nodeInfo
 			}
 		}
-		log.Ctx(ctx).Debug().Msgf("found %d more nodes by %s", len(uniqueNodes)-currentNodesCount, reflect.TypeOf(discoverer))
+		log.Ctx(ctx).Debug().Msgf("found %d more nodes by %T", len(uniqueNodes)-currentNodesCount, discoverer)
 	}
-	nodeInfos := make([]model.NodeInfo, 0, len(uniqueNodes))
-	for _, nodeInfo := range uniqueNodes {
-		nodeInfos = append(nodeInfos, nodeInfo)
+
+	if err != nil && c.ignoreErrors {
+		log.Ctx(ctx).Warn().Err(err).Msg("ignoring error finding nodes")
+		err = nil
 	}
-	return nodeInfos, nil
+
+	return maps.Values(uniqueNodes), err
 }
 
 // compile-time interface assertions
