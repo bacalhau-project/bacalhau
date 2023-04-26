@@ -1,12 +1,10 @@
-import React, { FC} from 'react'
+import { FC} from 'react'
 import { SxProps } from '@mui/system'
 import Stack from '@mui/material/Stack'
 import Box from '@mui/material/Box'
-import {
-  StorageSpec,
-  RunCommandResult,
-} from '../../types'
+import { StorageSpec } from '../../types'
 import FilPlus from './FilPlus'
+import StorageSpecRow from './StorageSpec'
 
 const OutputVolumes: FC<{
   outputVolumes: StorageSpec[],
@@ -20,7 +18,7 @@ const OutputVolumes: FC<{
   sx = {},
 }) => {
   return (
-    <Stack direction="row">
+    <Stack direction="column">
       {
         includeDatacap && (
           <Box
@@ -33,56 +31,12 @@ const OutputVolumes: FC<{
           </Box>
         )
       }
-      <Box
-        component="div"
-        sx={{
-          ...sx
-        }}
-      >
-        {
-          publishedResults && (
-            <li>
-              <span
-                style={{
-                  fontSize: '0.8em',
-                  color: '#333',
-                }}
-              >
-                <a target="_blank" href={ `https://ipfs.io/ipfs/${publishedResults.CID}` }>
-                  all
-                </a>
-              </span>
-            </li>
-          )
-        }
-        {
-          outputVolumes.map((storageSpec) => {
-            return (
-              <li key={storageSpec.Name}>
-                <span
-                  style={{
-                    fontSize: '0.8em',
-                    color: '#333',
-                  }}
-                >
-                  {
-                    publishedResults ? (
-                      <a target="_blank" href={ `https://ipfs.io/ipfs/${publishedResults.CID}${storageSpec.path}` }>
-                        { storageSpec.Name }:{ storageSpec.path }
-                      </a>
-                    ) : (
-                      <span>
-                        { storageSpec.Name }:{ storageSpec.path }
-                      </span>
-                    )
-                  }
-                  
-                </span>
-              </li>
-            )
-          })
-        }
-      </Box>
+      {
+        publishedResults && (<StorageSpecRow spec={publishedResults} name="All results"/>)
+      }
+      {
+        outputVolumes.map((storageSpec) => <StorageSpecRow spec={storageSpec}/>)
+      }
     </Stack>
   )
 }
