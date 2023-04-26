@@ -51,7 +51,7 @@ Install pytorch
 
 
 ```python
-%%pip install torch
+%pip install torch
 ```
 
 
