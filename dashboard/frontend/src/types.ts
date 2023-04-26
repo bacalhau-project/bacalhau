@@ -151,6 +151,7 @@ export interface JobSpecLanguage {
 
 export interface JobSpecWasm {
   EntryPoint?: string,
+  EntryModule?: StorageSpec,
   Parameters?: string[],
 }
 
@@ -202,8 +203,8 @@ export interface JobInfo {
 }
 
 export interface JobRelation {
-  JobID: string,
-  CID: string,
+  job_id: string,
+  cid: string,
 }
 
 export interface JobIO {

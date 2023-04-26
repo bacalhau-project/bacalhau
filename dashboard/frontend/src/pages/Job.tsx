@@ -178,8 +178,8 @@ const JobPage: FC<{
      id,
   ]);
 
-  const groupByCID = (jobRelation) => {
-    const groups = {};
+  const groupByCID = (jobRelation: JobRelation[]) => {
+    const groups: Record<string, JobRelation[]> = {};
 
     if (jobRelation) {
       jobRelation.forEach((relation) => {
@@ -493,11 +493,7 @@ const JobPage: FC<{
           }
         </Grid>
         <Grid item md={12} lg={4}>
-          <Paper
-            sx={{
-              p: 2,
-            }}
-          >
+          <Paper sx={{p: 2}} >
             <Grid container spacing={0.5}>
               <Grid item xs={8}>
                 <BoldSectionTitle>
@@ -570,7 +566,97 @@ const JobPage: FC<{
             </Grid>
           </Paper>
         </Grid>
-      </Grid>
+        {
+          jobInfo.requests.map(request => {
+            let moderations = jobInfo.moderations.filter(mod => mod.request.id == request.id)
+            let icon = request.type == ModerationType.Datacap ? <FilPlus/> : null
+            let submit = request.type == ModerationType.Datacap ? setDatacapWindowOpen : setExecModWindowOpen
+            return <Grid item md={4} lg={4}>
+              <Paper sx={{p: 2}}>
+                <ModerationPanel
+                  moderationType={request.type}
+                  moderations={moderations}
+                  user={user}
+                  icon={icon}
+                  onClick={async () => { submit(true) }}
+                />
+              </Paper>
+            </Grid>
+          })
+        }
+        <Grid item xs={12}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={6}>
+              <Paper sx={{p: 2}}>
+                <BoldSectionTitle>Job(s) Producing Input</BoldSectionTitle>
+                {Object.keys(groupByCID(jobInputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobInputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="caption">CID: {cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <SmallText>No job relations found.</SmallText>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} lg={4}>
+              <Paper sx={{p: 2}}>
+                <BoldSectionTitle>Job(s) Operating on Output</BoldSectionTitle>
+                {Object.keys(groupByCID(jobOutputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobOutputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="caption">CID: {cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <SmallText>No job relations found.</SmallText>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
       {
         jsonWindow && (
           <TerminalWindow
@@ -607,78 +693,6 @@ const JobPage: FC<{
           />
         )
       }
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} lg={4}>
-                <Typography variant="h6">Job(s) Producing Input</Typography>
-                {Object.keys(groupByCID(jobInputRelation)).length > 0 ? (
-                    Object.entries(groupByCID(jobInputRelation)).map(([cid, relations]) => (
-                        <Accordion key={cid}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="subtitle1">CID: {cid}</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <TableContainer>
-                              <Table sx={{ minWidth: 50 }} size="small">
-                                <TableBody>
-                                  {relations.map((relation, index) => (
-                                      <TableRow key={index}>
-                                        <TableCell>
-                                          <SmallText>
-                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
-                                              {relation.job_id}
-                                            </Link>
-                                          </SmallText>
-                                        </TableCell>
-                                      </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                          </AccordionDetails>
-                        </Accordion>
-                    ))
-                ) : (
-                    <Typography variant="body1">No job relations found.</Typography>
-                )}
-            </Grid>
-            <Grid item xs={12} lg={4}>
-                <Typography variant="h6">Job(s) Operating on Output</Typography>
-                {Object.keys(groupByCID(jobOutputRelation)).length > 0 ? (
-                    Object.entries(groupByCID(jobOutputRelation)).map(([cid, relations]) => (
-                        <Accordion key={cid}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography variant="subtitle1">{cid}</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <TableContainer>
-                              <Table sx={{ minWidth: 50 }} size="small">
-                                <TableBody>
-                                  {relations.map((relation, index) => (
-                                      <TableRow key={index}>
-                                        <TableCell>
-                                          <SmallText>
-                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
-                                              {relation.job_id}
-                                            </Link>
-                                          </SmallText>
-                                        </TableCell>
-                                      </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                          </AccordionDetails>
-                        </Accordion>
-                    ))
-                ) : (
-                    <Typography variant="body1">No job relations found.</Typography>
-                )}
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
     </Container>
   )
 }
