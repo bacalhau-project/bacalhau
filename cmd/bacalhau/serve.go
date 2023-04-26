@@ -499,10 +499,12 @@ func AutoOutputLabels() map[string]string {
 		gpuNames, gpuMemory := gpuList()
 		// Print the GPU names
 		for i, name := range gpuNames {
+			name = strings.Replace(name, " ", "-", -1) // Replace spaces with dashes
 			key := fmt.Sprintf("GPU-%d", i)
 			m[key] = name
 			key = fmt.Sprintf("GPU-%d-Memory", i)
-			m[key] = gpuMemory[i]
+			memory := strings.Replace(gpuMemory[i], " ", "-", -1) // Replace spaces with dashes
+			m[key] = memory
 		}
 	}
 	// Get list of installed packages (Only works for linux, make it work for every platform)
