@@ -56,6 +56,8 @@ func RunTestCase(
 	spec.Inputs = prepareStorage(testCase.Inputs)
 	spec.Outputs = testCase.Outputs
 	spec.Deal = model.Deal{Concurrency: testNodeCount}
+	//olgibbons: check this:
+	spec.Docker.Parameters = append(spec.Docker.Parameters, testCase.CLIParameters...)
 
 	job := model.Job{
 		Metadata: model.Metadata{

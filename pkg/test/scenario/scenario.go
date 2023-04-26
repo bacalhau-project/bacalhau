@@ -68,6 +68,9 @@ type Scenario struct {
 	// whether it was successful or not. If empty, the job will not be waited
 	// for once it has been submitted.
 	JobCheckers []job.CheckStatesFunction
+
+	//olgibbons: delete this if it doesn't work:
+	CLIParameters []string
 }
 
 // All the information that is needed to uniquely define a devstack.

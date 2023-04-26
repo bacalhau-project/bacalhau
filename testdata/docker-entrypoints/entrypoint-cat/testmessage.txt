@@ -1,0 +1,1 @@
+I am being read from within a file called testmessage.txt using the default entrypoint of /bin/cat
