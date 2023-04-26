@@ -47,6 +47,13 @@ mkdir ../data
 
 If you inspect the code [here](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) you'll see the folder referenced in the code. Here is the a small section of the code that references the folder
 
+Install pytorch
+
+
+```python
+∞pip install torch
+```
+
 
 ```python
     train_loader = torch.utils.data.DataLoader(
