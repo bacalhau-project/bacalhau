@@ -20,7 +20,7 @@ func TestImageResolverSuite(t *testing.T) {
 	suite.Run(t, new(ImageResolverSuite))
 }
 
-func errorResolver(c context.Context, i string, creds config.DockerCredentials) (*ImageManifest, error) {
+func errorResolver(c context.Context, i string, forceRemote bool, creds config.DockerCredentials) (*ImageManifest, error) {
 	return nil, fmt.Errorf("an error occurred")
 }
 
@@ -30,7 +30,7 @@ func fullResolver() imageResolverFunc {
 }
 
 func valueResolver(val string) imageResolverFunc {
-	return func(c context.Context, i string, creds config.DockerCredentials) (*ImageManifest, error) {
+	return func(c context.Context, i string, forceRemote bool, creds config.DockerCredentials) (*ImageManifest, error) {
 		return &ImageManifest{digest: fmt.Sprintf("sha256:%s", val)}, nil
 	}
 }
@@ -100,8 +100,8 @@ func (s *ImageResolverSuite) TestResolverCases() {
 		// 	image:       "ubuntu:kinetic",
 		// 	initial_tag: "kinetic",
 		// 	error:       false,
-		// digest:       true,
-		// 	expected:    "ubuntu@sha256:a9a425d086dbb34c1b5b99765596e2a3cc79b33826866c51cd4508d8eb327d2b",
+		// 	digest:      true,
+		// 	expected:    "ubuntu@sha256:490b20d4c90f834abcf386620a8906d21821aaa4db91c4665016883f043a10e4",
 		// 	resolver:    fullResolver(),
 		// },
 	}

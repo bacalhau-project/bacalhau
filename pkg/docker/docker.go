@@ -214,7 +214,7 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 // usable by the provided image. This currently retrieves the information via
 // a call to ImageDistribution which provides the same information.
 func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
-	manifest, err := c.ImageDistribution(ctx, image, dockerCreds)
+	manifest, err := c.ImageDistribution(ctx, image, false, dockerCreds)
 	if err != nil {
 		return nil, err
 	}
@@ -286,9 +286,29 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 //	  }
 //
 // This is the image that will finally be installed.
-func (c *Client) ImageDistribution(ctx context.Context, image string, dockerCreds config.DockerCredentials) (*ImageManifest, error) {
-	authToken := getAuthToken(ctx, image, dockerCreds)
+func (c *Client) ImageDistribution(
+	ctx context.Context, image string,
+	forceRemote bool, creds config.DockerCredentials,
+) (*ImageManifest, error) {
+	// Check the local repository first to see if we already have this image and if so,
+	// return those details, but only if the caller did not set forceRemote
+	if !forceRemote {
+		info, _, err := c.ImageInspectWithRaw(ctx, image)
+		if err == nil {
+			return &ImageManifest{
+				digest: info.ID,
+				platforms: []v1.Platform{
+					{
+						Architecture: info.Architecture,
+						OS:           info.Os,
+						OSVersion:    info.OsVersion,
+					},
+				},
+			}, nil
+		}
+	}
 
+	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
 		return nil, err

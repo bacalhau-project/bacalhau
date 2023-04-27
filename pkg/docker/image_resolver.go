@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type imageResolverFunc func(context.Context, string, config.DockerCredentials) (*ImageManifest, error)
+type imageResolverFunc func(context.Context, string, bool, config.DockerCredentials) (*ImageManifest, error)
 
 // ResolveImageID will take the provided image identifier and a resolver,
 // and attempt to provide a version of the image id containing the digest
@@ -22,7 +22,7 @@ func ResolveImageID(ctx context.Context, img ImageID, resolver imageResolverFunc
 	// TODO: Look up i.String() in cache to see if we already have a digest for it
 
 	credentials := config.GetDockerCredentials()
-	manifest, err := resolver(ctx, img.String(), credentials)
+	manifest, err := resolver(ctx, img.String(), false, credentials)
 	if err != nil {
 		log.Ctx(ctx).Error().
 			Err(err).
