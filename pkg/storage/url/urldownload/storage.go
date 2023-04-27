@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -117,6 +118,16 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
+
+	requestDidRedirect := false
+
+	// Install handler which can recognize whether we have performed a redirect or not.
+	previousRedirect := sp.client.HTTPClient.CheckRedirect
+	sp.client.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		requestDidRedirect = true
+		return nil
+	}
+
 	res, err := sp.client.Do(req) //nolint:bodyclose // this is being closed - golangci-lint is wrong again
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to begin download from url %s: %w", u, err)
@@ -127,12 +138,23 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, res.Status)
 	}
 
-	baseName := path.Base(res.Request.URL.Path)
+	// Reset previous redirect handler
+	sp.client.HTTPClient.CheckRedirect = previousRedirect
+
 	var fileName string
+	baseName := path.Base(res.Request.URL.Path)
+
+	// Check whether content-disposition is set, but only after a redirect
+	if requestDidRedirect {
+		fileName = filenameFromDisposition(res.Header.Get("content-disposition"))
+	}
+
 	if baseName == "." || baseName == "/" {
-		// There is no filename in the URL, so we need to a temp one
-		fileName = uuid.UUID.String(uuid.New())
-	} else {
+		// Still no value, so we'll fallback to a uuid
+		if fileName == "" {
+			fileName = uuid.UUID.String(uuid.New())
+		}
+	} else if fileName == "" {
 		fileName = baseName
 	}
 
@@ -169,6 +191,31 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 
 	return volume, nil
+}
+
+func filenameFromDisposition(contentDispositionHdr string) string {
+	// After a redirect, when we need a filename, sometimes the server is giving
+	// us a filename. We should use it.
+	// We don't really care about disposition (attachment, inline) here and if
+	// it is anything else then something has really gone wrong.
+	fileName := ""
+	if contentDispositionHdr != "" {
+		_, params, err := mime.ParseMediaType(contentDispositionHdr)
+		if err == nil {
+			// In cases where we fail (err != nil) then we will just degrade to the
+			// previous logic, but if we can find the filename, we'll set basename
+			// to that.
+			fileName = params["filename*"]
+			if fileName == "" {
+				fileName = params["filename"]
+			}
+
+			if fileName != "" {
+				fileName = filepath.Base(fileName)
+			}
+		}
+	}
+	return fileName
 }
 
 func (sp *StorageProvider) CleanupStorage(
