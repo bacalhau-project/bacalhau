@@ -93,6 +93,11 @@ func (c *Cache[T]) Delete(key string) {
 	c.items.Delete(key)
 }
 
+func (c *Cache[T]) Close() {
+	close(c.closer)
+	delete(caches, c.name)
+}
+
 func (c *Cache[T]) cleanup(frequency time.Duration) {
 	ticker := time.NewTicker(frequency)
 	defer ticker.Stop()
