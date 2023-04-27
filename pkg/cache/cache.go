@@ -102,7 +102,12 @@ func (c *Cache[T]) cleanup(frequency time.Duration) {
 		case <-c.closer:
 			return
 		case <-ticker.C:
+			// Stop the ticker whilst we process evictions
+			// otherwise we'll be constrained to finishing
+			// evictions in <frequency
+			ticker.Stop()
 			c.evict()
+			ticker.Reset(frequency)
 		}
 	}
 }
