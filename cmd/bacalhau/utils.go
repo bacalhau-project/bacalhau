@@ -249,7 +249,7 @@ type ExecutionSettings struct {
 	Download model.DownloaderSettings
 }
 
-func ExecuteDockerJob(ctx context.Context, cm *system.CleanupManager, cmd *cobra.Command, j *DockerJobParams, settings *ExecutionSettings) error {
+func ExecuteDockerJob(ctx context.Context, cm *system.CleanupManager, cmd *cobra.Command, j *model.DockerJob, settings *ExecutionSettings) error {
 	client := GetAPIClient()
 
 	if settings.Runtime.IsLocal {
@@ -512,7 +512,7 @@ func downloadResultsHandler(
 	return nil
 }
 
-func submitDockerJob(ctx context.Context, client *publicapi.RequesterAPIClient, j *DockerJobParams) (*model.Job, error) {
+func submitDockerJob(ctx context.Context, client *publicapi.RequesterAPIClient, j *model.DockerJob) (*model.Job, error) {
 	jobSpec, err := client.SubmitDockerJob(ctx, j)
 	if err != nil {
 		return nil, fmt.Errorf("submitting docker job: %w", err)

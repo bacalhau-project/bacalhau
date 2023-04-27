@@ -35,7 +35,7 @@ func (s *RequesterAPIServer) submitDocker(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	payload, err := publicapi.UnmarshalSigned[DockerJobCreatePayload](ctx, req.Body)
+	payload, err := publicapi.UnmarshalSigned[model.DockerJobCreatePayload](ctx, req.Body)
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return

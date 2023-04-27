@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/cmd/bacalhau"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -241,21 +240,12 @@ func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID strin
 	return res.Results, nil
 }
 
-type DockerJobCreatePayload struct {
-	ClientID  string
-	DockerJob *bacalhau.DockerJobParams
-}
-
-func (d DockerJobCreatePayload) GetClientID() string {
-	return d.ClientID
-}
-
-func (apiClient *RequesterAPIClient) SubmitDockerJob(ctx context.Context, j *bacalhau.DockerJobParams) (*model.Job, error) {
+func (apiClient *RequesterAPIClient) SubmitDockerJob(ctx context.Context, j *model.DockerJob) (*model.Job, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.SubmitDockerJob")
 	defer span.End()
 
 	var res submitResponse
-	err := apiClient.PostSigned(ctx, APIPrefix+"submit_docker", DockerJobCreatePayload{
+	err := apiClient.PostSigned(ctx, APIPrefix+"submit_docker", model.DockerJobCreatePayload{
 		ClientID:  system.GetClientID(),
 		DockerJob: j,
 	}, &res)

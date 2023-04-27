@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -314,69 +313,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-type DockerJobParams struct {
-	APIVersion model.APIVersion `json:"APIVersion,omitempty"`
-
-	DockerSpec    model.JobSpecDocker `json:"DockerSpec"`
-	PublisherSpec model.PublisherSpec `json:"PublisherSpec"`
-	VerifierSpec  model.Verifier      `json:"VerifierSpec,omitempty"`
-
-	ResourceConfig model.ResourceUsageConfig `json:"ResourceConfig"`
-	NetworkConfig  model.NetworkConfig       `json:"NetworkConfig"`
-
-	Inputs  []model.StorageSpec `json:"Inputs,omitempty"`
-	Outputs []model.StorageSpec `json:"Outputs,omitempty"`
-
-	DealSpec model.Deal `json:"DealSpec"`
-
-	NodeSelectors []model.LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
-
-	Timeout     float64  `json:"Timeout,omitempty"`
-	Annotations []string `json:"Annotations,omitempty"`
-}
-
-func (d *DockerJobParams) Validate() error {
-	if reflect.DeepEqual(model.JobSpecDocker{}, d.DockerSpec) {
-		return fmt.Errorf("docker engine spec is empty")
-	}
-
-	if reflect.DeepEqual(model.Deal{}, d.DealSpec) {
-		return fmt.Errorf("job deal is empty")
-	}
-
-	if d.DealSpec.Concurrency <= 0 {
-		return fmt.Errorf("concurrency must be >= 1")
-	}
-
-	if d.DealSpec.Confidence < 0 {
-		return fmt.Errorf("confidence must be >= 0")
-	}
-
-	if !model.IsValidVerifier(d.VerifierSpec) {
-		return fmt.Errorf("invalid verifier type: %s", d.VerifierSpec.String())
-	}
-
-	if !model.IsValidPublisher(d.PublisherSpec.Type) {
-		return fmt.Errorf("invalid publisher type: %s", d.PublisherSpec.Type.String())
-	}
-
-	if err := d.NetworkConfig.IsValid(); err != nil {
-		return err
-	}
-
-	if d.DealSpec.Confidence > d.DealSpec.Concurrency {
-		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
-	}
-
-	for _, inputVolume := range d.Inputs {
-		if !model.IsValidStorageSourceType(inputVolume.StorageSource) {
-			return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
-		}
-	}
-	return nil
-}
-
-func CreateDockerJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*DockerJobParams, error) {
+func CreateDockerJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.DockerJob, error) {
 	verifierSpec, err := model.ParseVerifier(odr.Verifier)
 	if err != nil {
 		return nil, err
@@ -408,7 +345,7 @@ func CreateDockerJob(ctx context.Context, cmdArgs []string, odr *DockerRunOption
 		IPFSSwarmAddrs: swarmAddresses,
 	}
 
-	out := &DockerJobParams{
+	out := &model.DockerJob{
 		// TODO this could be different than the api version as it only relates to docker jobs.
 		APIVersion: model.APIVersionLatest(),
 		DockerSpec: model.JobSpecDocker{
