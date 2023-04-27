@@ -14,6 +14,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -24,11 +30,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 const (
@@ -243,60 +244,54 @@ func getCommandLineExecutable() string {
 	return os.Args[0]
 }
 
-//nolint:funlen,gocyclo // Refactor later
-func ExecuteJob(ctx context.Context,
-	cm *system.CleanupManager,
-	cmd *cobra.Command,
-	j *model.Job,
-	runtimeSettings RunTimeSettings,
-	downloadSettings model.DownloaderSettings,
-) error {
-	var apiClient *publicapi.RequesterAPIClient
+type ExecutionSettings struct {
+	Runtime  RunTimeSettings
+	Download model.DownloaderSettings
+}
 
-	if runtimeSettings.IsLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
+func ExecuteDockerJob(ctx context.Context, cm *system.CleanupManager, cmd *cobra.Command, j *DockerJobParams, settings *ExecutionSettings) error {
+	client := GetAPIClient()
+
+	if settings.Runtime.IsLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.ResourceConfig.GPU))
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
-
 		apiServer := stack.Nodes[0].APIServer
-		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
-	} else {
-		apiClient = GetAPIClient()
+		client = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	}
 
-	err := job.VerifyJob(ctx, j)
-	if err != nil {
-		log.Ctx(ctx).Err(err).Msg("Job failed to validate.")
-		return err
-	}
-
-	j, err = submitJob(ctx, apiClient, j)
+	// NOTE: job is verified when it constructed, we don't need to validate again.
+	jobSpec, err := submitDockerJob(ctx, client, j)
 	if err != nil {
 		return err
 	}
 
+	return printJobExecution(ctx, cmd, cm, client, jobSpec, settings)
+}
+
+func printJobExecution(ctx context.Context, cmd *cobra.Command, cm *system.CleanupManager, client *publicapi.RequesterAPIClient, j *model.Job, settings *ExecutionSettings) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
 	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
-	if !runtimeSettings.WaitForJobToFinish {
+	if !settings.Runtime.WaitForJobToFinish {
 		cmd.Print(j.Metadata.ID + "\n")
 		return nil
 	}
 
 	// if we are in --id-only mode - print the id
-	if runtimeSettings.PrintJobIDOnly {
+	if settings.Runtime.PrintJobIDOnly {
 		cmd.Print(j.Metadata.ID + "\n")
 	}
 
-	if runtimeSettings.Follow {
+	if settings.Runtime.Follow {
 		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
 		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
 		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
 		// the execution to appear.
 		for i := 0; i < 10; i++ {
-			jobState, stateErr := apiClient.GetJobState(ctx, j.ID())
+			jobState, stateErr := client.GetJobState(ctx, j.ID())
 			if stateErr != nil {
 				Fatal(cmd, fmt.Sprintf("failed waiting for execution to start: %s", stateErr), 1)
 			}
@@ -320,10 +315,8 @@ func ExecuteJob(ctx context.Context,
 
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
-	quiet := runtimeSettings.PrintJobIDOnly
-
-	err = WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
-	if err != nil {
+	quiet := settings.Runtime.PrintJobIDOnly
+	if err := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet); err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal(cmd, "", 0)
 		} else {
@@ -331,7 +324,7 @@ func ExecuteJob(ctx context.Context,
 		}
 	}
 
-	jobReturn, found, err := apiClient.Get(ctx, j.Metadata.ID)
+	jobReturn, found, err := client.Get(ctx, j.Metadata.ID)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error getting job: %s", err), 1)
 	}
@@ -339,7 +332,7 @@ func ExecuteJob(ctx context.Context,
 		Fatal(cmd, fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
 	}
 
-	js, err := apiClient.GetJobState(ctx, jobReturn.Job.Metadata.ID)
+	js, err := client.GetJobState(ctx, jobReturn.Job.Metadata.ID)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
@@ -348,7 +341,7 @@ func ExecuteJob(ctx context.Context,
 	resultsCID := ""
 	indentOne := "  "
 	indentTwo := strings.Repeat(indentOne, 2)
-	if runtimeSettings.PrintNodeDetails {
+	if settings.Runtime.PrintNodeDetails {
 		printOut += "\n"
 		printOut += "Job Results By Node:\n"
 		for _, n := range js.Executions {
@@ -397,19 +390,58 @@ To get more details about the run, execute:
 		cmd.Print(fmt.Sprintf(printOut, resultsCID))
 	}
 
-	if runtimeSettings.AutoDownloadResults {
+	if settings.Runtime.AutoDownloadResults {
 		err = downloadResultsHandler(
 			ctx,
 			cm,
 			cmd,
 			j.Metadata.ID,
-			downloadSettings,
+			settings.Download,
 		)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+//nolint:funlen,gocyclo // Refactor later
+func ExecuteJob(ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	j *model.Job,
+	runtimeSettings RunTimeSettings,
+	downloadSettings model.DownloaderSettings,
+) error {
+	var apiClient *publicapi.RequesterAPIClient
+
+	if runtimeSettings.IsLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
+		if errLocalDevStack != nil {
+			return errLocalDevStack
+		}
+
+		apiServer := stack.Nodes[0].APIServer
+		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	} else {
+		apiClient = GetAPIClient()
+	}
+
+	err := job.VerifyJob(ctx, j)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msg("Job failed to validate.")
+		return err
+	}
+
+	j, err = submitJob(ctx, apiClient, j)
+	if err != nil {
+		return err
+	}
+
+	return printJobExecution(ctx, cmd, cm, apiClient, j, &ExecutionSettings{
+		Runtime:  runtimeSettings,
+		Download: downloadSettings,
+	})
 }
 
 func downloadResultsHandler(
@@ -478,6 +510,14 @@ func downloadResultsHandler(
 	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
 
 	return nil
+}
+
+func submitDockerJob(ctx context.Context, client *publicapi.RequesterAPIClient, j *DockerJobParams) (*model.Job, error) {
+	jobSpec, err := client.SubmitDockerJob(ctx, j)
+	if err != nil {
+		return nil, fmt.Errorf("submitting docker job: %w", err)
+	}
+	return jobSpec, nil
 }
 
 func submitJob(ctx context.Context,

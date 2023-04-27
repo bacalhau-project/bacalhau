@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.
@@ -22,6 +23,17 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 		APIVersion: jc.APIVersion,
 		Spec:       *jc.Spec,
 	})
+}
+
+func VerifyDockerJobCreatePayload(ctx context.Context, jc *publicapi.DockerJobCreatePayload) error {
+	if jc.ClientID == "" {
+		return fmt.Errorf("ClientID is empty")
+	}
+
+	if jc.DockerJob.APIVersion.String() == "" {
+		return fmt.Errorf("APIVersion is empty")
+	}
+	return jc.DockerJob.Validate()
 }
 
 // VerifyJob verifies that job object passed is valid.

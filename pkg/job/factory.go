@@ -41,7 +41,7 @@ func ConstructDockerJob( //nolint:funlen
 		GPU:    gpu,
 	}
 
-	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
+	jobOutputs, err := BuildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}

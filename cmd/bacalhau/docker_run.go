@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -131,7 +132,8 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  applyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return dockerRun(cmd, cmdArgs, ODR)
+			return dockerRunExplicit(cmd, cmdArgs, ODR)
+			//return dockerRun(cmd, cmdArgs, ODR)
 		},
 	}
 
@@ -229,6 +231,39 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
+func dockerRunExplicit(cmd *cobra.Command, cmdArgs []string, opt *DockerRunOptions) error {
+	ctx := cmd.Context()
+
+	// TODO not a fan of storing things in the context like this, half the receives don't use it, and accept a context
+	// anyways which they could pull this from. If we want to keep this perhaps it could be a globag somewhere.
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
+
+	// also handles validation
+	dockerJob, err := CreateDockerJob(ctx, cmdArgs, opt)
+	if err != nil {
+		return fmt.Errorf("creating docker job: %w", err)
+	}
+
+	if !opt.RunTimeSettings.PrintJobIDOnly && !DockerImageContainsTag(dockerJob.DockerSpec.Image) {
+		return fmt.Errorf("image does not contain tag, please specify a tag/digest")
+	}
+
+	if opt.DryRun {
+		// Converting job to yaml
+		var yamlBytes []byte
+		yamlBytes, err = yaml.Marshal(dockerJob)
+		if err != nil {
+			return fmt.Errorf("converting job to yaml: %w", err)
+		}
+		cmd.Print(string(yamlBytes))
+		return nil
+	}
+	return ExecuteDockerJob(ctx, cm, cmd, dockerJob, &ExecutionSettings{
+		Runtime:  opt.RunTimeSettings,
+		Download: opt.DownloadFlags,
+	})
+}
+
 func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
 	ctx := cmd.Context()
 
@@ -277,6 +312,139 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 		ODR.RunTimeSettings,
 		ODR.DownloadFlags,
 	)
+}
+
+type DockerJobParams struct {
+	APIVersion model.APIVersion `json:"APIVersion,omitempty"`
+
+	DockerSpec    model.JobSpecDocker `json:"DockerSpec"`
+	PublisherSpec model.PublisherSpec `json:"PublisherSpec"`
+	VerifierSpec  model.Verifier      `json:"VerifierSpec,omitempty"`
+
+	ResourceConfig model.ResourceUsageConfig `json:"ResourceConfig"`
+	NetworkConfig  model.NetworkConfig       `json:"NetworkConfig"`
+
+	Inputs  []model.StorageSpec `json:"Inputs,omitempty"`
+	Outputs []model.StorageSpec `json:"Outputs,omitempty"`
+
+	DealSpec model.Deal `json:"DealSpec"`
+
+	NodeSelectors []model.LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
+
+	Timeout     float64  `json:"Timeout,omitempty"`
+	Annotations []string `json:"Annotations,omitempty"`
+}
+
+func (d *DockerJobParams) Validate() error {
+	if reflect.DeepEqual(model.JobSpecDocker{}, d.DockerSpec) {
+		return fmt.Errorf("docker engine spec is empty")
+	}
+
+	if reflect.DeepEqual(model.Deal{}, d.DealSpec) {
+		return fmt.Errorf("job deal is empty")
+	}
+
+	if d.DealSpec.Concurrency <= 0 {
+		return fmt.Errorf("concurrency must be >= 1")
+	}
+
+	if d.DealSpec.Confidence < 0 {
+		return fmt.Errorf("confidence must be >= 0")
+	}
+
+	if !model.IsValidVerifier(d.VerifierSpec) {
+		return fmt.Errorf("invalid verifier type: %s", d.VerifierSpec.String())
+	}
+
+	if !model.IsValidPublisher(d.PublisherSpec.Type) {
+		return fmt.Errorf("invalid publisher type: %s", d.PublisherSpec.Type.String())
+	}
+
+	if err := d.NetworkConfig.IsValid(); err != nil {
+		return err
+	}
+
+	if d.DealSpec.Confidence > d.DealSpec.Concurrency {
+		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
+	}
+
+	for _, inputVolume := range d.Inputs {
+		if !model.IsValidStorageSourceType(inputVolume.StorageSource) {
+			return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
+		}
+	}
+	return nil
+}
+
+func CreateDockerJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*DockerJobParams, error) {
+	verifierSpec, err := model.ParseVerifier(odr.Verifier)
+	if err != nil {
+		return nil, err
+	}
+
+	outputSpec, err := jobutils.BuildJobOutputs(ctx, odr.OutputVolumes)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeSelectors, err := jobutils.ParseNodeSelector(odr.NodeSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	labels := odr.Labels
+	if odr.FilPlus {
+		labels = append(labels, "filplus")
+	}
+
+	// TODO mutating the odr like this reduces code readability and is error prone.
+	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
+	if swarmAddresses == "" {
+		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
+	}
+	odr.DownloadFlags = model.DownloaderSettings{
+		Timeout:        odr.DownloadFlags.Timeout,
+		OutputDir:      odr.DownloadFlags.OutputDir,
+		IPFSSwarmAddrs: swarmAddresses,
+	}
+
+	out := &DockerJobParams{
+		// TODO this could be different than the api version as it only relates to docker jobs.
+		APIVersion: model.APIVersionLatest(),
+		DockerSpec: model.JobSpecDocker{
+			Image:                cmdArgs[0],
+			Entrypoint:           cmdArgs[1:],
+			EnvironmentVariables: odr.Env,
+			WorkingDirectory:     odr.WorkingDirectory,
+		},
+		PublisherSpec: odr.Publisher.Value(),
+		VerifierSpec:  verifierSpec,
+		ResourceConfig: model.ResourceUsageConfig{
+			CPU:    odr.CPU,
+			Memory: odr.Memory,
+			GPU:    odr.GPU,
+			// TODO this is unspecified on CLI
+			// Disk:   odr.Disk?,
+		},
+		NetworkConfig: model.NetworkConfig{
+			Type:    odr.Networking,
+			Domains: odr.NetworkDomains,
+		},
+		Inputs:  odr.Inputs.Values(),
+		Outputs: outputSpec,
+		DealSpec: model.Deal{
+			Concurrency: odr.Concurrency,
+			Confidence:  odr.Confidence,
+			MinBids:     odr.MinBids,
+		},
+		NodeSelectors: nodeSelectors,
+		Timeout:       odr.Timeout,
+		Annotations:   odr.Labels,
+	}
+	if err := out.Validate(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // CreateJob creates a job object from the given command line arguments and options.

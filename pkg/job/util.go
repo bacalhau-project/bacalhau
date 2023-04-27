@@ -7,9 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -48,7 +49,7 @@ func NewNoopStateLoader() StateLoader {
 	return stateLoader
 }
 
-func buildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
+func BuildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
 	outputVolumesMap := make(map[string]model.StorageSpec)
 	outputVolumes = append(outputVolumes, "outputs:/outputs")
 
