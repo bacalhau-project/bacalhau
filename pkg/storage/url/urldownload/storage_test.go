@@ -225,6 +225,46 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			expectedContent:  "i'm not putting an image here",
 			expectedFilename: "300.jpg",
 		},
+		{
+			name: "redirects.r.us - malicious",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"../../300.jpg\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
+		{
+			name: "redirects.r.us - malicious part II",
+			requests: []dummyRequest{
+				{
+					path:    "/img/300.jpg",
+					code:    302,
+					content: "/cdn/300/",
+				},
+				{
+					path:    "/cdn/300/",
+					code:    200,
+					content: "i'm not putting an image here",
+					headers: &map[string]string{
+						"content-disposition": "attachment; filename*=UTF-8''300.jpg; filename=\"/etc/300.jpg\";",
+					},
+				},
+			},
+			expectedContent:  "i'm not putting an image here",
+			expectedFilename: "300.jpg",
+		},
 	}
 
 	for _, test := range tests {

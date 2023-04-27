@@ -146,6 +146,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 			if fileName == "" {
 				fileName = params["filename"]
 			}
+
+			if fileName != "" {
+				fileName = filepath.Base(fileName)
+			}
 		}
 	}
 
