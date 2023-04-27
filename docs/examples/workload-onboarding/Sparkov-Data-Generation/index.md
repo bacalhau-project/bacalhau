@@ -4,8 +4,7 @@ sidebar_position: 11
 ---
 # Generate Synthetic Data using Sparkov Data Generation technique
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/Sparkov-Data-Generation/index.ipynb)
-[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/Sparkov-Data-Generation/index.ipynb)
+
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 ## Introduction

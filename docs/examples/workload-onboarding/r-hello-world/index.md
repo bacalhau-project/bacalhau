@@ -4,8 +4,7 @@ sidebar_position: 9
 ---
 # Running a Simple R Script in Bacalhau
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/r-hello-world/index.ipynb)
-[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/r-hello-world/index.ipynb)
+
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 You can use official Docker containers for each language like R or Python. In this example, we will use the official R container and run it on bacalhau. 

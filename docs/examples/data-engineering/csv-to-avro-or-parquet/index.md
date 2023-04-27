@@ -4,8 +4,7 @@ sidebar_position: 2
 ---
 # Convert CSV To Parquet Or Avro
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/csv-to-avro-or-parquet/index.ipynb)
-[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering/csv-to-avro-or-parquet/index.ipynb)
+
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 ## Introduction
@@ -57,6 +56,8 @@ python3 src/converter.py ./movies.csv  ./movies.parquet parquet
 
 # python converter.py path_to_csv path_to_result_file extension
 ```
+
+%pip install pandas
 
 Viewing the parquet file
 
