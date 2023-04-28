@@ -49,22 +49,7 @@ func (s *RequesterAPIServer) submitDocker(res http.ResponseWriter, req *http.Req
 	jobCreatePayload := model.JobCreatePayload{
 		ClientID:   payload.ClientID,
 		APIVersion: payload.DockerJob.APIVersion.String(),
-		Spec: &model.Spec{
-			EngineSpec:    payload.DockerJob.DockerSpec.AsEngineSpec(),
-			Verifier:      payload.DockerJob.VerifierSpec,
-			Publisher:     payload.DockerJob.PublisherSpec.Type,
-			PublisherSpec: payload.DockerJob.PublisherSpec,
-			Resources:     payload.DockerJob.ResourceConfig,
-			Network:       payload.DockerJob.NetworkConfig,
-			Timeout:       payload.DockerJob.Timeout,
-			Inputs:        payload.DockerJob.Inputs,
-			Outputs:       payload.DockerJob.Outputs,
-			Annotations:   payload.DockerJob.Annotations,
-			NodeSelectors: payload.DockerJob.NodeSelectors,
-			// TODO does this even belong in the spec? Looks unused aside from testing.
-			DoNotTrack: false,
-			Deal:       payload.DockerJob.DealSpec,
-		},
+		Spec:       payload.DockerJob.ToSpec(),
 	}
 
 	j, err := s.requester.SubmitJob(ctx, jobCreatePayload)

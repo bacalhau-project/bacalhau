@@ -35,6 +35,25 @@ type DockerJob struct {
 	Annotations []string `json:"Annotations,omitempty"`
 }
 
+func (d *DockerJob) ToSpec() *Spec {
+	return &Spec{
+		EngineSpec:    d.DockerSpec.AsEngineSpec(),
+		Verifier:      d.VerifierSpec,
+		Publisher:     d.PublisherSpec.Type,
+		PublisherSpec: d.PublisherSpec,
+		Resources:     d.ResourceConfig,
+		Network:       d.NetworkConfig,
+		Timeout:       d.Timeout,
+		Inputs:        d.Inputs,
+		Outputs:       d.Outputs,
+		Annotations:   d.Annotations,
+		NodeSelectors: d.NodeSelectors,
+		// TODO does this even belong in the spec? Looks unused aside from testing.
+		DoNotTrack: false,
+		Deal:       d.DealSpec,
+	}
+}
+
 func (d *DockerJob) Validate() error {
 	if reflect.DeepEqual(JobSpecDocker{}, d.DockerSpec) {
 		return fmt.Errorf("docker engine spec is empty")

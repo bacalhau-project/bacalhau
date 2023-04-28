@@ -234,7 +234,7 @@ func dockerRunExplicit(cmd *cobra.Command, cmdArgs []string, opt *DockerRunOptio
 	ctx := cmd.Context()
 
 	// TODO not a fan of storing things in the context like this, half the receives don't use it, and accept a context
-	// anyways which they could pull this from. If we want to keep this perhaps it could be a globag somewhere.
+	// anyways - which they could pull this from. If we want to keep this perhaps it could be a global somewhere.
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// also handles validation
@@ -244,13 +244,13 @@ func dockerRunExplicit(cmd *cobra.Command, cmdArgs []string, opt *DockerRunOptio
 	}
 
 	if !opt.RunTimeSettings.PrintJobIDOnly && !DockerImageContainsTag(dockerJob.DockerSpec.Image) {
-		return fmt.Errorf("image does not contain tag, please specify a tag/digest")
+		return fmt.Errorf("image %s does not contain tag, please specify a tag/digest", dockerJob.DockerSpec.Image)
 	}
 
 	if opt.DryRun {
-		// Converting job to yaml
+		// Converting docker job to Spec then to yaml
 		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(dockerJob)
+		yamlBytes, err = yaml.Marshal(dockerJob.ToSpec())
 		if err != nil {
 			return fmt.Errorf("converting job to yaml: %w", err)
 		}
