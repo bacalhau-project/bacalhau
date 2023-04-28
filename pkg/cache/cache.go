@@ -4,36 +4,36 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/benbjohnson/clock"
 )
 
 type Cache[T any] struct {
-	name     string
-	items    generic.SyncMap[string, CacheItem[T]]
-	cost     int64
-	count    int64
-	maxCost  int64
-	maxItems int64
-	closer   chan struct{}
+	name          string
+	items         generic.SyncMap[string, CacheItem[T]]
+	cost          Counter
+	itemCount     Counter
+	closer        chan struct{}
+	nowFactory    func() time.Time
+	tickerFactory func(clock.Duration) *clock.Ticker
 }
 
 type CacheItem[T any] struct {
 	contents  T
-	cost      int64
+	cost      uint64
 	expiresAt int64
 }
 
 var caches map[string]interface{} = make(map[string]interface{})
 
-// GetOrCreateCache
-func GetOrCreateCache[T any](name string, options CacheOptions) (*Cache[T], error) {
+func NewCache[T any](name string, options CacheOptions) (*Cache[T], error) {
 	if cache, ok := caches[name]; ok {
 		if cast, ok := cache.(*Cache[T]); ok {
 			return cast, nil
 		}
-		return nil, errWrongCacheType
+		return nil, ErrCacheWrongType
 	}
 
-	cache, err := NewCache[T](name, options)
+	cache, err := BuildCache[T](name, options)
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +42,14 @@ func GetOrCreateCache[T any](name string, options CacheOptions) (*Cache[T], erro
 	return cache, nil
 }
 
-func NewCache[T any](name string, options CacheOptions) (c *Cache[T], err error) {
+func BuildCache[T any](name string, options CacheOptions) (c *Cache[T], err error) {
 	c = &Cache[T]{
-		name:     name,
-		closer:   make(chan struct{}),
-		cost:     0,
-		count:    0,
-		maxCost:  options.maxCost,
-		maxItems: options.maxItems,
+		name:          name,
+		closer:        make(chan struct{}),
+		cost:          NewCounter(options.maxCost),
+		itemCount:     NewCounter(options.maxItems),
+		tickerFactory: options.tickerFactory,
+		nowFactory:    options.nowFactory,
 	}
 
 	go c.cleanup(options.cleanupFrequency)
@@ -65,8 +65,8 @@ func (c *Cache[T]) Get(key string) (T, bool) {
 	return result.contents, true
 }
 
-func (c *Cache[T]) Set(key string, value T, cost int64, ttl time.Duration) error {
-	expires := time.Now().Add(ttl).Unix()
+func (c *Cache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64) error {
+	expires := c.nowFactory().Add(clock.Duration(expiresInSeconds)).Unix()
 
 	item := CacheItem[T]{
 		contents:  value,
@@ -74,16 +74,16 @@ func (c *Cache[T]) Set(key string, value T, cost int64, ttl time.Duration) error
 		expiresAt: expires,
 	}
 
-	if item.cost+c.cost > c.maxCost {
-		return errTooCostly
+	if !c.cost.HasSpaceFor(item.cost) {
+		return ErrCacheTooCostly
 	}
 
-	if c.count == c.maxItems {
-		return errTooFull
+	if c.itemCount.IsFull() {
+		return ErrCacheFull
 	}
 
-	c.count += 1
-	c.cost += cost
+	c.itemCount.current += 1
+	c.cost.Inc(cost)
 	c.items.Put(key, item)
 
 	return nil
@@ -98,8 +98,8 @@ func (c *Cache[T]) Close() {
 	delete(caches, c.name)
 }
 
-func (c *Cache[T]) cleanup(frequency time.Duration) {
-	ticker := time.NewTicker(frequency)
+func (c *Cache[T]) cleanup(frequency clock.Duration) {
+	ticker := c.tickerFactory(frequency)
 	defer ticker.Stop()
 
 	for {
@@ -118,12 +118,13 @@ func (c *Cache[T]) cleanup(frequency time.Duration) {
 }
 
 func (c *Cache[T]) evict() {
-	now := time.Now().Unix()
-
+	now := c.nowFactory().Unix()
 	c.items.Iter(func(key string, item CacheItem[T]) bool {
+		//		fmt.Printf("E: %d, N: %d", item.expiresAt, now)
 		if item.expiresAt != 0 && item.expiresAt <= now {
 			c.items.Delete(key)
-			c.count -= 1
+			c.itemCount.Dec(1)
+			c.cost.Dec(item.cost)
 		}
 		return true
 	})

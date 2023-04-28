@@ -2,17 +2,22 @@ package cache
 
 import (
 	"errors"
+	"sync/atomic"
 	"time"
+
+	"github.com/benbjohnson/clock"
 )
 
-var errWrongCacheType error = errors.New("requested cache type did not match previous cache with that name")
-var errTooCostly error = errors.New("item too costly for cache")
-var errTooFull error = errors.New("cache is full")
+var ErrCacheWrongType error = errors.New("requested cache exists with that name, but a different type")
+var ErrCacheTooCostly error = errors.New("item too costly for cache")
+var ErrCacheFull error = errors.New("cache is full")
 
 type CacheOptions struct {
-	maxItems         int64
-	maxCost          int64
-	cleanupFrequency time.Duration
+	maxItems         uint64
+	maxCost          uint64
+	cleanupFrequency clock.Duration
+	nowFactory       func() time.Time
+	tickerFactory    func(clock.Duration) *clock.Ticker
 }
 
 // NewCacheOptions creates options describing a new in-memory cache.
@@ -26,13 +31,56 @@ type CacheOptions struct {
 // write specifies it's size, then we have implemented a 1MiB
 // maximum capacity.
 func NewCacheOptions(
-	maxItems int64,
-	maximumCost int64,
+	maxItems uint64,
+	maximumCost uint64,
 	cleanupFrequency time.Duration,
+) CacheOptions {
+	clock := clock.New()
+	return NewCacheOptionsWithFactories(
+		maxItems, maximumCost, cleanupFrequency, clock.Ticker, clock.Now,
+	)
+}
+
+func NewCacheOptionsWithFactories(
+	maxItems uint64,
+	maximumCost uint64,
+	cleanupFrequency time.Duration,
+	tickerFunc func(clock.Duration) *clock.Ticker,
+	nowFunc func() time.Time,
 ) CacheOptions {
 	return CacheOptions{
 		maxItems:         maxItems,
 		maxCost:          maximumCost,
 		cleanupFrequency: cleanupFrequency,
+		tickerFactory:    tickerFunc,
+		nowFactory:       nowFunc,
 	}
+}
+
+type Counter struct {
+	current uint64
+	maximum uint64
+}
+
+func NewCounter(max uint64) Counter {
+	return Counter{
+		current: 0,
+		maximum: max,
+	}
+}
+
+func (c *Counter) Inc(by uint64) {
+	atomic.AddUint64(&c.current, by)
+}
+
+func (c *Counter) Dec(by uint64) {
+	atomic.AddUint64(&c.current, ^uint64(by-1)) //nolint:unconvert
+}
+
+func (c *Counter) HasSpaceFor(i uint64) bool {
+	return atomic.LoadUint64(&c.current)+i <= c.maximum
+}
+
+func (c *Counter) IsFull() bool {
+	return atomic.LoadUint64(&c.current) == c.maximum
 }
