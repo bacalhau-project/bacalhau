@@ -39,12 +39,12 @@ const (
 )
 
 func (s *CacheSuite) createTestCache(
-	name string, maxCount uint64, maxCost uint64, freq clock.Duration,
+	name string, maxCost uint64, freq clock.Duration,
 ) (*cache.Cache[string], error) {
 	c, err := cache.NewCache[string](
 		name,
 		cache.NewCacheOptionsWithFactories(
-			maxCount, maxCost, freq, s.clock.Ticker, s.clock.Now,
+			maxCost, freq, s.clock.Ticker, s.clock.Now,
 		),
 	)
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *CacheSuite) createTestCache(
 func (s *CacheSuite) TestBasicCache() {
 	k := "test"
 
-	c, err := s.createTestCache("TestBasicCache", 2, 2, oneHour)
+	c, err := s.createTestCache("TestBasicCache", 2, oneHour)
 	require.NoError(s.T(), err)
 
 	err = c.Set(k, "value", 1, oneSecond)
@@ -70,7 +70,7 @@ func (s *CacheSuite) TestBasicCache() {
 func (s *CacheSuite) TestTooCostly() {
 	k := "test"
 
-	c, err := s.createTestCache("TestTooCostly", 2, 1, oneHour)
+	c, err := s.createTestCache("TestTooCostly", 1, oneHour)
 	require.NoError(s.T(), err)
 
 	err = c.Set(k, "value", 10, oneSecond)
@@ -78,24 +78,10 @@ func (s *CacheSuite) TestTooCostly() {
 	require.Equal(s.T(), cache.ErrCacheTooCostly, err)
 }
 
-func (s *CacheSuite) TestTooMany() {
-	k := "test"
-
-	c, err := s.createTestCache("TestTooMany", 1, 10, oneHour)
-	require.NoError(s.T(), err)
-
-	err = c.Set(k, "value", 1, oneHour)
-	require.NoError(s.T(), err)
-
-	err = c.Set(k, "value", 1, oneHour)
-	require.Error(s.T(), err)
-	require.Equal(s.T(), cache.ErrCacheFull, err)
-}
-
 func (s *CacheSuite) TestExpiry() {
 	k := "test"
 
-	c, err := s.createTestCache("TestExpiry", 1, 1, oneHour)
+	c, err := s.createTestCache("TestExpiry", 1, oneHour)
 	require.NoError(s.T(), err)
 
 	err = c.Set(k, "value", 1, oneHour)

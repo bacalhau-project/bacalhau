@@ -11,7 +11,6 @@ type Cache[T any] struct {
 	name          string
 	items         generic.SyncMap[string, CacheItem[T]]
 	cost          Counter
-	itemCount     Counter
 	closer        chan struct{}
 	nowFactory    func() time.Time
 	tickerFactory func(clock.Duration) *clock.Ticker
@@ -47,7 +46,6 @@ func BuildCache[T any](name string, options CacheOptions) (c *Cache[T], err erro
 		name:          name,
 		closer:        make(chan struct{}),
 		cost:          NewCounter(options.maxCost),
-		itemCount:     NewCounter(options.maxItems),
 		tickerFactory: options.tickerFactory,
 		nowFactory:    options.nowFactory,
 	}
@@ -78,11 +76,6 @@ func (c *Cache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64)
 		return ErrCacheTooCostly
 	}
 
-	if c.itemCount.IsFull() {
-		return ErrCacheFull
-	}
-
-	c.itemCount.current += 1
 	c.cost.Inc(cost)
 	c.items.Put(key, item)
 
@@ -123,7 +116,6 @@ func (c *Cache[T]) evict() {
 		//		fmt.Printf("E: %d, N: %d", item.expiresAt, now)
 		if item.expiresAt != 0 && item.expiresAt <= now {
 			c.items.Delete(key)
-			c.itemCount.Dec(1)
 			c.cost.Dec(item.cost)
 		}
 		return true

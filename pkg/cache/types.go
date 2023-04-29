@@ -2,7 +2,6 @@ package cache
 
 import (
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/benbjohnson/clock"
@@ -13,7 +12,6 @@ var ErrCacheTooCostly error = errors.New("item too costly for cache")
 var ErrCacheFull error = errors.New("cache is full")
 
 type CacheOptions struct {
-	maxItems         uint64
 	maxCost          uint64
 	cleanupFrequency clock.Duration
 	nowFactory       func() time.Time
@@ -31,25 +29,22 @@ type CacheOptions struct {
 // write specifies it's size, then we have implemented a 1MiB
 // maximum capacity.
 func NewCacheOptions(
-	maxItems uint64,
 	maximumCost uint64,
 	cleanupFrequency time.Duration,
 ) CacheOptions {
 	clock := clock.New()
 	return NewCacheOptionsWithFactories(
-		maxItems, maximumCost, cleanupFrequency, clock.Ticker, clock.Now,
+		maximumCost, cleanupFrequency, clock.Ticker, clock.Now,
 	)
 }
 
 func NewCacheOptionsWithFactories(
-	maxItems uint64,
 	maximumCost uint64,
 	cleanupFrequency time.Duration,
 	tickerFunc func(clock.Duration) *clock.Ticker,
 	nowFunc func() time.Time,
 ) CacheOptions {
 	return CacheOptions{
-		maxItems:         maxItems,
 		maxCost:          maximumCost,
 		cleanupFrequency: cleanupFrequency,
 		tickerFactory:    tickerFunc,
@@ -70,17 +65,17 @@ func NewCounter(max uint64) Counter {
 }
 
 func (c *Counter) Inc(by uint64) {
-	atomic.AddUint64(&c.current, by)
+	c.current += by
 }
 
 func (c *Counter) Dec(by uint64) {
-	atomic.AddUint64(&c.current, ^uint64(by-1)) //nolint:unconvert
+	c.current -= by
 }
 
 func (c *Counter) HasSpaceFor(i uint64) bool {
-	return atomic.LoadUint64(&c.current)+i <= c.maximum
+	return c.current+i <= c.maximum
 }
 
 func (c *Counter) IsFull() bool {
-	return atomic.LoadUint64(&c.current) == c.maximum
+	return c.current == c.maximum
 }
