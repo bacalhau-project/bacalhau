@@ -25,7 +25,7 @@ In this example, we will demonstrate how to run inference on a model stored on A
 ```bash
 %%bash
 wget https://sagemaker-sample-files.s3.amazonaws.com/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz
-wget https://raw.githubusercontent.com/js-ts/mnist-test/main/test.png
+wget https://raw.githubusercontent.com/js-ts/mnist-test/main/digit.png
 ```
 
 ### Creating the Inference Script
@@ -116,7 +116,7 @@ To use this script, you need to provide the paths to the tar.gz file containing 
 
 ```bash
 %%bash
-python inference.py --tar_gz_file_path /workspace/model.tar.gz --output_directory /workspace/model --image_path /workspace/image.png
+python inference.py --tar_gz_file_path ./model.tar.gz --output_directory ./model --image_path ./digit.png
 ```
 
 ## Running inference on bacalhau
