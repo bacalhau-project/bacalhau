@@ -1,6 +1,6 @@
 ---
 sidebar_label: "EasyOCR"
-sidebar_position: 1
+sidebar_position: 8
 ---
 # EasyOCR (Optical Character Recognition) on bacalhau
 

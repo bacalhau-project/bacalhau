@@ -1,6 +1,6 @@
 ---
 sidebar_label: Speech Recognition using Whisper
-sidebar_position: 3
+sidebar_position: 9
 ---
 # Speech Recognition using Whisper
 

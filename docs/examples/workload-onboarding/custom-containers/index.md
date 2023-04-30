@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Custom Containers"
-sidebar_position: 3
+sidebar_position: 11
 ---
 # How To Work With Custom Containers in Bacalhau
 

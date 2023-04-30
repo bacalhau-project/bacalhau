@@ -1,6 +1,6 @@
 ---
 sidebar_label: "CUDA"
-sidebar_position: 2
+sidebar_position: 10
 ---
 # Run CUDA programs on Bacalhau
 
