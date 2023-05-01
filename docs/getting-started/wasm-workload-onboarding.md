@@ -98,4 +98,4 @@ See [the Rust example](../examples/workload-onboarding/rust-wasm/index.md) for a
 ## Support
 
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY)(#bacalhau channel)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/archives/C02RLM3JHUY)(#bacalhau channel)

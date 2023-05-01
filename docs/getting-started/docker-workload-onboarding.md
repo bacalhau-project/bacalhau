@@ -214,4 +214,4 @@ This can often be resolved by re-tagging your docker image
 
 ## Support
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY)(#bacalhau channel)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/archives/C02RLM3JHUY)(#bacalhau channel)

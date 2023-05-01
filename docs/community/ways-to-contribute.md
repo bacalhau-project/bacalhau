@@ -9,7 +9,7 @@ description: 'How to contribute to Bacalhau'
 If you want to contribute to Bacalhau and the Compute ecosystem, we have provided a quick listing of things we need help with and how you can get started.
 
 :::info
-We welcome your contributions ❤️. If what you want to do is not listed here or you need more guidance, do reach out to us on [Slack (#bacalhau channel)](https://filecoin.io/slack)
+We welcome your contributions ❤️. If what you want to do is not listed here or you need more guidance, do reach out to us on [Slack (#bacalhau channel)](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ)
 :::
 
 ## Code

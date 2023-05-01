@@ -48,7 +48,7 @@ We would **love ❤️ your help** to improve existing items or make new ones ev
 If you find any inconsistencies in the docs, please raise an issue [here →](https://github.com/bacalhau-project/docs.bacalhau.org/issues). Feel free to also submit a pull request with any changes you'd like to see to this repo. Every contribution is more than welcome! 🎈
 
 ## Be Part of the community
-If you have any questions you can join our [Slack Community](https://filecoin.io/slack) go to **#bacalhau** channel - its open to anyone!
+If you have any questions you can join our [Slack Community](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ) go to **#bacalhau** channel - its open to anyone!
 
 
 ## Resources

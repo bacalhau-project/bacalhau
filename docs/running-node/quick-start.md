@@ -21,7 +21,7 @@ To bootstrap your node and join the network as a CP you can leap right into the 
 
 :::info
 
-If you run on a different system than Ubuntu, drop us a message on [Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY)!
+If you run on a different system than Ubuntu, drop us a message on [Slack](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/archives/C02RLM3JHUY)!
 We'll add instructions for your favorite OS.
 
 :::
@@ -178,7 +178,7 @@ To ensure that our node can communicate with other nodes on the network - we nee
 
 (Optional) To ensure the cli can communicate with our node directly (i.e. `bacalhau --api-host <MY_NODE_PUBLIC_IP> version`) - we need to make sure the **1234** port is open.
 
-Firewall configuration is very specific to your network and we can't provide generic instructions for this step but if you need any help feel free to reach out on [Slack!](https://filecoinproject.slack.com/archives/C02RLM3JHUY)
+Firewall configuration is very specific to your network and we can't provide generic instructions for this step but if you need any help feel free to reach out on [Slack!](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/archives/C02RLM3JHUY)
 
 ### Install the Bacalhau Binary
 
@@ -233,4 +233,4 @@ If you see logs of your computenode bidding for the job above it means you've su
 ### What's next?
 
 At this point you probably have a number of questions for us. What incentive should you expect for running a public Bacalhau node?
-Please contact us on [Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) to further discuss this topic and for sharing your valuable feedback.
+Please contact us on [Slack](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/archives/C02RLM3JHUY) to further discuss this topic and for sharing your valuable feedback.

@@ -149,7 +149,7 @@ In essence, you should try and derisk the job by intentionally testing all the n
 
 ## Support
 
-If you're still having trouble, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
+If you're still having trouble, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ)
 
 ## Contributing
 

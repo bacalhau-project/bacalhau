@@ -19,4 +19,4 @@ Good news. Spinning up a private cluster is really a piece of cake :cake::
 
 Optionally, set up [systemd](https://en.wikipedia.org/wiki/Systemd) units make Bacalhau daemons permanent , here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
 
-Please contact us on [Slack](https://filecoin.io/slack/) `#bacalhau` channel for questions and feedback!
+Please contact us on [Slack](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ/) `#bacalhau` channel for questions and feedback!

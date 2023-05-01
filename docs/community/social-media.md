@@ -24,7 +24,7 @@ You can follow our twitter account [@Project Bacalhau](https://twitter.com/Bacal
 
 ## Need Support?
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ)
 
 ## Contributing
 

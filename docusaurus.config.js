@@ -101,7 +101,7 @@ const config = {
               },
               {
                 label: "Slack",
-                href: "https://filecoin.io/slack",
+                href: "https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ",
               },
             ],
           },
