@@ -21,6 +21,16 @@ func NewDownloadSettings() *model.DownloaderSettings {
 	}
 	if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
 		settings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
+		// Assume that an explicitly set IPFS_SWARM_ADDRESSES means we are using
+		// a private IPFS cluster and that we do not want to connect to the
+		// public one as well.
+		//
+		// NB: might want to expose a specific toggle to users to allow
+		// connecting to specific peers in the public network?
+		//
+		// TODO: if this doesn't help, investigate whether only having the IPFS
+		// of the requester node is causing the issue in devstack?
+		settings.LocalIPFS = true
 	} else {
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
