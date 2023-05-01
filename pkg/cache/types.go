@@ -51,31 +51,3 @@ func NewCacheOptionsWithFactories(
 		nowFactory:       nowFunc,
 	}
 }
-
-type Counter struct {
-	current uint64
-	maximum uint64
-}
-
-func NewCounter(max uint64) Counter {
-	return Counter{
-		current: 0,
-		maximum: max,
-	}
-}
-
-func (c *Counter) Inc(by uint64) {
-	c.current += by
-}
-
-func (c *Counter) Dec(by uint64) {
-	c.current -= by
-}
-
-func (c *Counter) HasSpaceFor(i uint64) bool {
-	return c.current+i <= c.maximum
-}
-
-func (c *Counter) IsFull() bool {
-	return c.current == c.maximum
-}
