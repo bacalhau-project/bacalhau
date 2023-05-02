@@ -7,14 +7,15 @@ import (
 	"net"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const (
@@ -121,6 +122,10 @@ func (e *Executor) createHTTPGateway(
 		return nil, nil, errors.Wrap(err, "error getting network subnet")
 	}
 	subnet := internalNetwork.IPAM.Config[0].Subnet
+
+	if len(job.Spec.Network.DomainSet()) == 0 {
+		return nil, nil, fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", model.NetworkHTTP)
+	}
 
 	// Create the gateway container initially attached to the *host* network
 	domainList, derr := json.Marshal(job.Spec.Network.DomainSet())
