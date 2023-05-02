@@ -20,6 +20,7 @@ import (
 	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
@@ -72,6 +73,11 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
+	// TODO: inject allowed paths
+	localDirectoryStorage := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
+		AllowedPaths: []string{""},
+	})
+
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
 	// if we are using a FilecoinUnsealedPath then construct a combo
@@ -117,6 +123,7 @@ func NewStandardStorageProvider(
 		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
 		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
 		model.StorageSourceS3:               tracing.Wrap(s3Storage),
+		model.StorageSourceLocalDirectory:   tracing.Wrap(localDirectoryStorage),
 	}), nil
 }
 

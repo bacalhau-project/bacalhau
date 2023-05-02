@@ -26,8 +26,7 @@ type LocalDirectorySuite struct {
 }
 
 func (suite *LocalDirectorySuite) prepareStorageSpec(sourcePath string) model.StorageSpec {
-	folderPath := filepath.Join(tempDir, sourcePath)
-	err := os.MkdirAll(folderPath, os.ModePerm)
+	err := os.MkdirAll(sourcePath, os.ModePerm)
 	require.NoError(suite.T(), err)
 	return model.StorageSpec{
 		// source path is some kind of sub-path
@@ -50,7 +49,7 @@ func (suite *LocalDirectorySuite) SetupTest() {
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
 	tempDir = suite.T().TempDir()
-	driver, setupErr = NewStorage(cm, tempDir)
+	driver = NewStorageProvider(StorageProviderParams{AllowedPaths: []string{tempDir}})
 	require.NoError(suite.T(), setupErr)
 }
 
@@ -61,8 +60,8 @@ func (suite *LocalDirectorySuite) TestIsInstalled() {
 }
 
 func (suite *LocalDirectorySuite) TestHasStorageLocally() {
-	subpath := "apples/oranges"
-	spec := suite.prepareStorageSpec(subpath)
+	folderPath := filepath.Join(tempDir, "apples/oranges")
+	spec := suite.prepareStorageSpec(folderPath)
 	hasStorageTrue, err := driver.HasStorageLocally(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), hasStorageTrue, "file that exists should return true for HasStorageLocally")
@@ -73,10 +72,9 @@ func (suite *LocalDirectorySuite) TestHasStorageLocally() {
 }
 
 func (suite *LocalDirectorySuite) TestGetVolumeSize() {
-	subpath := "apples/oranges"
-	folderPath := filepath.Join(tempDir, subpath)
+	folderPath := filepath.Join(tempDir, "apples/oranges")
 	fileContents := "hello world"
-	spec := suite.prepareStorageSpec(subpath)
+	spec := suite.prepareStorageSpec(folderPath)
 	filePath := filepath.Join(folderPath, "file")
 	err := os.WriteFile(filePath, []byte(fileContents), 0644)
 	require.NoError(suite.T(), err)
@@ -86,18 +84,9 @@ func (suite *LocalDirectorySuite) TestGetVolumeSize() {
 }
 
 func (suite *LocalDirectorySuite) TestPrepareStorage() {
-	subpath := "apples/oranges"
-	spec := suite.prepareStorageSpec(subpath)
+	folderPath := filepath.Join(tempDir, "apples/oranges")
+	spec := suite.prepareStorageSpec(folderPath)
 	volume, err := driver.PrepareStorage(ctx, spec)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), volume.Source, filepath.Join(tempDir, subpath), "the volume source is correct")
-}
-
-func (suite *LocalDirectorySuite) TestExplode() {
-	subpath := "apples/oranges"
-	spec := suite.prepareStorageSpec(subpath)
-	exploded, err := driver.Explode(ctx, spec)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), len(exploded), 1, "the exploded list should be 1 item long")
-	require.Equal(suite.T(), exploded[0].SourcePath, subpath, "the subpath is correct")
+	require.Equal(suite.T(), volume.Source, folderPath, "the volume source is correct")
 }
