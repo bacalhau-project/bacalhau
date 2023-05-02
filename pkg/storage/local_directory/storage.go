@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,20 +16,28 @@ type StorageProviderParams struct {
 	AllowedPaths []string
 }
 type StorageProvider struct {
-	allowedPaths []string
+	allowedPaths []*regexp.Regexp
 }
 
-func NewStorageProvider(params StorageProviderParams) *StorageProvider {
-	storageHandler := &StorageProvider{
-		allowedPaths: params.AllowedPaths,
+func NewStorageProvider(params StorageProviderParams) (*StorageProvider, error) {
+	allowedPaths := make([]*regexp.Regexp, len(params.AllowedPaths))
+	for i, path := range params.AllowedPaths {
+		allowedPath, err := regexp.Compile(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile allowed path %s: %w", path, err)
+		}
+		allowedPaths[i] = allowedPath
 	}
-	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", storageHandler.allowedPaths)
+	storageHandler := &StorageProvider{
+		allowedPaths: allowedPaths,
+	}
+	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", params.AllowedPaths)
 
-	return storageHandler
+	return storageHandler, nil
 }
 
 func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
-	return true, nil
+	return len(driver.allowedPaths) > 0, nil
 }
 
 func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model.StorageSpec) (bool, error) {
@@ -47,7 +55,13 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.Sto
 	if !driver.isInAllowedPaths(volume.SourcePath) {
 		return 0, errors.New("volume not in allowed paths")
 	}
-	return util.DirSize(volume.SourcePath)
+	// check if the volume exists
+	if _, err := os.Stat(volume.SourcePath); errors.Is(err, os.ErrNotExist) {
+		return 0, errors.New("volume does not exist")
+	}
+	// We only query the volume size to make sure we have enough disk space to pull mount the volume locally from a remote location.
+	// In this case the data is already local and attempting to query the size would be a waste of time.
+	return 0, nil
 }
 
 func (driver *StorageProvider) PrepareStorage(
@@ -73,8 +87,12 @@ func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpe
 }
 
 func (driver *StorageProvider) isInAllowedPaths(path string) bool {
-	// TODO: check if path is in allowed paths
-	return true
+	for _, allowedPath := range driver.allowedPaths {
+		if allowedPath.MatchString(path) {
+			return true
+		}
+	}
+	return false
 }
 
 // Compile time interface check:

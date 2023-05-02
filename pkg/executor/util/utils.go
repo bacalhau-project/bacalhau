@@ -30,10 +30,11 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	API                  ipfs.Client
-	FilecoinUnsealedPath string
-	DownloadPath         string
-	EstuaryAPIKey        string
+	API                   ipfs.Client
+	FilecoinUnsealedPath  string
+	DownloadPath          string
+	EstuaryAPIKey         string
+	AllowListedLocalPaths []string
 }
 
 type StandardExecutorOptions struct {
@@ -73,10 +74,12 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	// TODO: inject allowed paths
-	localDirectoryStorage := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
-		AllowedPaths: []string{""},
+	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
+		AllowedPaths: options.AllowListedLocalPaths,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 

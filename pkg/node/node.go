@@ -61,6 +61,7 @@ type NodeConfig struct {
 	Labels                    map[string]string
 	NodeInfoPublisherInterval time.Duration
 	DependencyInjector        NodeDependencyInjector
+	AllowListedLocalPaths     []string
 }
 
 // Lazy node dependency injector that generate instances of different
