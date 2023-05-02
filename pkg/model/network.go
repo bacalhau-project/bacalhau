@@ -113,6 +113,9 @@ func (n NetworkConfig) IsValid() (err error) {
 // expected by our Docker HTTP gateway, which complains and/or fails to start if
 // these requirements are not met.
 func (n NetworkConfig) DomainSet() []string {
+	if n.Domains == nil {
+		return []string{}
+	}
 	domains := slices.Clone(n.Domains)
 	slices.SortFunc(domains, func(a, b string) bool {
 		// If the domains "match", the match may be the result of a wildcard. We
