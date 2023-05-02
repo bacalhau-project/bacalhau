@@ -37,7 +37,7 @@ To submit a workload to Bacalhau you can use the `bacalhau docker run` command.
 %%bash --out job_id
 bacalhau docker run \
   --id-only \
-  --input-urls https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
+  --i https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
   python:3.10-slim -- python3 /inputs/hello-world.py
 ```
 

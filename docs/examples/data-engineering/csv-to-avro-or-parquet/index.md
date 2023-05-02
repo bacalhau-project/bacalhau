@@ -57,7 +57,11 @@ python3 src/converter.py ./movies.csv  ./movies.parquet parquet
 # python converter.py path_to_csv path_to_result_file extension
 ```
 
-%pip install pandas
+
+```bash
+%%bash
+pip install pandas
+```
 
 Viewing the parquet file
 

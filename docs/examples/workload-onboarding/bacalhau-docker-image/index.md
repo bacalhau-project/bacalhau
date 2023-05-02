@@ -157,5 +157,5 @@ After the download has finished you should see the following contents in results
 
 ## Need Support?
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack)
 

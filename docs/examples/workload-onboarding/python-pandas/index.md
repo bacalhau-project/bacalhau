@@ -94,7 +94,7 @@ Now we're ready to run a Bacalhau job, whilst mounting the Pandas script and dat
  bacalhau docker run \
 --wait \
 --id-only \
--v QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files \
+-i QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files \
 -w /files \
 amancevice/pandas \
 -- python read_csv.py
@@ -106,7 +106,7 @@ amancevice/pandas \
 
 - `amancevice/pandas `: Using the official pytorch Docker image
 
-- `-v QmfKJT13h5k1b23ja3Z .....`: Mounting the uploaded dataset to path
+- `-i QmfKJT13h5k1b23ja3Z .....`: Mounting the uploaded dataset to path
 
 - `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
 

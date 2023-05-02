@@ -182,7 +182,8 @@ Let's run it!
 
 ```bash
 %%bash
-python bacalhau.py
+
+%cat hello-world.py
 ```
 
 Hopefully the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see csv files:

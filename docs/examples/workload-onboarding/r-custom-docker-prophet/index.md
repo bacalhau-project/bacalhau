@@ -170,7 +170,7 @@ The following command passes a prompt to the model and generates the results in 
 bacalhau docker run \
     --wait \
     --id-only \
-    -v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_wp_log_R.csv \
+    -i QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_wp_log_R.csv \
     ghcr.io/bacalhau-project/examples/r-prophet:0.0.2 \
     -- Rscript Saturating-Forecasts.R "/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
 ```
@@ -181,7 +181,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+* `-i QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `ghcr.io/bacalhau-project/examples/r-prophet:0.0.2`: the name and the tag of the docker image we are using
 

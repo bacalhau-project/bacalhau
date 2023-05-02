@@ -143,7 +143,7 @@ For this example, we are using an image of the Statue of Liberty that has been p
 ```bash
 %%bash
 bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
-    -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
+    -i bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
 
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.
