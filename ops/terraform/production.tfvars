@@ -15,7 +15,11 @@ grafana_cloud_tempo_endpoint = "tempo-us-central1.grafana.net:443"
 instance_count              = 5
 region                      = "us-east4"
 zone                        = "us-east4-c"
-volume_size_gb              = 1000 # when increasing this value you need to claim the new space manually
+# When increasing the volume size, you may need to manually resize the filesystem
+# on the virtual machine. If `df -h` shows only 1000, then `sudo resize2fs /dev/sdb` 
+# will resize the /data (/dev/sdb) drive to use all of the space. Do not use for 
+# boot disk.
+volume_size_gb              = 2000 # when increasing this value you need to claim the new space manually
 boot_disk_size_gb           = 1000
 machine_type                = "e2-standard-16"
 protect_resources           = true
