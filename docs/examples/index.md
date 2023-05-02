@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Examples"
-sidebar_position: 20
+sidebar_position: 3
 ---
 # Examples
 
