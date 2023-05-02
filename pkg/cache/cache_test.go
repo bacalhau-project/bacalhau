@@ -44,7 +44,7 @@ func (s *CacheSuite) createTestCache(
 	c, err := cache.NewCache[string](
 		name,
 		cache.NewCacheOptionsWithFactories(
-			maxCost, freq, s.clock.Ticker, s.clock.Now,
+			maxCost, freq, s.clock.Timer, s.clock.Now,
 		),
 	)
 	if err != nil {

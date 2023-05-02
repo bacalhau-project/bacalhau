@@ -15,7 +15,7 @@ type CacheOptions struct {
 	maxCost          uint64
 	cleanupFrequency clock.Duration
 	nowFactory       func() time.Time
-	tickerFactory    func(clock.Duration) *clock.Ticker
+	timerFactory     func(clock.Duration) *clock.Timer
 }
 
 // NewCacheOptions creates options describing a new in-memory cache.
@@ -34,20 +34,20 @@ func NewCacheOptions(
 ) CacheOptions {
 	clock := clock.New()
 	return NewCacheOptionsWithFactories(
-		maximumCost, cleanupFrequency, clock.Ticker, clock.Now,
+		maximumCost, cleanupFrequency, clock.Timer, clock.Now,
 	)
 }
 
 func NewCacheOptionsWithFactories(
 	maximumCost uint64,
 	cleanupFrequency time.Duration,
-	tickerFunc func(clock.Duration) *clock.Ticker,
+	timerFunc func(clock.Duration) *clock.Timer,
 	nowFunc func() time.Time,
 ) CacheOptions {
 	return CacheOptions{
 		maxCost:          maximumCost,
 		cleanupFrequency: cleanupFrequency,
-		tickerFactory:    tickerFunc,
+		timerFactory:     timerFunc,
 		nowFactory:       nowFunc,
 	}
 }

@@ -8,12 +8,12 @@ import (
 )
 
 type Cache[T any] struct {
-	name          string
-	items         generic.SyncMap[string, CacheItem[T]]
-	cost          Counter
-	closer        chan struct{}
-	nowFactory    func() time.Time
-	tickerFactory func(clock.Duration) *clock.Ticker
+	name         string
+	items        generic.SyncMap[string, CacheItem[T]]
+	cost         Counter
+	closer       chan struct{}
+	nowFactory   func() time.Time
+	timerFactory func(clock.Duration) *clock.Timer
 }
 
 type CacheItem[T any] struct {
@@ -22,35 +22,16 @@ type CacheItem[T any] struct {
 	expiresAt int64
 }
 
-var caches map[string]interface{} = make(map[string]interface{})
-
-func NewCache[T any](name string, options CacheOptions) (*Cache[T], error) {
-	if cache, ok := caches[name]; ok {
-		if cast, ok := cache.(*Cache[T]); ok {
-			return cast, nil
-		}
-		return nil, ErrCacheWrongType
-	}
-
-	cache, err := BuildCache[T](name, options)
-	if err != nil {
-		return nil, err
-	}
-
-	caches[name] = cache
-	return cache, nil
-}
-
-func BuildCache[T any](name string, options CacheOptions) (c *Cache[T], err error) {
+func NewCache[T any](name string, options CacheOptions) (c *Cache[T], err error) {
 	c = &Cache[T]{
-		name:          name,
-		closer:        make(chan struct{}),
-		cost:          NewCounter(options.maxCost),
-		tickerFactory: options.tickerFactory,
-		nowFactory:    options.nowFactory,
+		name:         name,
+		closer:       make(chan struct{}),
+		cost:         NewCounter(options.maxCost),
+		timerFactory: options.timerFactory,
+		nowFactory:   options.nowFactory,
 	}
 
-	go c.cleanup(options.cleanupFrequency)
+	go c.janitor(options.cleanupFrequency)
 	return c, nil
 }
 
@@ -88,24 +69,23 @@ func (c *Cache[T]) Delete(key string) {
 
 func (c *Cache[T]) Close() {
 	close(c.closer)
-	delete(caches, c.name)
 }
 
-func (c *Cache[T]) cleanup(frequency clock.Duration) {
-	ticker := c.tickerFactory(frequency)
-	defer ticker.Stop()
+func (c *Cache[T]) janitor(frequency clock.Duration) {
+	timer := c.timerFactory(frequency)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-c.closer:
 			return
-		case <-ticker.C:
-			// Stop the ticker whilst we process evictions
-			// otherwise we'll be constrained to finishing
-			// evictions in <frequency
-			ticker.Stop()
+		case <-timer.C:
+			// Perform the evictions necessary and recreate the
+			// timer. We specifically don't use a ticker to avoid
+			//race conditions in the mock when having to stop and
+			// reset it.
 			c.evict()
-			ticker.Reset(frequency)
+			timer = c.timerFactory(frequency)
 		}
 	}
 }
