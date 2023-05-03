@@ -3,12 +3,11 @@ package model
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
 	"go.ptx.dk/multierrgroup"
 
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model/moderation"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -17,15 +16,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
 	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/pkg/errors"
 
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -51,7 +49,7 @@ type ModelAPI struct {
 	store           *store.PostgresStore
 	stateResolver   *localdb.StateResolver
 	jobEventHandler *jobEventHandler
-	jobSelector     bidstrategy.BidStrategy
+	moderator       moderation.ManualModerator
 	cleanupFunc     func(context.Context)
 }
 
@@ -110,13 +108,21 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 		true,
 	)
 
+	manualModerator := moderation.NewManualModerator(dashboardstore)
+
+	moderator := moderation.NewCombinedModerator(
+		moderation.NewSemanticBidModerator(jobSelector, manualModerator),
+		manualModerator,
+		moderation.NewCallbackModerator(dashboardstore, manualModerator),
+	)
+
 	api := &ModelAPI{
 		options:         options,
 		localDB:         postgresDB,
 		nodeDB:          nodeDB,
 		store:           dashboardstore,
 		stateResolver:   stateResolver,
-		jobSelector:     jobSelector,
+		moderator:       moderator,
 		jobEventHandler: newJobEventHandler(postgresDB),
 	}
 	return api, nil
@@ -248,23 +254,23 @@ func (api *ModelAPI) GetJobInfo(ctx context.Context, id string) (*types.JobInfo,
 	var wg multierrgroup.Group
 	wg.Go(func() (err error) {
 		info.Events, err = api.localDB.GetJobEvents(ctx, loadedID)
-		return
+		return errors.Wrap(err, "error in GetJobEvents")
 	})
 	wg.Go(func() (err error) {
 		info.State, err = api.stateResolver.GetJobState(ctx, loadedID)
-		return
+		return errors.Wrap(err, "error in GetJobState")
 	})
 	wg.Go(func() (err error) {
 		info.Results, err = api.stateResolver.GetResults(ctx, loadedID)
-		return
+		return errors.Wrap(err, "error in GetResults")
 	})
 	wg.Go(func() (err error) {
 		info.Moderations, err = api.store.GetJobModerations(ctx, loadedID)
-		return
+		return errors.Wrap(err, "error in GetJobModerations")
 	})
 	wg.Go(func() (err error) {
 		info.Requests, err = api.store.GetModerationRequestsForJob(ctx, loadedID)
-		return
+		return errors.Wrap(err, "error in GetModerationRequestsForJob")
 	})
 
 	err = wg.Wait()
@@ -378,64 +384,18 @@ func (api *ModelAPI) Login(
 	return user, nil
 }
 
-// Response returned to signal that a job will be moderated.
-var waitResponse = bidstrategy.BidStrategyResponse{
-	ShouldWait: true,
-	Reason:     "Awaiting human approval",
-}
-
 func (api *ModelAPI) ShouldExecuteJob(
 	ctx context.Context,
 	probe *bidstrategy.JobSelectionPolicyProbeData,
 ) (*bidstrategy.BidStrategyResponse, error) {
-	// Do we have an approval for the job? If so, return it.
-	resp, err := api.store.GetJobModerations(ctx, probe.JobID)
-	idx := slices.IndexFunc(resp, func(moderation types.JobModerationSummary) bool {
-		return moderation.Request.Type == types.ModerationTypeExecution
-	})
-	if err != nil {
-		return nil, err
-	} else if idx >= 0 {
-		return api.shouldExecuteFromJobModeration(resp[idx].Moderation), nil
-	}
-
-	// No approval found. Is there an approval request?
-	request, err := api.store.GetModerationRequestByJob(ctx, probe.JobID, types.ModerationTypeExecution)
-	if err == nil && request != nil {
-		// There is an open request – we are just waiting for it to be handled.
-		return &waitResponse, err
-	}
-
-	// No request. Firstly let's run our selection strategy.
-	bidResponse, err := api.jobSelector.ShouldBid(ctx, bidstrategy.BidStrategyRequest{
-		NodeID: probe.NodeID,
-		Job: bacalhau_model.Job{
-			Metadata: bacalhau_model.Metadata{ID: probe.JobID},
-			Spec:     probe.Spec,
-		},
-		Callback: probe.Callback,
-	})
-	if !bidResponse.ShouldWait {
-		// We can respond immediately.
-		return &bidResponse, err
-	}
-
-	// Our own strategy says this must be moderated.
-	// TODO: we should probably reject requests for jobs that are already running.
-	var callback *types.URL
-	if probe.Callback != nil {
-		callback = &types.URL{URL: *probe.Callback}
-	}
-	_, err = api.store.CreateJobModerationRequest(ctx, probe.JobID, types.ModerationTypeExecution, callback)
-	return &waitResponse, err
+	return api.moderator.ShouldExecute(ctx, probe)
 }
 
-func (api *ModelAPI) shouldExecuteFromJobModeration(resp *types.JobModeration) *bidstrategy.BidStrategyResponse {
-	return &bidstrategy.BidStrategyResponse{
-		ShouldBid:  resp.Status,
-		ShouldWait: false,
-		Reason:     resp.Notes,
-	}
+func (api *ModelAPI) ShouldVerifyJob(
+	ctx context.Context,
+	req verifier.VerifierRequest,
+) ([]verifier.VerifierResult, error) {
+	return api.moderator.Verify(ctx, req)
 }
 
 func (api *ModelAPI) ModerateJob(
@@ -445,61 +405,6 @@ func (api *ModelAPI) ModerateJob(
 	approved bool,
 	user *types.User,
 ) error {
-	moderation := types.JobModeration{
-		RequestID:     requestID,
-		UserAccountID: user.ID,
-		Status:        approved,
-		Notes:         reason,
-	}
-	err := api.store.CreateJobModeration(ctx, moderation)
-	if err != nil {
-		return err
-	}
-
-	request, err := api.store.GetModerationRequest(ctx, requestID)
-	if err != nil {
-		return err
-	}
-
-	if request.Callback.IsAbs() {
-		log.Ctx(ctx).Debug().Stringer("Callback", &request.Callback.URL).Msg("Returning moderation response")
-
-		req := bidstrategy.ModerateJobRequest{
-			ClientID: system.GetClientID(),
-			JobID:    request.JobID,
-			Response: *api.shouldExecuteFromJobModeration(&moderation),
-		}
-
-		port, err := strconv.ParseUint(request.Callback.Port(), 10, 16)
-		if err != nil {
-			return err
-		}
-
-		client := publicapi.NewAPIClient(request.Callback.Hostname(), uint16(port))
-		return errors.Wrap(client.PostSigned(ctx, request.Callback.RequestURI(), req, nil), "response from callback")
-	}
-
-	return nil
-}
-
-func (api *ModelAPI) ModerateJobWithoutRequest(
-	ctx context.Context,
-	jobID, reason string,
-	approved bool,
-	moderationType types.ModerationType,
-	user *types.User,
-) error {
-	// Do we have a moderation request for this already?
-	request, err := api.store.GetModerationRequestByJob(ctx, jobID, moderationType)
-	if err != nil {
-		return err
-	} else if request == nil {
-		// No request. Create one.
-		request, err = api.store.CreateJobModerationRequest(ctx, jobID, moderationType, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	return api.ModerateJob(ctx, request.ID, reason, approved, user)
+	_, err := api.moderator.Moderate(ctx, requestID, approved, reason, user)
+	return err
 }

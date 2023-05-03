@@ -39,3 +39,10 @@ func ParseURL(src string) (u URL, err error) {
 	}
 	return
 }
+
+func ParseURLPtr(u *url.URL) *URL {
+	if u != nil {
+		return &URL{URL: *u}
+	}
+	return nil
+}

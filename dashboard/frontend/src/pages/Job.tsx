@@ -207,6 +207,11 @@ const JobPage: FC<{
       prompt: "The job will be scheduled on an appropriate compute node.",
       icon: null,
     },
+    [ModerationType.Result]: {
+      title: "Allow this result to be published?",
+      prompt: "The result will be published to the publisher confiugured for the job.",
+      icon: null,
+    }
   }
 
   const [moderationWindowOpen, setModerationWindowOpen] = useState(false)
@@ -559,6 +564,9 @@ const JobPage: FC<{
                     setModerationWindowFormat(format)
                     setModerationWindowOpen(true)
                   }}>
+                    {request.storage_spec && (<OutputVolumes
+                      outputVolumes={[request.storage_spec]}
+                    />)}
                   </ModerationPanel>
               </Paper>
             </Grid>
