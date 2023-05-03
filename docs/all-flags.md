@@ -7,7 +7,7 @@ sidebar_position: 7
 
 :::info
 
-The following commands refer to bacalhau cli version `v0.3.18`.
+The following commands refer to bacalhau cli version `v0.3.29`.
 For installing or upgrading a client, follow the instructions in the [installation page](https://docs.bacalhau.org/getting-started/installation).
 Run `bacalhau version` in a terminal to check what version you have.
 
@@ -21,6 +21,7 @@ Usage:
   bacalhau [command]
 
 Available Commands:
+  cancel      Cancel a previously submitted job
   completion  Generate the autocompletion script for the specified shell
   create      Create a job using a json or yaml file.
   describe    Describe a job on the network
@@ -30,6 +31,7 @@ Available Commands:
   help        Help about any command
   id          Show bacalhau node id info
   list        List jobs on the network
+  logs        Follow logs from a currently executing job
   run         Run a job on the network (see subcommands for supported flavors)
   serve       Start the bacalhau compute node
   validate    validate a job using a json or yaml file.
@@ -43,7 +45,31 @@ Flags:
 Use "bacalhau [command] --help" for more information about a command.
 ```
 
+## Cancel 
 
+Cancels a job that was previously submitted and stops it running if it has not yet completed.
+
+```
+Cancel a previously submitted job.
+
+Usage:
+  ./bin/darwin_arm64/bacalhau cancel [id] [flags]
+
+Flags:
+  -h, --help    help for cancel
+      --quiet   Do not print anything to stdout or stderr
+```
+
+#### Examples 
+
+```
+Examples:
+  # Cancel a previously submitted job
+  bacalhau cancel 51225160-807e-48b8-88c9-28311c7899e1
+
+  # Cancel a job, with a short ID.
+  bacalhau cancel ebd9bf2f
+```
 
 ## Create
 
@@ -317,6 +343,34 @@ bacalhau list
 # List jobs and output as json
 bacalhau list --output json
 ```
+
+## Logs 
+
+Retrieves the log output (stdout, and stderr) from a job.
+If the job is still running it is possible to follow the logs after the previously generated logs are retrieved.
+
+```
+Follow logs from a currently executing job
+
+Usage:
+  ./bin/darwin_arm64/bacalhau logs [flags] [id]
+
+Flags:
+  -f, --follow   Follow the logs in real-time after retrieving the current logs.
+  -h, --help     help for logs
+```
+
+#### Examples 
+
+```
+Examples:
+  # Follow logs for a previously submitted job
+  bacalhau logs -f 51225160-807e-48b8-88c9-28311c7899e1
+
+  # Retrieve the log output with a short ID, but don't follow any newly generated logs
+  bacalhau logs ebd9bf2f
+```
+
 
 ## Run Python
 
