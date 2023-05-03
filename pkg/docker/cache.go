@@ -7,9 +7,9 @@ import (
 )
 
 //nolint:unused
-var dockerTagCache cache.Cache[string]
+var DockerTagCache cache.Cache[string]
 
 func init() { //nolint:gochecknoinits
 	tagCacheOptions := cache.NewCacheOptions(1000, time.Duration(1)*time.Hour) //nolint:gomnd
-	dockerTagCache, _ = cache.NewBasicCache[string](tagCacheOptions)
+	DockerTagCache, _ = cache.NewBasicCache[string](tagCacheOptions)
 }

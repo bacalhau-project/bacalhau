@@ -53,6 +53,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(),
+		jobtransform.DockerImageDigest(),
 	}
 
 	return &BaseEndpoint{
