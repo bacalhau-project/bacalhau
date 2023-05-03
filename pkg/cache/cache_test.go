@@ -42,7 +42,6 @@ func (s *CacheSuite) createTestCache(
 	name string, maxCost uint64, freq clock.Duration,
 ) (*cache.Cache[string], error) {
 	c, err := cache.NewCache[string](
-		name,
 		cache.NewCacheOptionsWithFactories(
 			maxCost, freq, s.clock.Ticker, s.clock.Now,
 		),
