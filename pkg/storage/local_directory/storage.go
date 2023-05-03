@@ -5,67 +5,67 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog/log"
 )
 
+type StorageProviderParams struct {
+	AllowedPaths []string
+}
 type StorageProvider struct {
-	LocalDirectoryPath string
+	allowedPaths []string
 }
 
-func NewStorage(_ *system.CleanupManager, localDirectoryPath string) (*StorageProvider, error) {
+func NewStorageProvider(params StorageProviderParams) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
-		LocalDirectoryPath: localDirectoryPath,
+		allowedPaths: params.AllowedPaths,
 	}
-	log.Debug().Msgf("Local directory driver createde: %s", localDirectoryPath)
-
-	// check if the localDirectoryPath exists and error if it doesn't
-	if _, err := os.Stat(localDirectoryPath); errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("local directory path %s does not exist", localDirectoryPath)
-	}
+	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", params.AllowedPaths)
 
 	return storageHandler, nil
 }
 
 func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
-	return true, nil
+	return len(driver.allowedPaths) > 0, nil
 }
 
 func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model.StorageSpec) (bool, error) {
-	localPath, err := driver.getPathToVolume(volume)
-	if err != nil {
-		return false, err
+	if !driver.isInAllowedPaths(volume.SourcePath) {
+		return false, nil
 	}
-	if _, err := os.Stat(localPath); errors.Is(err, os.ErrNotExist) {
+
+	if _, err := os.Stat(volume.SourcePath); errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 	return true, nil
 }
 
 func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.StorageSpec) (uint64, error) {
-	localPath, err := driver.getPathToVolume(volume)
-	if err != nil {
-		return 0, err
+	if !driver.isInAllowedPaths(volume.SourcePath) {
+		return 0, errors.New("volume not in allowed paths")
 	}
-	return util.DirSize(localPath)
+	// check if the volume exists
+	if _, err := os.Stat(volume.SourcePath); errors.Is(err, os.ErrNotExist) {
+		return 0, errors.New("volume does not exist")
+	}
+	// We only query the volume size to make sure we have enough disk space to pull mount the volume locally from a remote location.
+	// In this case the data is already local and attempting to query the size would be a waste of time.
+	return 0, nil
 }
 
 func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
 	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
-	localPath, err := driver.getPathToVolume(storageSpec)
-	if err != nil {
-		return storage.StorageVolume{}, err
+	if !driver.isInAllowedPaths(storageSpec.SourcePath) {
+		return storage.StorageVolume{}, errors.New("volume not in allowed paths")
 	}
 	return storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
-		Source: localPath,
+		Source: storageSpec.SourcePath,
 		Target: storageSpec.Path,
 	}, nil
 }
@@ -78,17 +78,14 @@ func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpe
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	return []model.StorageSpec{
-		spec,
-	}, nil
-}
-
-func (driver *StorageProvider) getPathToVolume(volume model.StorageSpec) (string, error) {
-	// join the driver.LocalDirectoryPath with the volume.SourcePath
-	// use the os.PathSeparator to make sure we are using the correct separator for the OS
-	localPath := filepath.Join(driver.LocalDirectoryPath, volume.SourcePath)
-	return localPath, nil
+func (driver *StorageProvider) isInAllowedPaths(sourcePath string) bool {
+	for _, allowedPath := range driver.allowedPaths {
+		match, err := doublestar.PathMatch(allowedPath, sourcePath)
+		if match && err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // Compile time interface check:

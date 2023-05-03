@@ -78,8 +78,9 @@ func (f *StandardStorageProvidersFactory) Get(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardStorageProviderOptions{
-			API:                  nodeConfig.IPFSClient,
-			FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
+			API:                   nodeConfig.IPFSClient,
+			FilecoinUnsealedPath:  nodeConfig.FilecoinUnsealedPath,
+			AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 		},
 	)
 	return model.NewConfiguredProvider[model.StorageSourceType, storage.Storage](
@@ -101,9 +102,10 @@ func (f *StandardExecutorsFactory) Get(ctx context.Context, nodeConfig NodeConfi
 		executor_util.StandardExecutorOptions{
 			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 			Storage: executor_util.StandardStorageProviderOptions{
-				API:                  nodeConfig.IPFSClient,
-				FilecoinUnsealedPath: nodeConfig.FilecoinUnsealedPath,
-				EstuaryAPIKey:        nodeConfig.EstuaryAPIKey,
+				API:                   nodeConfig.IPFSClient,
+				FilecoinUnsealedPath:  nodeConfig.FilecoinUnsealedPath,
+				EstuaryAPIKey:         nodeConfig.EstuaryAPIKey,
+				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		},
 	)

@@ -8,7 +8,7 @@
 -->
 <p align="center">
   <a href="https://github.com/bacalhau-project/bacalhau">
-    <img src="https://github.com/bacalhau-project/bacalhau/blob/590a1c84dbde3636a54c371c40c73ed6ea86bf48/docs/images/Bacalhau-horizontal.png" alt="Bacalhau logo" width="300"/>
+    <img src="https://github.com/bacalhau-project/bacalhau/blob/645acb1734a7bdfc1a7dab5461083b077d34e667/docs/images/logo.png" alt="Bacalhau logo" width="300"/>
 
   </a>
   </p>

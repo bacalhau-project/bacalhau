@@ -124,6 +124,10 @@ func newDevStackCmd() *cobra.Command {
 		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
 		"File to save memory profiling to",
 	)
+	devstackCmd.PersistentFlags().StringSliceVar(
+		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
+		"Local paths that are allowed to be mounted into jobs",
+	)
 
 	devstackCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	devstackCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
