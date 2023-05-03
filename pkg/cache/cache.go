@@ -7,7 +7,14 @@ import (
 	"github.com/benbjohnson/clock"
 )
 
-type Cache[T any] struct {
+type Cache[T any] interface {
+	Get(key string) (T, bool)
+	Set(key string, value T, cost uint64, expiresInSeconds int64) error
+	Delete(key string)
+	Close()
+}
+
+type BasicCache[T any] struct {
 	items         generic.SyncMap[string, CacheItem[T]]
 	cost          Counter
 	closer        chan struct{}
@@ -21,8 +28,8 @@ type CacheItem[T any] struct {
 	expiresAt int64
 }
 
-func NewCache[T any](options CacheOptions) (*Cache[T], error) {
-	c := &Cache[T]{
+func NewBasicCache[T any](options CacheOptions) (*BasicCache[T], error) {
+	c := &BasicCache[T]{
 		closer:        make(chan struct{}),
 		cost:          NewCounter(options.maxCost),
 		tickerFactory: options.tickerFactory,
@@ -33,7 +40,7 @@ func NewCache[T any](options CacheOptions) (*Cache[T], error) {
 	return c, nil
 }
 
-func (c *Cache[T]) Get(key string) (T, bool) {
+func (c *BasicCache[T]) Get(key string) (T, bool) {
 	result, exists := c.items.Get(key)
 	if !exists {
 		return *new(T), false
@@ -42,7 +49,7 @@ func (c *Cache[T]) Get(key string) (T, bool) {
 	return result.contents, true
 }
 
-func (c *Cache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64) error {
+func (c *BasicCache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64) error {
 	expires := c.nowFactory().Add(clock.Duration(expiresInSeconds)).Unix()
 
 	item := CacheItem[T]{
@@ -61,15 +68,15 @@ func (c *Cache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64)
 	return nil
 }
 
-func (c *Cache[T]) Delete(key string) {
+func (c *BasicCache[T]) Delete(key string) {
 	c.items.Delete(key)
 }
 
-func (c *Cache[T]) Close() {
+func (c *BasicCache[T]) Close() {
 	close(c.closer)
 }
 
-func (c *Cache[T]) cleanup(frequency clock.Duration) {
+func (c *BasicCache[T]) cleanup(frequency clock.Duration) {
 	ticker := c.tickerFactory(frequency)
 	defer ticker.Stop()
 
@@ -88,7 +95,7 @@ func (c *Cache[T]) cleanup(frequency clock.Duration) {
 	}
 }
 
-func (c *Cache[T]) evict() {
+func (c *BasicCache[T]) evict() {
 	now := c.nowFactory().Unix()
 	c.items.Iter(func(key string, item CacheItem[T]) bool {
 		//		fmt.Printf("E: %d, N: %d", item.expiresAt, now)
