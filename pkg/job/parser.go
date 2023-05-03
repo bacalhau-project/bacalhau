@@ -3,6 +3,7 @@ package job
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
@@ -57,6 +58,11 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 			default:
 				return model.StorageSpec{}, fmt.Errorf("unknown option %s", key)
 			}
+		}
+	case "file":
+		res = model.StorageSpec{
+			StorageSource: model.StorageSourceLocalDirectory,
+			SourcePath:    filepath.Join(parsedURI.Host, parsedURI.Path),
 		}
 	case "git", "gitlfs":
 		u, err := clone.IsValidGitRepoURL(sourceURI)

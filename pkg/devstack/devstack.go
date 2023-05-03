@@ -40,6 +40,7 @@ type DevStackOptions struct {
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
+	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -270,8 +271,9 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
-			DependencyInjector: injector,
-			DisabledFeatures:   options.DisabledFeatures,
+			DependencyInjector:    injector,
+			DisabledFeatures:      options.DisabledFeatures,
+			AllowListedLocalPaths: options.AllowListedLocalPaths,
 		}
 
 		if lotus != nil {

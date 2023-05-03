@@ -83,6 +83,7 @@ type ServeOptions struct {
 	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
 	IPFSSwarmAddresses                    []string                 // IPFS multiaddresses that the in-process IPFS should connect to
 	PrivateInternalIPFS                   bool                     // Whether the in-process IPFS should automatically discover other IPFS nodes
+	AllowListedLocalPaths                 []string                 // Local paths that are allowed to be mounted into jobs
 }
 
 func NewServeOptions() *ServeOptions {
@@ -255,6 +256,10 @@ func newServeCmd() *cobra.Command {
 		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
 		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
 	)
+	serveCmd.PersistentFlags().StringSliceVar(
+		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
+		"Local paths that are allowed to be mounted into jobs",
+	)
 	serveCmd.PersistentFlags().BoolVar(
 		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
 		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
@@ -332,20 +337,21 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		IPFSClient:           ipfsClient,
-		CleanupManager:       cm,
-		JobStore:             datastore,
-		Host:                 libp2pHost,
-		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-		EstuaryAPIKey:        OS.EstuaryAPIKey,
-		DisabledFeatures:     OS.DisabledFeatures,
-		HostAddress:          OS.HostAddress,
-		APIPort:              apiPort,
-		ComputeConfig:        getComputeConfig(OS),
-		RequesterNodeConfig:  getRequesterConfig(OS),
-		IsComputeNode:        isComputeNode,
-		IsRequesterNode:      isRequesterNode,
-		Labels:               combinedMap,
+		IPFSClient:            ipfsClient,
+		CleanupManager:        cm,
+		JobStore:              datastore,
+		Host:                  libp2pHost,
+		FilecoinUnsealedPath:  OS.FilecoinUnsealedPath,
+		EstuaryAPIKey:         OS.EstuaryAPIKey,
+		DisabledFeatures:      OS.DisabledFeatures,
+		HostAddress:           OS.HostAddress,
+		APIPort:               apiPort,
+		ComputeConfig:         getComputeConfig(OS),
+		RequesterNodeConfig:   getRequesterConfig(OS),
+		IsComputeNode:         isComputeNode,
+		IsRequesterNode:       isRequesterNode,
+		Labels:                combinedMap,
+		AllowListedLocalPaths: OS.AllowListedLocalPaths,
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
