@@ -210,16 +210,15 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	return nil
 }
 
-// ImagePlatforms will retrieve the manifest describing the platforms that are
-// usable by the provided image. This currently retrieves the information via
-// a call to ImageDistribution which provides the same information.
 func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
-	manifest, err := c.ImageDistribution(ctx, image, false, dockerCreds)
+	authToken := getAuthToken(ctx, image, dockerCreds)
+
+	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, DistributionInspectError, image)
 	}
 
-	return manifest.platforms, nil
+	return distribution.Platforms, nil
 }
 
 func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) {
