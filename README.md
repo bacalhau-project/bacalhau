@@ -35,7 +35,7 @@
     <a href="https://www.bacalhau.org/">
     <img alt="Bacalhau website" src="https://img.shields.io/badge/website-bacalhau.org-red">
   </a>
-      <a href="https://filecoinproject.slack.com/" alt="Slack">
+      <a href="https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ" alt="Slack">
         <img src="https://img.shields.io/badge/slack-join_community-red.svg?color=0052FF&labelColor=090422&logo=slack" />
         </a>
     <a href="https://twitter.com/intent/follow?screen_name=BacalhauProject">
@@ -133,7 +133,7 @@ The config lives in `.golangci.yml`
 We are excited to hear your feedback!
 * For issues and feature requests, please [open a GitHub issue](https://github.com/bacalhau-project/bacalhau/issues).
 * For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions).
-* To engage with other members in the community, join us in our [slack community](https://filecoin.io/slack/) `#bacalhau` channel :raising_hand:
+* To engage with other members in the community, join us in our [slack community](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ) `#bacalhau` channel :raising_hand:
 
 ## Ways to contribute
 **All manner of contributions are more than welcome!**
