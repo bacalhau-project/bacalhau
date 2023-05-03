@@ -57,6 +57,12 @@ That's currently not possible
 
 A viable option is to run your own IPFS daemon and fetch your multiaddress as explained [here](https://docs.bacalhau.org/running-node/quick-start/#ensure-ipfs-is-running).
 
+## How can I download and query SQLite when it complains about being in read-only directory?
+
+When downloading content to run your code against, it is written to a read-only directory. Unfortunately, by default, SQLite requires the directory to be writable so that it can create utility files during its use.
+
+If you run your command with the `immutable` setting set to 1, then it will work. From the sqlite3 command you can use `.open 'file:/inputs/database.db?immutable=1'` where you should replace "database.db" with your downloaded database filename.
+
 ## Can I run bacalhau serve on my home machine? What are the requirements?
 
 You can run `bacalhau serve` on any machine that fits the prerequisites listed [here](https://docs.bacalhau.org/running-node/quick-start/). 
