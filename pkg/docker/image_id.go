@@ -7,23 +7,39 @@ import (
 	"github.com/docker/distribution/reference"
 )
 
+const (
+	// Durations in seconds
+	oneHour  = 3600
+	oneDay   = oneHour * 24
+	oneMonth = oneDay * 28
+)
+
 type EmptyTag struct{}
 type NameTag string
 type DigestTag string
 
 type ImageTag interface {
+	CacheDuration() int64
 	Separator() string
 	String() string
 }
 
-func (EmptyTag) Separator() string { return "" }
-func (EmptyTag) String() string    { return "" }
+func (EmptyTag) Separator() string    { return "" }
+func (EmptyTag) String() string       { return "" }
+func (EmptyTag) CacheDuration() int64 { return oneHour }
 
 func (NameTag) Separator() string { return ":" }
 func (n NameTag) String() string  { return string(n) }
+func (n NameTag) CacheDuration() int64 {
+	if n.String() == "latest" {
+		return oneHour
+	}
+	return oneDay
+}
 
-func (DigestTag) Separator() string { return "@" }
-func (n DigestTag) String() string  { return string(n) }
+func (DigestTag) Separator() string    { return "@" }
+func (n DigestTag) String() string     { return string(n) }
+func (DigestTag) CacheDuration() int64 { return oneMonth }
 
 func ParseImageTag(s string) (string, ImageTag) {
 	// Check for a digest, and if not look for a tag

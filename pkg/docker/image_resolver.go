@@ -5,38 +5,62 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/rs/zerolog/log"
 )
 
-type imageResolverFunc func(context.Context, string, bool, config.DockerCredentials) (*ImageManifest, error)
+type ImageResolver struct {
+	source   *ImageID
+	resolved string
+}
 
-// ResolveImageID will take the provided image identifier and a resolver,
-// and attempt to provide a version of the image id containing the digest
-// instead.
-func ResolveImageID(ctx context.Context, img ImageID, resolver imageResolverFunc) (ImageID, error) {
-	if img.HasDigest() {
-		return img, nil
+func NewImageResolver(orig *ImageID) *ImageResolver {
+	return &ImageResolver{source: orig}
+}
+
+func (r *ImageResolver) Resolve(ctx context.Context, resolver imageResolverFunc, tagCache cache.Cache[string]) error {
+	if r.source.HasDigest() {
+		r.resolved = r.source.String()
+		return nil
 	}
 
-	// TODO: Look up i.String() in cache to see if we already have a digest for it
+	// Attempt to find a digest in the local cache so that we don't need to make a
+	// call to docker to ask.
+	cachedDigest, found := tagCache.Get(r.source.String())
+	if found {
+		r.resolved = cachedDigest
+		return nil
+	}
 
 	credentials := config.GetDockerCredentials()
-	manifest, err := resolver(ctx, img.String(), false, credentials)
+	manifest, err := resolver(ctx, r.source.String(), false, credentials)
 	if err != nil {
 		log.Ctx(ctx).Error().
 			Err(err).
-			Str("Image", img.String()).
+			Str("Image", r.source.String()).
 			Msg("failed to get image digest")
-		return img, err
+		return err
 	}
 
 	if !strings.HasPrefix(manifest.digest, "sha256") {
-		// Need to make sure digest is complete
+		// Need to make sure digest is complete and not just a partial
 		manifest.digest = fmt.Sprintf("sha256:%s", manifest.digest)
 	}
 
-	result := img
-	result.tag = DigestTag(manifest.digest)
-	return result, nil
+	cloned, _ := NewImageID(r.source.String())
+	cloned.tag = DigestTag(manifest.digest)
+
+	r.resolved = cloned.String()
+
+	// Save a copy of the digest in the local cache for a set period of time
+	// so that we can avoid an API call next time around
+	cacheDuration := r.source.tag.CacheDuration()
+	_ = tagCache.Set(r.source.String(), r.resolved, 1, cacheDuration)
+
+	return nil
+}
+
+func (r *ImageResolver) Digest() string {
+	return r.resolved
 }

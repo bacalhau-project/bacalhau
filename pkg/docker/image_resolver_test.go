@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -106,6 +107,8 @@ func (s *ImageResolverSuite) TestResolverCases() {
 		// },
 	}
 
+	mockCache := cache.NewMockCache[string]()
+
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			i, err := NewImageID(tc.image)
@@ -113,17 +116,37 @@ func (s *ImageResolverSuite) TestResolverCases() {
 			require.NotNil(s.T(), i)
 			require.Equal(s.T(), tc.initial_tag, i.tag.String())
 
-			newImageID, err := ResolveImageID(ctx, *i, tc.resolver)
+			resolved := NewImageResolver(i)
+			err = resolved.Resolve(ctx, tc.resolver, mockCache)
 			if tc.error {
 				require.Error(s.T(), err)
 			} else {
 				require.NoError(s.T(), err)
 			}
 
-			require.Equal(s.T(), tc.expected, newImageID.String())
-			require.Equal(s.T(), tc.digest, newImageID.HasDigest())
+			if tc.digest {
+				require.NoError(s.T(), err)
+				require.Equal(s.T(), tc.expected, resolved.Digest())
 
+				if !i.HasDigest() {
+					// If the image didn't already have a digest, check what we
+					// created ended up in a cache.
+					cachedDigest, found := mockCache.Get(i.String())
+					require.True(s.T(), found)
+					require.Equal(s.T(), tc.expected, cachedDigest)
+				}
+
+			} else {
+				require.Empty(s.T(), resolved.Digest())
+
+				_, found := mockCache.Get(i.String())
+				require.False(s.T(), found)
+			}
+
+			// Cleanup the cache for the next run
+			mockCache.Delete(i.String())
 		})
 	}
 
+	mockCache.Close()
 }
