@@ -162,6 +162,12 @@ export interface JobLocalEvent {
   TargetNodeID?: string,
 }
 
+export interface ExecutionID {
+  JobID: string,
+  NodeID: string,
+  ExecutionID: string,
+}
+
 export interface JobEvent {
   APIVersion?: string,
   JobID: string,
@@ -290,6 +296,7 @@ export interface JobModeration {
 export enum ModerationType {
   Datacap = "datacap",
   Execution = "execution",
+  Result = "result",
 }
 
 export interface JobModerationRequest {
@@ -298,6 +305,8 @@ export interface JobModerationRequest {
   type: ModerationType,
   created: string,
   callback: string,
+  execution_id?: ExecutionID,
+  storage_spec?: StorageSpec,
 }
 
 export interface ModerateRequest {

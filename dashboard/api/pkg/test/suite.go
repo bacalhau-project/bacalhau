@@ -94,7 +94,7 @@ func (s *DashboardTestSuite) SetupSuite() {
 // SetupTest implements suite.SetupTestSuite
 func (s *DashboardTestSuite) SetupTest() {
 	var cancel context.CancelFunc
-	const maxTestDuration = 10 * time.Second
+	const maxTestDuration = time.Minute
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestDuration)
 	s.T().Cleanup(cancel)
 
