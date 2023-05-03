@@ -20,6 +20,11 @@ func NewImageResolver(orig *ImageID) *ImageResolver {
 }
 
 func (r *ImageResolver) Resolve(ctx context.Context, resolver imageResolverFunc, tagCache cache.Cache[string]) error {
+	client, err := NewDockerClient()
+	if err != nil || !client.IsInstalled(ctx) {
+		return fmt.Errorf("docker is not installed")
+	}
+
 	if r.source.HasDigest() {
 		r.resolved = r.source.String()
 		return nil

@@ -14,6 +14,8 @@ type ImageIDSuite struct {
 }
 
 func TestImageIDSuite(t *testing.T) {
+	MustHaveDocker(t)
+
 	suite.Run(t, new(ImageIDSuite))
 }
 

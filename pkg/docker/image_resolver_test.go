@@ -18,6 +18,8 @@ type ImageResolverSuite struct {
 }
 
 func TestImageResolverSuite(t *testing.T) {
+	MustHaveDocker(t)
+
 	suite.Run(t, new(ImageResolverSuite))
 }
 
