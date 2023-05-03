@@ -8,7 +8,6 @@ import (
 )
 
 type Cache[T any] struct {
-	name          string
 	items         generic.SyncMap[string, CacheItem[T]]
 	cost          Counter
 	closer        chan struct{}
@@ -22,28 +21,8 @@ type CacheItem[T any] struct {
 	expiresAt int64
 }
 
-var caches map[string]interface{} = make(map[string]interface{})
-
-func NewCache[T any](name string, options CacheOptions) (*Cache[T], error) {
-	if cache, ok := caches[name]; ok {
-		if cast, ok := cache.(*Cache[T]); ok {
-			return cast, nil
-		}
-		return nil, ErrCacheWrongType
-	}
-
-	cache, err := BuildCache[T](name, options)
-	if err != nil {
-		return nil, err
-	}
-
-	caches[name] = cache
-	return cache, nil
-}
-
-func BuildCache[T any](name string, options CacheOptions) (c *Cache[T], err error) {
-	c = &Cache[T]{
-		name:          name,
+func NewCache[T any](options CacheOptions) (*Cache[T], error) {
+	c := &Cache[T]{
 		closer:        make(chan struct{}),
 		cost:          NewCounter(options.maxCost),
 		tickerFactory: options.tickerFactory,
@@ -88,7 +67,6 @@ func (c *Cache[T]) Delete(key string) {
 
 func (c *Cache[T]) Close() {
 	close(c.closer)
-	delete(caches, c.name)
 }
 
 func (c *Cache[T]) cleanup(frequency clock.Duration) {
