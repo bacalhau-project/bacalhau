@@ -18,8 +18,6 @@ import (
 
 type LocalDirectorySuite struct {
 	suite.Suite
-	tempDir string
-	driver  *StorageProvider
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -31,14 +29,6 @@ func TestLocalDirectorySuite(t *testing.T) {
 // Before the suite
 func (s *LocalDirectorySuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-}
-
-// Before each test
-func (s *LocalDirectorySuite) SetupTest() {
-	var setupErr error
-	s.tempDir = s.T().TempDir()
-	s.driver, setupErr = NewStorageProvider(StorageProviderParams{AllowedPaths: []string{s.tempDir}})
-	require.NoError(s.T(), setupErr)
 }
 
 func (s *LocalDirectorySuite) TestIsInstalled() {
@@ -85,7 +75,7 @@ func (s *LocalDirectorySuite) TestHasStorageLocally() {
 		{
 			name:              "path descendant of an allowed path",
 			sourcePath:        tmpFile,
-			allowedPaths:      []string{tmpDir},
+			allowedPaths:      []string{filepath.Join(tmpDir, "*")},
 			hasStorageLocally: true,
 		},
 		{
@@ -97,7 +87,19 @@ func (s *LocalDirectorySuite) TestHasStorageLocally() {
 		{
 			name:              "asterisk allowed path",
 			sourcePath:        tmpFile,
-			allowedPaths:      []string{".*"},
+			allowedPaths:      []string{"**"},
+			hasStorageLocally: true,
+		},
+		{
+			name:              "pattern",
+			sourcePath:        tmpFile,
+			allowedPaths:      []string{filepath.Join(tmpDir, "file*")},
+			hasStorageLocally: true,
+		},
+		{
+			name:              "pattern with suffix",
+			sourcePath:        tmpFile,
+			allowedPaths:      []string{filepath.Join(tmpDir, "file*1")},
 			hasStorageLocally: true,
 		},
 		{
@@ -146,13 +148,13 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 		{
 			name:               "size of file1",
 			sourcePath:         file1,
-			allowedPaths:       []string{tmpDir},
+			allowedPaths:       []string{filepath.Join(tmpDir, "*")},
 			expectedVolumeSize: 0,
 		},
 		{
 			name:               "size of file2",
 			sourcePath:         file2,
-			allowedPaths:       []string{tmpDir},
+			allowedPaths:       []string{filepath.Join(tmpDir, "*")},
 			expectedVolumeSize: 0,
 		},
 		{
@@ -189,15 +191,21 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 				require.Error(s.T(), err)
 				return
 			}
+			require.NoError(s.T(), err)
 			require.Equal(s.T(), tc.expectedVolumeSize, volumeSize)
 		})
 	}
 }
 
 func (s *LocalDirectorySuite) TestPrepareStorage() {
-	folderPath := filepath.Join(s.tempDir, "sub/path")
+	tmpDir := s.T().TempDir()
+	folderPath := filepath.Join(tmpDir, "sub", "path")
+	s.Require().NoError(os.MkdirAll(folderPath, 0755))
+	storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: []string{filepath.Join(tmpDir, "**")}})
+	require.NoError(s.T(), err)
+
 	spec := s.prepareStorageSpec(folderPath)
-	volume, err := s.driver.PrepareStorage(context.Background(), spec)
+	volume, err := storageProvider.PrepareStorage(context.Background(), spec)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), volume.Source, folderPath)
 	require.Equal(s.T(), volume.Target, spec.Path)

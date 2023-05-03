@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,20 +16,12 @@ type StorageProviderParams struct {
 	AllowedPaths []string
 }
 type StorageProvider struct {
-	allowedPaths []*regexp.Regexp
+	allowedPaths []string
 }
 
 func NewStorageProvider(params StorageProviderParams) (*StorageProvider, error) {
-	allowedPaths := make([]*regexp.Regexp, len(params.AllowedPaths))
-	for i, path := range params.AllowedPaths {
-		allowedPath, err := regexp.Compile(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compile allowed path %s: %w", path, err)
-		}
-		allowedPaths[i] = allowedPath
-	}
 	storageHandler := &StorageProvider{
-		allowedPaths: allowedPaths,
+		allowedPaths: params.AllowedPaths,
 	}
 	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", params.AllowedPaths)
 
@@ -86,9 +78,10 @@ func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpe
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) isInAllowedPaths(path string) bool {
+func (driver *StorageProvider) isInAllowedPaths(sourcePath string) bool {
 	for _, allowedPath := range driver.allowedPaths {
-		if allowedPath.MatchString(path) {
+		match, err := doublestar.PathMatch(allowedPath, sourcePath)
+		if match && err == nil {
 			return true
 		}
 	}
