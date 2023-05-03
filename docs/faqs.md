@@ -67,4 +67,5 @@ The walkthrough in the docs has been tested only on Ubuntu 22, bacalhau is being
 
 ## Can I stop a running job?
 
-No. Once a job has been submitted (and accepted), it is currently not possible to stop it from running
+Yes. Given a valid job ID, you can use the [cancel command](https://docs.bacalhau.org/all-flags#cancel) to cancel the job,
+and stop it from running.
