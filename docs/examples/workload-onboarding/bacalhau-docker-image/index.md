@@ -27,6 +27,12 @@ The first step is to pull the Bacalhau Docker image from the [Github container r
 docker pull ghcr.io/bacalhau-project/bacalhau:latest
 ```
 
+    latest: Pulling from bacalhau-project/bacalhau
+    Digest: sha256:d80f1fe751886a29e0d5ae265a88abbfcd5c59e36247473b66aba93ea24f45aa
+    Status: Image is up to date for ghcr.io/bacalhau-project/bacalhau:latest
+    ghcr.io/bacalhau-project/bacalhau:latest
+
+
 You can also pull a specific version of the image, e.g.:
 
 ```bash
@@ -47,6 +53,10 @@ Check the version of the Bacalhau client you are using.
 %%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest version
 ```
+
+    Client Version: v0.3.29
+    Server Version: v0.3.29
+
 
 ## Running a Bacalhau Job
 
@@ -75,6 +85,9 @@ In this example, I run an ubuntu-based job that echo's some stuff.
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
+    env: JOB_ID=a00cadd2-0214-4d57-9eee-363c90cdecb8
+
+
 To print out the content of the Job ID, run the following command:
 
 
@@ -85,9 +98,9 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
         | grep -A 2 "stdout: |"
 ```
 
-                  stdout: |
-                    Linux 8eac0284b095 5.15.0-1027-gcp #34-Ubuntu SMP Fri Jan 6 01:03:08 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
-                    Hello from Docker Bacalhau!
+          stdout: |
+            Linux c32ddafa1967 5.19.0-1022-gcp #24~22.04.1-Ubuntu SMP Sun Apr 23 09:51:08 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
+            Hello from Docker Bacalhau!
 
 
 ## Sumbit a Job With Output Files
@@ -111,6 +124,9 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
+    env: JOB_ID=30c62ab4-5a77-4ea0-ad67-3cc9ef7387d2
+
+
 ## Checking the State of your Jobs
 
 - **Job status**: You can check the status of the job using `bacalhau list`. 
@@ -123,6 +139,43 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
         | grep -A 2 "stdout: |"
 ```
 
+
+    ---------------------------------------------------------------------------
+
+    CalledProcessError                        Traceback (most recent call last)
+
+    Cell In[21], line 1
+    ----> 1 get_ipython().run_cell_magic('bash', '', 'bacalhau docker run -t ghcr.io/bacalhau-project/bacalhau:latest \\\n    list $JOB_ID \\\n        | grep -A 2 "stdout: |"\n')
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/interactiveshell.py:2430, in InteractiveShell.run_cell_magic(self, magic_name, line, cell)
+       2428 with self.builtin_trap:
+       2429     args = (magic_arg_s, cell)
+    -> 2430     result = fn(*args, **kwargs)
+       2432 # The code below prevents the output from being displayed
+       2433 # when using magics with decodator @output_can_be_silenced
+       2434 # when the last Python token in the expression is a ';'.
+       2435 if getattr(fn, magic.MAGIC_OUTPUT_CAN_BE_SILENCED, False):
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:153, in ScriptMagics._make_script_magic.<locals>.named_script_magic(line, cell)
+        151 else:
+        152     line = script
+    --> 153 return self.shebang(line, cell)
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:305, in ScriptMagics.shebang(self, line, cell)
+        300 if args.raise_error and p.returncode != 0:
+        301     # If we get here and p.returncode is still None, we must have
+        302     # killed it but not yet seen its return code. We don't wait for it,
+        303     # in case it's stuck in uninterruptible sleep. -9 = SIGKILL
+        304     rc = p.returncode or -9
+    --> 305     raise CalledProcessError(rc, cell)
+
+
+    CalledProcessError: Command 'b'bacalhau docker run -t ghcr.io/bacalhau-project/bacalhau:latest \\\n    list $JOB_ID \\\n        | grep -A 2 "stdout: |"\n'' returned non-zero exit status 1.
+
+
 When it says `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -134,6 +187,43 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     describe $JOB_ID \
         | grep -A 2 "stdout: |"
 ```
+
+
+    ---------------------------------------------------------------------------
+
+    CalledProcessError                        Traceback (most recent call last)
+
+    Cell In[10], line 1
+    ----> 1 get_ipython().run_cell_magic('bash', '', 'docker run -t ghcr.io/bacalhau-project/bacalhau:latest \\\n    describe $JOB_ID \\\n        | grep -A 2 "stdout: |"\n')
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/interactiveshell.py:2430, in InteractiveShell.run_cell_magic(self, magic_name, line, cell)
+       2428 with self.builtin_trap:
+       2429     args = (magic_arg_s, cell)
+    -> 2430     result = fn(*args, **kwargs)
+       2432 # The code below prevents the output from being displayed
+       2433 # when using magics with decodator @output_can_be_silenced
+       2434 # when the last Python token in the expression is a ';'.
+       2435 if getattr(fn, magic.MAGIC_OUTPUT_CAN_BE_SILENCED, False):
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:153, in ScriptMagics._make_script_magic.<locals>.named_script_magic(line, cell)
+        151 else:
+        152     line = script
+    --> 153 return self.shebang(line, cell)
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:305, in ScriptMagics.shebang(self, line, cell)
+        300 if args.raise_error and p.returncode != 0:
+        301     # If we get here and p.returncode is still None, we must have
+        302     # killed it but not yet seen its return code. We don't wait for it,
+        303     # in case it's stuck in uninterruptible sleep. -9 = SIGKILL
+        304     rc = p.returncode or -9
+    --> 305     raise CalledProcessError(rc, cell)
+
+
+    CalledProcessError: Command 'b'docker run -t ghcr.io/bacalhau-project/bacalhau:latest \\\n    describe $JOB_ID \\\n        | grep -A 2 "stdout: |"\n'' returned non-zero exit status 1.
+
 
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
 
