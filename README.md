@@ -54,7 +54,7 @@
   - [Running Bacalhau locally](#running-bacalhau-locally)
   - [Notes for Dev contributors](#notes-for-dev-contributors)
 - [Ways to contribute ](#ways-to-contribute)
-- [Current state of Bacalhau](#current-state-of-bacalhau)
+- [Current state of Bacalhau](#current-state-of-bacalhau-)
 - [License](#license)
 
 ## Why Bacalhau?
