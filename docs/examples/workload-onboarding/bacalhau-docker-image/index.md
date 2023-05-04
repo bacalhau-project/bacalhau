@@ -24,6 +24,25 @@ path=!echo $PATH
 %env PATH=./:{path[0]}
 ```
 
+    Your system is linux_amd64
+    
+    BACALHAU CLI is detected:
+    Client Version: v0.3.29
+    Server Version: v0.3.29
+    Reinstalling BACALHAU CLI - ./bacalhau...
+    Getting the latest BACALHAU CLI...
+    Installing v0.3.29 BACALHAU CLI...
+    Downloading https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.29/bacalhau_v0.3.29_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/bacalhau-project/bacalhau/releases/download/v0.3.29/bacalhau_v0.3.29_linux_amd64.tar.gz.signature.sha256 ...
+    Verified OK
+    Extracting tarball ...
+    NOT verifying Bin
+    bacalhau installed into . successfully.
+    Client Version: v0.3.29
+    Server Version: v0.3.29
+    env: PATH=./:/home/gitpod/.pyenv/versions/3.11.1/bin:/home/gitpod/.pyenv/libexec:/home/gitpod/.pyenv/plugins/python-build/bin:/home/gitpod/.pyenv/shims:/ide/bin/remote-cli:/home/gitpod/.nix-profile/bin:/home/gitpod/.local/bin:/home/gitpod/.sdkman/candidates/maven/current/bin:/home/gitpod/.sdkman/candidates/java/current/bin:/home/gitpod/.sdkman/candidates/gradle/current/bin:/workspace/.cargo/bin:/home/gitpod/.rvm/gems/ruby-3.2.1/bin:/home/gitpod/.rvm/gems/ruby-3.2.1@global/bin:/home/gitpod/.rvm/rubies/ruby-3.2.1/bin:/home/gitpod/.pyenv/shims:/workspace/go/bin:/home/gitpod/.nix-profile/bin:/ide/bin/remote-cli:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.nvm/versions/node/v18.16.0/bin:/home/gitpod/.yarn/bin:/home/gitpod/.pnpm:/home/gitpod/.pyenv/bin:/home/gitpod/.rvm/bin:/home/gitpod/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin/:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gitpod/.nvm/versions/node/v18.16.0/bin:/ide/bin/remote-cli:/home/gitpod/.nix-profile/bin:/home/gitpod/.local/bin:/home/gitpod/.sdkman/candidates/maven/current/bin:/home/gitpod/.sdkman/candidates/java/current/bin:/home/gitpod/.sdkman/candidates/gradle/current/bin:/workspace/.cargo/bin:/home/gitpod/.rvm/gems/ruby-3.2.1/bin:/home/gitpod/.rvm/gems/ruby-3.2.1@global/bin:/home/gitpod/.rvm/rubies/ruby-3.2.1/bin:/home/gitpod/.pyenv/shims:/workspace/go/bin:/home/gitpod/.nix-profile/bin:/ide/bin/remote-cli:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.nvm/versions/node/v18.16.0/bin:/home/gitpod/.yarn/bin:/home/gitpod/.pnpm:/home/gitpod/.pyenv/bin:/home/gitpod/.rvm/bin:/home/gitpod/.cargo/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin/:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/gitpod/.nvm/versions/node/v18.16.0/bin
+
+
 ## Pull the Docker image
 
 The first step is to pull the Bacalhau Docker image from the [Github container registry](https://github.com/orgs/bacalhau-project/packages/container/package/bacalhau).
@@ -33,6 +52,12 @@ The first step is to pull the Bacalhau Docker image from the [Github container r
 %%bash
 docker pull ghcr.io/bacalhau-project/bacalhau:latest
 ```
+
+    latest: Pulling from bacalhau-project/bacalhau
+    Digest: sha256:d80f1fe751886a29e0d5ae265a88abbfcd5c59e36247473b66aba93ea24f45aa
+    Status: Image is up to date for ghcr.io/bacalhau-project/bacalhau:latest
+    ghcr.io/bacalhau-project/bacalhau:latest
+
 
 You can also pull a specific version of the image, e.g.:
 
@@ -54,6 +79,10 @@ Check the version of the Bacalhau client you are using.
 %%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest version
 ```
+
+    Client Version: v0.3.29
+    Server Version: v0.3.29
+
 
 ## Running a Bacalhau Job
 
@@ -82,7 +111,7 @@ In this example, I run an ubuntu-based job that echo's some stuff.
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-    env: JOB_ID=a00cadd2-0214-4d57-9eee-363c90cdecb8
+    env: JOB_ID=738e0b39-8f73-4f01-ab46-245e8479ad65
 
 
 To print out the content of the Job ID, run the following command:
@@ -94,6 +123,11 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     describe $JOB_ID \
         | grep -A 2 "stdout: |"
 ```
+
+          stdout: |
+            Linux 914f42609298 5.19.0-1022-gcp #24~22.04.1-Ubuntu SMP Sun Apr 23 09:51:08 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
+            Hello from Docker Bacalhau!
+
 
 ## Sumbit a Job With Output Files
 
@@ -116,7 +150,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-    env: JOB_ID=30c62ab4-5a77-4ea0-ad67-3cc9ef7387d2
+    env: JOB_ID=bd141e1a-0f68-4a20-886f-c2b30c01b614
 
 
 ## Checking the State of your Jobs
@@ -128,7 +162,6 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 %%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     list $JOB_ID \
-        | grep -A 2 "stdout: |"
 ```
 
 When it says `Completed`, that means the job is done, and we can get the results.
@@ -140,7 +173,7 @@ When it says `Completed`, that means the job is done, and we can get the results
 %%bash
 docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
     describe $JOB_ID \
-        | grep -A 2 "stdout: |"
+
 ```
 
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
@@ -148,8 +181,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 
 ```bash
 %%bash
-docker run -t -v $(pwd)/results:/results ghcr.io/bacalhau-project/bacalhau:latest \
-    get $JOB_ID --output-dir /results
+bacalhau get ${JOB_ID} --output-dir result
 ```
 
 After the download has finished you should see the following contents in results directory. 
