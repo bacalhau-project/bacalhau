@@ -31,6 +31,50 @@ Installing dependencies
 ```bash
 %%bash
 git clone https://github.com/js-ts/csv_to_avro_or_parquet/
+```
+
+    fatal: destination path 'csv_to_avro_or_parquet' already exists and is not an empty directory.
+
+
+
+    ---------------------------------------------------------------------------
+
+    CalledProcessError                        Traceback (most recent call last)
+
+    Cell In[1], line 1
+    ----> 1 get_ipython().run_cell_magic('bash', '', 'git clone https://github.com/js-ts/csv_to_avro_or_parquet/\n')
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/interactiveshell.py:2430, in InteractiveShell.run_cell_magic(self, magic_name, line, cell)
+       2428 with self.builtin_trap:
+       2429     args = (magic_arg_s, cell)
+    -> 2430     result = fn(*args, **kwargs)
+       2432 # The code below prevents the output from being displayed
+       2433 # when using magics with decodator @output_can_be_silenced
+       2434 # when the last Python token in the expression is a ';'.
+       2435 if getattr(fn, magic.MAGIC_OUTPUT_CAN_BE_SILENCED, False):
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:153, in ScriptMagics._make_script_magic.<locals>.named_script_magic(line, cell)
+        151 else:
+        152     line = script
+    --> 153 return self.shebang(line, cell)
+
+
+    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:305, in ScriptMagics.shebang(self, line, cell)
+        300 if args.raise_error and p.returncode != 0:
+        301     # If we get here and p.returncode is still None, we must have
+        302     # killed it but not yet seen its return code. We don't wait for it,
+        303     # in case it's stuck in uninterruptible sleep. -9 = SIGKILL
+        304     rc = p.returncode or -9
+    --> 305     raise CalledProcessError(rc, cell)
+
+
+    CalledProcessError: Command 'b'git clone https://github.com/js-ts/csv_to_avro_or_parquet/\n'' returned non-zero exit status 128.
+
+
+
+```python
 pip3 install -r csv_to_avro_or_parquet/requirements.txt
 ```
 

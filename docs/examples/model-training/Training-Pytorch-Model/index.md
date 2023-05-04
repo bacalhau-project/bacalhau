@@ -18,6 +18,13 @@ Running any type of Pytorch models with Bacalhau
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
 ## Training the Model Locally
 
 To train our model locally, we will start by cloning the Pytorch examples [repo](https://github.com/pytorch/examples)
@@ -28,6 +35,20 @@ To train our model locally, we will start by cloning the Pytorch examples [repo]
 git clone https://github.com/pytorch/examples
 ```
 
+Install the following
+
+
+```bash
+%%bash
+pip install torch
+```
+
+
+```bash
+%%bash
+pip install torchvision
+```
+
 Next, we run the command below to begin training of the _mnist_rnn_ model. We added the `--save-model` flag to save the model
 
 
@@ -36,39 +57,7 @@ Next, we run the command below to begin training of the _mnist_rnn_ model. We ad
 python ./examples/mnist_rnn/main.py --save-model
 ```
 
-Next, we will download the MNIST dataset by creating a folder `data` where we will save the downloaded dataset
-
-
-```bash
-%%bash
-mkdir ../data
-```
-
-If you inspect the code [here](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) you'll see the folder referenced in the code. Here is the a small section of the code that references the folder
-
-Install pytorch
-
-
-```python
-%pip install torch
-```
-
-
-```python
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
-    test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=False, transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])),
-        batch_size=args.test_batch_size, shuffle=True, **kwargs)
-```
+Next, the downloaded MNIST dataset is saved in the `data` folder.
 
 ## Uploading Dataset to IPFS
 
