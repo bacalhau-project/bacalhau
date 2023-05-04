@@ -27,74 +27,48 @@ func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 	}
 }
 
-type NoopStorageProvidersFactory struct {
-	config noop_storage.StorageConfig
-}
-
-func (f *NoopStorageProvidersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
-	return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, f.config)
-}
-
-func NewNoopStorageProvidersFactory() *NoopStorageProvidersFactory {
+func NewNoopStorageProvidersFactory() node.StorageProvidersFactory {
 	return NewNoopStorageProvidersFactoryWithConfig(noop_storage.StorageConfig{})
 }
 
-func NewNoopStorageProvidersFactoryWithConfig(config noop_storage.StorageConfig) *NoopStorageProvidersFactory {
-	return &NoopStorageProvidersFactory{config: config}
+func NewNoopStorageProvidersFactoryWithConfig(config noop_storage.StorageConfig) node.StorageProvidersFactory {
+	return node.StorageProvidersFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
+			return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, config)
+		})
 }
 
-type NoopExecutorsFactory struct {
-	config noop_executor.ExecutorConfig
-}
-
-func (f *NoopExecutorsFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-	return executor_util.NewNoopExecutors(f.config), nil
-}
-
-func NewNoopExecutorsFactory() *NoopExecutorsFactory {
+func NewNoopExecutorsFactory() node.ExecutorsFactory {
 	return NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{})
 }
 
-func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) *NoopExecutorsFactory {
-	return &NoopExecutorsFactory{config: config}
+func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) node.ExecutorsFactory {
+	return node.ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
+			return executor_util.NewNoopExecutors(config), nil
+		})
 }
 
-type NoopVerifiersFactory struct {
-	config noop_verifier.VerifierConfig
-}
-
-func (f *NoopVerifiersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (verifier.VerifierProvider, error) {
-	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, f.config)
-}
-
-func NewNoopVerifiersFactory() *NoopVerifiersFactory {
+func NewNoopVerifiersFactory() node.VerifiersFactory {
 	return NewNoopVerifiersFactoryWithConfig(noop_verifier.VerifierConfig{})
 }
 
-func NewNoopVerifiersFactoryWithConfig(config noop_verifier.VerifierConfig) *NoopVerifiersFactory {
-	return &NoopVerifiersFactory{config: config}
+func NewNoopVerifiersFactoryWithConfig(config noop_verifier.VerifierConfig) node.VerifiersFactory {
+	return node.VerifiersFactoryFunc(
+		func(
+			ctx context.Context,
+			nodeConfig node.NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error) {
+			return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, config)
+		})
 }
 
-type NoopPublishersFactory struct {
-	config noop_publisher.PublisherConfig
-}
-
-func (f *NoopPublishersFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
-	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, f.config)
-}
-
-func NewNoopPublishersFactory() *NoopPublishersFactory {
+func NewNoopPublishersFactory() node.PublishersFactory {
 	return NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{})
 }
 
-func NewNoopPublishersFactoryWithConfig(config noop_publisher.PublisherConfig) *NoopPublishersFactory {
-	return &NoopPublishersFactory{config: config}
+func NewNoopPublishersFactoryWithConfig(config noop_publisher.PublisherConfig) node.PublishersFactory {
+	return node.PublishersFactoryFunc(
+		func(ctx context.Context, nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
+			return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, config)
+		})
 }

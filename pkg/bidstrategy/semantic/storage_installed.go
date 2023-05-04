@@ -7,7 +7,7 @@ import (
 )
 
 func NewStorageInstalledBidStrategy(storages storage.StorageProvider) bidstrategy.SemanticBidStrategy {
-	return NewProviderInstalledArrayStrategy[model.StorageSourceType, storage.Storage](
+	return NewProviderInstalledArrayStrategy(
 		storages,
 		func(j *model.Job) []model.StorageSourceType {
 			var types []model.StorageSourceType

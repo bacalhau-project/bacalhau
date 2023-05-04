@@ -9,9 +9,7 @@ import (
 )
 
 // Returns a executor for the given engine type
-type ExecutorProvider interface {
-	model.Provider[model.Engine, Executor]
-}
+type ExecutorProvider = model.Provider[model.Engine, Executor]
 
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.

@@ -45,10 +45,10 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	return model.ComputeNodeInfo{
-		ExecutionEngines:   model.InstalledTypes[model.Engine, executor.Executor](ctx, n.executors, model.EngineTypes()),
-		Verifiers:          model.InstalledTypes[model.Verifier, verifier.Verifier](ctx, n.verifiers, model.VerifierTypes()),
-		Publishers:         model.InstalledTypes[model.Publisher, publisher.Publisher](ctx, n.publishers, model.PublisherTypes()),
-		StorageSources:     model.InstalledTypes[model.StorageSourceType, storage.Storage](ctx, n.storages, model.StorageSourceTypes()),
+		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, model.EngineTypes()),
+		Verifiers:          model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
+		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
+		StorageSources:     model.InstalledTypes(ctx, n.storages, model.StorageSourceTypes()),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,

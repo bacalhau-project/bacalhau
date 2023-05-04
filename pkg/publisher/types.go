@@ -7,9 +7,7 @@ import (
 )
 
 // PublisherProvider returns a publisher for the given publisher type
-type PublisherProvider interface {
-	model.Provider[model.Publisher, Publisher]
-}
+type PublisherProvider = model.Provider[model.Publisher, Publisher]
 
 // Publisher is the interface for publishing results of a job
 // The job spec will choose which publisher(s) it wants to use
