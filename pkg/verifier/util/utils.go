@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/deterministic"
@@ -13,6 +14,7 @@ import (
 func NewStandardVerifiers(
 	ctx context.Context,
 	cm *system.CleanupManager,
+	publishers publisher.PublisherProvider,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
 ) (verifier.VerifierProvider, error) {

@@ -117,17 +117,17 @@ func NewNode(
 		return nil, err
 	}
 
-	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
 	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config, publishers)
 	if err != nil {
 		return nil, err
 	}

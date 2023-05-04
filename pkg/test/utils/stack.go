@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -60,18 +61,21 @@ func SetupTest(
 }
 
 type mixedExecutorFactory struct {
-	*node.StandardExecutorsFactory
-	*devstack.NoopExecutorsFactory
+	standardFactory, noopFactory node.ExecutorsFactory
 }
 
 // Get implements node.ExecutorsFactory
-func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-	stdProvider, err := m.StandardExecutorsFactory.Get(ctx, nodeConfig)
+func (m *mixedExecutorFactory) Get(
+	ctx context.Context,
+	nodeConfig node.NodeConfig,
+	storages storage.StorageProvider,
+) (executor.ExecutorProvider, error) {
+	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig, storages)
 	if err != nil {
 		return nil, err
 	}
 
-	noopProvider, err := m.NoopExecutorsFactory.Get(ctx, nodeConfig)
+	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig, storages)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +109,8 @@ func SetupTestWithNoopExecutor(
 	system.InitConfigForTesting(t)
 	// We will take the standard executors and add in the noop executor
 	executorFactory := &mixedExecutorFactory{
-		StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
-		NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
+		standardFactory: node.NewStandardExecutorsFactory(),
+		noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
 	}
 
 	injector := node.NodeDependencyInjector{

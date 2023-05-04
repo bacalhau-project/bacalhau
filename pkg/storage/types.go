@@ -7,9 +7,7 @@ import (
 )
 
 // StorageProvider returns a storage that can be used by the job to store data.
-type StorageProvider interface {
-	model.Provider[model.StorageSourceType, Storage]
-}
+type StorageProvider = model.Provider[model.StorageSourceType, Storage]
 
 type Storage interface {
 	model.Providable
