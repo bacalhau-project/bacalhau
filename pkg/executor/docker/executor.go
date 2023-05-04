@@ -134,8 +134,33 @@ func (e *Executor) Run(
 	// these are paths for both input and output data
 	var mounts []mount.Mount
 	for spec, volumeMount := range inputVolumes {
+		defer func() {
+			// Obtain a provider (that was used earlier to prepare storage) so that
+			// we can tell it to cleanup the storage at the end of the execution.
+			provider, err := e.StorageProvider.Get(ctx, spec.StorageSource)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Err(err).
+					Str("Source", spec.StorageSource.String()).
+					Msg("failed to get storage provider in cleanup")
+				return
+			}
+
+			log.Ctx(ctx).Debug().
+				Str("Execution", executionID).
+				Msg("cleaning up inputs for execution")
+			err = provider.CleanupStorage(ctx, *spec, volumeMount)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Err(err).
+					Str("Source", spec.StorageSource.String()).
+					Msg("failed to cleanup volume")
+			}
+		}()
+
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+
 			mounts = append(mounts, mount.Mount{
 				Type: mount.TypeBind,
 				// this is an input volume so is read only
