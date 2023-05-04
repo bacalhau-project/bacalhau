@@ -18,7 +18,9 @@ func NewNetworkingStrategy(accept bool) *NetworkingStrategy {
 }
 
 // ShouldBid implements BidStrategy
-func (s *NetworkingStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (s *NetworkingStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	shouldBid := s.Accept || request.Job.Spec.Network.Disabled()
 	return bidstrategy.BidStrategyResponse{
 		ShouldBid: shouldBid,

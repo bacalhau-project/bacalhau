@@ -30,7 +30,9 @@ func NewDistanceDelayStrategy(params DistanceDelayStrategyParams) *DistanceDelay
 	return &DistanceDelayStrategy{networkSize: params.NetworkSize}
 }
 
-func (s DistanceDelayStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (s DistanceDelayStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	jobNodeDistanceDelayMs, shouldRunJob := s.calculateJobNodeDistanceDelay(ctx, request)
 	if !shouldRunJob {
 		return bidstrategy.BidStrategyResponse{

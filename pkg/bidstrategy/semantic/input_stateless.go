@@ -23,7 +23,9 @@ func NewStatelessJobStrategy(params StatelessJobStrategyParams) *StatelessJobStr
 	}
 }
 
-func (s *StatelessJobStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (s *StatelessJobStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	// skip bidding if no input data is provided, and policy is to reject stateless jobs
 	if s.rejectStatelessJobs && len(request.Job.Spec.Inputs) == 0 {
 		return bidstrategy.BidStrategyResponse{ShouldBid: false, Reason: "stateless jobs not accepted"}, nil

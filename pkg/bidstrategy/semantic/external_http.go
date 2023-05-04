@@ -32,7 +32,9 @@ func NewExternalHTTPStrategy(params ExternalHTTPStrategyParams) *ExternalHTTPStr
 	}
 }
 
-func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (s *ExternalHTTPStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	if s.url == "" {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
