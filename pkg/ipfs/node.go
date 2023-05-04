@@ -280,6 +280,18 @@ func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icor
 		Routing: libp2p.DHTClientOption,
 	}
 
+	// Redirect all output from NewNode and NewCoreAPI to our log. Otherwise,
+	// they print messages to stdout which don't make sense for our users.
+	stdio, err := system.NewFakeStdio("")
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	defer func() {
+		data, err := stdio.ReadAndRestore()
+		log.Ctx(ctx).Debug().Err(err).Msg(string(data))
+	}()
+
 	node, err := core.NewNode(ctx, nodeOptions)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create node: %w", err)
