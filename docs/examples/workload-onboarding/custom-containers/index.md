@@ -28,25 +28,6 @@ You're probably used to running docker commands to run a container.
 docker run docker/whalesay cowsay sup old fashioned container run
 ```
 
-     _________________________________ 
-    < sup old fashioned container run >
-     --------------------------------- 
-        \
-         \
-          \     
-                        ##        .            
-                  ## ## ##       ==            
-               ## ## ## ##      ===            
-           /""""""""""""""""___/ ===        
-      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~   
-           \______ o          __/            
-            \    \        __/             
-              \____\______/   
-
-
-    WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
-
-
 Bacalhau uses a syntax that is similar to docker and you can use the same containers. The main difference is that input and output data is passed to the container via IPFS, to enable planetary scale. In this example, it doesn't make too much difference except that we need to download the stdout.
 
 The `--wait` flag tells Bacalhau to wait for the job to finish before returning. This is useful in interactive sessions like this, but you would normally allow jobs to complete in the background and use the `list` command to check on their status.
@@ -77,24 +58,8 @@ Viewing your job output
 
 ```bash
 %%bash
-cat ./results/combined_results/stdout
+cat ./results/stdout
 ```
-
-     _____________________ 
-    < hello web3 uber-run >
-     --------------------- 
-        \
-         \
-          \     
-                        ##        .            
-                  ## ## ##       ==            
-               ## ## ## ##      ===            
-           /""""""""""""""""___/ ===        
-      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~   
-           \______ o          __/            
-            \    \        __/             
-              \____\______/   
-
 
 ## Building Your Own Custom Container For Bacalhau
 
@@ -153,27 +118,6 @@ docker build -t ghcr.io/bacalhau-project/examples/codsay:latest . 2> /dev/null
 docker run --rm ghcr.io/bacalhau-project/examples/codsay:latest codsay I like swimming in data
 ```
 
-     _________________________
-    < I like swimming in data >
-     -------------------------
-       \
-        \
-                                   ,,,,_
-                                ┌Φ▓╬▓╬▓▓▓W      @▓▓▒,
-                               ╠▓╬▓╬╣╬╬▓╬▓▓   ╔╣╬╬▓╬╣▓,
-                        __,┌╓═╠╬╠╬╬╬Ñ╬╬╬Ñ╬╬¼,╣╬╬▓╬╬▓╬▓▓▓┐        ╔W_             ,φ▓▓
-                   ,«@▒╠╠╠╠╩╚╙╙╩Ü╚╚╚╚╩╙╙╚╠╩╚╚╟▓▒╠╠╫╣╬╬╫╬╣▓,   _φ╬▓╬╬▓,        ,φ╣▓▓╬╬
-              _,φÆ╩╬╩╙╚╩░╙╙░░╩`=░╙╚»»╦░=╓╙Ü1R░│░╚Ü░╙╙╚╠╠╠╣╣╬≡Φ╬▀╬╣╬╬▓▓▓_   ╓▄▓▓▓▓▓▓╬▌
-          _,φ╬Ñ╩▌▐█[▒░░░░R░░▀░`,_`!R`````╙`-'╚Ü░░Ü░░░░░░░│││░╚╚╙╚╩╩╩╣Ñ╩╠▒▒╩╩▀▓▓╣▓▓╬╠▌
-         '╚╩Ü╙│░░╙Ö▒Ü░░░H░░R ▒¥╣╣@@@▓▓▓  := '`   `░``````````````````````````]▓▓▓╬╬╠H
-           '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
-                 '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
-                     ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
-                            %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
-                             `╣▓▓▓              ╠╬▓╬▓╬▀`
-                               ╚▓▌               '╨▀╜
-
-
 Once your container is working as expected then you should push it to a public container registry. In this example, I'm pushing to Github's container registry, but we'll skip the step below because you probably don't have permission.Remember that the Bacalhau nodes expect your container to have a `linux/amd64` architecture.
 
 
@@ -216,26 +160,5 @@ View your job output
 
 ```bash
 %%bash
-cat ./results/combined_results/stdout
+cat ./results/stdout
 ```
-
-     _______________________
-    < Look at all this data >
-     -----------------------
-       \
-        \
-                                   ,,,,_
-                                ┌Φ▓╬▓╬▓▓▓W      @▓▓▒,
-                               ╠▓╬▓╬╣╬╬▓╬▓▓   ╔╣╬╬▓╬╣▓,
-                        __,┌╓═╠╬╠╬╬╬Ñ╬╬╬Ñ╬╬¼,╣╬╬▓╬╬▓╬▓▓▓┐        ╔W_             ,φ▓▓
-                   ,«@▒╠╠╠╠╩╚╙╙╩Ü╚╚╚╚╩╙╙╚╠╩╚╚╟▓▒╠╠╫╣╬╬╫╬╣▓,   _φ╬▓╬╬▓,        ,φ╣▓▓╬╬
-              _,φÆ╩╬╩╙╚╩░╙╙░░╩`=░╙╚»»╦░=╓╙Ü1R░│░╚Ü░╙╙╚╠╠╠╣╣╬≡Φ╬▀╬╣╬╬▓▓▓_   ╓▄▓▓▓▓▓▓╬▌
-          _,φ╬Ñ╩▌▐█[▒░░░░R░░▀░`,_`!R`````╙`-'╚Ü░░Ü░░░░░░░│││░╚╚╙╚╩╩╩╣Ñ╩╠▒▒╩╩▀▓▓╣▓▓╬╠▌
-         '╚╩Ü╙│░░╙Ö▒Ü░░░H░░R ▒¥╣╣@@@▓▓▓  := '`   `░``````````````````````````]▓▓▓╬╬╠H
-           '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
-                 '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
-                     ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
-                            %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
-                             `╣▓▓▓              ╠╬▓╬▓╬▀`
-                               ╚▓▌               '╨▀╜
-

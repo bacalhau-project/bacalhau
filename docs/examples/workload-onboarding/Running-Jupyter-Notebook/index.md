@@ -60,10 +60,6 @@ jsacex/jupyter \
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     21:33:18  2359056e  Docker jsacex/jupyte...  Completed            ipfs://QmRStuJZAwats... 
-
-
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -83,22 +79,6 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-    Fetching results of job '2359056e-1146-46e4-b486-731c6e006ddd'...
-    
-    Computing default go-libp2p Resource Manager limits based on:
-        - 'Swarm.ResourceMgr.MaxMemory': "6.8 GB"
-        - 'Swarm.ResourceMgr.MaxFileDescriptors': 524288
-    
-    Applying any user-supplied overrides on top.
-    Run 'ipfs swarm limit all' to see the resulting limits.
-    
-    Results for job '2359056e-1146-46e4-b486-731c6e006ddd' have been written to...
-    results
-
-
-    2023/04/29 21:34:11 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 After the download has finished you should see the following contents in results directory.
 
 
@@ -106,9 +86,6 @@ After the download has finished you should see the following contents in results
 %%bash
 ls results/outputs
 ```
-
-    hello_output.nbconvert.ipynb
-
 
 ## 2. Running Notebook to Train an MNIST Model
 
@@ -202,10 +179,6 @@ jsacex/jupyter-tensorflow-mnist:v02 \
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     21:24:18  436d5f3c  Docker jsacex/jupyte...  Completed            ipfs://QmaihqFtT86oV... 
-
-
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -225,22 +198,6 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-    Fetching results of job '436d5f3c-d6b3-4de6-b031-5cbef3ed4dd5'...
-    
-    Computing default go-libp2p Resource Manager limits based on:
-        - 'Swarm.ResourceMgr.MaxMemory': "6.8 GB"
-        - 'Swarm.ResourceMgr.MaxFileDescriptors': 524288
-    
-    Applying any user-supplied overrides on top.
-    Run 'ipfs swarm limit all' to see the resulting limits.
-    
-    Results for job '436d5f3c-d6b3-4de6-b031-5cbef3ed4dd5' have been written to...
-    results
-
-
-    2023/04/29 21:29:42 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 After the download has finished you should see the following contents in results directory.
 
 
@@ -248,9 +205,5 @@ After the download has finished you should see the following contents in results
 %%bash
 ls results/outputs
 ```
-
-    mnist.h5
-    mnist_output.nbconvert.ipynb
-
 
 The outputs include our trained model and the jupyter notebook with the output cells

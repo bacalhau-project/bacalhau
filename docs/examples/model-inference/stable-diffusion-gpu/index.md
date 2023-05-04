@@ -289,7 +289,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -325,12 +325,12 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/job-id/combined_results/outputs
+ls results/outputs
 ```
 
 ### Display image
@@ -340,7 +340,7 @@ To display and view your image run the code below:
 
 ```python
 import IPython.display as display
-display.Image("results/job-id/combined_results/outputs/image0.png")
+display.Image("results/outputs/image0.png")
 ```
 
 

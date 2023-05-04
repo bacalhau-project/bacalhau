@@ -27,10 +27,6 @@ path=!echo $PATH
 %env PATH=./:{path[-1]}
 ```
 
-    /Users/phil/.zshenv:.:1: no such file or directory: /Users/phil/.cargo/env
-    env: PATH=./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/source/bacalhau-project/examples/workload-onboarding/rust-wasm/./bin:/Users/phil/.nexustools
-
-
 ## Analysing Ethereum Data Locally
 
 First let's download one of the IPFS files and inspect it locally. You can see the full list of IPFS CIDs in the appendix.
@@ -163,7 +159,7 @@ To run our analysis on the Ethereum blockchain, we will use the `bacalhau docker
 %%bash --out job_id
 bacalhau docker run \
     --id-only \
-    --input-volumes bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
+    --input ipfs://bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
     ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6
 ```
 
@@ -174,7 +170,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
 
@@ -187,10 +183,6 @@ Bacalhau also mounts a data volume to store output data. The `bacalhau docker ru
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 14:03:17 [0m[97;40m 0955253b [0m[97;40m Docker ghcr.io/bacal... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmPnZdFNRXgVxe... [0m
-
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
@@ -211,21 +203,16 @@ rm -rf ./results && mkdir -p ./results # Temporary directory to store the result
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
 
-    Fetching results of job '0955253b-5221-4452-819f-351baac88dba'...
-    Results for job '0955253b-5221-4452-819f-351baac88dba' have been written to...
-    ./results
-
-
 After the download has finished you should see the following contents in results directory.
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls -lah results/combined_results/outputs
+ls -lah results/outputs
 ```
 
 ### Display the image
@@ -238,7 +225,7 @@ import glob
 import pandas as pd
 
 # Get CSV files list from a folder
-csv_files = glob.glob("results/combined_results/outputs/*.csv")
+csv_files = glob.glob("results/outputs/*.csv")
 df = pd.read_csv(csv_files[0], index_col='block_datetime')
 df.plot()
 ```
@@ -257,7 +244,7 @@ for h in $(cat hashes.txt); do \
     bacalhau docker run \
     --id-only \
     --wait=false \
-    --input-volumes=$h:/inputs/data.tar.gz \
+    --input=ipfs://$h:/inputs/data.tar.gz \
     ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6 >> job_ids.txt 
 done
 ```
@@ -300,7 +287,7 @@ import os, glob
 import pandas as pd
 
 # Get CSV files list from a folder
-path = os.path.join("results_*", "combined_results", "outputs", "*.csv")
+path = os.path.join("results_*", "outputs", "*.csv")
 csv_files = glob.glob(path)
 
 # Read each CSV file into a list of DataFrames
@@ -321,7 +308,7 @@ That's it! There is several years of Ethereum transaction volume data.
 
 ```bash
 %%bash
-rm -rf results_* output_* outputs results combined_results temp # Remove temporary results
+rm -rf results_* output_* outputs results temp # Remove temporary results
 ```
 
 ## Appendix 1: List Ethereum Data CIDs 

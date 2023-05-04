@@ -76,10 +76,6 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     14:59:57  7da61afe  Docker jsacex/gdal-s...  Completed            ipfs://QmXcjKumKkBAG... 
-
-
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
 - **Job information**: You can find out more information about your job by using `bacalhau describe`.
@@ -98,22 +94,6 @@ bacalhau describe ${JOB_ID}
 rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
-
-    Fetching results of job '7da61afe-cc3a-4c87-8052-8fe3459321b0'...
-    
-    Computing default go-libp2p Resource Manager limits based on:
-        - 'Swarm.ResourceMgr.MaxMemory': "6.8 GB"
-        - 'Swarm.ResourceMgr.MaxFileDescriptors': 524288
-    
-    Applying any user-supplied overrides on top.
-    Run 'ipfs swarm limit all' to see the resulting limits.
-    
-    Results for job '7da61afe-cc3a-4c87-8052-8fe3459321b0' have been written to...
-    results
-
-
-    2023/04/29 15:08:54 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
 
 After the download has finished you should see the following contents in results directory.
 

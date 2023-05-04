@@ -347,23 +347,9 @@ bacalhau get $JOB_ID --output-dir results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```python
-!cat results/combined_results/stdout # displays the contents of the file
+!cat results/stdout # displays the contents of the file
 ```
-
-    Recommendations for GoldenEye (1995): 
-    
-    10  :  GoldenEye (1995)
-    16  :  Casino (1995)
-    7  :  Sabrina (1995)
-    733  :  Rock, The (1996)
-    648  :  Mission: Impossible (1996)
-    1049  :  Ghost and the Darkness, The (1996)
-    13  :  Balto (1995)
-    839  :  Crow: City of Angels, The (1996)
-    977  :  Moonlight Murder (1936)
-    349  :  Clear and Present Danger (1994)
-

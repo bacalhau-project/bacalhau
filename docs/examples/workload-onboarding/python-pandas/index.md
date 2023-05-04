@@ -138,7 +138,7 @@ bacalhau get ${JOB_ID}  --output-dir results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash

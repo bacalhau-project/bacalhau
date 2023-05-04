@@ -67,8 +67,8 @@ def submitJob(cid: str) -> str:
             "run",
             "--id-only",
             "--wait=false",
-            "--input-volumes",
-            cid + ":/inputs/data.tar.gz",
+            "--input",
+            "ipfs://" + cid + ":/inputs/data.tar.gz",
             "ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6",
         ],
         stdout=subprocess.PIPE,
@@ -115,15 +115,7 @@ def parseJobStatus(result: str) -> str:
         return ""
     r = json.loads(result)
     if len(r) > 0:
-        for _, v in r[0]["Status"]["JobState"]["Nodes"].items():
-            state = v["Shards"]["0"]["State"]
-            if state == "Completed":
-                return state
-        for _, v in r[0]["Status"]["JobState"]["Nodes"].items():
-            state = v["Shards"]["0"]["State"]
-            if state != "Cancelled":
-                return state
-        return "Error"
+        return r[0]["State"]["State"]
     return ""
 
 
@@ -161,7 +153,7 @@ def main(file: str, num_files: int = -1):
         shutil.rmtree("results", ignore_errors=True)
         os.makedirs("results", exist_ok=True)
         for r in results:
-            path = os.path.join(r, "combined_results", "outputs", "*.csv")
+            path = os.path.join(r, "outputs", "*.csv")
             csv_file = glob.glob(path)
             for f in csv_file:
                 print("moving %s to results" % f)
@@ -182,8 +174,7 @@ Let's run it!
 
 ```bash
 %%bash
-
-%cat hello-world.py
+python bacalhau.py
 ```
 
 Hopefully the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see csv files:

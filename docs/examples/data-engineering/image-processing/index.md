@@ -30,7 +30,7 @@ bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
   --id-only \
-  -i QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+  -i ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
   dpokidov/imagemagick:7.1.0-47-ubuntu \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
@@ -42,7 +42,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %env JOB_ID={job_id}
 ```
 
-The `bacalhau docker run` command allows to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows to pass input data volume with a `-i ipfs://CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 Bacalhau also mounts a data volume to store output data. The `bacalhau docker run` command creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. 
 
@@ -79,12 +79,12 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls -lah results/combined_results/outputs
+ls -lah results/outputs
 ```
 
     total 196K
@@ -109,7 +109,7 @@ To view the images, we will use **glob** to return all file paths that match a s
 ```python
 import glob
 from IPython.display import Image, display
-for imageName in glob.glob('results/combined_results/outputs/*.jpg'):
+for imageName in glob.glob('results/outputs/*.jpg'):
     display(Image(filename=imageName))
 ```
 

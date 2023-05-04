@@ -177,7 +177,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -214,10 +214,10 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/combined_results/outputs # list the contents of the current directory 
+ls results/outputs # list the contents of the current directory 
 ```

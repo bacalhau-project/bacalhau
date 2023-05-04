@@ -27,7 +27,7 @@ bacalhau docker run \
  --gpu 1 \
  --timeout 3600 \
  --wait-timeout-secs 3600 \
-  -i QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy  \
+  -i ipfs://QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy  \
   jsacex/dreambooth:full \
   -- bash finetune.sh /inputs /outputs "a photo of sbf man" "a photo of man" 3000 "/man" "/model"
 ```
@@ -37,7 +37,7 @@ bacalhau docker run \
 ```
 bacalhau docker run \
  --gpu 1 \
-  -v QmUEJPr5pfV6tRzWQuNSSb3wdcN6tRQS5tdk3dYSCJ55Xs:/SBF.ckpt \
+  -i ipfs://QmUEJPr5pfV6tRzWQuNSSb3wdcN6tRQS5tdk3dYSCJ55Xs:/SBF.ckpt \
    jsacex/stable-diffusion-ckpt \
    -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of sbf without hair" --plms --ckpt ../SBF.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
 ```
@@ -296,7 +296,7 @@ Structure of the command
 
 - No of GPUs --gpu 1
 
-- CID of the Subject Images -i bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a
+- CID of the Subject Images -i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a
 
 - Name of our Image jsacex/dreambooth:latest
 
@@ -326,7 +326,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--i bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a \
+-i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a \
 --wait \
 --id-only \
   jsacex/dreambooth:full \
@@ -337,7 +337,7 @@ If your subject fits the above class but has a different name you just need to r
 ```
  bacalhau docker run \
  --gpu 1 \
--i QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy \
+-i ipfs://QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy \
   jsacex/dreambooth:full \
 -- bash finetune.sh /inputs /outputs "a photo of sbf man" "a photo of man" 3000 "/man"  "/model"
 ```
@@ -380,9 +380,9 @@ bacalhau docker run \
 --gpu 1 \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--v bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a:/aronchick \
--v <CID-OF-THE-MODEL>:/model 
--u https://gist.githubusercontent.com/js-ts/54b270a36aa3c35fdc270640680b3bd4/raw/7d8e8fa47bc3811ef63772f7fc7f4360aa9d51a8/finetune.sh
+-i ipfs://bafybeidqbuphwkqwgrobv2vakwsh3l6b4q2mx7xspgh4l7lhulhc3dfa7a:/aronchick \
+-i ipfs://<CID-OF-THE-MODEL>:/model 
+-i https://gist.githubusercontent.com/js-ts/54b270a36aa3c35fdc270640680b3bd4/raw/7d8e8fa47bc3811ef63772f7fc7f4360aa9d51a8/finetune.sh
 --wait \
 --id-only \
   jsacex/dreambooth:lite \
@@ -460,7 +460,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --wait \
 --id-only \
--i QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg \
+-i ipfs://QmdpsqZn9BZx9XxzCsyPcJyS7yfYacmQXZxHzcuYwzmtGg \
 jsacex/stable-diffusion-ckpt \
 -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
 ```
@@ -474,7 +474,7 @@ bacalhau docker run \
 --wait-timeout-secs 3600 \
 --wait \
 --id-only \
--i QmcmD7M7pYLP8QgwjqpbP4dojRLiLuEBdhevuCD9kFmbdV \
+-i ipfs://QmcmD7M7pYLP8QgwjqpbP4dojRLiLuEBdhevuCD9kFmbdV \
 jsacex/stable-diffusion-ckpt \
 -- conda run --no-capture-output -n ldm python scripts/txt2img.py --prompt "a photo of aronchick drinking coffee" --plms --ckpt ../inputs/outputs/model.ckpt --skip_grid --n_samples 1 --skip_grid --outdir ../outputs 
 ```
@@ -525,17 +525,17 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 %%bash
-ls results/combined_results/outputs
+ls results/outputs
 
 ### Display Image
 
 
 ```python
 import IPython.display as display
-display.Image("results/combined_results/outputs/samples/00001.png")
+display.Image("results/outputs/samples/00001.png")
 ```
 
 

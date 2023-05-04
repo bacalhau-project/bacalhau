@@ -130,7 +130,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -170,7 +170,7 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 ```bash
 %%bash
-cat results/combined_results/stdout  # displays the contents of the file
+cat results/stdout  # displays the contents of the file
 ```
 
     ┌───┐
@@ -188,7 +188,7 @@ Below is the `bacalhau docker run` command to to run arbitrary SQL commands over
 ```bash
 %%bash --out job_id
 bacalhau docker run \
- -i bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \
+ -i ipfs://bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \
   --workdir /inputs \
   --id-only \
   --wait \
@@ -203,7 +203,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-i bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+* `-i ipfs://bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `davidgasquez/duckdb:latest`: the name and the tag of the docker image we are using
 
@@ -247,13 +247,14 @@ Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and
 
 ```bash
 %%bash
-cat results/combined_results/stdout
+cat results/stdout
 ```
 
     ┌──────────────┐
     │ count_star() │
+    │    int64     │
     ├──────────────┤
-    │ 24648499     │
+    │     24648499 │
     └──────────────┘
 
 

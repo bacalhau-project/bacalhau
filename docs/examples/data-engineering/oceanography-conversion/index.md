@@ -245,7 +245,7 @@ Now that we have the data in IPFS and the Docker image pushed, next is to run a 
 ```bash
 %%bash  --out job_id
 bacalhau docker run \
-        --inputs bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
+        --input ipfs://bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
         --id-only \
         --wait \
         ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py
@@ -255,7 +255,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -292,12 +292,12 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-cat results/combined_results/stdout
+cat results/stdout
 ```
 
 ## Need Support?

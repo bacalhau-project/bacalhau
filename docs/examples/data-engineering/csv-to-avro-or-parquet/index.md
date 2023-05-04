@@ -36,7 +36,7 @@ pip3 install -r csv_to_avro_or_parquet/requirements.txt
 
 
 ```python
-%%cd csv_to_avro_or_parquet
+%cd csv_to_avro_or_parquet
 ```
 
 Downloading the test dataset
@@ -144,7 +144,7 @@ With the command below, we are gmounting the CSV file for transactions from IPFS
 ```bash
 %%bash --out job_id
 bacalhau docker run \
--i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W  \
+-i ipfs://QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W  \
 --wait \
 --id-only \
 jsacex/csv-to-arrow-or-parquet \
@@ -157,7 +157,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-i QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
+* `-i ipfs://QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 
@@ -171,7 +171,7 @@ Let's look closely at the command above:
 
 ```
 bacalhau docker run \
--u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
+-i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
 jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
@@ -182,7 +182,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-u https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
+* `-i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 
@@ -196,7 +196,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -231,12 +231,12 @@ bacalhau get $JOB_ID --output-dir results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/combined_results/stdout
+ls results/outputs
 ```
 
 Alternatively, you can do this.
@@ -245,7 +245,7 @@ Alternatively, you can do this.
 ```python
 import pandas as pd
 import os
-pd.read_parquet('results/combined_results/stdout/transactions.parquet')
+pd.read_parquet('results/outputs/transactions.parquet')
 ```
 
 ## Need Support?

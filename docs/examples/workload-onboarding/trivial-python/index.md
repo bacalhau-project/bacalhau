@@ -26,8 +26,6 @@ We'll be using a very simple Python script which displays the [traditional first
 %cat hello-world.py
 ```
 
-    print("Hello, world!")
-
 ## Submit the workload
 
 To submit a workload to Bacalhau you can use the `bacalhau docker run` command. 
@@ -37,7 +35,7 @@ To submit a workload to Bacalhau you can use the `bacalhau docker run` command.
 %%bash --out job_id
 bacalhau docker run \
   --id-only \
-  --i https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
+  --input https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
   python:3.10-slim -- python3 /inputs/hello-world.py
 ```
 
@@ -48,10 +46,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=c2f245d6-43a6-43ec-9a3b-7ce9b6242c88
-
-
-The `bacalhau docker run` command allows to pass input data into the container using [content identifier (CID)](https://github.com/multiformats/cid) volumes, we will be using the `-u URL:path` [argument](https://docs.bacalhau.org/all-flags#docker-run) for simplicity. This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+The `bacalhau docker run` command allows to pass input data into the container using [content identifier (CID)](https://github.com/multiformats/cid) volumes, we will be using the `-i URL:path` [argument](https://docs.bacalhau.org/all-flags#docker-run) for simplicity. This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
 :::info
 [Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64), so we must run the full command after the `--` argument.
@@ -88,13 +83,13 @@ bacalhau get ${JOB_ID} --output-dir results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**,**per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 
 %%bash
-cat results/combined_results/stdout
+cat results/stdout
 
 ```
 

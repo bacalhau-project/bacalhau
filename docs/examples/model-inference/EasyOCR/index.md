@@ -127,8 +127,8 @@ After the repo image has been pushed to docker hub, we can now use the container
 ```bash
 %%bash --out job_id
 bacalhau docker run \
--v bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth  \
--u https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg \
+-i ipfs://bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64:/root/.EasyOCR/model/zh_sim_g2.pth  \
+-i https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
 --gpu 1  \
@@ -143,9 +143,9 @@ Since the model and the image aren't present in the container we will mount the 
 
 ### Structure of the command
 
--  `-v bafybeibvc......`: Mounting the model from IPFS
+-  `-i ipfs://bafybeibvc......`: Mounting the model from IPFS
 
-- `-u https://raw.githubusercontent.com.........` Mounting the Input Image from a URL
+- `-i https://raw.githubusercontent.com.........` Mounting the Input Image from a URL
 - `--gpu 1`: Specifying the no of GPUs
 
 - `jsacex/easyocr`: Name of the Docker image
@@ -198,11 +198,11 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
 ls results/ # list the contents of the current directory 
-cat results/combined_results/stdout # displays the contents of the current directory 
+cat results/stdout # displays the contents of the current directory 
 ```

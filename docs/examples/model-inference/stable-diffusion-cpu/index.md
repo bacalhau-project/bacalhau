@@ -60,42 +60,6 @@ sudo apt-get update
 sudo apt-get install -y libgl1 libglib2.0-0 git-lfs
 ```
 
-    Get:1 https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/ InRelease [3,626 B]
-    Ign:2 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  InRelease
-    Hit:3 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  InRelease
-    Hit:4 https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64  Release
-    Hit:5 http://archive.ubuntu.com/ubuntu bionic InRelease
-    Get:6 http://security.ubuntu.com/ubuntu bionic-security InRelease [88.7 kB]
-    Get:7 http://ppa.launchpad.net/c2d4u.team/c2d4u4.0+/ubuntu bionic InRelease [15.9 kB]
-    Get:9 http://archive.ubuntu.com/ubuntu bionic-updates InRelease [88.7 kB]
-    Hit:10 http://ppa.launchpad.net/cran/libgit2/ubuntu bionic InRelease
-    Get:11 http://security.ubuntu.com/ubuntu bionic-security/universe amd64 Packages [1,550 kB]
-    Get:12 http://archive.ubuntu.com/ubuntu bionic-backports InRelease [83.3 kB]
-    Get:13 http://ppa.launchpad.net/deadsnakes/ppa/ubuntu bionic InRelease [15.9 kB]
-    Get:14 http://archive.ubuntu.com/ubuntu bionic-updates/restricted amd64 Packages [1,227 kB]
-    Hit:15 http://ppa.launchpad.net/graphics-drivers/ppa/ubuntu bionic InRelease
-    Get:16 http://ppa.launchpad.net/c2d4u.team/c2d4u4.0+/ubuntu bionic/main Sources [2,164 kB]
-    Get:17 http://security.ubuntu.com/ubuntu bionic-security/main amd64 Packages [3,012 kB]
-    Get:18 http://archive.ubuntu.com/ubuntu bionic-updates/universe amd64 Packages [2,328 kB]
-    Get:19 http://archive.ubuntu.com/ubuntu bionic-updates/main amd64 Packages [3,444 kB]
-    Get:20 http://security.ubuntu.com/ubuntu bionic-security/restricted amd64 Packages [1,187 kB]
-    Get:21 http://ppa.launchpad.net/c2d4u.team/c2d4u4.0+/ubuntu bionic/main amd64 Packages [1,109 kB]
-    Get:22 http://ppa.launchpad.net/deadsnakes/ppa/ubuntu bionic/main amd64 Packages [45.3 kB]
-    Fetched 16.4 MB in 4s (3,885 kB/s)
-    Reading package lists...
-    Reading package lists...
-    Building dependency tree...
-    Reading state information...
-    git-lfs is already the newest version (2.3.4-1).
-    libgl1 is already the newest version (1.0.0-2ubuntu2.3).
-    libglib2.0-0 is already the newest version (2.56.4-0ubuntu0.18.04.9).
-    libglib2.0-0 set to manually installed.
-    The following package was automatically installed and is no longer required:
-      libnvidia-common-460
-    Use 'sudo apt autoremove' to remove it.
-    0 upgraded, 0 newly installed, 0 to remove and 30 not upgraded.
-
-
 ### Clone the Repository and Dependencies
 
 The following commands clone the example repository, other required repositories, and installs the Python dependencies.
@@ -111,132 +75,6 @@ git clone https://huggingface.co/bes-dev/stable-diffusion-v1-4-openvino
 pip3 install -r requirements.txt
 ```
 
-    Updated git hooks.
-    Git LFS initialized.
-    Looking in indexes: https://pypi.org/simple, https://us-python.pkg.dev/colab-wheels/public/simple/
-    Collecting numpy==1.19.5
-      Downloading numpy-1.19.5-cp37-cp37m-manylinux2010_x86_64.whl (14.8 MB)
-    Collecting opencv-python==4.5.5.64
-      Downloading opencv_python-4.5.5.64-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (60.5 MB)
-    Collecting transformers==4.16.2
-      Downloading transformers-4.16.2-py3-none-any.whl (3.5 MB)
-    Collecting diffusers==0.2.4
-      Downloading diffusers-0.2.4-py3-none-any.whl (112 kB)
-    Collecting tqdm==4.64.0
-      Downloading tqdm-4.64.0-py2.py3-none-any.whl (78 kB)
-    Collecting openvino==2022.1.0
-      Downloading openvino-2022.1.0-7019-cp37-cp37m-manylinux_2_27_x86_64.whl (26.1 MB)
-    Collecting huggingface_hub==0.9.0
-      Downloading huggingface_hub-0.9.0-py3-none-any.whl (120 kB)
-    Requirement already satisfied: scipy in /usr/local/lib/python3.7/dist-packages (from -r requirements.txt (line 8)) (1.7.3)
-    Collecting streamlit==1.12.0
-      Downloading streamlit-1.12.0-py2.py3-none-any.whl (9.1 MB)
-    Collecting watchdog==2.1.9
-      Downloading watchdog-2.1.9-py3-none-manylinux2014_x86_64.whl (78 kB)
-    Requirement already satisfied: importlib-metadata in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (5.0.0)
-    Requirement already satisfied: requests in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (2.23.0)
-    Collecting sacremoses
-      Downloading sacremoses-0.0.53.tar.gz (880 kB)
-    Collecting tokenizers!=0.11.3,>=0.10.1
-      Downloading tokenizers-0.13.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (7.6 MB)
-    Requirement already satisfied: packaging>=20.0 in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (21.3)
-    Requirement already satisfied: pyyaml>=5.1 in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (6.0)
-    Requirement already satisfied: regex!=2019.12.17 in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (2022.6.2)
-    Requirement already satisfied: filelock in /usr/local/lib/python3.7/dist-packages (from transformers==4.16.2->-r requirements.txt (line 3)) (3.8.0)
-    Requirement already satisfied: torch>=1.4 in /usr/local/lib/python3.7/dist-packages (from diffusers==0.2.4->-r requirements.txt (line 4)) (1.12.1+cu113)
-    Requirement already satisfied: Pillow in /usr/local/lib/python3.7/dist-packages (from diffusers==0.2.4->-r requirements.txt (line 4)) (7.1.2)
-    Requirement already satisfied: typing-extensions>=3.7.4.3 in /usr/local/lib/python3.7/dist-packages (from huggingface_hub==0.9.0->-r requirements.txt (line 7)) (4.1.1)
-    Requirement already satisfied: toml in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (0.10.2)
-    Collecting rich>=10.11.0
-      Downloading rich-12.6.0-py3-none-any.whl (237 kB)
-    Collecting blinker>=1.0.0
-      Downloading blinker-1.5-py2.py3-none-any.whl (12 kB)
-    Requirement already satisfied: python-dateutil in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (2.8.2)
-    Requirement already satisfied: cachetools>=4.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (4.2.4)
-    Requirement already satisfied: click>=7.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (7.1.2)
-    Requirement already satisfied: altair>=3.2.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (4.2.0)
-    Requirement already satisfied: protobuf<4,>=3.12 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (3.17.3)
-    Requirement already satisfied: tzlocal>=1.1 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (1.5.1)
-    Collecting validators>=0.2
-      Downloading validators-0.20.0.tar.gz (30 kB)
-    Collecting pydeck>=0.1.dev5
-      Downloading pydeck-0.8.0b4.dev1-py2.py3-none-any.whl (4.7 MB)
-    Requirement already satisfied: pyarrow>=4.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (6.0.1)
-    Requirement already satisfied: pandas>=0.21.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (1.3.5)
-    Collecting semver
-      Downloading semver-2.13.0-py2.py3-none-any.whl (12 kB)
-    Collecting pympler>=0.9
-      Downloading Pympler-1.0.1-py3-none-any.whl (164 kB)
-    Collecting gitpython!=3.1.19
-      Downloading GitPython-3.1.29-py3-none-any.whl (182 kB)
-    Requirement already satisfied: tornado>=5.0 in /usr/local/lib/python3.7/dist-packages (from streamlit==1.12.0->-r requirements.txt (line 9)) (5.1.1)
-    Requirement already satisfied: jinja2 in /usr/local/lib/python3.7/dist-packages (from altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (2.11.3)
-    Requirement already satisfied: jsonschema>=3.0 in /usr/local/lib/python3.7/dist-packages (from altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (4.3.3)
-    Requirement already satisfied: entrypoints in /usr/local/lib/python3.7/dist-packages (from altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (0.4)
-    Requirement already satisfied: toolz in /usr/local/lib/python3.7/dist-packages (from altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (0.12.0)
-    Collecting gitdb<5,>=4.0.1
-      Downloading gitdb-4.0.9-py3-none-any.whl (63 kB)
-    Collecting smmap<6,>=3.0.1
-      Downloading smmap-5.0.0-py3-none-any.whl (24 kB)
-    Requirement already satisfied: zipp>=0.5 in /usr/local/lib/python3.7/dist-packages (from importlib-metadata->transformers==4.16.2->-r requirements.txt (line 3)) (3.9.0)
-    Requirement already satisfied: pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0 in /usr/local/lib/python3.7/dist-packages (from jsonschema>=3.0->altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (0.18.1)
-    Requirement already satisfied: importlib-resources>=1.4.0 in /usr/local/lib/python3.7/dist-packages (from jsonschema>=3.0->altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (5.10.0)
-    Requirement already satisfied: attrs>=17.4.0 in /usr/local/lib/python3.7/dist-packages (from jsonschema>=3.0->altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (22.1.0)
-    Requirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /usr/local/lib/python3.7/dist-packages (from packaging>=20.0->transformers==4.16.2->-r requirements.txt (line 3)) (3.0.9)
-    Requirement already satisfied: pytz>=2017.3 in /usr/local/lib/python3.7/dist-packages (from pandas>=0.21.0->streamlit==1.12.0->-r requirements.txt (line 9)) (2022.4)
-    Requirement already satisfied: six>=1.9 in /usr/local/lib/python3.7/dist-packages (from protobuf<4,>=3.12->streamlit==1.12.0->-r requirements.txt (line 9)) (1.15.0)
-    Requirement already satisfied: MarkupSafe>=0.23 in /usr/local/lib/python3.7/dist-packages (from jinja2->altair>=3.2.0->streamlit==1.12.0->-r requirements.txt (line 9)) (2.0.1)
-    Requirement already satisfied: chardet<4,>=3.0.2 in /usr/local/lib/python3.7/dist-packages (from requests->transformers==4.16.2->-r requirements.txt (line 3)) (3.0.4)
-    Requirement already satisfied: idna<3,>=2.5 in /usr/local/lib/python3.7/dist-packages (from requests->transformers==4.16.2->-r requirements.txt (line 3)) (2.10)
-    Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /usr/local/lib/python3.7/dist-packages (from requests->transformers==4.16.2->-r requirements.txt (line 3)) (1.24.3)
-    Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.7/dist-packages (from requests->transformers==4.16.2->-r requirements.txt (line 3)) (2022.9.24)
-    Requirement already satisfied: pygments<3.0.0,>=2.6.0 in /usr/local/lib/python3.7/dist-packages (from rich>=10.11.0->streamlit==1.12.0->-r requirements.txt (line 9)) (2.6.1)
-    Collecting commonmark<0.10.0,>=0.9.0
-      Downloading commonmark-0.9.1-py2.py3-none-any.whl (51 kB)
-    Requirement already satisfied: decorator>=3.4.0 in /usr/local/lib/python3.7/dist-packages (from validators>=0.2->streamlit==1.12.0->-r requirements.txt (line 9)) (4.4.2)
-    Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages (from sacremoses->transformers==4.16.2->-r requirements.txt (line 3)) (1.2.0)
-    Building wheels for collected packages: validators, sacremoses
-      Building wheel for validators (setup.py): started
-      Building wheel for validators (setup.py): finished with status 'done'
-      Created wheel for validators: filename=validators-0.20.0-py3-none-any.whl size=19582 sha256=26590051d891b62435bf2dacfe6f7892c2f6d31effc4d2bb29b64745dc2db715
-      Stored in directory: /root/.cache/pip/wheels/5f/55/ab/36a76989f7f88d9ca7b1f68da6d94252bb6a8d6ad4f18e04e9
-      Building wheel for sacremoses (setup.py): started
-      Building wheel for sacremoses (setup.py): finished with status 'done'
-      Created wheel for sacremoses: filename=sacremoses-0.0.53-py3-none-any.whl size=895260 sha256=d7d5bb4237a42691e3802c2eae97905bfafd668e1bec67a4fba4420dc7e4fef7
-      Stored in directory: /root/.cache/pip/wheels/87/39/dd/a83eeef36d0bf98e7a4d1933a4ad2d660295a40613079bafc9
-    Successfully built validators sacremoses
-    Installing collected packages: smmap, numpy, tqdm, gitdb, commonmark, watchdog, validators, tokenizers, semver, sacremoses, rich, pympler, pydeck, huggingface-hub, gitpython, blinker, transformers, streamlit, openvino, opencv-python, diffusers
-      Attempting uninstall: numpy
-        Found existing installation: numpy 1.21.6
-        Uninstalling numpy-1.21.6:
-          Successfully uninstalled numpy-1.21.6
-      Attempting uninstall: tqdm
-        Found existing installation: tqdm 4.64.1
-        Uninstalling tqdm-4.64.1:
-          Successfully uninstalled tqdm-4.64.1
-      Attempting uninstall: opencv-python
-        Found existing installation: opencv-python 4.6.0.66
-        Uninstalling opencv-python-4.6.0.66:
-          Successfully uninstalled opencv-python-4.6.0.66
-    Successfully installed blinker-1.5 commonmark-0.9.1 diffusers-0.2.4 gitdb-4.0.9 gitpython-3.1.29 huggingface-hub-0.9.0 numpy-1.19.5 opencv-python-4.5.5.64 openvino-2022.1.0 pydeck-0.8.0b4.dev1 pympler-1.0.1 rich-12.6.0 sacremoses-0.0.53 semver-2.13.0 smmap-5.0.0 streamlit-1.12.0 tokenizers-0.13.1 tqdm-4.64.0 transformers-4.16.2 validators-0.20.0 watchdog-2.1.9
-
-
-    fatal: destination path 'stable_diffusion.openvino' already exists and is not an empty directory.
-    fatal: destination path 'clip-vit-large-patch14' already exists and is not an empty directory.
-    Cloning into 'stable-diffusion-v1-4-openvino'...
-    tcmalloc: large alloc 1471086592 bytes == 0x557fcdf96000 @  0x7fbf33db52a4 0x557f9119511f 0x557f9117225b 0x557f91126f33 0x557f910cb22a 0x557f910cb6e6 0x557f910e8451 0x557f910e89e9 0x557f910e8f13 0x557f9118de12 0x557f9102f162 0x557f91015a65 0x557f91016725 0x557f9101572a 0x7fbf330fcc87 0x557f9101577a
-    tcmalloc: large alloc 2206621696 bytes == 0x558025a86000 @  0x7fbf33db52a4 0x557f9119511f 0x557f9117225b 0x557f91126f33 0x557f910cb22a 0x557f910cb6e6 0x557f910e8451 0x557f910e89e9 0x557f910e8f13 0x557f9118de12 0x557f9102f162 0x557f91015a65 0x557f91016725 0x557f9101572a 0x7fbf330fcc87 0x557f9101577a
-    tcmalloc: large alloc 3309936640 bytes == 0x5580a92ec000 @  0x7fbf33db52a4 0x557f9119511f 0x557f9117225b 0x557f91126f33 0x557f910cb22a 0x557f910cb6e6 0x557f910e8451 0x557f910e89e9 0x557f910e8f13 0x557f9118de12 0x557f9102f162 0x557f91015a65 0x557f91016725 0x557f9101572a 0x7fbf330fcc87 0x557f9101577a
-    tcmalloc: large alloc 4964900864 bytes == 0x5581a09c6000 @  0x7fbf33db52a4 0x557f9119511f 0x557f9117225b 0x557f91126f33 0x557f910cb22a 0x557f910cb6e6 0x557f910e8451 0x557f910e89e9 0x557f910e8f13 0x557f9118de12 0x557f9102f162 0x557f91015a65 0x557f91016725 0x557f9101572a 0x7fbf330fcc87 0x557f9101577a
-    Filtering content: 100% (4/4), 3.97 GiB | 31.06 MiB/s, done.
-    ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-    xarray-einstats 0.2.2 requires numpy>=1.21, but you have numpy 1.19.5 which is incompatible.
-    tensorflow 2.9.2 requires numpy>=1.20, but you have numpy 1.19.5 which is incompatible.
-    jaxlib 0.3.20+cuda11.cudnn805 requires numpy>=1.20, but you have numpy 1.19.5 which is incompatible.
-    jax 0.3.21 requires numpy>=1.20, but you have numpy 1.19.5 which is incompatible.
-    cmdstanpy 1.0.7 requires numpy>=1.21, but you have numpy 1.19.5 which is incompatible.
-
-
 ### Generating an Image
 
 Now that we have all the dependencies installed, we can call the `demo.py` wrapper, which is a simple CLI, to generate an image from a prompt.
@@ -246,11 +84,6 @@ Now that we have all the dependencies installed, we can call the `demo.py` wrapp
 !cd stable_diffusion.openvino && \
   python3 demo.py --prompt "hello" --output hello.png
 ```
-
-    ftfy or spacy is not installed using BERT BasicTokenizer instead of ftfy.
-    tcmalloc: large alloc 3438092288 bytes == 0x31ba6000 @  0x7f97fabbd1e7 0x7f97e8f5d3f6 0x7f97e8c241e3 0x7f975be0f944 0x7f97e90ec49c 0x7f97e8d4e6e5 0x7f97e8cb9305 0x7f97e963a95e 0x7f97e966ad0e 0x58ec54 0x58fc01 0x51b7fd 0x5b41c5 0x4ba80a 0x537e46 0x58ff66 0x51bbc5 0x58f2a7 0x51740e 0x5b41c5 0x604133 0x606e06 0x606ecc 0x609aa6 0x64d332 0x64d4de 0x7f97fa7bac87 0x5b561a
-    32it [11:09, 20.92s/it]
-
 
 
 ```python
@@ -272,11 +105,6 @@ display.Image("stable_diffusion.openvino/hello.png")
 !cd stable_diffusion.openvino && \
   python3 demo.py --prompt "cat driving a car" --output cat.png
 ```
-
-    ftfy or spacy is not installed using BERT BasicTokenizer instead of ftfy.
-    tcmalloc: large alloc 3438092288 bytes == 0x3202e000 @  0x7fac3f2091e7 0x7fac2d5a93f6 0x7fac2d2701e3 0x7faba045b944 0x7fac2d73849c 0x7fac2d39a6e5 0x7fac2d305305 0x7fac2dc8695e 0x7fac2dcb6d0e 0x58ec54 0x58fc01 0x51b7fd 0x5b41c5 0x4ba80a 0x537e46 0x58ff66 0x51bbc5 0x58f2a7 0x51740e 0x5b41c5 0x604133 0x606e06 0x606ecc 0x609aa6 0x64d332 0x64d4de 0x7fac3ee06c87 0x5b561a
-    32it [11:13, 21.06s/it]
-
 
 
 ```python
@@ -345,9 +173,6 @@ path=!echo $PATH
 %env PATH=./:{path[0]}
 ```
 
-    env: PATH=./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
-
-
 ### Generating an Image Using Stable Diffusion on Bacalhau
 
 [Bacalhau](https://www.bacalhau.org/) is a distributed computing platform that allows you to run jobs on a network of computers. It is designed to be easy to use and to run on a variety of hardware. In this example, we will use it to run the stable diffusion model on a CPU.
@@ -373,9 +198,6 @@ bacalhau docker run ghcr.io/bacalhau-project/examples/stable-diffusion-cpu:0.0.1
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=ff7b104d-0736-434e-8e5f-dc47c457cbf5
-
-
 
 Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
 
@@ -385,10 +207,6 @@ Running the commands will output a UUID that represents the job that was created
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 14:14:05 [0m[97;40m ff7b104d [0m[97;40m Docker jsacex/stable... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmWxg6CXqZhjAa... [0m
-
 
 
 Wait until it says `Completed` and then get the results.
@@ -401,83 +219,6 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-    APIVersion: V1alpha1
-    ClientID: 77cf46c04f88ffb1c3e0e4b6e443724e8d2d87074d088ef1a6294a448fa85d2e
-    CreatedAt: "2022-10-13T14:14:05.447388688Z"
-    Deal:
-      Concurrency: 1
-    ExecutionPlan:
-      ShardsTotal: 1
-    ID: ff7b104d-0736-434e-8e5f-dc47c457cbf5
-    JobState:
-      Nodes:
-        QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3:
-          Shards:
-            "0":
-              NodeId: QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-              PublishedResults:
-                CID: QmWxg6CXqZhjAagQVxqopwhyXMHAHvTFKXYtWjzc7BJp65
-                Name: job-ff7b104d-0736-434e-8e5f-dc47c457cbf5-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-                StorageSource: IPFS
-              RunOutput:
-                exitCode: 0
-                runnerError: ""
-                stderr: "ftfy or spacy is not installed using BERT BasicTokenizer instead
-                  of ftfy.\n\r0it [00:00, ?it/s]\r1it [00:05,  5.26s/it]\r2it [00:09,
-                  \ 4.95s/it]\r3it [00:14,  4.96s/it]\r4it [00:19,  4.84s/it]\r5it [00:24,
-                  \ 4.92s/it]\r6it [00:29,  4.83s/it]\r7it [00:34,  4.84s/it]\r8it [00:39,
-                  \ 4.84s/it]\r9it [00:43,  4.78s/it]\r10it [00:48,  4.78s/it]\r11it [00:53,
-                  \ 4.77s/it]\r12it [00:58,  4.78s/it]\r13it [01:02,  4.76s/it]\r14it
-                  [01:07,  4.77s/it]\r15it [01:12,  4.81s/it]\r16it [01:17,  4.94s/it]\r17it
-                  [01:22,  4.92s/it]\r18it [01:27,  4.93s/it]\r19it [01:32,  4.91s/it]\r20it
-                  [01:37,  4.90s/it]\r21it [01:42,  4.87s/it]\r22it [01:46,  4.81s/it]\r23it
-                  [01:51,  4.81s/it]\r24it [01:56,  4.76s/it]\r25it [02:01,  4.80s/it]\r26it
-                  [02:05,  4.71s/it]\r27it [02:10,  4.65s/it]\r28it [02:14,  4.56s/it]\r29it
-                  [02:18,  4.52s/it]\r30it [02:23,  4.60s/it]\r31it [02:28,  4.60s/it]\r32it
-                  [02:32,  4.62s/it]\r32it [02:32,  4.78s/it]"
-                stderrtruncated: false
-                stdout: ""
-                stdouttruncated: false
-              State: Completed
-              Status: 'Got results proposal of length: 0'
-              VerificationResult:
-                Complete: true
-                Result: true
-        QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
-          Shards:
-            "0":
-              NodeId: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-              PublishedResults: {}
-              State: Cancelled
-              VerificationResult: {}
-    RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
-    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCehDIWl72XKJi1tsrYM9JjAWt3n6hNzrCA+IVRXixK1sJVTLMpsxEP8UKJI+koAWkAUuY8yi6DMzot0owK4VpM3PYp34HdKi2hTjzM8pjCVb70XVXt6k9bzj4KmbiQTuEkQfvwIRmgxb2jrkRdTpZmhMb1Q7StR/nrGa/bx75Vpupx1EYH6+LixYnnV5WbCUK/kjpBW8SF5v+f9ZO61KHd9DMpdhJnzocTGq17tAjHh3birke0xlP98JjxlMkzzvIAuFsnH0zBIgjmHDA1Yi5DcOPWgE0jUfGlSDC1t2xITVoofHQcXDjkHZE6OhxswNYPd7cnTf9OppLddFdQnga5AgMBAAE=
-    Spec:
-      Docker:
-        Entrypoint:
-        - python
-        - demo.py
-        - --prompt
-        - First Humans On Mars
-        - --output
-        - ../outputs/mars.png
-        Image: ghcr.io/bacalhau-project/examples/stable-diffusion-cpu:0.0.1
-      Engine: Docker
-      Language:
-        JobContext: {}
-      Publisher: Estuary
-      Resources:
-        GPU: ""
-      Sharding:
-        BatchSize: 1
-        GlobPatternBasePath: /inputs
-      Verifier: Noop
-      outputs:
-      - Name: outputs
-        StorageSource: IPFS
-        path: /outputs
-
-
 If you see that the job has completed and there are no errors, then you can download the results with the following command:
 
 
@@ -487,15 +228,13 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job 'ff7b104d-0736-434e-8e5f-dc47c457cbf5'...
-
 After the download has finished you should 
 see the following contents in results directory:
 
 
 ```bash
 %%bash
-ls results/volumes/outputs
+ls results/outputs
 ```
 
     mars.png
@@ -504,7 +243,7 @@ ls results/volumes/outputs
 
 ```python
 import IPython.display as display
-display.Image("results/volumes/outputs/mars.png")
+display.Image("results/outputs/mars.png")
 ```
 
 

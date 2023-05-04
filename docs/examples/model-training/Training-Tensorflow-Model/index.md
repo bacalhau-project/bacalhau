@@ -41,19 +41,6 @@ mkdir /inputs
 wget https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz -O /inputs/mnist.npz
 ```
 
-    --2022-11-20 16:22:30--  https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
-    Resolving storage.googleapis.com (storage.googleapis.com)... 142.251.107.128, 74.125.196.128, 74.125.31.128, ...
-    Connecting to storage.googleapis.com (storage.googleapis.com)|142.251.107.128|:443... connected.
-    HTTP request sent, awaiting response... 200 OK
-    Length: 11490434 (11M) [application/octet-stream]
-    Saving to: ‘/inputs/mnist.npz’
-    
-    /inputs/mnist.npz   100%[===================>]  10.96M  --.-KB/s    in 0.06s   
-    
-    2022-11-20 16:22:30 (197 MB/s) - ‘/inputs/mnist.npz’ saved [11490434/11490434]
-    
-
-
 
 ```python
 mnist = tf.keras.datasets.mnist
@@ -85,30 +72,12 @@ predictions = model(x_train[:1]).numpy()
 predictions
 ```
 
-
-
-
-    array([[ 0.06895044,  0.48640978, -0.07987505, -0.17886688,  0.24725397,
-             1.0431249 , -0.10117567,  0.16789079, -0.2010451 ,  0.03535672]],
-          dtype=float32)
-
-
-
 The `tf.nn.softmax` function converts these logits to *probabilities* for each class: 
 
 
 ```python
 tf.nn.softmax(predictions).numpy()
 ```
-
-
-
-
-    array([[0.08559887, 0.12994762, 0.07376222, 0.06681014, 0.10230675,
-            0.22674967, 0.07220766, 0.0945012 , 0.06534473, 0.08277106]],
-          dtype=float32)
-
-
 
 Note: It is possible to bake the `tf.nn.softmax` function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output. 
 
@@ -128,13 +97,6 @@ This untrained model gives probabilities close to random (1/10 for each class), 
 loss_fn(y_train[:1], predictions).numpy()
 ```
 
-
-
-
-    1.4839087
-
-
-
 Before you start training, configure and compile the model using Keras `Model.compile`. Set the [`optimizer`](https://www.tensorflow.org/api_docs/python/tf/keras/optimizers) class to `adam`, set the `loss` to the `loss_fn` function you defined earlier, and specify a metric to be evaluated for the model by setting the `metrics` parameter to `accuracy`.
 
 
@@ -153,41 +115,12 @@ Use the `Model.fit` method to adjust your model parameters and minimize the loss
 model.fit(x_train, y_train, epochs=5)
 ```
 
-    Epoch 1/5
-    1875/1875 [==============================] - 7s 3ms/step - loss: 0.2943 - accuracy: 0.9135
-    Epoch 2/5
-    1875/1875 [==============================] - 6s 3ms/step - loss: 0.1422 - accuracy: 0.9578
-    Epoch 3/5
-    1875/1875 [==============================] - 6s 3ms/step - loss: 0.1062 - accuracy: 0.9674
-    Epoch 4/5
-    1875/1875 [==============================] - 6s 3ms/step - loss: 0.0883 - accuracy: 0.9726
-    Epoch 5/5
-    1875/1875 [==============================] - 6s 3ms/step - loss: 0.0749 - accuracy: 0.9769
-
-
-
-
-
-    <keras.callbacks.History at 0x7f04c047b090>
-
-
-
 The `Model.evaluate` method checks the models performance, usually on a "[Validation-set](https://developers.google.com/machine-learning/glossary#validation-set)" or "[Test-set](https://developers.google.com/machine-learning/glossary#test-set)".
 
 
 ```python
 model.evaluate(x_test,  y_test, verbose=2)
 ```
-
-    313/313 - 1s - loss: 0.0761 - accuracy: 0.9764 - 678ms/epoch - 2ms/step
-
-
-
-
-
-    [0.07607811689376831, 0.9764000177383423]
-
-
 
 The image classifier is now trained to ~98% accuracy on this dataset. To learn more, read the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
 
@@ -205,28 +138,6 @@ probability_model = tf.keras.Sequential([
 ```python
 probability_model(x_test[:5])
 ```
-
-
-
-
-    <tf.Tensor: shape=(5, 10), dtype=float32, numpy=
-    array([[1.4463794e-08, 4.9821390e-11, 5.3096545e-07, 6.4825758e-06,
-            4.6462712e-12, 9.1445509e-09, 7.0135060e-14, 9.9999177e-01,
-            5.1772912e-07, 6.6403413e-07],
-           [2.0833124e-06, 3.0901673e-04, 9.9964440e-01, 2.3679955e-05,
-            1.8089418e-15, 1.6746311e-05, 3.2562471e-06, 2.7177987e-14,
-            9.4827271e-07, 4.3744217e-14],
-           [1.0844238e-06, 9.9917442e-01, 9.7250238e-05, 5.6213767e-06,
-            2.2007740e-05, 4.3266768e-06, 4.6524539e-05, 5.7350536e-04,
-            7.5031283e-05, 2.3242454e-07],
-           [9.9924928e-01, 1.2935659e-08, 2.9587129e-06, 6.2076303e-08,
-            5.5839087e-06, 3.8252725e-07, 6.2885898e-04, 6.7382875e-06,
-            7.7078841e-09, 1.0618344e-04],
-           [1.0728897e-06, 6.2215899e-09, 6.2561508e-06, 5.5923527e-07,
-            9.9002177e-01, 3.7497525e-08, 1.5157771e-06, 1.0416274e-04,
-            1.7540463e-06, 9.8627862e-03]], dtype=float32)>
-
-
 
 
 ```bash
@@ -247,9 +158,6 @@ model.save_weights('/outputs/checkpoints/my_checkpoint')
 ls /outputs/
 ```
 
-    checkpoints
-
-
 ### Converting the notebook into a python script
 
 You can use tool like `nbconvert` to convert your python notebook into a script.
@@ -266,19 +174,6 @@ copy the raw link of the gist
 wget https://gist.githubusercontent.com/js-ts/0ce4d671ced642fbe807e65f5186ae87/raw/7f28cc497cc1c509661a33b144c0683b8fc97f41/train.py
 ```
 
-    --2022-11-20 16:31:05--  https://gist.githubusercontent.com/js-ts/0ce4d671ced642fbe807e65f5186ae87/raw/7f28cc497cc1c509661a33b144c0683b8fc97f41/train.py
-    Resolving gist.githubusercontent.com (gist.githubusercontent.com)... 185.199.108.133, 185.199.109.133, 185.199.110.133, ...
-    Connecting to gist.githubusercontent.com (gist.githubusercontent.com)|185.199.108.133|:443... connected.
-    HTTP request sent, awaiting response... 200 OK
-    Length: 7100 (6.9K) [text/plain]
-    Saving to: ‘train.py’
-    
-    train.py            100%[===================>]   6.93K  --.-KB/s    in 0s      
-    
-    2022-11-20 16:31:05 (81.3 MB/s) - ‘train.py’ saved [7100/7100]
-    
-
-
 Testing whether the script works
 
 
@@ -287,41 +182,12 @@ Testing whether the script works
 python train.py
 ```
 
-    TensorFlow version: 2.9.2
-    2022-11-20 16:31:46.330673: E tensorflow/stream_executor/cuda/cuda_driver.cc:271] failed call to cuInit: CUDA_ERROR_NO_DEVICE: no CUDA-capable device is detected
-    Epoch 1/5
-    1875/1875 [==============================] - 7s 4ms/step - loss: 0.2999 - accuracy: 0.9129
-    Epoch 2/5
-    1875/1875 [==============================] - 5s 3ms/step - loss: 0.1461 - accuracy: 0.9576
-    Epoch 3/5
-    1875/1875 [==============================] - 5s 3ms/step - loss: 0.1094 - accuracy: 0.9665
-    Epoch 4/5
-    1875/1875 [==============================] - 5s 3ms/step - loss: 0.0884 - accuracy: 0.9729
-    Epoch 5/5
-    1875/1875 [==============================] - 5s 3ms/step - loss: 0.0778 - accuracy: 0.9756
-    313/313 - 1s - loss: 0.0741 - accuracy: 0.9769 - 643ms/epoch - 2ms/step
-
-
 ## Running on bacalhau
 
 
 ```python
 !curl -sL https://get.bacalhau.org/install.sh | bash
 ```
-
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.3.13 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.13/bacalhau_v0.3.13_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.3.13
-    Server Version: v0.3.13
-
 
 The dataset and the script is mounted to the tensorflow container using an URL
 we then run the script inside the container
@@ -333,23 +199,23 @@ bacalhau docker run \
 --wait \
 --id-only \
 -w /inputs  \
--u https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py \
--u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz \
+-i https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py \
+-i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz \
 tensorflow/tensorflow \
 -- python train.py
 ```
 
 Structure the of the command:
 
-* `-u  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
+* `-i  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
 
-* `-u https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz`: mount the dataset
+* `-i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz`: mount the dataset
 
 * `tensorflow/tensorflow`: specify the Docker image
 
 * `python train.py`: execute the script
 
-By default whatever URL you mount using the -u flag gets mounted at the path
+By default whatever URL you mount using the -i flag gets mounted at the path
 /inputs so we choose that as our input directory `-w /inputs`
 
 
@@ -360,10 +226,6 @@ By default whatever URL you mount using the -u flag gets mounted at the path
 %%bash
 bacalhau list --id-filter ${JOB_ID}
 ```
-
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 19:11:21 [0m[97;40m a90542f4 [0m[97;40m Docker tensorflow/te... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmSnDQHbTWTwd4... [0m
-
 
 Where it says `Completed`, that means the job is done, and we can get the results.
 
@@ -383,50 +245,20 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-    Fetching results of job '2bce6aee-99fb-40b1-bfbd-f7124cf5040a'...
-    Results for job '2bce6aee-99fb-40b1-bfbd-f7124cf5040a' have been written to...
-    results
-
-
-    2022/11/20 18:03:55 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-
-
 
 ```bash
 %%bash
 ls results/
 ```
 
-    combined_results
-    per_shard
-    raw
 
+```bash
+%%bash
+cat results/stdout
+```
 
 
 ```bash
 %%bash
-cat results/combined_results/stdout
+ls results/outputs/
 ```
-
-    TensorFlow version: 2.11.0
-    Epoch 1/5
-    1875/1875 [==============================] - 8s 4ms/step - loss: 0.2902 - accuracy: 0.9163
-    Epoch 2/5
-    1875/1875 [==============================] - 6s 3ms/step - loss: 0.1410 - accuracy: 0.9578
-    Epoch 3/5
-    1875/1875 [==============================] - 7s 4ms/step - loss: 0.1070 - accuracy: 0.9677
-    Epoch 4/5
-    1875/1875 [==============================] - 7s 4ms/step - loss: 0.0877 - accuracy: 0.9729
-    Epoch 5/5
-    1875/1875 [==============================] - 7s 4ms/step - loss: 0.0744 - accuracy: 0.9762
-    313/313 - 1s - loss: 0.0711 - accuracy: 0.9772 - 724ms/epoch - 2ms/step
-
-
-
-```bash
-%%bash
-ls results/combined_results/outputs/
-```
-
-    checkpoints
-

@@ -39,12 +39,6 @@ Generate an image using pre-trained `AFHQv2` model
 
 
 
-```bash
-%%bash
-python gen_images.py --outdir=out --trunc=1 --seeds=2 --network=stylegan3-r-afhqv2-512x512.pkl
-```
-
-
 
 Viewing the output image
 
@@ -146,7 +140,8 @@ Let's look closely at the command above:
 You can also run variations of this command to generate videos and other things. In the following command below, we will render a latent vector interpolation video. This will render a 4x2 grid of interpolations for seeds 0 through 31.
 
 
-```python
+```bash
+%%bash --out job_id
 bacalhau docker run \
 jsacex/stylegan3 \
 --gpu 1 \
@@ -175,7 +170,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -211,11 +206,16 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls results/ #list the contents of the current directory 
-cat cat results/combined_results/stdout #display the contents of the current directory 
+ls results/outputs
+```
+
+
+```python
+import IPython.display as display
+display.Image("results/outputs/seed0002.png")
 ```

@@ -92,8 +92,8 @@ bacalhau docker run \
 --id-only \
 pytorch/pytorch \
 -w /outputs \
- -v QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw:/data \
--u https://raw.githubusercontent.com/pytorch/examples/main/mnist_rnn/main.py \
+ -i ipfs://QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw:/data \
+-i https://raw.githubusercontent.com/pytorch/examples/main/mnist_rnn/main.py \
 -- python ../inputs/main.py --save-model
 ```
 
@@ -105,9 +105,9 @@ pytorch/pytorch \
 
 - `pytorch/pytorch`: Using the official pytorch Docker image
 
-- `-v QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
+- `-i ipfs://QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
 
-- `-u https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
+- `-i https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
 
 - `-w /outputs:` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
 
@@ -149,12 +149,12 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
 ls results/ # list the contents of the current directory 
-cat results/combined_results/stdout # displays the contents of the file given to it as a parameter.
-ls results/combined_results/outputs/ # list the successfully trained model
+cat results/stdout # displays the contents of the file given to it as a parameter.
+ls results/outputs/ # list the successfully trained model
 ```

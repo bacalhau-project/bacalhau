@@ -204,7 +204,7 @@ Now that we have the data in IPFS and the docker image pushed, we can run a job 
 ```bash
 %%bash --out job_id
 bacalhau docker run \
---inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
+--input ipfs://bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
 --wait \
 --id-only \
 ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py
@@ -214,7 +214,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -250,10 +250,10 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
-ls -l results/combined_results/studout/
+ls -l results/stdout/
 ```

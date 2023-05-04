@@ -171,7 +171,3 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 %%bash
 bacalhau logs ${JOB_ID}
 ```
-
-    Predicted class: 0
-    Predicted class: 0
-

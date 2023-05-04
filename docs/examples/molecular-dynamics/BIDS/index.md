@@ -48,7 +48,7 @@ bacalhau docker run \
 --wait \
 --timeout 3600 \
 --wait-timeout-secs 3600 \
--v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
+-i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
 nipreps/mriqc:latest 
 -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
 ```
@@ -59,7 +59,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
+* `-i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
 
 * `nipreps/mriqc:latest`: the name and the tag of the docker image we are using
 
@@ -74,7 +74,7 @@ When a job is submitted, Bacalhau prints out the related job_id. We store that i
 
 
 ```python
-%%env JOB_ID={job_id}
+%env JOB_ID={job_id}
 ```
 
 ## Checking the State of your Jobs
@@ -111,11 +111,11 @@ After the download has finished you should see the following contents in results
 
 ## Viewing your Job Output
 
-Each job creates 3 subfolders: the **combined_results**, **per_shard files**, and the **raw** directory. To view the file, run the following command:
+To view the file, run the following command:
 
 
 ```bash
 %%bash
 ls results/ # list the contents of the current directory 
-cat results/combined_results/stdout # displays the contents of the current directory 
+cat results/stdout # displays the contents of the current directory 
 ```
