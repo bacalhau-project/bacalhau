@@ -1,13 +1,13 @@
 //go:build unit || !integration
 
-package cache_test
+package counter_test
 
 import (
 	"math"
 	"sync"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/cache"
+	"github.com/bacalhau-project/bacalhau/pkg/cache/counter"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,7 +21,7 @@ func TestCounterSuite(t *testing.T) {
 }
 
 func (s *CounterSuite) TestSimpleAdd() {
-	c := cache.NewCounter(100)
+	c := counter.NewCounter(100)
 	c.Inc(1)
 	require.Equal(s.T(), uint64(1), c.Current())
 
@@ -41,7 +41,7 @@ func (s *CounterSuite) TestSimpleAdd() {
 func BenchmarkCounter(b *testing.B) {
 	b.StopTimer()
 
-	c := cache.NewCounter(math.MaxInt64)
+	c := counter.NewCounter(math.MaxInt64)
 
 	var start, end sync.WaitGroup
 	start.Add(1)

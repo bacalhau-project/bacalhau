@@ -1,4 +1,4 @@
-package cache
+package counter
 
 import "sync/atomic"
 
