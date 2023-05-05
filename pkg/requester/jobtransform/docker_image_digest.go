@@ -10,7 +10,7 @@ import (
 
 func DockerImageDigest() Transformer {
 	client, err := docker.NewDockerClient()
-	if err != nil || !client.IsInstalled(context.Background()) {
+	if err != nil || !client.IsInstalled(context.TODO()) {
 		// Return a noop function if docker is not installed as it means we
 		// won't be able to find digests for images.
 		return func(ctx context.Context, j *model.Job) (modified bool, err error) {
