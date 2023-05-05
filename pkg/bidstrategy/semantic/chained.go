@@ -24,7 +24,9 @@ func (c *ChainedBidStrategy) AddStrategy(strategy bidstrategy.SemanticBidStrateg
 
 // ShouldBid Iterate over all strategies, and return shouldBid if no error is thrown
 // and none of the strategies return should not bid.
-func (c *ChainedBidStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (c *ChainedBidStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	return c.delegate(ctx, func(strategy bidstrategy.SemanticBidStrategy) (bidstrategy.BidStrategyResponse, error) {
 		return strategy.ShouldBid(ctx, request)
 	})

@@ -32,7 +32,9 @@ func NewExternalCommandStrategy(params ExternalCommandStrategyParams) *ExternalC
 	}
 }
 
-func (s *ExternalCommandStrategy) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+func (s *ExternalCommandStrategy) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	if s.command == "" {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}

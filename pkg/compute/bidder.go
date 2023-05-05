@@ -138,7 +138,6 @@ func (b Bidder) doBidding(
 	request bidstrategy.BidStrategyRequest,
 	calculator capacity.UsageCalculator,
 ) (*bidstrategy.BidStrategyResponse, *model.ResourceUsageData, error) {
-
 	// Check semantic bidding strategies before calculating resource usage.
 	semanticResponse, err := b.semanticStrategy.ShouldBid(ctx, request)
 	if err != nil {
@@ -165,5 +164,4 @@ func (b Bidder) doBidding(
 		ShouldWait: semanticResponse.ShouldWait || resourceResponse.ShouldWait,
 		Reason:     "",
 	}, &resourceUsage, nil
-
 }
