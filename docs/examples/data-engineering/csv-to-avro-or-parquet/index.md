@@ -74,8 +74,9 @@ git clone https://github.com/js-ts/csv_to_avro_or_parquet/
 
 
 
-```python
-pip3 install -r csv_to_avro_or_parquet/requirements.txt
+```bash
+%%bash
+pip install -r csv_to_avro_or_parquet/requirements.txt
 ```
 
 
