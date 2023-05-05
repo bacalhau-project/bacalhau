@@ -30,6 +30,7 @@ func load(path string) *Schema {
 	if err != nil {
 		panic(err)
 	}
+
 	return (*Schema)(schema)
 }
 

@@ -1,0 +1,6 @@
+{
+  "Image": "ubuntu:23.04",
+  "Entrypoint": ["date"],
+  "EnvironmentVariables": ["hello", "world"],
+  "WorkingDirectory": "/"
+}
