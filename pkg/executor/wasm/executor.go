@@ -87,14 +87,13 @@ func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBi
 //   - mount each input at the name specified by Path
 //   - make a directory in the job results directory for each output and mount that
 //     at the name specified by Name
-func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
+func (e *Executor) makeFsFromStorage(
+	ctx context.Context,
+	jobResultsDir string,
+	volumes map[*model.StorageSpec]storage.StorageVolume,
+	outputs []model.StorageSpec) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
-
-	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
-	if err != nil {
-		return nil, err
-	}
 
 	for input, volume := range volumes {
 		log.Ctx(ctx).Debug().
@@ -174,9 +173,39 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, inputVolumes, job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
+	}
+
+	for storageSpec, storageVolume := range inputVolumes {
+		defer func(spec model.StorageSpec, volume storage.StorageVolume) {
+			provider, err := e.StorageProvider.Get(ctx, spec.StorageSource)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Err(err).
+					Str("Source", spec.StorageSource.String()).
+					Msg("failed to get storage provider in cleanup")
+				return
+			}
+
+			log.Ctx(ctx).Debug().
+				Str("Execution", executionID).
+				Msg("cleaning up inputs for execution")
+
+			err = provider.CleanupStorage(ctx, spec, volume)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Err(err).
+					Str("Source", spec.StorageSource.String()).
+					Msg("failed to cleanup volume")
+			}
+		}(*storageSpec, storageVolume)
 	}
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
