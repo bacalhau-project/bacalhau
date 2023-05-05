@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/libp2p/go-libp2p/core/host"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	compute_bidstrategies "github.com/bacalhau-project/bacalhau/pkg/compute/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
@@ -24,12 +26,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	storage_bidstrategy "github.com/bacalhau-project/bacalhau/pkg/storage/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 type Compute struct {
@@ -59,10 +59,16 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	verifiers verifier.VerifierProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
+	var executionStore store.ExecutionStore
 	// create the execution store
-	executionStore, err := createExecutionStore(host)
-	if err != nil {
-		return nil, err
+	if config.ExecutionStore == nil {
+		var err error
+		executionStore, err = createExecutionStore(host)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		executionStore = config.ExecutionStore
 	}
 
 	// executor/backend
@@ -143,40 +149,47 @@ func NewComputeNode(
 		},
 	})
 
-	biddingStrategy := config.BidStrategy
-	if biddingStrategy == nil {
-		biddingStrategy = bidstrategy.NewChainedBidStrategy(
-			bidstrategy.FromJobSelectionPolicy(config.JobSelectionPolicy),
-			compute_bidstrategies.NewMaxCapacityStrategy(compute_bidstrategies.MaxCapacityStrategyParams{
-				MaxJobRequirements: config.JobResourceLimits,
-			}),
-			compute_bidstrategies.NewAvailableCapacityStrategy(ctx, compute_bidstrategies.AvailableCapacityStrategyParams{
-				RunningCapacityTracker:  runningCapacityTracker,
-				EnqueuedCapacityTracker: enqueuedCapacityTracker,
-			}),
-			// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-			//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
-			bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
-				NetworkSize: 1,
-			}),
+	semanticBidStrat := config.BidSemanticStrategy
+	if semanticBidStrat == nil {
+		semanticBidStrat = semantic.NewChainedSemanticBidStrategy(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
-			executor_util.NewInputLocalityStrategy(executor_util.InputLocalityStrategyParams{
+			semantic.FromJobSelectionPolicy(config.JobSelectionPolicy),
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
 				Locality:  config.JobSelectionPolicy.Locality,
 				Executors: executors,
 			}),
-			bidstrategy.NewProviderInstalledStrategy[model.Verifier, verifier.Verifier](
+			semantic.NewProviderInstalledStrategy[model.Verifier, verifier.Verifier](
 				verifiers,
 				func(j *model.Job) model.Verifier { return j.Spec.Verifier },
 			),
-			bidstrategy.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
+			semantic.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
 				publishers,
 				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
 			),
-			storage_bidstrategy.NewStorageInstalledBidStrategy(storages),
-			bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
+			semantic.NewStorageInstalledBidStrategy(storages),
+			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
 				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
 				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
 				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+			}),
+			// TODO XXX: don't hardcode networkSize, calculate this dynamically from
+			//  libp2p instead somehow. https://github.com/bacalhau-project/bacalhau/issues/512
+			semantic.NewDistanceDelayStrategy(semantic.DistanceDelayStrategyParams{
+				NetworkSize: 1,
+			}),
+		)
+	}
+
+	resourceBidStrat := config.BidResourceStrategy
+	if resourceBidStrat == nil {
+		resourceBidStrat = resource.NewChainedResourceBidStrategy(
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
+				MaxJobRequirements: config.JobResourceLimits,
+			}),
+			resource.NewAvailableCapacityStrategy(ctx, resource.AvailableCapacityStrategyParams{
+				RunningCapacityTracker:  runningCapacityTracker,
+				EnqueuedCapacityTracker: enqueuedCapacityTracker,
 			}),
 		)
 	}
@@ -207,10 +220,11 @@ func NewComputeNode(
 	})
 
 	bidder := compute.NewBidder(compute.BidderParams{
-		NodeID:   host.ID().String(),
-		Strategy: biddingStrategy,
-		Store:    executionStore,
-		Callback: computeCallback,
+		NodeID:           host.ID().String(),
+		SemanticStrategy: semanticBidStrat,
+		ResourceStrategy: resourceBidStrat,
+		Store:            executionStore,
+		Callback:         computeCallback,
 		GetApproveURL: func() *url.URL {
 			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
 		},
@@ -251,7 +265,7 @@ func NewComputeNode(
 		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
-	err = computeAPIServer.RegisterAllHandlers()
+	err := computeAPIServer.RegisterAllHandlers()
 	if err != nil {
 		return nil, err
 	}

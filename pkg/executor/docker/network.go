@@ -92,7 +92,7 @@ func (e *Executor) setupNetworkForJob(
 	return
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	executionID string,
@@ -124,7 +124,9 @@ func (e *Executor) createHTTPGateway(
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
 	if len(job.Spec.Network.DomainSet()) == 0 {
-		return nil, nil, fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", model.NetworkHTTP)
+		return nil,
+			nil,
+			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", model.NetworkHTTP)
 	}
 
 	// Create the gateway container initially attached to the *host* network

@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -37,7 +38,9 @@ type ComputeConfigParams struct {
 
 	SimulatorConfig model.SimulatorConfigCompute
 
-	BidStrategy bidstrategy.BidStrategy
+	BidSemanticStrategy bidstrategy.SemanticBidStrategy
+
+	BidResourceStrategy bidstrategy.ResourceBidStrategy
 }
 
 type ComputeConfig struct {
@@ -75,7 +78,11 @@ type ComputeConfig struct {
 
 	SimulatorConfig model.SimulatorConfigCompute
 
-	BidStrategy bidstrategy.BidStrategy
+	BidSemanticStrategy bidstrategy.SemanticBidStrategy
+
+	BidResourceStrategy bidstrategy.ResourceBidStrategy
+
+	ExecutionStore store.ExecutionStore
 }
 
 func NewComputeConfigWithDefaults() ComputeConfig {
@@ -157,7 +164,8 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
 		SimulatorConfig:              params.SimulatorConfig,
-		BidStrategy:                  params.BidStrategy,
+		BidSemanticStrategy:          params.BidSemanticStrategy,
+		BidResourceStrategy:          params.BidResourceStrategy,
 	}
 
 	validateConfig(config, physicalResources)

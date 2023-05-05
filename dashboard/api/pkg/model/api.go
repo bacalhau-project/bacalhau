@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
@@ -102,7 +103,9 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 
 	// Allow good jobs to be processed immediately but hold bad jobs for moderation.
 	jobSelector := bidstrategy.NewWaitingStrategy(
-		bidstrategy.FromJobSelectionPolicy(options.SelectionPolicy),
+		bidstrategy.NewChainedBidStrategy(bidstrategy.WithSemantics(
+			semantic.FromJobSelectionPolicy(options.SelectionPolicy),
+		)),
 		false,
 		true,
 	)

@@ -136,6 +136,7 @@ func newDevStackCmd() *cobra.Command {
 	return devstackCmd
 }
 
+//nolint:gocyclo
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
