@@ -1,0 +1,6 @@
+type DockerEngineSpec struct {
+    Image String
+    Entrypoint [String]
+    EnvironmentVariables [String]
+    WorkingDirectory String
+}
