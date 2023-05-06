@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// APIClient is a utility for interacting with a node's API server.
+// APIClient is a utility for interacting with a node's API server against v1 APIs.
 type APIClient struct {
 	BaseURI        *url.URL
 	DefaultHeaders map[string]string
@@ -28,10 +28,15 @@ type APIClient struct {
 	Client *http.Client
 }
 
-// NewAPIClient returns a new client for a node's API server.
+// NewAPIClient returns a new client for a node's API server against v1 APIs
+// the client will use /api/v1 path by default is no custom path is defined
 func NewAPIClient(host string, port uint16, path ...string) *APIClient {
+	baseURI := system.MustParseURL(fmt.Sprintf("http://%s:%d", host, port)).JoinPath(path...)
+	if len(path) == 0 {
+		baseURI = baseURI.JoinPath(V1APIPrefix)
+	}
 	return &APIClient{
-		BaseURI:        system.MustParseURL(fmt.Sprintf("http://%s:%d", host, port)).JoinPath(path...),
+		BaseURI:        baseURI,
 		DefaultHeaders: map[string]string{},
 
 		Client: &http.Client{

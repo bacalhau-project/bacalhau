@@ -34,7 +34,7 @@ var DefaultAPIServerConfig = APIServerConfig{
 }
 
 type HandlerConfig struct {
-	URI                   string
+	Path                  string
 	Handler               http.Handler
 	RequestHandlerTimeout time.Duration
 	Raw                   bool // don't wrap the handler with middleware
@@ -96,18 +96,25 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 
 	// Register default handlers
 	handlerConfigs := []HandlerConfig{
-		{URI: "/id", Handler: http.HandlerFunc(server.id)},
-		{URI: "/peers", Handler: http.HandlerFunc(server.peers)},
-		{URI: "/node_info", Handler: http.HandlerFunc(server.nodeInfo)},
-		{URI: "/version", Handler: http.HandlerFunc(server.version)},
-		{URI: "/healthz", Handler: http.HandlerFunc(server.healthz)},
-		{URI: "/logz", Handler: http.HandlerFunc(server.logz)},
-		{URI: "/varz", Handler: http.HandlerFunc(server.varz)},
-		{URI: "/livez", Handler: http.HandlerFunc(server.livez)},
-		{URI: "/readyz", Handler: http.HandlerFunc(server.readyz)},
-		{URI: "/swagger/", Handler: httpSwagger.WrapHandler, Raw: true},
+		{Path: "/id", Handler: http.HandlerFunc(server.id)},
+		{Path: "/peers", Handler: http.HandlerFunc(server.peers)},
+		{Path: "/node_info", Handler: http.HandlerFunc(server.nodeInfo)},
+		{Path: "/version", Handler: http.HandlerFunc(server.version)},
+		{Path: "/healthz", Handler: http.HandlerFunc(server.healthz)},
+		{Path: "/logz", Handler: http.HandlerFunc(server.logz)},
+		{Path: "/varz", Handler: http.HandlerFunc(server.varz)},
+		{Path: "/livez", Handler: http.HandlerFunc(server.livez)},
+		{Path: "/readyz", Handler: http.HandlerFunc(server.readyz)},
+		{Path: "/swagger/", Handler: httpSwagger.WrapHandler, Raw: true},
 	}
-	err := server.RegisterHandlers(handlerConfigs...)
+
+	// register URIs at root prefix for backward compatibility before migrating to API versioning
+	// we should remove these eventually, or have throttling limits shared across versions
+	err := server.RegisterHandlers(LegacyAPIPrefix, handlerConfigs...)
+	if err != nil {
+		return nil, err
+	}
+	err = server.RegisterHandlers(V1APIPrefix, handlerConfigs...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,20 +204,21 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	return nil
 }
 
-func (apiServer *APIServer) RegisterHandlers(config ...HandlerConfig) error {
+func (apiServer *APIServer) RegisterHandlers(apiPrefix string, config ...HandlerConfig) error {
 	apiServer.handlersMu.Lock()
 	defer apiServer.handlersMu.Unlock()
 	for _, c := range config {
-		if err := apiServer.registerHandler(c); err != nil {
+		if err := apiServer.registerHandler(apiPrefix, c); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
-	if _, ok := apiServer.handlers[config.URI]; ok {
-		return fmt.Errorf("handler already registered for %s", config.URI)
+func (apiServer *APIServer) registerHandler(apiPrefix string, config HandlerConfig) error {
+	uri := apiPrefix + config.Path
+	if _, ok := apiServer.handlers[uri]; ok {
+		return fmt.Errorf("handler already registered for %s", uri)
 	}
 	if apiServer.started {
 		return fmt.Errorf("cannot register new handlers after starting the api server")
@@ -219,7 +227,7 @@ func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
 	handler := config.Handler
 	if !config.Raw {
 		// otel handler
-		handler = otelhttp.NewHandler(config.Handler, config.URI,
+		handler = otelhttp.NewHandler(config.Handler, uri,
 			otelhttp.WithPublicEndpoint(),
 			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 				return fmt.Sprintf("%s %s", r.Method, operation)
@@ -236,7 +244,7 @@ func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
 		// timeout handler. Find timeout for this endpoint, or use the fallback value
 		handlerTimeout := config.RequestHandlerTimeout
 		if handlerTimeout == 0 {
-			handlerTimeout = apiServer.config.RequestHandlerTimeoutByURI[config.URI]
+			handlerTimeout = apiServer.config.RequestHandlerTimeoutByURI[uri]
 		}
 		if handlerTimeout == 0 {
 			handlerTimeout = apiServer.config.RequestHandlerTimeout
@@ -250,6 +258,6 @@ func (apiServer *APIServer) registerHandler(config HandlerConfig) error {
 		// logging handler. Should be last in the chain.
 		handler = handlerwrapper.NewHTTPHandlerWrapper(apiServer.host.ID().String(), handler, handlerwrapper.NewJSONLogHandler())
 	}
-	apiServer.handlers[config.URI] = handler
+	apiServer.handlers[uri] = handler
 	return nil
 }
