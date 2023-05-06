@@ -1,4 +1,4 @@
-type DockerEngineSpec struct {
+type EngineSpec struct {
     Image String
     Entrypoint [String]
     EnvironmentVariables [String]
