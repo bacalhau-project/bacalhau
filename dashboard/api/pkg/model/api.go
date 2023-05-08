@@ -110,9 +110,16 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 
 	manualModerator := moderation.NewManualModerator(dashboardstore)
 
+	var resultsModerator moderation.ResultsModerator
+	if options.SelectionPolicy.RejectStatelessJobs {
+		resultsModerator = manualModerator
+	} else {
+		resultsModerator = moderation.NewStatelessModerator(postgresDB, manualModerator)
+	}
+
 	moderator := moderation.NewCombinedModerator(
 		moderation.NewSemanticBidModerator(jobSelector, manualModerator),
-		manualModerator,
+		resultsModerator,
 		moderation.NewCallbackModerator(dashboardstore, manualModerator),
 	)
 
