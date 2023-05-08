@@ -5,18 +5,18 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func ValidateExecutions(job model.Job, executions []model.ExecutionState) error {
+func ValidateExecutions(request VerifierRequest) error {
 	// minimum number of executions that should be present
-	minCount := system.Min(job.Spec.Deal.Confidence, job.Spec.Deal.Concurrency)
-	if len(executions) < minCount {
-		return NewErrInsufficientExecutions(job.ID(), minCount, len(executions))
+	minCount := system.Min(request.Deal.Confidence, request.Deal.Concurrency)
+	if len(request.Executions) < minCount {
+		return NewErrInsufficientExecutions(request.JobID, minCount, len(request.Executions))
 	}
 
 	// all executions should match the job
 	// all executions should be in a valid state
-	for _, execution := range executions {
-		if execution.JobID != job.ID() {
-			return NewErrMismatchingExecution(job.ID(), execution.ID())
+	for _, execution := range request.Executions {
+		if execution.JobID != request.JobID {
+			return NewErrMismatchingExecution(request.JobID, execution.ID())
 		}
 		if execution.State != model.ExecutionStateResultProposed {
 			return NewErrInvalidExecutionState(execution.ID(), execution.State)

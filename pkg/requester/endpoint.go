@@ -151,6 +151,10 @@ func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval bidstrategy.M
 	return node.handleBidResponse(ctx, job, approval.Response)
 }
 
+func (node *BaseEndpoint) VerifyJob(ctx context.Context, jobID string) {
+	node.queue.TransitionJobState(ctx, jobID)
+}
+
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
 	return node.queue.CancelJob(ctx, request)
 }

@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -17,6 +18,7 @@ type RequesterConfigParams struct {
 	NodeRankRandomnessRange            int
 	OverAskForBidsFactor               int
 	JobSelectionPolicy                 model.JobSelectionPolicy
+	ExternalValidatorWebhook           *url.URL
 	SimulatorConfig                    model.SimulatorConfigRequester
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
@@ -36,10 +38,11 @@ type RequesterConfig struct {
 	// HousekeepingBackgroundTaskInterval background task interval that periodically checks for expired states
 	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
-	NodeRankRandomnessRange int
-	OverAskForBidsFactor    int
-	JobSelectionPolicy      model.JobSelectionPolicy
-	SimulatorConfig         model.SimulatorConfigRequester
+	NodeRankRandomnessRange  int
+	OverAskForBidsFactor     int
+	JobSelectionPolicy       model.JobSelectionPolicy
+	ExternalValidatorWebhook *url.URL
+	SimulatorConfig          model.SimulatorConfigRequester
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion model.BuildVersionInfo
@@ -86,6 +89,7 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		JobSelectionPolicy:                 params.JobSelectionPolicy,
 		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               params.OverAskForBidsFactor,
+		ExternalValidatorWebhook:           params.ExternalValidatorWebhook,
 		SimulatorConfig:                    params.SimulatorConfig,
 		MinBacalhauVersion:                 params.MinBacalhauVersion,
 		RetryStrategy:                      params.RetryStrategy,
