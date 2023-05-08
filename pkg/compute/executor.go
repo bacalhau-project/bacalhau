@@ -115,7 +115,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		}
 	}
 
-	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, resultFolder)
+	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, execution.ID, resultFolder)
 	if err != nil {
 		err = fmt.Errorf("failed to get proposal: %w", err)
 		return

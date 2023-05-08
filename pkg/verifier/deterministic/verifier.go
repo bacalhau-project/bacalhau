@@ -49,6 +49,7 @@ func (deterministicVerifier *DeterministicVerifier) GetResultPath(
 func (deterministicVerifier *DeterministicVerifier) GetProposal(
 	ctx context.Context,
 	job model.Job,
+	executionID string,
 	resultPath string,
 ) ([]byte, error) {
 	if len(job.Metadata.Requester.RequesterPublicKey) == 0 {
@@ -97,8 +98,8 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 			existingArray = []*verifier.VerifierResult{}
 		}
 		hashGroups[hash] = append(existingArray, &verifier.VerifierResult{
-			Execution: executionState,
-			Verified:  false,
+			ExecutionID: executionState.ID(),
+			Verified:    false,
 		})
 	}
 
@@ -107,23 +108,21 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 
 func (deterministicVerifier *DeterministicVerifier) Verify(
 	ctx context.Context,
-	job model.Job,
-	executionStates []model.ExecutionState,
+	request verifier.VerifierRequest,
 ) ([]verifier.VerifierResult, error) {
-	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.DeterministicVerifier.Verify")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/verifier.DeterministicVerifier.Verify")
 	defer span.End()
 
-	err := verifier.ValidateExecutions(job, executionStates)
+	err := verifier.ValidateExecutions(request)
 	if err != nil {
 		return nil, err
 	}
-	confidence := job.Spec.Deal.Confidence
 
 	largestGroupHash := ""
 	largestGroupSize := 0
 	isVoidResult := false
 	groupSizeCounts := map[int]int{}
-	hashGroups := deterministicVerifier.getHashGroups(ctx, executionStates)
+	hashGroups := deterministicVerifier.getHashGroups(ctx, request.Executions)
 
 	for hash, group := range hashGroups {
 		if len(group) > largestGroupSize {
@@ -145,6 +144,7 @@ func (deterministicVerifier *DeterministicVerifier) Verify(
 
 	// this means that the winning group size does not
 	// meet the confidence threshold
+	confidence := request.Deal.Confidence
 	if confidence > 0 && largestGroupSize < confidence {
 		isVoidResult = true
 	}

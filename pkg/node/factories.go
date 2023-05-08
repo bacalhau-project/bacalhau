@@ -121,6 +121,7 @@ func NewStandardVerifiersFactory() VerifiersFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				publishers,
+				nodeConfig.RequesterNodeConfig.ExternalValidatorWebhook,
 				encrypter.Encrypt,
 				encrypter.Decrypt,
 			)

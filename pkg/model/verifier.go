@@ -11,6 +11,7 @@ const (
 	verifierUnknown Verifier = iota // must be first
 	VerifierNoop
 	VerifierDeterministic
+	VerifierExternal
 	verifierDone // must be last
 )
 

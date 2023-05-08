@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type startJobHandler func(context.Context, StartJobRequest) error
 type cancelJobHandler func(context.Context, CancelJobRequest) (CancelJobResult, error)
+type verifyExecutionsHandler func(context.Context, []verifier.VerifierResult) (succeeded, failed []verifier.VerifierResult)
 
 var (
 	successfulStartJobHandler startJobHandler = func(ctx context.Context, sjr StartJobRequest) error {
@@ -19,8 +21,9 @@ var (
 )
 
 type mockScheduler struct {
-	handleStartJob  startJobHandler
-	handleCancelJob cancelJobHandler
+	handleStartJob         startJobHandler
+	handleCancelJob        cancelJobHandler
+	handleVerifyExecutions verifyExecutionsHandler
 }
 
 // OnCancelComplete implements Scheduler
@@ -57,6 +60,17 @@ func (m *mockScheduler) StartJob(ctx context.Context, sjr StartJobRequest) error
 		m.handleStartJob = successfulStartJobHandler
 	}
 	return m.handleStartJob(ctx, sjr)
+}
+
+// TransitionJobState implements Scheduler
+func (m *mockScheduler) VerifyExecutions(
+	ctx context.Context,
+	results []verifier.VerifierResult,
+) (succeeded, failed []verifier.VerifierResult) {
+	if m.handleVerifyExecutions != nil {
+		return m.handleVerifyExecutions(ctx, results)
+	}
+	return results, nil
 }
 
 var _ Scheduler = (*mockScheduler)(nil)

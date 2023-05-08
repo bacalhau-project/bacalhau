@@ -5,6 +5,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
@@ -15,6 +17,8 @@ type Endpoint interface {
 	ApproveJob(context.Context, bidstrategy.ModerateJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+	// VerifyExecutions approves or rejects the publishing of an execution.
+	VerifyExecutions(context.Context, external.ExternalVerificationResponse) error
 	// ReadLogs retrieves the logs for an execution
 	ReadLogs(context.Context, ReadLogsRequest) (ReadLogsResponse, error)
 }
@@ -23,6 +27,7 @@ type Endpoint interface {
 type Scheduler interface {
 	StartJob(context.Context, StartJobRequest) error
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+	VerifyExecutions(context.Context, []verifier.VerifierResult) (succeeded, failed []verifier.VerifierResult)
 }
 
 type Queue interface {

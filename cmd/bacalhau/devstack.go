@@ -128,6 +128,11 @@ func newDevStackCmd() *cobra.Command {
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs",
 	)
+	devstackCmd.PersistentFlags().Var(
+		URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
+		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
+			"The 'external' verifier will not be enabled if this is unset.",
+	)
 
 	devstackCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	devstackCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
