@@ -47,16 +47,22 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 
 func (s *RequesterAPIServer) RegisterAllHandlers() error {
 	handlerConfigs := []publicapi.HandlerConfig{
-		{URI: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.list)},
-		{URI: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.states)},
-		{URI: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
-		{URI: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
-		{URI: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
-		{URI: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
-		{URI: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
-		{URI: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
-		{URI: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},
-		{URI: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
+		{Path: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.list)},
+		{Path: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.states)},
+		{Path: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
+		{Path: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
+		{Path: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
+		{Path: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
+		{Path: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
+		{Path: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
+		{Path: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},
+		{Path: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
 	}
-	return s.apiServer.RegisterHandlers(handlerConfigs...)
+	// register URIs at root prefix for backward compatibility before migrating to API versioning
+	// we should remove these eventually, or have throttling limits shared across versions
+	err := s.apiServer.RegisterHandlers(publicapi.LegacyAPIPrefix, handlerConfigs...)
+	if err != nil {
+		return err
+	}
+	return s.apiServer.RegisterHandlers(publicapi.V1APIPrefix, handlerConfigs...)
 }

@@ -38,8 +38,14 @@ func NewComputeAPIServer(params ComputeAPIServerParams) *ComputeAPIServer {
 
 func (s *ComputeAPIServer) RegisterAllHandlers() error {
 	handlerConfigs := []publicapi.HandlerConfig{
-		{URI: "/" + APIPrefix + APIDebugSuffix, Handler: http.HandlerFunc(s.debug)},
-		{URI: "/" + APIPrefix + APIApproveSuffix, Handler: http.HandlerFunc(s.approve)},
+		{Path: "/" + APIPrefix + APIDebugSuffix, Handler: http.HandlerFunc(s.debug)},
+		{Path: "/" + APIPrefix + APIApproveSuffix, Handler: http.HandlerFunc(s.approve)},
 	}
-	return s.apiServer.RegisterHandlers(handlerConfigs...)
+	// register URIs at root prefix for backward compatibility before migrating to API versioning
+	// we should remove these eventually, or have throttling limits shared across versions
+	err := s.apiServer.RegisterHandlers(publicapi.LegacyAPIPrefix, handlerConfigs...)
+	if err != nil {
+		return err
+	}
+	return s.apiServer.RegisterHandlers(publicapi.V1APIPrefix, handlerConfigs...)
 }
