@@ -84,7 +84,7 @@ func (s *ServerSuite) TestVarz() {
 func (s *ServerSuite) TestTimeout() {
 	config := APIServerConfig{
 		RequestHandlerTimeoutByURI: map[string]time.Duration{
-			"/logz": 10 * time.Nanosecond,
+			V1APIPrefix + "/logz": 10 * time.Nanosecond,
 		},
 	}
 	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
