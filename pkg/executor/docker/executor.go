@@ -134,7 +134,25 @@ func (e *Executor) Run(
 	// these are paths for both input and output data
 	var mounts []mount.Mount
 	for spec, volumeMount := range inputVolumes {
-		defer func() {
+		if volumeMount.Type == storage.StorageVolumeConnectorBind {
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+
+			mounts = append(mounts, mount.Mount{
+				Type: mount.TypeBind,
+				// this is an input volume so is read only
+				ReadOnly: true,
+				Source:   volumeMount.Source,
+				Target:   volumeMount.Target,
+			})
+		} else {
+			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", volumeMount.Type))
+		}
+	}
+
+	// Setup cleanup for created local folders using storage provider regardless of
+	// how we leave this function.
+	defer func() {
+		for spec, volumeMount := range inputVolumes {
 			// Obtain a provider (that was used earlier to prepare storage) so that
 			// we can tell it to cleanup the storage at the end of the execution.
 			provider, err := e.StorageProvider.Get(ctx, spec.StorageSource)
@@ -156,22 +174,8 @@ func (e *Executor) Run(
 					Str("Source", spec.StorageSource.String()).
 					Msg("failed to cleanup volume")
 			}
-		}()
-
-		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
-
-			mounts = append(mounts, mount.Mount{
-				Type: mount.TypeBind,
-				// this is an input volume so is read only
-				ReadOnly: true,
-				Source:   volumeMount.Source,
-				Target:   volumeMount.Target,
-			})
-		} else {
-			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", volumeMount.Type))
 		}
-	}
+	}()
 
 	// for this phase of the outputs we ignore the engine because it's just about collecting the
 	// data from the job and keeping it locally

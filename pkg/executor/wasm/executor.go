@@ -183,13 +183,14 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		return executor.FailResult(err)
 	}
 
-	for storageSpec, storageVolume := range inputVolumes {
-		defer func(spec model.StorageSpec, volume storage.StorageVolume) {
-			provider, err := e.StorageProvider.Get(ctx, spec.StorageSource)
+	// Cleanup the input volumes where data may have been downloaded to local disk.
+	defer func() {
+		for storageSpec, storageVolume := range inputVolumes {
+			provider, err := e.StorageProvider.Get(ctx, storageSpec.StorageSource)
 			if err != nil {
 				log.Ctx(ctx).Error().
 					Err(err).
-					Str("Source", spec.StorageSource.String()).
+					Str("Source", storageSpec.StorageSource.String()).
 					Msg("failed to get storage provider in cleanup")
 				return
 			}
@@ -198,15 +199,15 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 				Str("Execution", executionID).
 				Msg("cleaning up inputs for execution")
 
-			err = provider.CleanupStorage(ctx, spec, volume)
+			err = provider.CleanupStorage(ctx, *storageSpec, storageVolume)
 			if err != nil {
 				log.Ctx(ctx).Error().
 					Err(err).
-					Str("Source", spec.StorageSource.String()).
+					Str("Source", storageSpec.StorageSource.String()).
 					Msg("failed to cleanup volume")
 			}
-		}(*storageSpec, storageVolume)
-	}
+		}
+	}()
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
 	// configuration
