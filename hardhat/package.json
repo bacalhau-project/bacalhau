@@ -1,0 +1,30 @@
+{
+  "name": "lilypad",
+  "version": "0.1.0",
+  "scripts": {
+    "node": "hardhat node --network hardhat",
+    "compile": "hardhat compile",
+    "preabigen": "cat ./artifacts/contracts/ArtistAttribution.sol/ArtistAttribution.json | jq -r '.abi' > /tmp/ArtistAttribution.abi",
+    "abigen": "abigen --abi /tmp/ArtistAttribution.abi --pkg contract --type ArtistAttribution --out ../api/pkg/contract/ArtistAttribution.go",
+    "abicopy": "mkdir -p ../src/abi && cp -r ./artifacts/contracts/* ../src/abi",
+    "postcompile": "npm run abigen && npm run abicopy"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@openzeppelin/hardhat-upgrades": "^1.22.1",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.12.6",
+    "install": "^0.13.0",
+    "npm": "^9.4.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts-upgradeable": "^4.8.2",
+    "@types/bluebird": "^3.5.38",
+    "@types/minimist": "^1.2.2",
+    "bluebird": "^3.7.2",
+    "dotenv": "^16.0.3",
+    "hardhat-deploy": "^0.11.25",
+    "minimist": "^1.2.8"
+  }
+}
