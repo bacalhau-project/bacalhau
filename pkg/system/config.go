@@ -308,7 +308,7 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 
 	keyBlock, _ := pem.Decode(keyBytes)
 	if keyBlock == nil {
-		return nil, fmt.Errorf("failed to decode user ID key file")
+		return nil, fmt.Errorf("failed to decode user ID key file %q", keyFile)
 	}
 
 	// TODO: Add support for both rsa _and_ ecdsa private keys, see cryto.PrivateKey.
