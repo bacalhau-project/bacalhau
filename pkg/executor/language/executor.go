@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -56,6 +57,10 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return true, nil
 }
 
+func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
+	return nil
+}
+
 func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
@@ -70,16 +75,16 @@ func (e *Executor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.Reso
 
 func (e *Executor) Run(
 	ctx context.Context,
-	executionID string,
-	job model.Job,
-	jobResultsDir string,
+	env *executor.Environment,
 ) (*model.RunCommandResult, error) {
+	job := env.Execution.Job
+
 	executor, err := e.getDelegateExecutor(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	e.delegatedExecutors.Put(executionID, executor)
-	return executor.Run(ctx, executionID, job, jobResultsDir)
+	e.delegatedExecutors.Put(env.Execution.ID, executor)
+	return executor.Run(ctx, env)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -15,11 +16,15 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -106,8 +111,29 @@ func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, er
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
-	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
-	return s.executor.Run(ctx, name, j, result)
+	execution := store.Execution{
+		ID:  name,
+		Job: model.Job{Metadata: model.Metadata{ID: name}, Spec: spec},
+	}
+
+	cm := system.NewCleanupManager()
+	s.T().Cleanup(func() { cm.Cleanup(context.Background()) })
+
+	verifierMock, err := noop_verifier.NewNoopVerifierWithConfig(context.Background(), cm, noop_verifier.VerifierConfig{
+		ExternalHooks: noop_verifier.VerifierExternalHooks{
+			GetResultPath: func(ctx context.Context, executionID string, job model.Job) (string, error) {
+				_ = os.MkdirAll(result, util.OS_ALL_RWX)
+				return result, nil
+			},
+		},
+	})
+	require.NoError(s.T(), err)
+
+	env, _ := executor.NewEnvironment(execution, s.executor.StorageProvider)
+	err = env.Build(ctx, verifierMock)
+	require.NoError(s.T(), err)
+
+	return s.executor.Run(ctx, env)
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {

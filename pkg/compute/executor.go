@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -50,6 +51,8 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
+//
+//nolint:funlen
 func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID()).
@@ -99,10 +102,31 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
+	// Create a new execution environment for the provided execution and using the
+	// storage provider that the job executor was provided with earlier
+	env, err := executor.NewEnvironment(execution, jobExecutor.GetStorageProvider(ctx))
+	if err != nil {
+		return errors.Join(
+			fmt.Errorf("failed to initialize environment for compute"),
+			err,
+		)
+	}
+
+	// Builds the environment ready for use by the executor before deferring the
+	// cleanup of any resources (e.g. downloads) that were created by the build
+	err = env.Build(ctx, jobVerifier)
+	if err != nil {
+		return errors.Join(
+			fmt.Errorf("failed to build environment for compute"),
+			err,
+		)
+	}
+	defer env.Destroy(ctx) //nolint:errcheck
+
 	var runCommandResult *model.RunCommandResult
 
 	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
+		runCommandResult, err = jobExecutor.Run(ctx, env) // execution.ID, execution.Job, resultFolder)
 		if err != nil {
 			jobsFailed.Add(ctx, 1)
 		} else {

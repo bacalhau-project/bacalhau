@@ -2,14 +2,20 @@ package executor
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	exec "github.com/bacalhau-project/bacalhau/pkg/executor"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,8 +74,34 @@ func RunTestCase(
 		Spec: spec,
 	}
 
+	execution := store.Execution{
+		ID:  "test-execution",
+		Job: job,
+	}
+
+	env, err := exec.NewEnvironment(execution, executor.GetStorageProvider(ctx))
+	require.NoError(t, err)
+
+	cm := system.NewCleanupManager()
+	t.Cleanup(func() { cm.Cleanup(context.Background()) })
+
 	resultsDirectory := t.TempDir()
-	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
+
+	verifierMock, err := noop_verifier.NewNoopVerifierWithConfig(context.Background(), cm, noop_verifier.VerifierConfig{
+		ExternalHooks: noop_verifier.VerifierExternalHooks{
+			GetResultPath: func(ctx context.Context, executionID string, job model.Job) (string, error) {
+				_ = os.MkdirAll(resultsDirectory, util.OS_ALL_RWX)
+				return resultsDirectory, nil
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	err = env.Build(ctx, verifierMock)
+	require.NoError(t, err)
+	defer env.Destroy(ctx) //nolint:errcheck
+
+	runnerOutput, err := executor.Run(ctx, env)
 	require.NoError(t, err)
 	require.Empty(t, runnerOutput.ErrorMsg)
 

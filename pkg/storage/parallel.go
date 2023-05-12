@@ -25,6 +25,7 @@ func ParallelPrepareStorage(
 		addStorageSpec := func() error {
 			var storageProvider Storage
 			var volumeMount StorageVolume
+
 			storageProvider, err := provider.Get(ctx, spec.StorageSource)
 			if err != nil {
 				return err

@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
@@ -18,6 +19,7 @@ type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.Sto
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
 type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
+type ExecutorHandlerGetStorageProvider func(ctx context.Context) storage.StorageProvider
 
 func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
 	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
@@ -33,11 +35,12 @@ func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
 }
 
 type ExecutorConfigExternalHooks struct {
-	IsInstalled       ExecutorHandlerIsInstalled
-	HasStorageLocally ExecutorHandlerHasStorageLocally
-	GetVolumeSize     ExecutorHandlerGetVolumeSize
-	GetBidStrategy    ExecutorHandlerGetBidStrategy
-	JobHandler        ExecutorHandlerJobHandler
+	IsInstalled        ExecutorHandlerIsInstalled
+	HasStorageLocally  ExecutorHandlerHasStorageLocally
+	GetVolumeSize      ExecutorHandlerGetVolumeSize
+	GetBidStrategy     ExecutorHandlerGetBidStrategy
+	GetStorageProvider ExecutorHandlerGetStorageProvider
+	JobHandler         ExecutorHandlerJobHandler
 }
 
 type ExecutorConfig struct {
@@ -78,6 +81,16 @@ func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume model.Stora
 	return true, nil
 }
 
+func (e *NoopExecutor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
+	if e.Config.ExternalHooks.GetStorageProvider != nil {
+		handler := e.Config.ExternalHooks.GetStorageProvider
+		return handler(ctx)
+	}
+
+	// TODO: Find a non-nil storage provider we can use
+	return nil
+}
+
 func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	if e.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := e.Config.ExternalHooks.GetVolumeSize
@@ -104,14 +117,14 @@ func (e *NoopExecutor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.
 
 func (e *NoopExecutor) Run(
 	ctx context.Context,
-	executionID string,
-	job model.Job,
-	jobResultsDir string,
+	env *executor.Environment,
 ) (*model.RunCommandResult, error) {
+	job := env.Execution.Job
+
 	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, job, jobResultsDir)
+		return handler(ctx, job, env.OutputFolder)
 	}
 	return &model.RunCommandResult{}, nil
 }

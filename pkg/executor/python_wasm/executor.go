@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type Executor struct {
@@ -45,6 +46,14 @@ func (e *Executor) HasStorageLocally(context.Context, model.StorageSpec) (bool, 
 	return true, nil
 }
 
+func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
+	dockerExecutor, err := e.executors.Get(ctx, model.EngineDocker)
+	if err != nil {
+		return nil
+	}
+	return dockerExecutor.GetStorageProvider(ctx)
+}
+
 func (e *Executor) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
@@ -65,9 +74,12 @@ func (e *Executor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.Reso
 	return dockerExecutor.GetResourceBidStrategy(ctx)
 }
 
-func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, resultsDir string) (
+func (e *Executor) Run(ctx context.Context, env *executor.Environment) (
 	*model.RunCommandResult, error) {
 	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
+
+	job := env.Execution.Job
+
 	// translate language jobspec into a docker run command
 	job.Spec.Docker.Image = "ghcr.io/bacalhau-project/pyodide:v0.0.2"
 	if job.Spec.Language.Command != "" {
@@ -94,7 +106,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, r
 	if err != nil {
 		return nil, err
 	}
-	return dockerExecutor.Run(ctx, executionID, job, resultsDir)
+	return dockerExecutor.Run(ctx, env)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

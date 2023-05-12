@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -27,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 )
@@ -72,6 +70,10 @@ func NewExecutor(
 	return de, nil
 }
 
+func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
+	return e.StorageProvider
+}
+
 func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
 	return e.StorageProvider.Get(ctx, engine)
 }
@@ -114,26 +116,24 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
-	executionID string,
-	job model.Job,
-	jobResultsDir string,
+	env *executor.Environment,
+	// executionID string,
+	// job model.Job,
+	// jobResultsDir string,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
-	defer e.cleanupExecution(ctx, executionID)
+	defer e.cleanupExecution(ctx, env.Execution.ID)
 
-	e.activeFlags[executionID] = make(chan struct{}, 1)
+	e.activeFlags[env.Execution.ID] = make(chan struct{}, 1)
 
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
-	if err != nil {
-		return executor.FailResult(err)
-	}
+	job := env.Execution.Job
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
 	var mounts []mount.Mount
-	for spec, volumeMount := range inputVolumes {
+	for spec, volumeMount := range env.InputVolumes {
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
@@ -152,24 +152,13 @@ func (e *Executor) Run(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range job.Spec.Outputs {
-		if output.Name == "" {
-			err = fmt.Errorf("output volume has no name: %+v", output)
+	for spec, volumeMount := range env.OutputVolumes {
+		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v %+v", spec, volumeMount)
+
+		if volumeMount.Source == "" {
+			err := fmt.Errorf("output volume has no path: %+v", volumeMount.Source)
 			return executor.FailResult(err)
 		}
-
-		if output.Path == "" {
-			err = fmt.Errorf("output volume has no path: %+v", output)
-			return executor.FailResult(err)
-		}
-
-		srcd := filepath.Join(jobResultsDir, output.Name)
-		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
-		if err != nil {
-			return executor.FailResult(err)
-		}
-
-		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
 
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
@@ -179,10 +168,10 @@ func (e *Executor) Run(
 			ReadOnly: false,
 
 			// we create a named folder in the job results folder for this output
-			Source: srcd,
+			Source: volumeMount.Source,
 
 			// the path of the output volume is from the perspective of inside the container
-			Target: output.Path,
+			Target: volumeMount.Target,
 		})
 	}
 
@@ -213,7 +202,7 @@ func (e *Executor) Run(
 		Tty:        false,
 		Env:        useEnv,
 		Entrypoint: job.Spec.Docker.Entrypoint,
-		Labels:     e.containerLabels(executionID, job),
+		Labels:     e.containerLabels(env.Execution.ID, job),
 		WorkingDir: job.Spec.Docker.WorkingDirectory,
 	}
 
@@ -243,7 +232,7 @@ func (e *Executor) Run(
 	}
 
 	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, executionID, job, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, env.Execution.ID, job, containerConfig, hostConfig)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -254,7 +243,7 @@ func (e *Executor) Run(
 		hostConfig,
 		nil,
 		nil,
-		e.containerName(executionID, job),
+		e.containerName(env.Execution.ID, job),
 	)
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
@@ -262,7 +251,7 @@ func (e *Executor) Run(
 
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
-	e.activeFlags[executionID] <- struct{}{}
+	e.activeFlags[env.Execution.ID] <- struct{}{}
 
 	containerStartError := e.client.ContainerStart(
 		ctx,
@@ -305,7 +294,7 @@ func (e *Executor) Run(
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
 	return executor.WriteJobResults(
-		jobResultsDir,
+		env.OutputFolder,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),

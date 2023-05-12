@@ -49,8 +49,9 @@ func waitForOutputStream(ctx context.Context, executionID string, withHistory bo
 				return nil, err
 			}
 
-			time.Sleep(time.Duration(500) * time.Millisecond)
+			time.Sleep(time.Duration(200) * time.Millisecond)
 		}
+
 		if reader != nil {
 			return reader, nil
 		}

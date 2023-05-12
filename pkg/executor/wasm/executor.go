@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/c2h5oh/datasize"
@@ -24,7 +23,6 @@ import (
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
@@ -61,6 +59,10 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return s.HasStorageLocally(ctx, volume)
 }
 
+func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
+	return e.StorageProvider
+}
+
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
@@ -87,16 +89,11 @@ func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBi
 //   - mount each input at the name specified by Path
 //   - make a directory in the job results directory for each output and mount that
 //     at the name specified by Name
-func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
+func (e *Executor) makeFsFromStorage(ctx context.Context, env *executor.Environment) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
-	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
-	if err != nil {
-		return nil, err
-	}
-
-	for input, volume := range volumes {
+	for input, volume := range env.InputVolumes {
 		log.Ctx(ctx).Debug().
 			Str("input", input.Path).
 			Str("source", volume.Source).
@@ -121,27 +118,8 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 		}
 	}
 
-	for _, output := range outputs {
-		if output.Name == "" {
-			return nil, fmt.Errorf("output volume has no name: %+v", output)
-		}
-
-		if output.Path == "" {
-			return nil, fmt.Errorf("output volume has no path: %+v", output)
-		}
-
-		srcd := filepath.Join(jobResultsDir, output.Name)
-		log.Ctx(ctx).Debug().
-			Str("output", output.Name).
-			Str("dir", srcd).
-			Msg("Collecting output")
-
-		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
-		if err != nil {
-			return nil, err
-		}
-
-		err = rootFs.Mount(output.Name, touchfs.New(srcd))
+	for _, output := range env.OutputVolumes {
+		err = rootFs.Mount(output.Target, touchfs.New(output.Source))
 		if err != nil {
 			return nil, err
 		}
@@ -151,9 +129,11 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 }
 
 //nolint:funlen
-func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
+func (e *Executor) Run(ctx context.Context, env *executor.Environment) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
+
+	job := env.Execution.Job
 
 	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
 
@@ -174,14 +154,14 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, env)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
 	// configuration
-	logs, err := wasmlogs.NewLogManager(ctx, executionID)
+	logs, err := wasmlogs.NewLogManager(ctx, env.Execution.ID)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -189,12 +169,12 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 
 	// Store the LogManager for the lifetime of the execution, making sure to tidy up
 	// once complete.
-	e.logManagers.Put(executionID, logs)
+	e.logManagers.Put(env.Execution.ID, logs)
 	defer func() {
-		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("cleaning up logmanager for execution")
+		log.Ctx(ctx).Debug().Str("Execution", env.Execution.ID).Msg("cleaning up logmanager for execution")
 		logs.Close()
-		e.logManagers.Delete(executionID)
-		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("logmanager being removed")
+		e.logManagers.Delete(env.Execution.ID)
+		log.Ctx(ctx).Debug().Str("Execution", env.Execution.ID).Msg("logmanager being removed")
 	}()
 
 	// Configure the modules. We don't want to execute any start functions
@@ -240,7 +220,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	log.Ctx(ctx).Debug().
 		Str("entryPoint", job.Spec.Wasm.EntryPoint).
 		Str("job", job.ID()).
-		Str("execution", executionID).
+		Str("execution", env.Execution.ID).
 		Msg("Running WASM job")
 	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
 	exitCode := -1
@@ -257,7 +237,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-	return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
+	return executor.WriteJobResults(env.OutputFolder, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

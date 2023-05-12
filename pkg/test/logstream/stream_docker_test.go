@@ -6,10 +6,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -38,9 +42,30 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	executionID := uuid.New().String()
 
 	go func() {
+		cm := system.NewCleanupManager()
+		s.T().Cleanup(func() { cm.Cleanup(context.Background()) })
+
+		result := s.T().TempDir()
+
+		execution := store.Execution{
+			ID:  executionID,
+			Job: *job,
+		}
+		verifierMock, err := noop_verifier.NewNoopVerifierWithConfig(context.Background(), cm, noop_verifier.VerifierConfig{
+			ExternalHooks: noop_verifier.VerifierExternalHooks{
+				GetResultPath: func(ctx context.Context, executionID string, job model.Job) (string, error) {
+					return result, nil
+				},
+			},
+		})
+		require.NoError(s.T(), err)
+
+		ex, _ := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
+		env, _ := executor.NewEnvironment(execution, ex.GetStorageProvider(s.ctx))
+		env.Build(s.ctx, verifierMock)
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, _ = exec.Run(ctx, executionID, *job, "/tmp")
+		_, _ = exec.Run(ctx, env)
 		fail <- true
 	}()
 
