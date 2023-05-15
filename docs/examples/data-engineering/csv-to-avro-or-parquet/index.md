@@ -30,12 +30,6 @@ Installing dependencies
 
 
 
-```bash
-%%bash
-git clone https://github.com/bacalhau-project/csv_to_avro_or_parquet
-```
-
-
 ```python
 %cd csv_to_avro_or_parquet
 ```
