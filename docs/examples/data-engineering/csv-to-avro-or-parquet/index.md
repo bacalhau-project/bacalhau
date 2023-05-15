@@ -34,14 +34,6 @@ Installing dependencies
 %cd csv_to_avro_or_parquet
 ```
 
-Downloading the test dataset
-
-
-
-```python
-!wget https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv  
-```
-
 ## Install the following dependencies 
 
 Run the following commands:
