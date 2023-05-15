@@ -13,7 +13,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -48,6 +50,11 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		}
 
 		for _, testFile := range testFiles {
+			if strings.Contains(testFile, "s3") && !s3helper.CanRunS3Test() {
+				// Skip the S3 tests if we have no AWS credentials installed
+				s.T().Skip("No valid AWS credentials found")
+			}
+
 			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
 			if strings.Contains(testFile, "docker") {
 				docker.MustHaveDocker(s.T())
