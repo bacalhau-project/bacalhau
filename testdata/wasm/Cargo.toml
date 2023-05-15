@@ -1,0 +1,15 @@
+
+
+[workspace]
+members = [
+    "cat",
+    "csv",
+    "dynamic",
+    "env",
+    "exit_code",
+    "logtest",
+    "noop",
+]
+
+[profile.release]
+strip = "debuginfo"
