@@ -294,16 +294,24 @@ func (c *Client) ImageDistribution(
 	if !forceRemote {
 		info, _, err := c.ImageInspectWithRaw(ctx, image)
 		if err == nil {
-			return &ImageManifest{
-				digest: info.ID,
-				platforms: []v1.Platform{
-					{
-						Architecture: info.Architecture,
-						OS:           info.Os,
-						OSVersion:    info.OsVersion,
+			repos := info.RepoDigests
+			if len(repos) >= 1 {
+				// We only want the digest part of the name, otherwise we would have
+				// to go through supporting two different values in the returned
+				// ImageManifest (fully qualified IDs and also just digests)
+				digestParts := strings.Split(repos[0], ":")
+
+				return &ImageManifest{
+					digest: digestParts[1],
+					platforms: []v1.Platform{
+						{
+							Architecture: info.Architecture,
+							OS:           info.Os,
+							OSVersion:    info.OsVersion,
+						},
 					},
-				},
-			}, nil
+				}, nil
+			}
 		}
 	}
 
