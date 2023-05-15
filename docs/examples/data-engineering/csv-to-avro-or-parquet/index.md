@@ -20,7 +20,9 @@ Converting CSV stored in public storage with Bacalhau
 ## Prerequisites
 
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
-
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
 ## Running CSV to Arvo or Parquet Locally​
 
 
@@ -30,53 +32,7 @@ Installing dependencies
 
 ```bash
 %%bash
-git clone https://github.com/js-ts/csv_to_avro_or_parquet/
-```
-
-    fatal: destination path 'csv_to_avro_or_parquet' already exists and is not an empty directory.
-
-
-
-    ---------------------------------------------------------------------------
-
-    CalledProcessError                        Traceback (most recent call last)
-
-    Cell In[1], line 1
-    ----> 1 get_ipython().run_cell_magic('bash', '', 'git clone https://github.com/js-ts/csv_to_avro_or_parquet/\n')
-
-
-    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/interactiveshell.py:2430, in InteractiveShell.run_cell_magic(self, magic_name, line, cell)
-       2428 with self.builtin_trap:
-       2429     args = (magic_arg_s, cell)
-    -> 2430     result = fn(*args, **kwargs)
-       2432 # The code below prevents the output from being displayed
-       2433 # when using magics with decodator @output_can_be_silenced
-       2434 # when the last Python token in the expression is a ';'.
-       2435 if getattr(fn, magic.MAGIC_OUTPUT_CAN_BE_SILENCED, False):
-
-
-    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:153, in ScriptMagics._make_script_magic.<locals>.named_script_magic(line, cell)
-        151 else:
-        152     line = script
-    --> 153 return self.shebang(line, cell)
-
-
-    File ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/IPython/core/magics/script.py:305, in ScriptMagics.shebang(self, line, cell)
-        300 if args.raise_error and p.returncode != 0:
-        301     # If we get here and p.returncode is still None, we must have
-        302     # killed it but not yet seen its return code. We don't wait for it,
-        303     # in case it's stuck in uninterruptible sleep. -9 = SIGKILL
-        304     rc = p.returncode or -9
-    --> 305     raise CalledProcessError(rc, cell)
-
-
-    CalledProcessError: Command 'b'git clone https://github.com/js-ts/csv_to_avro_or_parquet/\n'' returned non-zero exit status 128.
-
-
-
-```bash
-%%bash
-pip install -r csv_to_avro_or_parquet/requirements.txt
+git clone https://github.com/bacalhau-project/csv_to_avro_or_parquet
 ```
 
 
@@ -89,10 +45,39 @@ Downloading the test dataset
 
 
 ```python
-!wget https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv  
+!wget https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv  
 ```
 
-Running the conversion script arguments
+## Install the following dependencies 
+
+Run the following commands:
+
+
+```bash
+
+%%bash
+pip install fastavro
+```
+
+
+```bash
+
+%%bash
+pip install numpy
+```
+
+
+```bash
+
+%%bash
+pip install pandas
+```
+
+
+```bash
+%%bash
+pip install pyarrow
+```
 
 
 ```bash
@@ -100,12 +85,6 @@ Running the conversion script arguments
 python3 src/converter.py ./movies.csv  ./movies.parquet parquet
 
 # python converter.py path_to_csv path_to_result_file extension
-```
-
-
-```bash
-%%bash
-pip install pandas
 ```
 
 Viewing the parquet file
@@ -129,7 +108,7 @@ FROM python:3.8
 
 RUN apt update && apt install git
 
-RUN git clone https://github.com/js-ts/Sparkov_Data_Generation/
+RUN git clone https://github.com/bacalhau-project/Sparkov_Data_Generation
 
 WORKDIR /Sparkov_Data_Generation/
 
@@ -186,6 +165,13 @@ To submit a job, we are going to either mount the script from a IPFS or from an 
 With the command below, we are gmounting the CSV file for transactions from IPFS
 
 
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+
 ```bash
 %%bash --out job_id
 bacalhau docker run \
@@ -212,11 +198,14 @@ Let's look closely at the command above:
 
 * `python3 src/converter.py`: execute the script
 
-### Mounting the CSV File from an URL
+### Mounting the CSV File from a URL
+To mount the CSV file from a URL
 
-```
+
+```bash
+%%bash --out job_id
 bacalhau docker run \
--i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv   
+-i https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv \
 jsacex/csv-to-arrow-or-parquet \
 -- python3 src/converter.py ../inputs/movies.csv  ../outputs/movies.parquet parquet
 ```
@@ -227,7 +216,7 @@ Let's look closely at the command above:
 
 * `bacalhau docker run`: call to bacalhau 
   
-* `-i https://raw.githubusercontent.com/js-ts/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
+* `-i https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 
@@ -244,15 +233,26 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 %env JOB_ID={job_id}
 ```
 
+    env: JOB_ID=bacalhau describe 71ecde0e-dac3-4c8d-bf2e-7a92cc54425e
+
+
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`.
+- **Job status**: You can check the status of the job using `bacalhau list`. 
+
+:::note
+Replace the {JOB_ID} with your generated ID.
+:::
 
 
 ```bash
 %%bash
-bacalhau list --id-filter ${JOB_ID}
+bacalhau list --id-filter={JOB_ID} 
 ```
+
+    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
+    [97;40m 16:53:30 [0m[97;40m 71ecde0e [0m[97;40m Docker jsacex/csv-to... [0m[97;40m Completed [0m[97;40m          [0m[97;40m ipfs://QmP5PbbJZ1fdq... [0m
+
 
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
@@ -262,7 +262,7 @@ When it says `Published` or `Completed`, that means the job is done, and we can 
 
 ```bash
 %%bash
-bacalhau describe ${JOB_ID}
+bacalhau describe {JOB_ID}
 ```
 
 - **Job download**: You can download your job results directly by using `bacalhau get`. Alternatively, you can choose to create a directory to store your results. In the command below, we created a directory and downloaded our job output to be stored in that directory.
@@ -271,7 +271,7 @@ bacalhau describe ${JOB_ID}
 ```bash
 %%bash
 rm -rf results && mkdir -p results
-bacalhau get $JOB_ID --output-dir results
+bacalhau get ${JOB_ID} --output-dir results
 ```
 
 ## Viewing your Job Output
