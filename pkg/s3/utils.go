@@ -31,3 +31,12 @@ func HasValidCredentials(config aws.Config) bool {
 	}
 	return credentials.HasKeys()
 }
+
+func CanRunS3Test() bool {
+	cfg, err := DefaultAWSConfig()
+	if err != nil {
+		return false
+	}
+
+	return HasValidCredentials(cfg)
+}
