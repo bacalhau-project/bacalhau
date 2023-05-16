@@ -445,7 +445,10 @@ func getAuthToken(ctx context.Context, image string, dockerCreds config.DockerCr
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to encode docker credentials")
 			} else {
-				log.Ctx(ctx).Info().Msg("authenticated inspect from docker registry")
+				log.Ctx(ctx).
+					Info().
+					Str("Image", image).
+					Msg("authenticated inspect from docker registry")
 				return base64.URLEncoding.EncodeToString(encodedJSON)
 			}
 		} else {
