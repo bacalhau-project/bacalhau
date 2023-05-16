@@ -1,14 +1,35 @@
 ## MODICUM demo
 
-Have docker and node.js >= v16 installed.
+Have docker, ngrok and node.js >= v16 installed.
 
-The following commands run in a tmux pane - they will boot and start geth:
+### setup block explorer
+
+Login to https://app.tryethernal.com/settings?tab=workspace and click "RESET WORKSPACE" at the bottom.
+
+Open a new pane:
 
 ```bash
+ngrok http 10000
+```
+
+Copy the https url from ngrok and paste it as the RPC Server field in ethereal then click "Update".
+
+Then in another terminal we run the hardhat node:
+
+```bash
+git clone git@github.com:bacalhau-project/MODICUM.git
 cd MODICUM/src/js
 npm install
+export ETHERNAL_EMAIL=kaiyadavenport@gmail.com
+export ETHERNAL_PASSWORD=XXX
 npx hardhat node --port 10000
 ```
+
+Visit https://app.tryethernal.com/blocks in the browser.
+
+IMPORTANT: each time you restart the demo - click "RESET WORKSPACE" at the bottom of the settings page on ethereal.
+
+### various system tasks
 
 Update your SSH config file to add an extra Port 222:
 ```
@@ -42,6 +63,7 @@ pip3 install -e .
 Now activate the virtual env in all panes:
 
 ```bash
+cd src/python
 . ./venv/bin/activate
 source .env
 ```
@@ -62,19 +84,7 @@ Now we adjust the values on the `src/python/.env` file paying note to the follow
  * `pubkey` = the public key we just generated
  * `sshkey` = the path to the private key we just generated
 
-Then we source the file and compile the contracts:
-
-```bash
-cd MODICUM/src/python/
-source .env
-echo $CONTRACTSRC
-docker run -it --rm\
-		--name solcTest \
-		--mount type=bind,source="${CONTRACTSRC}",target=/solidity/input \
-		--mount type=bind,source="${CONTRACTSRC}/output",target=/solidity/output \
-		ethereum/solc:0.4.25 \
-		--overwrite --bin --bin-runtime --ast --abi --asm -o /solidity/output /solidity/input/Modicum.sol
-```
+### influx DB
 
 Then we setup influxDB - in another pane:
 
@@ -94,11 +104,30 @@ docker exec -ti influx influx
 exit
 ```
 
+### compile contracts
+
+Then we source the file and compile the contracts:
+
+```bash
+cd MODICUM/src/python/
+source .env
+echo $CONTRACTSRC
+docker run -it --rm\
+		--name solcTest \
+		--mount type=bind,source="${CONTRACTSRC}",target=/solidity/input \
+		--mount type=bind,source="${CONTRACTSRC}/output",target=/solidity/output \
+		ethereum/solc:0.4.25 \
+		--overwrite --bin --bin-runtime --ast --abi --asm -o /solidity/output /solidity/input/Modicum.sol
+```
+
+Ignore the warnings.
+
+### run services
+
 Now we start the various processes (each in it's own pane):
 
 IMPORTANT: don't forget to activate the virtualenv in each pane!
 IMPORTANT: don't forget to `source .env` in each pane!
-
 IMPORTANT: run these in this exact order!
 
 ```bash
@@ -118,6 +147,8 @@ sudo modicum runAsDir
 modicum runAsMediator
 ```
 
+NOTE: replace this path with the absolute path on your system
+
 ```bash
 modicum startRP --path /home/kai/projects/protocol-labs/MODICUM/0_experiments/demo/ --index 1
 ```
@@ -126,3 +157,5 @@ modicum startRP --path /home/kai/projects/protocol-labs/MODICUM/0_experiments/de
 ```bash
 modicum startJC --playerpath /home/kai/projects/protocol-labs/MODICUM/0_experiments/demo/ --index 0
 ```
+
+Keep an eye out on the `startRP` pane - the bacalhau job ID will get printed there with a link to it on the dashboard.
