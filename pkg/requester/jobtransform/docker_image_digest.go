@@ -9,16 +9,14 @@ import (
 )
 
 func DockerImageDigest() Transformer {
-	client, err := docker.NewDockerClient()
-	if err != nil || !client.IsInstalled(context.TODO()) {
-		// Return a noop function if docker is not installed as it means we
-		// won't be able to find digests for images.
-		return func(ctx context.Context, j *model.Job) (modified bool, err error) {
+	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
+		client, err := docker.NewDockerClient()
+		if err != nil || !client.IsInstalled(ctx) {
+			// Return a noop if docker is not installed as it means we
+			// won't be able to find digests for images in the requester
 			return false, nil
 		}
-	}
 
-	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
 		if j.Spec.Engine != model.EngineDocker {
 			return false, nil
 		}
