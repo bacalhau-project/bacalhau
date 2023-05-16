@@ -98,6 +98,7 @@ func (s *ImageResolverSuite) TestResolverCases() {
 			expected:    "ubuntu@sha256:hash",
 			resolver:    valueResolver("hash"),
 		},
+		// Uncomment following block to perform a remote resolution using docker hub
 		// {
 		// 	name:        "remote resolver",
 		// 	image:       "ubuntu:kinetic",
