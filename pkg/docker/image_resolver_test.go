@@ -23,7 +23,7 @@ func TestImageResolverSuite(t *testing.T) {
 	suite.Run(t, new(ImageResolverSuite))
 }
 
-func errorResolver(c context.Context, i string, forceRemote bool, creds config.DockerCredentials) (*ImageManifest, error) {
+func errorResolver(c context.Context, i string, creds config.DockerCredentials) (*ImageManifest, error) {
 	return nil, fmt.Errorf("an error occurred")
 }
 
@@ -33,7 +33,7 @@ func fullResolver() imageResolverFunc {
 }
 
 func valueResolver(val string) imageResolverFunc {
-	return func(c context.Context, i string, forceRemote bool, creds config.DockerCredentials) (*ImageManifest, error) {
+	return func(c context.Context, i string, creds config.DockerCredentials) (*ImageManifest, error) {
 		return &ImageManifest{digest: fmt.Sprintf("sha256:%s", val)}, nil
 	}
 }

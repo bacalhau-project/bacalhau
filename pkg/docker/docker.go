@@ -293,8 +293,7 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 //
 // This is the image that will finally be installed.
 func (c *Client) ImageDistribution(
-	ctx context.Context, image string,
-	forceRemote bool, creds config.DockerCredentials,
+	ctx context.Context, image string, creds config.DockerCredentials,
 ) (*ImageManifest, error) {
 	// Check whether the requested image (e.g. ubuntu:kinetic) is available from
 	// the local docker daemon from a previous download, and use that digest.

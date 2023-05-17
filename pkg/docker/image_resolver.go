@@ -38,7 +38,7 @@ func (r *ImageResolver) Resolve(ctx context.Context, resolver imageResolverFunc,
 	}
 
 	credentials := config.GetDockerCredentials()
-	manifest, err := resolver(ctx, r.source.String(), false, credentials)
+	manifest, err := resolver(ctx, r.source.String(), credentials)
 	if err != nil {
 		log.Ctx(ctx).Error().
 			Err(err).
