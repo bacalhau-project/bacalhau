@@ -10,6 +10,7 @@ import (
 type imageResolverFunc func(context.Context, string, bool, config.DockerCredentials) (*ImageManifest, error)
 
 type ImageManifest struct {
+	// We only ever expect the digest to be the `algorithm:hash`
 	digest    string
 	platforms []v1.Platform
 }

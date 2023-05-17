@@ -79,7 +79,8 @@ func NewImageID(imageID string) (*ImageID, error) {
 	}
 
 	if digested, ok := repo.(reference.Digested); ok {
-		digest := fmt.Sprintf("sha256:%s", digested.Digest().Encoded())
+		obj := digested.Digest()
+		digest := fmt.Sprintf("%s:%s", obj.Algorithm().String(), obj.Encoded())
 		id.tag = DigestTag(digest)
 	} else if tagged, ok := repo.(reference.Tagged); ok {
 		id.tag = NameTag(tagged.Tag())

@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -43,19 +42,13 @@ func (r *ImageResolver) Resolve(ctx context.Context, resolver imageResolverFunc,
 	if err != nil {
 		log.Ctx(ctx).Error().
 			Err(err).
-			Str("Image", r.source.String()).
+			Stringer("Image", r.source).
 			Msg("failed to get image digest")
 		return err
 	}
 
-	if !strings.HasPrefix(manifest.digest, "sha256") {
-		// Need to make sure digest is complete and not just a partial
-		manifest.digest = fmt.Sprintf("sha256:%s", manifest.digest)
-	}
-
 	cloned, _ := NewImageID(r.source.String())
 	cloned.tag = DigestTag(manifest.digest)
-
 	r.resolved = cloned.String()
 
 	// Save a copy of the digest in the local cache for a set period of time

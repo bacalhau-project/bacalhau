@@ -242,9 +242,16 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 }
 
 // ImageDistribution fetches the details for the specified image by asking
-// docker to fetch the distribution manifest from the registry. The digest
+// docker to fetch the distribution manifest from the remote registry. This
+// manifest will contain information on the digest along with the details
+// of the platform that the image supports.
+//
+// It is worth noting that if the call is made to the docker hub, the digest
 // retrieved may not appear accurate when compared to the hub website but
-// this is expected.
+// this is expected as the non-platform-specific digest is not displayed
+// on the docker hub. This digest is safe however as both manual and
+// programmatic pulls do the correct thing in retrieving the correct image
+// for the platform.
 //
 // cf:
 //   - https://github.com/moby/moby/issues/40636)
@@ -289,29 +296,29 @@ func (c *Client) ImageDistribution(
 	ctx context.Context, image string,
 	forceRemote bool, creds config.DockerCredentials,
 ) (*ImageManifest, error) {
-	// Check the local repository first to see if we already have this image and if so,
-	// return those details, but only if the caller did not set forceRemote
-	if !forceRemote {
-		info, _, err := c.ImageInspectWithRaw(ctx, image)
-		if err == nil {
-			repos := info.RepoDigests
-			if len(repos) >= 1 {
-				// We only want the digest part of the name, otherwise we would have
-				// to go through supporting two different values in the returned
-				// ImageManifest (fully qualified IDs and also just digests)
-				digestParts := strings.Split(repos[0], ":")
-
-				return &ImageManifest{
-					digest: digestParts[1],
-					platforms: []v1.Platform{
-						{
-							Architecture: info.Architecture,
-							OS:           info.Os,
-							OSVersion:    info.OsVersion,
-						},
+	// Check whether the requested image (e.g. ubuntu:kinetic) is available from
+	// the local docker daemon from a previous download, and use that digest.
+	// There is no guarantee that this digest is 100% the most recent digest for
+	// the provided image tag, it may have changed remotely and unless we
+	// explicitly query for it remotely, we will never know it has been updated.
+	info, _, err := c.ImageInspectWithRaw(ctx, image)
+	if err == nil {
+		repos := info.RepoDigests
+		if len(repos) >= 1 {
+			// We only want the digest part of the name, otherwise we would have
+			// to go through supporting two different values in the returned
+			// ImageManifest (fully qualified IDs and also just digests)
+			digestParts := strings.Split(repos[0], "@")
+			return &ImageManifest{
+				digest: digestParts[1],
+				platforms: []v1.Platform{
+					{
+						Architecture: info.Architecture,
+						OS:           info.Os,
+						OSVersion:    info.OsVersion,
 					},
-				}, nil
-			}
+				},
+			}, nil
 		}
 	}
 
@@ -321,8 +328,9 @@ func (c *Client) ImageDistribution(
 		return nil, err
 	}
 
+	obj := dist.Descriptor.Digest
 	manifest := &ImageManifest{
-		digest: dist.Descriptor.Digest.Encoded(),
+		digest: fmt.Sprintf("%s:%s", obj.Algorithm().String(), obj.Encoded()),
 	}
 	copy(manifest.platforms, dist.Platforms)
 	return manifest, nil

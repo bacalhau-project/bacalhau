@@ -9,14 +9,19 @@ import (
 )
 
 func DockerImageDigest() Transformer {
-	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		client, err := docker.NewDockerClient()
-		if err != nil || !client.IsInstalled(ctx) {
-			// Return a noop if docker is not installed as it means we
-			// won't be able to find digests for images in the requester
+	client, err := docker.NewDockerClient()
+
+	// With no context available we are happy to accept we can't cancel
+	// this local IPC call to the docker daemon
+	if err != nil || !client.IsInstalled(context.Background()) {
+		// Return a noop if docker is not installed as it means we
+		// won't be able to find digests for images in the requester
+		return func(context.Context, *model.Job) (bool, error) {
 			return false, nil
 		}
+	}
 
+	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
 		if j.Spec.Engine != model.EngineDocker {
 			return false, nil
 		}
@@ -30,7 +35,7 @@ func DockerImageDigest() Transformer {
 		err = resolver.Resolve(ctx, client.ImageDistribution, docker.DockerTagCache)
 		if err != nil {
 			log.Ctx(ctx).Debug().
-				Str("Image", image.String()).
+				Stringer("Image", image).
 				Msg("failed to find digest for image")
 			return false, nil
 		}
