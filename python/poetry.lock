@@ -21,14 +21,14 @@ tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy
 
 [[package]]
 name = "bacalhau-apiclient"
-version = "0.3.23.post8"
+version = "1.0.0"
 description = "A Python client for the Bacalhau public API - https://github.com/bacalhau-project/bacalhau/tree/main/clients/python"
 category = "main"
 optional = false
 python-versions = ">=3.6.2"
 files = [
-    {file = "bacalhau_apiclient-0.3.23.post8-py3-none-any.whl", hash = "sha256:9dd815fe85d6c274830f7beb88d71f50612c32cbdd009186f16a40fcc10dc168"},
-    {file = "bacalhau_apiclient-0.3.23.post8.tar.gz", hash = "sha256:5fa7d7264156a4a7ed71d94dad540ef7ac771e48dd95dfa704b8f6536d3de50c"},
+    {file = "bacalhau_apiclient-1.0.0-py3-none-any.whl", hash = "sha256:3223b8c139dc4b0e8931ed00d497d71b493928d8620db8197b15ef95c851e34f"},
+    {file = "bacalhau_apiclient-1.0.0.tar.gz", hash = "sha256:e5a798ca86da8d104f579c984f31be9f56af74361d67e655b9e7a2ff641b4c38"},
 ]
 
 [[package]]
@@ -1743,4 +1743,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "ca99c52f5f2bad671dcfa114b4dc5a70ab70dbf9f1d377b1d3c859023511559f"
+content-hash = "63043381b33cb3e869f98881a34ea3510c52b2582832cdf846a6b7211d2fae1e"

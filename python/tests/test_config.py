@@ -118,10 +118,9 @@ def test_sign_for_client():
 
     from bacalhau_apiclient.api import job_api
     from bacalhau_apiclient.models.deal import Deal
-    from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
-    from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
     from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
     from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
+    from bacalhau_apiclient.models.publisher_spec import PublisherSpec
     from bacalhau_apiclient.models.spec import Spec
     from bacalhau_apiclient.models.storage_spec import StorageSpec
     from Crypto.Hash import SHA256
@@ -137,7 +136,7 @@ def test_sign_for_client():
         spec=Spec(
             engine="Docker",
             verifier="Noop",
-            publisher="Estuary",
+            publisher=PublisherSpec(type="Estuary"),
             docker=JobSpecDocker(
                 image="ubuntu",
                 entrypoint=["date"],
@@ -153,11 +152,6 @@ def test_sign_for_client():
                     path="/outputs",
                 )
             ],
-            sharding=JobShardingConfig(
-                batch_size=1,
-                glob_pattern_base_path="/inputs",
-            ),
-            execution_plan=JobExecutionPlan(shards_total=0),
             deal=Deal(concurrency=1, confidence=0, min_bids=0),
             do_not_track=False,
         ),
