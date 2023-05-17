@@ -41,6 +41,14 @@ func (e *Environment) Build(
 	}
 	e.OutputFolder = outputFolder
 
+	// Noop won't have a storage provider and so we shouldn't try and download
+	// anything.  It tells us this with a nil pointer :(
+	// TODO: We need to understand what happens if the nop executor has a handler
+	// installed.
+	if e.StorageProvider == nil {
+		return nil
+	}
+
 	// For specific outputs in spec, make sure the directory exists under output
 	// folder ready for mounting by the executor
 	for i := range e.Execution.Job.Spec.Outputs {
