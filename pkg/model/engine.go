@@ -13,9 +13,7 @@ const (
 	EngineNoop
 	EngineDocker
 	EngineWasm
-	EngineLanguage   // wraps python_wasm
-	EnginePythonWasm // wraps docker
-	engineDone       // must be last
+	engineDone // must be last
 )
 
 func IsValidEngine(e Engine) bool {
