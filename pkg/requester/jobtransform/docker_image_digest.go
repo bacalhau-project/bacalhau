@@ -42,7 +42,7 @@ func DockerImageDigest() Transformer {
 
 		j.Spec.Docker.Image = resolver.Digest()
 		log.Ctx(ctx).Debug().
-			Str("OldImage", image.String()).
+			Stringer("OldImage", image).
 			Str("NewImage", j.Spec.Docker.Image).
 			Msg("updated docker image with digest")
 
