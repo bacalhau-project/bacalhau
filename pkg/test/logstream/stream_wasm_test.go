@@ -80,8 +80,7 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 		})
 		require.NoError(s.T(), err)
 
-		ex, _ := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
-		env, _ := executor.NewEnvironment(execution, ex.GetStorageProvider(s.ctx))
+		env, _ := executor.NewEnvironment(execution, node.ComputeNode.Storage)
 		env.Build(s.ctx, verifierMock)
 
 		<-ready

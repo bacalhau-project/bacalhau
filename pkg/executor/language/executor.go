@@ -14,7 +14,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -55,10 +54,6 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	return true, nil
-}
-
-func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
-	return nil
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {

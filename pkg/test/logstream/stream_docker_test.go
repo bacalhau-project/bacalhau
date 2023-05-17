@@ -60,8 +60,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 		})
 		require.NoError(s.T(), err)
 
-		ex, _ := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
-		env, _ := executor.NewEnvironment(execution, ex.GetStorageProvider(s.ctx))
+		env, _ := executor.NewEnvironment(execution, node.ComputeNode.Storage)
 		env.Build(s.ctx, verifierMock)
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.

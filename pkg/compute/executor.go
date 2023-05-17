@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -20,6 +21,7 @@ type BaseExecutorParams struct {
 	Callback        Callback
 	Store           store.ExecutionStore
 	Executors       executor.ExecutorProvider
+	Storage         storage.StorageProvider
 	Verifiers       verifier.VerifierProvider
 	Publishers      publisher.PublisherProvider
 	SimulatorConfig model.SimulatorConfigCompute
@@ -33,6 +35,7 @@ type BaseExecutor struct {
 	store           store.ExecutionStore
 	cancellers      generic.SyncMap[string, context.CancelFunc]
 	executors       executor.ExecutorProvider
+	storage         storage.StorageProvider
 	verifiers       verifier.VerifierProvider
 	publishers      publisher.PublisherProvider
 	simulatorConfig model.SimulatorConfigCompute
@@ -104,7 +107,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 
 	// Create a new execution environment for the provided execution and using the
 	// storage provider that the job executor was provided with earlier
-	env, err := executor.NewEnvironment(execution, jobExecutor.GetStorageProvider(ctx))
+	env, err := executor.NewEnvironment(execution, e.storage)
 	if err != nil {
 		return errors.Join(
 			fmt.Errorf("failed to initialize environment for compute"),

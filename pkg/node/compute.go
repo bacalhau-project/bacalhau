@@ -39,6 +39,7 @@ type Compute struct {
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
+	Storage             storage.StorageProvider
 	LogServer           *logstream.LogStreamServer
 	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
@@ -107,6 +108,7 @@ func NewComputeNode(
 		Store:           executionStore,
 		Executors:       executors,
 		Verifiers:       verifiers,
+		Storage:         storages,
 		Publishers:      publishers,
 		SimulatorConfig: config.SimulatorConfig,
 	})
@@ -281,6 +283,7 @@ func NewComputeNode(
 		Capacity:            runningCapacityTracker,
 		ExecutionStore:      executionStore,
 		Executors:           executors,
+		Storage:             storages,
 		Bidder:              bidder,
 		LogServer:           logserver,
 		computeCallback:     standardComputeCallback,

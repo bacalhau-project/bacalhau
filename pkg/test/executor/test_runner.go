@@ -35,6 +35,8 @@ func RunTestCase(
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
 	require.NoError(t, err)
 
+	storageProvider := stack.Nodes[0].ComputeNode.Storage
+
 	isInstalled, err := executor.IsInstalled(ctx)
 	require.NoError(t, err)
 	require.True(t, isInstalled)
@@ -79,7 +81,7 @@ func RunTestCase(
 		Job: job,
 	}
 
-	env, err := exec.NewEnvironment(execution, executor.GetStorageProvider(ctx))
+	env, err := exec.NewEnvironment(execution, storageProvider)
 	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()

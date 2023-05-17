@@ -70,10 +70,6 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
-	return e.StorageProvider
-}
-
 func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
 	return e.StorageProvider.Get(ctx, engine)
 }

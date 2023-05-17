@@ -6,7 +6,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 // Returns a executor for the given engine type
@@ -36,9 +35,6 @@ type Executor interface {
 
 	// GetOutputStream retrieves a muxed stream from the executor
 	GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error)
-
-	// GetStorageProvider retrieves the storage provider used by the executor
-	GetStorageProvider(ctx context.Context) storage.StorageProvider
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results

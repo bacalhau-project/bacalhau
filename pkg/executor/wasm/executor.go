@@ -59,10 +59,6 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return s.HasStorageLocally(ctx, volume)
 }
 
-func (e *Executor) GetStorageProvider(ctx context.Context) storage.StorageProvider {
-	return e.StorageProvider
-}
-
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
