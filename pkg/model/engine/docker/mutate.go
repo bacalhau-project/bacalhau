@@ -40,10 +40,10 @@ func AppendEnvironmentVariables(envvar ...string) MutateOpt {
 	}
 }
 
-func Mutate(e *engine.Spec, mutations ...MutateOpt) (*engine.Spec, error) {
+func Mutate(e engine.Spec, mutations ...MutateOpt) (engine.Spec, error) {
 	dockerSpec, err := Decode(e)
 	if err != nil {
-		return nil, err
+		return engine.Spec{}, err
 	}
 
 	for _, mutate := range mutations {

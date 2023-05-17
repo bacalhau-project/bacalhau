@@ -8,6 +8,8 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
 )
 
 type TaskType string
@@ -50,17 +52,15 @@ type ResourceSpec struct {
 }
 
 type JobType interface {
-	EngineSpec(with string) (EngineSpec, error)
+	EngineSpec(with string) (engine.Spec, error)
 	InputStorageSpecs(with string) ([]StorageSpec, error)
 	OutputStorageSpecs(with string) ([]StorageSpec, error)
 }
 
 type NoopTask struct{}
 
-func (n NoopTask) EngineSpec(with string) (EngineSpec, error) {
-	return EngineSpec{
-		Type: EngineNoop,
-	}, nil
+func (n NoopTask) EngineSpec(with string) (engine.Spec, error) {
+	panic("TODO")
 }
 
 func (n NoopTask) InputStorageSpecs(with string) ([]StorageSpec, error) {

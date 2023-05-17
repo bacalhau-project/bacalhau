@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
 )
 
 var _ JobType = (*DockerInputs)(nil)
@@ -17,13 +20,13 @@ type DockerInputs struct {
 	Env        IPLDMap[string, string]
 }
 
-func (docker DockerInputs) EngineSpec(with string) (EngineSpec, error) {
-	return (&JobSpecDocker{
+func (docker DockerInputs) EngineSpec(with string) (engine.Spec, error) {
+	return (&dockerspec.EngineSpec{
 		Image:                with,
 		Entrypoint:           docker.Entrypoint,
-		EnvironmentVariables: FlattenIPLDMap(docker.Env),
 		WorkingDirectory:     docker.Workdir,
-	}).AsEngineSpec(), nil
+		EnvironmentVariables: FlattenIPLDMap(docker.Env),
+	}).AsSpec()
 }
 
 func (docker DockerInputs) InputStorageSpecs(_ string) ([]StorageSpec, error) {

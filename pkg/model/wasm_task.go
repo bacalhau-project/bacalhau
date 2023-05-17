@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
 )
 
 var _ JobType = (*WasmInputs)(nil)
@@ -17,20 +19,8 @@ type WasmInputs struct {
 	Env        IPLDMap[string, string]
 }
 
-func (wasm *WasmInputs) EngineSpec(_ string) (EngineSpec, error) {
-	importModules := make([]StorageSpec, 0, len(wasm.Modules))
-	for _, resource := range wasm.Modules {
-		resource := resource
-		importModules = append(importModules, parseStorageSource("", &resource))
-	}
-
-	return (&JobSpecWasm{
-		EntryPoint:           wasm.Entrypoint,
-		Parameters:           wasm.Parameters,
-		EnvironmentVariables: wasm.Env.Values,
-		ImportModules:        importModules,
-	}).AsEngineSpec(), nil
-
+func (wasm *WasmInputs) EngineSpec(_ string) (engine.Spec, error) {
+	panic("TODO")
 }
 
 func (wasm *WasmInputs) InputStorageSpecs(with string) ([]StorageSpec, error) {

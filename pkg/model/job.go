@@ -5,6 +5,9 @@ import (
 
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -57,13 +60,19 @@ func NewJob() *Job {
 
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
-	err := mergo.Merge(j, &Job{
+
+	engineSpec, err := (&dockerspec.EngineSpec{
+		Image: "ubuntu",
+	}).AsSpec()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			EngineSpec: (&JobSpecDocker{
-				Image: "ubuntu",
-			}).AsEngineSpec(),
-			Verifier: VerifierNoop,
+			EngineSpec: engineSpec,
+			Verifier:   VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
@@ -73,8 +82,7 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 				MinBids:     0, // 0 means no minimum before bidding
 			},
 		},
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	return j, nil
@@ -141,11 +149,6 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
-type EngineSpec struct {
-	Type Engine `json:"Type,omitempty"`
-	Spec []byte `json:"Spec,omitempty"`
-}
-
 type PublisherSpec struct {
 	Type   Publisher              `json:"Type,omitempty"`
 	Params map[string]interface{} `json:"Params,omitempty"`
@@ -157,7 +160,7 @@ type Spec struct {
 	// deprecated: use EngineSpec instead
 	// Engine Engine
 
-	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
+	EngineSpec engine.Spec `json:"EngineSpec,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 

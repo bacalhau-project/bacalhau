@@ -37,10 +37,10 @@ type EngineSpec struct {
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
-func (e *EngineSpec) AsSpec() (*engine.Spec, error) {
+func (e *EngineSpec) AsSpec() (engine.Spec, error) {
 	return engine.Encode(e, EngineSchema)
 }
 
-func Decode(spec *engine.Spec) (*EngineSpec, error) {
+func Decode(spec engine.Spec) (*EngineSpec, error) {
 	return engine.Decode[EngineSpec](spec)
 }

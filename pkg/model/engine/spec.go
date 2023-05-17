@@ -50,20 +50,20 @@ func (s *Schema) Cid() cid.Cid {
 	return c
 }
 
-func Encode(params any, modelSchema *Schema) (*Spec, error) {
+func Encode(params any, modelSchema *Schema) (Spec, error) {
 	// TODO replace `any` with an interface that all Spec's must implement for de/serialization
 	encodedParams, err := json.Marshal(params)
 	if err != nil {
-		return nil, err
+		return Spec{}, err
 	}
 
 	// encode the schema and derive a cid from it
 	encodedSchema, err := modelSchema.Serialize()
 	if err != nil {
-		return nil, err
+		return Spec{}, err
 	}
 
-	engineSpec := &Spec{
+	engineSpec := Spec{
 		// NB: slightly wasteful since calling Cid() calls serialize, and we just called it about, ohh well, its cheap enough.
 		Schema:     modelSchema.Cid(),
 		SchemaData: encodedSchema,
@@ -80,7 +80,7 @@ func (s *Spec) Decode[T any]() (*T, error) {
 }
 */
 
-func Decode[P any](spec *Spec) (*P, error) {
+func Decode[P any](spec Spec) (*P, error) {
 	// TODO replace `any` with an interface that all Spec's must implement for de/serialization
 
 	// decode the spec schema.

@@ -23,8 +23,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -179,7 +179,7 @@ func (e *Executor) Run(
 		})
 	}
 
-	engineSpec, err := spec.AsJobSpecDocker(job.Spec.EngineSpec)
+	engineSpec, err := dockerspec.Decode(job.Spec.EngineSpec)
 	if err != nil {
 		return executor.FailResult(err)
 	}

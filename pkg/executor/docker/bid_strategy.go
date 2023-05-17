@@ -3,13 +3,11 @@ package docker
 import (
 	"context"
 
-	"go.uber.org/multierr"
-
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
 )
 
 func NewBidStrategy(client *docker.Client) bidstrategy.BidStrategy {
@@ -26,12 +24,7 @@ func (s *imagePlatformBidStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 
-	// FIXME: this looks like a bug, we should return false as this isn't a docker spec.
-	if request.Job.Spec.EngineSpec.Type != model.EngineDocker {
-		return bidstrategy.NewShouldBidResponse(), nil
-	}
-
-	engineSpec, err := spec.AsJobSpecDocker(request.Job.Spec.EngineSpec)
+	engineSpec, err := dockerspec.Decode(request.Job.Spec.EngineSpec)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid:  false,
@@ -40,14 +33,22 @@ func (s *imagePlatformBidStrategy) ShouldBid(
 		}, err
 	}
 
-	supported, serr := s.client.SupportedPlatforms(ctx)
-	platforms, ierr := s.client.ImagePlatforms(ctx, engineSpec.Image, config.GetDockerCredentials())
-	err = multierr.Combine(serr, ierr)
+	supported, err := s.client.SupportedPlatforms(ctx)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{
-			ShouldBid: false,
-			Reason:    err.Error(),
-		}, nil
+			ShouldBid:  false,
+			ShouldWait: false,
+			Reason:     err.Error(),
+		}, err
+	}
+
+	platforms, err := s.client.ImagePlatforms(ctx, engineSpec.Image, config.GetDockerCredentials())
+	if err != nil {
+		return bidstrategy.BidStrategyResponse{
+			ShouldBid:  false,
+			ShouldWait: false,
+			Reason:     err.Error(),
+		}, err
 	}
 
 	for _, canRun := range supported {
