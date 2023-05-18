@@ -71,7 +71,7 @@ source .env
 Then we create a new ssh keypair:
 
 ```bash
-ssh-keygen -f ~/.ssh/modicum
+ssh-keygen -f ~/.ssh/modicum-demo
 ```
 
 Now we adjust the values on the `src/python/.env` file paying note to the following:
@@ -139,7 +139,7 @@ modicum runAsSolver
 ```
 
 ```bash
-sudo modicum runAsDir
+sudo -E $(which modicum) runAsDir
 ```
 (sudo because it will do a bunch of stuff like creating users :-O)
 
@@ -150,12 +150,13 @@ modicum runAsMediator
 NOTE: replace this path with the absolute path on your system
 
 ```bash
-modicum startRP --path /home/kai/projects/protocol-labs/MODICUM/0_experiments/demo/ --index 1
+modicum startRP --path $(realpath $PWD/../..)/0_experiments/demo/ --index 1
 ```
 
+edit `0_experiments/demo/player0` to update the paths
 
 ```bash
-modicum startJC --playerpath /home/kai/projects/protocol-labs/MODICUM/0_experiments/demo/ --index 0
+modicum startJC --playerpath $(realpath $PWD/../..)/0_experiments/demo/ --index 0
 ```
 
 Keep an eye out on the `startRP` pane - the bacalhau job ID will get printed there with a link to it on the dashboard.
