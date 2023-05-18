@@ -151,6 +151,7 @@ export interface JobSpecLanguage {
 
 export interface JobSpecWasm {
   EntryPoint?: string,
+  EntryModule?: StorageSpec,
   Parameters?: string[],
 }
 
@@ -159,6 +160,12 @@ export interface JobLocalEvent {
   JobID?: string,
   ShardIndex?: number,
   TargetNodeID?: string,
+}
+
+export interface ExecutionID {
+  JobID: string,
+  NodeID: string,
+  ExecutionID: string,
 }
 
 export interface JobEvent {
@@ -202,8 +209,8 @@ export interface JobInfo {
 }
 
 export interface JobRelation {
-  JobID: string,
-  CID: string,
+  job_id: string,
+  cid: string,
 }
 
 export interface JobIO {
@@ -289,6 +296,7 @@ export interface JobModeration {
 export enum ModerationType {
   Datacap = "datacap",
   Execution = "execution",
+  Result = "result",
 }
 
 export interface JobModerationRequest {
@@ -297,6 +305,8 @@ export interface JobModerationRequest {
   type: ModerationType,
   created: string,
   callback: string,
+  execution_id?: ExecutionID,
+  storage_spec?: StorageSpec,
 }
 
 export interface ModerateRequest {

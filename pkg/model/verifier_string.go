@@ -11,12 +11,13 @@ func _() {
 	_ = x[verifierUnknown-0]
 	_ = x[VerifierNoop-1]
 	_ = x[VerifierDeterministic-2]
-	_ = x[verifierDone-3]
+	_ = x[VerifierExternal-3]
+	_ = x[verifierDone-4]
 }
 
-const _Verifier_name = "verifierUnknownNoopDeterministicverifierDone"
+const _Verifier_name = "verifierUnknownNoopDeterministicExternalverifierDone"
 
-var _Verifier_index = [...]uint8{0, 15, 19, 32, 44}
+var _Verifier_index = [...]uint8{0, 15, 19, 32, 40, 52}
 
 func (i Verifier) String() string {
 	if i < 0 || i >= Verifier(len(_Verifier_index)-1) {

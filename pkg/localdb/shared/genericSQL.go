@@ -55,7 +55,7 @@ func getJob(db SQLClient, ctx context.Context, id string) (*model.Job, error) {
 	var apiversion string
 	var jobdata string
 	var statedata string
-	row := db.QueryRowContext(ctx, `select apiversion, jobdata, statedata from job where id like $1 || '%'`, strings.ToLower(id))
+	row := db.QueryRowContext(ctx, `select apiversion, jobdata, statedata from job where id like $1 || '%'`, id)
 	err := row.Scan(&apiversion, &jobdata, &statedata)
 	if err != nil {
 		if err == sql.ErrNoRows {

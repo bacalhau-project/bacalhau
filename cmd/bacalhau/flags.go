@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -10,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 )
 
 // A Parser is a function that can convert a string into a native object.
@@ -291,6 +293,27 @@ func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
 		parser:   separatorParser("="),
 		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
 		typeStr:  "key=value",
+	}
+}
+
+func URLFlag(value **url.URL, schemes ...string) *ValueFlag[*url.URL] {
+	return &ValueFlag[*url.URL]{
+		value: value,
+		parser: func(s string) (u *url.URL, err error) {
+			u, err = url.Parse(s)
+			if u != nil && !slices.Contains(schemes, u.Scheme) {
+				err = fmt.Errorf("URL scheme must be one of: %v", schemes)
+			}
+			return
+		},
+		stringer: func(u **url.URL) string {
+			if u == nil || (*u) == nil {
+				return ""
+			} else {
+				return (*u).String()
+			}
+		},
+		typeStr: "url",
 	}
 }
 

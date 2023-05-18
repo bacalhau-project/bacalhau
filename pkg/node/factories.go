@@ -20,136 +20,133 @@ type StorageProvidersFactory interface {
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error)
 }
 
 type VerifiersFactory interface {
-	Get(ctx context.Context,
-		nodeConfig NodeConfig) (verifier.VerifierProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error)
 }
 
 type PublishersFactory interface {
-	Get(ctx context.Context,
-		nodeConfig NodeConfig) (publisher.PublisherProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 }
 
 // Functions that implement the factories for easier creation of new implementations
-type StorageProvidersFactoryFunc func(
-	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
+type StorageProvidersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
 
-func (f StorageProvidersFactoryFunc) Get(
-	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
+func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
-type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
+type ExecutorsFactoryFunc func(
+	ctx context.Context,
+	nodeConfig NodeConfig,
+	storages storage.StorageProvider,
+) (executor.ExecutorProvider, error)
 
-func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-	return f(ctx, nodeConfig)
+func (f ExecutorsFactoryFunc) Get(
+	ctx context.Context,
+	nodeConfig NodeConfig,
+	storages storage.StorageProvider,
+) (executor.ExecutorProvider, error) {
+	return f(ctx, nodeConfig, storages)
 }
 
 type VerifiersFactoryFunc func(
 	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error)
+	nodeConfig NodeConfig,
+	publishers publisher.PublisherProvider,
+) (verifier.VerifierProvider, error)
 
 func (f VerifiersFactoryFunc) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
-	return f(ctx, nodeConfig)
+	nodeConfig NodeConfig,
+	publishers publisher.PublisherProvider,
+) (verifier.VerifierProvider, error) {
+	return f(ctx, nodeConfig, publishers)
 }
 
-type PublishersFactoryFunc func(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error)
+type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 
-func (f PublishersFactoryFunc) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
+func (f PublishersFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
 // Standard implementations used in prod and when testing prod behavior
-type StandardStorageProvidersFactory struct{}
-
-func (f *StandardStorageProvidersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (storage.StorageProvider, error) {
-	provider, err := executor_util.NewStandardStorageProvider(
-		ctx,
-		nodeConfig.CleanupManager,
-		executor_util.StandardStorageProviderOptions{
-			API:                   nodeConfig.IPFSClient,
-			FilecoinUnsealedPath:  nodeConfig.FilecoinUnsealedPath,
-			AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
-		},
-	)
-	return model.NewConfiguredProvider[model.StorageSourceType, storage.Storage](
-		provider,
-		nodeConfig.DisabledFeatures.Storages,
-	), err
-}
-
-func NewStandardStorageProvidersFactory() *StandardStorageProvidersFactory {
-	return &StandardStorageProvidersFactory{}
-}
-
-type StandardExecutorsFactory struct{}
-
-func (f *StandardExecutorsFactory) Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
-	provider, err := executor_util.NewStandardExecutorProvider(
-		ctx,
-		nodeConfig.CleanupManager,
-		executor_util.StandardExecutorOptions{
-			DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
-			Storage: executor_util.StandardStorageProviderOptions{
+func NewStandardStorageProvidersFactory() StorageProvidersFactory {
+	return StorageProvidersFactoryFunc(func(
+		ctx context.Context,
+		nodeConfig NodeConfig,
+	) (storage.StorageProvider, error) {
+		provider, err := executor_util.NewStandardStorageProvider(
+			ctx,
+			nodeConfig.CleanupManager,
+			executor_util.StandardStorageProviderOptions{
 				API:                   nodeConfig.IPFSClient,
-				FilecoinUnsealedPath:  nodeConfig.FilecoinUnsealedPath,
 				EstuaryAPIKey:         nodeConfig.EstuaryAPIKey,
+				FilecoinUnsealedPath:  nodeConfig.FilecoinUnsealedPath,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
-		},
-	)
-	return model.NewConfiguredProvider[model.Engine, executor.Executor](provider, nodeConfig.DisabledFeatures.Engines), err
+		)
+		if err != nil {
+			return nil, err
+		}
+		return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Storages), err
+	})
 }
 
-func NewStandardExecutorsFactory() *StandardExecutorsFactory {
-	return &StandardExecutorsFactory{}
+func NewStandardExecutorsFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
+			provider, err := executor_util.NewStandardExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				storages,
+				executor_util.StandardExecutorOptions{
+					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+		})
 }
 
-type StandardVerifiersFactory struct{}
-
-func (f *StandardVerifiersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
-	encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
-	provider, err := verifier_util.NewStandardVerifiers(
-		ctx,
-		nodeConfig.CleanupManager,
-		encrypter.Encrypt,
-		encrypter.Decrypt,
-	)
-	return model.NewConfiguredProvider[model.Verifier, verifier.Verifier](provider, nodeConfig.DisabledFeatures.Verifiers), err
+func NewStandardVerifiersFactory() VerifiersFactory {
+	return VerifiersFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error) {
+			encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
+			provider, err := verifier_util.NewStandardVerifiers(
+				ctx,
+				nodeConfig.CleanupManager,
+				publishers,
+				nodeConfig.RequesterNodeConfig.ExternalValidatorWebhook,
+				encrypter.Encrypt,
+				encrypter.Decrypt,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Verifiers), err
+		})
 }
 
-func NewStandardVerifiersFactory() *StandardVerifiersFactory {
-	return &StandardVerifiersFactory{}
-}
-
-type StandardPublishersFactory struct{}
-
-func (f *StandardPublishersFactory) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-	provider, err := publisher_util.NewIPFSPublishers(
-		ctx,
-		nodeConfig.CleanupManager,
-		nodeConfig.IPFSClient,
-		nodeConfig.EstuaryAPIKey,
-		nodeConfig.LotusConfig,
-	)
-	return model.NewConfiguredProvider[model.Publisher, publisher.Publisher](provider, nodeConfig.DisabledFeatures.Publishers), err
-}
-
-func NewStandardPublishersFactory() *StandardPublishersFactory {
-	return &StandardPublishersFactory{}
+func NewStandardPublishersFactory() PublishersFactory {
+	return PublishersFactoryFunc(
+		func(
+			ctx context.Context,
+			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
+			provider, err := publisher_util.NewIPFSPublishers(
+				ctx,
+				nodeConfig.CleanupManager,
+				nodeConfig.IPFSClient,
+				nodeConfig.EstuaryAPIKey,
+				nodeConfig.LotusConfig,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Publishers), err
+		})
 }

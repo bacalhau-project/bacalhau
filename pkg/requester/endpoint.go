@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 )
 
 type BaseEndpointParams struct {
@@ -150,6 +151,19 @@ func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval bidstrategy.M
 	}
 
 	return node.handleBidResponse(ctx, job, approval.Response)
+}
+
+func (node *BaseEndpoint) VerifyExecutions(ctx context.Context, results external.ExternalVerificationResponse) error {
+	// We deliberately expect this to be the empty string if unset. This is so
+	// that if this env variable is (accidentally) left unset, no jobs can be
+	// approved because an empty ClientID is invalid.
+	approvingClient := os.Getenv("BACALHAU_JOB_APPROVER")
+	if results.ClientID != approvingClient {
+		return errors.New("verification submitted by unknown client")
+	}
+
+	node.queue.VerifyExecutions(ctx, results.Verifications)
+	return nil
 }
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {

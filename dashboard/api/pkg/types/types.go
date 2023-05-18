@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
@@ -42,17 +43,10 @@ type ModerationType string
 const (
 	ModerationTypeDatacap   ModerationType = "datacap"
 	ModerationTypeExecution ModerationType = "execution"
+	ModerationTypeResult    ModerationType = "result"
 )
 
-type JobModerationRequest struct {
-	ID       int64          `json:"id"`
-	JobID    string         `json:"job_id"`
-	Type     ModerationType `json:"type"`
-	Created  time.Time      `json:"created"`
-	Callback URL            `json:"callback"`
-}
-
-type JobModeration struct {
+type Moderation struct {
 	ID            int64     `json:"id"`
 	RequestID     int64     `json:"request_id"`
 	UserAccountID int       `json:"user_account_id"`
@@ -61,10 +55,53 @@ type JobModeration struct {
 	Notes         string    `json:"notes"`
 }
 
-type JobModerationSummary struct {
-	Moderation *JobModeration        `json:"moderation"`
-	Request    *JobModerationRequest `json:"request"`
-	User       *User                 `json:"user"`
+type ModerationRequest interface {
+	GetID() int64
+	GetType() ModerationType
+	GetCallback() *URL
+}
+
+type ModerationSummary struct {
+	Moderation *Moderation       `json:"moderation"`
+	Request    ModerationRequest `json:"request"`
+	User       *User             `json:"user"`
+}
+
+type JobModerationRequest struct {
+	ID       int64          `json:"id"`
+	Created  time.Time      `json:"created"`
+	Callback URL            `json:"callback"`
+	JobID    string         `json:"job_id"`
+	Type     ModerationType `json:"type"`
+}
+
+func (req *JobModerationRequest) GetID() int64 {
+	return req.ID
+}
+
+func (req *JobModerationRequest) GetType() ModerationType {
+	return req.Type
+}
+
+func (req *JobModerationRequest) GetCallback() *URL {
+	return &req.Callback
+}
+
+type JobModerationSummary = ModerationSummary
+
+// A ResultModerationRequest represents a request to moderate a result produced
+// by a job.
+//
+// We explicitly tie the moderation of results to jobs because jobs might be for
+// different users with different trust levels, and also because one job
+// producing a result that is the same as another job might be revealing
+// depending on the execution (i.e. automatically approving a result
+// representing the "empty set" might cause problems). So we tie each moderation
+// request to a moderation request for a job.
+type ResultModerationRequest struct {
+	JobModerationRequest
+	ExecutionID model.ExecutionID          `json:"execution_id"`
+	StorageSpec bacalhau_model.StorageSpec `json:"storage_spec"`
 }
 
 type JobInfo struct {
@@ -72,7 +109,7 @@ type JobInfo struct {
 	State       bacalhau_model.JobState          `json:"state"`
 	Events      []bacalhau_model.JobEvent        `json:"events"`
 	Results     []bacalhau_model.PublishedResult `json:"results"`
-	Requests    []JobModerationRequest           `json:"requests"`
+	Requests    []ModerationRequest              `json:"requests"`
 	Moderations []JobModerationSummary           `json:"moderations"`
 }
 

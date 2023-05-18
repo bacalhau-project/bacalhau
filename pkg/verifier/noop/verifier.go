@@ -11,8 +11,8 @@ import (
 
 type VerifierHandlerIsInstalled func(ctx context.Context) (bool, error)
 type VerifierHandlerGetResultPath func(ctx context.Context, executionID string, job model.Job) (string, error)
-type VerifierHandlerGetProposal func(context.Context, model.Job, string) ([]byte, error)
-type VerifierHandlerVerify func(context.Context, model.Job, []model.ExecutionState) ([]verifier.VerifierResult, error)
+type VerifierHandlerGetProposal func(context.Context, model.Job, string, string) ([]byte, error)
+type VerifierHandlerVerify func(context.Context, verifier.VerifierRequest) ([]verifier.VerifierResult, error)
 
 type VerifierExternalHooks struct {
 	IsInstalled   VerifierHandlerIsInstalled
@@ -73,32 +73,31 @@ func (noopVerifier *NoopVerifier) GetResultPath(
 func (noopVerifier *NoopVerifier) GetProposal(
 	ctx context.Context,
 	job model.Job,
-	s string,
+	executionID, resultsPath string,
 ) ([]byte, error) {
 	if noopVerifier.externalHooks.GetProposal != nil {
-		return noopVerifier.externalHooks.GetProposal(ctx, job, s)
+		return noopVerifier.externalHooks.GetProposal(ctx, job, executionID, resultsPath)
 	}
 	return []byte{}, nil
 }
 
 func (noopVerifier *NoopVerifier) Verify(
 	ctx context.Context,
-	job model.Job,
-	executionStates []model.ExecutionState,
+	request verifier.VerifierRequest,
 ) ([]verifier.VerifierResult, error) {
 	if noopVerifier.externalHooks.Verify != nil {
-		return noopVerifier.externalHooks.Verify(ctx, job, executionStates)
+		return noopVerifier.externalHooks.Verify(ctx, request)
 	}
-	err := verifier.ValidateExecutions(job, executionStates)
+	err := verifier.ValidateExecutions(request)
 	if err != nil {
 		return nil, err
 	}
 
-	var verifierResults []verifier.VerifierResult
-	for _, execution := range executionStates { //nolint:gocritic
+	verifierResults := make([]verifier.VerifierResult, 0, len(request.Executions))
+	for _, execution := range request.Executions { //nolint:gocritic
 		verifierResults = append(verifierResults, verifier.VerifierResult{
-			Execution: execution,
-			Verified:  true,
+			ExecutionID: execution.ID(),
+			Verified:    true,
 		})
 	}
 	return verifierResults, nil
