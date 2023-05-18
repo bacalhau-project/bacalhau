@@ -177,37 +177,23 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		log.Ctx(ctx).Debug().
+			Str("Execution", executionID).
+			Msg("attempting cleanup of inputs for execution")
+		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
+		if err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Str("Execution", executionID).
+				Msg("errors occurred when cleaning up inputs")
+		}
+	}()
 
 	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, inputVolumes, job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
-
-	// Cleanup the input volumes where data may have been downloaded to local disk.
-	defer func() {
-		for storageSpec, storageVolume := range inputVolumes {
-			provider, err := e.StorageProvider.Get(ctx, storageSpec.StorageSource)
-			if err != nil {
-				log.Ctx(ctx).Error().
-					Err(err).
-					Str("Source", storageSpec.StorageSource.String()).
-					Msg("failed to get storage provider in cleanup")
-				return
-			}
-
-			log.Ctx(ctx).Debug().
-				Str("Execution", executionID).
-				Msg("cleaning up inputs for execution")
-
-			err = provider.CleanupStorage(ctx, *storageSpec, storageVolume)
-			if err != nil {
-				log.Ctx(ctx).Error().
-					Err(err).
-					Str("Source", storageSpec.StorageSource.String()).
-					Msg("failed to cleanup volume")
-			}
-		}
-	}()
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
 	// configuration

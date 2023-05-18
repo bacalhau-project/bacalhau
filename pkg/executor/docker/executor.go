@@ -129,6 +129,18 @@ func (e *Executor) Run(
 	if err != nil {
 		return executor.FailResult(err)
 	}
+	defer func() {
+		log.Ctx(ctx).Debug().
+			Str("Execution", executionID).
+			Msg("attempting cleanup of inputs for execution")
+		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
+		if err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Str("Execution", executionID).
+				Msg("errors occurred when cleaning up inputs")
+		}
+	}()
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
@@ -148,34 +160,6 @@ func (e *Executor) Run(
 			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", volumeMount.Type))
 		}
 	}
-
-	// Setup cleanup for created local folders using storage provider regardless of
-	// how we leave this function.
-	defer func() {
-		for spec, volumeMount := range inputVolumes {
-			// Obtain a provider (that was used earlier to prepare storage) so that
-			// we can tell it to cleanup the storage at the end of the execution.
-			provider, err := e.StorageProvider.Get(ctx, spec.StorageSource)
-			if err != nil {
-				log.Ctx(ctx).Error().
-					Err(err).
-					Str("Source", spec.StorageSource.String()).
-					Msg("failed to get storage provider in cleanup")
-				return
-			}
-
-			log.Ctx(ctx).Debug().
-				Str("Execution", executionID).
-				Msg("cleaning up inputs for execution")
-			err = provider.CleanupStorage(ctx, *spec, volumeMount)
-			if err != nil {
-				log.Ctx(ctx).Error().
-					Err(err).
-					Str("Source", spec.StorageSource.String()).
-					Msg("failed to cleanup volume")
-			}
-		}
-	}()
 
 	// for this phase of the outputs we ignore the engine because it's just about collecting the
 	// data from the job and keeping it locally
