@@ -147,6 +147,7 @@ const config = {
         lightTheme: lightCodeTheme,
         darkTheme: darkCodeTheme,
       },
+      /*
       announcementBar: {
         id: 'event-announcement',
         content:
@@ -155,6 +156,7 @@ const config = {
         textColor: '#fff',
         isCloseable: false,
       },
+      */
     }),
 };
 
