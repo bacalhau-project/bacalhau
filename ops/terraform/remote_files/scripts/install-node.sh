@@ -117,7 +117,7 @@ function install-bacalhau-from-release() {
 function install-bacalhau-from-source() {
   echo "Installing Bacalhau from branch ${BACALHAU_BRANCH}"
   sudo apt-get -y install --no-install-recommends jq
-  git clone --depth 1 --branch ${BACALHAU_BRANCH} https://github.com/bacalhau-project/bacalhau.git
+  git clone --depth 1 --branch "${BACALHAU_BRANCH}" https://github.com/bacalhau-project/bacalhau.git
   cd bacalhau
   GO111MODULE=on CGO_ENABLED=0 go build -gcflags '-N -l' -trimpath -o ./bacalhau
   sudo mv ./bacalhau /usr/local/bin/bacalhau

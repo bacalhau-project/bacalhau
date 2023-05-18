@@ -32,23 +32,23 @@ if [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
   # if we are in unsafe mode - then we connect to a single node and it's ID
   # is pre-determined by the $BACALHAU_NODE0_UNSAFE_ID variable
   if [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]]; then
-    export UNSAFE_NODE0_ID="$BACALHAU_NODE_ID_0"
-    if [[ -z "$UNSAFE_NODE0_ID" ]]; then
-      export UNSAFE_NODE0_ID="$BACALHAU_NODE0_UNSAFE_ID"
+    export UNSAFE_NODE0_ID="${BACALHAU_NODE_ID_0}"
+    if [[ -z "${UNSAFE_NODE0_ID}" ]]; then
+      export UNSAFE_NODE0_ID="${BACALHAU_NODE0_UNSAFE_ID}"
     fi
-    export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$UNSAFE_NODE0_ID")
+    CONNECT_PEER=$(set -e; getMultiaddress "${TERRAFORM_NODE0_IP}" "${UNSAFE_NODE0_ID}")
   # otherwise we will construct our connect string based on
   # what node index we are
   else
     # we are > node0 so we can connect to node0
-    export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$BACALHAU_NODE_ID_0")
+    CONNECT_PEER=$(set -e; getMultiaddress "${TERRAFORM_NODE0_IP}" "${BACALHAU_NODE_ID_0}")
     # we are > node1 so we can also connect to node1
     if [[ "${TERRAFORM_NODE_INDEX}" -ge "2" ]]; then
-      export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE1_IP" "$BACALHAU_NODE_ID_1")"
+      CONNECT_PEER="${CONNECT_PEER},$(set -e; getMultiaddress "${TERRAFORM_NODE1_IP}" "${BACALHAU_NODE_ID_1}")"
     fi
     # we are > node2 so we can also connect to node2
     if [[ "${TERRAFORM_NODE_INDEX}" -ge "3" ]]; then
-      export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE2_IP" "$BACALHAU_NODE_ID_2")"
+      CONNECT_PEER="${CONNECT_PEER},$(set -e; getMultiaddress "${TERRAFORM_NODE2_IP}" "${BACALHAU_NODE_ID_2}")"
     fi
   fi
 fi
