@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -68,6 +69,7 @@ type ServeOptions struct {
 	HostAddress                           string                   // The host address to listen on.
 	SwarmPort                             int                      // The host port for libp2p network.
 	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
+	ExternalVerifierHook                  *url.URL                 // Where to send external verification requests to.
 	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
 	LimitTotalMemory                      string                   // The total amount of memory the system can be using at one time.
 	LimitTotalGPU                         string                   // The total amount of GPU the system can be using at one time.
@@ -197,7 +199,8 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 
 func getRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobSelectionPolicy: OS.JobSelectionPolicy,
+		JobSelectionPolicy:       OS.JobSelectionPolicy,
+		ExternalValidatorWebhook: OS.ExternalVerifierHook,
 	})
 }
 
@@ -259,6 +262,11 @@ func newServeCmd() *cobra.Command {
 	serveCmd.PersistentFlags().StringSliceVar(
 		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs",
+	)
+	serveCmd.PersistentFlags().Var(
+		URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
+		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
+			"The 'external' verifier will not be enabled if this is unset.",
 	)
 	serveCmd.PersistentFlags().BoolVar(
 		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,

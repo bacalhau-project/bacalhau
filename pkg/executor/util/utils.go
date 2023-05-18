@@ -39,7 +39,6 @@ type StandardStorageProviderOptions struct {
 
 type StandardExecutorOptions struct {
 	DockerID string
-	Storage  StandardStorageProviderOptions
 }
 
 func NewStandardStorageProvider(
@@ -169,13 +168,9 @@ func NewNoopStorageProvider(
 func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
+	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	storageProvider, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
-	if err != nil {
-		return nil, err
-	}
-
 	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
 	if err != nil {
 		return nil, err

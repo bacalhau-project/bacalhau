@@ -12,8 +12,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const APIPrefix = "requester/"
-const ApprovalRoute = "approve"
+const (
+	APIPrefix     = "requester/"
+	ApprovalRoute = "approve"
+	VerifyRoute   = "verify"
+)
 
 type RequesterAPIServerParams struct {
 	APIServer          *publicapi.APIServer
@@ -53,6 +56,7 @@ func (s *RequesterAPIServer) RegisterAllHandlers() error {
 		{Path: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
 		{Path: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
 		{Path: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
+		{Path: "/" + APIPrefix + VerifyRoute, Handler: http.HandlerFunc(s.verify)},
 		{Path: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
 		{Path: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
 		{Path: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},

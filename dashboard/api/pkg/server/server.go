@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -75,14 +76,16 @@ func (apiServer *DashboardAPIServer) ListenAndServe(ctx context.Context, cm *sys
 	subrouter.HandleFunc("/jobs", handleError(returnsJSON(expectsJSON(apiServer.API.GetJobs)))).Methods("POST")
 	subrouter.HandleFunc("/jobs/count", handleError(returnsJSON(expectsJSON(apiServer.jobsCount)))).Methods("POST")
 	subrouter.HandleFunc("/jobs/shouldrun", handleError(returnsJSON(expectsJSON(apiServer.API.ShouldExecuteJob)))).Methods("POST")
+	subrouter.HandleFunc("/jobs/shouldverify", handleError(returnsJSON(expectsJSON(apiServer.API.ShouldVerifyJob)))).Methods("POST")
 
 	jobrouter := subrouter.PathPrefix("/job/{id}").Subrouter()
 	jobrouter.HandleFunc("/", handleError(returnsJSON(apiServer.job))).Methods("GET")
 	jobrouter.HandleFunc("/info", handleError(returnsJSON(apiServer.jobInfo))).Methods("GET")
 	jobrouter.HandleFunc("/inputs", handleError(returnsJSON(apiServer.jobProducingInputs))).Methods("GET")
 	jobrouter.HandleFunc("/outputs", handleError(returnsJSON(apiServer.jobOperatingOnOutputs))).Methods("GET")
-	jobrouter.HandleFunc("/datacap", handleError(authnHandler(returnsJSON(apiServer.moderateJobDatacap)))).Methods("POST")
-	jobrouter.HandleFunc("/exec", handleError(authnHandler(returnsJSON(apiServer.moderateJobRequest)))).Methods("POST")
+
+	requestrouter := subrouter.PathPrefix("/request/{id}").Subrouter()
+	requestrouter.HandleFunc("", handleError(authnHandler(returnsJSON(apiServer.moderateRequest)))).Methods("POST")
 
 	cidrouter := subrouter.PathPrefix("/cid/{cid}").Subrouter()
 	cidrouter.HandleFunc("/jobs", handleError(returnsJSON(apiServer.findJobsOperatingOnCID))).Methods("GET")
@@ -236,28 +239,18 @@ type moderateResult struct {
 	Success bool `json:"success"`
 }
 
-func (apiServer *DashboardAPIServer) moderateJobDatacap(ctx context.Context, req *http.Request) (*moderateResult, error) {
+func (apiServer *DashboardAPIServer) moderateRequest(ctx context.Context, req *http.Request) (*moderateResult, error) {
 	user := ctx.Value(userContextKey{}).(*types.User)
-	jobID := mux.Vars(req)["id"]
+	requestID, err := strconv.ParseInt(mux.Vars(req)["id"], 10, 16)
+	if err != nil {
+		return nil, err
+	}
 
 	data, err := GetRequestBody[moderateRequest](req)
 	if err != nil {
 		return nil, err
 	}
 
-	err = apiServer.API.ModerateJobWithoutRequest(ctx, jobID, data.Reason, data.Approved, types.ModerationTypeDatacap, user)
-	return &moderateResult{Success: err == nil}, err
-}
-
-func (apiServer *DashboardAPIServer) moderateJobRequest(ctx context.Context, req *http.Request) (*moderateResult, error) {
-	user := ctx.Value(userContextKey{}).(*types.User)
-	jobID := mux.Vars(req)["id"]
-
-	data, err := GetRequestBody[moderateRequest](req)
-	if err != nil {
-		return nil, err
-	}
-
-	err = apiServer.API.ModerateJobWithoutRequest(ctx, jobID, data.Reason, data.Approved, types.ModerationTypeExecution, user)
+	err = apiServer.API.ModerateJob(ctx, requestID, data.Reason, data.Approved, user)
 	return &moderateResult{Success: err == nil}, err
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	})
 
 	executorsFactory := node.ExecutorsFactoryFunc(func(
-		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
+		ctx context.Context, nodeConfig node.NodeConfig, _ storage.StorageProvider) (executor.ExecutorProvider, error) {
 		return executor_util.NewNoopExecutors(noop_executor.ExecutorConfig{
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {

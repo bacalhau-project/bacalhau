@@ -1736,7 +1736,8 @@
                 0,
                 1,
                 2,
-                3
+                3,
+                4
             ],
             "x-enum-comments": {
                 "verifierDone": "must be last",
@@ -1746,6 +1747,7 @@
                 "verifierUnknown",
                 "VerifierNoop",
                 "VerifierDeterministic",
+                "VerifierExternal",
                 "verifierDone"
             ]
         },

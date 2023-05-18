@@ -158,11 +158,11 @@ func NewComputeNode(
 				Locality:  config.JobSelectionPolicy.Locality,
 				Executors: executors,
 			}),
-			semantic.NewProviderInstalledStrategy[model.Verifier, verifier.Verifier](
+			semantic.NewProviderInstalledStrategy(
 				verifiers,
 				func(j *model.Job) model.Verifier { return j.Spec.Verifier },
 			),
-			semantic.NewProviderInstalledStrategy[model.Publisher, publisher.Publisher](
+			semantic.NewProviderInstalledStrategy(
 				publishers,
 				func(j *model.Job) model.Publisher { return j.Spec.PublisherSpec.Type },
 			),

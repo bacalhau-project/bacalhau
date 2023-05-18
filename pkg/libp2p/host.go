@@ -140,7 +140,7 @@ func connectToPeers(ctx context.Context, h host.Host, peers []multiaddr.Multiadd
 				Stringer("peer", id).
 				Msg("Error connecting to peer, continuing...")
 		} else {
-			log.Ctx(ctx).Debug().
+			log.Ctx(ctx).Trace().
 				Stringers("addresses", logger.ToSliceStringer(addresses, multiAddressToString)).
 				Stringer("peer", id).
 				Msg("Libp2p transport connected to peer")

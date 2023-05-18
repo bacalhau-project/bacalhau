@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	if err := system.InitConfig(); err != nil {
-		log.Error().Msgf("Failed to initialize config: %s", err)
+		fmt.Fprintf(os.Stderr, "Failed to initialize config: %s\n", err)
 		os.Exit(1)
 	}
 

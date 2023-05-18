@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"testing"
 
-	dashtypes "github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
@@ -36,23 +35,6 @@ func (s *APITestSuite) TestJobsCountInitiallyZero() {
 	s.Equal(0, count)
 }
 
-func (s *APITestSuite) TestModerateJobWithoutRequest() {
-	job := v1beta1.Job{Metadata: v1beta1.Metadata{ID: "testjob"}}
-	s.NoError(s.localDB.AddJob(s.ctx, &job))
-
-	err := s.api.ModerateJobWithoutRequest(s.ctx, job.Metadata.ID, "looks great", true, dashtypes.ModerationTypeDatacap, s.user)
-	s.NoError(err)
-
-	info, err := s.api.GetJobInfo(s.ctx, job.Metadata.ID)
-	s.NoError(err)
-	s.Equal(1, len(info.Moderations))
-
-	summary := info.Moderations[0]
-	s.NotNil(summary.User)
-	s.Equal(s.user.Username, summary.User.Username)
-	s.Equal(true, summary.Moderation.Status)
-}
-
 func (s *APITestSuite) TestModerateBidRequest() {
 	for _, shouldApprove := range []bool{true, false} {
 		s.Run(fmt.Sprintf("moderator approves is %t", shouldApprove), func() {
@@ -66,14 +48,12 @@ func (s *APITestSuite) TestModerateBidRequest() {
 			s.NotNil(resp)
 			s.Equal(true, resp.ShouldWait)
 
-			err = s.api.ModerateJobWithoutRequest(
-				s.ctx,
-				job.Metadata.ID,
-				"looks great",
-				shouldApprove,
-				dashtypes.ModerationTypeExecution,
-				s.user,
-			)
+			info, err := s.api.GetJobInfo(s.ctx, job.Metadata.ID)
+			s.Require().NoError(err)
+			s.Require().Equal(1, len(info.Requests))
+			request := info.Requests[0]
+
+			err = s.api.ModerateJob(s.ctx, request.GetID(), "looks great", shouldApprove, s.user)
 			s.NoError(err)
 
 			resp, err = s.api.ShouldExecuteJob(s.ctx, &bidstrategy.JobSelectionPolicyProbeData{JobID: job.Metadata.ID})
@@ -118,14 +98,12 @@ func (s *APITestSuite) TestModerationTriggersCallback() {
 	s.NoError(err)
 	s.Equal(true, resp.ShouldWait)
 
-	err = s.api.ModerateJobWithoutRequest(
-		s.ctx,
-		job.Metadata.ID,
-		"looks great",
-		true,
-		dashtypes.ModerationTypeExecution,
-		s.user,
-	)
+	info, err := s.api.GetJobInfo(s.ctx, job.Metadata.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(info.Requests))
+	request := info.Requests[0]
+
+	err = s.api.ModerateJob(s.ctx, request.GetID(), "looks great", true, s.user)
 	s.NoError(err)
 	s.Equal(true, called)
 }

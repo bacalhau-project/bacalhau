@@ -12,17 +12,19 @@ import (
 	"go.uber.org/multierr"
 )
 
-// transitionJobState checks the current state of the job and transitions it to the next state if possible, along with triggering
+// TransitionJobState checks the current state of the job and transitions it to the next state if possible, along with triggering
 // actions needed to transition, such as updating the job state and notifying compute nodes.
 // This method is agnostic to how it was called to allow using the same logic as a response to callback from a compute node, or
 // as a result of a periodic check that checks for stale jobs.
-func (s *BaseScheduler) transitionJobState(ctx context.Context, jobID string) {
+func (s *BaseScheduler) TransitionJobState(ctx context.Context, jobID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.transitionJobStateLockFree(ctx, jobID)
 }
 
 func (s *BaseScheduler) transitionJobStateLockFree(ctx context.Context, jobID string) {
+	ctx = log.Ctx(ctx).With().Str("JobID", jobID).Logger().WithContext(ctx)
+
 	jobState, err := s.jobStore.GetJobState(ctx, jobID)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("[transitionJobState] failed to get job state")
@@ -145,14 +147,15 @@ func (s *BaseScheduler) checkForPendingBids(ctx context.Context, job model.Job, 
 // checkForPendingResults checks if enough executions proposed a result, verify the results, and accept/reject results accordingly.
 func (s *BaseScheduler) checkForPendingResults(ctx context.Context, job model.Job, jobState model.JobState) {
 	executionsByState := jobState.GroupExecutionsByState()
-	if len(executionsByState[model.ExecutionStateResultProposed]) >= job.Spec.Deal.Concurrency {
-		verifiedResults, verificationErr := s.verifyResult(ctx, job, executionsByState[model.ExecutionStateResultProposed])
-		if verificationErr != nil {
-			s.stopJob(ctx, job.ID(), fmt.Sprintf("failed to verify job %s: %s", job.ID(), verificationErr), false)
+	awaitingVerification := len(executionsByState[model.ExecutionStateResultProposed])
+	if awaitingVerification >= job.Spec.Deal.Concurrency {
+		succeeded, failed, err := s.verifyResult(ctx, job, executionsByState[model.ExecutionStateResultProposed])
+		log.Ctx(ctx).Debug().Err(err).Int("Succeeded", len(succeeded)).Int("Failed", len(failed)).Msg("Attempted to verify results")
+		if err != nil {
+			s.stopJob(ctx, job.ID(), fmt.Sprintf("failed to verify job %s: %s", job.ID(), err), false)
 			return
 		}
-		// re-trigger job state transition if verification failed to see if we can retry and recover
-		if len(verifiedResults) == 0 {
+		if len(failed) > 0 {
 			s.transitionJobStateLockFree(ctx, job.ID())
 		}
 	}
@@ -161,18 +164,14 @@ func (s *BaseScheduler) checkForPendingResults(ctx context.Context, job model.Jo
 // checkForPendingPublishing checks if all verified executions have published, and if so, transition the job to a completed state.
 func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job model.Job, jobState model.JobState) {
 	var completedCount int
-	var stillPublishing bool
 	for _, execution := range jobState.Executions {
 		if execution.State == model.ExecutionStateCompleted {
 			completedCount++
 		}
-		if execution.State == model.ExecutionStateResultAccepted {
-			stillPublishing = true
+		if !execution.State.IsTerminal() {
+			// no action to take if we have not published all verified results yet
+			return
 		}
-	}
-	// no action to take if we have not published all verified results yet
-	if stillPublishing {
-		return
 	}
 	if completedCount > 0 {
 		newState := model.JobStateCompleted

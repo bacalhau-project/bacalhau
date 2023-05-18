@@ -143,6 +143,9 @@ func NewRequesterNode(
 		Verifiers:            verifiers,
 		StorageProviders:     storageProviders,
 		EventEmitter:         emitter,
+		GetVerifyCallback: func() *url.URL {
+			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.VerifyRoute)
+		},
 	})
 	queue := requester.NewQueue(jobStore, scheduler, emitter)
 
