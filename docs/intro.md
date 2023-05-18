@@ -110,7 +110,7 @@ Our mission is to transform the way that compute is run globally. You can find B
 Bacalhau has a very friendly community and we are always happy to help you get started:
 
 - [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions) – ask anything about the project, give feedback or answer questions that will help other users.
-- [Join the Slack Community](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
+- [Join the Slack Community](https://bit.ly/bacalhau-project-slack) and go to **#bacalhau** channel – it is the easiest way engage with other members in the community and get help.
 - [Contributing](https://docs.bacalhau.org/community/ways-to-contribute) – learn how to contribute to the Bacalhau project.
 
 ## Next Steps

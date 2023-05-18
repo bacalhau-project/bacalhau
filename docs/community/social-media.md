@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
-sidebar_label: 'Social Media'
-description: 'Find Bacalhau on your favorite social media platform'
+sidebar_label: "Social Media"
+description: "Find Bacalhau on your favorite social media platform"
 ---
 
 # Social Media
@@ -14,17 +14,17 @@ The [Bacalhau YouTube channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNC
 
 ## Blog and Newsletter
 
-Subscribe to the [Bacalhau newsletter](https://bacalhau.substack.com/) for official project updates sent straight to your inbox. 
+Subscribe to the [Bacalhau newsletter](https://bacalhau.substack.com/) for official project updates sent straight to your inbox.
 
 Also, our blog contains product updates, company news, and educational content on how you can leverage Bacalhau and the Compute over Data ecosytem [Bacalhau Blog](https://bacalhau.substack.com/).
 
 ## Twitter
 
-You can follow our twitter account [@Project Bacalhau](https://twitter.com/BacalhauProject)  to get Bacalhau news, product updates, etc in tweet-sized bites.
+You can follow our twitter account [@Project Bacalhau](https://twitter.com/BacalhauProject) to get Bacalhau news, product updates, etc in tweet-sized bites.
 
 ## Need Support?
 
-If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ)
+If have questions or need support or guidance, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://bit.ly/bacalhau-project-slack)
 
 ## Contributing
 
