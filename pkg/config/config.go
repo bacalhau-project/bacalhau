@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
@@ -20,7 +21,7 @@ const (
 	maxUInt16              uint16 = 0xFFFF
 	minUInt16              uint16 = 0x0000
 	DefaultRunInfoFilename        = "bacalhau.run"
-	RunInfoFilePermissions        = 0600
+	RunInfoFilePermissions        = 0400
 )
 
 var RunInfoFilePath = ""
@@ -39,23 +40,24 @@ func DevstackEnvFile() string {
 
 // WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
 func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
-	// TODO: Use the below when we can figure out how to test write permissions in a cross platform way.
-	// See this - https://stackoverflow.com/questions/20026320/how-to-tell-if-folder-exists-and-is-writable //nolint:lll
-	// if _, err := os.Stat("/run"); err == nil {
-	// 	writePath = "/run" // Linux
-	// } else if _, err := os.Stat("/var/run"); err == nil {
-	// 	writePath = "/var/run" // Older Linux
-	// } else if _, err := os.Stat("/private/var/run"); err == nil {
-	// 	writePath = "/private/var/run" // MacOS
-	// } else {
-	// 	// otherwise write to temp dir, which should be available on all systems
-	// 	writePath = os.TempDir()
-	// }
+	writePath := ""
+	if writeable, _ := filefs.IsWritable("/run"); writeable {
+		writePath = "/run" // Linux
+	} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
+		writePath = "/var/run" // Older Linux
+	} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
+		writePath = "/private/var/run" // MacOS
+	} else {
+		// otherwise write to temp dir, which should be available on all systems
+		log.Warn().Msg("Could not write to /run, /var/run, or /private/var/run, writing to temp dir instead." +
+			"This file contains sensitive information, so please ensure it is limited in visibility.")
+		writePath = os.TempDir()
+	}
 
 	if DevstackEnvFile() != "" {
 		RunInfoFilePath = DevstackEnvFile()
 	} else {
-		RunInfoFilePath = filepath.Join(os.TempDir(), DefaultRunInfoFilename)
+		RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
 	}
 
 	// Use os.Create to truncate the file if it already exists
