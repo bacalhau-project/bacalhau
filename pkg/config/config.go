@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	maxUInt16             uint16 = 0xFFFF
-	minUInt16             uint16 = 0x0000
-	RunInfoFilename              = "bacalhauServe.run"
-	ServerFilePermissions        = 0600
+	maxUInt16              uint16 = 0xFFFF
+	minUInt16              uint16 = 0x0000
+	RunInfoFilename               = "bacalhauServe.run"
+	RunInfoFilePermissions        = 0600
 )
 
-var RunInfoFile = ""
+var RunInfoFilePath = ""
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -54,42 +54,42 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 	// 	writePath = os.TempDir()
 	// }
 
-	RunInfoFile = filepath.Join(writePath, RunInfoFilename)
+	RunInfoFilePath = filepath.Join(writePath, RunInfoFilename)
 
 	// Use os.Create to truncate the file if it already exists
-	f, err := os.Create(RunInfoFile)
+	f, err := os.Create(RunInfoFilePath)
 	defer func() {
 		err = f.Close()
 		if err != nil {
-			log.Ctx(ctx).Err(err).Msgf("Failed to close file %s", RunInfoFile)
+			log.Ctx(ctx).Err(err).Msgf("Failed to close file %s", RunInfoFilePath)
 		}
 	}()
 
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFile)
+		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFilePath)
 		return err
 	}
 
 	// Set permissions to constant for read read/write only by user
-	err = f.Chmod(ServerFilePermissions)
+	err = f.Chmod(RunInfoFilePermissions)
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFile)
+		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFilePath)
 		return err
 	}
 	_, err = f.Write([]byte(summaryShellVariablesString))
 	if err != nil {
-		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFile)
+		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
 		return err
 	}
 	return nil
 }
 
 func CleanupRunInfoFile() error {
-	return os.Remove(RunInfoFile)
+	return os.Remove(RunInfoFilePath)
 }
 
 func GetRunInfoFilePath() string {
-	return RunInfoFile
+	return RunInfoFilePath
 }
 
 func ShouldKeepStack() bool {
