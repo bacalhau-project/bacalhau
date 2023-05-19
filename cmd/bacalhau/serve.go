@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -425,12 +426,28 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 
+		shellVariablesString := fmt.Sprintf(`
+export BACALHAU_IPFS_SWARM_ADDRESSES=%s
+export BACALHAU_API_HOST=%s
+export BACALHAU_API_PORT=%d
+export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, apiPort, peerAddress)
+
 		if isRequesterNode {
 			cmd.Println()
 			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
-			cmd.Printf("export BACALHAU_IPFS_SWARM_ADDRESSES=%s\n", ipfsSwarmAddress)
-			cmd.Printf("export BACALHAU_API_HOST=%s\n", OS.HostAddress)
-			cmd.Printf("export BACALHAU_API_PORT=%d\n", apiPort)
+			cmd.Println(shellVariablesString)
+		}
+
+		err = config.WriteRunInfoFile(ctx, shellVariablesString)
+		if err != nil {
+			return err
+		}
+		cmd.Println("\nA copy of these variables have been written to: " + config.GetRunInfoFilePath())
+
+		cm.RegisterCallback(config.CleanupRunInfoFile)
+
+		if err != nil {
+			return err
 		}
 	}
 

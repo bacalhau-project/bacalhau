@@ -17,17 +17,13 @@ import (
 )
 
 const (
-	maxUInt16 uint16 = 0xFFFF
-	minUInt16 uint16 = 0x0000
+	maxUInt16             uint16 = 0xFFFF
+	minUInt16             uint16 = 0x0000
+	RunInfoFilename              = "bacalhauServe.run"
+	ServerFilePermissions        = 0600
 )
 
-func DevstackShouldWriteEnvFile() bool {
-	return DevstackEnvFile() != ""
-}
-
-func DevstackEnvFile() string {
-	return os.Getenv("DEVSTACK_ENV_FILE")
-}
+var RunInfoFile = ""
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -35,6 +31,65 @@ func DevstackGetShouldPrintInfo() bool {
 
 func DevstackSetShouldPrintInfo() {
 	os.Setenv("DEVSTACK_PRINT_INFO", "1")
+}
+
+func DevstackEnvFile() string {
+	return os.Getenv("DEVSTACK_ENV_FILE")
+}
+
+// WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
+func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
+	writePath := os.TempDir()
+
+	// TODO: Use the below when we can figure out how to test write permissions in a cross platform way.
+	// See this - https://stackoverflow.com/questions/20026320/how-to-tell-if-folder-exists-and-is-writable //nolint:lll
+	// if _, err := os.Stat("/run"); err == nil {
+	// 	writePath = "/run" // Linux
+	// } else if _, err := os.Stat("/var/run"); err == nil {
+	// 	writePath = "/var/run" // Older Linux
+	// } else if _, err := os.Stat("/private/var/run"); err == nil {
+	// 	writePath = "/private/var/run" // MacOS
+	// } else {
+	// 	// otherwise write to temp dir, which should be available on all systems
+	// 	writePath = os.TempDir()
+	// }
+
+	RunInfoFile = filepath.Join(writePath, RunInfoFilename)
+
+	// Use os.Create to truncate the file if it already exists
+	f, err := os.Create(RunInfoFile)
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msgf("Failed to close file %s", RunInfoFile)
+		}
+	}()
+
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFile)
+		return err
+	}
+
+	// Set permissions to constant for read read/write only by user
+	err = f.Chmod(ServerFilePermissions)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFile)
+		return err
+	}
+	_, err = f.Write([]byte(summaryShellVariablesString))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFile)
+		return err
+	}
+	return nil
+}
+
+func CleanupRunInfoFile() error {
+	return os.Remove(RunInfoFile)
+}
+
+func GetRunInfoFilePath() string {
+	return RunInfoFile
 }
 
 func ShouldKeepStack() bool {
