@@ -19,7 +19,7 @@ import (
 const (
 	maxUInt16              uint16 = 0xFFFF
 	minUInt16              uint16 = 0x0000
-	DefaultRunInfoFilename        = "bacalhauServe.run"
+	DefaultRunInfoFilename        = "bacalhau.run"
 	RunInfoFilePermissions        = 0600
 )
 
