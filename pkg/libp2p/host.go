@@ -37,6 +37,12 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 		fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port),
 	}
 
+	preferredAddress := config.PreferredAddress()
+	if preferredAddress != "" {
+		newAddress := fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)
+		addrs = append(addrs, newAddress)
+	}
+
 	opts = append(opts, libp2p.ListenAddrStrings(addrs...))
 	opts = append(opts, libp2p.Identity(prvKey))
 	h, err := libp2p.New(opts...)

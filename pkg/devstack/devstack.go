@@ -396,8 +396,23 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 		}
 		devstackPeerAddr := strings.Join(libp2pPeer, ",")
 		if len(libp2pPeer) > 0 {
-			// only add one of the addrs for this peer
-			devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+			chosen := false
+			preferredAddress := config.PreferredAddress()
+			if preferredAddress != "" {
+				for _, addr := range libp2pPeer {
+					if strings.Contains(addr, preferredAddress) {
+						devstackPeerAddrs = append(devstackPeerAddrs, addr)
+						chosen = true
+						break
+					}
+				}
+			}
+
+			if !chosen {
+				// only add one of the addrs for this peer and we will choose the first
+				// in the absence of a preference
+				devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+			}
 		}
 
 		logString += fmt.Sprintf(`
