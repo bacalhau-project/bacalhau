@@ -63,4 +63,6 @@ bacalhau serve \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --swarm-port "${BACALHAU_PORT}" \
   --api-port 1234 \
-  --peer "${CONNECT_PEER}"
+  --peer "${CONNECT_PEER}" \
+  --private-internal-ipfs=false \
+  --labels owner=bacalhau

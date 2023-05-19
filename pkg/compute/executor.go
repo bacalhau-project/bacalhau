@@ -2,14 +2,15 @@ package compute
 
 import (
 	"context"
-	"strconv"
+	"fmt"
+	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,6 +30,7 @@ type BaseExecutor struct {
 	ID              string
 	callback        Callback
 	store           store.ExecutionStore
+	cancellers      generic.SyncMap[string, context.CancelFunc]
 	executors       executor.ExecutorProvider
 	verifiers       verifier.VerifierProvider
 	publishers      publisher.PublisherProvider
@@ -47,12 +49,21 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-// Run the execution of a shard after it has been accepted, and propose a result to the requester to be verified.
-func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
+// Run the execution after it has been accepted, and propose a result to the requester to be verified.
+func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
-		Str("Shard", execution.Shard.ID()).
-		Str("ExecutionID", execution.ID).
+		Str("job", execution.Job.ID()).
+		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
+
+	ctx, cancel := context.WithCancel(ctx)
+	e.cancellers.Put(execution.ID, cancel)
+	defer func() {
+		if cancel, found := e.cancellers.Get(execution.ID); found {
+			e.cancellers.Delete(execution.ID)
+			cancel()
+		}
+	}()
 
 	defer func() {
 		if err != nil {
@@ -70,47 +81,43 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 		return
 	}
 
-	jobVerifier, err := e.verifiers.GetVerifier(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
+		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
 
-	resultFolder, err := jobVerifier.GetShardResultPath(ctx, execution.Shard)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
 	if err != nil {
+		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
 
-	jobExecutor, err := e.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
 	if err != nil {
+		err = fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
 		return
 	}
 
 	var runCommandResult *model.RunCommandResult
 
 	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.RunShard(ctx, execution.Shard, resultFolder)
+		runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
 		if err != nil {
-			jobsFailed.With(prometheus.Labels{
-				"node_id":     e.ID,
-				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.Metadata.ClientID,
-			}).Inc()
+			jobsFailed.Add(ctx, 1)
 		} else {
-			jobsCompleted.With(prometheus.Labels{
-				"node_id":     e.ID,
-				"shard_index": strconv.Itoa(execution.Shard.Index),
-				"client_id":   execution.Shard.Job.Metadata.ClientID,
-			}).Inc()
+			jobsCompleted.Add(ctx, 1)
 		}
 
 		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to run shard")
+			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
 			return
 		}
 	}
 
-	shardProposal, err := jobVerifier.GetShardProposal(ctx, execution.Shard, resultFolder)
+	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, execution.ID, resultFolder)
 	if err != nil {
+		err = fmt.Errorf("failed to get proposal: %w", err)
 		return
 	}
 
@@ -129,14 +136,14 @@ func (e BaseExecutor) Run(ctx context.Context, execution store.Execution) (err e
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.RequesterNodeID,
 		},
-		ResultProposal:   shardProposal,
+		ResultProposal:   proposal,
 		RunCommandResult: runCommandResult,
 	})
 	return err
 }
 
-// Publish the result of a shard execution after it has been verified.
-func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
+// Publish the result of an execution after it has been verified.
+func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Publishing")
@@ -151,22 +158,31 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 	if err != nil {
 		return
 	}
-	jobVerifier, err := e.verifiers.GetVerifier(ctx, execution.Shard.Job.Spec.Verifier)
+	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
 	if err != nil {
+		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
 		return
 	}
-	resultFolder, err := jobVerifier.GetShardResultPath(ctx, execution.Shard)
+	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
 	if err != nil {
+		err = fmt.Errorf("failed to get result path: %w", err)
 		return
 	}
-	jobPublisher, err := e.publishers.GetPublisher(ctx, execution.Shard.Job.Spec.Publisher)
+	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
 	if err != nil {
+		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
 		return
 	}
-	publishedResult, err := jobPublisher.PublishShardResult(ctx, execution.Shard, e.ID, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution.ID, execution.Job, resultFolder)
 	if err != nil {
+		err = fmt.Errorf("failed to publish result: %w", err)
 		return
 	}
+
+	log.Ctx(ctx).Debug().
+		Str("execution", execution.ID).
+		Str("cid", publishedResult.CID).
+		Msg("Execution published")
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
@@ -175,6 +191,12 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 	})
 	if err != nil {
 		return
+	}
+
+	log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultFolder)
+	err = os.RemoveAll(resultFolder)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
 	}
 
 	e.callback.OnPublishComplete(ctx, PublishResult{
@@ -188,32 +210,18 @@ func (e BaseExecutor) Publish(ctx context.Context, execution store.Execution) (e
 	return err
 }
 
-// Cancel the execution of a running shard.
-func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
+// Cancel the execution.
+func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Canceling")
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Msgf("Canceling execution %s", execution.ID)
-	// check that we have the executor to cancel this job
-	jobExecutor, err := e.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
-	if err != nil {
-		return
-	}
-	err = jobExecutor.CancelShard(ctx, execution.Shard)
-	if err != nil {
-		return err
-	}
-
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID: execution.ID,
-		NewState:    store.ExecutionStateCancelled,
-		Comment:     "Canceled after execution accepted",
-	})
-	if err != nil {
-		return
+	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
+	if cancel, found := e.cancellers.Get(execution.ID); found {
+		e.cancellers.Delete(execution.ID)
+		cancel()
 	}
 
 	e.callback.OnCancelComplete(ctx, CancelResult{
@@ -226,7 +234,7 @@ func (e BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (er
 	return err
 }
 
-func (e BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,
@@ -235,7 +243,7 @@ func (e BaseExecutor) handleFailure(ctx context.Context, execution store.Executi
 	})
 
 	if updateError != nil {
-		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution state to failed: %s", execution)
+		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	} else {
 		e.callback.OnComputeFailure(ctx, ComputeError{
 			ExecutionMetadata: NewExecutionMetadata(execution),

@@ -12,6 +12,7 @@ dist/*.sha256
 dist/*.tar.gz
 env.*
 .env
+.devstack.env
 *.swp
 *.swo
 bin/*/*
@@ -33,6 +34,7 @@ production.tfvars
 ops/terraform/*.out
 dashboard/terraform/.terraform
 dashboard/frontend/dist
+dashboard/pgdata
 *_unit.json
 .trunk/logs
 benchmark/results
@@ -41,6 +43,7 @@ __pycache__
 stderr
 stdout
 unittests.xml
+tests.xml
 output_dir
 experimental/*
 .idea/
@@ -50,3 +53,4 @@ coverage/
 coverage.out
 docker/.images
 docker/.pulled
+clients/pyproject.toml

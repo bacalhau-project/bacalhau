@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"go.ptx.dk/multierrgroup"
 )
 
@@ -25,7 +25,7 @@ func ParallelPrepareStorage(
 		addStorageSpec := func() error {
 			var storageProvider Storage
 			var volumeMount StorageVolume
-			storageProvider, err := provider.GetStorage(ctx, spec.StorageSource)
+			storageProvider, err := provider.Get(ctx, spec.StorageSource)
 			if err != nil {
 				return err
 			}

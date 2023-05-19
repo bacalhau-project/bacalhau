@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
@@ -37,7 +37,7 @@ func CopyOversize(
 	srcType, dstType model.StorageSourceType,
 	maxSingle, maxTotal datasize.ByteSize,
 ) (modified bool, err error) {
-	srcStorage, err := provider.GetStorage(ctx, srcType)
+	srcStorage, err := provider.Get(ctx, srcType)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get %s storage provider", srcType)
 		return
@@ -91,8 +91,8 @@ func Copy(
 	spec model.StorageSpec,
 	destination model.StorageSourceType,
 ) (model.StorageSpec, error) {
-	srcStorage, srcErr := provider.GetStorage(ctx, spec.StorageSource)
-	dstStorage, dstErr := provider.GetStorage(ctx, destination)
+	srcStorage, srcErr := provider.Get(ctx, spec.StorageSource)
+	dstStorage, dstErr := provider.Get(ctx, destination)
 	err := multierr.Append(srcErr, dstErr)
 	if err != nil {
 		return model.StorageSpec{}, err

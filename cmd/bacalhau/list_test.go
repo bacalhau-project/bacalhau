@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,10 +30,6 @@ type ListSuite struct {
 // a normal test function and pass our suite to suite.Run
 func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
-}
-
-type listResponse struct {
-	Jobs []*model.Job `json:"jobs"`
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
@@ -57,10 +54,10 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				require.NoError(suite.T(), err)
 			}
 
-			_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
+			_, out, err := ExecuteTestCobraCommand("list",
 				"--hide-header",
 				"--api-host", suite.host,
-				"--api-port", suite.port,
+				"--api-port", fmt.Sprint(suite.port),
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 				"--reverse", "false",
 			)
@@ -75,8 +72,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 	ctx := context.Background()
 
 	// submit 10 jobs
-	jobIds := []string{}
-	jobLongIds := []string{}
+	var jobIds []string
+	var jobLongIds []string
 	for i := 0; i < 10; i++ {
 		var err error
 		j := testutils.MakeNoopJob()
@@ -85,16 +82,16 @@ func (suite *ListSuite) TestList_IdFilter() {
 		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
-	_, out, err := ExecuteTestCobraCommand(suite.T(), "list",
+	_, out, err := ExecuteTestCobraCommand("list",
 		"--hide-header",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--id-filter", jobIds[0],
 	)
 	require.NoError(suite.T(), err)
 
 	// parse list output
-	seenIds := []string{}
+	var seenIds []string
 	for _, line := range strings.Split(out, "\n") {
 		parts := strings.Split(line, " ")
 		if len(parts) > 2 {
@@ -108,22 +105,22 @@ func (suite *ListSuite) TestList_IdFilter() {
 	//// Test --output json
 
 	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
-	_, out, err = ExecuteTestCobraCommand(suite.T(), "list",
+	_, out, err = ExecuteTestCobraCommand("list",
 		"--hide-header",
 		"--api-host", suite.host,
-		"--api-port", suite.port,
+		"--api-port", fmt.Sprint(suite.port),
 		"--id-filter", jobLongIds[0],
 		"--output", "json",
 	)
 	require.NoError(suite.T(), err)
 
 	// parse response
-	response := listResponse{}
+	response := publicapi.ListResponse{}
 	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
-	var firstItem *model.Job
+	var firstItem model.Job
 	for _, v := range response.Jobs {
-		firstItem = v
+		firstItem = v.Job
 		break
 	}
 
@@ -161,7 +158,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 		testCases = append(testCases, testCase{
 			fmt.Sprintf("%s excluded with other tags", string(tag)),
 			[]string{string(tag)},
-			[]string{string("test")},
+			[]string{"test"},
 			false,
 			false,
 			false,
@@ -184,18 +181,18 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				args := []string{"list",
 					"--hide-header",
 					"--api-host", suite.host,
-					"--api-port", suite.port,
+					"--api-port", fmt.Sprint(suite.port),
 					"--output", "json",
 				}
 				args = append(args, flags...)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), args...)
+				_, out, err := ExecuteTestCobraCommand(args...)
 				require.NoError(suite.T(), err)
 
-				response := listResponse{}
-				err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				response := publicapi.ListResponse{}
+				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
-					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Metadata.ID)
+					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)
 				} else {
 					require.Empty(suite.T(), response.Jobs)
 				}
@@ -208,7 +205,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 
 			// list with label included
 			suite.Run("label_included", func() {
-				flags := []string{}
+				var flags []string
 				for _, label := range tc.ListLabels {
 					flags = append(flags, "--include-tag", label)
 				}
@@ -217,7 +214,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 
 			// list with label excluded
 			suite.Run("label_excluded", func() {
-				flags := []string{}
+				var flags []string
 				for _, label := range tc.ListLabels {
 					flags = append(flags, "--exclude-tag", label)
 				}
@@ -287,12 +284,11 @@ func (suite *ListSuite) TestList_SortFlags() {
 					reverseString = "--reverse"
 				}
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(),
-					"list",
+				_, out, err := ExecuteTestCobraCommand("list",
 					"--hide-header",
 					"--no-style",
 					"--api-host", suite.host,
-					"--api-port", suite.port,
+					"--api-port", fmt.Sprint(suite.port),
 					"--sort-by", sortFlags.sortFlag,
 					"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 					reverseString,
@@ -317,7 +313,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 						}
 
 						compareIds := jobIDs[0:tc.numberOfJobsOutput]
-						seenIds := []string{}
+						var seenIds []string
 
 						for _, line := range strings.Split(out, "\n") {
 							parts := strings.Split(line, " ")

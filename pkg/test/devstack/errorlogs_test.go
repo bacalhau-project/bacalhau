@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -27,12 +27,16 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 var executorTestCases = []model.Spec{
 	{
-		Engine:    model.EngineNoop,
-		Publisher: model.PublisherIpfs,
+		Engine: model.EngineNoop,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 	},
 	{
-		Engine:    model.EngineDocker,
-		Publisher: model.PublisherIpfs,
+		Engine: model.EngineDocker,
+		PublisherSpec: model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		},
 		Docker: model.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"},
@@ -44,7 +48,7 @@ var errorLogsTestCase = scenario.Scenario{
 	Stack: &scenario.StackConfig{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
 				},
 			},
@@ -55,12 +59,7 @@ var errorLogsTestCase = scenario.Scenario{
 		scenario.FileEquals(model.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
-		}),
+		job.WaitForSuccessfulCompletion(),
 	},
 }
 

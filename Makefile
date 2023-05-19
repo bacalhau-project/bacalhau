@@ -1,22 +1,20 @@
-RUSTFLAGS="-C target-feature=+crt-static"
+export GO = go
+export GOOS ?= $(shell $(GO) env GOOS)
+export GOARCH ?= $(shell $(GO) env GOARCH)
 
-ifeq ($(BUILD_SIDECAR), 1)
-	$(MAKE) build-ipfs-sidecar-image
+ifeq ($(GOARCH),armv6)
+export GOARCH = arm
+export GOARM = 6
 endif
 
-ifeq ($(GOOS),)
-GOOS = $(shell $(GO) env GOOS)
-endif
-
-ifeq ($(GOARCH),)
-GOARCH = $(shell $(GO) env GOARCH)
+ifeq ($(GOARCH),armv7)
+export GOARCH = arm
+export GOARM = 7
 endif
 
 # Env Variables
 export GO111MODULE = on
-export GO = go
 export CGO_ENABLED = 0
-export PYTHON = python3ƒ
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau
@@ -27,15 +25,14 @@ BINARY_NAME := ${BINARY_NAME}.exe
 CC = gcc.exe
 endif
 
-BINARY_PATH = bin/${GOOS}_${GOARCH}/${BINARY_NAME}
+BINARY_PATH = bin/${GOOS}_${GOARCH}${GOARM}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
-PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
+PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
 
@@ -43,8 +40,13 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 define BUILD_FLAGS
--X github.com/filecoin-project/bacalhau/pkg/version.GITVERSION=$(TAG)
+-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
+
+# pypi version scheme (https://peps.python.org/pep-0440/) does not accept
+# versions with dashes (e.g. 0.3.24-build-testing-01), so we replace them a valid suffix
+PYPI_VERSION ?= $(eval PYPI_VERSION := $(shell git describe --tags --abbrev=0 | tr -d v | sed -E 's/-(.)*$$/.dev0/'))$(PYPI_VERSION)
+export PYPI_VERSION
 
 all: build
 
@@ -65,38 +67,14 @@ install-pre-commit:
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit: buildenvcorrect
+precommit:
 	${PRECOMMIT} run --all
+	cd python && make pre-commit
 
-.PHONY: buildenvcorrect
-buildenvcorrect:
-	@echo "Checking build environment..."
-# Checking GO
-# @echo "Checking for go..."
-# @which go
-# @echo "Checking for go version..."
-# @go version
-# @echo "Checking for go env..."
-# @go env
-# @echo "Checking for go env GOOS..."
-# @go env GOOS
-# @echo "Checking for go env GOARCH..."
-# @go env GOARCH
-# @echo "Checking for go env GO111MODULE..."
-# @go env GO111MODULE
-# @echo "Checking for go env GOPATH..."
-# @go env GOPATH
-# @echo "Checking for go env GOCACHE..."
-# @go env GOCACHE
-# ===============
-# Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
-# before each commit.
-# Error if it's empty or not found.
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
-	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
-	@exit 1
+$(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it.")
 endif
-	@echo "Build environment correct."
 
 ################################################################################
 # Target: swagger-docs
@@ -105,14 +83,76 @@ endif
 swagger-docs:
 	@echo "Building swagger docs..."
 	swag fmt -g "pkg/publicapi/server.go" && \
-	swag init --parseDependency --parseInternal --parseDepth 1 --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	swag init \
+		--outputTypes "go,json" \
+		--parseDependency \
+		--parseInternal \
+		--parseDepth 1 \
+		--markdownFiles docs/swagger \
+		-g "pkg/publicapi/server.go" \
+		--overridesFile .swaggo
 	@echo "Swagger docs built."
+
+################################################################################
+# Target: build-python-apiclient
+################################################################################
+.PHONY: build-python-apiclient
+build-python-apiclient:
+	cd clients && ${MAKE} clean all
+	@echo "Python API client built."
+
+################################################################################
+# Target: build-python-sdk
+################################################################################
+.PHONY: build-python-sdk
+build-python-sdk:
+	cd python && ${MAKE} clean all
+	@echo "Python SDK built."
+
+################################################################################
+# Target: build-bacalhau-airflow
+################################################################################
+.PHONY: build-bacalhau-airflow
+build-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} clean all
+	@echo "Python bacalhau-airflow built."
+
+# Builds all python packages
+################################################################################
+# Target: build-python
+################################################################################
+.PHONY: build-python
+build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
+
+################################################################################
+# Target: release-python-apiclient
+################################################################################
+.PHONY: release-python-apiclient
+release-python-apiclient:
+	cd clients && ${MAKE} pypi-upload
+	@echo "Python API client pushed to PyPi."
+
+################################################################################
+# Target: release-python-sdk
+################################################################################
+.PHONY: release-python-sdk
+release-python-sdk:
+	cd python && ${MAKE} build && ${MAKE} publish
+	@echo "Python SDK pushed to PyPi."
+
+################################################################################
+# Target: release-bacalhau-airflow
+################################################################################
+.PHONY: release-bacalhau-airflow
+release-bacalhau-airflow:
+	cd integration/airflow && ${MAKE} release
+	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
-build: buildenvcorrect build-bacalhau
+build: build-bacalhau
 
 .PHONY: build-ci
 build-ci: build-bacalhau
@@ -130,19 +170,12 @@ build-bacalhau: ${BINARY_PATH}
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
 
-${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
-	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES} main.go
+	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
 # Target: build-docker-images
 ################################################################################
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
-.PHONY: build-ipfs-sidecar-image
-build-ipfs-sidecar-image:
-	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
-
 HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
 HTTP_GATEWAY_TAG ?= ${TAG}
 .PHONY: build-http-gateway-image
@@ -152,8 +185,32 @@ build-http-gateway-image:
 		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
 		pkg/executor/docker/gateway
 
+BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
+BACALHAU_TAG ?= ${TAG}
+.PHONY: build-bacalhau-image
+build-bacalhau-image:
+	docker build --progress=plain \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
+.PHONY: push-bacalhau-image
+push-bacalhau-image:
+	docker buildx build --push --progress=plain \
+		--platform linux/amd64,linux/arm64 \
+		--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:latest \
+		--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		--label org.opencontainers.image.version=${BACALHAU_TAG} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-image/Dockerfile \
+		.
+
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
+
+.PHONY: push-docker-images
+push-docker-images: build-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -162,10 +219,13 @@ build-docker-images: build-http-gateway-image
 .PHONY: build-bacalhau-tgz
 build-bacalhau-tgz: dist/${PACKAGE}.tar.gz dist/${PACKAGE}.tar.gz.signature.sha256
 
-dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
+dist/:
+	mkdir -p $@
+
+dist/${PACKAGE}.tar.gz: ${BINARY_PATH} | dist/
 	tar cvzf $@ -C $(dir $(BINARY_PATH)) $(notdir ${BINARY_PATH})
 
-dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
+dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz | dist/
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
 
@@ -201,14 +261,12 @@ clean:
 # Target: schema
 ################################################################################
 SCHEMA_DIR ?= schema.bacalhau.org/jsonschema
-SCHEMA_LIST ?= ${SCHEMA_DIR}/../_data/schema.yml
 
 .PHONY: schema
 schema: ${SCHEMA_DIR}/$(shell git describe --tags --abbrev=0).json
 
 ${SCHEMA_DIR}/%.json:
 	./scripts/build-schema-file.sh $$(basename -s .json $@) > $@
-	echo "- $$(basename -s .json $@)" >> $(SCHEMA_LIST)
 
 ################################################################################
 # Target: all_schemas
@@ -228,6 +286,11 @@ all_schemas: ${ALL_SCHEMAS}
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
 	go test ./... -v --tags=unit
+
+.PHONY: test-python
+test-python:
+# sdk tests
+	cd python && make test
 
 .PHONY: integration-test
 integration-test:
@@ -251,21 +314,21 @@ grc-test-debug:
 
 .PHONY: test-one
 test-one:
-	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
 test-devstack:
-	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/pkg/test/devstack/
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/pkg/test/devstack/
 
 .PHONY: test-commands
 test-commands:
-	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
 # .PHONY: test-pythonwasm
 # test-pythonwasm:
 # # TestSimplestPythonWasmDashC
-# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
-# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
+# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
 
 ################################################################################
 # Target: devstack
@@ -342,14 +405,14 @@ COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverag
 .PHONY: test-and-report
 test-and-report: unittests.xml ${COVER_FILE}
 
-${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: docker/.pulled ${BINARY_PATH} $(dir ${COVER_FILE})
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
-		--format standard-quiet \
+		--format testname \
 		-- \
 			-p ${TEST_PARALLEL_PACKAGES} \
-			./pkg/... ./cmd/... \
+			./pkg/... ./cmd/... ./dashboard/... \
 			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}
 

@@ -1,8 +1,12 @@
 package generic
 
-import "sync"
+import (
+	"fmt"
+	"strings"
+	"sync"
+)
 
-// A generic.SyncMap is a concurrency-safe sync.Map that uses strongly-typed
+// A SyncMap is a concurrency-safe sync.Map that uses strongly-typed
 // method signatures to ensure the types of its stored data are known.
 type SyncMap[K comparable, V any] struct {
 	sync.Map
@@ -36,4 +40,15 @@ func (m *SyncMap[K, V]) Iter(ranger func(key K, value V) bool) {
 		v := value.(V)
 		return ranger(k, v)
 	})
+}
+
+func (m *SyncMap[K, V]) String() string {
+	var sb strings.Builder
+	sb.Write([]byte(`{`))
+	m.Range(func(key, value any) bool {
+		sb.Write([]byte(fmt.Sprintf(`%s=%s`, key, value)))
+		return true
+	})
+	sb.Write([]byte(`}`))
+	return sb.String()
 }

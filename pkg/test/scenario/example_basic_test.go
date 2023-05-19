@@ -3,14 +3,16 @@ package scenario
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
 
 var basicScenario Scenario = Scenario{
-	Inputs:   StoredText("hello, world!", "/inputs"),
-	Contexts: StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
-	Outputs:  []model.StorageSpec{},
+	Inputs: ManyStores(
+		StoredText("hello, world!", "/inputs"),
+		StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
+	),
+	Outputs: []model.StorageSpec{},
 	Spec: model.Spec{
 		Engine: model.EngineWasm,
 		Wasm: model.JobSpecWasm{

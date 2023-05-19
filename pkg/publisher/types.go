@@ -3,20 +3,20 @@ package publisher
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-// Returns a publisher for the given publisher type
-type PublisherProvider interface {
-	GetPublisher(ctx context.Context, job model.Publisher) (Publisher, error)
-}
+// PublisherProvider returns a publisher for the given publisher type
+type PublisherProvider = model.Provider[model.Publisher, Publisher]
 
 // Publisher is the interface for publishing results of a job
 // The job spec will choose which publisher(s) it wants to use
 // (there can be multiple publishers configured)
 type Publisher interface {
-	// tells you if the required software is installed on this machine
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
+
+	// Validate the job's publisher configuration
+	ValidateJob(ctx context.Context, j model.Job) error
 
 	// compute node
 	//
@@ -27,10 +27,10 @@ type Publisher interface {
 	// can have multiple publishers and some publisher
 	// implementations don't concern themselves with storage
 	// (e.g. notify slack)
-	PublishShardResult(
+	PublishResult(
 		ctx context.Context,
-		shard model.JobShard,
-		hostID string,
-		shardResultPath string,
+		executionID string,
+		job model.Job,
+		resultPath string,
 	) (model.StorageSpec, error)
 }

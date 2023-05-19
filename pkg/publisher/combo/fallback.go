@@ -3,8 +3,8 @@ package combo
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 )
@@ -54,14 +54,21 @@ func (f *fallbackPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	})
 }
 
-// PublishShardResult implements publisher.Publisher
-func (f *fallbackPublisher) PublishShardResult(
+func (f *fallbackPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	_, err := fallback(ctx, f.publishers, func(p publisher.Publisher) (interface{}, error) {
+		return nil, p.ValidateJob(ctx, j)
+	})
+	return err
+}
+
+// PublishResult implements publisher.Publisher
+func (f *fallbackPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
+	executionID string,
+	job model.Job,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	return fallback(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 }

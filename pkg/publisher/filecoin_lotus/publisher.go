@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/go-address"
 	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/hashicorp/go-multierror"
@@ -39,14 +39,11 @@ type Publisher struct {
 	client api.Client
 }
 
-func NewFilecoinLotusPublisher(
+func NewPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	config PublisherConfig,
 ) (*Publisher, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewFilecoinLotusPublisher")
-	defer span.End()
-
 	if config.StorageDuration == time.Duration(0) {
 		return nil, errors.New("StorageDuration is required")
 	}
@@ -63,38 +60,47 @@ func NewFilecoinLotusPublisher(
 	}
 	cm.RegisterCallback(client.Close)
 
+	return newPublisher(config, client), nil
+}
+
+func newPublisher(
+	config PublisherConfig,
+	client api.Client,
+) *Publisher {
 	return &Publisher{
 		config: config,
 		client: client,
-	}, nil
+	}
 }
 
 func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
-	defer span.End()
-
 	if _, err := l.client.Version(ctx); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (l *Publisher) PublishShardResult(
-	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
-) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/PublishShardResult")
-	defer span.End()
+func (l *Publisher) ValidateJob(ctx context.Context, j model.Job) error {
+	if j.Spec.PublisherSpec.Type != model.PublisherFilecoin {
+		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+			model.PublisherFilecoin, j.Spec.PublisherSpec.Type)
+	}
+	return nil
+}
 
+func (l *Publisher) PublishResult(
+	ctx context.Context,
+	executionID string,
+	j model.Job,
+	resultPath string,
+) (model.StorageSpec, error) {
 	log.Ctx(ctx).Debug().
-		Stringer("shard", shard).
-		Str("host", hostID).
-		Str("shardResultPath", shardResultPath).
+		Stringer("job", j).
+		Str("executionID", executionID).
+		Str("resultPath", resultPath).
 		Msg("Uploading results folder to filecoin lotus")
 
-	carFile, err := l.carResultsDir(ctx, shardResultPath)
+	carFile, err := l.carResultsDir(ctx, resultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -109,15 +115,12 @@ func (l *Publisher) PublishShardResult(
 		return model.StorageSpec{}, err
 	}
 
-	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceFilecoin, hostID, contentCid.String())
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
 	spec.Metadata["deal_cid"] = dealCid
 	return spec, nil
 }
 
 func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/carResultsDir")
-	defer span.End()
-
 	tempFile, err := os.CreateTemp(l.config.UploadDir, "results-*.car")
 	if err != nil {
 		return "", err
@@ -125,7 +128,7 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 
 	// Temporary files will have 0600 as their permissions, which could cause issues when sharing with a Lotus node
 	// running inside a container.
-	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil { //nolint:govet
+	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil {
 		return "", err
 	}
 
@@ -142,9 +145,6 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 }
 
 func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
-	defer span.End()
-
 	res, err := l.client.ClientImport(ctx, api.FileRef{
 		Path:  filePath,
 		IsCAR: true,
@@ -156,9 +156,6 @@ func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, e
 }
 
 func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
-	defer span.End()
-
 	dataSize, err := l.client.ClientDealPieceCID(ctx, contentCid)
 	if err != nil {
 		return "", err

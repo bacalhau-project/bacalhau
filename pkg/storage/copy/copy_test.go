@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package copy
 
 import (
@@ -5,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,13 +84,10 @@ func preserveSlice[T any](slice []*T) []T {
 func TestCopyOversize(t *testing.T) {
 	for _, testCase := range copyOversizeTestCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			cm := system.NewCleanupManager()
-			t.Cleanup(cm.Cleanup)
-
 			originals := preserveSlice(testCase.specs)
 
 			didUpload := false
-			noopStorage, err := noop.NewNoopStorageWithConfig(context.Background(), cm, noop.StorageConfig{
+			noopStorage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
 					GetVolumeSize: func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 						return uint64(len(volume.URL)), nil
@@ -99,9 +98,8 @@ func TestCopyOversize(t *testing.T) {
 					},
 				},
 			})
-			require.NoError(t, err)
 
-			provider := noop.NewNoopStorageProvider(noopStorage)
+			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage)
 			modified, err := CopyOversize(
 				context.Background(),
 				provider,

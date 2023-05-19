@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,13 +46,10 @@ func TestUpload(t *testing.T) {
 	require.NoError(t, err)
 
 	publisher := getPublisherWithGoodConfig(t)
-	spec, err := publisher.PublishShardResult(
+	spec, err := publisher.PublishResult(
 		context.Background(),
-		model.JobShard{
-			Job:   model.NewJob(),
-			Index: 0,
-		},
-		"host",
+		"execution-id",
+		model.Job{},
 		tempDir,
 	)
 	require.NoError(t, err)

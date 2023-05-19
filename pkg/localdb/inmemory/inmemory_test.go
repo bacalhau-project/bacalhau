@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/stretchr/testify/require"
 )
 

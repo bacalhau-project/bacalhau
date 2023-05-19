@@ -4,17 +4,22 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 
 type IDInfo struct {
-	ID string `json:"ID"`
+	ID       string `json:"ID"`
+	ClientID string `json:"ClientID"`
 }
 
 func newIDCmd() *cobra.Command {
 	OS := NewServeOptions()
+
+	// make sure serve options point to local mode
+	OS.PeerConnect = DefaultPeerConnect
+	OS.PrivateInternalIPFS = true
 
 	idCmd := &cobra.Command{
 		Use:   "id",
@@ -30,18 +35,14 @@ func newIDCmd() *cobra.Command {
 }
 
 func id(_ *cobra.Command, OS *ServeOptions) error {
-	// Cleanup manager ensures that resources are freed before exiting:
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-	defer cm.Cleanup()
-
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
 	if err != nil {
 		return err
 	}
 
 	info := IDInfo{
-		ID: libp2pHost.ID().String(),
+		ID:       libp2pHost.ID().String(),
+		ClientID: system.GetClientID(),
 	}
 	_ = libp2pHost.Close()
 

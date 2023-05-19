@@ -1,16 +1,17 @@
 package executor
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 )
@@ -25,6 +26,11 @@ type outputResult struct {
 }
 
 func writeOutputResult(resultsDir string, output outputResult) error {
+	if output.contents == nil {
+		// contents may be nil if something went wrong while trying to get the logs
+		output.contents = bytes.NewReader(nil)
+	}
+
 	var err error
 
 	// Consume the passed buffers up to the limit of the maximum bytes. The
@@ -32,6 +38,9 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	// write that directly to disk rather than needing to hold it all in memory.
 	summary := make([]byte, output.summaryLimit+1)
 	summaryRead, err := output.contents.Read(summary)
+	if err != nil && err != io.EOF {
+		return err
+	}
 
 	available := system.Min(summaryRead, int(output.summaryLimit))
 

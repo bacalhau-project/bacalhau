@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package inline
 
 import (
@@ -6,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/stretchr/testify/require"
 )
 

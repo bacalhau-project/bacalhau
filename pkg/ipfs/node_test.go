@@ -4,96 +4,99 @@ package ipfs
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 const testString = "Hello World"
 
-// Define the suite, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
 type NodeSuite struct {
 	suite.Suite
 }
 
-// Before each test
-func (suite *NodeSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+func (s *NodeSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:
 //  1. local IPFS can be created using the 'test' profile
 //  2. files can be uploaded/downloaded from the IPFS network
-func (suite *NodeSuite) TestFunctionality() {
+//  3. a local IPFS doesn't auto-discover any peers
+func (s *NodeSuite) TestFunctionality() {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
 
 	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
+	s.T().Cleanup(func() {
+		cm.Cleanup(context.Background())
+	})
 
 	n1, err := NewLocalNode(ctx, cm, nil)
-	require.NoError(suite.T(), err)
+	s.Require().NoError(err)
 
 	addrs, err := n1.SwarmAddresses()
-	require.NoError(suite.T(), err)
+	s.Require().NoError(err)
 
-	var n2 *Node
-	n2, err = NewLocalNode(ctx, cm, addrs) // connect to first node
-	require.NoError(suite.T(), err)
+	n2, err := NewLocalNode(ctx, cm, addrs) // connect to first node
+	s.Require().NoError(err)
+
+	n3, err := NewLocalNode(ctx, cm, nil) // to test that it doesn't auto-discover anyone
+	s.Require().NoError(err)
 
 	// Create a file in a temp dir to upload to the nodes:
-	dirPath := suite.T().TempDir()
+	dirPath := s.T().TempDir()
 
 	filePath := filepath.Join(dirPath, "test.txt")
-	file, err := os.Create(filePath)
-	require.NoError(suite.T(), err)
-	defer file.Close()
 
-	_, err = file.WriteString(testString)
-	require.NoError(suite.T(), err)
+	s.Require().NoError(os.WriteFile(filePath, []byte(testString), 0644))
 
 	// Upload a file to the second client:
-	cl2, err := n2.Client()
-	require.NoError(suite.T(), err)
-	require.NoError(suite.T(), cl2.WaitUntilAvailable(ctx))
+	cl2 := n2.Client()
 
 	cid, err := cl2.Put(ctx, filePath)
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), cid)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(cid)
 
 	// Validate file was uploaded and pinned
 	_, isPinned, err := cl2.API.Pin().IsPinned(ctx, icorepath.New(cid))
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), isPinned)
+	s.Require().NoError(err)
+	s.Require().True(isPinned)
 
 	// Download the file from the first client:
-	cl1, err := n1.Client()
-	require.NoError(suite.T(), err)
-	require.NoError(suite.T(), cl1.WaitUntilAvailable(ctx))
+	cl1 := n1.Client()
 
 	outputPath := filepath.Join(dirPath, "output.txt")
 	err = cl1.Get(ctx, cid, outputPath)
-	require.NoError(suite.T(), err)
+	s.Require().NoError(err)
 
 	// Check that the file was downloaded correctly:
-	file, err = os.Open(outputPath)
-	require.NoError(suite.T(), err)
-	defer file.Close()
+	data, err := os.ReadFile(outputPath)
+	s.Require().NoError(err)
+	s.Require().Equal(testString, string(data))
 
-	data, err := ioutil.ReadAll(file)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), testString, string(data))
+	s.Never(func() bool {
+		peers, err := n2.Client().API.Swarm().KnownAddrs(ctx)
+		s.Require().NoError(err)
+		id, err := n2.Client().API.Key().Self(ctx)
+		s.Require().NoError(err)
+		delete(peers, id.ID())
+		return !s.Len(peers, 1)
+	}, 500*time.Millisecond, 10*time.Millisecond, "a local node should only connect to the passed in peers")
+
+	s.Never(func() bool {
+		peers, err := n3.Client().API.Swarm().Peers(ctx)
+		s.Require().NoError(err)
+
+		return !s.Empty(peers)
+	}, 500*time.Millisecond, 10*time.Millisecond, "a local node should never auto-discover anyone")
 }
 
 // a normal test function and pass our suite to suite.Run

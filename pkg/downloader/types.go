@@ -3,23 +3,21 @@ package downloader
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type Downloader interface {
-	// FetchResult fetches published result and saves it to downloadPath
-	FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error
+	model.Providable
+
+	// DescribeResult provides information on the contents of the result,
+	// providing a mapping between the 'path' of the contents and the
+	// identifier used to fetch it (by this Downloader).
+	DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error)
+
+	// FetchResult fetches item and saves to disk (as per item's Target)
+	FetchResult(ctx context.Context, item model.DownloadItem) error
 }
 
 type DownloaderProvider interface {
-	GetDownloader(storageType model.StorageSourceType) (Downloader, error)
-}
-
-type shardCIDContext struct {
-	Result         model.PublishedResult
-	OutputVolumes  []model.StorageSpec
-	RootDir        string
-	CIDDownloadDir string
-	ShardDir       string
-	VolumeDir      string
+	model.Provider[model.StorageSourceType, Downloader]
 }

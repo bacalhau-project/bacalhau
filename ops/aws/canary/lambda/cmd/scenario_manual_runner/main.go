@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/router"
-	"github.com/rs/zerolog/log"
-	flag "github.com/spf13/pflag"
 	"math/rand"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
+	"github.com/rs/zerolog/log"
+	flag "github.com/spf13/pflag"
 )
 
 func main() {
@@ -38,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	for action, _ := range router.TestcasesMap {
+	for action := range router.TestcasesMap {
 		go run(ctx, action, rate)
 	}
 
@@ -46,7 +47,7 @@ func main() {
 }
 
 func run(ctx context.Context, action string, rate float32) {
-	log.Info().Msgf("Starting scenario: %s", action)
+	log.Ctx(ctx).Info().Msgf("Starting scenario: %s", action)
 	for {
 		select {
 		case <-ctx.Done():
@@ -54,7 +55,7 @@ func run(ctx context.Context, action string, rate float32) {
 		default:
 			err := router.Route(ctx, models.Event{Action: action})
 			if err != nil {
-				log.Error().Msg(err.Error())
+				log.Ctx(ctx).Error().Msg(err.Error())
 			}
 		}
 		jitter := rand.Intn(100) - 100 // +- 100ms sleep jitter

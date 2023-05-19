@@ -4,21 +4,56 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.",
+        "description": "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.",
         "title": "Bacalhau API",
         "contact": {
             "name": "Bacalhau Team",
-            "url": "https://github.com/filecoin-project/bacalhau",
+            "url": "https://github.com/bacalhau-project/bacalhau",
             "email": "team@bacalhau.org"
         },
         "license": {
             "name": "Apache 2.0",
-            "url": "https://github.com/filecoin-project/bacalhau/blob/main/LICENSE"
+            "url": "https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE"
         }
     },
     "host": "bootstrap.production.bacalhau.org:1234",
     "basePath": "/",
     "paths": {
+        "/approve": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Approves a job to be run on this compute node.",
+                "operationId": "apiServer/approver",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/debug": {
             "get": {
                 "produces": [
@@ -51,9 +86,9 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/healthz",
+                "operationId": "healthz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -70,10 +105,10 @@
                     "text/plain"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
                 "summary": "Returns the id of the host node.",
-                "operationId": "apiServer/id",
+                "operationId": "id",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -96,9 +131,9 @@
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/livez",
+                "operationId": "livez",
                 "responses": {
                     "200": {
                         "description": "TODO",
@@ -115,12 +150,38 @@
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/logz",
+                "operationId": "logz",
                 "responses": {
                     "200": {
                         "description": "TODO",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/node_info": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Utils"
+                ],
+                "summary": "Returns the info of the node.",
+                "operationId": "nodeInfo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.NodeInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "string"
                         }
@@ -135,20 +196,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Utils"
                 ],
-                "summary": "Returns the peers connected to the host via the libp2pHost layer.",
-                "operationId": "apiServer/peers",
+                "summary": "Returns the peers connected to the host via the transport layer.",
+                "operationId": "peers",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/peer.AddrInfo"
                             }
                         }
                     },
@@ -167,12 +225,71 @@
                     "text/plain"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/readyz",
+                "operationId": "readyz",
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/requester/cancel": {
+            "post": {
+                "description": "Cancels a job specified by `id` as long as that job belongs to `client_id`.\n\nReturns the current jobstate after the cancel request has been processed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Job"
+                ],
+                "summary": "Cancels the job with the job-id specified in the body payload.",
+                "operationId": "pkg/requester/publicapi/cancel",
+                "parameters": [
+                    {
+                        "description": " ",
+                        "name": "cancelRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/publicapi.cancelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "string"
                         }
@@ -208,7 +325,7 @@
         },
         "/requester/events": {
             "post": {
-                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n\nExample response (truncated):\n```json\n{\n  \"events\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"EventName\": \"Created\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"JobExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"VerificationResult\": {},\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.331375351Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    ...\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"TargetNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsAccepted\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {\n        \"Complete\": true,\n        \"Result\": true\n      },\n      \"PublishedResult\": {},\n      \"EventTime\": \"2022-11-17T13:32:55.707825569Z\",\n      \"SenderPublicKey\": \"...\"\n    },\n    {\n      \"JobID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"SourceNodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"EventName\": \"ResultsPublished\",\n      \"Spec\": {\n        \"Docker\": {},\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Sharding\": {}\n      },\n      \"JobExecutionPlan\": {},\n      \"Deal\": {},\n      \"VerificationResult\": {},\n      \"PublishedResult\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      },\n      \"EventTime\": \"2022-11-17T13:32:55.756658941Z\",\n      \"SenderPublicKey\": \"...\"\n    }\n  ]\n}\n```",
+                "description": "Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -255,7 +372,7 @@
         },
         "/requester/list": {
             "post": {
-                "description": "Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).\nIf `return_all` is set to true, it returns all jobs on the Bacalhau network.\n\nIf `id` is set, it returns only the job with that ID.\n\nExample response:\n```json\n{\n  \"jobs\": [\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"9304c616-291f-41ad-b862-54e133c0149e\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"date\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:32:55.33837275Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n                  \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"Thu Nov 17 13:32:55 UTC 2022\\n\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    },\n    {\n      \"APIVersion\": \"V1beta1\",\n      \"ID\": \"92d5d4ee-3765-4f78-8353-623f5f26df08\",\n      \"RequesterNodeID\": \"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF\",\n      \"RequesterPublicKey\": \"...\",\n      \"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\",\n      \"Spec\": {\n        \"Engine\": \"Docker\",\n        \"Verifier\": \"Noop\",\n        \"Publisher\": \"Estuary\",\n        \"Docker\": {\n          \"Image\": \"ubuntu\",\n          \"Entrypoint\": [\n            \"sleep\",\n            \"4\"\n          ]\n        },\n        \"Language\": {\n          \"JobContext\": {}\n        },\n        \"Wasm\": {},\n        \"Resources\": {\n          \"GPU\": \"\"\n        },\n        \"Timeout\": 1800,\n        \"outputs\": [\n          {\n            \"StorageSource\": \"IPFS\",\n            \"Name\": \"outputs\",\n            \"path\": \"/outputs\"\n          }\n        ],\n        \"Sharding\": {\n          \"BatchSize\": 1,\n          \"GlobPatternBasePath\": \"/inputs\"\n        }\n      },\n      \"Deal\": {\n        \"Concurrency\": 1\n      },\n      \"ExecutionPlan\": {\n        \"ShardsTotal\": 1\n      },\n      \"CreatedAt\": \"2022-11-17T13:29:01.871140291Z\",\n      \"JobState\": {\n        \"Nodes\": {\n          \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86\",\n                \"State\": \"Cancelled\",\n                \"VerificationResult\": {},\n                \"PublishedResults\": {}\n              }\n            }\n          },\n          \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\": {\n            \"Shards\": {\n              \"0\": {\n                \"NodeId\": \"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                \"State\": \"Completed\",\n                \"Status\": \"Got results proposal of length: 0\",\n                \"VerificationResult\": {\n                  \"Complete\": true,\n                  \"Result\": true\n                },\n                \"PublishedResults\": {\n                  \"StorageSource\": \"IPFS\",\n                  \"Name\": \"job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3\",\n                  \"CID\": \"QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG\"\n                },\n                \"RunOutput\": {\n                  \"stdout\": \"\",\n                  \"stdouttruncated\": false,\n                  \"stderr\": \"\",\n                  \"stderrtruncated\": false,\n                  \"exitCode\": 0,\n                  \"runnerError\": \"\"\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  ]\n}\n```",
+                "description": "Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).\nIf `return_all` is set to true, it returns all jobs on the Bacalhau network.\n\nIf `id` is set, it returns only the job with that ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -300,9 +417,9 @@
                 }
             }
         },
-        "/requester/local_events": {
+        "/requester/logs": {
             "post": {
-                "description": "Local events (e.g. Selected, BidAccepted, Verified) are useful to track the progress of a job.",
+                "description": "Shows the output from the job specified by `id` as long as that job belongs to `client_id`.\n\nThe ouput will be continuous until either, the client disconnects or the execution completes.",
                 "consumes": [
                     "application/json"
                 ],
@@ -312,16 +429,16 @@
                 "tags": [
                     "Job"
                 ],
-                "summary": "Returns the node's local events related to the job-id passed in the body payload. Useful for troubleshooting.",
-                "operationId": "pkg/requester/publicapi/localEvents",
+                "summary": "Displays the logs for a current job/execution",
+                "operationId": "pkg/requester/publicapi/logs",
                 "parameters": [
                     {
                         "description": " ",
-                        "name": "localEventsRequest",
+                        "name": "logRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsRequest"
+                            "$ref": "#/definitions/publicapi.logRequest"
                         }
                     }
                 ],
@@ -329,11 +446,23 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/publicapi.localEventsResponse"
+                            "type": "string"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "string"
                         }
@@ -443,7 +572,7 @@
         },
         "/requester/submit": {
             "post": {
-                "description": "Description:\n\n* `client_public_key`: The base64-encoded public key of the client.\n* `signature`: A base64-encoded signature of the `data` attribute, signed by the client.\n* `job_create_payload`:\n    * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe \u003cjob-id\u003e` and fetch the `ClientID` field.\n\t* `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/filecoin-project/bacalhau/blob/main/pkg/model/job.go\n",
+                "description": "Description:\n\n* `client_public_key`: The base64-encoded public key of the client.\n* `signature`: A base64-encoded signature of the `data` attribute, signed by the client.\n* `payload`:\n    * `ClientID`: Request must specify a `ClientID`. To retrieve your `ClientID`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe \u003cjob-id\u003e` and fetch the `ClientID` field.\n\t* `APIVersion`: e.g. `\"V1beta1\"`.\n    * `Spec`: https://github.com/bacalhau-project/bacalhau/blob/main/pkg/model/job.go\n",
                 "consumes": [
                     "application/json"
                 ],
@@ -494,9 +623,9 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Utils"
                 ],
-                "operationId": "apiServer/varz",
+                "operationId": "varz",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -512,7 +641,7 @@
         },
         "/version": {
             "post": {
-                "description": "See https://github.com/filecoin-project/bacalhau/releases for a complete list of `gitversion` tags.",
+                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.",
                 "consumes": [
                     "application/json"
                 ],
@@ -592,6 +721,50 @@
                 }
             }
         },
+        "model.ComputeNodeInfo": {
+            "type": "object",
+            "properties": {
+                "AvailableCapacity": {
+                    "$ref": "#/definitions/model.ResourceUsageData"
+                },
+                "EnqueuedExecutions": {
+                    "type": "integer"
+                },
+                "ExecutionEngines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Engine"
+                    }
+                },
+                "MaxCapacity": {
+                    "$ref": "#/definitions/model.ResourceUsageData"
+                },
+                "MaxJobRequirements": {
+                    "$ref": "#/definitions/model.ResourceUsageData"
+                },
+                "Publishers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Publisher"
+                    }
+                },
+                "RunningExecutions": {
+                    "type": "integer"
+                },
+                "StorageSources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSourceType"
+                    }
+                },
+                "Verifiers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Verifier"
+                    }
+                }
+            }
+        },
         "model.Deal": {
             "type": "object",
             "properties": {
@@ -609,6 +782,134 @@
                 }
             }
         },
+        "model.Engine": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "EngineLanguage": "wraps python_wasm",
+                "EnginePythonWasm": "wraps docker",
+                "engineDone": "must be last",
+                "engineUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "engineUnknown",
+                "EngineNoop",
+                "EngineDocker",
+                "EngineWasm",
+                "EngineLanguage",
+                "EnginePythonWasm",
+                "engineDone"
+            ]
+        },
+        "model.ExecutionState": {
+            "type": "object",
+            "properties": {
+                "AcceptedAskForBid": {
+                    "description": "Set to true iff the compute node accepted the ask for a bid, and intends\nto run the job if the bid is accepted by the requester.",
+                    "type": "boolean"
+                },
+                "ComputeReference": {
+                    "description": "Compute node reference for this job execution",
+                    "type": "string"
+                },
+                "CreateTime": {
+                    "description": "CreateTime is the time when the job was created.",
+                    "type": "string"
+                },
+                "JobID": {
+                    "description": "JobID the job id",
+                    "type": "string"
+                },
+                "NodeId": {
+                    "description": "which node is running this execution",
+                    "type": "string"
+                },
+                "PublishedResults": {
+                    "$ref": "#/definitions/model.StorageSpec"
+                },
+                "RunOutput": {
+                    "description": "RunOutput of the job",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.RunCommandResult"
+                        }
+                    ]
+                },
+                "State": {
+                    "description": "State is the current state of the execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ExecutionStateType"
+                        }
+                    ]
+                },
+                "Status": {
+                    "description": "an arbitrary status message",
+                    "type": "string"
+                },
+                "UpdateTime": {
+                    "description": "UpdateTime is the time when the job state was last updated.",
+                    "type": "string"
+                },
+                "VerificationProposal": {
+                    "description": "the proposed results for this execution\nthis will be resolved by the verifier somehow",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "VerificationResult": {
+                    "$ref": "#/definitions/model.VerificationResult"
+                },
+                "Version": {
+                    "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ExecutionStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+            ],
+            "x-enum-comments": {
+                "ExecutionStateBidAccepted": "aka running",
+                "ExecutionStateResultAccepted": "aka publishing"
+            },
+            "x-enum-varnames": [
+                "ExecutionStateNew",
+                "ExecutionStateAskForBid",
+                "ExecutionStateAskForBidAccepted",
+                "ExecutionStateAskForBidRejected",
+                "ExecutionStateBidAccepted",
+                "ExecutionStateBidRejected",
+                "ExecutionStateResultProposed",
+                "ExecutionStateResultAccepted",
+                "ExecutionStateResultRejected",
+                "ExecutionStateCompleted",
+                "ExecutionStateFailed",
+                "ExecutionStateCanceled"
+            ]
+        },
         "model.Job": {
             "type": "object",
             "properties": {
@@ -621,11 +922,32 @@
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
+                }
+            }
+        },
+        "model.JobCancelPayload": {
+            "type": "object",
+            "required": [
+                "ClientID",
+                "JobID"
+            ],
+            "properties": {
+                "ClientID": {
+                    "description": "the id of the client that is submitting the job",
+                    "type": "string"
                 },
-                "Status": {
-                    "description": "The status of the job: where are the nodes at, what are the events",
-                    "$ref": "#/definitions/model.JobStatus"
+                "JobID": {
+                    "description": "the job id of the job to be canceled",
+                    "type": "string"
+                },
+                "Reason": {
+                    "description": "The reason that the job is being canceled",
+                    "type": "string"
                 }
             }
         },
@@ -647,129 +969,58 @@
                 },
                 "Spec": {
                     "description": "The specification of this job.",
-                    "$ref": "#/definitions/model.Spec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Spec"
+                        }
+                    ]
                 }
             }
         },
-        "model.JobEvent": {
+        "model.JobHistory": {
             "type": "object",
             "properties": {
-                "APIVersion": {
-                    "description": "APIVersion of the Job",
-                    "type": "string",
-                    "example": "V1beta1"
+                "Comment": {
+                    "type": "string"
                 },
-                "ClientID": {
-                    "description": "optional clientID if this is an externally triggered event (like create job)",
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                "ComputeReference": {
+                    "type": "string"
                 },
-                "Deal": {
-                    "description": "this is only defined in \"update_deal\" events",
-                    "$ref": "#/definitions/model.Deal"
-                },
-                "EventName": {
-                    "type": "integer"
-                },
-                "EventTime": {
-                    "type": "string",
-                    "example": "2022-11-17T13:32:55.756658941Z"
-                },
-                "ExecutionID": {
-                    "description": "compute execution identifier",
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "JobExecutionPlan": {
-                    "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
-                },
-                "JobID": {
-                    "type": "string",
-                    "example": "9304c616-291f-41ad-b862-54e133c0149e"
-                },
-                "PublishedResult": {
-                    "$ref": "#/definitions/model.StorageSpec"
-                },
-                "RunOutput": {
-                    "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
-                },
-                "SenderPublicKey": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ShardIndex": {
-                    "description": "what shard is this event for",
-                    "type": "integer"
-                },
-                "SourceNodeID": {
-                    "description": "the node that emitted this event",
-                    "type": "string",
-                    "example": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
-                },
-                "Spec": {
-                    "description": "this is only defined in \"create\" events",
-                    "$ref": "#/definitions/model.Spec"
-                },
-                "Status": {
-                    "type": "string",
-                    "example": "Got results proposal of length: 0"
-                },
-                "TargetNodeID": {
-                    "description": "the node that this event is for\ne.g. \"AcceptJobBid\" was emitted by Requester but it targeting compute node",
-                    "type": "string",
-                    "example": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
-                },
-                "VerificationProposal": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "VerificationResult": {
-                    "$ref": "#/definitions/model.VerificationResult"
-                }
-            }
-        },
-        "model.JobExecutionPlan": {
-            "type": "object",
-            "properties": {
-                "ShardsTotal": {
-                    "description": "how many shards are there in total for this job\nwe are expecting this number x concurrency total\nJobShardState objects for this job",
-                    "type": "integer"
-                }
-            }
-        },
-        "model.JobLocalEvent": {
-            "type": "object",
-            "properties": {
-                "EventName": {
-                    "type": "integer"
+                "ExecutionState": {
+                    "$ref": "#/definitions/model.StateChange-model_ExecutionStateType"
                 },
                 "JobID": {
                     "type": "string"
                 },
-                "ShardIndex": {
+                "JobState": {
+                    "$ref": "#/definitions/model.StateChange-model_JobStateType"
+                },
+                "NewVersion": {
                     "type": "integer"
                 },
-                "TargetNodeID": {
+                "NodeID": {
                     "type": "string"
+                },
+                "Time": {
+                    "type": "string"
+                },
+                "Type": {
+                    "$ref": "#/definitions/model.JobHistoryType"
                 }
             }
         },
-        "model.JobNodeState": {
-            "type": "object",
-            "properties": {
-                "Shards": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/model.JobShardState"
-                    }
-                }
-            }
+        "model.JobHistoryType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "jobHistoryTypeUndefined",
+                "JobHistoryTypeJobLevel",
+                "JobHistoryTypeExecutionLevel"
+            ]
         },
         "model.JobRequester": {
             "type": "object",
@@ -781,68 +1032,6 @@
                 },
                 "RequesterPublicKey": {
                     "description": "The public key of the Requester node that created this job\nThis can be used to encrypt messages back to the creator",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "model.JobShardState": {
-            "type": "object",
-            "properties": {
-                "ExecutionId": {
-                    "description": "Compute node reference for this shard execution",
-                    "type": "string"
-                },
-                "NodeId": {
-                    "description": "which node is running this shard",
-                    "type": "string"
-                },
-                "PublishedResults": {
-                    "$ref": "#/definitions/model.StorageSpec"
-                },
-                "RunOutput": {
-                    "description": "RunOutput of the job",
-                    "$ref": "#/definitions/model.RunCommandResult"
-                },
-                "ShardIndex": {
-                    "description": "what shard is this we are running",
-                    "type": "integer"
-                },
-                "State": {
-                    "description": "what is the state of the shard on this node",
-                    "type": "integer"
-                },
-                "Status": {
-                    "description": "an arbitrary status message",
-                    "type": "string"
-                },
-                "VerificationProposal": {
-                    "description": "the proposed results for this shard\nthis will be resolved by the verifier somehow",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "VerificationResult": {
-                    "$ref": "#/definitions/model.VerificationResult"
-                }
-            }
-        },
-        "model.JobShardingConfig": {
-            "type": "object",
-            "properties": {
-                "BatchSize": {
-                    "description": "how many \"items\" are to be processed in each shard\nwe first apply the glob pattern which will result in a flat list of items\nthis number decides how to group that flat list into actual shards run by compute nodes",
-                    "type": "integer"
-                },
-                "GlobPattern": {
-                    "description": "divide the inputs up into the smallest possible unit\nfor example /* would mean \"all top level files or folders\"\nthis being an empty string means \"no sharding\"",
-                    "type": "string"
-                },
-                "GlobPatternBasePath": {
-                    "description": "when using multiple input volumes\nwhat path do we treat as the common mount path to apply the glob pattern to",
                     "type": "string"
                 }
             }
@@ -887,7 +1076,11 @@
                 },
                 "JobContext": {
                     "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "Language": {
                     "description": "e.g. python",
@@ -912,7 +1105,11 @@
             "properties": {
                 "EntryModule": {
                     "description": "The module that contains the WASM code to start running.",
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "EntryPoint": {
                     "description": "The name of the function in the EntryModule to call to run the job. For\nWASI jobs, this will always be `_start`, but jobs can choose to call\nother WASM functions instead. The EntryPoint must be a zero-parameter\nzero-result function.",
@@ -944,37 +1141,92 @@
         "model.JobState": {
             "type": "object",
             "properties": {
-                "Nodes": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/model.JobNodeState"
+                "CreateTime": {
+                    "description": "CreateTime is the time when the job was created.",
+                    "type": "string"
+                },
+                "Executions": {
+                    "description": "Executions is a list of executions of the job across the nodes.\nA new execution is created when a node is selected to execute the job, and a node can have multiple executions for the same\njob due to retries, but there can only be a single active execution per node at any given time.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ExecutionState"
                     }
+                },
+                "JobID": {
+                    "description": "JobID is the unique identifier for the job",
+                    "type": "string"
+                },
+                "State": {
+                    "description": "State is the current state of the job",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobStateType"
+                        }
+                    ]
+                },
+                "TimeoutAt": {
+                    "description": "TimeoutAt is the time when the job will be timed out if it is not completed.",
+                    "type": "string"
+                },
+                "UpdateTime": {
+                    "description": "UpdateTime is the time when the job state was last updated.",
+                    "type": "string"
+                },
+                "Version": {
+                    "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
+                    "type": "integer"
                 }
             }
         },
-        "model.JobStatus": {
+        "model.JobStateType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "JobStateNew": "must be first"
+            },
+            "x-enum-varnames": [
+                "JobStateNew",
+                "JobStateInProgress",
+                "JobStateCancelled",
+                "JobStateError",
+                "JobStateCompleted",
+                "JobStateCompletedPartially",
+                "JobStateQueued"
+            ]
+        },
+        "model.JobWithInfo": {
             "type": "object",
             "properties": {
-                "JobEvents": {
-                    "description": "All events associated with the job",
+                "History": {
+                    "description": "History of changes to the job state. Not always populated in the job description",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.JobEvent"
+                        "$ref": "#/definitions/model.JobHistory"
                     }
                 },
-                "JobState": {
+                "Job": {
+                    "description": "Job info",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Job"
+                        }
+                    ]
+                },
+                "State": {
                     "description": "The current state of the job",
-                    "$ref": "#/definitions/model.JobState"
-                },
-                "LocalJobEvents": {
-                    "description": "All local events associated with the job",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobLocalEvent"
-                    }
-                },
-                "Requester": {
-                    "$ref": "#/definitions/model.JobRequester"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobState"
+                        }
+                    ]
                 }
             }
         },
@@ -987,7 +1239,11 @@
                 },
                 "Operator": {
                     "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
-                    "type": "string"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/selection.Operator"
+                        }
+                    ]
                 },
                 "Values": {
                     "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
@@ -995,6 +1251,36 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "model.LogsPayload": {
+            "type": "object",
+            "required": [
+                "ClientID",
+                "ExecutionID",
+                "JobID"
+            ],
+            "properties": {
+                "ClientID": {
+                    "description": "the id of the client that is requesting the logs",
+                    "type": "string"
+                },
+                "ExecutionID": {
+                    "description": "the execution to be shown",
+                    "type": "string"
+                },
+                "Follow": {
+                    "description": "whether the logs should be followed after the current logs are shown",
+                    "type": "boolean"
+                },
+                "JobID": {
+                    "description": "the job id of the job to be shown",
+                    "type": "string"
+                },
+                "WithHistory": {
+                    "description": "whether the logs history is required",
+                    "type": "boolean"
                 }
             }
         },
@@ -1015,8 +1301,24 @@
                     "description": "The unique global ID of this job in the bacalhau network.",
                     "type": "string",
                     "example": "92d5d4ee-3765-4f78-8353-623f5f26df08"
+                },
+                "Requester": {
+                    "$ref": "#/definitions/model.JobRequester"
                 }
             }
+        },
+        "model.Network": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "NetworkNone",
+                "NetworkFull",
+                "NetworkHTTP"
+            ]
         },
         "model.NetworkConfig": {
             "type": "object",
@@ -1028,9 +1330,43 @@
                     }
                 },
                 "Type": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Network"
                 }
             }
+        },
+        "model.NodeInfo": {
+            "type": "object",
+            "properties": {
+                "BacalhauVersion": {
+                    "$ref": "#/definitions/model.BuildVersionInfo"
+                },
+                "ComputeNodeInfo": {
+                    "$ref": "#/definitions/model.ComputeNodeInfo"
+                },
+                "Labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "NodeType": {
+                    "$ref": "#/definitions/model.NodeType"
+                },
+                "PeerInfo": {
+                    "$ref": "#/definitions/peer.AddrInfo"
+                }
+            }
+        },
+        "model.NodeType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "nodeTypeUnknown",
+                "NodeTypeCompute"
+            ]
         },
         "model.PublishedResult": {
             "type": "object",
@@ -1040,9 +1376,43 @@
                 },
                 "NodeID": {
                     "type": "string"
+                }
+            }
+        },
+        "model.Publisher": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "publisherDone": "must be last",
+                "publisherUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "publisherUnknown",
+                "PublisherNoop",
+                "PublisherIpfs",
+                "PublisherFilecoin",
+                "PublisherEstuary",
+                "PublisherS3",
+                "publisherDone"
+            ]
+        },
+        "model.PublisherSpec": {
+            "type": "object",
+            "properties": {
+                "Params": {
+                    "type": "object",
+                    "additionalProperties": true
                 },
-                "ShardIndex": {
-                    "type": "integer"
+                "Type": {
+                    "$ref": "#/definitions/model.Publisher"
                 }
             }
         },
@@ -1063,6 +1433,30 @@
                 "Memory": {
                     "description": "github.com/c2h5oh/datasize string",
                     "type": "string"
+                }
+            }
+        },
+        "model.ResourceUsageData": {
+            "type": "object",
+            "properties": {
+                "CPU": {
+                    "description": "cpu units",
+                    "type": "number",
+                    "example": 9.600000000000001
+                },
+                "Disk": {
+                    "description": "bytes",
+                    "type": "integer",
+                    "example": 212663867801
+                },
+                "GPU": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "Memory": {
+                    "description": "bytes",
+                    "type": "integer",
+                    "example": 27487790694
                 }
             }
         },
@@ -1095,6 +1489,29 @@
                 }
             }
         },
+        "model.S3StorageSpec": {
+            "type": "object",
+            "properties": {
+                "Bucket": {
+                    "type": "string"
+                },
+                "Checksum": {
+                    "type": "string"
+                },
+                "Endpoint": {
+                    "type": "string"
+                },
+                "Key": {
+                    "type": "string"
+                },
+                "Region": {
+                    "type": "string"
+                },
+                "VersionID": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Spec": {
             "type": "object",
             "properties": {
@@ -1105,16 +1522,13 @@
                         "type": "string"
                     }
                 },
-                "Contexts": {
-                    "description": "Input volumes that will not be sharded\nfor example to upload code into a base image\nevery shard will get the full range of context volumes",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
-                },
                 "Deal": {
                     "description": "The deal the client has made, such as which job bids they have accepted.",
-                    "$ref": "#/definitions/model.Deal"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Deal"
+                        }
+                    ]
                 },
                 "DoNotTrack": {
                     "description": "Do not track specified by the client",
@@ -1122,22 +1536,30 @@
                 },
                 "Docker": {
                     "description": "executor specific data",
-                    "$ref": "#/definitions/model.JobSpecDocker"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecDocker"
+                        }
+                    ]
                 },
                 "Engine": {
                     "description": "e.g. docker or language",
-                    "type": "integer"
-                },
-                "ExecutionPlan": {
-                    "description": "how will this job be executed by nodes on the network",
-                    "$ref": "#/definitions/model.JobExecutionPlan"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Engine"
+                        }
+                    ]
                 },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
-                    "$ref": "#/definitions/model.NetworkConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.NetworkConfig"
+                        }
+                    ]
                 },
                 "NodeSelectors": {
                     "description": "NodeSelectors is a selector which must be true for the compute node to run this job.",
@@ -1147,23 +1569,30 @@
                     }
                 },
                 "Publisher": {
-                    "description": "there can be multiple publishers for the job",
-                    "type": "integer"
+                    "description": "there can be multiple publishers for the job\ndeprecated: use PublisherSpec instead",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Publisher"
+                        }
+                    ]
+                },
+                "PublisherSpec": {
+                    "$ref": "#/definitions/model.PublisherSpec"
                 },
                 "Resources": {
                     "description": "the compute (cpu, ram) resources this job requires",
-                    "$ref": "#/definitions/model.ResourceUsageConfig"
-                },
-                "Sharding": {
-                    "description": "the sharding config for this job\ndescribes how the job might be split up into parallel shards",
-                    "$ref": "#/definitions/model.JobShardingConfig"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ResourceUsageConfig"
+                        }
+                    ]
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
                 "Verifier": {
-                    "type": "integer"
+                    "$ref": "#/definitions/model.Verifier"
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
@@ -1184,6 +1613,63 @@
                 }
             }
         },
+        "model.StateChange-model_ExecutionStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/model.ExecutionStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/model.ExecutionStateType"
+                }
+            }
+        },
+        "model.StateChange-model_JobStateType": {
+            "type": "object",
+            "properties": {
+                "New": {
+                    "$ref": "#/definitions/model.JobStateType"
+                },
+                "Previous": {
+                    "$ref": "#/definitions/model.JobStateType"
+                }
+            }
+        },
+        "model.StorageSourceType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+            ],
+            "x-enum-comments": {
+                "storageSourceDone": "must be last",
+                "storageSourceUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "storageSourceUnknown",
+                "StorageSourceIPFS",
+                "StorageSourceRepoClone",
+                "StorageSourceRepoCloneLFS",
+                "StorageSourceURLDownload",
+                "StorageSourceFilecoinUnsealed",
+                "StorageSourceFilecoin",
+                "StorageSourceEstuary",
+                "StorageSourceInline",
+                "StorageSourceLocalDirectory",
+                "StorageSourceS3",
+                "storageSourceDone"
+            ]
+        },
         "model.StorageSpec": {
             "type": "object",
             "properties": {
@@ -1202,11 +1688,26 @@
                 "Name": {
                     "description": "Name of the spec's data, for reference.",
                     "type": "string",
-                    "example": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+                    "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+                },
+                "Repo": {
+                    "description": "URL of the git Repo to clone",
+                    "type": "string"
+                },
+                "S3": {
+                    "$ref": "#/definitions/model.S3StorageSpec"
+                },
+                "SourcePath": {
+                    "description": "The path of the host data if we are using local directory paths",
+                    "type": "string"
                 },
                 "StorageSource": {
                     "description": "StorageSource is the abstract source of the data. E.g. a storage source\nmight be a URL download, but doesn't specify how the execution engine\ndoes the download or what it will do with the downloaded data.",
-                    "type": "integer"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSourceType"
+                        }
+                    ]
                 },
                 "URL": {
                     "description": "Source URL of the data",
@@ -1229,6 +1730,53 @@
                 }
             }
         },
+        "model.Verifier": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4
+            ],
+            "x-enum-comments": {
+                "verifierDone": "must be last",
+                "verifierUnknown": "must be first"
+            },
+            "x-enum-varnames": [
+                "verifierUnknown",
+                "VerifierNoop",
+                "VerifierDeterministic",
+                "VerifierExternal",
+                "verifierDone"
+            ]
+        },
+        "peer.AddrInfo": {
+            "type": "object",
+            "properties": {
+                "addrs": {
+                    "type": "array",
+                    "items": {}
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "publicapi.EventFilterOptions": {
+            "type": "object",
+            "properties": {
+                "exclude_execution_level": {
+                    "type": "boolean"
+                },
+                "exclude_job_level": {
+                    "type": "boolean"
+                },
+                "since": {
+                    "type": "integer"
+                }
+            }
+        },
         "publicapi.VersionRequest": {
             "type": "object",
             "properties": {
@@ -1246,12 +1794,54 @@
                 }
             }
         },
+        "publicapi.cancelRequest": {
+            "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
+            "properties": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCancelPayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
+                    "type": "string"
+                }
+            }
+        },
+        "publicapi.cancelResponse": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "$ref": "#/definitions/model.JobState"
+                }
+            }
+        },
         "publicapi.eventsRequest": {
             "type": "object",
             "properties": {
                 "client_id": {
                     "type": "string",
                     "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
+                },
+                "filters": {
+                    "description": "Records the number of seconds since the unix epoch (UTC)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/publicapi.EventFilterOptions"
+                        }
+                    ]
                 },
                 "job_id": {
                     "type": "string",
@@ -1265,7 +1855,7 @@
                 "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.JobEvent"
+                        "$ref": "#/definitions/model.JobHistory"
                     }
                 }
             }
@@ -1321,30 +1911,34 @@
                 "jobs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Job"
+                        "$ref": "#/definitions/model.JobWithInfo"
                     }
                 }
             }
         },
-        "publicapi.localEventsRequest": {
+        "publicapi.logRequest": {
             "type": "object",
+            "required": [
+                "client_public_key",
+                "payload",
+                "signature"
+            ],
             "properties": {
-                "client_id": {
+                "client_public_key": {
+                    "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "job_id": {
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.LogsPayload"
+                        }
+                    ]
+                },
+                "signature": {
+                    "description": "A base64-encoded signature of the data, signed by the client:",
                     "type": "string"
-                }
-            }
-        },
-        "publicapi.localEventsResponse": {
-            "type": "object",
-            "properties": {
-                "localEvents": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobLocalEvent"
-                    }
                 }
             }
         },
@@ -1384,7 +1978,7 @@
             "type": "object",
             "required": [
                 "client_public_key",
-                "job_create_payload",
+                "payload",
                 "signature"
             ],
             "properties": {
@@ -1392,9 +1986,13 @@
                     "description": "The base64-encoded public key of the client:",
                     "type": "string"
                 },
-                "job_create_payload": {
-                    "description": "The data needed to submit and run a job on the network:",
-                    "$ref": "#/definitions/model.JobCreatePayload"
+                "payload": {
+                    "description": "The data needed to cancel a running job on the network",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobCreatePayload"
+                        }
+                    ]
                 },
                 "signature": {
                     "description": "A base64-encoded signature of the data, signed by the client:",
@@ -1409,6 +2007,31 @@
                     "$ref": "#/definitions/model.Job"
                 }
             }
+        },
+        "selection.Operator": {
+            "type": "string",
+            "enum": [
+                "!",
+                "=",
+                "==",
+                "in",
+                "!=",
+                "notin",
+                "exists",
+                "gt",
+                "lt"
+            ],
+            "x-enum-varnames": [
+                "DoesNotExist",
+                "Equals",
+                "DoubleEquals",
+                "In",
+                "NotEquals",
+                "NotIn",
+                "Exists",
+                "GreaterThan",
+                "LessThan"
+            ]
         },
         "types.FreeSpace": {
             "type": "object",

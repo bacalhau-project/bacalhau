@@ -5,15 +5,37 @@ package testutils
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
+
+func SetupTestWithDefaultConfigs(
+	ctx context.Context,
+	t *testing.T,
+	nodes int, badActors int,
+	lotusNode bool,
+	nodeOverrides ...node.NodeConfig,
+) (*devstack.DevStack, *system.CleanupManager) {
+	return SetupTest(
+		ctx,
+		t,
+		nodes, badActors,
+		lotusNode,
+		node.NewComputeConfigWithDefaults(),
+		node.NewRequesterConfigWithDefaults(),
+		nodeOverrides...,
+	)
+}
 
 func SetupTest(
 	ctx context.Context,
@@ -25,7 +47,9 @@ func SetupTest(
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      nodes,
@@ -37,29 +61,38 @@ func SetupTest(
 }
 
 type mixedExecutorFactory struct {
-	*node.StandardExecutorsFactory
-	*devstack.NoopExecutorsFactory
+	standardFactory, noopFactory node.ExecutorsFactory
 }
 
 // Get implements node.ExecutorsFactory
-func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-	stdProvider, err := m.StandardExecutorsFactory.Get(ctx, nodeConfig)
+func (m *mixedExecutorFactory) Get(
+	ctx context.Context,
+	nodeConfig node.NodeConfig,
+	storages storage.StorageProvider,
+) (executor.ExecutorProvider, error) {
+	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig, storages)
 	if err != nil {
 		return nil, err
 	}
 
-	noopProvider, err := m.NoopExecutorsFactory.Get(ctx, nodeConfig)
+	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig, storages)
 	if err != nil {
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.GetExecutor(ctx, model.EngineNoop)
+	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
 	if err != nil {
 		return nil, err
 	}
 
-	err = stdProvider.AddExecutor(ctx, model.EngineNoop, noopExecutor)
-	return stdProvider, err
+	return &model.ChainedProvider[model.Engine, executor.Executor]{
+		Providers: []model.Provider[model.Engine, executor.Executor]{
+			stdProvider,
+			model.NewMappedProvider(map[model.Engine]executor.Executor{
+				model.EngineNoop: noopExecutor,
+			}),
+		},
+	}, nil
 }
 
 var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
@@ -73,11 +106,11 @@ func SetupTestWithNoopExecutor(
 	executorConfig noop_executor.ExecutorConfig,
 	nodeOverrides ...node.NodeConfig,
 ) *devstack.DevStack {
-	require.NoError(t, system.InitConfigForTesting(t))
+	system.InitConfigForTesting(t)
 	// We will take the standard executors and add in the noop executor
 	executorFactory := &mixedExecutorFactory{
-		StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
-		NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
+		standardFactory: node.NewStandardExecutorsFactory(),
+		noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
 	}
 
 	injector := node.NodeDependencyInjector{
@@ -88,10 +121,55 @@ func SetupTestWithNoopExecutor(
 	}
 
 	cm := system.NewCleanupManager()
-	t.Cleanup(cm.Cleanup)
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
 
 	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector, nodeOverrides...)
 	require.NoError(t, err)
 
+	// Wait for nodes to have announced their presence.
+	for !allNodesDiscovered(t, stack) {
+		time.Sleep(time.Second)
+	}
+
 	return stack
+}
+
+// Returns whether the requester node(s) in the stack have discovered all of the
+// other nodes in the stack and have complete information for them (i.e. each
+// node has actually announced itself.)
+func allNodesDiscovered(t *testing.T, stack *devstack.DevStack) bool {
+	for _, node := range stack.Nodes {
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
+
+		if !node.IsRequesterNode() || node.RequesterNode == nil {
+			continue
+		}
+
+		ids, err := stack.GetNodeIds()
+		require.NoError(t, err)
+
+		discoveredNodes, err := node.RequesterNode.NodeDiscoverer.ListNodes(ctx)
+		require.NoError(t, err)
+
+		for _, discoveredNode := range discoveredNodes {
+			if discoveredNode.NodeType == model.NodeTypeCompute && discoveredNode.ComputeNodeInfo == nil {
+				t.Logf("Node %s seen but without required compute node info", discoveredNode.PeerInfo.ID)
+				return false
+			}
+
+			idx := slices.Index(ids, discoveredNode.PeerInfo.ID.String())
+			require.GreaterOrEqualf(t, idx, 0, "Discovered a node not in the devstack?")
+
+			ids = slices.Delete(ids, idx, idx+1)
+		}
+
+		if len(ids) > 0 {
+			t.Logf("Did not see nodes %v", ids)
+			return false
+		}
+	}
+
+	return true
 }

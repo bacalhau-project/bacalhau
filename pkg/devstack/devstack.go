@@ -8,19 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 	"github.com/imdario/mergo"
-	"github.com/libp2p/go-libp2p/core/host"
-
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -39,6 +37,10 @@ type DevStackOptions struct {
 	EstuaryAPIKey              string
 	SimulatorAddr              string // if this is set, we will use the simulator transport
 	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
+	CPUProfilingFile           string
+	MemoryProfilingFile        string
+	DisabledFeatures           node.FeatureConfig
+	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 }
 type DevStack struct {
 	Nodes          []*node.Node
@@ -104,10 +106,10 @@ func NewDevStack(
 	injector node.NodeDependencyInjector,
 	nodeOverrides ...node.NodeConfig,
 ) (*DevStack, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
 	defer span.End()
 
-	nodes := []*node.Node{}
+	var nodes []*node.Node
 	var lotus *LotusNode
 	var err error
 	var simulatorAddr multiaddr.Multiaddr
@@ -120,19 +122,19 @@ func NewDevStack(
 		}
 		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract p2p protocoll from simulator address: %w", err)
+			return nil, fmt.Errorf("failed to extract p2p protocol from simulator address: %w", err)
 		}
 	}
 
 	if options.LocalNetworkLotus {
-		lotus, err = newLotusNode(ctx) //nolint:govet
+		lotus, err = newLotusNode(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		cm.RegisterCallback(lotus.Close)
+		cm.RegisterCallbackWithContext(lotus.Close)
 
-		if err := lotus.start(ctx); err != nil { //nolint:govet
+		if err := lotus.start(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -147,35 +149,30 @@ func NewDevStack(
 	for i := 0; i < totalNodeCount; i++ {
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
-		log.Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
+		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
-		// -------------------------------------
+		//////////////////////////////////////
 		// IPFS
-		// -------------------------------------
-		var ipfsNode *ipfs.Node
-		var ipfsClient *ipfs.Client
+		//////////////////////////////////////
 
-		var ipfsSwarmAddrs []string
+		var ipfsSwarmAddresses []string
 		if i > 0 {
-			ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
+			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
+			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
+			// connecting/joining topics, when using multiple addresses for a single host.
+			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
+			ipfsSwarmAddresses = append(ipfsSwarmAddresses, addresses[0])
 		}
 
-		ipfsNode, err = createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddrs)
+		ipfsNode, err := createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddresses)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		ipfsClient, err = ipfsNode.Client()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
-		}
-
-		var libp2pHost host.Host
-		var libp2pPort int
-		libp2pPeer := []multiaddr.Multiaddr{}
+		var libp2pPeer []multiaddr.Multiaddr
 		if simulatorAddr != nil {
 			libp2pPeer = append(libp2pPeer, simulatorAddr)
 		}
@@ -191,7 +188,7 @@ func NewDevStack(
 		if i == 0 {
 			if options.Peer != "" {
 				// connect 0'th node to external peer if specified
-				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
 				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
 				if addrErr != nil {
 					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
@@ -199,26 +196,22 @@ func NewDevStack(
 				libp2pPeer = append(libp2pPeer, peerAddr)
 			}
 		} else {
-			for _, addrs := range nodes[0].Host.Addrs() {
-				p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
-				if p2pAddrErr != nil {
-					return nil, p2pAddrErr
-				}
-				libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr))
-			}
+			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
 			if err != nil {
-				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+				return nil, err
 			}
-			log.Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
+			addresses := multiaddresses.SortLocalhostFirst(nodes[0].Host.Addrs())
+			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
+			// connecting/joining topics, when using multiple addresses for a single host.
+			libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
+			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		libp2pHost, err = libp2p.NewHost(libp2pPort)
+		libp2pHost, err := libp2p.NewHost(libp2pPort)
 		if err != nil {
 			return nil, err
 		}
-		cm.RegisterCallback(func() error {
-			return libp2pHost.Close()
-		})
+		cm.RegisterCallback(libp2pHost.Close)
 
 		// add NodeID to logging context
 		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
@@ -226,23 +219,10 @@ func NewDevStack(
 		//////////////////////////////////////
 		// port for API
 		//////////////////////////////////////
-		apiPort := 0
+		apiPort := uint16(0)
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			apiPort = 20000 + i
-		}
-
-		//////////////////////////////////////
-		// metrics
-		//////////////////////////////////////
-		metricsPort := 0
-
-		//////////////////////////////////////
-		// in-memory datastore
-		//////////////////////////////////////
-		var datastore localdb.LocalDB
-		datastore, err = inmemory.NewInMemoryDatastore()
-		if err != nil {
-			return nil, err
+			const startPort = 20000
+			apiPort = uint16(startPort + i)
 		}
 
 		//////////////////////////////////////
@@ -273,15 +253,14 @@ func NewDevStack(
 		}
 
 		nodeConfig := node.NodeConfig{
-			IPFSClient:           ipfsClient,
+			IPFSClient:           ipfsNode.Client(),
 			CleanupManager:       cm,
-			LocalDB:              datastore,
+			JobStore:             inmemory.NewJobStore(),
 			Host:                 libp2pHost,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
 			APIPort:              apiPort,
-			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			SimulatorNodeID:      simulatorNodeID,
@@ -292,6 +271,9 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
+			DependencyInjector:    injector,
+			DisabledFeatures:      options.DisabledFeatures,
+			AllowListedLocalPaths: options.AllowListedLocalPaths,
 		}
 
 		if lotus != nil {
@@ -316,13 +298,13 @@ func NewDevStack(
 		}
 
 		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig, injector)
+		n, err = node.NewNode(ctx, nodeConfig)
 		if err != nil {
 			return nil, err
 		}
 
 		// Start transport layer
-		err = libp2p.ConnectToPeers(ctx, libp2pHost, libp2pPeer)
+		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
 		if err != nil {
 			return nil, err
 		}
@@ -337,9 +319,9 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := StartProfiling()
+	profiler := startProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
 	if profiler != nil {
-		cm.RegisterCallback(profiler.Close)
+		cm.RegisterCallbackWithContext(profiler.Close)
 	}
 
 	return &DevStack{
@@ -352,8 +334,8 @@ func NewDevStack(
 func createIPFSNode(ctx context.Context,
 	cm *system.CleanupManager,
 	publicIPFSMode bool,
-	ipfsSwarmAddrs []string) (*ipfs.Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.createipfsnode")
+	ipfsSwarmAddresses []string) (*ipfs.Node, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
 	defer span.End()
 	//////////////////////////////////////
 	// IPFS
@@ -367,7 +349,7 @@ func createIPFSNode(ctx context.Context,
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 	} else {
-		ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
+		ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddresses)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
@@ -375,6 +357,7 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
+//nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
@@ -384,6 +367,7 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
 	devStackIPFSSwarmAddress := ""
+	var devstackPeerAddrs []string
 
 	logString += `
 -----------------------------------------
@@ -402,15 +386,32 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}
 
+		var libp2pPeer []string
+		for _, addrs := range node.Host.Addrs() {
+			p2pAddr, p2pAddrErr := multiaddr.NewMultiaddr("/p2p/" + node.Host.ID().String())
+			if p2pAddrErr != nil {
+				return "", p2pAddrErr
+			}
+			libp2pPeer = append(libp2pPeer, addrs.Encapsulate(p2pAddr).String())
+		}
+		devstackPeerAddr := strings.Join(libp2pPeer, ",")
+		if len(libp2pPeer) > 0 {
+			// only add one of the addrs for this peer
+			devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+		}
+
 		logString += fmt.Sprintf(`
 export BACALHAU_IPFS_%d=%s
 export BACALHAU_IPFS_SWARM_ADDRESSES_%d=%s
+export BACALHAU_PEER_CONNECT_%d=%s
 export BACALHAU_API_HOST_%d=%s
 export BACALHAU_API_PORT_%d=%d`,
 			nodeIndex,
 			node.IPFSClient.APIAddress(),
 			nodeIndex,
 			swarmAddrrs,
+			nodeIndex,
+			devstackPeerAddr,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Address,
 			nodeIndex,
@@ -430,16 +431,26 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryShellVariablesString := fmt.Sprintf(`
 export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%s`,
+export BACALHAU_API_PORT=%s
+export BACALHAU_PEER_CONNECT=%s`,
 		devStackIPFSSwarmAddress,
 		devStackAPIHost,
 		devStackAPIPort,
+		strings.Join(devstackPeerAddrs, ","),
 	)
 
 	if stack.Lotus != nil {
 		summaryShellVariablesString += fmt.Sprintf(`
 export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
+	if config.DevstackShouldWriteEnvFile() {
+		err := os.WriteFile(config.DevstackEnvFile(), []byte(summaryShellVariablesString), 0600) //nolint:gomnd
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", config.DevstackEnvFile())
+			return "", err
+		}
 	}
 
 	if !stack.PublicIPFSMode {
@@ -452,7 +463,7 @@ You can also run a new IPFS daemon locally and connect it to Bacalhau using:
 ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
 	}
 
-	log.Debug().Msg(logString)
+	log.Ctx(ctx).Debug().Msg(logString)
 
 	returnString := fmt.Sprintf(`
 Devstack is ready!
@@ -467,7 +478,7 @@ To use the devstack, run the following commands in your shell: %s`,
 	return returnString, nil
 }
 
-func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
+func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
 		if node.Host.ID().String() == nodeID {
@@ -477,8 +488,8 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
-func (stack *DevStack) IPFSClients() []*ipfs.Client {
-	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
+func (stack *DevStack) IPFSClients() []ipfs.Client {
+	clients := make([]ipfs.Client, 0, len(stack.Nodes))
 	for _, node := range stack.Nodes {
 		clients = append(clients, node.IPFSClient)
 	}

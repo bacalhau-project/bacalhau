@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
-	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	cmd "github.com/bacalhau-project/bacalhau/cmd/bacalhau"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 
 	"github.com/stretchr/testify/require"
@@ -43,8 +43,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	err := system.InitConfigForTesting(s.T())
-	require.NoError(s.T(), err)
+	system.InitConfigForTesting(s.T())
 }
 
 // full end-to-end test of python/wasm:
@@ -56,7 +55,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	nodeCount := 1
@@ -65,14 +64,9 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir := s.T().TempDir()
 
@@ -101,11 +95,11 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
-		"-v", fmt.Sprintf("%s:%s", fileCid, inputPath),
+		"-i", fmt.Sprintf("ipfs://%s,dst=%s", fileCid, inputPath),
 		"-o", fmt.Sprintf("%s:%s", "output", outputPath),
 		"python",
 		"--deterministic",
@@ -116,25 +110,24 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	log.Debug().Msgf("jobId=%s", jobID)
 	time.Sleep(time.Second * 5)
 
-	node := stack.Nodes[0]
-	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobID)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, jobID)
+	executions, err := resolver.GetExecutions(ctx, jobID)
 	require.NoError(s.T(), err)
-	require.True(s.T(), len(shards) > 0)
+	require.True(s.T(), len(executions) > 0)
 
-	shard := shards[0]
+	executionState := executions[0]
 
 	outputDir := s.T().TempDir()
-	require.NotEmpty(s.T(), shard.PublishedResult.CID)
+	require.NotEmpty(s.T(), executionState.PublishedResult.CID)
 
-	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, finalOutputPath)
+	finalOutputPath := filepath.Join(outputDir, executionState.PublishedResult.CID)
+	err = stack.Nodes[0].IPFSClient.Get(ctx, executionState.PublishedResult.CID, finalOutputPath)
 	require.NoError(s.T(), err)
 
 	err = filepath.Walk(finalOutputPath,
@@ -162,22 +155,17 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	require.Equal(s.T(), fileContents, strings.TrimSpace(string(outputData)))
 }
 func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
 
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -193,9 +181,8 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
-	node := stack.Nodes[0]
-	apiUri := node.APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
@@ -206,18 +193,13 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 // TODO: test that > 10MB context is rejected
 
 func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir := s.T().TempDir()
 
@@ -235,7 +217,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(s.T(),
+	_, out, err := cmd.ExecuteTestCobraCommand(
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -250,8 +232,8 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)

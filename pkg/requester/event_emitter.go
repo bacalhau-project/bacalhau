@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -32,7 +32,11 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 func (e EventEmitter) EmitJobCreated(
 	ctx context.Context, job model.Job) {
 	event := model.JobEvent{
-		SourceNodeID: job.Status.Requester.RequesterNodeID,
+		APIVersion:   job.APIVersion,
+		ClientID:     job.Metadata.ClientID,
+		Spec:         job.Spec,
+		Deal:         job.Spec.Deal,
+		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
 		JobID:        job.Metadata.ID,
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
@@ -40,11 +44,21 @@ func (e EventEmitter) EmitJobCreated(
 	e.EmitEventSilently(ctx, event)
 }
 
+func (e EventEmitter) EmitJobCanceled(ctx context.Context, req CancelJobRequest) {
+	event := model.JobEvent{
+		JobID:     req.JobID,
+		EventName: model.JobEventCanceled,
+		Status:    req.Reason,
+		EventTime: time.Now(),
+	}
+	e.EmitEventSilently(ctx, event)
+}
+
 func (e EventEmitter) EmitBidReceived(
-	ctx context.Context, request compute.AskForBidRequest, response compute.AskForBidShardResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBid)
+	ctx context.Context, result compute.BidResult) {
+	event := e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, model.JobEventBid)
 	// we flip senders to mimic a bid was received instead of being asked
-	event.SourceNodeID = request.RoutingMetadata.TargetPeerID
+	event.SourceNodeID = result.RoutingMetadata.SourcePeerID
 	event.TargetNodeID = "" // localdb don't assume a target node for events coming from compute nodes
 	e.EmitEventSilently(ctx, event)
 }
@@ -96,10 +110,18 @@ func (e EventEmitter) EmitPublishComplete(ctx context.Context, response compute.
 	e.EmitEventSilently(ctx, event)
 }
 
-func (e EventEmitter) EmitComputeFailure(ctx context.Context, response compute.ComputeError) {
-	event := e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventComputeError)
-	event.Status = response.Error()
-	event.TargetNodeID = "" // localDB don't assume a target node for events coming from compute nodes
+func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID model.ExecutionID, err error) {
+	// incoming error routing metadata
+	routingMetadata := compute.RoutingMetadata{
+		SourcePeerID: executionID.NodeID,
+		TargetPeerID: "", // localDB don't assume a target node for events coming from compute nodes
+	}
+	executionMetadata := compute.ExecutionMetadata{
+		JobID:       executionID.JobID,
+		ExecutionID: executionID.ExecutionID,
+	}
+	event := e.constructEvent(routingMetadata, executionMetadata, model.JobEventComputeError)
+	event.Status = err.Error()
 	e.EmitEventSilently(ctx, event)
 }
 
@@ -111,7 +133,6 @@ func (e EventEmitter) constructEvent(
 		TargetNodeID: routingMetadata.TargetPeerID,
 		SourceNodeID: routingMetadata.SourcePeerID,
 		JobID:        executionMetadata.JobID,
-		ShardIndex:   executionMetadata.ShardIndex,
 		ExecutionID:  executionMetadata.ExecutionID,
 		EventName:    eventName,
 		EventTime:    time.Now(),

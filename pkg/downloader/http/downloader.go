@@ -8,8 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,21 +24,29 @@ func NewHTTPDownloader(settings *model.DownloaderSettings) *Downloader {
 	}
 }
 
-func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.PublishedResult, downloadPath string) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/httpDownloader.http.FetchResult")
+func (httpDownloader *Downloader) IsInstalled(context.Context) (bool, error) {
+	return true, nil
+}
+
+func (httpDownloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
+	return nil, errors.New("not implemented for httpdownloader")
+}
+
+func (httpDownloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/http.Downloader.FetchResults")
 	defer span.End()
 
 	err := func() error {
 		log.Ctx(ctx).Debug().Msgf(
 			"Downloading result URL %s '%s' to '%s'...",
-			result.Data.Name,
-			result.Data.URL, downloadPath,
+			item.Name,
+			item.CID, item.Target,
 		)
 
 		innerCtx, cancel := context.WithDeadline(ctx, time.Now().Add(httpDownloader.Settings.Timeout))
 		defer cancel()
 
-		return fetch(innerCtx, result.Data.URL, downloadPath)
+		return fetch(innerCtx, item.CID, item.Target)
 	}()
 
 	if err != nil {
@@ -51,21 +60,25 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, result model.
 }
 
 func fetch(ctx context.Context, url string, filepath string) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/downloader.http.fetchHttp")
-	defer span.End()
 	// Create a new file at the specified filepath
 	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, model.DownloadFilePerm)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer closer.CloseWithLogOnError("file", out)
 
 	// Make an HTTP GET request to the URL
-	response, err := http.Get(url) //nolint
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+
+	response, err := http.DefaultClient.Do(req) //nolint
+	if err != nil {
+		return err
+	}
+
+	defer closer.DrainAndCloseWithLogOnError(ctx, "http response", response.Body)
 
 	// Write the contents of the response body to the file
 	_, err = io.Copy(out, response.Body)

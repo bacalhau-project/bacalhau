@@ -11,8 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -39,6 +42,7 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		testFiles := []string{
 			"../../testdata/job-noop.json",
 			"../../testdata/job-noop.yaml",
+			"../../testdata/job-s3.yaml",
 			"../../testdata/job-noop-url.yaml",
 			"../../pkg/model/tasks/docker_task.json",
 			"../../pkg/model/tasks/task_with_config.json",
@@ -46,13 +50,20 @@ func (s *CreateSuite) TestCreateGenericSubmit() {
 		}
 
 		for _, testFile := range testFiles {
+			if strings.Contains(testFile, "s3") && !s3helper.CanRunS3Test() {
+				// Skip the S3 tests if we have no AWS credentials installed
+				s.T().Skip("No valid AWS credentials found")
+			}
+
 			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
+			if strings.Contains(testFile, "docker") {
+				docker.MustHaveDocker(s.T())
+			}
 			s.Run(name, func() {
 				ctx := context.Background()
-
-				_, out, err := ExecuteTestCobraCommand(s.T(), "create",
+				_, out, err := ExecuteTestCobraCommand("create",
 					"--api-host", s.host,
-					"--api-port", s.port,
+					"--api-port", fmt.Sprint(s.port),
 					testFile,
 				)
 
@@ -69,18 +80,18 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), testSpec, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(testSpec, "create",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.client, out)
-	_, out, err = ExecuteTestCobraCommand(s.T(), "describe",
+	_, _, err = ExecuteTestCobraCommand("describe",
 		"--api-host", s.host,
-		"--api-port", s.port,
+		"--api-port", fmt.Sprint(s.port),
 		job.Metadata.ID,
 	)
 
@@ -101,7 +112,7 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), "create")
+		c, out, err := ExecuteTestCobraCommand("create")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
@@ -130,8 +141,6 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
-	Fatal = FakeFatalErrorHandler
-
 	type commandReturn struct {
 		c   *cobra.Command
 		out string
@@ -141,7 +150,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	commandChan := make(chan commandReturn, 1)
 
 	go func() {
-		c, out, err := ExecuteTestCobraCommand(s.T(), "create", "../../testdata/empty.yaml")
+		c, out, err := ExecuteTestCobraCommand("create", "../../testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()

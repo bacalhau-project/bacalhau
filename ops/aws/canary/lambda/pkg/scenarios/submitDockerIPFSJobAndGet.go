@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,7 +18,10 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	client := getClient()
 
 	cm := system.NewCleanupManager()
-	j := getSampleDockerIPFSJob()
+	j, err := getSampleDockerIPFSJob()
+	if err != nil {
+		return err
+	}
 
 	expectedChecksum := "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz"
 	expectedStat := "62731802"
@@ -35,7 +37,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
+	log.Ctx(ctx).Info().Msgf("submitted job: %s", submittedJob.Metadata.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
@@ -62,28 +64,36 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 		return fmt.Errorf("getting download settings: %s", err)
 	}
 	downloadSettings.OutputDir = outputDir
-	downloadSettings.Timeout = time.Second * 600
+	// canary is running every 5 minutes with a 5 minutes timeout. It should be safe to allow the download to take up to 4 minutes and leave
+	// 1 minute for the rest of the test
+	downloadSettings.Timeout = 240 * time.Second
+
+	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
+	if err != nil {
+		return err
+	}
 
 	downloaderProvider := util.NewStandardDownloaders(cm, downloadSettings)
 	if err != nil {
 		return fmt.Errorf("getting downloader provider settings: %s", err)
 	}
 	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadResults(ctx, results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return fmt.Errorf("downloading job: %s", err)
 	}
-	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name))
+	files, err := os.ReadDir(filepath.Join(downloadSettings.OutputDir, j.Spec.Outputs[0].Name))
 	if err != nil {
 		return fmt.Errorf("reading results directory: %s", err)
 	}
 
 	for _, file := range files {
-		log.Debug().Msgf("downloaded files: %s", file)
+		log.Ctx(ctx).Debug().Msgf("downloaded files: %s", file.Name())
 	}
 	if len(files) != 3 {
 		return fmt.Errorf("expected 3 files in output dir, got %d", len(files))
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "checksum.txt"))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, j.Spec.Outputs[0].Name, "checksum.txt"))
 	if err != nil {
 		return err
 	}
@@ -93,7 +103,7 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("testing md5 of input: %s", err)
 	}
-	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, j.Spec.Outputs[0].Name, "stat.txt"))
+	body, err = os.ReadFile(filepath.Join(downloadSettings.OutputDir, j.Spec.Outputs[0].Name, "stat.txt"))
 	if err != nil {
 		return err
 	}

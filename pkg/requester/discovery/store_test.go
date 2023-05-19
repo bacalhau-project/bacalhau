@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package discovery
 
 import (
@@ -5,8 +7,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
@@ -15,11 +17,11 @@ import (
 type StoreNodeDiscovererSuite struct {
 	suite.Suite
 	discoverer *StoreNodeDiscoverer
-	store      *nodestore.InMemoryNodeInfoStore
+	store      *inmemory.NodeInfoStore
 }
 
 func (s *StoreNodeDiscovererSuite) SetupTest() {
-	s.store = nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
+	s.store = inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
 		TTL: math.MaxInt64,
 	})
 	s.discoverer = NewStoreNodeDiscoverer(StoreNodeDiscovererParams{
@@ -67,7 +69,7 @@ func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
 			},
 		},
 		NodeType: model.NodeTypeCompute,
-		ComputeNodeInfo: model.ComputeNodeInfo{
+		ComputeNodeInfo: &model.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}

@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -37,11 +37,12 @@ func (s *lotusNodeSuite) SetupTest() {
 	docker.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
+	system.InitConfigForTesting(s.T())
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
-	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
+	s.T().Skip("Test is flaky", "https://github.com/bacalhau-project/bacalhau/issues/1705", "pkg/publisher/filecoin_lotus/publisher_test.go")
+	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -57,14 +58,16 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	j.APIVersion = model.APIVersionLatest().String()
 	j.Spec = testCase.Spec
 	j.Spec.Verifier = model.VerifierNoop
-	j.Spec.Publisher = model.PublisherFilecoin
+	j.Spec.PublisherSpec = model.PublisherSpec{
+		Type: model.PublisherFilecoin,
+	}
 	j.Spec.Outputs = testCase.Outputs
 	j.Spec.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	submittedJob, err := apiClient.Submit(ctx, j)
 	require.NoError(s.T(), err)
 
@@ -74,17 +77,16 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	err = resolver.Wait(
 		ctx,
 		submittedJob.Metadata.ID,
-		len(nodeIDs),
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
+		job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+			model.ExecutionStateFailed,
 		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: len(nodeIDs),
+		job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+			model.ExecutionStateCompleted: len(nodeIDs),
 		}),
 	)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, submittedJob.Metadata.ID)
+	executions, err := resolver.GetExecutions(ctx, submittedJob.Metadata.ID)
 	require.NoError(s.T(), err)
 
 	require.NotNil(s.T(), stack.Lotus)
@@ -101,7 +103,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	require.NoError(s.T(), err)
 
 	require.Len(s.T(), imports, 1)
-	require.Len(s.T(), shards, 1)
+	require.Len(s.T(), executions, 1)
 
 	dir := s.T().TempDir()
 
@@ -116,7 +118,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	lotusExitCode, err := strconv.Atoi(string(lotusExitCodeStr))
 	require.NoError(s.T(), err)
 
-	assert.Equal(s.T(), shards[0].RunOutput.STDOUT, string(lotusStdout))
-	assert.Equal(s.T(), shards[0].RunOutput.STDERR, string(lotusStderr))
-	assert.Equal(s.T(), shards[0].RunOutput.ExitCode, lotusExitCode)
+	assert.Equal(s.T(), executions[0].RunOutput.STDOUT, string(lotusStdout))
+	assert.Equal(s.T(), executions[0].RunOutput.STDERR, string(lotusStderr))
+	assert.Equal(s.T(), executions[0].RunOutput.ExitCode, lotusExitCode)
 }

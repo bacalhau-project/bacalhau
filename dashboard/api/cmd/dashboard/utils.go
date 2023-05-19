@@ -6,7 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
+	bacalhau_cmd "github.com/bacalhau-project/bacalhau/cmd/bacalhau"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 )
 
@@ -46,27 +50,17 @@ func FatalErrorHandler(cmd *cobra.Command, msg string, code int) {
 
 func newModelOptions() model.ModelOptions {
 	return model.ModelOptions{
-		UpstreamHost: getDefaultServeOptionString("UPSTREAM_HOST", ""),
-		//nolint:gomnd
-		UpstreamPort: getDefaultServeOptionInt("UPSTREAM_PORT", 1234),
 		PostgresHost: getDefaultServeOptionString("POSTGRES_HOST", "127.0.0.1"),
 		//nolint:gomnd
 		PostgresPort:     getDefaultServeOptionInt("POSTGRES_PORT", 5432),
 		PostgresDatabase: getDefaultServeOptionString("POSTGRES_DATABASE", "bacalhau"),
 		PostgresUser:     getDefaultServeOptionString("POSTGRES_USER", ""),
 		PostgresPassword: getDefaultServeOptionString("POSTGRES_PASSWORD", ""),
+		SelectionPolicy:  bacalhau_model.NewDefaultJobSelectionPolicy(),
 	}
 }
 
 func setupModelOptions(cmd *cobra.Command, opts *model.ModelOptions) {
-	cmd.PersistentFlags().StringVar(
-		&opts.UpstreamHost, "upstream-host", opts.UpstreamHost,
-		`The host for the bacalhau server to connect to.`,
-	)
-	cmd.PersistentFlags().IntVar(
-		&opts.UpstreamPort, "upstream-port", opts.UpstreamPort,
-		`The port for the client and server to communicate on (via REST).`,
-	)
 	cmd.PersistentFlags().StringVar(
 		&opts.PostgresHost, "postgres-host", opts.PostgresHost,
 		`The host for the postgres server.`,
@@ -87,4 +81,28 @@ func setupModelOptions(cmd *cobra.Command, opts *model.ModelOptions) {
 		&opts.PostgresPassword, "postgres-password", opts.PostgresPassword,
 		`The password for the postgres server.`,
 	)
+	cmd.PersistentFlags().AddFlagSet(
+		bacalhau_cmd.JobSelectionCLIFlags(&opts.SelectionPolicy),
+	)
+}
+
+func getPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
+	var peersStrings []string
+	if peerConnect == "none" {
+		peersStrings = []string{}
+	} else if peerConnect == "" {
+		peersStrings = system.Envs[system.EnvironmentProd].BootstrapAddresses
+	} else {
+		peersStrings = strings.Split(peerConnect, ",")
+	}
+
+	peers := make([]multiaddr.Multiaddr, 0, len(peersStrings))
+	for _, peer := range peersStrings {
+		parsed, err := multiaddr.NewMultiaddr(peer)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, parsed)
+	}
+	return peers, nil
 }

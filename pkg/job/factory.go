@@ -1,57 +1,27 @@
 package job
 
 import (
+	"context"
 	"strings"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
-
-func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
-	publicKey := ev.SenderPublicKey
-	if publicKey == nil {
-		publicKey = []byte{}
-	}
-	useCreatedAt := time.Now()
-	if !ev.EventTime.IsZero() {
-		useCreatedAt = ev.EventTime
-	}
-	j := &model.Job{
-		APIVersion: ev.APIVersion,
-		Metadata: model.Metadata{
-			ID:        ev.JobID,
-			ClientID:  ev.ClientID,
-			CreatedAt: useCreatedAt,
-		},
-		Status: model.JobStatus{
-			Requester: model.JobRequester{
-				RequesterNodeID:    ev.SourceNodeID,
-				RequesterPublicKey: publicKey,
-			},
-		},
-		Spec: ev.Spec,
-	}
-	j.Spec.Deal = ev.Deal
-	j.Spec.ExecutionPlan = ev.JobExecutionPlan
-
-	return j
-}
 
 // these are util methods for the CLI
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
+	ctx context.Context,
 	a model.APIVersion,
 	e model.Engine,
 	v model.Verifier,
-	p model.Publisher,
+	p model.PublisherSpec,
 	cpu, memory, gpu string,
 	network model.Network,
 	domains []string,
-	inputUrls []string,
-	inputVolumes []string,
+	inputs []model.StorageSpec,
 	outputVolumes []string,
 	env []string,
 	entrypoint []string,
@@ -63,23 +33,14 @@ func ConstructDockerJob( //nolint:funlen
 	annotations []string,
 	nodeSelector string,
 	workingDir string,
-	shardingGlobPattern string,
-	shardingBasePath string,
-	shardingBatchSize int,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
 		GPU:    gpu,
 	}
-	jobContexts := []model.StorageSpec{}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
-	if err != nil {
-		return &model.Job{}, err
-	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -95,7 +56,7 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}
@@ -108,18 +69,8 @@ func ConstructDockerJob( //nolint:funlen
 	if len(workingDir) > 0 {
 		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
-			log.Error().Msg(err.Error())
 			return &model.Job{}, err
 		}
-	}
-
-	// Weird bug that sharding basepath fails if has a trailing slash
-	shardingBasePath = strings.TrimSuffix(shardingBasePath, "/")
-
-	jobShardingConfig := model.JobShardingConfig{
-		GlobPattern: shardingGlobPattern,
-		BasePath:    shardingBasePath,
-		BatchSize:   shardingBatchSize,
 	}
 
 	j, err := model.NewJobWithSaneProductionDefaults()
@@ -129,9 +80,9 @@ func ConstructDockerJob( //nolint:funlen
 	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
-		Engine:    e,
-		Verifier:  v,
-		Publisher: p,
+		Engine:        e,
+		Verifier:      v,
+		PublisherSpec: p,
 		Docker: model.JobSpecDocker{
 			Image:                image,
 			Entrypoint:           entrypoint,
@@ -143,13 +94,10 @@ func ConstructDockerJob( //nolint:funlen
 		},
 		Timeout:       timeout,
 		Resources:     jobResources,
-		Inputs:        jobInputs,
-		Contexts:      jobContexts,
+		Inputs:        inputs,
 		Outputs:       jobOutputs,
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
-		Sharding:      jobShardingConfig,
-		DoNotTrack:    doNotTrack,
 	}
 
 	// override working dir if provided
@@ -167,10 +115,9 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
-	inputVolumes []string,
-	inputUrls []string,
+	ctx context.Context,
+	inputs []model.StorageSpec,
 	outputVolumes []string,
-	env []string,
 	concurrency int,
 	confidence int,
 	minBids int,
@@ -181,19 +128,12 @@ func ConstructLanguageJob(
 	command string,
 	programPath string,
 	requirementsPath string,
-	contextPath string, // we have to tar this up and POST it to the Requester node
 	deterministic bool,
 	annotations []string,
-	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-	jobContexts := []model.StorageSpec{}
 
-	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
-	if err != nil {
-		return &model.Job{}, err
-	}
-	jobOutputs, err := buildJobOutputs(outputVolumes)
+	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -209,7 +149,7 @@ func ConstructLanguageJob(
 	}
 
 	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
 	}
@@ -230,11 +170,9 @@ func ConstructLanguageJob(
 		RequirementsPath: requirementsPath,
 	}
 	j.Spec.Timeout = timeout
-	j.Spec.Inputs = jobInputs
-	j.Spec.Contexts = jobContexts
+	j.Spec.Inputs = inputs
 	j.Spec.Outputs = jobOutputs
 	j.Spec.Annotations = jobAnnotations
-	j.Spec.DoNotTrack = doNotTrack
 
 	j.Spec.Deal = model.Deal{
 		Concurrency: concurrency,

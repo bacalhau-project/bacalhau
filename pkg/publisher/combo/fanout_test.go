@@ -7,19 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 var sleepyPublisher = mockPublisher{
-	isInstalled:        true,
-	publishShardResult: model.StorageSpec{CID: "123"},
-	sleepTime:          50 * time.Millisecond,
+	isInstalled:     true,
+	ValidateJobErr:  nil,
+	PublishedResult: model.StorageSpec{CID: "123"},
+	sleepTime:       50 * time.Millisecond,
 }
 
 var uninstalledPublisher = mockPublisher{
-	isInstalled:           false,
-	publishShardResultErr: fmt.Errorf("not installed"),
-	sleepTime:             0,
+	isInstalled:        false,
+	ValidateJobErr:     fmt.Errorf("invalid publisher spec"),
+	PublishedResultErr: fmt.Errorf("not installed"),
+	sleepTime:          0,
 }
 
 func TestFanoutPublisher(t *testing.T) {
@@ -32,5 +34,6 @@ func TestFanoutPublisher(t *testing.T) {
 		"returns error for all":            {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
 		"waits for highest priority value": {NewPrioritizedFanoutPublisher(time.Millisecond*100, &sleepyPublisher, &healthyPublisher), sleepyPublisher},
 		"only waits for max time":          {NewPrioritizedFanoutPublisher(time.Millisecond*20, &sleepyPublisher, &healthyPublisher), healthyPublisher},
+		"waits for unprioritized value":    {NewPrioritizedFanoutPublisher(time.Millisecond*100, &errorPublisher, &sleepyPublisher), sleepyPublisher},
 	})
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-//go:generate stringer -type=JobEventType --trimprefix=JobEvent
+//go:generate stringer -type=JobEventType --trimprefix=JobEvent --output jobeventtype_string.go
 type JobEventType int
 
 const (
@@ -59,6 +59,9 @@ const (
 	// a requester node declared an error running a job
 	JobEventError
 
+	// a user canceled a job
+	JobEventCanceled
+
 	// the requester node gives a compute node permission
 	// to forget about the job and free any resources it might
 	// currently be reserving - this can happen if a compute node
@@ -72,7 +75,7 @@ const (
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (je JobEventType) IsTerminal() bool {
-	return je == JobEventError || je == JobEventResultsPublished
+	return je == JobEventError || je == JobEventResultsPublished || je == JobEventCanceled
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,12 +23,12 @@ func NewResults() (*Results, error) {
 	}, nil
 }
 
-func (results *Results) GetShardResultsDir(jobID string, shardIndex int) string {
-	return fmt.Sprintf("%s/%s/%d", results.ResultsDir, jobID, shardIndex)
+func (results *Results) GetResultsDir(executionID string) string {
+	return fmt.Sprintf("%s/%s", results.ResultsDir, executionID)
 }
 
-func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (string, error) {
-	dir := results.GetShardResultsDir(jobID, shardIndex)
+func (results *Results) EnsureResultsDir(executionID string) (string, error) {
+	dir := results.GetResultsDir(executionID)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	if err != nil {
 		return "", fmt.Errorf("error creating results dir %s: %w", dir, err)
@@ -38,26 +37,14 @@ func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (str
 	if err != nil {
 		return "", fmt.Errorf("error getting results dir %s info: %w", dir, err)
 	}
-	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
+	log.Trace().Msgf("Created execution results dir (%s). Permissions: %s", dir, info.Mode())
 	return dir, err
 }
 
-func (results *Results) CheckShardStates(
-	shardStates []model.JobShardState,
-	concurrency int,
-) (bool, error) {
-	if len(shardStates) < concurrency {
-		return false, nil
-	}
-	hasExecutedCount := 0
-	for _, state := range shardStates { //nolint:gocritic
-		if state.State == model.JobStateError || state.State == model.JobStateVerifying {
-			hasExecutedCount++
-		}
-	}
-	return hasExecutedCount >= concurrency, nil
-}
-
 func (results *Results) Close() error {
+	if _, err := os.Stat(results.ResultsDir); os.IsNotExist(err) {
+		return nil
+	}
+
 	return os.RemoveAll(results.ResultsDir)
 }

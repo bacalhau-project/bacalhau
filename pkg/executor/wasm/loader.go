@@ -2,21 +2,212 @@ package wasm
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
+	"net/url"
 	"os"
+	"path/filepath"
+	"sync"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
+	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"go.opentelemetry.io/otel/attribute"
+	"go.ptx.dk/multierrgroup"
+	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
 )
 
-func LoadModule(ctx context.Context, runtime wazero.Runtime, path string) (wazero.CompiledModule, error) {
+// ModuleLoader handles the loading of WebAssembly modules from remote storage
+// and the automatic resolution of required imports.
+type ModuleLoader struct {
+	runtime  wazero.Runtime
+	config   wazero.ModuleConfig
+	provider storage.StorageProvider
+
+	// Runtime will throw an error if the same module is instantiated more than
+	// once. So we use this mutex around checking for modules and instantiating
+	mtx sync.Mutex
+}
+
+func NewModuleLoader(runtime wazero.Runtime, config wazero.ModuleConfig, proivder storage.StorageProvider) *ModuleLoader {
+	return &ModuleLoader{runtime: runtime, config: config, provider: proivder}
+}
+
+// Load comiples and returns a module located at the passed path.
+func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.CompiledModule, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.Load")
+	span.SetAttributes(attribute.String("Path", path))
+	defer span.End()
+
+	log.Ctx(ctx).Debug().Str("Path", path).Msg("Loading WASM module")
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	module, err := runtime.CompileModule(ctx, bytes)
+	module, err := loader.runtime.CompileModule(ctx, bytes)
 	if err != nil {
 		return nil, err
 	}
 
 	return module, nil
+}
+
+// LoadRemoteModules loads and compiles all of the modules located by the passed storage specs.
+func (loader *ModuleLoader) LoadRemoteModules(ctx context.Context, specs ...model.StorageSpec) ([]wazero.CompiledModule, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.LoadRemoteModules")
+	defer span.End()
+
+	volumes, err := storage.ParallelPrepareStorage(ctx, loader.provider, specs)
+	if err != nil {
+		return nil, err
+	}
+
+	var loadedModules []wazero.CompiledModule
+	for _, volume := range maps.Values(volumes) {
+		programPath := volume.Source
+
+		var info fs.FileInfo
+		info, err = os.Stat(programPath)
+		if err != nil {
+			return nil, err
+		}
+
+		// We expect the input to be a single WASM file. It is common however for
+		// IPFS implementations to wrap files into a directory. So we make a special
+		// case here – if the input is a single file in a directory, we will assume
+		// this is the program file and load it.
+		if info.IsDir() {
+			files, err := os.ReadDir(programPath)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(files) != 1 {
+				return nil, fmt.Errorf("should be %d file in %s but there are %d", 1, programPath, len(files))
+			}
+			programPath = filepath.Join(programPath, files[0].Name())
+		}
+
+		module, loadErr := loader.Load(ctx, programPath)
+		err = multierr.Append(err, loadErr)
+		loadedModules = append(loadedModules, module)
+	}
+	return loadedModules, err
+}
+
+// InstantiateRemoteModule loads and instantiates the remote module and all of
+// its dependencies. To do this, it attempts to parse the import module name as
+// a storage location and retrieves the module from there.
+//
+// For example, a WASM module specifies an import:
+//
+//	(import "QmPympgyrEGEdSJ93rqvQkR71QLuQGdhKQtYztFwxpQsid" "easter" (func $easter (type 4)))
+//
+// InstantiateRemoteModule will recognize the module name as a CID and attempt
+// to load the module via IPFS. URLs are also supported.
+//
+// This function calls itself reucrsively for any discovered dependencies on the
+// loaded modules, so that the returned module has all of its dependencies fully
+// instantiated and is ready to use.
+func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, spec model.StorageSpec) (api.Module, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
+	span.SetAttributes(attribute.String("ModuleName", spec.Name))
+	defer span.End()
+
+	if module := loader.runtime.Module(spec.Name); module != nil {
+		// Module already instantiated.
+		return module, nil
+	}
+
+	// Get the remote module.
+	modules, err := loader.LoadRemoteModules(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+	module := modules[0]
+
+	// Examine its imports and recursively load them.
+	var wg multierrgroup.Group
+	for _, importedFunc := range module.ImportedFunctions() {
+		moduleName, _, _ := importedFunc.Import()
+		wg.Go(func() error {
+			_, err := loader.loadModuleByName(ctx, moduleName)
+			return err
+		})
+	}
+	if err = wg.Wait(); err != nil {
+		return nil, err
+	}
+
+	// We now have all dependencies loaded, so load this module.
+	loader.mtx.Lock()
+	defer loader.mtx.Unlock()
+
+	if module := loader.runtime.Module(spec.Name); module != nil {
+		return module, nil
+	}
+	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(spec.Name))
+}
+
+func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModuleByName")
+	span.SetAttributes(attribute.String("ModuleName", moduleName))
+	defer span.End()
+
+	if module, err := func() (api.Module, error) {
+		loader.mtx.Lock()
+		defer loader.mtx.Unlock()
+		if module := loader.runtime.Module(moduleName); module != nil {
+			// Module already instantiated.
+			return module, nil
+		}
+
+		if moduleName == wasi_snapshot_preview1.ModuleName {
+			_, err := wasi_snapshot_preview1.NewBuilder(loader.runtime).Instantiate(ctx)
+			return loader.runtime.Module(moduleName), err
+		}
+
+		return nil, nil
+	}(); module != nil || err != nil {
+		return module, err
+	}
+
+	spec, err := storageSpecFromImport(moduleName)
+	if err != nil {
+		return nil, err
+	}
+
+	return loader.InstantiateRemoteModule(ctx, spec)
+}
+
+func storageSpecFromImport(moduleName string) (model.StorageSpec, error) {
+	// If the module name looks like a CID, try and load it from IPFS.
+	moduleCID, err := cid.Parse(moduleName)
+	if err == nil {
+		return model.StorageSpec{
+			StorageSource: model.StorageSourceIPFS,
+			Name:          moduleName,
+			CID:           moduleCID.String(),
+		}, nil
+	}
+
+	// If the module name looks like a URL, try and load via HTTP.
+	moduleURL, err := url.Parse(moduleName)
+	if err == nil && (moduleURL.Scheme == "http" || moduleURL.Scheme == "https") {
+		return model.StorageSpec{
+			StorageSource: model.StorageSourceURLDownload,
+			Name:          moduleName,
+			URL:           moduleURL.String(),
+		}, nil
+	}
+
+	// Don't know how to load this.
+	return model.StorageSpec{}, fmt.Errorf("unknown module source %q", moduleName)
 }

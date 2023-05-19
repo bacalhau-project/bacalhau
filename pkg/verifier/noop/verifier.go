@@ -2,130 +2,106 @@ package noop
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/results"
 )
 
-// Verifier provider that always return NoopVerifier regardless of requested verifier type
-type NoopVerifierProvider struct {
-	noopVerifier *NoopVerifier
+type VerifierHandlerIsInstalled func(ctx context.Context) (bool, error)
+type VerifierHandlerGetResultPath func(ctx context.Context, executionID string, job model.Job) (string, error)
+type VerifierHandlerGetProposal func(context.Context, model.Job, string, string) ([]byte, error)
+type VerifierHandlerVerify func(context.Context, verifier.VerifierRequest) ([]verifier.VerifierResult, error)
+
+type VerifierExternalHooks struct {
+	IsInstalled   VerifierHandlerIsInstalled
+	GetResultPath VerifierHandlerGetResultPath
+	GetProposal   VerifierHandlerGetProposal
+	Verify        VerifierHandlerVerify
 }
 
-func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
-	return &NoopVerifierProvider{
-		noopVerifier: noopVerifier,
-	}
-}
-
-func (p *NoopVerifierProvider) GetVerifier(ctx context.Context, jobVerifier model.Verifier) (verifier.Verifier, error) {
-	if jobVerifier != model.VerifierNoop {
-		return nil, fmt.Errorf("no verifier available for type %s. Only VerifierNoop is supported", jobVerifier)
-	}
-	return p.noopVerifier, nil
-}
-
-// Check if a verifier is available or not
-func (p *NoopVerifierProvider) HasVerifier(ctx context.Context, verifierType model.Verifier) bool {
-	_, err := p.GetVerifier(ctx, verifierType)
-	return err == nil
+type VerifierConfig struct {
+	ExternalHooks VerifierExternalHooks
 }
 
 type NoopVerifier struct {
-	stateResolver *job.StateResolver
 	results       *results.Results
+	externalHooks VerifierExternalHooks
 }
 
 func NewNoopVerifier(
 	_ context.Context, cm *system.CleanupManager,
-	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
 	results, err := results.NewResults()
 	if err != nil {
 		return nil, err
 	}
 
-	cm.RegisterCallback(func() error {
-		if err := results.Close(); err != nil {
-			return fmt.Errorf("unable to remove results folder: %w", err)
-		}
-		return nil
-	})
 	return &NoopVerifier{
-		stateResolver: resolver,
-		results:       results,
+		results: results,
 	}, nil
 }
 
-func (noopVerifier *NoopVerifier) IsInstalled(context.Context) (bool, error) {
+func NewNoopVerifierWithConfig(ctx context.Context, cm *system.CleanupManager, config VerifierConfig) (*NoopVerifier, error) {
+	v, err := NewNoopVerifier(ctx, cm)
+	if err != nil {
+		return nil, err
+	}
+	v.externalHooks = config.ExternalHooks
+	return v, nil
+}
+
+func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
+	if noopVerifier.externalHooks.IsInstalled != nil {
+		return noopVerifier.externalHooks.IsInstalled(ctx)
+	}
 	return true, nil
 }
 
-func (noopVerifier *NoopVerifier) GetShardResultPath(
-	_ context.Context,
-	shard model.JobShard,
+func (noopVerifier *NoopVerifier) GetResultPath(
+	ctx context.Context,
+	executionID string,
+	job model.Job,
 ) (string, error) {
-	return noopVerifier.results.EnsureShardResultsDir(shard.Job.Metadata.ID, shard.Index)
+	if noopVerifier.externalHooks.GetResultPath != nil {
+		return noopVerifier.externalHooks.GetResultPath(ctx, executionID, job)
+	}
+	return noopVerifier.results.EnsureResultsDir(executionID)
 }
 
-func (noopVerifier *NoopVerifier) GetShardProposal(
-	context.Context,
-	model.JobShard,
-	string,
+func (noopVerifier *NoopVerifier) GetProposal(
+	ctx context.Context,
+	job model.Job,
+	executionID, resultsPath string,
 ) ([]byte, error) {
+	if noopVerifier.externalHooks.GetProposal != nil {
+		return noopVerifier.externalHooks.GetProposal(ctx, job, executionID, resultsPath)
+	}
 	return []byte{}, nil
 }
 
-// each shard must have >= concurrency states
-// and they must be either JobStateError or JobStateVerifying
-func (noopVerifier *NoopVerifier) IsExecutionComplete(
+func (noopVerifier *NoopVerifier) Verify(
 	ctx context.Context,
-	shard model.JobShard,
-) (bool, error) {
-	return noopVerifier.stateResolver.CheckShardStates(ctx, shard, func(
-		shardStates []model.JobShardState,
-		concurrency int,
-	) (bool, error) {
-		return noopVerifier.results.CheckShardStates(shardStates, concurrency)
-	})
-}
-
-func (noopVerifier *NoopVerifier) VerifyShard(
-	ctx context.Context,
-	shard model.JobShard,
+	request verifier.VerifierRequest,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyShard")
-	defer span.End()
-
-	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, shard.Job.Metadata.ID)
+	if noopVerifier.externalHooks.Verify != nil {
+		return noopVerifier.externalHooks.Verify(ctx, request)
+	}
+	err := verifier.ValidateExecutions(request)
 	if err != nil {
-		return results, err
-	}
-	shardStates := job.GetStatesForShardIndex(jobState, shard.Index)
-	if len(shardStates) == 0 {
-		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.Metadata.ID, shard.Index)
+		return nil, err
 	}
 
-	for _, shardState := range shardStates { //nolint:gocritic
-		if shardState.State != model.JobStateVerifying {
-			continue
-		}
-		results = append(results, verifier.VerifierResult{
-			JobID:       shard.Job.Metadata.ID,
-			NodeID:      shardState.NodeID,
-			ExecutionID: shardState.ExecutionID,
-			ShardIndex:  shardState.ShardIndex,
+	verifierResults := make([]verifier.VerifierResult, 0, len(request.Executions))
+	for _, execution := range request.Executions { //nolint:gocritic
+		verifierResults = append(verifierResults, verifier.VerifierResult{
+			ExecutionID: execution.ID(),
 			Verified:    true,
 		})
 	}
-	return results, nil
+	return verifierResults, nil
 }
 
 // Compile-time check that NoopVerifier implements the correct interface:
-var _ verifier.VerifierProvider = (*NoopVerifierProvider)(nil)
 var _ verifier.Verifier = (*NoopVerifier)(nil)

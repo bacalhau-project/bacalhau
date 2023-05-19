@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,7 +28,7 @@ func NewLoggingSensor(params LoggingSensorParams) *LoggingSensor {
 }
 
 func (s LoggingSensor) Start(ctx context.Context) {
-	log.Debug().Msgf("starting new logging sensor with interval %s", s.interval)
+	log.Ctx(ctx).Debug().Msgf("starting new logging sensor with interval %s", s.interval)
 	ticker := time.NewTicker(s.interval)
 
 	for {
@@ -43,10 +43,10 @@ func (s LoggingSensor) Start(ctx context.Context) {
 }
 
 func (s LoggingSensor) sense(ctx context.Context) {
-	debugInfo, err := s.infoProvider.GetDebugInfo()
+	debugInfo, err := s.infoProvider.GetDebugInfo(ctx)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msg("failed to marshal execution summaries")
 	} else {
-		log.Info().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
+		log.Ctx(ctx).Debug().Msgf("%s: %s", debugInfo.Component, debugInfo.Info)
 	}
 }

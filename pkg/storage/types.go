@@ -3,16 +3,14 @@ package storage
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-// Returns a storage that can be used by the job to store data.
-type StorageProvider interface {
-	GetStorage(ctx context.Context, storageSourceType model.StorageSourceType) (Storage, error)
-}
+// StorageProvider returns a storage that can be used by the job to store data.
+type StorageProvider = model.Provider[model.StorageSourceType, Storage]
 
 type Storage interface {
-	IsInstalled(context.Context) (bool, error)
+	model.Providable
 
 	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
 
@@ -25,10 +23,6 @@ type Storage interface {
 
 	// given a local file path - "store" it and return a StorageSpec
 	Upload(context.Context, string) (model.StorageSpec, error)
-
-	// given a StorageSpec - explode it into a list of storage specs it contains
-	// each file path will be appended to the "path" of the storage spec
-	Explode(context.Context, model.StorageSpec) ([]model.StorageSpec, error)
 }
 
 // a storage entity that is consumed are produced by a job

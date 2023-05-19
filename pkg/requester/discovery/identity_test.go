@@ -1,12 +1,14 @@
+//go:build integration || !unit
+
 package discovery
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/stretchr/testify/suite"
@@ -37,8 +39,8 @@ func (s *IdentityNodeDiscovererSuite) SetupSuite() {
 	s.node2.SetStreamHandler(bprotocol.AskForBidProtocolID, func(s network.Stream) {})
 
 	// connect all nodes after implementing bprotocol to share the info in the initial handshake
-	s.NoError(s.node2.Connect(ctx, libp2p.ExtractAddrInfoFromHost(s.node1)))
-	s.NoError(s.random3.Connect(ctx, libp2p.ExtractAddrInfoFromHost(s.node1)))
+	s.NoError(s.node2.Connect(ctx, *host.InfoFromHost(s.node1)))
+	s.NoError(s.random3.Connect(ctx, *host.InfoFromHost(s.node1)))
 
 	s.discoverer = NewIdentityNodeDiscoverer(IdentityNodeDiscovererParams{
 		Host: s.node1,
@@ -59,8 +61,9 @@ func (s *IdentityNodeDiscovererSuite) TestFindNodes() {
 	discoverer := NewIdentityNodeDiscoverer(IdentityNodeDiscovererParams{
 		Host: s.node1,
 	})
+
 	peerIDs, err := discoverer.FindNodes(context.Background(), model.Job{})
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	peerIDStrings := make([]string, len(peerIDs))
 	for i, p := range peerIDs {

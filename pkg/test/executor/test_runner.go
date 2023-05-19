@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func RunTestCase(
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
-	executor, err := stack.Nodes[0].ComputeNode.Executors.GetExecutor(ctx, spec.Engine)
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
@@ -53,17 +53,14 @@ func RunTestCase(
 	}
 
 	spec.Inputs = prepareStorage(testCase.Inputs)
-	spec.Contexts = prepareStorage(testCase.Contexts)
 	spec.Outputs = testCase.Outputs
 	spec.Deal = model.Deal{Concurrency: testNodeCount}
 
-	job := &model.Job{
+	job := model.Job{
 		Metadata: model.Metadata{
 			ID:        "test-job",
 			ClientID:  "test-client",
 			CreatedAt: time.Now(),
-		},
-		Status: model.JobStatus{
 			Requester: model.JobRequester{
 				RequesterNodeID: "test-owner",
 			},
@@ -71,14 +68,8 @@ func RunTestCase(
 		Spec: spec,
 	}
 
-	shard := model.JobShard{
-		Job:   job,
-		Index: 0,
-	}
-
 	resultsDirectory := t.TempDir()
-
-	runnerOutput, err := executor.RunShard(ctx, shard, resultsDirectory)
+	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
 	require.NoError(t, err)
 	require.Empty(t, runnerOutput.ErrorMsg)
 

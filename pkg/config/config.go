@@ -8,12 +8,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
+
+const (
+	maxUInt16 uint16 = 0xFFFF
+	minUInt16 uint16 = 0x0000
+)
+
+func DevstackShouldWriteEnvFile() bool {
+	return DevstackEnvFile() != ""
+}
+
+func DevstackEnvFile() string {
+	return os.Getenv("DEVSTACK_ENV_FILE")
+}
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -39,25 +53,30 @@ func GetAPIHost() string {
 	return os.Getenv("BACALHAU_HOST")
 }
 
-func GetAPIPort() string {
-	return os.Getenv("BACALHAU_PORT")
+func GetAPIPort() *uint16 {
+	portStr, found := os.LookupEnv("BACALHAU_PORT")
+	if !found {
+		return nil
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		panic(fmt.Sprintf("must be uint16 (%d-%d): %s", minUInt16, maxUInt16, portStr))
+	}
+	smallPort := uint16(port)
+	return &smallPort
 }
 
 type contextKey int
 
 const (
 	getVolumeSizeRequestTimeoutKey contextKey = iota
-	downloadCidRequestTimeoutKey
 )
 
 const (
 	// by default we wait 2 minutes for the IPFS network to resolve a CID
 	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	getVolumeSizeRequestTimeout time.Duration = 2 * time.Minute
-
-	// by default we wait 5 minutes for the IPFS network to download a CID
-	// tests will override this using config.SetVolumeSizeRequestTimeout(2)
-	downloadCidRequestTimeout time.Duration = 5 * time.Minute
+	getVolumeSizeRequestTimeout = 2 * time.Minute
 )
 
 // how long do we wait for a volume size request to timeout
@@ -77,19 +96,6 @@ func GetVolumeSizeRequestTimeout(ctx context.Context) time.Duration {
 
 func SetVolumeSizeRequestTimeout(ctx context.Context, value time.Duration) context.Context {
 	return context.WithValue(ctx, getVolumeSizeRequestTimeoutKey, value)
-}
-
-// how long do we wait for a cid to download
-func GetDownloadCidRequestTimeout(ctx context.Context) time.Duration {
-	value := ctx.Value(downloadCidRequestTimeoutKey)
-	if value == nil {
-		value = downloadCidRequestTimeout
-	}
-	return value.(time.Duration)
-}
-
-func SetDownloadCidRequestTimeout(ctx context.Context, value time.Duration) context.Context {
-	return context.WithValue(ctx, downloadCidRequestTimeoutKey, value)
 }
 
 // by default we wait 5 minutes for a URL to download
@@ -127,7 +133,7 @@ func GetConfigPath() string {
 		// e.g. /home/francesca/.bacalhau
 		dirname, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Send()
 		}
 		d = filepath.Join(dirname, suffix)
 	} else {
@@ -136,7 +142,7 @@ func GetConfigPath() string {
 	}
 	// create dir if not exists
 	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Send()
 	}
 	return d
 }
@@ -177,7 +183,7 @@ func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
 		if err := keyOut.Close(); err != nil {
 			return nil, fmt.Errorf("error closing key file: %v", err)
 		}
-		log.Printf("wrote %s", privKeyPath)
+		log.Debug().Msgf("wrote %s", privKeyPath)
 	}
 
 	// Now that we've ensured the private key is written to disk, read it! This
@@ -201,4 +207,20 @@ func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
 	}
 
 	return prvKey, nil
+}
+
+type DockerCredentials struct {
+	Username string
+	Password string
+}
+
+func (d *DockerCredentials) IsValid() bool {
+	return d.Username != "" && d.Password != ""
+}
+
+func GetDockerCredentials() DockerCredentials {
+	return DockerCredentials{
+		Username: os.Getenv("DOCKER_USERNAME"),
+		Password: os.Getenv("DOCKER_PASSWORD"),
+	}
 }

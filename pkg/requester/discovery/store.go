@@ -3,16 +3,17 @@ package discovery
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 type StoreNodeDiscovererParams struct {
-	Store requester.NodeInfoStore
+	Store routing.NodeInfoStore
 }
 
 type StoreNodeDiscoverer struct {
-	store requester.NodeInfoStore
+	store routing.NodeInfoStore
 }
 
 func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscoverer {
@@ -25,6 +26,11 @@ func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscover
 func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	// filter nodes that support the job's engine
 	return d.store.ListForEngine(ctx, job.Spec.Engine)
+}
+
+// ListNodes implements requester.NodeDiscoverer
+func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
+	return d.store.List(ctx)
 }
 
 // compile time check that StoreNodeDiscoverer implements NodeDiscoverer

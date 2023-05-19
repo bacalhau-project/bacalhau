@@ -8,115 +8,236 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/phayes/freeport"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
-// Define the suite, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
+const maxServeTime = 1 * time.Second
+const maxTestTime = 10 * time.Second
+
 type ServeSuite struct {
 	suite.Suite
+
+	out, err strings.Builder
+
+	ipfsPort int
+	ctx      context.Context
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestServeSuite(t *testing.T) {
 	suite.Run(t, new(ServeSuite))
 }
 
-// Before each test
-func (suite *ServeSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
+func (s *ServeSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
+
+	var cancel context.CancelFunc
+	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
+	s.T().Cleanup(func() {
+		cancel()
+	})
+
+	cm := system.NewCleanupManager()
+	s.T().Cleanup(func() {
+		cm.Cleanup(s.ctx)
+	})
+
+	node, err := ipfs.NewLocalNode(s.ctx, cm, []string{})
+	s.Require().NoError(err)
+	s.ipfsPort = node.APIPort
 }
 
-func writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (s *ServeSuite) serve(extraArgs ...string) uint16 {
+	bigPort, err := freeport.GetFreePort()
+	s.Require().NoError(err)
+	port := uint16(bigPort)
 
-	fmt.Println("Starting")
+	cmd := NewRootCmd()
+	cmd.SetOut(&s.out)
+	cmd.SetErr(&s.err)
 
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
+	// peer set to "none" to avoid accidentally talking to production endpoints (even though it's default)
+	// private-internal-ipfs to avoid accidentally talking to public IPFS nodes (even though it's default)
+	args := []string{
+		"serve",
+		"--peer", DefaultPeerConnect,
+		"--private-internal-ipfs",
+		"--api-port", fmt.Sprint(port),
 	}
+	args = append(args, extraArgs...)
 
-	ipfsPort, _ := freeport.GetFreePort()
+	cmd.SetArgs(args)
+	s.T().Logf("Command to execute: %q", args)
 
-	// peer set to none to avoid accidentally talking to production endpoints
-	args := []string{"serve", "--peer", "none", "--ipfs-connect", fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", ipfsPort), "--api-port", fmt.Sprintf("%d", port)}
+	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
+	s.T().Cleanup(cancel)
 
-	rootCmd.SetArgs(args)
+	go func() {
+		_, err := cmd.ExecuteContextC(ctx)
+		s.NoError(err)
+	}()
 
-	log.Trace().Msgf("Command to execute: %v", rootCmd.CalledAs())
-
-	_, _ = rootCmd.ExecuteC()
+	t := time.NewTicker(10 * time.Millisecond)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			s.FailNow("Server did not start in time")
+		case <-t.C:
+			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
+			if string(livezText) == "OK" {
+				return port
+			}
+		}
+	}
 }
 
-func curlEndpoint(URL string) (string, error) {
-	req, err := http.NewRequest("GET", URL, nil)
+func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(s.ctx, "GET", URL, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer closer.DrainAndCloseWithLogOnError(context.Background(), "test", resp.Body)
+	defer closer.DrainAndCloseWithLogOnError(s.ctx, "test", resp.Body)
 
 	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(responseText), nil
+	return responseText, nil
 }
 
-func (suite *ServeSuite) TestRun_GenericServe() {
-	port, err := freeport.GetFreePort()
+func (s *ServeSuite) TestHealthcheck() {
+	port := s.serve()
+	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
+	s.Require().NoError(err)
+	var healthzJSON types.HealthInfo
+	s.Require().NoError(model.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
+	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
+}
 
-	require.NoError(suite.T(), err, "Error getting free port.")
+func (s *ServeSuite) TestAPIPrintedForComputeNode() {
+	port := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
+	s.Require().Contains(s.out.String(), expectedURL)
+}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
+	port := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
+	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
+	s.Require().NotContains(s.out.String(), expectedURL)
+}
 
-	go writeToServeChannel(NewRootCmd(), port, &wg)
+func (s *ServeSuite) TestCanSubmitJob() {
+	port := s.serve("--node-type", "requester", "--node-type", "compute")
+	client := publicapi.NewRequesterAPIClient("localhost", port)
 
-	timeoutInMilliseconds := 20 * 1000
-	currentTime := 0
-	for {
-		time.Sleep(100 * time.Millisecond)
-		currentTime = currentTime + 100
-		livezText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
-		if livezText == "OK" {
-			healthzText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
-			healthzJSON := &types.HealthInfo{}
-			err := model.JSONUnmarshalWithMax([]byte(healthzText), healthzJSON)
-			require.NoError(suite.T(), err, "Error unmarshalling healthz JSON.")
-			require.Greater(suite.T(), int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
-			wg.Done()
-			break
+	job, err := model.NewJobWithSaneProductionDefaults()
+	s.Require().NoError(err)
+
+	_, err = client.Submit(s.ctx, job)
+	s.NoError(err)
+}
+
+func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
+	// Networking is disabled by default so we try to submit a networked job and
+	// expect it to be rejected.
+	port := s.serve("--node-type", "requester")
+	client := publicapi.NewRequesterAPIClient("localhost", port)
+
+	job, err := model.NewJobWithSaneProductionDefaults()
+	s.Require().NoError(err)
+
+	job.Spec.Network.Type = model.NetworkHTTP
+	job, err = client.Submit(s.ctx, job)
+	s.NoError(err)
+
+	state, err := client.GetJobState(s.ctx, job.Metadata.ID)
+	s.NoError(err)
+	s.Equal(model.JobStateCancelled, state.State, state.State.String())
+}
+
+func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
+	cm := system.NewCleanupManager()
+	OS := NewServeOptions()
+
+	client, err := ipfsClient(s.ctx, OS, cm)
+	s.Require().NoError(err)
+
+	swarmAddresses, err := client.SwarmAddresses(s.ctx)
+	s.NoError(err)
+	// an IPFS local node usually returns 2 addresses
+	s.Require().Equal(2, len(swarmAddresses))
+}
+
+func (s *ServeSuite) TestGetPeers() {
+	// by default it should return no peers
+	OS := NewServeOptions()
+	peers, err := getPeers(OS)
+	s.NoError(err)
+	s.Require().Equal(0, len(peers))
+
+	// if we set the peer connect to "env" it should return the peers from the env
+	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
+	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
+	for envName, envData := range system.Envs {
+		// skip checking environments other than test, because
+		// system.GetEnvironment() in getPeers() always returns "test" while testing
+		if envName.String() != "test" {
+			continue
 		}
 
-		if currentTime > timeoutInMilliseconds {
-			require.Fail(suite.T(), fmt.Sprintf("Server did not start in %d", timeoutInMilliseconds))
-			wg.Done()
-			break
+		OS = NewServeOptions()
+		OS.PeerConnect = "env"
+		peers, err = getPeers(OS)
+		s.NoError(err)
+		s.Require().NotEmpty(peers, "getPeers() returned an empty slice")
+		// search each peer in env BootstrapAddresses
+		for _, peer := range peers {
+			found := false
+			for _, envPeer := range envData.BootstrapAddresses {
+				if peer.String() == envPeer {
+					found = true
+					break
+				}
+			}
+			s.Require().True(found, "Peer %s not found in env %s", peer, envName)
 		}
 	}
 
+	// if we pass multiaddresses it should just return them
+	OS = NewServeOptions()
+	inputPeers := []string{
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVz",
+		"/ip4/0.0.0.0/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcz",
+	}
+	OS.PeerConnect = strings.Join(inputPeers, ",")
+	peers, err = getPeers(OS)
+	s.NoError(err)
+	s.Require().Equal(inputPeers[0], peers[0].String())
+	s.Require().Equal(inputPeers[1], peers[1].String())
+
+	// if we pass invalid multiaddress it should error out
+	OS = NewServeOptions()
+	inputPeers = []string{"foo"}
+	OS.PeerConnect = strings.Join(inputPeers, ",")
+	_, err = getPeers(OS)
+	s.Require().Error(err)
 }

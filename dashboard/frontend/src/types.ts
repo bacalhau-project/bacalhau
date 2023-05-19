@@ -33,7 +33,7 @@ export interface StorageSpec {
   CID?: string,
   URL?: string,
   path?: string,
-  Metadata?: { [key: string]: string},
+  Metadata?: { [key: string]: string },
 }
 
 export interface PublishedResult {
@@ -90,11 +90,11 @@ export interface JobShardingConfig {
 }
 
 export interface JobState {
-  Nodes: { [key: string]: JobNodeState},
+  Nodes: { [key: string]: JobNodeState },
 }
 
 export interface JobNodeState {
-  Shards: { [key: number]: JobShardState},
+  Shards: { [key: number]: JobShardState },
 }
 
 export interface JobShardState {
@@ -151,6 +151,7 @@ export interface JobSpecLanguage {
 
 export interface JobSpecWasm {
   EntryPoint?: string,
+  EntryModule?: StorageSpec,
   Parameters?: string[],
 }
 
@@ -159,6 +160,12 @@ export interface JobLocalEvent {
   JobID?: string,
   ShardIndex?: number,
   TargetNodeID?: string,
+}
+
+export interface ExecutionID {
+  JobID: string,
+  NodeID: string,
+  ExecutionID: string,
 }
 
 export interface JobEvent {
@@ -197,7 +204,19 @@ export interface JobInfo {
   events: JobEvent[],
   results: PublishedResult[],
   state: JobState,
-  moderation: JobModerationSummary,
+  requests: JobModerationRequest[],
+  moderations: JobModerationSummary[],
+}
+
+export interface JobRelation {
+  job_id: string,
+  cid: string,
+}
+
+export interface JobIO {
+  JobID: string,
+  InputOutput: string,
+  IsInput: boolean,
 }
 
 export interface ResourceUsageData {
@@ -232,17 +251,17 @@ export interface Counter {
 }
 
 export interface AnnotationSummary {
-  annotation: string, 
+  annotation: string,
   count: number,
 }
 
 export interface JobMonthSummary {
-  month: string, 
+  month: string,
   count: number,
 }
 
 export interface JobExecutorSummary {
-  executor: string, 
+  executor: string,
   count: number,
 }
 
@@ -267,14 +286,36 @@ export interface User {
 
 export interface JobModeration {
   id: number,
-  job_id: string,
+  request_id: number,
   user_account_id: number,
   created: string,
-  status: string,
+  status: boolean,
   notes: string,
+}
+
+export enum ModerationType {
+  Datacap = "datacap",
+  Execution = "execution",
+  Result = "result",
+}
+
+export interface JobModerationRequest {
+  id: number,
+  job_id: string,
+  type: ModerationType,
+  created: string,
+  callback: string,
+  execution_id?: ExecutionID,
+  storage_spec?: StorageSpec,
+}
+
+export interface ModerateRequest {
+  approved: boolean,
+  reason: string,
 }
 
 export interface JobModerationSummary {
   moderation: JobModeration,
+  request: JobModerationRequest,
   user: User,
 }

@@ -9,14 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -36,21 +35,20 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
-type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
+type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 	storage.Storage, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return apicopy.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(cm, api)
 		},
 	)
 }
@@ -59,10 +57,10 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(ctx context.Context, cm *system.CleanupManager, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return apicopy.NewStorage(cm, api)
+			return ipfs_storage.NewStorage(cm, api)
 		},
 	)
 }
@@ -71,12 +69,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
-
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	defer TeardownTest(cm)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
@@ -84,8 +77,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
-	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -100,7 +92,6 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	require.NoError(t, err)
 
@@ -118,12 +109,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
-	defer TeardownTest(stack, cm)
-
-	tr := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	defer TeardownTest(cm)
 
 	dir := t.TempDir()
 
@@ -136,8 +122,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
-	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -152,7 +137,6 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	require.NoError(t, err)
 

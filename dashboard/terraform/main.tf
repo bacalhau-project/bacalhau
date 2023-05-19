@@ -132,7 +132,8 @@ resource "google_compute_firewall" "dashboard_firewall" {
     protocol = "tcp"
     ports = [
       "80",
-      "443"
+      "443",
+      "1000"
     ]
   }
 
@@ -154,6 +155,23 @@ resource "google_compute_firewall" "dashboard_ssh_firewall" {
   }
 
   source_ranges = var.ssh_access_cidrs
+}
+
+resource "google_compute_firewall" "dashboard_postgres_firewall" {
+  name    = "dashboard-postgres-firewall-${terraform.workspace}"
+  network = google_compute_network.dashboard_network[0].name
+
+  allow {
+    protocol = "icmp"
+  }
+
+  allow {
+    protocol = "tcp"
+    // Port 5432   - Provides access to postgres for grafana dashboarding
+    ports = ["5432"]
+  }
+
+  source_ranges = var.postgres_access_cidrs
 }
 
 resource "google_compute_network" "dashboard_network" {

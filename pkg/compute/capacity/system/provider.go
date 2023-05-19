@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 	"github.com/ricochet2200/go-disk-usage/du"
 )

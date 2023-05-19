@@ -2,12 +2,12 @@ package bacalhau
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -59,13 +59,9 @@ func newGetCmd() *cobra.Command {
 }
 
 func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
-	defer span.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm := cmd.Context().Value(systemManagerKey).(*system.CleanupManager)
 
 	var err error
 
@@ -78,6 +74,13 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 			return err
 		}
 		jobID = string(byteResult)
+	}
+
+	// Split the jobID on / to see if the request is for a single file or for the
+	// entire jobid.
+	parts := strings.SplitN(jobID, "/", 2)
+	if len(parts) == 2 {
+		jobID, OG.IPFSDownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
 	err = downloadResultsHandler(

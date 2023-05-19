@@ -5,10 +5,10 @@ package devstack
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,9 +28,11 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
 		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Engine:   model.EngineWasm,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
@@ -42,9 +44,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		},
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: 1,
-			}),
+			job.WaitForSuccessfulCompletion(),
 		},
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/rs/zerolog/log"
 )
 
@@ -15,7 +16,10 @@ func SubmitAnDescribe(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := getClient()
 
-	j := getSampleDockerJob()
+	j, err := getSampleDockerJob()
+	if err != nil {
+		return err
+	}
 	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err
@@ -36,12 +40,7 @@ func SubmitAnDescribe(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.GetLocalEvents(ctx, submittedJob.Metadata.ID)
+	_, err = client.GetEvents(ctx, submittedJob.Metadata.ID, publicapi.EventFilterOptions{})
 	if err != nil {
 		return err
 	}

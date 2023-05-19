@@ -2,45 +2,66 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/rs/zerolog/log"
 )
 
 const JobEventsTopic = "bacalhau-job-events"
 const NodeInfoTopic = "bacalhau-node-info"
+const DefaultNodeInfoPublisherInterval = 30 * time.Second
+
+type FeatureConfig struct {
+	Engines    []model.Engine
+	Verifiers  []model.Verifier
+	Publishers []model.Publisher
+	Storages   []model.StorageSourceType
+}
 
 // Node configuration
 type NodeConfig struct {
-	IPFSClient           *ipfs.Client
-	CleanupManager       *system.CleanupManager
-	LocalDB              localdb.LocalDB
-	Host                 host.Host
-	FilecoinUnsealedPath string
-	EstuaryAPIKey        string
-	HostAddress          string
-	APIPort              int
-	MetricsPort          int
-	ComputeConfig        ComputeConfig
-	RequesterNodeConfig  RequesterConfig
-	APIServerConfig      publicapi.APIServerConfig
-	LotusConfig          *filecoinlotus.PublisherConfig
-	SimulatorNodeID      string
-	IsRequesterNode      bool
-	IsComputeNode        bool
-	Labels               map[string]string
+	IPFSClient                ipfs.Client
+	CleanupManager            *system.CleanupManager
+	JobStore                  jobstore.Store
+	Host                      host.Host
+	FilecoinUnsealedPath      string
+	EstuaryAPIKey             string
+	HostAddress               string
+	APIPort                   uint16
+	DisabledFeatures          FeatureConfig
+	ComputeConfig             ComputeConfig
+	RequesterNodeConfig       RequesterConfig
+	APIServerConfig           publicapi.APIServerConfig
+	LotusConfig               *filecoinlotus.PublisherConfig
+	SimulatorNodeID           string
+	IsRequesterNode           bool
+	IsComputeNode             bool
+	Labels                    map[string]string
+	NodeInfoPublisherInterval time.Duration
+	DependencyInjector        NodeDependencyInjector
+	AllowListedLocalPaths     []string
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -66,86 +87,67 @@ type Node struct {
 	APIServer      *publicapi.APIServer
 	ComputeNode    *Compute
 	RequesterNode  *Requester
+	NodeInfoStore  routing.NodeInfoStore
 	CleanupManager *system.CleanupManager
-	IPFSClient     *ipfs.Client
+	IPFSClient     ipfs.Client
 	Host           host.Host
-	metricsPort    int
 }
 
 func (n *Node) Start(ctx context.Context) error {
-	go func(ctx context.Context) {
-		if err := n.APIServer.ListenAndServe(ctx, n.CleanupManager); err != nil {
-			log.Ctx(ctx).Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
-		}
-	}(ctx)
-
-	go func(ctx context.Context) {
-		if err := system.ListenAndServeMetrics(ctx, n.CleanupManager, n.metricsPort); err != nil {
-			log.Ctx(ctx).Error().Msgf("Cannot serve metrics: %v", err)
-		}
-	}(ctx)
-
-	return nil
-}
-
-func NewStandardNode(
-	ctx context.Context,
-	config NodeConfig) (*Node, error) {
-	return NewNode(ctx, config, NewStandardNodeDependencyInjector())
+	return n.APIServer.ListenAndServe(ctx, n.CleanupManager)
 }
 
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	config NodeConfig,
-	injector NodeDependencyInjector) (*Node, error) {
+	config NodeConfig) (*Node, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/node.NewNode")
+	defer span.End()
+
+	identify.ActivationThresh = 2
+
+	config.DependencyInjector = mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector())
 	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultAPIServerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	storageProviders, err := injector.StorageProvidersFactory.Get(ctx, config)
+	storageProviders, err := config.DependencyInjector.StorageProvidersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	executors, err := injector.ExecutorsFactory.Get(ctx, config)
+	publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	verifiers, err := injector.VerifiersFactory.Get(ctx, config)
+	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
 	if err != nil {
 		return nil, err
 	}
 
-	publishers, err := injector.PublishersFactory.Get(ctx, config)
+	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config, publishers)
 	if err != nil {
 		return nil, err
 	}
 
 	var simulatorRequestHandler *simulator.RequestHandler
 	if config.SimulatorNodeID == config.Host.ID().String() {
-		log.Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
+		log.Ctx(ctx).Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
 		simulatorRequestHandler = simulator.NewRequestHandler()
-	}
-
-	// public http api server
-	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
-		Address: config.HostAddress,
-		Port:    config.APIPort,
-		Host:    config.Host,
-		Config:  config.APIServerConfig,
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	// A single gossipSub instance that will be used by all topics
 	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
 	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
+	defer func() {
+		if err != nil {
+			gossipSubCancel()
+		}
+	}()
+
 	if err != nil {
-		gossipSubCancel()
 		return nil, err
 	}
 
@@ -156,7 +158,55 @@ func NewNode(
 		PubSub:    gossipSub,
 	})
 	if err != nil {
-		gossipSubCancel()
+		return nil, err
+	}
+
+	// node info provider
+	basicHost, ok := config.Host.(*basichost.BasicHost)
+	if !ok {
+		return nil, fmt.Errorf("host is not a basic host")
+	}
+	nodeInfoProvider := routing.NewNodeInfoProvider(routing.NodeInfoProviderParams{
+		Host:            basicHost,
+		IdentityService: basicHost.IDService(),
+		Labels:          config.Labels,
+		BacalhauVersion: *version.Get(),
+	})
+
+	// node info publisher
+	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
+	if nodeInfoPublisherInterval == 0 {
+		nodeInfoPublisherInterval = DefaultNodeInfoPublisherInterval
+	}
+	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
+		PubSub:           nodeInfoPubSub,
+		NodeInfoProvider: nodeInfoProvider,
+		Interval:         nodeInfoPublisherInterval,
+	})
+
+	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
+	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
+		TTL: 10 * time.Minute,
+	})
+	routedHost := routedhost.Wrap(config.Host, nodeInfoStore)
+
+	// register consumers of node info published over gossipSub
+	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
+	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
+	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
+	if err != nil {
+		return nil, err
+	}
+
+	// public http api server
+	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
+		Address:          config.HostAddress,
+		Port:             config.APIPort,
+		Host:             config.Host,
+		Config:           config.APIServerConfig,
+		NodeInfoProvider: nodeInfoProvider,
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -168,19 +218,18 @@ func NewNode(
 		requesterNode, err = NewRequesterNode(
 			ctx,
 			config.CleanupManager,
-			config.Host,
+			routedHost,
 			apiServer,
 			config.RequesterNodeConfig,
-			config.LocalDB,
+			config.JobStore,
 			config.SimulatorNodeID,
 			simulatorRequestHandler,
 			verifiers,
 			storageProviders,
-			nodeInfoPubSub,
 			gossipSub,
+			nodeInfoStore,
 		)
 		if err != nil {
-			gossipSubCancel()
 			return nil, err
 		}
 	}
@@ -190,42 +239,37 @@ func NewNode(
 		computeNode, err = NewComputeNode(
 			ctx,
 			config.CleanupManager,
-			config.Host,
-			config.Labels,
+			routedHost,
 			apiServer,
 			config.ComputeConfig,
 			config.SimulatorNodeID,
 			simulatorRequestHandler,
+			storageProviders,
 			executors,
 			verifiers,
 			publishers,
-			nodeInfoPubSub,
 		)
 		if err != nil {
-			gossipSubCancel()
 			return nil, err
 		}
+		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
 	}
 
 	// cleanup libp2p resources in the desired order
-	config.CleanupManager.RegisterCallback(func() error {
-		cleanupCtx := context.Background()
+	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
-			computeNode.cleanup(cleanupCtx)
+			computeNode.cleanup(ctx)
 		}
 		if requesterNode != nil {
-			requesterNode.cleanup(cleanupCtx)
+			requesterNode.cleanup(ctx)
 		}
-		cleanupErr := nodeInfoPubSub.Close(cleanupCtx)
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p node info pubsub")
-		}
+		nodeInfoPublisher.Stop(ctx)
+		cleanupErr := nodeInfoPubSub.Close(ctx)
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close host")
-		}
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "host")
 		return cleanupErr
 	})
 
@@ -235,14 +279,21 @@ func NewNode(
 		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
 	}
 
+	// Eagerly publish node info to the network. Do this in a goroutine so that
+	// slow plugins don't slow down the node from booting.
+	go func() {
+		err = nodeInfoPublisher.Publish(ctx)
+		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Eagerly published node info")
+	}()
+
 	node := &Node{
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
 		IPFSClient:     config.IPFSClient,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
-		Host:           config.Host,
-		metricsPort:    config.MetricsPort,
+		NodeInfoStore:  nodeInfoStore,
+		Host:           routedHost,
 	}
 
 	return node, nil
@@ -277,4 +328,20 @@ func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub
 		libp2p_pubsub.WithPeerGater(pgParams),
 		libp2p_pubsub.WithEventTracer(tracer),
 	)
+}
+
+func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector NodeDependencyInjector) NodeDependencyInjector {
+	if injector.StorageProvidersFactory == nil {
+		injector.StorageProvidersFactory = defaultInjector.StorageProvidersFactory
+	}
+	if injector.ExecutorsFactory == nil {
+		injector.ExecutorsFactory = defaultInjector.ExecutorsFactory
+	}
+	if injector.VerifiersFactory == nil {
+		injector.VerifiersFactory = defaultInjector.VerifiersFactory
+	}
+	if injector.PublishersFactory == nil {
+		injector.PublishersFactory = defaultInjector.PublishersFactory
+	}
+	return injector
 }

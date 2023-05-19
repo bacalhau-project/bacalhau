@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -16,9 +15,16 @@ type Job struct {
 
 	// The specification of this job.
 	Spec Spec `json:"Spec,omitempty"`
+}
 
-	// The status of the job: where are the nodes at, what are the events
-	Status JobStatus `json:"Status,omitempty"`
+// ID returns the ID of the job.
+func (j Job) ID() string {
+	return j.Metadata.ID
+}
+
+// String returns the id of the job.
+func (j Job) String() string {
+	return j.Metadata.ID
 }
 
 type Metadata struct {
@@ -30,6 +36,8 @@ type Metadata struct {
 
 	// The ID of the client that created this job.
 	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+
+	Requester JobRequester `json:"Requester,omitempty"`
 }
 type JobRequester struct {
 	// The ID of the requester node that owns this job.
@@ -38,18 +46,6 @@ type JobRequester struct {
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
-}
-type JobStatus struct {
-	// The current state of the job
-	State JobState `json:"JobState,omitempty"`
-
-	// All events associated with the job
-	Events []JobEvent `json:"JobEvents,omitempty"`
-
-	// All local events associated with the job
-	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty"`
-
-	Requester JobRequester `json:"Requester,omitempty"`
 }
 
 // TODO: There's probably a better way we want to globally version APIs
@@ -64,9 +60,11 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:    EngineDocker,
-			Verifier:  VerifierNoop,
-			Publisher: PublisherEstuary,
+			Engine:   EngineDocker,
+			Verifier: VerifierNoop,
+			PublisherSpec: PublisherSpec{
+				Type: PublisherEstuary,
+			},
 			Deal: Deal{
 				Concurrency: 1,
 				Confidence:  0,
@@ -75,7 +73,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 		},
 	})
 	if err != nil {
-		log.Err(err).Msg("failed to merge sane defaults into job")
 		return nil, err
 	}
 	return j, nil
@@ -83,92 +80,12 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 
 // JobWithInfo is the job request + the result of attempting to run it on the network
 type JobWithInfo struct {
-	Job            Job             `json:"Job,omitempty"`
-	JobState       JobState        `json:"JobState,omitempty"`
-	JobEvents      []JobEvent      `json:"JobEvents,omitempty"`
-	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty"`
-}
-
-// JobShard contains data about a job shard in the bacalhau network.
-type JobShard struct {
-	Job *Job `json:"Job,omitempty"`
-
-	Index int `json:"Index,omitempty"`
-}
-
-func (shard JobShard) ID() string {
-	return GetShardID(shard.Job.Metadata.ID, shard.Index)
-}
-
-func (shard JobShard) String() string {
-	return shard.ID()
-}
-
-type JobExecutionPlan struct {
-	// how many shards are there in total for this job
-	// we are expecting this number x concurrency total
-	// JobShardState objects for this job
-	TotalShards int `json:"ShardsTotal,omitempty"`
-}
-
-// describe how we chunk a job up into shards
-type JobShardingConfig struct {
-	// divide the inputs up into the smallest possible unit
-	// for example /* would mean "all top level files or folders"
-	// this being an empty string means "no sharding"
-	GlobPattern string `json:"GlobPattern,omitempty"`
-	// how many "items" are to be processed in each shard
-	// we first apply the glob pattern which will result in a flat list of items
-	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"BatchSize,omitempty"`
-	// when using multiple input volumes
-	// what path do we treat as the common mount path to apply the glob pattern to
-	BasePath string `json:"GlobPatternBasePath,omitempty"`
-}
-
-// The state of a job across the whole network
-// generally be in different states on different nodes - one node may be
-// ignoring a job as its bid was rejected, while another node may be
-// submitting results for the job to the requester node.
-//
-// Each node will produce an array of JobShardState one for each shard
-// (jobs without a sharding config will still have sharded job
-// states - just with a shard count of 1). Any code that is determining
-// the current "state" of a job must look at both:
-//
-//   - the ShardCount of the JobExecutionPlan
-//   - the collection of JobShardState to determine the current state
-//
-// Note: JobState itself is not mutable - the JobExecutionPlan and
-// JobShardState are updatable and the JobState is queried by the rest
-// of the system.
-type JobState struct {
-	Nodes map[string]JobNodeState `json:"Nodes,omitempty"`
-}
-
-type JobNodeState struct {
-	Shards map[int]JobShardState `json:"Shards,omitempty"`
-}
-
-type JobShardState struct {
-	// which node is running this shard
-	NodeID string `json:"NodeId,omitempty"`
-	// Compute node reference for this shard execution
-	ExecutionID string `json:"ExecutionId,omitempty"`
-	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex,omitempty"`
-	// what is the state of the shard on this node
-	State JobStateType `json:"State,omitempty"`
-	// an arbitrary status message
-	Status string `json:"Status,omitempty"`
-	// the proposed results for this shard
-	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
-
-	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
+	// Job info
+	Job Job `json:"Job"`
+	// The current state of the job
+	State JobState `json:"State"`
+	// History of changes to the job state. Not always populated in the job description
+	History []JobHistory `json:"History,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -190,6 +107,22 @@ type Deal struct {
 	MinBids int `json:"MinBids,omitempty"`
 }
 
+// GetConcurrency returns the concurrency value from the deal
+func (d Deal) GetConcurrency() int {
+	if d.Concurrency == 0 {
+		return 1
+	}
+	return d.Concurrency
+}
+
+// GetConfidence returns the confidence value from the deal
+func (d Deal) GetConfidence() int {
+	if d.Confidence == 0 {
+		return d.GetConcurrency()
+	}
+	return d.Confidence
+}
+
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
 // These are based on labels library from kubernetes package. While we use labels.Requirement to represent the label selector requirements
 // in the command line arguments as the library supports multiple parsing formats, and we also use it when matching selectors to labels
@@ -206,6 +139,11 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
+type PublisherSpec struct {
+	Type   Publisher              `json:"Type,omitempty"`
+	Params map[string]interface{} `json:"Params,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
@@ -215,7 +153,9 @@ type Spec struct {
 	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher Publisher `json:"Publisher,omitempty"`
+	// deprecated: use PublisherSpec instead
+	Publisher     Publisher     `json:"Publisher,omitempty"`
+	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty"`
@@ -237,11 +177,6 @@ type Spec struct {
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
 	Inputs []StorageSpec `json:"inputs,omitempty"`
 
-	// Input volumes that will not be sharded
-	// for example to upload code into a base image
-	// every shard will get the full range of context volumes
-	Contexts []StorageSpec `json:"Contexts,omitempty"`
-
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
 	Outputs []StorageSpec `json:"outputs,omitempty"`
@@ -251,15 +186,9 @@ type Spec struct {
 
 	// NodeSelectors is a selector which must be true for the compute node to run this job.
 	NodeSelectors []LabelSelectorRequirement `json:"NodeSelectors,omitempty"`
-	// the sharding config for this job
-	// describes how the job might be split up into parallel shards
-	Sharding JobShardingConfig `json:"Sharding,omitempty"`
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty"`
-
-	// how will this job be executed by nodes on the network
-	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal Deal `json:"Deal,omitempty"`
@@ -278,7 +207,6 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	}
 
 	for _, collection := range [][]StorageSpec{
-		s.Contexts,
 		s.Inputs,
 		s.Outputs,
 	} {
@@ -340,17 +268,6 @@ type JobSpecWasm struct {
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
-// gives us a way to keep local data against a job
-// so our compute node and requester node control loops
-// can keep state against a job without broadcasting it
-// to the rest of the network
-type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName,omitempty"`
-	JobID        string            `json:"JobID,omitempty"`
-	ShardIndex   int               `json:"ShardIndex,omitempty"`
-	TargetNodeID string            `json:"TargetNodeID,omitempty"`
-}
-
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
@@ -358,8 +275,6 @@ type JobEvent struct {
 	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
 
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// what shard is this event for
-	ShardIndex int `json:"ShardIndex,omitempty"`
 	// compute execution identifier
 	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// optional clientID if this is an externally triggered event (like create job)
@@ -372,8 +287,6 @@ type JobEvent struct {
 	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events
 	Spec Spec `json:"Spec,omitempty"`
-	// this is only defined in "create" events
-	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan,omitempty"`
 	// this is only defined in "update_deal" events
 	Deal                 Deal               `json:"Deal,omitempty"`
 	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
@@ -405,4 +318,44 @@ type JobCreatePayload struct {
 
 	// The specification of this job.
 	Spec *Spec `json:"Spec,omitempty" validate:"required"`
+}
+
+func (j JobCreatePayload) GetClientID() string {
+	return j.ClientID
+}
+
+type JobCancelPayload struct {
+	// the id of the client that is submitting the job
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
+
+	// the job id of the job to be canceled
+	JobID string `json:"JobID,omitempty" validate:"required"`
+
+	// The reason that the job is being canceled
+	Reason string `json:"Reason,omitempty"`
+}
+
+func (j JobCancelPayload) GetClientID() string {
+	return j.ClientID
+}
+
+type LogsPayload struct {
+	// the id of the client that is requesting the logs
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
+
+	// the job id of the job to be shown
+	JobID string `json:"JobID,omitempty" validate:"required"`
+
+	// the execution to be shown
+	ExecutionID string `json:"ExecutionID,omitempty" validate:"required"`
+
+	// whether the logs history is required
+	WithHistory bool `json:"WithHistory,omitempty"`
+
+	// whether the logs should be followed after the current logs are shown
+	Follow bool `json:"Follow,omitempty"`
+}
+
+func (j LogsPayload) GetClientID() string {
+	return j.ClientID
 }

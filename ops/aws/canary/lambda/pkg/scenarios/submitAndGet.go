@@ -6,11 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,7 +19,10 @@ func SubmitAndGet(ctx context.Context) error {
 	client := getClient()
 
 	cm := system.NewCleanupManager()
-	j := getSampleDockerJob()
+	j, err := getSampleDockerJob()
+	if err != nil {
+		return err
+	}
 	submittedJob, err := client.Submit(ctx, j)
 	if err != nil {
 		return err
@@ -59,12 +61,11 @@ func SubmitAndGet(ctx context.Context) error {
 		return err
 	}
 
-	err = downloader.DownloadJob(ctx, submittedJob.Spec.Outputs, results, downloaderProvider, downloadSettings)
+	err = downloader.DownloadResults(ctx, results, downloaderProvider, downloadSettings)
 	if err != nil {
 		return err
 	}
-
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadVolumesFolderName, model.DownloadFilenameStdout))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, model.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}

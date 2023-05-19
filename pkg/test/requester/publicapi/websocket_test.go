@@ -4,14 +4,17 @@ package publicapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"testing"
+	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -42,33 +45,45 @@ func (s *WebsocketSuite) SetupTest() {
 
 // After each test
 func (s *WebsocketSuite) TearDownTest() {
-	s.node.CleanupManager.Cleanup()
+	s.node.CleanupManager.Cleanup(context.Background())
 }
 
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
 	// string.Replace http with ws in c.BaseURI
-	url := "ws" + s.client.BaseURI[4:] + "/requester/websocket"
+	url := *s.client.BaseURI
+	url.Scheme = "ws"
+	wurl := url.JoinPath("requester", "websocket", "events")
 
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
 	require.NoError(s.T(), err)
+	s.T().Cleanup(func() {
+		s.NoError(conn.Close())
+	})
 
 	eventChan := make(chan model.JobEvent)
 	go func() {
+		defer close(eventChan)
 		for {
 			var event model.JobEvent
 			err = conn.ReadJSON(&event)
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
 			require.NoError(s.T(), err)
 			eventChan <- event
 		}
 	}()
+
+	// Pause to ensure the websocket connects _before_ we submit the job
+	time.Sleep(100 * time.Millisecond)
 
 	genericJob := testutils.MakeGenericJob()
 	_, err = s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
 	event := <-eventChan
-	require.Equal(s.T(), "Created", event.EventName.String())
+	require.Equal(s.T(), model.JobEventCreated, event.EventName)
 
 }
 
@@ -81,8 +96,12 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
-	url := "ws" + s.client.BaseURI[4:] + fmt.Sprintf("/websocket?job_id=%s", j.Metadata.ID)
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	url := *s.client.BaseURI
+	url.Scheme = "ws"
+	wurl := url.JoinPath("websocket", "events")
+	wurl.RawQuery = fmt.Sprintf("job_id=%s", j.Metadata.ID)
+
+	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
 	require.NoError(s.T(), err)
 
 	var event model.JobEvent

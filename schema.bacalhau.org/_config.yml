@@ -5,9 +5,15 @@ description: >- # this means to ignore newlines until "baseurl:"
 baseurl: /schema.bacalhau.org # the subpath of your site, e.g. /blog
 url: "https://schema.bacalhau.org" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: bacalhauproject
-github_repo: "filecoin-project/bacalhau"
+github_repo: "bacalhau-project/bacalhau"
 
 # Build settings
 theme: minima
 plugins:
   - jekyll-feed
+
+defaults:
+  - scope:
+      path: "jsonschema"
+    values:
+      schema: true

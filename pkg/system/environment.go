@@ -2,7 +2,6 @@ package system
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 
@@ -25,7 +24,7 @@ func (e Environment) String() string {
 
 func (e Environment) IsKnown() bool {
 	switch e {
-	case EnvironmentStaging, EnvironmentProd, EnvironmentDev:
+	case EnvironmentStaging, EnvironmentProd, EnvironmentDev, EnvironmentTest:
 		return true
 	}
 	return false
@@ -51,34 +50,12 @@ func init() { //nolint:gochecknoinits
 			flag.Lookup("test.run") != nil {
 			env = EnvironmentTest
 		} else {
-			flags := []string{}
-			fn := func(f *flag.Flag) {
-				flags = append(flags, fmt.Sprintf("%s - %s\n", f.Name, f.Value))
-			}
-			flag.VisitAll(fn)
-			log.Debug().Msgf("Defaulting to development environment: \n os.Args: %v\nflags: %v", os.Args, flags)
-
-			env = EnvironmentDev
+			log.Debug().Msgf("Defaulting to production environment: \n os.Args: %v", os.Args)
+			env = EnvironmentProd
 		}
 	}
 }
 
 func GetEnvironment() Environment {
 	return env
-}
-
-func IsTest() bool {
-	return env == EnvironmentTest
-}
-
-func IsStaging() bool {
-	return env == EnvironmentStaging
-}
-
-func IsProd() bool {
-	return env == EnvironmentProd
-}
-
-func IsDev() bool {
-	return env == EnvironmentDev
 }

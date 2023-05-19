@@ -1,12 +1,14 @@
+//go:build unit || !integration
+
 package test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,7 +33,7 @@ func (s *Suite) TestGetActiveExecution_Single() {
 	err := s.executionStore.CreateExecution(ctx, s.execution)
 	s.NoError(err)
 
-	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Shard.ID())
+	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Job.ID())
 	s.NoError(err)
 	s.Equal(s.execution, active)
 }
@@ -39,10 +41,10 @@ func (s *Suite) TestGetActiveExecution_Single() {
 func (s *Suite) TestGetActiveExecution_Multiple() {
 	ctx := context.Background()
 
-	// create a newer execution with same shard as the previous one
+	// create a newer execution with same job as the previous one
 	newerExecution := s.execution
 	newerExecution.ID = uuid.NewString()
-	newerExecution.Shard = s.execution.Shard
+	newerExecution.Job = s.execution.Job
 	newerExecution.UpdateTime = s.execution.UpdateTime.Add(1)
 
 	err := s.executionStore.CreateExecution(ctx, s.execution)
@@ -51,26 +53,23 @@ func (s *Suite) TestGetActiveExecution_Multiple() {
 	err = s.executionStore.CreateExecution(ctx, newerExecution)
 	s.NoError(err)
 
-	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Shard.ID())
+	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Job.ID())
 	s.NoError(err)
 	s.Equal(newerExecution, active)
 }
 
 func (s *Suite) TestGetActiveExecution_DoestExist() {
-	_, err := store.GetActiveExecution(context.Background(), s.executionStore, s.execution.Shard.ID())
-	s.ErrorAs(err, &store.ErrExecutionsNotFoundForShard{})
+	_, err := store.GetActiveExecution(context.Background(), s.executionStore, s.execution.Job.ID())
+	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 }
 
 func newExecution() store.Execution {
 	return *store.NewExecution(
 		uuid.NewString(),
-		model.JobShard{
-			Job: &model.Job{
-				Metadata: model.Metadata{
-					ID: uuid.NewString(),
-				},
+		model.Job{
+			Metadata: model.Metadata{
+				ID: uuid.NewString(),
 			},
-			Index: 1,
 		},
 		"nodeID-1",
 		model.ResourceUsageData{

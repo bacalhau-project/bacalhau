@@ -9,34 +9,33 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	"github.com/antihax/optional"
 	estuary_client "github.com/application-research/estuary-clients/go"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 type estuaryPublisher struct {
-	config EstuaryPublisherConfig
+	client *estuary_client.APIClient
 }
 
 const publisherTimeout = 5 * time.Minute
 
 func NewEstuaryPublisher(config EstuaryPublisherConfig) publisher.Publisher {
 	return &estuaryPublisher{
-		config: config,
+		client: GetClient(config.APIKey),
 	}
 }
 
 // IsInstalled implements publisher.Publisher
 func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	client := GetClient(ctx, e.config.APIKey)
-	_, response, err := client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
+	_, response, err := e.client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if response != nil {
 		defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", response.Body)
 		return response.StatusCode == http.StatusOK, nil
@@ -45,12 +44,20 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-// PublishShardResult implements publisher.Publisher
-func (e *estuaryPublisher) PublishShardResult(
+func (e *estuaryPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	if j.Spec.PublisherSpec.Type != model.PublisherEstuary {
+		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+			model.PublisherEstuary, j.Spec.PublisherSpec.Type)
+	}
+	return nil
+}
+
+// PublishResult implements publisher.Publisher
+func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
+	executionID string,
+	j model.Job,
+	resultPath string,
 ) (model.StorageSpec, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
 	if err != nil {
@@ -59,7 +66,7 @@ func (e *estuaryPublisher) PublishShardResult(
 	defer os.RemoveAll(tempDir)
 
 	carFile := filepath.Join(tempDir, "results.car")
-	_, err = car.CreateCar(ctx, shardResultPath, carFile, 1)
+	_, err = car.CreateCar(ctx, resultPath, carFile, 1)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -74,15 +81,14 @@ func (e *estuaryPublisher) PublishShardResult(
 		return model.StorageSpec{}, errors.Wrap(err, "error reading CAR data")
 	}
 
-	client := GetClient(ctx, e.config.APIKey)
 	timeout, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
 
-	addCarResponse, httpResponse, err := client.ContentApi.ContentAddCarPost( //nolint:bodyclose // golangcilint is dumb - this is closed
+	addCarResponse, httpResponse, err := e.client.ContentApi.ContentAddCarPost( //nolint:bodyclose // golangcilint is dumb - this is closed
 		timeout,
 		string(carContent),
 		&estuary_client.ContentApiContentAddCarPostOpts{
-			Filename: optional.NewString(shard.ID()),
+			Filename: optional.NewString(j.ID()),
 		},
 	)
 	if err != nil && err != io.EOF {
@@ -93,10 +99,35 @@ func (e *estuaryPublisher) PublishShardResult(
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceEstuary, hostID, addCarResponse.Cid)
+	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
 	spec.URL = addCarResponse.EstuaryRetrievalUrl
 
 	return spec, nil
+}
+
+func PinToIPFSViaEstuary(
+	ctx context.Context,
+	EstuaryAPIKey string,
+	CID string,
+) error {
+	client := GetClient(EstuaryAPIKey)
+	_, cancel := context.WithTimeout(ctx, publisherTimeout)
+	defer cancel()
+	pin := estuary_client.TypesIpfsPin{
+		Cid: CID,
+	}
+	addCarResponse, httpResponse, err := client.PinningApi.PinningPinsPost( //nolint:bodyclose // golangcilint is dumb - this is closed
+		ctx,
+		pin,
+	)
+	if err != nil && err != io.EOF {
+		return err
+	} else if httpResponse.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("pinning to estuary failed")
+	}
+	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
+	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
+	return nil
 }
 
 var _ publisher.Publisher = (*estuaryPublisher)(nil)

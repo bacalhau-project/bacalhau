@@ -3,23 +3,24 @@
 package sqlite
 
 import (
-	"io/ioutil"
+	"os"
 	"runtime"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb/shared"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 func TestSQLiteSuite(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skipf("Test only runs on linux and not %s", runtime.GOOS)
+	}
+
 	testingSuite := new(shared.GenericSQLSuite)
 	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
-		if runtime.GOOS != "linux" {
-			return nil
-		}
-		datafile, err := ioutil.TempFile("", "sqlite-test-*.db")
+		datafile, err := os.CreateTemp("", "sqlite-test-*.db")
 		require.NoError(testingSuite.T(), err)
 		datastore, err := NewSQLiteDatastore(datafile.Name())
 		require.NoError(testingSuite.T(), err)

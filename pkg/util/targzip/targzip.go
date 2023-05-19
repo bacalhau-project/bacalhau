@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -51,7 +51,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 //
 //nolint:gocyclo
 func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/util/targzip.Compress")
+	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()
 
 	// tar > gzip > buf

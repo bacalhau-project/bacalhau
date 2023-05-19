@@ -1,8 +1,6 @@
 import React, { FC, useState, useEffect, useCallback, useContext, useMemo } from 'react'
-import bluebird from 'bluebird'
-import { A, navigate } from 'hookrouter'
+import { A } from 'hookrouter'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Grid from '@mui/material/Grid'
 import Container from '@mui/material/Container'
@@ -11,22 +9,16 @@ import Paper from '@mui/material/Paper'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Divider from '@mui/material/Divider'
-import FormControl from '@mui/material/FormControl'
-import FormLabel from '@mui/material/FormLabel'
-import RadioGroup from '@mui/material/RadioGroup'
-import TextField from '@mui/material/TextField'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Radio from '@mui/material/Radio'
 import RefreshIcon from '@mui/icons-material/Refresh'
 
 import useApi from '../hooks/useApi'
 import {
-  JobInfo,
-  JobModeration,
+  JobInfo, JobModerationRequest, JobRelation,
+  ModerateRequest,
+  ModerationType,
 } from '../types'
 import {
   getShortId,
-  getJobStateTitle,
 } from '../utils/job'
 import InputVolumes from '../components/job/InputVolumes'
 import OutputVolumes from '../components/job/OutputVolumes'
@@ -34,8 +26,6 @@ import JobState from '../components/job/JobState'
 import ShardState from '../components/job/ShardState'
 import JobProgram from '../components/job/JobProgram'
 import FilPlus from '../components/job/FilPlus'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
 
 import {
   SmallText,
@@ -44,11 +34,23 @@ import {
   BoldSectionTitle,
   RequesterNode,
 } from '../components/widgets/GeneralText'
+import Accordion from "@mui/material/Accordion"
+import AccordionDetails from "@mui/material/AccordionDetails"
+import AccordionSummary from "@mui/material/AccordionSummary"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Link from "@mui/material/Link";
+import ModerationPanel from '../components/widgets/ModerationSummary'
+import ModerationWindow from '../components/widgets/ModerationWindow'
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell"
+import TableContainer from "@mui/material/TableContainer"
+import TableRow from "@mui/material/TableRow";
 import TerminalWindow from '../components/widgets/TerminalWindow'
 import useLoadingErrorHandler from '../hooks/useLoadingErrorHandler'
-import { UserContext } from '../contexts/user'
-import Window from '../components/widgets/Window'
 import useSnackbar from '../hooks/useSnackbar'
+import { UserContext } from '../contexts/user'
+
 
 type JSONWindowConfig = {
   title: string,
@@ -101,11 +103,12 @@ const JobPage: FC<{
 }) => {
   const user = useContext(UserContext)
   const snackbar = useSnackbar()
-  const [ moderationWindowOpen, setModerationWindowOpen ] = useState(false)
+
   const [ jobInfo, setJobInfo ] = useState<JobInfo>()
+  const [ jobOutputRelation, setJobOutputRelation] = useState<JobRelation[]>([]);
+  const [jobInputRelation, setJobInputRelation] = useState<JobRelation[]>([]);
+
   const [ jsonWindow, setJsonWindow ] = useState<JSONWindowConfig>()
-  const [ moderationResult, setModerationResult ] = useState('')
-  const [ moderationNotes, setModerationNotes ] = useState('')
   const api = useApi()
   const loadingErrorHandler = useLoadingErrorHandler()
 
@@ -113,7 +116,7 @@ const JobPage: FC<{
     if(!jobInfo) return []
     const cancelledNodeIDs: string[] = []
     const nonCancelledNodeIDs: string[] = []
-    Object.keys(jobInfo.state.Nodes).map(nodeID => {
+    Object.keys(jobInfo.state.Nodes || []).map(nodeID => {
       const nodeState = jobInfo.state.Nodes[nodeID]
       let seenCancelledShard = false
       Object.keys(nodeState.Shards).map((shardIndex, i) => {
@@ -147,41 +150,92 @@ const JobPage: FC<{
       setJobInfo(info)
     })
     await handler()
-  }, [])
+  }, [
+      id,
+  ])
 
-  const submitModeration = useCallback(async () => {
-    if(!user.user) return
-    const data: Partial<JobModeration> = {
-      job_id: id,
-      user_account_id: user.user.id,
-      status: moderationResult,
-      notes: moderationNotes,
+  const loadInputRelationInfo = useCallback(async () => {
+    const handler = loadingErrorHandler(async () => {
+      const info = await api.get(`/api/v1/job/${id}/inputs`);
+      setJobInputRelation(info);
+    });
+    await handler();
+  }, [
+     id,
+  ]);
+
+  const loadOutputRelationInfo = useCallback(async () => {
+    const handler = loadingErrorHandler(async () => {
+      const info = await api.get(`/api/v1/job/${id}/outputs`);
+      setJobOutputRelation(info);
+    });
+    await handler();
+  }, [
+     id,
+  ]);
+
+  const groupByCID = (jobRelation: JobRelation[]) => {
+    const groups: Record<string, JobRelation[]> = {};
+
+    if (jobRelation) {
+      jobRelation.forEach((relation) => {
+        const cid = relation.cid;
+        if (!groups[cid]) {
+          groups[cid] = [];
+        }
+        groups[cid].push(relation);
+      });
     }
-    const result = await api.post('/api/v1/admin/moderate', data)
+
+    return groups;
+  };
+
+  type ModerationFormat = {
+    title: string
+    prompt: string
+    icon: JSX.Element | null
+  }
+
+  const formats: Record<ModerationType, ModerationFormat> = {
+    [ModerationType.Datacap]: {
+      title: "Award Datacap To This Job?",
+      prompt: "The compute node that publishes the results will be awarded Datacap if they make a deal for those results.",
+      icon: <FilPlus/>,
+    },
+    [ModerationType.Execution]: {
+      title: "Allow this job to be executed?",
+      prompt: "The job will be scheduled on an appropriate compute node.",
+      icon: null,
+    },
+    [ModerationType.Result]: {
+      title: "Allow this result to be published?",
+      prompt: "The result will be published to the publisher confiugured for the job.",
+      icon: null,
+    }
+  }
+
+  const [moderationWindowOpen, setModerationWindowOpen] = useState(false)
+  const [moderationWindowFormat, setModerationWindowFormat] = useState(formats[ModerationType.Datacap])
+  const [moderationWindowRequest, setModerationWindowRequest] = useState<JobModerationRequest>()
+
+  const submitModeration = useCallback(async (request: JobModerationRequest, decision: ModerateRequest) => {
+    if (!user.user) return
+    const result = await api.post(`/api/v1/request/${request.id}`, decision)
     if(!result) {
-      snackbar.error('failed to assign datacap')
+      snackbar.error(`Failed to moderate ${request.type}`)
       return
     }
     await loadInfo()
-    setModerationWindowOpen(false)
-    snackbar.success('datacap has been assigned to this job')
-  }, [
-    id,
-    user,
-    moderationResult,
-    moderationNotes,
-    loadInfo,
-  ])
-
-  const closeModeration = useCallback(async () => {
-    setModerationResult('')
-    setModerationNotes('')
-    setModerationWindowOpen(false)
-  }, [])
+    const not = decision.approved ? " " : "not "
+    const type = request.type.substring(0, 1).toUpperCase() + request.type.substring(1)
+    snackbar.success(`${type} ${not}approved.`)
+  }, [id, user, loadInfo]);
 
   useEffect(() => {
-    loadInfo()
-  }, [])
+    loadInfo();
+    loadInputRelationInfo();
+    loadOutputRelationInfo();
+  }, [id]);
 
   if(!jobInfo) return null
 
@@ -259,7 +313,6 @@ const JobPage: FC<{
                   />
                 </Box>
                 <br />
-                
               </Grid>
               <Grid item xs={12} sx={{
                 direction: 'column',
@@ -311,98 +364,6 @@ const JobPage: FC<{
                   </Box>
                 </Stack>
               </InfoRow>
-            </Grid>
-          </Paper>
-          <Paper
-            sx={{
-              p: 2,
-              mt: 2,
-            }}
-          >
-            <Grid container spacing={1}>
-              <Grid item xs={6}>
-                <BoldSectionTitle>
-                  Moderation
-                </BoldSectionTitle>
-              </Grid>
-              <Grid item xs={6} sx={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-              }}>
-                <FilPlus />
-              </Grid>
-              <Grid item xs={12}>
-                <Divider sx={{
-                  mt: 1,
-                  mb: 1,
-                }} />
-              </Grid>
-              <Grid item xs={12}>
-                {
-                  jobInfo.moderation.moderation ? (
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                    >
-                      {
-                        jobInfo.moderation.moderation.status == 'yes' ? (
-                          <CheckCircleIcon
-                            sx={{
-                              fontSize: '4em',
-                              color: 'green'
-                            }}
-                          />
-                        ) : (
-                          <CancelIcon
-                            sx={{
-                              fontSize: '4em',
-                              color: 'red'
-                            }}
-                          />
-                        )
-                      }
-                      <Typography variant="caption" sx={{
-                        color: '#666',
-                        ml: 2,
-                      }}>
-                        Moderated by <strong>{ jobInfo.moderation.user.username }</strong> on { new Date(jobInfo.moderation.moderation.created).toLocaleDateString() + ' ' + new Date(jobInfo.moderation.moderation.created).toLocaleTimeString() }
-                        <br />
-                        { jobInfo.moderation.moderation.notes || null }
-                      </Typography>
-                    </Stack>
-                  ) : (
-                    <Typography variant="caption" sx={{
-                      color: '#666'
-                    }}>
-                      This job has not been moderated yet
-                    </Typography>
-                  )
-                }
-              </Grid>
-              {
-                user.user && (
-                  <>
-                    <Grid item xs={12}>
-                      <Divider sx={{
-                        mt: 1,
-                        mb: 1,
-                      }} />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        disabled={ jobInfo.moderation.moderation ? true : false }
-                        onClick={ () => {
-                          setModerationWindowOpen(true)
-                        }}
-                      >
-                        Moderate Job
-                      </Button>
-                    </Grid>
-                  </>
-                )
-              }
             </Grid>
           </Paper>
         </Grid>
@@ -514,11 +475,7 @@ const JobPage: FC<{
           }
         </Grid>
         <Grid item md={12} lg={4}>
-          <Paper
-            sx={{
-              p: 2,
-            }}
-          >
+          <Paper sx={{p: 2}} >
             <Grid container spacing={0.5}>
               <Grid item xs={8}>
                 <BoldSectionTitle>
@@ -583,7 +540,7 @@ const JobPage: FC<{
                           { new Date(event.EventTime).toLocaleDateString() + ' ' + new Date(event.EventTime).toLocaleTimeString()}
                         </TinyText>
                       </Grid>
-                      
+
                     </React.Fragment>
                   )
                 })
@@ -591,7 +548,104 @@ const JobPage: FC<{
             </Grid>
           </Paper>
         </Grid>
-      </Grid>
+        {
+          jobInfo.requests.map(request => {
+            const moderations = jobInfo.moderations.filter(mod => mod.request.id == request.id)
+            const format = formats[request.type]
+            return <Grid item md={12} lg={6}>
+              <Paper sx={{p: 2}}>
+                <ModerationPanel
+                  moderationType={request.type}
+                  moderations={moderations}
+                  user={user}
+                  icon={format.icon}
+                  onClick={async () => {
+                    setModerationWindowRequest(request)
+                    setModerationWindowFormat(format)
+                    setModerationWindowOpen(true)
+                  }}>
+                    {request.storage_spec && (<OutputVolumes
+                      outputVolumes={[request.storage_spec]}
+                    />)}
+                  </ModerationPanel>
+              </Paper>
+            </Grid>
+          })
+        }
+        <Grid item xs={12}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={6}>
+              <Paper sx={{p: 2}}>
+                <BoldSectionTitle>Job(s) Producing Input</BoldSectionTitle>
+                {Object.keys(groupByCID(jobInputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobInputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="caption">CID: {cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <SmallText>No job relations found.</SmallText>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} lg={6}>
+              <Paper sx={{p: 2}}>
+                <BoldSectionTitle>Job(s) Operating on Output</BoldSectionTitle>
+                {Object.keys(groupByCID(jobOutputRelation)).length > 0 ? (
+                    Object.entries(groupByCID(jobOutputRelation)).map(([cid, relations]) => (
+                        <Accordion key={cid}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="caption">CID: {cid}</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <TableContainer>
+                              <Table sx={{ minWidth: 50 }} size="small">
+                                <TableBody>
+                                  {relations.map((relation, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell>
+                                          <SmallText>
+                                            <Link href={`/jobs/${relation.job_id}`} onClick={loadInfo}>
+                                              {relation.job_id}
+                                            </Link>
+                                          </SmallText>
+                                        </TableCell>
+                                      </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </AccordionDetails>
+                        </Accordion>
+                    ))
+                ) : (
+                    <SmallText>No job relations found.</SmallText>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+        </Grid>
       {
         jsonWindow && (
           <TerminalWindow
@@ -604,55 +658,17 @@ const JobPage: FC<{
           />
         )
       }
-      {
-        moderationWindowOpen && (
-          <Window
-            open
-            size="md"
-            title="Moderate Job"
-            submitTitle="Confirm"
-            withCancel
-            onCancel={ closeModeration }
-            onSubmit={ submitModeration }
-          >
-            <Grid container spacing={ 0 }>
-              <Grid item xs={ 12 }>
-                <FormControl>
-                  <FormLabel>Award Datacap To This Job?</FormLabel>
-                  <RadioGroup
-                    row
-                    value={ moderationResult }
-                    onChange={ (e) => setModerationResult(e.target.value) }
-                  >
-                    <FormControlLabel value="yes" control={<Radio />} label="Yes" />
-                    <FormControlLabel value="No" control={<Radio />} label="No" />
-                  </RadioGroup>
-                </FormControl>
-              </Grid>
-              <Grid item xs={ 12 }>
-                <Typography gutterBottom variant="caption">
-                  The compute node that publishes the results will be awarded Datacap if they make a deal for those results.
-                </Typography>
-              </Grid>
-              <Grid item xs={ 12 } sx={{
-                mt: 4,
-              }}>
-                <TextField
-                  label="Notes"
-                  fullWidth
-                  multiline
-                  rows={4}
-                  value={ moderationNotes }
-                  onChange={ (e) => setModerationNotes(e.target.value) }
-                />
-              </Grid>
-            </Grid>
-          </Window>
-        )
-      }
+      {moderationWindowRequest && <ModerationWindow
+        open={moderationWindowOpen}
+        title={moderationWindowFormat.title}
+        prompt={moderationWindowFormat.prompt}
+        onCancel={() => setModerationWindowOpen(false)}
+        onSubmit={() => setModerationWindowOpen(false)}
+        onModerate={decision => submitModeration(moderationWindowRequest, decision)}
+      />}
+      </Grid>
     </Container>
   )
 }
 
 export default JobPage
-

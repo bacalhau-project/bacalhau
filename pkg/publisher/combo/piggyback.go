@@ -3,8 +3,8 @@ package combo
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 type piggybackedPublisher struct {
@@ -36,11 +36,20 @@ func (c *piggybackedPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (c *piggybackedPublisher) PublishShardResult(
-	ctx context.Context, shard model.JobShard, hostID string, shardResultPath string,
+func (c *piggybackedPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	for _, p := range c.publishers {
+		if err := p.ValidateJob(ctx, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *piggybackedPublisher) PublishResult(
+	ctx context.Context, executionID string, job model.Job, resultPath string,
 ) (model.StorageSpec, error) {
 	results, err := callAllPublishers(c.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 	if err != nil {
 		return model.StorageSpec{}, err

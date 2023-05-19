@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,9 +36,11 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: model.Spec{
-			Engine:    model.EngineWasm,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
+			Engine:   model.EngineWasm,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 			Wasm: model.JobSpecWasm{
 				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
 				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
@@ -52,12 +54,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.FileEquals(model.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
-			job.WaitThrowErrors([]model.JobStateType{
-				model.JobStateError,
-			}),
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: 1,
-			}),
+			job.WaitForSuccessfulCompletion(),
 		},
 	}
 

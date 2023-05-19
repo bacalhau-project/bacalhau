@@ -1,23 +1,28 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
+	"runtime"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/rs/zerolog/log"
@@ -25,12 +30,10 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var DefaultBootstrapAddresses = []string{
-	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-}
 var DefaultSwarmPort = 1235
+
+const NvidiaCLI = "nvidia-container-cli"
+const DefaultPeerConnect = "none"
 
 var (
 	serveLong = templates.LongDesc(i18n.T(`
@@ -38,97 +41,73 @@ var (
 		`))
 
 	serveExample = templates.Examples(i18n.T(`
-		# Start a bacalhau compute node
+		# Start a private bacalhau requester node
 		bacalhau serve
 		# or
-		bacalhau serve --node-type compute
-
-		# Start a bacalhau requester node
 		bacalhau serve --node-type requester
 
-		# Start a bacalhau hybrid node that acts as both compute and requester
+		# Start a private bacalhau hybrid node that acts as both compute and requester
 		bacalhau serve --node-type compute --node-type requester
 		# or
 		bacalhau serve --node-type compute,requester
+
+		# Start a private bacalhau node with a persistent local IPFS node
+		BACALHAU_SERVE_IPFS_PATH=/data/ipfs bacalhau serve
+
+		# Start a public bacalhau requester node
+		bacalhau serve --peer env --private-internal-ipfs=false
 `))
 )
 
 //nolint:lll // Documentation
 type ServeOptions struct {
-	NodeType                              []string          // "compute", "requester" node or both
-	PeerConnect                           string            // The libp2p multiaddress to connect to.
-	IPFSConnect                           string            // The IPFS multiaddress to connect to.
-	FilecoinUnsealedPath                  string            // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
-	EstuaryAPIKey                         string            // The API key used when using the estuary API.
-	HostAddress                           string            // The host address to listen on.
-	SwarmPort                             int               // The host port for libp2p network.
-	JobSelectionDataLocality              string            // The data locality to use for job selection.
-	JobSelectionDataRejectStateless       bool              // Whether to reject jobs that don't specify any data.
-	JobSelectionDataAcceptNetworked       bool              // Whether to accept jobs that require network access.
-	JobSelectionProbeHTTP                 string            // The HTTP URL to use for job selection.
-	JobSelectionProbeExec                 string            // The executable to use for job selection.
-	MetricsPort                           int               // The port to listen on for metrics.
-	LimitTotalCPU                         string            // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                      string            // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                         string            // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                           string            // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                        string            // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                           string            // The amount of GPU the system can be using at one time for a single job.
-	LotusFilecoinStorageDuration          time.Duration     // How long deals should be for the Lotus Filecoin publisher
-	LotusFilecoinPathDirectory            string            // The location of the Lotus configuration directory which contains config.toml, etc
-	LotusFilecoinUploadDirectory          string            // Directory to put files when uploading to Lotus (optional)
-	LotusFilecoinMaximumPing              time.Duration     // The maximum ping allowed when selecting a Filecoin miner
-	JobExecutionTimeoutClientIDBypassList []string          // IDs of clients that can submit jobs more than the configured job execution timeout
-	Labels                                map[string]string // Labels to apply to the node that can be used for node selection and filtering
+	NodeType                              []string                 // "compute", "requester" node or both
+	PeerConnect                           string                   // The libp2p multiaddress to connect to.
+	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
+	FilecoinUnsealedPath                  string                   // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                         string                   // The API key used when using the estuary API.
+	HostAddress                           string                   // The host address to listen on.
+	SwarmPort                             int                      // The host port for libp2p network.
+	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
+	ExternalVerifierHook                  *url.URL                 // Where to send external verification requests to.
+	LimitTotalCPU                         string                   // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                      string                   // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                         string                   // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                           string                   // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
+	DisabledFeatures                      node.FeatureConfig       // What feautres should not be enbaled even if installed
+	LotusFilecoinStorageDuration          time.Duration            // How long deals should be for the Lotus Filecoin publisher
+	LotusFilecoinPathDirectory            string                   // The location of the Lotus configuration directory which contains config.toml, etc
+	LotusFilecoinUploadDirectory          string                   // Directory to put files when uploading to Lotus (optional)
+	LotusFilecoinMaximumPing              time.Duration            // The maximum ping allowed when selecting a Filecoin miner
+	JobExecutionTimeoutClientIDBypassList []string                 // IDs of clients that can submit jobs more than the configured job execution timeout
+	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
+	IPFSSwarmAddresses                    []string                 // IPFS multiaddresses that the in-process IPFS should connect to
+	PrivateInternalIPFS                   bool                     // Whether the in-process IPFS should automatically discover other IPFS nodes
+	AllowListedLocalPaths                 []string                 // Local paths that are allowed to be mounted into jobs
 }
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                        []string{"compute"},
-		PeerConnect:                     "",
-		IPFSConnect:                     "",
-		FilecoinUnsealedPath:            "",
-		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
-		HostAddress:                     "0.0.0.0",
-		SwarmPort:                       DefaultSwarmPort,
-		MetricsPort:                     2112,
-		JobSelectionDataLocality:        "local",
-		JobSelectionDataRejectStateless: false,
-		JobSelectionDataAcceptNetworked: false,
-		JobSelectionProbeHTTP:           "",
-		JobSelectionProbeExec:           "",
-		LimitTotalCPU:                   "",
-		LimitTotalMemory:                "",
-		LimitTotalGPU:                   "",
-		LimitJobCPU:                     "",
-		LimitJobMemory:                  "",
-		LimitJobGPU:                     "",
-		LotusFilecoinPathDirectory:      os.Getenv("LOTUS_PATH"),
-		LotusFilecoinMaximumPing:        2 * time.Second,
+		NodeType:                   []string{"requester"},
+		PeerConnect:                DefaultPeerConnect,
+		IPFSConnect:                "",
+		FilecoinUnsealedPath:       "",
+		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
+		HostAddress:                "0.0.0.0",
+		SwarmPort:                  DefaultSwarmPort,
+		JobSelectionPolicy:         model.NewDefaultJobSelectionPolicy(),
+		LimitTotalCPU:              "",
+		LimitTotalMemory:           "",
+		LimitTotalGPU:              "",
+		LimitJobCPU:                "",
+		LimitJobMemory:             "",
+		LimitJobGPU:                "",
+		LotusFilecoinPathDirectory: os.Getenv("LOTUS_PATH"),
+		LotusFilecoinMaximumPing:   2 * time.Second,
+		PrivateInternalIPFS:        true,
 	}
-}
-
-func setupJobSelectionCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionDataLocality, "job-selection-data-locality", OS.JobSelectionDataLocality,
-		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
-	)
-	cmd.PersistentFlags().BoolVar(
-		&OS.JobSelectionDataRejectStateless, "job-selection-reject-stateless", OS.JobSelectionDataRejectStateless,
-		`Reject jobs that don't specify any data.`,
-	)
-	cmd.PersistentFlags().BoolVar(
-		&OS.JobSelectionDataAcceptNetworked, "job-selection-accept-networked", OS.JobSelectionDataAcceptNetworked,
-		`Accept jobs that require network access.`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionProbeHTTP, "job-selection-probe-http", OS.JobSelectionProbeHTTP,
-		`Use the result of a HTTP POST to decide if we should take on the job.`,
-	)
-	cmd.PersistentFlags().StringVar(
-		&OS.JobSelectionProbeExec, "job-selection-probe-exec", OS.JobSelectionProbeExec,
-		`Use the result of a exec an external program to decide if we should take on the job.`,
-	)
 }
 
 func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
@@ -165,7 +144,9 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`The libp2p multiaddress to connect to.`,
+		`A comma-separated list of libp2p multiaddress to connect to. `+
+			`Use "none" to avoid connecting to any peer, `+
+			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var).`,
 	)
 	cmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
@@ -177,45 +158,30 @@ func setupLibp2pCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	)
 }
 
-func getPeers(OS *ServeOptions) []multiaddr.Multiaddr {
+func getPeers(OS *ServeOptions) ([]multiaddr.Multiaddr, error) {
 	var peersStrings []string
-	if OS.PeerConnect == "none" {
+	if OS.PeerConnect == DefaultPeerConnect {
 		peersStrings = []string{}
-	} else if OS.PeerConnect == "" {
-		peersStrings = DefaultBootstrapAddresses
+	} else if OS.PeerConnect == "env" {
+		peersStrings = system.Envs[system.GetEnvironment()].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
-	// convert peers stringsto multiaddrs
-	peers := make([]multiaddr.Multiaddr, len(peersStrings))
-	for i, peer := range peersStrings {
-		peers[i], _ = multiaddr.NewMultiaddr(peer)
+
+	peers := make([]multiaddr.Multiaddr, 0, len(peersStrings))
+	for _, peer := range peersStrings {
+		parsed, err := multiaddr.NewMultiaddr(peer)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, parsed)
 	}
-	return peers
-}
-
-func getJobSelectionConfig(OS *ServeOptions) model.JobSelectionPolicy {
-	// construct the job selection policy from the CLI args
-	typedJobSelectionDataLocality := model.Anywhere
-
-	if OS.JobSelectionDataLocality == "anywhere" {
-		typedJobSelectionDataLocality = model.Anywhere
-	}
-
-	jobSelectionPolicy := model.JobSelectionPolicy{
-		Locality:            typedJobSelectionDataLocality,
-		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
-		AcceptNetworkedJobs: OS.JobSelectionDataAcceptNetworked,
-		ProbeHTTP:           OS.JobSelectionProbeHTTP,
-		ProbeExec:           OS.JobSelectionProbeExec,
-	}
-
-	return jobSelectionPolicy
+	return peers, nil
 }
 
 func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 	return node.NewComputeConfigWith(node.ComputeConfigParams{
-		JobSelectionPolicy: getJobSelectionConfig(OS),
+		JobSelectionPolicy: OS.JobSelectionPolicy,
 		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
 			CPU:    OS.LimitTotalCPU,
 			Memory: OS.LimitTotalMemory,
@@ -228,6 +194,13 @@ func getComputeConfig(OS *ServeOptions) node.ComputeConfig {
 		}),
 		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
 		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
+	})
+}
+
+func getRequesterConfig(OS *ServeOptions) node.RequesterConfig {
+	return node.NewRequesterConfigWith(node.RequesterConfigParams{
+		JobSelectionPolicy:       OS.JobSelectionPolicy,
+		ExternalValidatorWebhook: OS.ExternalVerifierHook,
 	})
 }
 
@@ -256,7 +229,7 @@ func newServeCmd() *cobra.Command {
 
 	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
-		`The ipfs host multiaddress to connect to.`,
+		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&OS.FilecoinUnsealedPath, "filecoin-unsealed-path", OS.FilecoinUnsealedPath,
@@ -265,10 +238,6 @@ func newServeCmd() *cobra.Command {
 	serveCmd.PersistentFlags().StringVar(
 		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
 		`The API key used when using the estuary API.`,
-	)
-	serveCmd.PersistentFlags().IntVar(
-		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
-		`The port to serve prometheus metrics on.`,
 	)
 	serveCmd.PersistentFlags().DurationVar(
 		&OS.LotusFilecoinStorageDuration, "lotus-storage-duration", OS.LotusFilecoinStorageDuration,
@@ -286,30 +255,39 @@ func newServeCmd() *cobra.Command {
 		&OS.LotusFilecoinMaximumPing, "lotus-max-ping", OS.LotusFilecoinMaximumPing,
 		"The highest ping a Filecoin miner could have when selecting.",
 	)
+	serveCmd.PersistentFlags().StringSliceVar(
+		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
+		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
+	)
+	serveCmd.PersistentFlags().StringSliceVar(
+		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
+		"Local paths that are allowed to be mounted into jobs",
+	)
+	serveCmd.PersistentFlags().Var(
+		URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
+		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
+			"The 'external' verifier will not be enabled if this is unset.",
+	)
+	serveCmd.PersistentFlags().BoolVar(
+		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
+		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
+			"cannot be used with --ipfs-connect. "+
+			"Use \"--private-internal-ipfs=false\" to disable. "+
+			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
+	)
 
 	setupLibp2pCLIFlags(serveCmd, OS)
-	setupJobSelectionCLIFlags(serveCmd, OS)
+	serveCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&OS.DisabledFeatures))
+	serveCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	setupCapacityManagerCLIFlags(serveCmd, OS)
 
 	return serveCmd
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
-	// Cleanup manager ensures that resources are freed before exiting:
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-	defer cm.Cleanup()
-
 	ctx := cmd.Context()
-
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
-	defer cancel()
-
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -322,56 +300,66 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		}
 	}
 
-	if OS.IPFSConnect == "" {
-		Fatal(cmd, "You must specify --ipfs-connect.", 1)
+	if OS.IPFSConnect != "" && OS.PrivateInternalIPFS {
+		return fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
 	}
 
-	if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
-		Fatal(cmd, "--job-selection-data-locality must be either 'local' or 'anywhere'", 1)
+	if OS.IPFSConnect != "" && len(OS.IPFSSwarmAddresses) != 0 {
+		return fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
 	}
 
 	// Establishing p2p connection
-	peers := getPeers(OS)
-	log.Debug().Msgf("libp2p connecting to: %s", peers)
+	peers, err := getPeers(OS)
+	if err != nil {
+		return err
+	}
+	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
+	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error creating libp2p host: %s", err), 1)
 	}
-	cm.RegisterCallback(func() error {
-		return libp2pHost.Close()
-	})
+	cm.RegisterCallback(libp2pHost.Close)
 
 	// add nodeID to logging context
 	ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
 
 	// Establishing IPFS connection
-	ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+	ipfsClient, err := ipfsClient(ctx, OS, cm)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating IPFS client: %s", err), 1)
+		return err
 	}
 
-	datastore, err := inmemory.NewInMemoryDatastore()
+	datastore := inmemory.NewJobStore()
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating in memory datastore: %s", err), 1)
+		return fmt.Errorf("error creating in memory datastore: %s", err)
+	}
+	AutoLabels := AutoOutputLabels()
+	combinedMap := make(map[string]string)
+	for key, value := range AutoLabels {
+		combinedMap[key] = value
 	}
 
+	for key, value := range OS.Labels {
+		combinedMap[key] = value
+	}
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		IPFSClient:           ipfs,
-		CleanupManager:       cm,
-		LocalDB:              datastore,
-		Host:                 libp2pHost,
-		FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-		EstuaryAPIKey:        OS.EstuaryAPIKey,
-		HostAddress:          OS.HostAddress,
-		APIPort:              apiPort,
-		MetricsPort:          OS.MetricsPort,
-		ComputeConfig:        getComputeConfig(OS),
-		RequesterNodeConfig:  node.NewRequesterConfigWithDefaults(),
-		IsComputeNode:        isComputeNode,
-		IsRequesterNode:      isRequesterNode,
-		Labels:               OS.Labels,
+		IPFSClient:            ipfsClient,
+		CleanupManager:        cm,
+		JobStore:              datastore,
+		Host:                  libp2pHost,
+		FilecoinUnsealedPath:  OS.FilecoinUnsealedPath,
+		EstuaryAPIKey:         OS.EstuaryAPIKey,
+		DisabledFeatures:      OS.DisabledFeatures,
+		HostAddress:           OS.HostAddress,
+		APIPort:               apiPort,
+		ComputeConfig:         getComputeConfig(OS),
+		RequesterNodeConfig:   getRequesterConfig(OS),
+		IsComputeNode:         isComputeNode,
+		IsRequesterNode:       isRequesterNode,
+		Labels:                combinedMap,
+		AllowListedLocalPaths: OS.AllowListedLocalPaths,
 	}
 
 	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
@@ -386,23 +374,199 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Create node
-	node, err := node.NewStandardNode(ctx, nodeConfig)
+	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating node: %s", err), 1)
+		return fmt.Errorf("error creating node: %s", err)
 	}
 
 	// Start transport layer
 	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
-		Fatal(cmd, err.Error(), 1)
+		return err
 	}
 
 	// Start node
-	err = node.Start(ctx)
+	err = standardNode.Start(ctx)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error starting node: %s", err), 1)
+		return fmt.Errorf("error starting node: %s", err)
+	}
+
+	// only in station logging output
+	if loggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
+		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
+	}
+
+	if OS.PrivateInternalIPFS && OS.PeerConnect == DefaultPeerConnect {
+		// other nodes can be just compute nodes
+		// no need to spawn 1+ requester nodes
+		nodeType := "--node-type compute"
+
+		if isComputeNode && !isRequesterNode {
+			cmd.Println("Make sure there's at least one requester node in your network.")
+		}
+
+		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
+		if err != nil {
+			return fmt.Errorf("error looking up IPFS addresses: %s", err)
+		}
+
+		p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
+		if err != nil {
+			return err
+		}
+
+		peerAddress := pickP2pAddress(libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
+		ipfsSwarmAddress := pickP2pAddress(ipfsAddresses).String()
+
+		cmd.Println()
+		cmd.Println("To connect another node to this private one, run the following command in your shell:")
+		cmd.Printf(
+			"%s serve %s --private-internal-ipfs --peer %s --ipfs-swarm-addr %s\n",
+			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
+		)
+
+		if isRequesterNode {
+			cmd.Println()
+			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
+			cmd.Printf("export BACALHAU_IPFS_SWARM_ADDRESSES=%s\n", ipfsSwarmAddress)
+			cmd.Printf("export BACALHAU_API_HOST=%s\n", OS.HostAddress)
+			cmd.Printf("export BACALHAU_API_PORT=%d\n", apiPort)
+		}
 	}
 
 	<-ctx.Done() // block until killed
 	return nil
+}
+
+// pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list
+// of addresses.
+func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
+	value := func(m multiaddr.Multiaddr) int {
+		count := 0
+		if _, err := m.ValueForProtocol(multiaddr.P_TCP); err == nil {
+			count++
+		}
+		if ip, err := m.ValueForProtocol(multiaddr.P_IP4); err == nil {
+			count++
+			if ip != "127.0.0.1" {
+				count++
+			}
+		} else if ip, err := m.ValueForProtocol(multiaddr.P_IP6); err == nil && ip != "::1" {
+			count++
+		}
+		return count
+	}
+	sort.Slice(addresses, func(i, j int) bool {
+		return value(addresses[i]) > value(addresses[j])
+	})
+
+	return addresses[0]
+}
+
+func ipfsClient(ctx context.Context, OS *ServeOptions, cm *system.CleanupManager) (ipfs.Client, error) {
+	if OS.IPFSConnect == "" {
+		// Connect to the public IPFS nodes by default
+		newNode := ipfs.NewNode
+		if OS.PrivateInternalIPFS {
+			newNode = ipfs.NewLocalNode
+		}
+
+		ipfsNode, err := newNode(ctx, cm, OS.IPFSSwarmAddresses)
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error creating IPFS node: %s", err)
+		}
+		if OS.PrivateInternalIPFS {
+			log.Ctx(ctx).Debug().Msgf("ipfs_node_apiport: %d", ipfsNode.APIPort)
+		}
+		cm.RegisterCallbackWithContext(ipfsNode.Close)
+		client := ipfsNode.Client()
+
+		swarmAddresses, err := client.SwarmAddresses(ctx)
+		if err != nil {
+			return ipfs.Client{}, fmt.Errorf("error looking up IPFS addresses: %s", err)
+		}
+
+		log.Ctx(ctx).Debug().Strs("ipfs_swarm_addresses", swarmAddresses).Msg("Internal IPFS node available")
+		return client, nil
+	}
+
+	client, err := ipfs.NewClientUsingRemoteHandler(ctx, OS.IPFSConnect)
+	if err != nil {
+		return ipfs.Client{}, fmt.Errorf("error creating IPFS client: %s", err)
+	}
+
+	return client, nil
+}
+func AutoOutputLabels() map[string]string {
+	m := make(map[string]string)
+	// Get the operating system name
+	os := runtime.GOOS
+	m["Operating-System"] = os
+	m["git-lfs"] = "False"
+	if checkGitLFS() {
+		m["git-lfs"] = "True"
+	}
+	arch := runtime.GOARCH
+	m["Architecture"] = arch
+	CLIPATH, _ := exec.LookPath(NvidiaCLI)
+	if CLIPATH != "" {
+		gpuNames, gpuMemory := gpuList()
+		// Print the GPU names
+		for i, name := range gpuNames {
+			name = strings.Replace(name, " ", "-", -1) // Replace spaces with dashes
+			key := fmt.Sprintf("GPU-%d", i)
+			m[key] = name
+			key = fmt.Sprintf("GPU-%d-Memory", i)
+			memory := strings.Replace(gpuMemory[i], " ", "-", -1) // Replace spaces with dashes
+			m[key] = memory
+		}
+	}
+	// Get list of installed packages (Only works for linux, make it work for every platform)
+	// files, err := ioutil.ReadDir("/var/lib/dpkg/info")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// var packageList []string
+	// for _, file := range files {
+	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
+
+	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
+	// 	}
+	// }
+	// m["Installed-Packages"] = strings.Join(packageList, ",")
+	return m
+}
+
+func gpuList() ([]string, []string) {
+	// Execute nvidia-smi command to get GPU names
+	cmd := exec.Command("nvidia-smi", "--query-gpu=gpu_name", "--format=csv")
+	output, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	// Split the output by newline character
+	gpuNames := strings.Split(string(output), "\n")
+
+	// Remove the first and last elements of the slice
+	gpuNames = gpuNames[1 : len(gpuNames)-1]
+
+	cmd1 := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv")
+	output1, err1 := cmd1.Output()
+	if err1 != nil {
+		panic(err1)
+	}
+
+	// Split the output by newline character
+	gpuMemory := strings.Split(string(output1), "\n")
+
+	// Remove the first and last elements of the slice
+	gpuMemory = gpuMemory[1 : len(gpuMemory)-1]
+
+	return gpuNames, gpuMemory
+}
+
+func checkGitLFS() bool {
+	_, err := exec.LookPath("git-lfs")
+	return err == nil
 }

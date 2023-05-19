@@ -2,30 +2,26 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
 type IPFSPublisher struct {
-	IPFSClient *ipfs.Client
+	IPFSClient ipfs.Client
 }
 
 func NewIPFSPublisher(
 	ctx context.Context,
-	cm *system.CleanupManager,
-	ipfsAPIAddr string,
+	_ *system.CleanupManager,
+	cl ipfs.Client,
 ) (*IPFSPublisher, error) {
-	cl, err := ipfs.NewClient(ipfsAPIAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
+	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", cl.APIAddress())
 	return &IPFSPublisher{
 		IPFSClient: cl,
 	}, nil
@@ -36,19 +32,26 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (publisher *IPFSPublisher) PublishShardResult(
+func (publisher *IPFSPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	switch j.Spec.PublisherSpec.Type {
+	case model.PublisherIpfs, model.PublisherEstuary, model.PublisherFilecoin:
+		return nil
+	default:
+		return fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type)
+	}
+}
+
+func (publisher *IPFSPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
+	executionID string,
+	j model.Job,
+	resultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
-	defer span.End()
-	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
+	cid, err := publisher.IPFSClient.Put(ctx, resultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return job.GetPublishedStorageSpec(shard, model.StorageSourceIPFS, hostID, cid), nil
+	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

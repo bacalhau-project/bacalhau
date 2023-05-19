@@ -1,3 +1,5 @@
+//go:build integration || !unit
+
 package requester
 
 import (
@@ -5,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -31,6 +33,8 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
+	system.InitConfigForTesting(s.T())
+
 	ctx := context.Background()
 	devstackOptions := devstack.DevStackOptions{
 		NumberOfRequesterOnlyNodes: 1,
@@ -58,12 +62,15 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
-
+	for i := 0; i < len(nodeOverrides); i++ {
+		nodeOverrides[i].NodeInfoPublisherInterval = 100 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
+	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWith(node.ComputeConfigParams{
-			NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+		node.NewComputeConfigWithDefaults(),
+		node.NewRequesterConfigWith(node.RequesterConfigParams{
+			NodeRankRandomnessRange: 0,
+			OverAskForBidsFactor:    1,
 		}),
-		node.NewRequesterConfigWithDefaults(),
 		noop_executor.ExecutorConfig{},
 		nodeOverrides...,
 	)
@@ -72,9 +79,9 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.GetURI())
+	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
@@ -82,15 +89,16 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		},
 	)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
-	time.Sleep(50 * time.Millisecond) // for the requester node to pick up the nodeInfo messages
+
+	testutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
 }
 
 func (s *NodeSelectionSuite) TearDownSuite() {
 	if s.requester != nil {
-		s.requester.CleanupManager.Cleanup()
+		s.requester.CleanupManager.Cleanup(context.Background())
 	}
 	for _, n := range s.computeNodes {
-		n.CleanupManager.Cleanup()
+		n.CleanupManager.Cleanup(context.Background())
 	}
 }
 
@@ -135,6 +143,21 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 			selector:      "env notin (prod,test)",
 			expectedNodes: []*node.Node{},
 		},
+		{
+			name:          "favour by name",
+			selector:      "favour_name=compute-1,name in (compute-1,compute-2)",
+			expectedNodes: []*node.Node{s.compute1}, // concurrency=1
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
+		},
+		{
+			name:          "favour by name multiple nodes",
+			selector:      "favour_name=compute-1,env=prod",
+			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
+		},
 	}
 
 	for _, tc := range testCase {
@@ -161,20 +184,20 @@ func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	s.NoError(s.stateResolver.WaitUntilComplete(ctx, jobID))
 	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
 	s.NoError(err)
-	completedShards := job.GetCompletedShardStates(jobState)
+	completedExecutionStates := job.GetCompletedExecutionStates(jobState)
 
-	nodes := make([]*node.Node, 0, len(completedShards))
-	for _, shard := range completedShards {
+	nodes := make([]*node.Node, 0, len(completedExecutionStates))
+	for _, executionState := range completedExecutionStates {
 		nodeFound := false
 		for _, n := range s.computeNodes {
-			if n.Host.ID().String() == shard.NodeID {
+			if n.Host.ID().String() == executionState.NodeID {
 				nodes = append(nodes, n)
 				nodeFound = true
 				break
 			}
 		}
 		if !nodeFound {
-			s.Fail("node not found", shard.NodeID)
+			s.Fail("node not found", executionState.NodeID)
 		}
 	}
 	return nodes

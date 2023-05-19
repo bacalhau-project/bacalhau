@@ -2,41 +2,51 @@ package util
 
 import (
 	"context"
+	"fmt"
+	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor/language"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
-	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
-	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
-	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
-	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	pythonwasm "github.com/bacalhau-project/bacalhau/pkg/executor/python_wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
+	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
+	repo "github.com/bacalhau-project/bacalhau/pkg/storage/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type StandardStorageProviderOptions struct {
-	IPFSMultiaddress     string
-	FilecoinUnsealedPath string
-	DownloadPath         string
+	API                   ipfs.Client
+	FilecoinUnsealedPath  string
+	DownloadPath          string
+	EstuaryAPIKey         string
+	AllowListedLocalPaths []string
 }
 
 type StandardExecutorOptions struct {
 	DockerID string
-	Storage  StandardStorageProviderOptions
 }
 
 func NewStandardStorageProvider(
-	ctx context.Context,
+	_ context.Context,
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := apicopy.NewStorage(cm, options.IPFSMultiaddress)
+	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(cm, options.API)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +61,24 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
+	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage, options.EstuaryAPIKey)
+	if err != nil {
+		return nil, err
+	}
+
 	inlineStorage := inline.NewStorage()
+
+	s3Storage, err := configureS3StorageProvider(cm)
+	if err != nil {
+		return nil, err
+	}
+
+	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
+		AllowedPaths: options.AllowListedLocalPaths,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
@@ -90,12 +117,43 @@ func NewStandardStorageProvider(
 		useIPFSDriver = comboDriver
 	}
 
-	return storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             useIPFSDriver,
-		model.StorageSourceURLDownload:      urlDownloadStorage,
-		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
-		model.StorageSourceInline:           inlineStorage,
+	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
+		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
+		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
+		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
+		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
+		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
+		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
+		model.StorageSourceS3:               tracing.Wrap(s3Storage),
+		model.StorageSourceLocalDirectory:   tracing.Wrap(localDirectoryStorage),
 	}), nil
+}
+
+func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-input")
+	if err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to clean up S3 storage directory: %w", err)
+		}
+		return nil
+	})
+
+	cfg, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+		AWSConfig: cfg,
+	})
+	s3Storage := s3.NewStorage(s3.StorageProviderParams{
+		LocalDir:       dir,
+		ClientProvider: clientProvider,
+	})
+	return s3Storage, nil
 }
 
 func NewNoopStorageProvider(
@@ -103,23 +161,16 @@ func NewNoopStorageProvider(
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewNoopStorage(ctx, cm, config)
-	if err != nil {
-		return nil, err
-	}
-	return noop_storage.NewNoopStorageProvider(noopStorage), nil
+	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
+	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
+	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	storageProvider, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
-	if err != nil {
-		return nil, err
-	}
-
 	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
 	if err != nil {
 		return nil, err
@@ -130,7 +181,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	executors := executor.NewTypeExecutorProvider(map[model.Engine]executor.Executor{
+	executors := model.NewMappedProvider(map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
 		model.EngineWasm:   wasmExecutor,
 	})
@@ -141,24 +192,19 @@ func NewStandardExecutorProvider(
 	if err != nil {
 		return nil, err
 	}
-	err = executors.AddExecutor(ctx, model.EngineLanguage, exLang)
-	if err != nil {
-		return nil, err
-	}
+	executors.Add(model.EngineLanguage, exLang)
 
 	exPythonWasm, err := pythonwasm.NewExecutor(executors)
 	if err != nil {
 		return nil, err
 	}
-	err = executors.AddExecutor(ctx, model.EnginePythonWasm, exPythonWasm)
-	if err != nil {
-		return nil, err
-	}
+	executors.Add(model.EnginePythonWasm, exPythonWasm)
+
 	return executors, nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return noop_executor.NewNoopExecutorProvider(noopExecutor)
+	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
 }

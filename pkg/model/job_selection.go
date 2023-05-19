@@ -1,12 +1,26 @@
 package model
 
+import "fmt"
+
 // Job selection policy configuration
+//
+//go:generate stringer -type=JobSelectionDataLocality -linecomment
 type JobSelectionDataLocality int64
 
 const (
-	Local    JobSelectionDataLocality = 0
-	Anywhere JobSelectionDataLocality = 1
+	Local    JobSelectionDataLocality = 0 // local
+	Anywhere JobSelectionDataLocality = 1 // anywhere
 )
+
+func ParseJobSelectionDataLocality(s string) (ret JobSelectionDataLocality, err error) {
+	for typ := Local; typ <= Anywhere; typ++ {
+		if equal(typ.String(), s) {
+			return typ, nil
+		}
+	}
+
+	return Local, fmt.Errorf("%T: unknown type '%s'", Local, s)
+}
 
 // describe the rules for how a compute node selects an incoming job
 type JobSelectionPolicy struct {
@@ -28,5 +42,7 @@ type JobSelectionPolicy struct {
 
 // generate a default empty job selection policy
 func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
-	return JobSelectionPolicy{}
+	return JobSelectionPolicy{
+		Locality: Anywhere,
+	}
 }

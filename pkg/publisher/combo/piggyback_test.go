@@ -7,8 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -73,7 +73,7 @@ func TestPiggybackedPublisher_IsInstalled(t *testing.T) {
 	}
 }
 
-func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
+func TestPiggybackedPublisher_PublishResult(t *testing.T) {
 	for _, test := range []struct {
 		name        string
 		primary     []interface{}
@@ -109,14 +109,14 @@ func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
 
 			subject := NewPiggybackedPublisher(primary, piggyback)
 
-			shard := model.JobShard{Index: 4}
-			hostId := "host"
+			job := model.Job{}
+			executionID := "1234"
 			resultsPath := "/some/path"
 
-			primary.On("PublishShardResult", mock.Anything, shard, hostId, resultsPath).Return(test.primary...)
-			piggyback.On("PublishShardResult", mock.Anything, shard, hostId, resultsPath).Return(test.piggyback...)
+			primary.On("PublishResult", mock.Anything, executionID, job, resultsPath).Return(test.primary...)
+			piggyback.On("PublishResult", mock.Anything, executionID, job, resultsPath).Return(test.piggyback...)
 
-			actual, err := subject.PublishShardResult(context.Background(), shard, hostId, resultsPath)
+			actual, err := subject.PublishResult(context.Background(), executionID, job, resultsPath)
 			assert.Equal(t, test.expectedErr, err)
 			assert.Equal(t, test.expected, actual)
 		})
@@ -132,8 +132,13 @@ func (t *testifyPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (t *testifyPublisher) PublishShardResult(ctx context.Context, shard model.JobShard, hostID string, shardResultPath string) (model.StorageSpec, error) {
-	args := t.Called(ctx, shard, hostID, shardResultPath)
+func (t *testifyPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	args := t.Called(ctx)
+	return args.Error(0)
+}
+
+func (t *testifyPublisher) PublishResult(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
+	args := t.Called(ctx, executionID, job, resultPath)
 	return args.Get(0).(model.StorageSpec), args.Error(1)
 }
 

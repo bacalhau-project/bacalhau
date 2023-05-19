@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+// VerifyJobCreatePayload verifies the values in a job creation request are legal.
 func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) error {
 	if jc.ClientID == "" {
 		return fmt.Errorf("ClientID is empty")
@@ -23,6 +24,7 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 	})
 }
 
+// VerifyJob verifies that job object passed is valid.
 func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")
@@ -48,8 +50,8 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("invalid verifier type: %s", j.Spec.Verifier.String())
 	}
 
-	if !model.IsValidPublisher(j.Spec.Publisher) {
-		return fmt.Errorf("invalid publisher type: %s", j.Spec.Publisher.String())
+	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
+		return fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String())
 	}
 
 	if err := j.Spec.Network.IsValid(); err != nil {

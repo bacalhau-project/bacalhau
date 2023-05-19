@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -89,13 +89,4 @@ func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
 	volume, err := driver.PrepareStorage(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
-}
-
-func (suite *FilecoinUnsealedSuite) TestExplode() {
-	cid := "123"
-	spec := suite.prepareCid(cid)
-	exploded, err := driver.Explode(ctx, spec)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), len(exploded), 1, "the exploded list should be 1 item long")
-	require.Equal(suite.T(), exploded[0].CID, cid, "the cid is correct")
 }

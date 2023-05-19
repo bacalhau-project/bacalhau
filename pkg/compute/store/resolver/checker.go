@@ -3,7 +3,7 @@ package resolver
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
 type CheckStateFunction func(store.Execution) (bool, error)

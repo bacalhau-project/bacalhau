@@ -8,46 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/filecoin-project/bacalhau/pkg/model"
+	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	gomock "github.com/golang/mock/gomock"
 )
-
-// MockLocalEventHandler is a mock of LocalEventHandler interface.
-type MockLocalEventHandler struct {
-	ctrl     *gomock.Controller
-	recorder *MockLocalEventHandlerMockRecorder
-}
-
-// MockLocalEventHandlerMockRecorder is the mock recorder for MockLocalEventHandler.
-type MockLocalEventHandlerMockRecorder struct {
-	mock *MockLocalEventHandler
-}
-
-// NewMockLocalEventHandler creates a new mock instance.
-func NewMockLocalEventHandler(ctrl *gomock.Controller) *MockLocalEventHandler {
-	mock := &MockLocalEventHandler{ctrl: ctrl}
-	mock.recorder = &MockLocalEventHandlerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockLocalEventHandler) EXPECT() *MockLocalEventHandlerMockRecorder {
-	return m.recorder
-}
-
-// HandleLocalEvent mocks base method.
-func (m *MockLocalEventHandler) HandleLocalEvent(ctx context.Context, event model.JobLocalEvent) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HandleLocalEvent", ctx, event)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// HandleLocalEvent indicates an expected call of HandleLocalEvent.
-func (mr *MockLocalEventHandlerMockRecorder) HandleLocalEvent(ctx, event interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleLocalEvent", reflect.TypeOf((*MockLocalEventHandler)(nil).HandleLocalEvent), ctx, event)
-}
 
 // MockJobEventHandler is a mock of JobEventHandler interface.
 type MockJobEventHandler struct {

@@ -3,9 +3,9 @@ package publicapi
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // ComputeAPIClient is a utility for interacting with a node's API server.
@@ -14,8 +14,8 @@ type ComputeAPIClient struct {
 }
 
 // NewComputeAPIClient returns a new client for a node's API server.
-func NewComputeAPIClient(baseURI string) *ComputeAPIClient {
-	return NewComputeAPIClientFromClient(publicapi.NewAPIClient(baseURI))
+func NewComputeAPIClient(host string, port uint16, path ...string) *ComputeAPIClient {
+	return NewComputeAPIClientFromClient(publicapi.NewAPIClient(host, port, path...))
 }
 
 // NewComputeAPIClientFromClient returns a new client for a node's API server.
@@ -26,7 +26,7 @@ func NewComputeAPIClientFromClient(baseClient *publicapi.APIClient) *ComputeAPIC
 }
 
 func (apiClient *ComputeAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Debug")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute/publicapi.ComputeAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

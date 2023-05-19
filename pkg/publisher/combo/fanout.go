@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 )
@@ -112,17 +112,27 @@ func (f *fanoutPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-// PublishShardResult implements publisher.Publisher
-func (f *fanoutPublisher) PublishShardResult(
+func (f *fanoutPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	for _, p := range f.publishers {
+		if err := p.ValidateJob(ctx, j); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// PublishResult implements publisher.Publisher
+func (f *fanoutPublisher) PublishResult(
 	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
+	executionID string,
+	job model.Job,
+	resultPath string,
 ) (model.StorageSpec, error) {
-	ctx = log.Ctx(ctx).With().Str("Method", "PublishShardResult").Logger().WithContext(ctx)
+	var err error
+	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
 	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
-		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
+		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)
@@ -160,8 +170,8 @@ loop:
 
 		case <-timeoutChannel:
 			break loop
-		case err := <-errorChannel:
-			return model.StorageSpec{}, err
+		case err = <-errorChannel:
+			break loop
 		}
 	}
 
@@ -173,7 +183,7 @@ loop:
 		}
 	}
 
-	return model.StorageSpec{}, nil
+	return model.StorageSpec{}, err
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)

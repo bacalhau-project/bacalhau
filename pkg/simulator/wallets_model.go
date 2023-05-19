@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,6 +18,7 @@ import (
 // stake
 
 const MinWallet = 100 //nolint:gomnd
+const initialBalance = int64(1000)
 
 type walletsModel struct {
 	// keep track of which wallet address "owns" which job
@@ -26,7 +27,7 @@ type walletsModel struct {
 	jobOwners generic.SyncMap[string, string]
 
 	// keep track of wallet balances - STUB (for Luke to fill in)
-	balances map[string]int64
+	balances generic.SyncMap[string, int64]
 
 	// keep track of a payment channel balance PER JOB, a.k.a per-job escrow
 	// NB: in the real implementation, this would be indexed on (client, server,
@@ -46,7 +47,7 @@ type walletsModel struct {
 func newWalletsModel() *walletsModel {
 	w := &walletsModel{
 		jobOwners: generic.SyncMap[string, string]{},
-		balances:  map[string]int64{},
+		balances:  generic.SyncMap[string, int64]{},
 		escrow:    map[string]int64{},
 		accepted:  generic.SyncMap[string, bool]{},
 	}
@@ -56,8 +57,7 @@ func newWalletsModel() *walletsModel {
 
 func (wallets *walletsModel) logWallets() {
 	for {
-		log.Info().Msg("======== WALLET BALANCES =========")
-		spew.Dump(wallets.balances)
+		log.Info().Str("balances", wallets.balances.String()).Msg("======== WALLET BALANCES =========")
 		log.Info().Msg("======== ESCROW BALANCES =========")
 		spew.Dump(wallets.escrow)
 		time.Sleep(10 * time.Second) //nolint:gomnd
@@ -173,16 +173,14 @@ func (wallets *walletsModel) checkWallet(event model.JobEvent) error {
 	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
 	walletID := event.SourceNodeID
 	wallets.ensureWallet(walletID)
-	if wallets.balances[walletID] < MinWallet {
+	if v, _ := wallets.balances.Get(walletID); v < MinWallet {
 		return fmt.Errorf("wallet %s fell below min balance, sorry", walletID)
 	}
 	return nil
 }
 
 func (wallets *walletsModel) ensureWallet(wallet string) {
-	if _, ok := wallets.balances[wallet]; !ok {
-		wallets.balances[wallet] = 1000
-	}
+	wallets.balances.LoadOrStore(wallet, initialBalance)
 }
 
 func escrowID(client, server, jobID string) string {
@@ -197,7 +195,8 @@ func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount in
 		return fmt.Errorf("job %s not found", jobID)
 	}
 	wallets.ensureWallet(wallet)
-	if wallets.balances[wallet]-MinWallet < amount {
+	v, _ := wallets.balances.Get(wallet)
+	if v-MinWallet < amount {
 		return fmt.Errorf(
 			"wallet %s has insufficient funds to escrow %d, "+
 				"taking into account minimum wallet balance of %d",
@@ -206,7 +205,7 @@ func (wallets *walletsModel) escrowFunds(client, server, jobID string, amount in
 			MinWallet,
 		)
 	}
-	wallets.balances[wallet] -= amount
+	wallets.balances.Swap(wallet, v-amount)
 	wallets.escrow[escrowID(client, server, jobID)] += amount
 	return nil
 }
@@ -220,7 +219,8 @@ func (wallets *walletsModel) releaseEscrow(client, server, jobID string) error {
 		return fmt.Errorf("no escrow found for %s", escrowID)
 	}
 	wallets.ensureWallet(server)
-	wallets.balances[server] += amount
+	v, _ := wallets.balances.Get(server)
+	wallets.balances.Swap(server, v+amount)
 	delete(wallets.escrow, escrowID)
 	return nil
 }
@@ -235,7 +235,8 @@ func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error 
 	}
 	wallets.ensureWallet(client)
 	wallets.ensureWallet(server)
-	wallets.balances[client] += amount
+	v, _ := wallets.balances.Get(client)
+	wallets.balances.Swap(client, v+amount)
 	delete(wallets.escrow, escrowID)
 
 	// and slash!
@@ -250,7 +251,8 @@ func (wallets *walletsModel) refundAndSlash(client, server, jobID string) error 
                 ||     ||
 	`, server)
 	// NB: the following is slash and burn
-	wallets.balances[server] -= MinWallet
+	v, _ = wallets.balances.Get(server)
+	wallets.balances.Swap(server, v-MinWallet)
 	return nil
 }
 

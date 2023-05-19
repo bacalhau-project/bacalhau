@@ -4,36 +4,31 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sort"
 	"strings"
-	"sync"
-	"syscall"
-	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
-	"github.com/filecoin-project/bacalhau/pkg/downloader"
-
 	"github.com/Masterminds/semver"
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/theckman/yacspin"
 )
 
 const (
@@ -41,47 +36,26 @@ const (
 	YAMLFormat                         string = "yaml"
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
-	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm                    = 0755
-	HowFrequentlyToUpdateTicker               = 50 * time.Millisecond
-	DefaultTimeout              time.Duration = 30 * time.Minute
+	// AutoDownloadFolderPerm is what permissions we give to a folder we create when downloading results
+	AutoDownloadFolderPerm       = 0755
+	HowFrequentlyToUpdateTicker  = 50 * time.Millisecond
+	DefaultSpinnerFormatDuration = 30 * time.Millisecond
+	DefaultTimeout               = 30 * time.Minute
 )
 
-var eventsWorthPrinting = map[model.JobEventType]eventStruct{
-	// In Rough execution order
-	model.JobEventInitialSubmission: {Message: "Communicating with the network", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Job is on Requester
-	model.JobEventBid: {Message: "Finding node(s) for the job", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Job is on ComputeNode
-	model.JobEventBidAccepted: {Message: "Running the job", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventRunning:     {Message: "Node started running the job", IsTerminal: false, PrintDownload: true, IsError: false},
-
-	// Need to add a carriage return to the end of the line, but only this one
-	model.JobEventComputeError: {Message: "Error while executing the job.", IsTerminal: true, PrintDownload: false, IsError: true},
-
-	// Job is on StorageNode
-	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false, IsError: false},
-	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true, IsError: false},
-	model.JobEventResultsPublished: {Message: "", IsTerminal: true, PrintDownload: true, IsError: false},
-
-	// General Error?
-	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true, PrintDownload: false, IsError: true},
-
-	// Should we print at all? Empty events get skipped
-	model.JobEventBidCancelled: {},
-	model.JobEventBidRejected:  {},
-	model.JobEventDealUpdated:  {},
-}
-
-// Struct for tracking what's been printedEvents
-type printedEvents struct {
-	order   int
-	printed bool
+var eventsWorthPrinting = map[model.JobStateType]eventStruct{
+	model.JobStateNew:        {Message: "Creating job for submission", IsTerminal: false, PrintDownload: false, IsError: false},
+	model.JobStateQueued:     {Message: "Job waiting to be scheduled", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateInProgress: {Message: "Job in progress", PrintDownload: true, IsTerminal: false, IsError: false},
+	model.JobStateError:      {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
+	model.JobStateCancelled:  {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateCompleted:  {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
+	model.JobStateCompletedPartially: {
+		Message:       "Job partially complete",
+		PrintDownload: false,
+		IsTerminal:    true,
+		IsError:       true,
+	},
 }
 
 type eventStruct struct {
@@ -123,36 +97,40 @@ func shortID(outputWide bool, id string) string {
 	return id[:model.ShortIDLength]
 }
 
+func GetAPIHostAndPort() string {
+	return fmt.Sprintf("%s:%d", apiHost, apiPort)
+}
+
 func GetAPIClient() *publicapi.RequesterAPIClient {
-	return publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(_ context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
 	if clientVersion == nil {
-		log.Warn().Msg("Unable to parse nil client version, skipping version check")
+		log.Ctx(ctx).Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
 	}
-	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Debug().Msg("Development client version, skipping version check")
+	if clientVersion.GitVersion == version.DevelopmentGitVersion {
+		log.Ctx(ctx).Debug().Msg("Development client version, skipping version check")
 		return nil
 	}
 	if serverVersion == nil {
-		log.Warn().Msg("Unable to parse nil server version, skipping version check")
+		log.Ctx(ctx).Warn().Msg("Unable to parse nil server version, skipping version check")
 		return nil
 	}
-	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Debug().Msg("Development server version, skipping version check")
+	if serverVersion.GitVersion == version.DevelopmentGitVersion {
+		log.Ctx(ctx).Debug().Msg("Development server version, skipping version check")
 		return nil
 	}
 	c, err := semver.NewVersion(clientVersion.GitVersion)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to parse client version, skipping version check")
+		log.Ctx(ctx).Warn().Err(err).Msg("Unable to parse client version, skipping version check")
 		return nil
 	}
 	s, err := semver.NewVersion(serverVersion.GitVersion)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to parse server version, skipping version check")
+		log.Ctx(ctx).Warn().Err(err).Msg("Unable to parse server version, skipping version check")
 		return nil
 	}
 	if s.GreaterThan(c) {
@@ -172,35 +150,10 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 	return nil
 }
 
-func ExecuteTestCobraCommand(t *testing.T, args ...string) (c *cobra.Command, output string, err error) {
-	return ExecuteTestCobraCommandWithStdin(t, nil, args...)
-}
-
-func ExecuteTestCobraCommandWithStdin(_ *testing.T, stdin io.Reader, args ...string) (
-	c *cobra.Command, output string, err error,
-) { //nolint:unparam // use of t is valuable here
-	buf := new(bytes.Buffer)
-	root := NewRootCmd()
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetIn(stdin)
-	root.SetArgs(args)
-
-	// Need to check if we're running in debug mode for VSCode
-	// Empty them if they exist
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
-
-	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
-
-	c, err = root.ExecuteC()
-	return c, buf.String(), err
-}
-
 func NewIPFSDownloadFlags(settings *model.DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
+	flags.BoolVar(&settings.Raw, "raw",
+		settings.Raw, "Download raw result CIDs instead of merging multiple CIDs into a single result")
 	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
 		settings.Timeout, "Timeout duration for IPFS downloads.")
 	flags.StringVar(&settings.OutputDir, "output-dir",
@@ -248,6 +201,7 @@ type RunTimeSettings struct {
 	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
 	PrintJobIDOnly        bool // Only print the Job ID as output
 	PrintNodeDetails      bool // Print the node details as output
+	Follow                bool // Follow along with the output of the job
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
@@ -259,6 +213,7 @@ func NewRunTimeSettings() *RunTimeSettings {
 		IsLocal:               false,
 		PrintJobIDOnly:        false,
 		PrintNodeDetails:      false,
+		Follow:                false,
 	}
 }
 
@@ -278,6 +233,9 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`Print out details of all nodes (overridden by --id-only).`)
 	flags.BoolVar(&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
 		`Should we download the results once the job is complete?`)
+	flags.BoolVarP(&settings.Follow, "follow", "f", settings.Follow,
+		`When specified will follow the output from the job as it runs`)
+
 	return flags
 }
 
@@ -294,8 +252,6 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings model.DownloaderSettings,
 ) error {
 	var apiClient *publicapi.RequesterAPIClient
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
-	defer span.End()
 
 	if runtimeSettings.IsLocal {
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
@@ -303,15 +259,15 @@ func ExecuteJob(ctx context.Context,
 			return errLocalDevStack
 		}
 
-		apiURI := stack.Nodes[0].APIServer.GetURI()
-		apiClient = publicapi.NewRequesterAPIClient(apiURI)
+		apiServer := stack.Nodes[0].APIServer
+		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	} else {
 		apiClient = GetAPIClient()
 	}
 
 	err := job.VerifyJob(ctx, j)
 	if err != nil {
-		log.Err(err).Msg("Job failed to validate.")
+		log.Ctx(ctx).Err(err).Msg("Job failed to validate.")
 		return err
 	}
 
@@ -322,7 +278,7 @@ func ExecuteJob(ctx context.Context,
 
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
-	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
+	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
 	if !runtimeSettings.WaitForJobToFinish {
 		cmd.Print(j.Metadata.ID + "\n")
 		return nil
@@ -333,11 +289,40 @@ func ExecuteJob(ctx context.Context,
 		cmd.Print(j.Metadata.ID + "\n")
 	}
 
+	if runtimeSettings.Follow {
+		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
+		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+
+		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
+		// the execution to appear.
+		for i := 0; i < 10; i++ {
+			jobState, stateErr := apiClient.GetJobState(ctx, j.ID())
+			if stateErr != nil {
+				Fatal(cmd, fmt.Sprintf("failed waiting for execution to start: %s", stateErr), 1)
+			}
+
+			executionID := ""
+			for _, execution := range jobState.Executions {
+				if execution.State.IsActive() {
+					executionID = execution.ComputeReference
+				}
+			}
+
+			if executionID != "" {
+				break
+			}
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+
+		logOptions := LogCommandOptions{WithHistory: true, Follow: true}
+		return logs(cmd, []string{j.Metadata.ID}, logOptions)
+	}
+
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	err = WaitAndPrintResultsToUser(ctx, cmd, j, quiet)
+	err = WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal(cmd, "", 0)
@@ -354,17 +339,10 @@ func ExecuteJob(ctx context.Context,
 		Fatal(cmd, fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
 	}
 
-	js, err := apiClient.GetJobState(ctx, jobReturn.Metadata.ID)
+	js, err := apiClient.GetJobState(ctx, jobReturn.Job.Metadata.ID)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
-
-	// Need to create index because map ordering are not guaranteed
-	nodeIndexes := make([]string, 0, len(js.Nodes))
-	for i := range js.Nodes {
-		nodeIndexes = append(nodeIndexes, i)
-	}
-	sort.Strings(nodeIndexes)
 
 	printOut := "%s" // We only know this at the end, we'll fill it in there.
 	resultsCID := ""
@@ -373,32 +351,27 @@ func ExecuteJob(ctx context.Context,
 	if runtimeSettings.PrintNodeDetails {
 		printOut += "\n"
 		printOut += "Job Results By Node:\n"
-		for i := range nodeIndexes {
-			n := js.Nodes[nodeIndexes[i]]
-			printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
-			for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
-				printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
-				printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
-				printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
-				if s.RunOutput == nil {
-					printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
-				} else {
-					printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
-					resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
-					printResults := func(t string, s string, trunc bool) {
-						truncatedString := ""
-						if trunc {
-							truncatedString = " (truncated: last 2000 characters)"
-						}
-						if s != "" {
-							printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
-						} else {
-							printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
-						}
+		for _, n := range js.Executions {
+			printOut += fmt.Sprintf("Node %s:\n", n.NodeID[:8])
+			if n.RunOutput == nil {
+				printOut += fmt.Sprintf(indentTwo + "No RunOutput for this execution" +
+					"\n")
+			} else {
+				printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", n.RunOutput.ExitCode)
+				resultsCID = n.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+				printResults := func(t string, s string, trunc bool) {
+					truncatedString := ""
+					if trunc {
+						truncatedString = " (truncated: last 2000 characters)"
 					}
-					printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
-					printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
+					if s != "" {
+						printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+					} else {
+						printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
+					}
 				}
+				printResults("Stdout", n.RunOutput.STDOUT, n.RunOutput.StdoutTruncated)
+				printResults("Stderr", n.RunOutput.STDERR, n.RunOutput.StderrTruncated)
 			}
 		}
 	}
@@ -446,7 +419,7 @@ func downloadResultsHandler(
 	jobID string,
 	downloadSettings model.DownloaderSettings,
 ) error {
-	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
+	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	j, _, err := GetAPIClient().Get(ctx, jobID)
 
 	if err != nil {
@@ -457,7 +430,7 @@ func downloadResultsHandler(
 		}
 	}
 
-	results, err := GetAPIClient().GetResults(ctx, j.Metadata.ID)
+	results, err := GetAPIClient().GetResults(ctx, j.Job.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -466,7 +439,7 @@ func downloadResultsHandler(
 		return fmt.Errorf("no results found")
 	}
 
-	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Metadata.ID)
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Job.Metadata.ID)
 	if err != nil {
 		return err
 	}
@@ -476,9 +449,22 @@ func downloadResultsHandler(
 		return err
 	}
 
-	err = downloader.DownloadJob(
+	// check if we don't support downloading the results
+	for _, result := range results {
+		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
+			cmd.PrintErrln(
+				"No supported downloader found for the published results. You will have to download the results differently.")
+			b, err := json.MarshalIndent(results, "", "    ")
+			if err != nil {
+				return err
+			}
+			cmd.PrintErrln(string(b))
+			return nil
+		}
+	}
+
+	err = downloader.DownloadResults(
 		ctx,
-		j.Spec.Outputs,
 		results,
 		downloaderProvider,
 		&processedDownloadSettings,
@@ -488,8 +474,8 @@ func downloadResultsHandler(
 		return err
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Results for job '%s' have been written to...\n", jobID)
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", processedDownloadSettings.OutputDir)
+	cmd.Printf("Results for job '%s' have been written to...\n", jobID)
+	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
 
 	return nil
 }
@@ -498,9 +484,6 @@ func submitJob(ctx context.Context,
 	apiClient *publicapi.RequesterAPIClient,
 	j *model.Job,
 ) (*model.Job, error) {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
-	defer span.End()
-
 	j, err := apiClient.Submit(ctx, j)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
@@ -556,280 +539,187 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
 
-// Need these as global so that multiple routines can access
-type FullLineMessage struct {
-	Message     string
-	TimerString string
-	StopString  string
-	Width       int
-}
-
-var fullLineMessage FullLineMessage
-
-func (f *FullLineMessage) String() string {
-	return fmt.Sprintf("%s %s ",
-		f.Message,
-		f.StopString)
-}
-
-func (f *FullLineMessage) PrintDone() string {
-	return fmt.Sprintf("%s%s%s %s",
-		f.String(),
-		// Need to add 10 to have everything line up.
-		strings.Repeat(".", f.Width+10), //nolint:gomnd // extra spacing
-		" done ✅ ",
-		f.TimerString)
-}
-
-func (f *FullLineMessage) PrintError() string {
-	return fmt.Sprintf("%s%s%s %s",
-		f.String(),
-		// Need to add 10 to have everything line up.
-		strings.Repeat(".", f.Width+10), //nolint:gomnd // extra spacing
-		" err  ❌ ",
-		f.TimerString)
-}
-
-const spacerText = " ... "
-
-var ticker *time.Ticker
-var tickerDone = make(chan bool)
-
-//nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
-func WaitAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
-	fullLineMessage = FullLineMessage{
-		Message:     "",
-		TimerString: "",
-		StopString:  "",
-		Width:       6,
-	}
-
+// WaitForJobAndPrintResultsToUser uses events to decide what to output to the terminal
+// using a spinner to show long-running tasks. When the job is complete (or the user
+// triggers SIGINT) then the function will complete and stop outputting to the terminal.
+//
+//nolint:gocyclo,funlen
+func WaitForJobAndPrintResultsToUser(ctx context.Context, cmd *cobra.Command, j *model.Job, quiet bool) error {
 	if j == nil || j.Metadata.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
+
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
    bacalhau describe %s`, j.Metadata.ID)
+
+	cancelString := fmt.Sprintf(`
+To cancel the job, run:
+   bacalhau cancel %s`, j.Metadata.ID)
 
 	if !quiet {
 		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
 		cmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 	}
 
-	// Create a map of job state types to printed structs
-	var printedEventsTracker sync.Map
-	for _, jobEventType := range model.JobEventTypes() {
-		printedEventsTracker.Store(jobEventType, printedEvents{
-			printed: false,
-			order:   int(jobEventType),
-		})
-	}
-
-	time.Sleep(1 * time.Second)
-
-	jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID)
-	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.Metadata.ID, err), 1)
+	// Create a map of job state types -> boolean, this is a record of what has been printed
+	// so far.
+	printedEventsTracker := make(map[model.JobStateType]bool)
+	for _, jobEventType := range model.JobStateTypes() {
+		printedEventsTracker[jobEventType] = false
 	}
 
 	// Inject "Job Initiated Event" to start - should we do this on the server?
 	// TODO: #1068 Should jobs auto add a "start event" on the client at creation?
-	jobEvents = append([]model.JobEvent{{EventName: model.JobEventInitialSubmission}}, jobEvents...)
 	// Faking an initial time (sometimes it happens too fast to see)
-	fullLineMessage.TimerString = spinnerFmtDuration(30 * time.Millisecond) //nolint:gomnd // 30ms is just a default
-	fullLineMessage.Message = formatMessage(eventsWorthPrinting[model.JobEventInitialSubmission].Message)
+	// fullLineMessage.TimerString = spinnerFmtDuration(DefaultSpinnerFormatDuration)
+	startMessage := "Communicating with the network"
 
-	// Create a spinner var that will span all printouts
-	spin, err := createSpinner(cmd.OutOrStdout(), fmt.Sprintf("%s%s", fullLineMessage.Message, spacerText))
-	if err != nil {
-		return errors.Wrap(err, "Could not create progressive output.")
+	// Decide where the spinner should write it's output, by default we want stdout
+	// but we can also disable output here if we have been asked to be quiet.
+	writer := cmd.OutOrStdout()
+	if quiet {
+		writer = io.Discard
 	}
 
-	ticker = time.NewTicker(HowFrequentlyToUpdateTicker)
+	widestString := len(startMessage)
+	for _, v := range eventsWorthPrinting {
+		widestString = system.Max(widestString, len(v.Message))
+	}
+
+	spinner, err := NewSpinner(ctx, writer, widestString, false)
+	if err != nil {
+		Fatal(cmd, err.Error(), 1)
+	}
+	spinner.Run()
+	spinner.NextStep(startMessage)
 
 	// Capture Ctrl+C if the user wants to finish early the job
 	ctx, cancel := context.WithCancel(ctx)
 	signalChan := make(chan os.Signal, 2)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(signalChan, ShutdownSignals...)
 	defer func() {
 		signal.Stop(signalChan)
 		cancel()
 	}()
 
-	finishedRunning := false
-	var returnError error
-	returnError = nil
+	cmdShuttingDown := false
+	var returnError error = nil
 
-	printDownloadFlag := true
-
+	// goroutine for handling SIGINT from the signal channel, or context
+	// completion messages.
 	go func() {
+		log.Ctx(ctx).Trace().Msgf("Signal goreturn")
+
 		for {
-			log.Trace().Msgf("Ticker goreturn")
-
 			select {
-			case <-tickerDone:
-				ticker.Stop()
-				log.Trace().Msgf("Ticker goreturn done")
-				return
-			case t := <-ticker.C:
-				if !quiet {
-					fullLineMessage.TimerString = spinnerFmtDuration(t.Sub(j.Metadata.CreatedAt))
-					spin.Message(fmt.Sprintf("%s %s", spacerText, fullLineMessage.TimerString))
-					spin.StopMessage(fullLineMessage.PrintDone())
-				}
-			}
-		}
-	}()
+			case s := <-signalChan: // first signal, cancel context
+				log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
+				if s == os.Interrupt {
+					cmdShuttingDown = true
+					spinner.Done(StopCancel)
 
-	go func() {
-		log.Trace().Msgf("Signal goreturn")
-
-		select {
-		case s := <-signalChan: // first signal, cancel context
-			log.Debug().Msgf("Captured %v. Exiting...", s)
-			if s == os.Interrupt {
-				// If finishedRunning is true, then we go term signal
-				// because the loop finished normally.
-				if !finishedRunning {
 					if !quiet {
 						cmd.Println("\n\n\rPrintout canceled (the job is still running).")
 						cmd.Println(getMoreInfoString)
+						cmd.Println(cancelString)
 					}
 					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+				} else {
+					cmd.Println("Unexpected signal received. Exiting.")
 				}
-			} else {
-				cmd.Println("Unexpected signal received. Exiting.")
+				cancel()
+			case <-ctx.Done():
+				return
 			}
-			cancel()
-		case <-ctx.Done():
-			return
 		}
 	}()
 
-	for {
-		if !quiet {
-			if spin.Status().String() != "running" {
-				err = spin.Start()
-				if err != nil {
-					return errors.Wrap(err, "Could not start spinner.")
-				}
-			}
-		}
-
-		log.Trace().Msgf("Job Events:")
-		for i := range jobEvents {
-			log.Trace().Msgf("\t%s - %s - %s",
-				model.GetStateFromEvent(jobEvents[i].EventName),
-				jobEvents[i].EventTime.UTC().String(),
-				jobEvents[i].EventName)
-		}
-		log.Trace().Msgf("\n")
-
+	var lastSeenTimestamp int64 = 0
+	var lastEventState model.JobStateType
+	for !cmdShuttingDown {
+		// Get the job level history events that happened since the last one we saw
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
+			Since:                 lastSeenTimestamp,
+			ExcludeExecutionLevel: true,
+		})
 		if err != nil {
-			if _, ok := err.(*bacerrors.JobNotFound); ok {
-				Fatal(cmd, fmt.Sprintf(`Somehow even though we submitted a job successfully,
-											we were not able to get its status. ID: %s`, j.Metadata.ID), 1)
+			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
+				// We're done, the user canceled the job
+				cmdShuttingDown = true
+				continue
 			} else {
-				Fatal(cmd, fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.Metadata.ID, err), 1)
+				return errors.Wrap(err, "Error getting job events")
 			}
 		}
 
-		if !quiet {
-			for i := range jobEvents {
-				printingUpdateForEvent(cmd.OutOrStdout(),
-					&printedEventsTracker,
-					jobEvents[i].EventName,
-					spin)
+		// Iterate through the events, looking for ones we have not yet processed
+		for _, event := range jobEvents {
+			if event.Time.Unix() > lastSeenTimestamp {
+				lastSeenTimestamp = event.Time.Unix()
 			}
-		}
 
-		// TODO: #1070 We should really streamline these two loops - when we get to a client side statemachine, that should take care of lots
-		// Look for any terminal event in all the events. If it's done, we're done.
-		for i := range jobEvents {
-			// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
-			if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
-				// Send a signal to the goroutine that is waiting for Ctrl+C
-				finishedRunning = true
+			if event.Type != model.JobHistoryTypeJobLevel {
+				continue
+			}
 
-				if printDownloadFlag {
-					_ = spin.Stop()
-				} else {
-					_ = spin.StopFail()
+			if !quiet {
+				jet := event.JobState.New // Get the type of the new state
+				wasPrinted := printedEventsTracker[jet]
+
+				// If it hasn't been printed yet, we'll print this event.
+				// We'll also skip lines where there's no message to print.
+				if !wasPrinted && eventsWorthPrinting[jet].Message != "" {
+					printedEventsTracker[jet] = true
+
+					// We shouldn't do anything with execution errors because there could
+					// be retries following, so for now we will
+					if !eventsWorthPrinting[jet].IsError && !eventsWorthPrinting[jet].IsTerminal {
+						spinner.NextStep(eventsWorthPrinting[jet].Message)
+					}
+
+					if event.JobState.New == model.JobStateQueued {
+						spinner.msgMutex.Lock()
+						spinner.msg.Waiting = true
+						spinner.msg.Detail = event.Comment
+						spinner.msgMutex.Unlock()
+					}
+				} else if wasPrinted && lastEventState == event.JobState.New {
+					// Printing the same again but with new information, so we
+					// can just update the existing message.
+					spinner.msgMutex.Lock()
+					spinner.msg.Detail = event.Comment
+					spinner.msgMutex.Unlock()
 				}
-				tickerDone <- true
-				signalChan <- syscall.SIGINT
+			}
+
+			lastEventState = event.JobState.New
+
+			if event.JobState.New == model.JobStateError {
+				err := errors.New(event.Comment)
+				spinner.Done(StopFailed)
+				cancel()
 				return err
 			}
+
+			if event.JobState.New.IsTerminal() {
+				cmdShuttingDown = true
+				spinner.Done(StopSuccess)
+				break
+			}
 		}
 
+		// Have we been cancel(l)ed?
 		if condition := ctx.Err(); condition != nil {
-			signalChan <- syscall.SIGINT
 			break
-		} else {
-			jobEvents, err = GetAPIClient().GetEvents(ctx, j.Metadata.ID)
-			if err != nil {
-				if _, ok := err.(*bacerrors.ContextCanceledError); ok {
-					// We're done, the user canceled the job
-					break
-				} else {
-					return errors.Wrap(err, "Error getting job events")
-				}
-			}
 		}
 
 		time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
-	} // end for
-
-	return returnError
-}
-
-// Create a lock for printing events
-var printedEventsLock sync.Mutex
-
-func printingUpdateForEvent(w io.Writer, pe *sync.Map,
-	jet model.JobEventType,
-	spin *yacspin.Spinner) bool {
-	// We need to lock this because we're using a map
-	printedEventsLock.Lock()
-	defer printedEventsLock.Unlock()
-
-	// We control all events being loaded, if nothing loads, something is seriously wrong.
-	anyEvent, _ := pe.Load(jet)
-	e := anyEvent.(printedEvents)
-
-	// If it hasn't been printed yet, we'll print this event.
-	// We'll also skip lines where there's no message to print.
-	if eventsWorthPrinting[jet].Message != "" && !e.printed {
-		e.printed = true
-		pe.Store(jet, e)
-
-		_ = spin.Pause()
-
-		// Need to skip printing the initial submission event
-		if jet != model.JobEventInitialSubmission {
-			// log.Debug().Msgf("Printing event: %s\n", jet)
-			fmt.Fprintf(w, "\r\033[K\r")
-			if eventsWorthPrinting[jet].IsError {
-				fmt.Fprintf(w, "%s\n", fullLineMessage.PrintError())
-			} else {
-				fmt.Fprintf(w, "%s\n", fullLineMessage.PrintDone())
-			}
-
-			if eventsWorthPrinting[jet].IsTerminal {
-				fmt.Fprintf(w, "\n%s\n", eventsWorthPrinting[jet].Message)
-				return eventsWorthPrinting[jet].PrintDownload
-			}
-		}
-
-		fullLineMessage.Message = formatMessage(eventsWorthPrinting[jet].Message)
-
-		spin.Prefix(fmt.Sprintf("%s %s", fullLineMessage.Message, spacerText))
-
-		// start animating the spinner
-		_ = spin.Unpause()
 	}
 
-	return eventsWorthPrinting[jet].PrintDownload
+	spinner.Done(StopSuccess)
+
+	return returnError
 }
 
 func FatalErrorHandler(cmd *cobra.Command, msg string, code int) {
@@ -843,7 +733,7 @@ func FatalErrorHandler(cmd *cobra.Command, msg string, code int) {
 	os.Exit(code)
 }
 
-// Captures for testing, responsibility of the test to handle the exit (if any)
+// FakeFatalErrorHandler captures the error for testing, responsibility of the test to handle the exit (if any)
 // NOTE: If your test is not idempotent, you can cause side effects
 // (the underlying function will continue to run)
 // Returned as text JSON to wherever RootCmd is printing.
@@ -865,70 +755,13 @@ func applyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
 	cmd.SetContext(ctx)
 }
 
-var spinnerEmoji = []string{"🐟", "🐠", "🐡"}
-
-func createSpinner(w io.Writer, startingMessage string) (*yacspin.Spinner, error) {
-	var spinnerCharSet []string
-	for _, emoji := range spinnerEmoji {
-		for i := 0; i < fullLineMessage.Width; i++ {
-			spinnerCharSet = append(spinnerCharSet, fmt.Sprintf("%s%s%s",
-				strings.Repeat(" ", fullLineMessage.Width-i),
-				emoji,
-				strings.Repeat(" ", i)))
-		}
+// DockerImageContainsTag checks if the image contains a tag or a digest
+func DockerImageContainsTag(image string) bool {
+	if strings.Contains(image, ":") {
+		return true
 	}
-
-	cfg := yacspin.Config{
-		Frequency: 100 * time.Millisecond,
-		CharSet:   spinnerCharSet,
-		Writer:    w,
-		// Have to set the Prefix on creation because
-		// sometimes the spinner starts faster than the first print
-		Prefix: startingMessage,
+	if strings.Contains(image, "@") {
+		return true
 	}
-
-	s, err := yacspin.New(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate spinner from methods: %v", err)
-	}
-
-	if err := s.CharSet(spinnerCharSet); err != nil {
-		return nil, fmt.Errorf("failed to set charset: %v", err)
-	}
-
-	return s, nil
-}
-
-func spinnerFmtDuration(d time.Duration) string {
-	d = d.Round(time.Millisecond)
-
-	min := (d % time.Hour) / time.Minute
-	sec := (d % time.Minute) / time.Second
-	ms := (d % time.Second) / time.Millisecond / 100
-
-	minString, secString, msString := "", "", ""
-	if min > 0 {
-		minString = fmt.Sprintf("%02dm", min)
-		secString = fmt.Sprintf("%02d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else if sec > 0 {
-		secString = fmt.Sprintf("%01d", sec)
-		msString = fmt.Sprintf(".%01ds", ms)
-	} else {
-		msString = fmt.Sprintf("0.%01ds", ms)
-	}
-	// If hour string exists, set it
-	return fmt.Sprintf("%s%s%s", minString, secString, msString)
-}
-
-func formatMessage(msg string) string {
-	maxLength := 0
-	for _, v := range eventsWorthPrinting {
-		if len(v.Message) > maxLength {
-			maxLength = len(v.Message)
-		}
-	}
-
-	return fmt.Sprintf("\t%s%s",
-		strings.Repeat(" ", maxLength-len(msg)+2), msg)
+	return false
 }

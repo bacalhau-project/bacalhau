@@ -9,20 +9,21 @@ import (
 	"testing"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type ComputeNodeResourceLimitsSuite struct {
@@ -35,8 +36,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
 type SeenJobRecord struct {
@@ -81,7 +81,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		epochSeconds := time.Now().Unix()
 
-		seenJobs := []SeenJobRecord{}
+		var seenJobs []SeenJobRecord
 		var seenJobsMutex sync.Mutex
 		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
 			Threshold: 10 * time.Millisecond,
@@ -100,13 +100,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(_ context.Context, shard model.JobShard, _ string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, job model.Job, _ string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          shard.Job.Metadata.ID,
+				Id:          job.ID(),
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -281,16 +281,22 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeCount := 2
 	jobsPerNode := 2
 	seenJobs := 0
-	jobIds := []string{}
+	var jobIds []string
 
 	ctx := context.Background()
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(_ context.Context, _ model.JobShard, _ string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ model.Job, _ string) (*model.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil
+	}
+	nodeOverrides := make([]node.NodeConfig, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		nodeOverrides[i] = node.NodeConfig{
+			NodeInfoPublisherInterval: 100 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+		}
 	}
 	stack := testutils.SetupTestWithNoopExecutor(
 		ctx,
@@ -303,8 +309,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				Disk:   1 * 1024 * 1024 * 1024,
 				GPU:    1,
 			},
-			IgnorePhysicalResourceLimits: true,                  // we need to pretend that we have GPUs on each node
-			NodeInfoPublisherInterval:    10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
+			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
+
 		}),
 		node.NewRequesterConfigWithDefaults(),
 		noop_executor.ExecutorConfig{
@@ -312,14 +318,18 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				JobHandler: jobHandler,
 			},
 		},
+		nodeOverrides...,
 	)
-	time.Sleep(50 * time.Millisecond) // for the requester node to pick up the nodeInfo messages
+	// for the requester node to pick up the nodeInfo messages
+	testutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{
-			Engine:    model.EngineNoop,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
+			Engine:   model.EngineNoop,
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherNoop,
+			},
 			Resources: model.ResourceUsageConfig{
 				GPU: "1",
 			},
@@ -330,7 +340,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
+		func(ctx context.Context, id string) (model.Job, error) {
 			return stack.Nodes[0].RequesterNode.JobStore.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
@@ -367,10 +377,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	for _, jobId := range jobIds {
 		jobState, err := resolver.GetJobState(ctx, jobId)
 		require.NoError(suite.T(), err)
-		completedShards := job.GetCompletedShardStates(jobState)
-		require.Equal(suite.T(), 1, len(completedShards))
-		require.Equal(suite.T(), model.JobStateCompleted, completedShards[0].State)
-		allocationMap[completedShards[0].NodeID]++
+		completedExecutionStates := job.GetCompletedExecutionStates(jobState)
+		require.Equal(suite.T(), 1, len(completedExecutionStates))
+		require.Equal(suite.T(), model.ExecutionStateCompleted, completedExecutionStates[0].State)
+		allocationMap[completedExecutionStates[0].NodeID]++
 	}
 
 	// test that each node has 2 job allocated to it

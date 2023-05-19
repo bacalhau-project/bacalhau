@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
-func AddFileToNodes(ctx context.Context, filePath string, clients ...*Client) (string, error) {
+func AddFileToNodes(ctx context.Context, filePath string, clients ...Client) (string, error) {
 	var res string
 	for i, client := range clients {
 		cid, err := client.Put(ctx, filePath)
@@ -27,7 +28,7 @@ func AddFileToNodes(ctx context.Context, filePath string, clients ...*Client) (s
 	return res, nil
 }
 
-func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*Client) (string, error) {
+func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...Client) (string, error) {
 	tempDir, err := os.MkdirTemp("", "bacalhau-test")
 	if err != nil {
 		return "", err
@@ -41,4 +42,21 @@ func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*Client)
 	}
 
 	return AddFileToNodes(ctx, testFilePath, clients...)
+}
+
+func ParsePeersString(peers []string) ([]peer.AddrInfo, error) {
+	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
+	var res []peer.AddrInfo
+	for _, p := range peers {
+		if p == "" {
+			continue
+		}
+		pi, err := peer.AddrInfoFromString(p)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, *pi)
+	}
+
+	return res, nil
 }

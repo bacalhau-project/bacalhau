@@ -2,39 +2,46 @@ package node
 
 import (
 	"context"
+	"net/url"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub"
-	"github.com/filecoin-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/requester/discovery"
-	"github.com/filecoin-project/bacalhau/pkg/requester/nodestore"
-	requester_publicapi "github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requester/ranking"
-	"github.com/filecoin-project/bacalhau/pkg/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/filecoin-project/bacalhau/pkg/transport/simulator"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
+	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/ranking"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type Requester struct {
 	// Visible for testing
-	Endpoint      requester.Endpoint
-	JobStore      localdb.LocalDB
-	computeProxy  *bprotocol.ComputeProxy
-	localCallback *requester.Scheduler
-	cleanupFunc   func(ctx context.Context)
+	Endpoint           requester.Endpoint
+	JobStore           jobstore.Store
+	NodeDiscoverer     requester.NodeDiscoverer
+	computeProxy       *bprotocol.ComputeProxy
+	localCallback      compute.Callback
+	requesterAPIServer *requester_publicapi.RequesterAPIServer
+	cleanupFunc        func(ctx context.Context)
 }
 
 //nolint:funlen
@@ -44,16 +51,16 @@ func NewRequesterNode(
 	host host.Host,
 	apiServer *publicapi.APIServer,
 	config RequesterConfig,
-	jobStore localdb.LocalDB,
+	jobStore jobstore.Store,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
 	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
-	nodeInfoPubSub pubsub.PubSub[model.NodeInfo],
 	gossipSub *libp2p_pubsub.PubSub,
+	nodeInfoStore routing.NodeInfoStore,
 ) (*Requester, error) {
 	// prepare event handlers
-	tracerContextProvider := system.NewTracerContextProvider(host.ID().String())
+	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
 	// compute proxy
@@ -80,9 +87,6 @@ func NewRequesterNode(
 	}
 
 	// compute node discoverer
-	nodeInfoStore := nodestore.NewInMemoryNodeInfoStore(nodestore.InMemoryNodeInfoStoreParams{
-		TTL: config.NodeInfoStoreTTL,
-	})
 	nodeDiscoveryChain := discovery.NewChain(true)
 	nodeDiscoveryChain.Add(
 		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
@@ -98,47 +102,82 @@ func NewRequesterNode(
 	nodeRankerChain.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
 		ranking.NewEnginesNodeRanker(),
+		ranking.NewVerifiersNodeRanker(),
+		ranking.NewPublishersNodeRanker(),
+		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
-
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
+		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
 			RandomnessRange: config.NodeRankRandomnessRange,
 		}),
 	)
 
-	scheduler := requester.NewScheduler(ctx, cleanupManager, requester.SchedulerParams{
-		ID:               host.ID().String(),
-		Host:             host,
-		PeerStoreTTL:     config.DiscoveredPeerStoreTTL,
-		JobStore:         jobStore,
-		NodeDiscoverer:   nodeDiscoveryChain,
-		NodeRanker:       nodeRankerChain,
-		ComputeEndpoint:  computeProxy,
-		Verifiers:        verifiers,
-		StorageProviders: storageProviders,
-		EventEmitter: requester.NewEventEmitter(requester.EventEmitterParams{
-			EventConsumer: localJobEventConsumer,
-		}),
-		JobNegotiationTimeout:              config.JobNegotiationTimeout,
-		StateManagerBackgroundTaskInterval: config.StateManagerBackgroundTaskInterval,
+	retryStrategy := config.RetryStrategy
+	if retryStrategy == nil {
+		// retry strategy
+		retryStrategyChain := retry.NewChain()
+		retryStrategyChain.Add(
+			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+		)
+		retryStrategy = retryStrategyChain
+	}
+
+	nodeSelector := requester.NewNodeSelector(requester.NodeSelectorParams{
+		NodeDiscoverer: nodeDiscoveryChain,
+		NodeRanker:     nodeRankerChain,
 	})
+	emitter := requester.NewEventEmitter(requester.EventEmitterParams{
+		EventConsumer: localJobEventConsumer,
+	})
+	scheduler := requester.NewBaseScheduler(requester.BaseSchedulerParams{
+		ID:                   host.ID().String(),
+		Host:                 host,
+		JobStore:             jobStore,
+		NodeSelector:         *nodeSelector,
+		OverAskForBidsFactor: config.OverAskForBidsFactor,
+		RetryStrategy:        retryStrategy,
+		ComputeEndpoint:      computeProxy,
+		Verifiers:            verifiers,
+		StorageProviders:     storageProviders,
+		EventEmitter:         emitter,
+		GetVerifyCallback: func() *url.URL {
+			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.VerifyRoute)
+		},
+	})
+	queue := requester.NewQueue(jobStore, scheduler, emitter)
 
 	publicKey := host.Peerstore().PubKey(host.ID())
 	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
-
 	if err != nil {
 		return nil, err
 	}
+
+	selectionStrategy := semantic.FromJobSelectionPolicy(config.JobSelectionPolicy)
+
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
-		JobStore:                   jobStore,
-		Scheduler:                  scheduler,
+		Selector:                   selectionStrategy,
+		ComputeEndpoint:            computeProxy,
+		Store:                      jobStore,
+		Queue:                      queue,
 		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+		GetBiddingCallback: func() *url.URL {
+			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.ApprovalRoute)
+		},
+	})
+
+	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
+		Endpoint: endpoint,
+		JobStore: jobStore,
+		NodeID:   host.ID().String(),
+		Interval: config.HousekeepingBackgroundTaskInterval,
 	})
 
 	// if this node is the simulator, then we pass incoming requests to the simulator before passing them to the endpoint
@@ -157,10 +196,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
-		requester.NewScheduledJobsInfoProvider(requester.ScheduledJobsInfoProviderParams{
-			Name:      "ScheduledJobs",
-			Scheduler: scheduler,
-		}),
+		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
 	}
 
 	// register requester public http apis
@@ -168,7 +204,7 @@ func NewRequesterNode(
 		APIServer:          apiServer,
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
-		LocalDB:            jobStore,
+		JobStore:           jobStore,
 		StorageProviders:   storageProviders,
 	})
 	err = requesterAPIServer.RegisterAllHandlers()
@@ -195,7 +231,6 @@ func NewRequesterNode(
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
-	localDBEventHandler := localdb.NewLocalDBEventHandler(jobStore)
 	eventTracer, err := eventhandler.NewTracer()
 	if err != nil {
 		return nil, err
@@ -209,62 +244,39 @@ func NewRequesterNode(
 		tracerContextProvider,
 		// record the event in a log
 		eventTracer,
-		// update the job state in the local DB
-		localDBEventHandler,
 		// dispatches events to listening websockets
 		requesterAPIServer,
 		// dispatches events to the network
 		eventhandler.JobEventHandlerFunc(bufferedJobEventPubSub.Publish),
 	)
 
-	// register consumers of job events publishes over gossipSub
-	networkJobEventConsumer := eventhandler.NewChainedJobEventHandler(system.NewNoopContextProvider())
-	networkJobEventConsumer.AddHandlers(
-		// update the job state in the local DB
-		localDBEventHandler,
-	)
-	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[model.JobEvent](networkJobEventConsumer.HandleJobEvent))
-	if err != nil {
-		return nil, err
-	}
-
-	// register consumers of node info published over gossipSub
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](requesterAPIServer.PushNodeInfoToWebsocket))
-	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-	if err != nil {
-		return nil, err
-	}
-
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close job event pubsub")
-		}
-		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
-		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to close libp2p job event pubsub")
-		}
+		// stop the housekeeping background task
+		housekeeping.Stop()
 
+		cleanupErr := bufferedJobEventPubSub.Close(ctx)
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "buffered job event pubsub")
+		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "libp2p job event pubsub")
 		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
 		}
-
 		cleanupErr = eventTracer.Shutdown()
 		if cleanupErr != nil {
-			log.Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown event tracer")
 		}
 	}
 
 	return &Requester{
-		Endpoint:      endpoint,
-		localCallback: scheduler,
-		JobStore:      jobStore,
-		computeProxy:  standardComputeProxy,
-		cleanupFunc:   cleanupFunc,
+		Endpoint:           endpoint,
+		localCallback:      scheduler,
+		NodeDiscoverer:     nodeDiscoveryChain,
+		JobStore:           jobStore,
+		computeProxy:       standardComputeProxy,
+		cleanupFunc:        cleanupFunc,
+		requesterAPIServer: requesterAPIServer,
 	}, nil
 }
 

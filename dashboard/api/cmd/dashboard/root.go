@@ -3,21 +3,21 @@ package dashboard
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 
 var Fatal = FatalErrorHandler
-
-func init() { //nolint:gochecknoinits
-	NewRootCmd()
-}
 
 func NewRootCmd() *cobra.Command {
 	RootCmd := &cobra.Command{
 		Use:   getCommandLineExecutable(),
 		Short: "Dashboard",
 		Long:  `Dashboard`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			logger.ConfigureLogging(logger.LogModeDefault)
+		},
 	}
 	RootCmd.AddCommand(newServeCmd())
 	RootCmd.AddCommand(newUserCmd())

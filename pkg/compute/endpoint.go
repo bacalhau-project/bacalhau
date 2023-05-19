@@ -3,25 +3,23 @@ package compute
 import (
 	"context"
 	"fmt"
-	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/bidstrategy"
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type BaseEndpointParams struct {
 	ID              string
 	ExecutionStore  store.ExecutionStore
 	UsageCalculator capacity.UsageCalculator
-	BidStrategy     bidstrategy.BidStrategy
+	Bidder          Bidder
 	Executor        Executor
+	LogServer       logstream.LogStreamServer
 }
 
 // Base implementation of Endpoint
@@ -29,8 +27,9 @@ type BaseEndpoint struct {
 	id              string
 	executionStore  store.ExecutionStore
 	usageCalculator capacity.UsageCalculator
-	bidStrategy     bidstrategy.BidStrategy
+	bidder          Bidder
 	executor        Executor
+	logServer       logstream.LogStreamServer
 }
 
 func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
@@ -38,8 +37,9 @@ func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
 		id:              params.ID,
 		executionStore:  params.ExecutionStore,
 		usageCalculator: params.UsageCalculator,
-		bidStrategy:     params.BidStrategy,
+		bidder:          params.Bidder,
 		executor:        params.Executor,
+		logServer:       params.LogServer,
 	}
 }
 
@@ -48,109 +48,17 @@ func (s BaseEndpoint) GetNodeID() string {
 }
 
 func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
-	ctx, span := s.newSpan(ctx, "AskForBid")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.BaseEndpoint.AskForBid", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
-	jobsReceived.With(prometheus.Labels{"node_id": s.id, "client_id": request.Job.Metadata.ClientID}).Inc()
+	jobsReceived.Add(ctx, 1)
 
-	// ask the bidding strategy if we should bid on this job
-	// TODO: we should check at the shard level, not the job level
-	bidStrategyRequest := bidstrategy.BidStrategyRequest{
-		NodeID: s.id,
-		Job:    request.Job,
-	}
+	go s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
 
-	// Check bidding strategies before having to calculate resource usage
-	bidStrategyResponse, err := s.bidStrategy.ShouldBid(ctx, bidStrategyRequest)
-	if err != nil {
-		return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
-	}
-
-	var shardRequirements model.ResourceUsageData
-	if bidStrategyResponse.ShouldBid {
-		// calculate resource requirements for this job
-		shardRequirements, err = s.usageCalculator.Calculate(
-			ctx, request.Job, capacity.ParseResourceUsageConfig(request.Job.Spec.Resources))
-		if err != nil {
-			return AskForBidResponse{}, fmt.Errorf("error calculating job requirements: %w", err)
-		}
-
-		// Check bidding strategies after calculating resource usage
-		bidStrategyResponse, err = s.bidStrategy.ShouldBidBasedOnUsage(ctx, bidStrategyRequest, shardRequirements)
-		if err != nil {
-			return AskForBidResponse{}, fmt.Errorf("error asking bidding strategy if we should bid: %w", err)
-		}
-	}
-
-	// prepare the response, which can include partial bids
-	var shardResponses []AskForBidShardResponse
-	var enqueueErr error
-	var acceptedShards = 0
-	for _, shardIndex := range request.ShardIndexes {
-		var shardResponse AskForBidShardResponse
-		shardResponse, enqueueErr = s.prepareAskForBidShardResponse(ctx, request, shardIndex, shardRequirements, bidStrategyResponse)
-		shardResponses = append(shardResponses, shardResponse)
-		if shardResponse.Accepted {
-			acceptedShards++
-		}
-	}
-
-	// if we didn't accept any shard, and an error occurred, return it instead of shard level response.
-	if enqueueErr != nil && acceptedShards == 0 {
-		return AskForBidResponse{}, fmt.Errorf("error preparing shard responses: %w", enqueueErr)
-	}
-
-	return AskForBidResponse{ShardResponse: shardResponses}, nil
-}
-
-// Enqueues the shard in the execution executionStore, and returns the shard response.
-// Failure to enqueue the shard will return BOTH an error and a shard response with Accepted=false.
-func (s BaseEndpoint) prepareAskForBidShardResponse(
-	ctx context.Context,
-	request AskForBidRequest,
-	shardIndex int,
-	shardRequirements model.ResourceUsageData,
-	bidStrategyResponse bidstrategy.BidStrategyResponse) (AskForBidShardResponse, error) {
-	if !bidStrategyResponse.ShouldBid {
-		return AskForBidShardResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.Metadata.ID,
-				ShardIndex: shardIndex,
-			},
-			Accepted: false,
-			Reason:   bidStrategyResponse.Reason,
-		}, nil
-	}
-
-	execution := *store.NewExecution(
-		"e-"+uuid.NewString(),
-		model.JobShard{Job: &request.Job, Index: shardIndex},
-		request.SourcePeerID,
-		shardRequirements,
-	)
-
-	err := s.executionStore.CreateExecution(ctx, execution)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("error adding shard %s to backlog", execution.Shard)
-		return AskForBidShardResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				JobID:      request.Job.Metadata.ID,
-				ShardIndex: shardIndex,
-			},
-			Accepted: false,
-			Reason:   "error adding shard to backlog",
-		}, err
-	} else {
-		log.Ctx(ctx).Debug().Msgf("bidding for shard %s with execution %s", execution.Shard, execution.ID)
-		return AskForBidShardResponse{
-			ExecutionMetadata: ExecutionMetadata{
-				ExecutionID: execution.ID,
-				JobID:       request.Job.Metadata.ID,
-				ShardIndex:  shardIndex,
-			},
-			Accepted: true,
-		}, nil
-	}
+	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
+		ExecutionID: request.ExecutionID,
+		JobID:       request.JobID,
+	}}, nil
 }
 
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
@@ -170,11 +78,7 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 	}
 
 	// Increment the number of jobs accepted by this compute node:
-	jobsAccepted.With(prometheus.Labels{
-		"node_id":     s.id,
-		"shard_index": strconv.Itoa(execution.Shard.Index),
-		"client_id":   execution.Shard.Job.Metadata.ClientID,
-	}).Inc()
+	jobsAccepted.Add(ctx, 1)
 
 	err = s.executor.Run(ctx, execution)
 	if err != nil {
@@ -250,7 +154,7 @@ func (s BaseEndpoint) ResultRejected(ctx context.Context, request ResultRejected
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("canceling execution: %s", request.ExecutionID)
+	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return CancelExecutionResponse{}, err
@@ -279,10 +183,17 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	}, nil
 }
 
-func (s BaseEndpoint) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return system.Span(ctx, "pkg/compute/node", name,
-		trace.WithSpanKind(trace.SpanKindInternal),
-	)
+func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (ExecutionLogsResponse, error) {
+	log.Ctx(ctx).Debug().Msgf("processing log request for %s", request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	if err != nil {
+		return ExecutionLogsResponse{}, err
+	}
+
+	return ExecutionLogsResponse{
+		Address:           s.logServer.Address,
+		ExecutionFinished: execution.State.IsTerminal(),
+	}, nil
 }
 
 // Compile-time interface check:

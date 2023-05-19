@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/spf13/cobra"
@@ -24,13 +26,13 @@ var (
 	//nolint:lll // Documentation
 	devstackExample = templates.Examples(i18n.T(`
 		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
-		bacalhau devstack 
+		bacalhau devstack
 
 		# Create a devstack cluster with a two requester nodes and 10 compute nodes
 		bacalhau devstack  --requester-nodes 2 --compute-nodes 10
 
 		# Create a devstack cluster with a single hybrid (requester and compute) nodes
-		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1 
+		bacalhau devstack  --requester-nodes 0 --compute-nodes 0 --hybrid-nodes 1
 `))
 )
 
@@ -45,12 +47,19 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		LocalNetworkLotus:          false,
 		SimulatorAddr:              "",
 		SimulatorMode:              false,
+		CPUProfilingFile:           "",
+		MemoryProfilingFile:        "",
 	}
 }
 
 func newDevStackCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	OS := NewServeOptions()
+
+	// make sure serve options point to local mode
+	OS.PeerConnect = DefaultPeerConnect
+	OS.PrivateInternalIPFS = true
+
 	IsNoop := false
 
 	devstackCmd := &cobra.Command{
@@ -107,22 +116,46 @@ func newDevStackCmd() *cobra.Command {
 		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
 		`Connect devstack to public IPFS`,
 	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
+		"File to save CPU profiling to",
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
+		"File to save memory profiling to",
+	)
+	devstackCmd.PersistentFlags().StringSliceVar(
+		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
+		"Local paths that are allowed to be mounted into jobs",
+	)
+	devstackCmd.PersistentFlags().Var(
+		URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
+		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
+			"The 'external' verifier will not be enabled if this is unset.",
+	)
 
-	setupJobSelectionCLIFlags(devstackCmd, OS)
+	devstackCmd.Flags().AddFlagSet(JobSelectionCLIFlags(&OS.JobSelectionPolicy))
+	devstackCmd.Flags().AddFlagSet(DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
 	setupCapacityManagerCLIFlags(devstackCmd, OS)
 
 	return devstackCmd
 }
 
+//nolint:gocyclo
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOptions, IsNoop bool) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
-	defer rootSpan.End()
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
+	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
+		Fatal(cmd, "Unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack.", 1)
+	}
+
+	if config.DevstackShouldWriteEnvFile() {
+		cm.RegisterCallback(cleanupDevstackDotEnv)
+	}
+	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
 
@@ -136,10 +169,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		Fatal(cmd, fmt.Sprintf("You cannot have more bad requester actors (%d) than there are nodes (%d).",
 			ODs.NumberOfBadRequesterActors, totalRequesterNodes), 1)
 	}
-
-	// Context ensures main goroutine waits until killed with ctrl+c:
-	ctx, cancel := system.WithSignalShutdown(ctx)
-	defer cancel()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
@@ -156,6 +185,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 
 	computeConfig := getComputeConfig(OS)
+	requestorConfig := getRequesterConfig(OS)
 	if ODs.LocalNetworkLotus {
 		cmd.Println("Note that starting up the Lotus node can take many minutes!")
 	}
@@ -163,9 +193,9 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	var stack *devstack.DevStack
 	var stackErr error
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, node.NewRequesterConfigWithDefaults())
+		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	}
 	if stackErr != nil {
 		return stackErr
@@ -183,7 +213,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	}
 	defer os.Remove(portFileName)
 	firstNode := stack.Nodes[0]
-	_, err = f.WriteString(strconv.Itoa(firstNode.APIServer.Port))
+	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Error writing out port file: %v", portFileName), 1)
 	}
@@ -199,8 +229,23 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		Fatal(cmd, fmt.Sprintf("Error writing out pid file: %v", pidFileName), 1)
 	}
 
+	if loggingMode == logger.LogModeStation {
+		for _, node := range stack.Nodes {
+			if node.IsComputeNode() {
+				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
+			}
+		}
+	}
+
 	<-ctx.Done() // block until killed
 
-	cmd.Println("Shutting down devstack")
+	cmd.Println("\nShutting down devstack")
+	return nil
+}
+
+func cleanupDevstackDotEnv() error {
+	if _, err := os.Stat(config.DevstackEnvFile()); err == nil {
+		return os.Remove(config.DevstackEnvFile())
+	}
 	return nil
 }

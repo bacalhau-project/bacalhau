@@ -1,15 +1,14 @@
 package bacalhau
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -148,23 +147,17 @@ func (c *ColumnEnum) Set(v string) error {
 }
 
 func list(cmd *cobra.Command, OL *ListOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-
-	log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
-	log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
-	log.Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
-	log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
-	log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
-	log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
-	log.Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
-	log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
-	log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
+	log.Ctx(ctx).Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
+	log.Ctx(ctx).Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
+	log.Ctx(ctx).Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
+	log.Ctx(ctx).Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
+	log.Ctx(ctx).Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
+	log.Ctx(ctx).Debug().Msgf("Found sort flag: %s", OL.SortBy)
+	log.Ctx(ctx).Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
+	log.Ctx(ctx).Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
+	log.Ctx(ctx).Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
 	jobs, err := GetAPIClient().List(
 		ctx,
@@ -181,7 +174,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	}
 
 	numberInTable := system.Min(OL.MaxJobs, len(jobs))
-	log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
+	log.Ctx(ctx).Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 	var msgBytes []byte
 	if OL.OutputFormat == JSONFormat {
@@ -202,7 +195,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 		var rows []table.Row
 		for _, j := range jobs {
 			var summaryRow table.Row
-			summaryRow, err = summarizeJob(ctx, j, OL)
+			summaryRow, err = summarizeJob(j, OL)
 			if err != nil {
 				Fatal(cmd, fmt.Sprintf("Error summarizing job: %s", err), 1)
 			}
@@ -240,22 +233,18 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 }
 
 // Renders job details into a table row
-func summarizeJob(ctx context.Context, j *model.Job, OL *ListOptions) (table.Row, error) {
-	//nolint:ineffassign,staticcheck // For tracing
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.summarizeJob")
-	defer span.End()
-
+func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 	jobDesc := []string{
-		j.Spec.Engine.String(),
+		j.Job.Spec.Engine.String(),
 	}
 	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-	if j.Spec.Engine == model.EngineDocker {
-		jobDesc = append(jobDesc, j.Spec.Docker.Image, strings.Join(j.Spec.Docker.Entrypoint, " "))
+	if j.Job.Spec.Engine == model.EngineDocker {
+		jobDesc = append(jobDesc, j.Job.Spec.Docker.Image, strings.Join(j.Job.Spec.Docker.Entrypoint, " "))
 	}
 
 	// compute state summary
 	//nolint:gocritic
-	stateSummary := job.ComputeStateSummary(j)
+	stateSummary := job.ComputeStateSummary(j.State)
 
 	// compute verifiedSummary
 	verifiedSummary := job.ComputeVerifiedSummary(j)
@@ -264,8 +253,8 @@ func summarizeJob(ctx context.Context, j *model.Job, OL *ListOptions) (table.Row
 	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
-		shortenTime(OL.OutputWide, j.Metadata.CreatedAt),
-		shortID(OL.OutputWide, j.Metadata.ID),
+		shortenTime(OL.OutputWide, j.Job.Metadata.CreatedAt),
+		shortID(OL.OutputWide, j.Job.Metadata.ID),
 		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 		shortenString(OL.OutputWide, stateSummary),
 		shortenString(OL.OutputWide, verifiedSummary),

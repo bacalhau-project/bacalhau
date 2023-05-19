@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bacalhau_apiclient"
+version = "0.3.24.dev8"
+authors = [
+{ name="Enrico Rotundo", email="enrico.rotundo@gmail.com" },
+]
+description = "A Python client for the Bacalhau public API - https://github.com/bacalhau-project/bacalhau/tree/main/clients/python"
+readme = "README.md"
+requires-python = ">=3.6.2"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/bacalhau-project/bacalhau/"
+"Bug Tracker" = "https://github.com/bacalhau-project/bacalhau/issues"

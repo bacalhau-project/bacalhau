@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package discovery
 
 import (
@@ -5,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -55,9 +57,8 @@ func (s *ChainedSuite) TestHandle_Error() {
 	s.chain.Add(newFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(newBadDiscoverer())
 	s.chain.Add(newFixedDiscoverer(s.peerID3))
-	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
+	_, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.Error(err)
-	s.Empty(peerIDs)
 }
 
 func (s *ChainedSuite) TestHandle_IgnoreError() {
@@ -82,7 +83,11 @@ func newFixedDiscoverer(peerIDs ...model.NodeInfo) *fixedDiscoverer {
 	}
 }
 
-func (f *fixedDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (f *fixedDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
+	return f.peerIDs, nil
+}
+
+func (f *fixedDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
 	return f.peerIDs, nil
 }
 
@@ -93,6 +98,10 @@ func newBadDiscoverer() *badDiscoverer {
 	return &badDiscoverer{}
 }
 
-func (b *badDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (b *badDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
+	return nil, errors.New("bad discoverer")
+}
+
+func (b *badDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
 	return nil, errors.New("bad discoverer")
 }

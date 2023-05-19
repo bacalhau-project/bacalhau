@@ -14,11 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -39,13 +40,15 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	var err error
 	s.cm = system.NewCleanupManager()
-	s.T().Cleanup(s.cm.Cleanup)
+	s.T().Cleanup(func() {
+		s.cm.Cleanup(context.Background())
+	})
 
 	s.executor, err = NewExecutor(
 		context.Background(),
 		s.cm,
 		"bacalhau-executor-unittest",
-		storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{}),
+		model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{}),
 	)
 	require.NoError(s.T(), err)
 
@@ -60,7 +63,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 	// the "docker0" interface.
 	var gateway net.IP
 	if runtime.GOOS == "linux" {
-		gateway, err = docker.HostGatewayIP(context.Background(), s.executor.Client)
+		gateway, err = s.executor.client.HostGatewayIP(context.Background())
 		require.NoError(s.T(), err)
 	} else {
 		gateway = net.ParseIP("127.0.0.1")
@@ -98,14 +101,13 @@ func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
 }
 
 func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
-	return s.runJobWithContext(context.Background(), spec)
+	return s.runJobWithContext(context.Background(), spec, "test")
 }
 
-func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec) (*model.RunCommandResult, error) {
+func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
-	j := &model.Job{Metadata: model.Metadata{ID: "test"}, Spec: spec}
-	shard := model.JobShard{Job: j, Index: 0}
-	return s.executor.RunShard(ctx, shard, result)
+	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
+	return s.executor.Run(ctx, name, j, result)
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {
@@ -137,6 +139,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
 	})
+	require.NoError(s.T(), err)
 
 	values := strings.Fields(result)
 
@@ -235,6 +238,23 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
 }
 
+func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
+	hostname := s.containerHttpURL().Hostname()
+	hostroot := strings.Join(strings.SplitN(hostname, ".", 2)[:1], ".")
+
+	result, err := s.runJob(model.Spec{
+		Engine: model.EngineDocker,
+		Network: model.NetworkConfig{
+			Type:    model.NetworkHTTP,
+			Domains: []string{hostname, hostroot},
+		},
+		Docker: s.curlTask(),
+	})
+	require.NoError(s.T(), err, result.STDERR)
+	require.Zero(s.T(), result.ExitCode, result.STDERR)
+	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+}
+
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 	result, err := s.runJob(model.Spec{
 		Engine: model.EngineDocker,
@@ -296,7 +316,79 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
-	})
-	s.ErrorIs(err, context.DeadlineExceeded)
+	}, "timeout")
+	// The Docker client has changed so that it prioritizes container error message
+	// and not the error message from the context. It does error upon timeout, but not
+	// with a context.DeadlineExceeded error.
+	s.Error(err)
 	s.Truef(strings.HasPrefix(result.STDOUT, expected), "'%s' does not start with '%s'", result.STDOUT, expected)
+}
+
+func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
+	id := "streams-fail"
+	done := make(chan bool, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spec := model.Spec{
+		Engine: model.EngineDocker,
+		Resources: model.ResourceUsageConfig{
+			CPU:    CPU_LIMIT,
+			Memory: MEMORY_LIMIT,
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
+		},
+	}
+
+	go func() {
+		_, _ = s.runJobWithContext(ctx, spec, id)
+		done <- true
+	}()
+
+	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
+
+	<-done
+	require.Nil(s.T(), reader)
+	require.Error(s.T(), err)
+}
+
+func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
+	id := "streams-ok"
+	done := make(chan bool, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spec := model.Spec{
+		Engine: model.EngineDocker,
+		Resources: model.ResourceUsageConfig{
+			CPU:    CPU_LIMIT,
+			Memory: MEMORY_LIMIT,
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
+		},
+	}
+
+	go func() {
+		_, _ = s.runJobWithContext(ctx, spec, id)
+		done <- true
+	}()
+
+	// Give docker time to start the container, otherwise there
+	// be nothing to retrieve the output from.
+	time.Sleep(time.Duration(500) * time.Millisecond)
+
+	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
+
+	require.NotNil(s.T(), reader)
+	require.NoError(s.T(), err)
+
+	df, err := logger.NewDataFrameFromReader(reader)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), string(df.Data), "hello\n")
+	require.Equal(s.T(), df.Size, 6)
+	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
 }

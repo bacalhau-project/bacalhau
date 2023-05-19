@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,7 +15,7 @@ var noopScenario Scenario = Scenario{
 	Stack: &StackConfig{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil)
 				},
 			},

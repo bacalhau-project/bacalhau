@@ -3,14 +3,14 @@ package compute
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
 // interact with the frontend service to submit jobs, ask for bids, accept or reject bids, etc.
 type Endpoint interface {
-	// AskForBid asks for a bid for a given job and shard IDs, which will assign executionIDs for each shard the node
+	// AskForBid asks for a bid for a given job, which will assign executionID to the job and return a bid
 	// is interested in bidding on.
 	AskForBid(context.Context, AskForBidRequest) (AskForBidResponse, error)
 	// BidAccepted accepts a bid for a given executionID, which will trigger executing the job in the backend.
@@ -25,6 +25,8 @@ type Endpoint interface {
 	ResultRejected(context.Context, ResultRejectedRequest) (ResultRejectedResponse, error)
 	// CancelExecution cancels a job for a given executionID.
 	CancelExecution(context.Context, CancelExecutionRequest) (CancelExecutionResponse, error)
+	// ExecutionLogs returns the address of a suitable log server
+	ExecutionLogs(context.Context, ExecutionLogsRequest) (ExecutionLogsResponse, error)
 }
 
 // Executor Backend service that is responsible for running and publishing executions.
@@ -40,6 +42,7 @@ type Executor interface {
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
 type Callback interface {
+	OnBidComplete(ctx context.Context, result BidResult)
 	OnRunComplete(ctx context.Context, result RunResult)
 	OnPublishComplete(ctx context.Context, result PublishResult)
 	OnCancelComplete(ctx context.Context, result CancelResult)
@@ -58,34 +61,24 @@ type RoutingMetadata struct {
 type ExecutionMetadata struct {
 	ExecutionID string
 	JobID       string
-	ShardIndex  int
 }
 
 func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
-		JobID:       execution.Shard.Job.Metadata.ID,
-		ShardIndex:  execution.Shard.Index,
+		JobID:       execution.Job.Metadata.ID,
 	}
 }
 
 type AskForBidRequest struct {
+	ExecutionMetadata
 	RoutingMetadata
 	// Job specifies the job to be executed.
 	Job model.Job
-	// ShardIndexes specifies the shard indexes to be executed.
-	// This enables the requester to ask for bids for a subset of the shards of a job.
-	ShardIndexes []int
 }
 
 type AskForBidResponse struct {
-	ShardResponse []AskForBidShardResponse
-}
-
-type AskForBidShardResponse struct {
 	ExecutionMetadata
-	Accepted bool
-	Reason   string
 }
 
 type BidAcceptedRequest struct {
@@ -138,9 +131,30 @@ type CancelExecutionResponse struct {
 	ExecutionMetadata
 }
 
+type ExecutionLogsRequest struct {
+	RoutingMetadata
+	ExecutionID string
+	WithHistory bool
+	Follow      bool
+}
+
+type ExecutionLogsResponse struct {
+	Address           string
+	ExecutionFinished bool
+}
+
 ///////////////////////////////////
 // Callback result models
 ///////////////////////////////////
+
+// BidResult is the result of the compute node bidding on a job that is returned
+// to the caller through a Callback.
+type BidResult struct {
+	RoutingMetadata
+	ExecutionMetadata
+	Accepted bool
+	Reason   string
+}
 
 // RunResult Result of a job execution that is returned to the caller through a Callback.
 type RunResult struct {

@@ -3,8 +3,8 @@ package dashboard
 import (
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/spf13/cobra"
 )
 

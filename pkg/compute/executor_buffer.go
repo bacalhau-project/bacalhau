@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
-	"github.com/filecoin-project/bacalhau/pkg/compute/store"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 type bufferTask struct {
@@ -121,7 +122,12 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (er
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	timeout := task.execution.Shard.Job.Spec.GetTimeout()
+	ctx = system.AddJobIDToBaggage(ctx, task.execution.Job.Metadata.ID)
+	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
+	defer span.End()
+
+	timeout := task.execution.Job.Spec.GetTimeout()
 	if timeout == 0 {
 		timeout = s.defaultJobExecutionTimeout
 	}
@@ -186,18 +192,35 @@ func (s *ExecutorBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Publish(ctx context.Context, execution store.Execution) error {
+func (s *ExecutorBuffer) Publish(_ context.Context, execution store.Execution) error {
 	// TODO: Enqueue publish tasks
 	go func() {
-		_ = s.delegateService.Publish(logger.ContextWithNodeIDLogger(context.Background(), s.ID), execution)
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
+		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
+		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Publish")
+		defer span.End()
+		_ = s.delegateService.Publish(ctx, execution)
 	}()
 	return nil
 }
 
-func (s *ExecutorBuffer) Cancel(ctx context.Context, execution store.Execution) error {
+func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) error {
 	// TODO: Enqueue cancel tasks
 	go func() {
-		_ = s.delegateService.Cancel(logger.ContextWithNodeIDLogger(context.Background(), s.ID), execution)
+		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
+		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
+		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
+		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
+		defer span.End()
+
+		err := s.delegateService.Cancel(ctx, execution)
+		if err == nil {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			delete(s.running, execution.ID)
+		}
 	}()
 	return nil
 }

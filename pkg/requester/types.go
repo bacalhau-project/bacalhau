@@ -3,41 +3,48 @@ package requester
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier"
+	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
 type Endpoint interface {
 	// SubmitJob submits a new job to the network.
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
-	// UpdateDeal updates an existing job.
-	UpdateDeal(context.Context, string, model.Deal) error
+	// ApproveJob approves or rejects the running of a job.
+	ApproveJob(context.Context, bidstrategy.ModerateJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+	// VerifyExecutions approves or rejects the publishing of an execution.
+	VerifyExecutions(context.Context, external.ExternalVerificationResponse) error
+	// ReadLogs retrieves the logs for an execution
+	ReadLogs(context.Context, ReadLogsRequest) (ReadLogsResponse, error)
+}
+
+// Scheduler distributes jobs to the compute nodes and tracks the executions.
+type Scheduler interface {
+	StartJob(context.Context, StartJobRequest) error
+	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
+	VerifyExecutions(context.Context, []verifier.VerifierResult) (succeeded, failed []verifier.VerifierResult)
+}
+
+type Queue interface {
+	Scheduler
+
+	EnqueueJob(context.Context, model.Job) error
 }
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
 type NodeDiscoverer interface {
+	ListNodes(ctx context.Context) ([]model.NodeInfo, error)
 	FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error)
 }
 
 // NodeRanker ranks nodes based on their suitability to execute a job.
 type NodeRanker interface {
 	RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]NodeRank, error)
-}
-
-type NodeInfoStore interface {
-	// Add adds a node info to the repo.
-	Add(ctx context.Context, nodeInfo model.NodeInfo) error
-	// Get returns the node info for the given peer ID.
-	Get(ctx context.Context, peerID peer.ID) (model.NodeInfo, error)
-	// List returns a list of nodes
-	List(ctx context.Context) ([]model.NodeInfo, error)
-	// ListForEngine returns a list of nodes that support the given engine.
-	ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error)
-	// Delete deletes a node info from the repo.
-	Delete(ctx context.Context, peerID peer.ID) error
 }
 
 // NodeRank represents a node and its rank. The higher the rank, the more preferable a node is to execute the job.
@@ -53,8 +60,21 @@ type StartJobRequest struct {
 }
 
 type CancelJobRequest struct {
-	JobID string
+	JobID         string
+	Reason        string
+	UserTriggered bool
 }
 
-type CancelJobResult struct {
+type CancelJobResult struct{}
+
+type ReadLogsRequest struct {
+	JobID       string
+	ExecutionID string
+	WithHistory bool
+	Follow      bool
+}
+
+type ReadLogsResponse struct {
+	Address           string
+	ExecutionComplete bool
 }

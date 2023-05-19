@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -9,24 +10,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/context"
 )
 
 const defaultImage = "ghcr.io/bacalhau-project/lotus-filecoin-image:v0.0.2"
 
 type LotusNode struct {
-	client    *dockerclient.Client
+	client    *docker.Client
 	image     string
 	container string
 
@@ -37,9 +36,6 @@ type LotusNode struct {
 }
 
 func newLotusNode(ctx context.Context) (*LotusNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newlotusnode")
-	defer span.End()
-
 	image := defaultImage
 	if e, ok := os.LookupEnv("LOTUS_TEST_IMAGE"); ok {
 		image = e
@@ -50,7 +46,8 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 		return nil, err
 	}
 
-	if err := docker.PullImage(ctx, dockerClient, image); err != nil {
+	creds := config.GetDockerCredentials()
+	if err := dockerClient.PullImage(ctx, image, creds); err != nil {
 		closer.CloseWithLogOnError("docker", dockerClient)
 		return nil, err
 	}
@@ -64,16 +61,13 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 // start performs the work of actually starting the Lotus container. This is separated from the constructor so the user
 // can cancel and still have the container, which may not be healthy yet, cleaned up via Close.
 func (l *LotusNode) start(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.start")
-	defer span.End()
-
 	uploadDir, err := os.MkdirTemp("", "bacalhau-lotus-upload-dir")
 	if err != nil {
 		return err
 	}
 
 	// Container may be running as a different user, so need to be sure that they can read the contents
-	if err := os.Chmod(uploadDir, util.OS_ALL_RWX); err != nil { //nolint:govet
+	if err := os.Chmod(uploadDir, util.OS_ALL_RWX); err != nil {
 		return err
 	}
 	l.UploadDir = uploadDir
@@ -107,7 +101,7 @@ func (l *LotusNode) start(ctx context.Context) error {
 
 	l.container = c.ID
 
-	log.Debug().
+	log.Ctx(ctx).Debug().
 		Str("image", l.image).
 		Str("UploadDir", l.UploadDir).
 		Str("PathDir", l.PathDir).
@@ -119,8 +113,8 @@ func (l *LotusNode) start(ctx context.Context) error {
 	}
 
 	if err := l.waitForLotusToBeHealthy(ctx); err != nil {
-		if err := l.Close(); err != nil { //nolint:govet
-			log.Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
+		if err := l.Close(ctx); err != nil {
+			log.Ctx(ctx).Err(err).Msgf(`Problem occurred when giving up waiting for Lotus to become healthy`)
 		}
 		return err
 	}
@@ -129,9 +123,6 @@ func (l *LotusNode) start(ctx context.Context) error {
 }
 
 func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.waitforlotustobehealthy")
-	defer span.End()
-
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:gomnd
 	defer cancel()
 
@@ -152,7 +143,7 @@ func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
 			break
 		}
 
-		e := log.Debug()
+		e := log.Ctx(ctx).Debug()
 		if len(state.State.Health.Log) != 0 {
 			e = e.Str("last-health-check", strings.TrimSpace(state.State.Health.Log[len(state.State.Health.Log)-1].Output))
 		}
@@ -176,7 +167,7 @@ func (l *LotusNode) copyOutTokenFile(ctx context.Context) error {
 	defer closer.CloseWithLogOnError("content", content)
 
 	tarContent := tar.NewReader(content)
-	if _, err := tarContent.Next(); err != nil { //nolint:govet
+	if _, err := tarContent.Next(); err != nil {
 		return err
 	}
 
@@ -207,12 +198,12 @@ ListenAddress = "/ip4/0.0.0.0/tcp/%s/http"
 	return nil
 }
 
-func (l *LotusNode) Close() error {
+func (l *LotusNode) Close(ctx context.Context) error {
 	var errs error
 
 	defer closer.CloseWithLogOnError("Docker client", l.client)
 	if l.container != "" {
-		if err := docker.RemoveContainer(context.Background(), l.client, l.container); err != nil {
+		if err := l.client.RemoveContainer(ctx, l.container); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/storage/inline"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -21,22 +21,22 @@ var (
 		`))
 
 	languageRunExample = templates.Examples(i18n.T(`
-		TBD`))
+		# Run a simple "Hello, World" script within the current directory
+		bacalhau run python -- hello-world.py
+		`))
 )
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
-	Deterministic bool     // Execute this job deterministically
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	Confidence    int      // Minimum number of nodes that must agree on a verification result
-	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
-	Timeout       float64  // Job execution timeout in seconds
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+	Deterministic bool            // Execute this job deterministically
+	Inputs        opts.StorageOpt // Array of inputs
+	OutputVolumes []string        // Array of output volumes in 'name:mount point' form
+	Env           []string        // Array of environment variables
+	Concurrency   int             // Number of concurrent jobs to run
+	Confidence    int             // Minimum number of nodes that must agree on a verification result
+	MinBids       int             // Minimum number of bids that must be received before any are accepted (at random)
+	Timeout       float64         // Job execution timeout in seconds
+	Labels        []string        // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
 	RequirementsPath string // Path for requirements.txt for executing with Python
@@ -49,18 +49,12 @@ type LanguageRunOptions struct {
 
 	RuntimeSettings  RunTimeSettings
 	DownloadSettings model.DownloaderSettings
-
-	// ShardingGlobPattern string
-	// ShardingBasePath string
-	// ShardingBatchSize int
 }
 
 func NewLanguageRunOptions() *LanguageRunOptions {
 	return &LanguageRunOptions{
 		Deterministic:    true,
-		Inputs:           []string{},
-		InputUrls:        []string{},
-		InputVolumes:     []string{},
+		Inputs:           opts.StorageOpt{},
 		OutputVolumes:    []string{},
 		Env:              []string{},
 		Concurrency:      1,
@@ -79,7 +73,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
 // that the compute node can verify the job knowing that it was run properly,
 // rather than doing the translation in, and thereby trusting, the client (to
-// set up the wasm environment to be determinstic)
+// set up the wasm environment to be deterministic)
 
 func newRunPythonCmd() *cobra.Command {
 	OLR := NewLanguageRunOptions()
@@ -103,15 +97,8 @@ func newRunPythonCmd() *cobra.Command {
 			`in an environment where only some libraries are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
-	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&OLR.Inputs, "inputs", "i", OLR.Inputs,
-		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
-	)
+	runPythonCmd.PersistentFlags().VarP(&OLR.Inputs, "input", "i", inputUsageMsg)
 
-	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&OLR.InputVolumes, "input-volumes", "v", OLR.InputVolumes,
-		`CID:path of the input data volumes`,
-	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&OLR.OutputVolumes, "output-volumes", "o", OLR.OutputVolumes,
 		`name:path of the output data volumes`,
@@ -164,13 +151,9 @@ func newRunPythonCmd() *cobra.Command {
 }
 
 func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// error if determinism is false
 	if !OLR.Deterministic {
@@ -187,10 +170,6 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		Fatal(cmd, "Please specify an inline command or a path to a python file.", 1)
 	}
 
-	for _, i := range OLR.Inputs {
-		OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-	}
-
 	language := "python"
 	version := "3.10"
 
@@ -198,10 +177,9 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 	// have ConstructLanguageJob and ConstructDockerJob as separate means
 	// manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
-		OLR.InputVolumes,
-		OLR.InputUrls,
+		ctx,
+		OLR.Inputs.Values(),
 		OLR.OutputVolumes,
-		[]string{}, // no env vars (yet)
 		OLR.Concurrency,
 		OLR.Confidence,
 		OLR.MinBids,
@@ -211,10 +189,8 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 		OLR.Command,
 		programPath,
 		OLR.RequirementsPath,
-		OLR.ContextPath,
 		OLR.Deterministic,
 		OLR.Labels,
-		doNotTrack,
 	)
 	if err != nil {
 		return err
@@ -237,7 +213,7 @@ func runPython(cmd *cobra.Command, cmdArgs []string, OLR *LanguageRunOptions) er
 			return nil
 		}
 		context.Path = "/job"
-		j.Spec.Contexts = append(j.Spec.Contexts, context)
+		j.Spec.Inputs = append(j.Spec.Inputs, context)
 	}
 
 	err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings)

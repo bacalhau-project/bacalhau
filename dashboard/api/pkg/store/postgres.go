@@ -1,22 +1,68 @@
 package store
 
 import (
+	"bytes"
 	"context"
-	"fmt"
-
+	"database/sql"
+	"database/sql/driver"
 	"embed"
+	"encoding/json"
+	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"database/sql"
-
-	"github.com/filecoin-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/pkg/errors"
+	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
+type nullableJSON[T any] struct {
+	data *T
+}
+
+func (v nullableJSON[T]) Scan(src any) error {
+	switch data := src.(type) {
+	case nil:
+		return nil
+	case string:
+		return json.NewDecoder(strings.NewReader(data)).Decode(&v.data)
+	case []byte:
+		return json.NewDecoder(bytes.NewReader(data)).Decode(&v.data)
+	default:
+		return fmt.Errorf("unsupported type %T", src)
+	}
+}
+
+func (v nullableJSON[T]) Value() (driver.Value, error) {
+	if v.data == nil {
+		return nil, nil
+	} else {
+		return json.Marshal(v.data)
+	}
+}
+
+func JSON[T any](value *T) *nullableJSON[T] {
+	return &nullableJSON[T]{data: value}
+}
+
+//go:embed queries/*.sql
+var queries embed.FS
+
+func SQL(path string) string {
+	b, err := queries.ReadFile(filepath.Join("queries", path+".sql"))
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
 type PostgresStore struct {
-	mtx              sync.RWMutex
 	connectionString string
 	db               *sql.DB
 }
@@ -38,10 +84,6 @@ func NewPostgresStore(
 		connectionString: connectionString,
 		db:               db,
 	}
-	store.mtx.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "PostgresStore.mtx",
-	})
 	if autoMigrate {
 		err = store.MigrateUp()
 		if err != nil {
@@ -55,8 +97,6 @@ func (d *PostgresStore) LoadUser(
 	ctx context.Context,
 	username string,
 ) (*types.User, error) {
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
 	var id int
 	var created time.Time
 	var hashedPassword string
@@ -81,8 +121,6 @@ func (d *PostgresStore) LoadUserByID(
 	ctx context.Context,
 	queryID int,
 ) (*types.User, error) {
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
 	var username string
 	var created time.Time
 	var hashedPassword string
@@ -103,35 +141,31 @@ func (d *PostgresStore) LoadUserByID(
 	}, nil
 }
 
-func (d *PostgresStore) GetJobModeration(
+func (d *PostgresStore) GetJobModerations(
 	ctx context.Context,
 	queryJobID string,
-) (*types.JobModeration, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	var id int
-	var jobID string
-	var userAccountID int
-	var created time.Time
-	var status string
-	var notes string
-	row := d.db.QueryRow("select id, job_id, useraccount_id, created, status, notes from job_moderation where job_id = $1 limit 1", queryJobID)
-	err := row.Scan(&id, &jobID, &userAccountID, &created, &status, &notes)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		} else {
-			return nil, err
+) (results []types.JobModerationSummary, err error) {
+	results = make([]types.JobModerationSummary, 0)
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_moderations"), queryJobID)
+	for err == nil && rows != nil && rows.Next() {
+		moderation := new(types.Moderation)
+		request := new(types.JobModerationRequest)
+		user := new(types.User)
+
+		err = rows.Scan(&moderation.ID, &moderation.RequestID, &moderation.UserAccountID,
+			&moderation.Created, &moderation.Status, &moderation.Notes,
+			&user.ID, &user.Created, &user.Username,
+			&request.ID, &request.JobID, &request.Type,
+			&request.Created, &request.Callback)
+		if err == nil {
+			results = append(results, types.JobModerationSummary{
+				Moderation: moderation,
+				Request:    request,
+				User:       user,
+			})
 		}
 	}
-	return &types.JobModeration{
-		ID:            id,
-		JobID:         jobID,
-		UserAccountID: userAccountID,
-		Created:       created,
-		Status:        status,
-		Notes:         notes,
-	}, nil
+	return results, multierr.Append(err, rows.Err())
 }
 
 func (d *PostgresStore) GetAnnotationSummary(
@@ -183,7 +217,7 @@ select
 		'-',
 		extract(month from created)
 	) as month,
-	count(*) as count 
+	count(*) as count
 from
 	job
 group by
@@ -222,7 +256,7 @@ func (d *PostgresStore) GetJobExecutorSummary(
 	sqlStatement := `
 select
 	executor,
-	count(*) as count 
+	count(*) as count
 from
 	job
 group by
@@ -316,8 +350,6 @@ func (d *PostgresStore) AddUser(
 	username string,
 	hashedPassword string,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `
 INSERT INTO useraccount (username, hashed_password)
 VALUES ($1, $2)`
@@ -337,8 +369,6 @@ func (d *PostgresStore) UpdateUserPassword(
 	username string,
 	hashedPassword string,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `UPDATE useraccount SET hashed_password = $1 WHERE username = $2`
 	_, err := d.db.Exec(
 		sqlStatement,
@@ -350,29 +380,162 @@ func (d *PostgresStore) UpdateUserPassword(
 
 func (d *PostgresStore) CreateJobModeration(
 	ctx context.Context,
-	moderation types.JobModeration,
+	moderation types.Moderation,
 ) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
 	sqlStatement := `
 INSERT INTO job_moderation (
-	job_id,
+	request_id,
 	useraccount_id,
-	status,
+	approved,
 	notes
 )
 VALUES ($1, $2, $3, $4)`
-	_, err := d.db.Exec(
+	_, err := d.db.ExecContext(
+		ctx,
 		sqlStatement,
-		moderation.JobID,
+		moderation.RequestID,
 		moderation.UserAccountID,
 		moderation.Status,
 		moderation.Notes,
 	)
+	return err
+}
+
+func (d *PostgresStore) GetModerationRequest(
+	ctx context.Context,
+	requestID int64,
+) (types.ModerationRequest, error) {
+	result := new(types.ResultModerationRequest)
+	sqlStatement := `
+SELECT jmr.id, jmr.job_id, jmr.request_type, jmr.created, jmr.callback,
+       rmre.execution_id, rmre.storage_spec
+FROM job_moderation_request jmr
+LEFT OUTER JOIN result_moderation_request_extra rmre
+ON jmr.id = rmre.request_id
+WHERE jmr.id = $1;`
+	row := d.db.QueryRowContext(ctx, sqlStatement, requestID)
+	err := row.Scan(&result.ID,
+		&result.JobID,
+		&result.Type,
+		&result.Created,
+		&result.Callback,
+		JSON(&result.ExecutionID),
+		JSON(&result.StorageSpec))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	} else if result.GetType() == types.ModerationTypeResult {
+		return result, nil
+	} else {
+		return &result.JobModerationRequest, nil
+	}
+}
+
+func (d *PostgresStore) GetModerationRequestsForJobOfType(
+	ctx context.Context,
+	jobID string,
+	moderationType types.ModerationType,
+) ([]types.ModerationRequest, error) {
+	results := make([]types.ModerationRequest, 0, 1)
+	sqlStatement := `
+SELECT jmr.id, jmr.job_id, jmr.request_type, jmr.created, jmr.callback,
+       rmre.execution_id, rmre.storage_spec
+FROM job_moderation_request jmr
+LEFT OUTER JOIN result_moderation_request_extra rmre
+ON jmr.id = rmre.request_id
+WHERE job_id = $1 AND request_type = $2
+ORDER BY created DESC;`
+	rows, err := d.db.QueryContext(ctx, sqlStatement, jobID, moderationType)
+	for err == nil && rows != nil && rows.Next() {
+		result := types.ResultModerationRequest{}
+		err = rows.Scan(
+			&result.ID,
+			&result.JobID,
+			&result.Type,
+			&result.Created,
+			&result.Callback,
+			JSON(&result.ExecutionID),
+			JSON(&result.StorageSpec),
+		)
+		if result.GetType() == types.ModerationTypeResult {
+			results = append(results, &result)
+		} else {
+			results = append(results, &result.JobModerationRequest)
+		}
+	}
+	return results, err
+}
+
+func (d *PostgresStore) GetModerationRequestsForJob(
+	ctx context.Context,
+	jobID string,
+) (results []types.ModerationRequest, err error) {
+	results = make([]types.ModerationRequest, 0, 1)
+	sqlStatement := `
+SELECT jmr.id, jmr.job_id, jmr.request_type, jmr.created, jmr.callback,
+       rmre.execution_id, rmre.storage_spec
+FROM job_moderation_request jmr
+LEFT OUTER JOIN result_moderation_request_extra rmre
+ON jmr.id = rmre.request_id
+WHERE job_id = $1
+ORDER BY created DESC;`
+	rows, err := d.db.QueryContext(ctx, sqlStatement, jobID)
+	for err == nil && rows != nil && rows.Next() {
+		result := types.ResultModerationRequest{}
+		err = rows.Scan(&result.ID,
+			&result.JobID,
+			&result.Type,
+			&result.Created,
+			&result.Callback,
+			JSON(&result.ExecutionID),
+			JSON(&result.StorageSpec))
+		if result.GetType() == types.ModerationTypeResult {
+			results = append(results, &result)
+		} else {
+			results = append(results, &result.JobModerationRequest)
+		}
+	}
+	return
+}
+
+func (d *PostgresStore) CreateJobModerationRequest(
+	ctx context.Context,
+	jobID string,
+	moderationType types.ModerationType,
+	callback *types.URL,
+) (result types.ModerationRequest, err error) {
+	sqlStatement := `
+INSERT INTO job_moderation_request (job_id, request_type, callback)
+VALUES ($1, $2, $3);`
+	_, err = d.db.ExecContext(ctx, sqlStatement, jobID, moderationType, callback)
+	if err != nil {
+		return
+	}
+
+	requests, err := d.GetModerationRequestsForJobOfType(ctx, jobID, moderationType)
+	if len(requests) > 0 {
+		result = requests[0]
+	}
+	return
+}
+
+func (d *PostgresStore) CreateResultModerationRequest(
+	ctx context.Context,
+	executionID model.ExecutionID,
+	storageSpec v1beta1.StorageSpec,
+	callback *types.URL,
+) error {
+	jobRequest, err := d.CreateJobModerationRequest(ctx, executionID.JobID, types.ModerationTypeResult, callback)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	sqlStatement := `
+INSERT INTO result_moderation_request_extra (request_id, execution_id, storage_spec)
+VALUES ($1, $2, $3);`
+	_, err = d.db.ExecContext(ctx, sqlStatement, jobRequest.GetID(), JSON(&executionID), JSON(&storageSpec))
+	return err
 }
 
 //go:embed migrations/*.sql
@@ -416,4 +579,55 @@ func (d *PostgresStore) MigrateDown() error {
 		return err
 	}
 	return nil
+}
+
+func (d *PostgresStore) GetJobsProducingJobInput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_input_relations"), id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var relations []*types.JobRelation
+	for rows.Next() {
+		relation := new(types.JobRelation)
+		if err := rows.Scan(&relation.JobID, &relation.CID); err != nil {
+			return nil, err
+		}
+		relations = append(relations, relation)
+	}
+	return relations, rows.Err()
+}
+
+func (d *PostgresStore) GetJobsOperatingOnJobOutput(ctx context.Context, id string) ([]*types.JobRelation, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("get_job_output_relations"), id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var relations []*types.JobRelation
+	for rows.Next() {
+		relation := new(types.JobRelation)
+		if err := rows.Scan(&relation.JobID, &relation.CID); err != nil {
+			return nil, err
+		}
+		relations = append(relations, relation)
+	}
+	return relations, rows.Err()
+}
+
+func (d *PostgresStore) GetJobsOperatingOnCID(ctx context.Context, data string) ([]*types.JobDataIO, error) {
+	rows, err := d.db.QueryContext(ctx, SQL("find_jobs_with_input_or_output"), data)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var jobIOs []*types.JobDataIO
+	for rows.Next() {
+		jobIO := new(types.JobDataIO)
+		if err := rows.Scan(&jobIO.JobID, &jobIO.InputOutput, &jobIO.IsInput); err != nil {
+			return nil, err
+		}
+		jobIOs = append(jobIOs, jobIO)
+	}
+	return jobIOs, rows.Err()
 }

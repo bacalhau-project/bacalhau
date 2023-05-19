@@ -8,7 +8,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import {BuildConfig} from "./build-config";
+import {CanaryConfig} from "./config";
 import {Size} from "aws-cdk-lib";
 
 export interface ScenarioProps {
@@ -19,25 +19,31 @@ export interface ScenarioProps {
     readonly storageSize: number;
     readonly evaluationPeriods: number;
     readonly datapointsToAlarm: number;
+    readonly availabilityThreshold: number;
+    readonly doAlarm: boolean;
+    readonly logLevel: string
 }
 
 const DEFAULT_SCENARIO_PROPS: ScenarioProps = {
     action: '_',
     timeoutMinutes: 1,
-    rateMinutes: 2,
+    rateMinutes: 5,
     memorySize: 256,
     storageSize: 512,
     evaluationPeriods: 5,
     datapointsToAlarm: 3,
+    availabilityThreshold: 95,
+    doAlarm: true,
+    logLevel: 'DEBUG',
 }
 
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
-    private readonly config: BuildConfig;
+    private readonly config: CanaryConfig;
     private readonly dashboard: cloudwatch.Dashboard
     private readonly snsAlarmTopic: sns.ITopic
 
-    constructor(app: cdk.App, id: string, props: cdk.StackProps, config: BuildConfig) {
+    constructor(app: cdk.App, id: string, props: cdk.StackProps, config: CanaryConfig) {
         super(app, id, props)
 
         this.config = config;
@@ -54,9 +60,12 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitAndDescribe"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{action: "submitWithConcurrency"}});
         this.createLambdaScenarioFunc({ ...DEFAULT_SCENARIO_PROPS, ...{
-                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 4096, storageSize: 5012,
-                datapointsToAlarm: 4, evaluationPeriods: 6}});
-        this.createOperatorGroup(id)
+                action: "submitDockerIPFSJobAndGet", timeoutMinutes: 5, memorySize: 5120, storageSize: 5012,
+                datapointsToAlarm: 4, evaluationPeriods: 6, doAlarm: false}});
+
+        if (config.createOperators) {
+            this.createOperatorGroup()
+        }
     }
 
     // Create a lambda function that handles alarms and sends a slack notification
@@ -93,10 +102,12 @@ export class CanaryStack extends cdk.Stack {
             timeout: cdk.Duration.minutes(props.timeoutMinutes),
             memorySize: props.memorySize,
             ephemeralStorageSize: Size.mebibytes(props.storageSize),
+            retryAttempts: 0,
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
-                'LOG_LEVEL': 'DEBUG',
+                'LOG_LEVEL': props.logLevel,
                 'BACALHAU_ENVIRONMENT': this.config.bacalhauEnvironment,
+                "BACALHAU_NODE_SELECTORS": this.config.nodeSelectors,
             }
         });
 
@@ -159,22 +170,23 @@ export class CanaryStack extends cdk.Stack {
 
     private createAlarm(props: ScenarioProps, func: lambda.Function) {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
-        const threshold = 95
         const availabilityMetric = this.getAvailabilityMetric(func)
         const alarm = availabilityMetric.createAlarm(this, actionTitle + "Alarm", {
             alarmDescription: actionTitle + ' ' + this.config.envTitle + ' Availability',
-            threshold: threshold,
+            threshold: props.availabilityThreshold,
             comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             evaluationPeriods: props.evaluationPeriods,
             datapointsToAlarm: props.datapointsToAlarm,
             treatMissingData: cloudwatch.TreatMissingData.BREACHING,
         });
 
-        alarm.addAlarmAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
-        alarm.addOkAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
+        if (props.doAlarm) {
+            alarm.addAlarmAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
+            alarm.addOkAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
+        }
     }
 
-    private createOperatorGroup(stackID: string) {
+    private createOperatorGroup() {
         const group = new iam.Group(this, 'OperatorGroup', {
             groupName: 'BacalhauCanaryOperators-' + this.config.envTitle
         })

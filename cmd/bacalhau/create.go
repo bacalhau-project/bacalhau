@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -82,13 +81,9 @@ func newCreateCmd() *cobra.Command {
 }
 
 func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/create")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	// Custom unmarshaller
 	// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1
@@ -203,33 +198,23 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		unusedFieldList = append(unusedFieldList, "CreatedAt")
 		j.Metadata.CreatedAt = time.Time{}
 	}
-	if !reflect.DeepEqual(j.Spec.ExecutionPlan, model.JobExecutionPlan{}) {
-		unusedFieldList = append(unusedFieldList, "Verification")
-		j.Spec.ExecutionPlan = model.JobExecutionPlan{}
-	}
-	if len(j.Status.Events) != 0 {
-		unusedFieldList = append(unusedFieldList, "Events")
-		j.Status.Events = nil
-	}
 	if j.Metadata.ID != "" {
 		unusedFieldList = append(unusedFieldList, "ID")
 		j.Metadata.ID = ""
 	}
-	if len(j.Status.LocalEvents) != 0 {
-		unusedFieldList = append(unusedFieldList, "LocalEvents")
-		j.Status.LocalEvents = nil
-	}
-	if j.Status.Requester.RequesterNodeID != "" {
+	if j.Metadata.Requester.RequesterNodeID != "" {
 		unusedFieldList = append(unusedFieldList, "RequesterNodeID")
-		j.Status.Requester.RequesterNodeID = ""
+		j.Metadata.Requester.RequesterNodeID = ""
 	}
-	if len(j.Status.Requester.RequesterPublicKey) != 0 {
+	if len(j.Metadata.Requester.RequesterPublicKey) != 0 {
 		unusedFieldList = append(unusedFieldList, "RequesterPublicKey")
-		j.Status.Requester.RequesterPublicKey = nil
+		j.Metadata.Requester.RequesterPublicKey = nil
 	}
-	if !reflect.DeepEqual(j.Status.State, model.JobState{}) {
-		unusedFieldList = append(unusedFieldList, "State")
-		j.Status.State = model.JobState{}
+
+	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
+		j.Spec.PublisherSpec = model.PublisherSpec{
+			Type: j.Spec.Publisher,
+		}
 	}
 
 	// Warn on fields with data that will be ignored

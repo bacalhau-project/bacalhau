@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -34,7 +34,7 @@ func (e *RequestHandler) SetRequesterProxy(requesterProxy compute.Callback) {
 
 func (e *RequestHandler) AskForBid(ctx context.Context, request compute.AskForBidRequest) (compute.AskForBidResponse, error) {
 	jobCreatedEvent := model.JobEvent{
-		SourceNodeID: request.Job.Status.Requester.RequesterNodeID,
+		SourceNodeID: request.Job.Metadata.Requester.RequesterNodeID,
 		JobID:        request.Job.Metadata.ID,
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
@@ -44,29 +44,7 @@ func (e *RequestHandler) AskForBid(ctx context.Context, request compute.AskForBi
 		return compute.AskForBidResponse{}, err
 	}
 
-	response, err := e.computeProxy.AskForBid(ctx, request)
-	if err != nil {
-		return compute.AskForBidResponse{}, err
-	}
-
-	// only return the shard responses that the wallet did not reject
-	toReturnShardResponses := make([]compute.AskForBidShardResponse, 0)
-	for _, shardResponse := range response.ShardResponse {
-		if shardResponse.Accepted {
-			event := e.constructEvent(request.RoutingMetadata, shardResponse.ExecutionMetadata, model.JobEventBid)
-			// we flip senders to mimic a bid was received instead of being asked
-			event.SourceNodeID = request.RoutingMetadata.TargetPeerID
-			err = e.wallets.addEvent(event)
-			if err != nil {
-				continue
-			}
-			e.executionStore[shardResponse.ExecutionMetadata.ExecutionID] = shardResponse.ExecutionMetadata
-		}
-		toReturnShardResponses = append(toReturnShardResponses, shardResponse)
-	}
-	response.ShardResponse = toReturnShardResponses
-
-	return response, nil
+	return e.computeProxy.AskForBid(ctx, request)
 }
 
 func (e *RequestHandler) BidAccepted(ctx context.Context, request compute.BidAcceptedRequest) (compute.BidAcceptedResponse, error) {
@@ -124,10 +102,30 @@ func (e *RequestHandler) CancelExecution(
 	return e.computeProxy.CancelExecution(ctx, request)
 }
 
+func (e *RequestHandler) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	return e.computeProxy.ExecutionLogs(ctx, request)
+}
+
+func (e *RequestHandler) OnBidComplete(ctx context.Context, result compute.BidResult) {
+	e.executionStore[result.ExecutionMetadata.ExecutionID] = result.ExecutionMetadata
+	if result.Accepted {
+		event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventBid)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventBid, result.ExecutionID)
+		}
+		err = e.wallets.addEvent(event)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventBid, result.ExecutionID)
+		}
+	}
+	e.requesterProxy.OnBidComplete(ctx, result)
+}
+
 func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunResult) {
 	event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventResultsProposed)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
 	}
 	event.VerificationProposal = result.ResultProposal
 	event.RunOutput = result.RunCommandResult
@@ -135,7 +133,7 @@ func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunRe
 
 	err = e.wallets.addEvent(event)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
 	}
 	e.requesterProxy.OnRunComplete(ctx, result)
 }
@@ -143,14 +141,14 @@ func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunRe
 func (e *RequestHandler) OnPublishComplete(ctx context.Context, result compute.PublishResult) {
 	event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventResultsPublished)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
 	}
 	event.PublishedResult = result.PublishResult
 	event.TargetNodeID = "" // requester node is never targeted
 
 	err = e.wallets.addEvent(event)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
 	}
 	e.requesterProxy.OnPublishComplete(ctx, result)
 }
@@ -162,14 +160,14 @@ func (e *RequestHandler) OnCancelComplete(ctx context.Context, result compute.Ca
 func (e *RequestHandler) OnComputeFailure(ctx context.Context, result compute.ComputeError) {
 	event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventComputeError)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventComputeError, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventComputeError, result.ExecutionID)
 	}
 	event.Status = result.Error()
 	event.TargetNodeID = "" // requester node is never targeted
 
 	err = e.wallets.addEvent(event)
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventComputeError, result.ExecutionID)
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventComputeError, result.ExecutionID)
 	}
 	e.requesterProxy.OnComputeFailure(ctx, result)
 }
@@ -193,7 +191,6 @@ func (e *RequestHandler) constructEvent(
 		TargetNodeID: routingMetadata.TargetPeerID,
 		SourceNodeID: routingMetadata.SourcePeerID,
 		JobID:        executionMetadata.JobID,
-		ShardIndex:   executionMetadata.ShardIndex,
 		ExecutionID:  executionMetadata.ExecutionID,
 		EventName:    eventName,
 		EventTime:    time.Now(),

@@ -1,41 +1,30 @@
 package compute
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
-// Prometheus metrics for monitoring compute nodes:
+// Metrics for monitoring compute nodes:
 var (
-	jobsReceived = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "jobs_received",
-			Help: "Number of jobs received by the compute node.",
-		},
-		[]string{"node_id", "client_id"},
+	meter           = global.MeterProvider().Meter("compute")
+	jobsReceived, _ = meter.Int64Counter(
+		"jobs_received",
+		instrument.WithDescription("Number of jobs received by the compute node"),
 	)
 
-	jobsAccepted = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "jobs_accepted",
-			Help: "Number of jobs bid on and accepted by the compute node.",
-		},
-		[]string{"node_id", "shard_index", "client_id"},
+	jobsAccepted, _ = meter.Int64Counter(
+		"jobs_accepted",
+		instrument.WithDescription("Number of jobs bid on and accepted by the compute node"),
 	)
 
-	jobsCompleted = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "jobs_completed",
-			Help: "Number of jobs completed by the compute node.",
-		},
-		[]string{"node_id", "shard_index", "client_id"},
+	jobsCompleted, _ = meter.Int64Counter(
+		"jobs_completed",
+		instrument.WithDescription("Number of jobs completed by the compute node."),
 	)
 
-	jobsFailed = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "jobs_failed",
-			Help: "Number of jobs failed by the compute node.",
-		},
-		[]string{"node_id", "shard_index", "client_id"},
+	jobsFailed, _ = meter.Int64Counter(
+		"jobs_failed",
+		instrument.WithDescription("Number of jobs failed by the compute node."),
 	)
 )

@@ -1,10 +1,12 @@
+//go:build unit || !integration
+
 package store
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,13 +34,10 @@ func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 func newExecution() Execution {
 	return *NewExecution(
 		uuid.NewString(),
-		model.JobShard{
-			Job: &model.Job{
-				Metadata: model.Metadata{
-					ID: uuid.NewString(),
-				},
+		model.Job{
+			Metadata: model.Metadata{
+				ID: uuid.NewString(),
 			},
-			Index: 1,
 		},
 		"nodeID-1",
 		model.ResourceUsageData{

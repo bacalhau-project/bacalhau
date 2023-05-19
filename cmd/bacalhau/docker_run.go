@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/downloader/util"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -25,36 +25,39 @@ var (
 
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
-		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container.
-		# All flags after the '--' are passed directly into the container for execution.
+		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container. All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
-			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+			-i src=ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72,dst=/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
 			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 
-		# Dry Run: Check the job specification before submitting it to the bacalhau network
+		# Dry Run: check the job specification before submitting it to the bacalhau network
 		bacalhau docker run --dry-run ubuntu echo hello
 
-		saving the job specification to a yaml file
+		# Save the job specification to a YAML file
 		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+
+		# Specify an image tag (default is 'latest' - using a specific tag other than 'latest' is recommended for reproducibility)
+		bacalhau docker run ubuntu:bionic echo hello
+
+		# Specify an image digest
+		bacalhau docker run ubuntu@sha256:35b4f89ec2ee42e7e12db3d107fe6a487137650a2af379bbd49165a1494246ea echo hello
 		`))
 )
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine           string   // Executor - executor.Executor
-	Verifier         string   // Verifier - verifier.Verifier
-	Publisher        string   // Publisher - publisher.Publisher
-	Inputs           []string // Array of input CIDs
-	InputUrls        []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
-	Env              []string // Array of environment variables
-	IDOnly           bool     // Only print the job ID
-	Concurrency      int      // Number of concurrent jobs to run
-	Confidence       int      // Minimum number of nodes that must agree on a verification result
-	MinBids          int      // Minimum number of bids before they will be accepted (at random)
-	Timeout          float64  // Job execution timeout in seconds
+	Engine           string            // Executor - executor.Executor
+	Verifier         string            // Verifier - verifier.Verifier
+	Publisher        opts.PublisherOpt // Publisher - publisher.Publisher
+	Inputs           opts.StorageOpt   // Array of inputs
+	OutputVolumes    []string          // Array of output volumes in 'name:mount point' form
+	Env              []string          // Array of environment variables
+	IDOnly           bool              // Only print the job ID
+	Concurrency      int               // Number of concurrent jobs to run
+	Confidence       int               // Minimum number of nodes that must agree on a verification result
+	MinBids          int               // Minimum number of bids before they will be accepted (at random)
+	Timeout          float64           // Job execution timeout in seconds
 	CPU              string
 	Memory           string
 	GPU              string
@@ -75,10 +78,6 @@ type DockerRunOptions struct {
 
 	DownloadFlags model.DownloaderSettings // Settings for running Download
 
-	ShardingGlobPattern string
-	ShardingBasePath    string
-	ShardingBatchSize   int
-
 	FilPlus bool // add a "filplus" label to the job to grab the attention of fil+ moderators
 }
 
@@ -86,10 +85,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
 		Engine:             "docker",
 		Verifier:           "noop",
-		Publisher:          "estuary",
-		Inputs:             []string{},
-		InputUrls:          []string{},
-		InputVolumes:       []string{},
+		Publisher:          opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
+		Inputs:             opts.StorageOpt{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
 		Concurrency:        1,
@@ -108,31 +105,18 @@ func NewDockerRunOptions() *DockerRunOptions {
 		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
 
-		ShardingGlobPattern: "",
-		ShardingBasePath:    "/inputs",
-		ShardingBatchSize:   1,
-
 		FilPlus: false,
 	}
 }
 
 func newDockerCmd() *cobra.Command {
 	dockerCmd := &cobra.Command{
-		Use:   "docker",
-		Short: "Run a docker job on the network (see run subcommand)",
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			// Check that the server version is compatible with the client version
-			serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
-			if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-				cmd.Println(err.Error())
-				return err
-			}
-			return nil
-		},
+		Use:               "docker",
+		Short:             "Run a docker job on the network (see run subcommand)",
+		PersistentPreRunE: checkVersion,
 	}
 
 	dockerCmd.AddCommand(newDockerRunCmd())
-
 	return dockerCmd
 }
 
@@ -140,7 +124,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	ODR := NewDockerRunOptions()
 
 	dockerRunCmd := &cobra.Command{
-		Use:     "run",
+		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
 		Short:   "Run a docker job on the network",
 		Long:    dockerRunLong,
 		Example: dockerRunExample,
@@ -160,26 +144,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		&ODR.Verifier, "verifier", ODR.Verifier,
 		`What verification engine to use to run the job`,
 	)
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.Publisher, "publisher", ODR.Publisher,
-		`What publisher engine to use to publish the job results`,
+	dockerRunCmd.PersistentFlags().VarP(&ODR.Publisher, "publisher", "p",
+		`Where to publish the result of the job`,
 	)
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.Inputs, "inputs", "i", ODR.Inputs,
-		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
-	)
+	dockerRunCmd.PersistentFlags().VarP(&ODR.Inputs, "input", "i", inputUsageMsg)
 
-	//nolint:lll // Documentation, ok if long.
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.InputUrls, "input-urls", "u", ODR.InputUrls,
-		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u https://example.com/bar.tar.gz'
-		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
-		and supports both HTTP and HTTPS.`,
-	)
-	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&ODR.InputVolumes, "input-volumes", "v", ODR.InputVolumes,
-		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
-	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.OutputVolumes, "output-volumes", "o", ODR.OutputVolumes,
 		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
@@ -249,21 +218,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Selector (label query) to filter nodes on which this job can be executed, supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
-		`Use this pattern to match files to be sharded.`,
-	)
-
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.ShardingBasePath, "sharding-base-path", ODR.ShardingBasePath,
-		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.ShardingBatchSize, "sharding-batch-size", ODR.ShardingBatchSize,
-		`Place results of the sharding glob pattern into groups of this size.`,
-	)
-
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.FilPlus, "filplus", ODR.FilPlus,
 		`Mark the job as a candidate for moderation for FIL+ rewards.`,
@@ -276,13 +230,9 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 }
 
 func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
 	ctx := cmd.Context()
 
-	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
+	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
 	j, err := CreateJob(ctx, cmdArgs, ODR)
 	if err != nil {
@@ -299,6 +249,15 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 			return nil
 		}
 	}
+
+	quiet := ODR.RunTimeSettings.PrintJobIDOnly
+	if !quiet {
+		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
+		if !containsTag {
+			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
+		}
+	}
+
 	if ODR.DryRun {
 		// Converting job to yaml
 		var yamlBytes []byte
@@ -320,20 +279,15 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 	)
 }
 
-func CreateJob(ctx context.Context,
-	cmdArgs []string,
-	odr *DockerRunOptions) (*model.Job, error) {
-	//nolint:ineffassign,staticcheck
-	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
-	defer span.End()
-
+// CreateJob creates a job object from the given command line arguments and options.
+func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
 	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
 
 	if swarmAddresses == "" {
-		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
 	odr.DownloadFlags = model.DownloaderSettings{
@@ -352,15 +306,6 @@ func CreateJob(ctx context.Context,
 		return &model.Job{}, err
 	}
 
-	publisherType, err := model.ParsePublisher(odr.Publisher)
-	if err != nil {
-		return &model.Job{}, err
-	}
-
-	for _, i := range odr.Inputs {
-		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-	}
-
 	if len(odr.WorkingDirectory) > 0 {
 		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
@@ -376,17 +321,17 @@ func CreateJob(ctx context.Context,
 	}
 
 	j, err := jobutils.ConstructDockerJob(
+		ctx,
 		model.APIVersionLatest(),
 		engineType,
 		verifierType,
-		publisherType,
+		odr.Publisher.Value(),
 		odr.CPU,
 		odr.Memory,
 		odr.GPU,
 		odr.Networking,
 		odr.NetworkDomains,
-		odr.InputUrls,
-		odr.InputVolumes,
+		odr.Inputs.Values(),
 		odr.OutputVolumes,
 		odr.Env,
 		odr.Entrypoint,
@@ -398,10 +343,6 @@ func CreateJob(ctx context.Context,
 		labels,
 		odr.NodeSelector,
 		odr.WorkingDirectory,
-		odr.ShardingGlobPattern,
-		odr.ShardingBasePath,
-		odr.ShardingBatchSize,
-		doNotTrack,
 	)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")

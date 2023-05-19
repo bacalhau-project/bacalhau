@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/scenarios"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
+	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/scenarios"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 

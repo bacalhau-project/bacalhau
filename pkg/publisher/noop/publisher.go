@@ -3,49 +3,61 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
-// Publisher provider that always return NoopPublisher regardless of requested publisher type
-type NoopPublisherProvider struct {
-	noopPublisher *NoopPublisher
-}
+type PublisherHandlerIsInstalled func(ctx context.Context) (bool, error)
+type PublisherHandlerPublishResult func(
+	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error)
 
-func NewNoopPublisherProvider(noopPublisher *NoopPublisher) *NoopPublisherProvider {
-	return &NoopPublisherProvider{
-		noopPublisher: noopPublisher,
+func ErrorResultPublisher(err error) PublisherHandlerPublishResult {
+	return func(ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
+		return model.StorageSpec{}, err
 	}
 }
 
-func (s *NoopPublisherProvider) GetPublisher(ctx context.Context, publisherType model.Publisher) (publisher.Publisher, error) {
-	return s.noopPublisher, nil
+type PublisherExternalHooks struct {
+	IsInstalled   PublisherHandlerIsInstalled
+	PublishResult PublisherHandlerPublishResult
 }
 
-type NoopPublisher struct{}
+type PublisherConfig struct {
+	ExternalHooks PublisherExternalHooks
+}
+
+type NoopPublisher struct {
+	externalHooks PublisherExternalHooks
+}
 
 func NewNoopPublisher() *NoopPublisher {
 	return &NoopPublisher{}
 }
 
+func NewNoopPublisherWithConfig(config PublisherConfig) *NoopPublisher {
+	p := NewNoopPublisher()
+	p.externalHooks = config.ExternalHooks
+	return p
+}
+
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
+	if publisher.externalHooks.IsInstalled != nil {
+		return publisher.externalHooks.IsInstalled(ctx)
+	}
 	return true, nil
 }
 
-func (publisher *NoopPublisher) PublishShardResult(
-	ctx context.Context,
-	shard model.JobShard,
-	hostID string,
-	shardResultPath string,
-) (model.StorageSpec, error) {
-	//nolint:staticcheck,ineffassign
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.PublishShardResult")
-	defer span.End()
+func (publisher *NoopPublisher) ValidateJob(ctx context.Context, j model.Job) error {
+	return nil
+}
 
+func (publisher *NoopPublisher) PublishResult(
+	ctx context.Context, executionID string, job model.Job, resultPath string) (model.StorageSpec, error) {
+	if publisher.externalHooks.PublishResult != nil {
+		return publisher.externalHooks.PublishResult(ctx, executionID, job, resultPath)
+	}
 	return model.StorageSpec{}, nil
 }
 
-// Compile-time check that Verifier implements the correct interface:
-var _ publisher.PublisherProvider = (*NoopPublisherProvider)(nil)
+// Compile-time check that Publisher implements the correct interface:
 var _ publisher.Publisher = (*NoopPublisher)(nil)

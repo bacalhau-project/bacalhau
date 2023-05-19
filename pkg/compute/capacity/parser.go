@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/BTBurke/k8sresource"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 func ParseResourceUsageConfig(usage model.ResourceUsageConfig) model.ResourceUsageData {

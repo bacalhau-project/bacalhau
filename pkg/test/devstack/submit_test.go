@@ -6,14 +6,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/node"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,14 +31,13 @@ func TestDevstackSubmitSuite(t *testing.T) {
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting(suite.T())
-	require.NoError(suite.T(), err)
+	system.InitConfigForTesting(suite.T())
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack, cm := testutils.SetupTest(
+	stack, _ := testutils.SetupTest(
 		ctx,
 		suite.T(),
 
@@ -49,13 +48,8 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		node.NewRequesterConfigWithDefaults(),
 	)
 
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewRequesterAPIClient(apiUri)
+	apiServer := stack.Nodes[0].APIServer
+	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 
 	j := &model.Job{}
 	j.Spec.Deal = model.Deal{Concurrency: 1}

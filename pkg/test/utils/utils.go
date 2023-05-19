@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"runtime"
 	"testing"
+	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
-func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) *model.Job {
+func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
 	jobID := system.FindJobIDInTestOutput(out)
 	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 	require.Regexp(t, uuidRegex, jobID, "Job ID should be a UUID")
@@ -21,10 +23,10 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.Reques
 	j, _, err := c.Get(ctx, jobID)
 	require.NoError(t, err)
 	require.NotNil(t, j, "Failed to get job with ID: %s", out)
-	return j
+	return j.Job
 }
 
-func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerContents, error) {
+func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerContents, error) {
 	linesInOutput := system.SplitLines(output)
 	fakeFatalError := &model.TestFatalErrorHandlerContents{}
 	for _, line := range linesInOutput {
@@ -36,12 +38,6 @@ func FirstFatalError(t *testing.T, output string) (model.TestFatalErrorHandlerCo
 		}
 	}
 	return model.TestFatalErrorHandlerContents{}, fmt.Errorf("no fatal error found in output")
-}
-
-func SkipIfArm(t *testing.T, issueURL string) {
-	if runtime.GOARCH == "arm64" {
-		t.Skip("Test does not pass natively on arm64", issueURL)
-	}
 }
 
 func MakeGenericJob() *model.Job {
@@ -66,9 +62,11 @@ func MakeJob(
 	j := model.NewJob()
 
 	j.Spec = model.Spec{
-		Engine:    engineType,
-		Verifier:  verifierType,
-		Publisher: publisherType,
+		Engine:   engineType,
+		Verifier: verifierType,
+		PublisherSpec: model.PublisherSpec{
+			Type: publisherType,
+		},
 		Docker: model.JobSpecDocker{
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,
@@ -80,4 +78,35 @@ func MakeJob(
 	}
 
 	return j
+}
+
+// WaitForNodeDiscovery for the requester node to pick up the nodeInfo messages
+func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCount int) {
+	ctx := context.Background()
+	waitDuration := 15 * time.Second
+	waitGaps := 20 * time.Millisecond
+	waitUntil := time.Now().Add(waitDuration)
+	loggingGap := 1 * time.Second
+	waitLoggingUntil := time.Now().Add(loggingGap)
+
+	var nodeInfos []model.NodeInfo
+	for time.Now().Before(waitUntil) {
+		var err error
+		nodeInfos, err = requesterNode.NodeInfoStore.List(ctx)
+		require.NoError(t, err)
+		if time.Now().After(waitLoggingUntil) {
+			t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
+				return t.PeerInfo.ID.String()
+			}))
+			waitLoggingUntil = time.Now().Add(loggingGap)
+		}
+		if len(nodeInfos) == expectedNodeCount {
+			return
+		}
+		time.Sleep(waitGaps)
+	}
+	require.FailNowf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
+		"expected 4 node infos, got %d. %+v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
+			return t.PeerInfo.ID.String()
+		}))
 }

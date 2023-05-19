@@ -3,53 +3,45 @@ package noop
 import (
 	"context"
 	"fmt"
+	"io"
+	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error)
+type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
+
+func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
+	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+		return nil, err
+	}
+}
+
+func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
+	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+		time.Sleep(sleep)
+		return nil, nil
+	}
+}
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
 	HasStorageLocally ExecutorHandlerHasStorageLocally
 	GetVolumeSize     ExecutorHandlerGetVolumeSize
+	GetBidStrategy    ExecutorHandlerGetBidStrategy
 	JobHandler        ExecutorHandlerJobHandler
 }
 
 type ExecutorConfig struct {
 	ExternalHooks ExecutorConfigExternalHooks
-}
-
-type NoopExecutorProvider struct {
-	noopExecutor *NoopExecutor
-}
-
-func NewNoopExecutorProvider(noopExecutor *NoopExecutor) *NoopExecutorProvider {
-	return &NoopExecutorProvider{
-		noopExecutor: noopExecutor,
-	}
-}
-
-func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model.Engine, executor executor.Executor) error {
-	return fmt.Errorf("noop executor provider does not support adding executors")
-}
-
-func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
-	// NoopExecutorProvider also support Docker engine in addition to Noop as some tests use `docker run` cli command
-	// to submit jobs, and we don't have a noop cli option.
-	if engineType != model.EngineNoop && engineType != model.EngineDocker {
-		return nil, fmt.Errorf("noop executor doesn't support %s", engineType)
-	}
-	return p.noopExecutor, nil
-}
-
-func (p *NoopExecutorProvider) HasExecutor(ctx context.Context, engineType model.Engine) bool {
-	_, err := p.GetExecutor(ctx, engineType)
-	return err == nil
 }
 
 type NoopExecutor struct {
@@ -94,23 +86,39 @@ func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSp
 	return 0, nil
 }
 
-func (e *NoopExecutor) RunShard(
+func (e *NoopExecutor) GetSemanticBidStrategy(ctx context.Context) (bidstrategy.SemanticBidStrategy, error) {
+	if e.Config.ExternalHooks.GetBidStrategy != nil {
+		handler := e.Config.ExternalHooks.GetBidStrategy
+		return handler(ctx)
+	}
+	return semantic.NewChainedSemanticBidStrategy(), nil
+}
+
+func (e *NoopExecutor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error) {
+	if e.Config.ExternalHooks.GetBidStrategy != nil {
+		handler := e.Config.ExternalHooks.GetBidStrategy
+		return handler(ctx)
+	}
+	return resource.NewChainedResourceBidStrategy(), nil
+}
+
+func (e *NoopExecutor) Run(
 	ctx context.Context,
-	shard model.JobShard,
+	executionID string,
+	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	e.Jobs = append(e.Jobs, *shard.Job)
+	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, shard, jobResultsDir)
+		return handler(ctx, job, jobResultsDir)
 	}
 	return &model.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) CancelShard(ctx context.Context, shard model.JobShard) error {
-	return nil
+func (e *NoopExecutor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 
 // Compile-time check that Executor implements the Executor interface.
-var _ executor.ExecutorProvider = (*NoopExecutorProvider)(nil)
 var _ executor.Executor = (*NoopExecutor)(nil)

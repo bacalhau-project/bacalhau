@@ -2,12 +2,16 @@ package bacalhau
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 )
 
 // A Parser is a function that can convert a string into a native object.
@@ -100,6 +104,19 @@ func (s *ArrayValueFlag[T]) String() string {
 // Type implements pflag.Value
 func (s *ArrayValueFlag[T]) Type() string {
 	return s.typeStr
+}
+
+// Converts a value flag into a flag that can accept multiple of the same value.
+func ArrayValueFlagFrom[T any](singleFlag func(*T) *ValueFlag[T]) func(*[]T) *ArrayValueFlag[T] {
+	flag := singleFlag(nil)
+	return func(value *[]T) *ArrayValueFlag[T] {
+		return &ArrayValueFlag[T]{
+			value:    value,
+			parser:   flag.parser,
+			stringer: flag.stringer,
+			typeStr:  flag.typeStr,
+		}
+	}
 }
 
 var _ pflag.Value = (*ArrayValueFlag[int])(nil)
@@ -200,6 +217,15 @@ func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mode
 	}
 }
 
+func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
+	return &ValueFlag[model.Engine]{
+		value:    value,
+		parser:   model.ParseEngine,
+		stringer: func(e *model.Engine) string { return e.String() },
+		typeStr:  "engine",
+	}
+}
+
 func VerifierFlag(value *model.Verifier) *ValueFlag[model.Verifier] {
 	return &ValueFlag[model.Verifier]{
 		value:    value,
@@ -218,6 +244,22 @@ func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 	}
 }
 
+func StorageSourceFlag(value *model.StorageSourceType) *ValueFlag[model.StorageSourceType] {
+	return &ValueFlag[model.StorageSourceType]{
+		value:    value,
+		parser:   model.ParseStorageSourceType,
+		stringer: func(s *model.StorageSourceType) string { return s.String() },
+		typeStr:  "storage-source",
+	}
+}
+
+var (
+	EnginesFlag        = ArrayValueFlagFrom(EngineFlag)
+	VerifiersFlag      = ArrayValueFlagFrom(VerifierFlag)
+	PublishersFlag     = ArrayValueFlagFrom(PublisherFlag)
+	StorageSourcesFlag = ArrayValueFlagFrom(StorageSourceFlag)
+)
+
 func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	return &ValueFlag[model.Network]{
 		value:    value,
@@ -227,12 +269,51 @@ func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	}
 }
 
+func DataLocalityFlag(value *model.JobSelectionDataLocality) *ValueFlag[model.JobSelectionDataLocality] {
+	return &ValueFlag[model.JobSelectionDataLocality]{
+		value:    value,
+		parser:   model.ParseJobSelectionDataLocality,
+		stringer: func(l *model.JobSelectionDataLocality) string { return l.String() },
+		typeStr:  "local|anywhere",
+	}
+}
+
+func LoggingFlag(value *logger.LogMode) *ValueFlag[logger.LogMode] {
+	return &ValueFlag[logger.LogMode]{
+		value:    value,
+		parser:   logger.ParseLogMode,
+		stringer: func(p *logger.LogMode) string { return string(*p) },
+		typeStr:  "logging-mode",
+	}
+}
+
 func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
 	return &MapValueFlag[string, string]{
 		value:    value,
 		parser:   separatorParser("="),
 		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
 		typeStr:  "key=value",
+	}
+}
+
+func URLFlag(value **url.URL, schemes ...string) *ValueFlag[*url.URL] {
+	return &ValueFlag[*url.URL]{
+		value: value,
+		parser: func(s string) (u *url.URL, err error) {
+			u, err = url.Parse(s)
+			if u != nil && !slices.Contains(schemes, u.Scheme) {
+				err = fmt.Errorf("URL scheme must be one of: %v", schemes)
+			}
+			return
+		},
+		stringer: func(u **url.URL) string {
+			if u == nil || (*u) == nil {
+				return ""
+			} else {
+				return (*u).String()
+			}
+		},
+		typeStr: "url",
 	}
 }
 
@@ -266,4 +347,42 @@ func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedT
 		stringer: func(t *model.ExcludedTag) string { return string(*t) },
 		typeStr:  "tag",
 	}
+}
+
+func JobSelectionCLIFlags(policy *model.JobSelectionPolicy) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Job Selection Policy", pflag.ContinueOnError)
+
+	flags.Var(
+		DataLocalityFlag(&policy.Locality), "job-selection-data-locality",
+		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
+	)
+	flags.BoolVar(
+		&policy.RejectStatelessJobs, "job-selection-reject-stateless", policy.RejectStatelessJobs,
+		`Reject jobs that don't specify any data.`,
+	)
+	flags.BoolVar(
+		&policy.AcceptNetworkedJobs, "job-selection-accept-networked", policy.AcceptNetworkedJobs,
+		`Accept jobs that require network access.`,
+	)
+	flags.StringVar(
+		&policy.ProbeHTTP, "job-selection-probe-http", policy.ProbeHTTP,
+		`Use the result of a HTTP POST to decide if we should take on the job.`,
+	)
+	flags.StringVar(
+		&policy.ProbeExec, "job-selection-probe-exec", policy.ProbeExec,
+		`Use the result of a exec an external program to decide if we should take on the job.`,
+	)
+
+	return flags
+}
+
+func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Disabled Features", pflag.ContinueOnError)
+
+	flags.Var(EnginesFlag(&config.Engines), "disable-engine", "An engine type to disable.")
+	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
+	flags.Var(VerifiersFlag(&config.Verifiers), "disable-verifier", "A verifier to disable.")
+	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
+
+	return flags
 }

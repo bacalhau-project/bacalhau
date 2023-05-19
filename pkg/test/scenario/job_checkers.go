@@ -1,9 +1,9 @@
 package scenario
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // WaitUntilSuccessful returns a set of job.CheckStatesFunctions that will wait
@@ -11,11 +11,11 @@ import (
 // number of nodes. The checks will fail if any job errors.
 func WaitUntilSuccessful(nodes int) []job.CheckStatesFunction {
 	return []job.CheckStatesFunction{
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
+		job.WaitExecutionsThrowErrors([]model.ExecutionStateType{
+			model.ExecutionStateFailed,
 		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: nodes,
+		job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+			model.ExecutionStateCompleted: nodes,
 		}),
 	}
 }

@@ -3,22 +3,26 @@ package publicapi
 import (
 	"net/http"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requester"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/gorilla/websocket"
-	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
-const APIPrefix = "requester/"
+const (
+	APIPrefix     = "requester/"
+	ApprovalRoute = "approve"
+	VerifyRoute   = "verify"
+)
 
 type RequesterAPIServerParams struct {
 	APIServer          *publicapi.APIServer
 	Requester          requester.Endpoint
 	DebugInfoProviders []model.DebugInfoProvider
-	LocalDB            localdb.LocalDB
+	JobStore           jobstore.Store
 	StorageProviders   storage.StorageProvider
 }
 
@@ -26,14 +30,11 @@ type RequesterAPIServer struct {
 	apiServer          *publicapi.APIServer
 	requester          requester.Endpoint
 	debugInfoProviders []model.DebugInfoProvider
-	localDB            localdb.LocalDB
+	jobStore           jobstore.Store
 	storageProviders   storage.StorageProvider
 	// jobId or "" (for all events) -> connections for that subscription
 	websockets      map[string][]*websocket.Conn
 	websocketsMutex sync.RWMutex
-
-	nodeWebsockets      []*websocket.Conn
-	nodeWebsocketsMutex sync.RWMutex
 }
 
 func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer {
@@ -41,7 +42,7 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 		apiServer:          params.APIServer,
 		requester:          params.Requester,
 		debugInfoProviders: params.DebugInfoProviders,
-		localDB:            params.LocalDB,
+		jobStore:           params.JobStore,
 		storageProviders:   params.StorageProviders,
 		websockets:         make(map[string][]*websocket.Conn),
 	}
@@ -49,15 +50,23 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 
 func (s *RequesterAPIServer) RegisterAllHandlers() error {
 	handlerConfigs := []publicapi.HandlerConfig{
-		{URI: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.list)},
-		{URI: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.states)},
-		{URI: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
-		{URI: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
-		{URI: "/" + APIPrefix + "local_events", Handler: http.HandlerFunc(s.localEvents)},
-		{URI: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
-		{URI: "/" + APIPrefix + "websocket", Handler: http.HandlerFunc(s.websocket), Raw: true},
-		{URI: "/" + APIPrefix + "node/websocket", Handler: http.HandlerFunc(s.websocketNode), Raw: true},
-		{URI: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
+		{Path: "/" + APIPrefix + "list", Handler: http.HandlerFunc(s.list)},
+		{Path: "/" + APIPrefix + "states", Handler: http.HandlerFunc(s.states)},
+		{Path: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
+		{Path: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
+		{Path: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
+		{Path: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
+		{Path: "/" + APIPrefix + VerifyRoute, Handler: http.HandlerFunc(s.verify)},
+		{Path: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},
+		{Path: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
+		{Path: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},
+		{Path: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
 	}
-	return s.apiServer.RegisterHandlers(handlerConfigs...)
+	// register URIs at root prefix for backward compatibility before migrating to API versioning
+	// we should remove these eventually, or have throttling limits shared across versions
+	err := s.apiServer.RegisterHandlers(publicapi.LegacyAPIPrefix, handlerConfigs...)
+	if err != nil {
+		return err
+	}
+	return s.apiServer.RegisterHandlers(publicapi.V1APIPrefix, handlerConfigs...)
 }

@@ -5,8 +5,8 @@ package system
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,7 +24,7 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 // Before each test
 func (suite *SystemScriptCheckerSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
+	InitConfigForTesting(suite.T())
 }
 
 func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {

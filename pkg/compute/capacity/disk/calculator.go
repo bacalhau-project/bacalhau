@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type DiskUsageCalculatorParams struct {
@@ -26,7 +26,7 @@ func (c *DiskUsageCalculator) Calculate(
 	ctx context.Context, job model.Job, parsedUsage model.ResourceUsageData) (model.ResourceUsageData, error) {
 	requirements := model.ResourceUsageData{}
 
-	e, err := c.executors.GetExecutor(ctx, job.Spec.Engine)
+	e, err := c.executors.Get(ctx, job.Spec.Engine)
 	if err != nil {
 		return model.ResourceUsageData{}, fmt.Errorf("error getting job disk space requirements: %w", err)
 	}
@@ -41,14 +41,8 @@ func (c *DiskUsageCalculator) Calculate(
 		totalDiskRequirements += volumeSize
 	}
 
-	// TODO: think about the fact that each shard might be different sizes
-	//  this is probably good enough for now
-	totalShards := job.Spec.ExecutionPlan.TotalShards
-	if totalShards == 0 {
-		totalShards = 1
-	}
 	// update the job requirements disk space with what we calculated
-	requirements.Disk = totalDiskRequirements / uint64(totalShards)
+	requirements.Disk = totalDiskRequirements
 
 	return requirements, nil
 }

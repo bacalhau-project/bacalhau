@@ -7,28 +7,34 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
-// APIClient is a utility for interacting with a node's API server.
+// APIClient is a utility for interacting with a node's API server against v1 APIs.
 type APIClient struct {
-	BaseURI        string
+	BaseURI        *url.URL
 	DefaultHeaders map[string]string
 
 	Client *http.Client
 }
 
-// NewAPIClient returns a new client for a node's API server.
-func NewAPIClient(baseURI string) *APIClient {
+// NewAPIClient returns a new client for a node's API server against v1 APIs
+// the client will use /api/v1 path by default is no custom path is defined
+func NewAPIClient(host string, port uint16, path ...string) *APIClient {
+	baseURI := system.MustParseURL(fmt.Sprintf("http://%s:%d", host, port)).JoinPath(path...)
+	if len(path) == 0 {
+		baseURI = baseURI.JoinPath(V1APIPrefix)
+	}
 	return &APIClient{
 		BaseURI:        baseURI,
 		DefaultHeaders: map[string]string{},
@@ -48,11 +54,11 @@ func NewAPIClient(baseURI string) *APIClient {
 
 // Alive calls the node's API server health check.
 func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Alive")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Alive")
 	defer span.End()
 
 	var body io.Reader
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiClient.BaseURI+"/livez", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiClient.BaseURI.JoinPath("livez").String(), body)
 	if err != nil {
 		return false, nil
 	}
@@ -66,7 +72,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Version")
 	defer span.End()
 
 	req := VersionRequest{
@@ -81,8 +87,20 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 	return res.VersionInfo, nil
 }
 
+func (apiClient *APIClient) PostSigned(ctx context.Context, api string, reqData, resData interface{}) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.PostSigned")
+	defer span.End()
+
+	req, err := SignRequest(reqData)
+	if err != nil {
+		return err
+	}
+
+	return apiClient.Post(ctx, api, req, resData)
+}
+
 func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resData interface{}) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Post")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Post")
 	defer span.End()
 
 	var body bytes.Buffer
@@ -91,7 +109,7 @@ func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resDa
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error encoding request body: %v", err))
 	}
 
-	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
+	addr := apiClient.BaseURI.JoinPath(api).String()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating Post request: %v", err))

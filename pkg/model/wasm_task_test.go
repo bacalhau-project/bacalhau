@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package model
 
 import (
@@ -22,8 +24,6 @@ func TestUnmarshalWasm(t *testing.T) {
 	require.Equal(t, map[string]string{"HELLO": "world"}, spec.Wasm.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{
 		{Path: "/job", StorageSource: StorageSourceIPFS, CID: "bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi"},
-	}, spec.Contexts)
-	require.Equal(t, []StorageSpec{
 		{Path: "/inputs", StorageSource: StorageSourceURLDownload, URL: "https://www.example.com/data.tar.gz"},
 	}, spec.Inputs)
 	require.Equal(t, []StorageSpec{

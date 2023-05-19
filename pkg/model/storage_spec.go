@@ -10,7 +10,7 @@ type StorageSpec struct {
 	StorageSource StorageSourceType `json:"StorageSource,omitempty"`
 
 	// Name of the spec's data, for reference.
-	Name string `json:"Name,omitempty" example:"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"` //nolint:lll
+	Name string `json:"Name,omitempty" example:"job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"` //nolint:lll
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
@@ -19,6 +19,14 @@ type StorageSpec struct {
 
 	// Source URL of the data
 	URL string `json:"URL,omitempty"`
+
+	S3 *S3StorageSpec `json:"S3,omitempty"`
+
+	// URL of the git Repo to clone
+	Repo string `json:"Repo,omitempty"`
+
+	// The path of the host data if we are using local directory paths
+	SourcePath string `json:"SourcePath,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
@@ -30,11 +38,27 @@ type StorageSpec struct {
 	Metadata map[string]string `json:"Metadata,omitempty"`
 }
 
+type S3StorageSpec struct {
+	Bucket         string `json:"Bucket,omitempty"`
+	Key            string `json:"Key,omitempty"`
+	ChecksumSHA256 string `json:"Checksum,omitempty"`
+	VersionID      string `json:"VersionID,omitempty"`
+	Endpoint       string `json:"Endpoint,omitempty"`
+	Region         string `json:"Region,omitempty"`
+}
+
 // PublishedStorageSpec is a wrapper for a StorageSpec that has been published
-// by a compute provider - it keeps info about the host, job and shard that
+// by a compute provider - it keeps info about the host job that
 // lead to the given storage spec being published
 type PublishedResult struct {
-	NodeID     string      `json:"NodeID,omitempty"`
-	ShardIndex int         `json:"ShardIndex,omitempty"`
-	Data       StorageSpec `json:"Data,omitempty"`
+	NodeID string      `json:"NodeID,omitempty"`
+	Data   StorageSpec `json:"Data,omitempty"`
+}
+
+type DownloadItem struct {
+	Name       string
+	CID        string
+	URL        string
+	SourceType StorageSourceType
+	Target     string
 }

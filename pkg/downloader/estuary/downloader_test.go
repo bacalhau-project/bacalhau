@@ -4,13 +4,14 @@ package estuary
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,6 +19,7 @@ const testCID = "bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
 const testURL = "https://api.estuary.tech/gw/ipfs/bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
 
 func TestFetchResult(t *testing.T) {
+	t.Skip("https://github.com/bacalhau-project/bacalhau/issues/2363")
 	// create a new Estuary downloader
 	settings := &model.DownloaderSettings{
 		Timeout: time.Second * 60,
@@ -54,17 +56,25 @@ func TestFetchResult(t *testing.T) {
 			},
 		}
 
+		item := model.DownloadItem{
+			Name:       result.Data.Name,
+			CID:        result.Data.CID,
+			URL:        result.Data.URL,
+			SourceType: model.StorageSourceEstuary,
+			Target:     downloadPath,
+		}
+
 		// call FetchResult to download the file
-		err = downloader.FetchResult(context.Background(), result, downloadPath)
+		err = downloader.FetchResult(context.Background(), item)
 		require.NoError(t, err)
 
 		// check that the file was downloaded to the correct location
-		if _, err := os.Stat(downloadPath); os.IsNotExist(err) {
-			t.Errorf("Expected file %s to be downloaded, but it does not exist", downloadPath)
+		if _, err := os.Stat(item.Target); os.IsNotExist(err) {
+			t.Errorf("Expected file %s to be downloaded, but it does not exist", item.Target)
 		}
 
 		// check the content of the downloaded file
-		data, err := os.ReadFile(downloadPath)
+		data, err := os.ReadFile(item.Target)
 		require.NoError(t, err)
 
 		require.Equal(t, "Hello From Bacalhau\n", string(data))

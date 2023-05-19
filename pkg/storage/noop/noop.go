@@ -3,9 +3,8 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type StroageHandlerIsInstalled func(ctx context.Context) (bool, error)
@@ -30,21 +29,6 @@ type StorageConfig struct {
 	ExternalHooks StorageConfigExternalHooks
 }
 
-// Storage provider that always return NoopStorage regardless of requested source type
-type NoopStorageProvider struct {
-	noopStorage *NoopStorage
-}
-
-func NewNoopStorageProvider(noopStorage *NoopStorage) *NoopStorageProvider {
-	return &NoopStorageProvider{
-		noopStorage: noopStorage,
-	}
-}
-
-func (s *NoopStorageProvider) GetStorage(ctx context.Context, storageType model.StorageSourceType) (storage.Storage, error) {
-	return s.noopStorage, nil
-}
-
 // a storage driver runs the downloads content
 // from a remote ipfs server and copies it to
 // to a local directory in preparation for
@@ -54,18 +38,18 @@ type NoopStorage struct {
 	Config StorageConfig
 }
 
-func NewNoopStorage(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorage() *NoopStorage {
 	storageHandler := &NoopStorage{
-		Config: config,
+		Config: StorageConfig{},
 	}
-	return storageHandler, nil
+	return storageHandler
 }
 
-func NewNoopStorageWithConfig(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*NoopStorage, error) {
+func NewNoopStorageWithConfig(config StorageConfig) *NoopStorage {
 	storageHandler := &NoopStorage{
 		Config: config,
 	}
-	return storageHandler, nil
+	return storageHandler
 }
 
 func (s *NoopStorage) IsInstalled(ctx context.Context) (bool, error) {
@@ -135,5 +119,4 @@ func (s *NoopStorage) CleanupStorage(ctx context.Context, storageSpec model.Stor
 }
 
 // Compile time interface check:
-var _ storage.StorageProvider = (*NoopStorageProvider)(nil)
 var _ storage.Storage = (*NoopStorage)(nil)

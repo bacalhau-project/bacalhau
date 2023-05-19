@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -15,7 +15,6 @@ import (
 type ComputeProxyParams struct {
 	Host          host.Host
 	LocalEndpoint compute.Endpoint // optional in case this host is also a compute node and to allow local calls
-
 }
 
 // ComputeProxy is a proxy to a compute node endpoint that will forward requests to remote compute nodes, or
@@ -105,6 +104,18 @@ func (p *ComputeProxy) CancelExecution(
 		ctx, p.host, request.TargetPeerID, CancelProtocolID, request)
 }
 
+func (p *ComputeProxy) ExecutionLogs(
+	ctx context.Context, request compute.ExecutionLogsRequest) (compute.ExecutionLogsResponse, error) {
+	if request.TargetPeerID == p.host.ID().String() {
+		if p.localEndpoint == nil {
+			return compute.ExecutionLogsResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
+		}
+		return p.localEndpoint.ExecutionLogs(ctx, request)
+	}
+	return proxyRequest[compute.ExecutionLogsRequest, compute.ExecutionLogsResponse](
+		ctx, p.host, request.TargetPeerID, ExecutionLogsID, request)
+}
+
 func proxyRequest[Request any, Response any](
 	ctx context.Context,
 	h host.Host,
@@ -131,20 +142,30 @@ func proxyRequest[Request any, Response any](
 	if err != nil {
 		return *response, fmt.Errorf("%s: failed to open stream to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
+	defer stream.Close() //nolint:errcheck
+	if scopingErr := stream.Scope().SetService(ComputeServiceName); scopingErr != nil {
+		_ = stream.Reset()
+		return *response, fmt.Errorf("%s: failed to attach stream to compute service: %w", reflect.TypeOf(request), scopingErr)
+	}
 
 	// write the request to the stream
 	_, err = stream.Write(data)
 	if err != nil {
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to write request to peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	// Now we read the response that was sent from the dest peer
-	err = json.NewDecoder(stream).Decode(response)
+	// The handler will have wrapped the response in a Result[T] along with
+	// any error that occurred, so we will decode it and pass the
+	// inner response/error on to the caller.
+	result := &Result[Response]{}
+	err = json.NewDecoder(stream).Decode(result)
 	if err != nil {
+		_ = stream.Reset()
 		return *response, fmt.Errorf("%s: failed to decode response from peer %s: %w", reflect.TypeOf(request), destPeerID, err)
 	}
 
-	return *response, nil
+	return result.Rehydrate()
 }
 
 // Compile-time interface check:

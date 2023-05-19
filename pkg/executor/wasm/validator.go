@@ -3,7 +3,8 @@ package wasm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"golang.org/x/exp/maps"
@@ -32,29 +33,31 @@ func ValidateModuleImports(
 	module wazero.CompiledModule,
 	importModules ...wazero.CompiledModule,
 ) error {
-	availableImports := make(map[string]api.FunctionDefinition)
-	for _, importModule := range importModules {
-		maps.Copy(importModule.ExportedFunctions(), availableImports)
-	}
-
+reqImport:
 	for _, requiredImport := range module.ImportedFunctions() {
 		importNamespace, funcName, _ := requiredImport.Import()
 		exists := false
 		for _, importModule := range importModules {
-			_, exists = importModule.ExportedFunctions()[funcName]
-			if exists {
-				err := ValidateModuleHasFunction(
-					importModule,
-					funcName,
-					requiredImport.ParamTypes(),
-					requiredImport.ResultTypes(),
-				)
+			log.Debug().Str("Func", funcName).Str("Module", importModule.Name()).Msg("Looking for import")
+			for _, funct := range maps.Keys(importModule.ExportedFunctions()) {
+				log.Debug().Str("Func", funct).Str("Module", importModule.Name()).Bool("Eq", funct == funcName).Msg("Has function")
+				if funct == funcName {
+					err := ValidateModuleHasFunction(
+						importModule,
+						funcName,
+						requiredImport.ParamTypes(),
+						requiredImport.ResultTypes(),
+					)
 
-				// If the module has the import but the signature doesn't match,
-				// as we enforce that imports are unique, this will break even
-				// if there is another import with correct name and signature.
-				if err != nil {
-					return err
+					// If the module has the import but the signature doesn't match,
+					// as we enforce that imports are unique, this will break even
+					// if there is another import with correct name and signature.
+					if err != nil {
+						return err
+					} else {
+						log.Debug().Msg("kthnx")
+						continue reqImport
+					}
 				}
 			}
 		}

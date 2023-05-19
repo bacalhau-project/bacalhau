@@ -4,16 +4,16 @@ package publicapi
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -42,7 +42,7 @@ func (s *ServerSuite) SetupTest() {
 
 // After each test
 func (s *ServerSuite) TearDownTest() {
-	s.cleanupManager.Cleanup()
+	s.cleanupManager.Cleanup(context.Background())
 }
 
 func (s *ServerSuite) TestHealthz() {
@@ -84,18 +84,18 @@ func (s *ServerSuite) TestVarz() {
 func (s *ServerSuite) TestTimeout() {
 	config := APIServerConfig{
 		RequestHandlerTimeoutByURI: map[string]time.Duration{
-			"/logz": 10 * time.Nanosecond,
+			V1APIPrefix + "/logz": 10 * time.Nanosecond,
 		},
 	}
 	s.client = setupNodeForTestWithConfig(s.T(), s.cleanupManager, config)
 
 	endpoint := "/logz"
-	res, err := http.Get(s.client.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
 	require.NoError(s.T(), err, "Could not get %s endpoint.", endpoint)
 	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
 
 	// validate response body
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	require.NoError(s.T(), err, "Could not read %s response body", endpoint)
 	require.Equal(s.T(), body, []byte("Server Timeout!"))
 
@@ -148,13 +148,12 @@ func (s *ServerSuite) TestMaxBodyReader() {
 }
 
 func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-
-	res, err := http.Get(s.client.BaseURI + endpoint)
+	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
 	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
 	defer res.Body.Close()
 
 	require.Equal(t, res.StatusCode, http.StatusOK)
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "Could not read %s response body", endpoint)
 	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
 	return body

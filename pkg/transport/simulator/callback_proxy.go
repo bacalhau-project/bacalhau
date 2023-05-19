@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/transport/bprotocol"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -42,6 +42,12 @@ func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 
 func (p *CallbackProxy) RegisterLocalComputeCallback(callback compute.Callback) {
 	p.localCallback = callback
+}
+
+func (p *CallbackProxy) OnBidComplete(ctx context.Context, result compute.BidResult) {
+	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnBidComplete, result, func(ctx2 context.Context) {
+		p.localCallback.OnBidComplete(ctx2, result)
+	})
 }
 
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
@@ -103,15 +109,15 @@ func proxyCallbackRequest(
 		// opening a stream to the destination peer
 		stream, err := p.host.NewStream(ctx, peerID, protocolID)
 		if err != nil {
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
-				return
-			}
+			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to open stream to peer %s", reflect.TypeOf(request), targetPeerID)
+			return
 		}
+		defer stream.Close() //nolint:errcheck
 
 		// write the request to the stream
 		_, err = stream.Write(data)
 		if err != nil {
+			_ = stream.Reset()
 			log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to write request to peer %s", reflect.TypeOf(request), targetPeerID)
 			return
 		}
