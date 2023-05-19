@@ -19,7 +19,7 @@ import (
 const (
 	maxUInt16              uint16 = 0xFFFF
 	minUInt16              uint16 = 0x0000
-	DefaultRunInfoFilename               = "bacalhauServe.run"
+	DefaultRunInfoFilename        = "bacalhauServe.run"
 	RunInfoFilePermissions        = 0600
 )
 
@@ -52,11 +52,11 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 	// 	writePath = os.TempDir()
 	// }
 
-	if DevstackEnvFile()  != "" {
-	    RunInfoFilePath = DevstackEnvFile() 
+	if DevstackEnvFile() != "" {
+		RunInfoFilePath = DevstackEnvFile()
 	} else {
-	    RunInfoFilePath = filepath.Join(os.TempDir(), RunInfoFilename)
-        }
+		RunInfoFilePath = filepath.Join(os.TempDir(), DefaultRunInfoFilename)
+	}
 
 	// Use os.Create to truncate the file if it already exists
 	f, err := os.Create(RunInfoFilePath)
