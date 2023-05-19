@@ -39,8 +39,6 @@ func DevstackEnvFile() string {
 
 // WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
 func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
-	writePath := os.TempDir()
-
 	// TODO: Use the below when we can figure out how to test write permissions in a cross platform way.
 	// See this - https://stackoverflow.com/questions/20026320/how-to-tell-if-folder-exists-and-is-writable //nolint:lll
 	// if _, err := os.Stat("/run"); err == nil {
@@ -54,7 +52,11 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 	// 	writePath = os.TempDir()
 	// }
 
-	RunInfoFilePath = filepath.Join(writePath, RunInfoFilename)
+	if DevstackEnvFile()  != "" {
+	    RunInfoFilePath = DevstackEnvFile() 
+	} else {
+	    RunInfoFilePath = filepath.Join(os.TempDir(), RunInfoFilename)
+        }
 
 	// Use os.Create to truncate the file if it already exists
 	f, err := os.Create(RunInfoFilePath)
