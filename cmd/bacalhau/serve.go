@@ -473,6 +473,16 @@ func pickP2pAddress(addresses []multiaddr.Multiaddr) multiaddr.Multiaddr {
 		}
 		return count
 	}
+
+	preferredAddress := config.PreferredAddress()
+	if preferredAddress != "" {
+		for _, addr := range addresses {
+			if strings.Contains(addr.String(), preferredAddress) {
+				return addr
+			}
+		}
+	}
+
 	sort.Slice(addresses, func(i, j int) bool {
 		return value(addresses[i]) > value(addresses[j])
 	})
