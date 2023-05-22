@@ -11,6 +11,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/opencontainers/go-digest"
 )
 
 type ImageResolverSuite struct {
@@ -34,7 +36,8 @@ func fullResolver() imageResolverFunc {
 
 func valueResolver(val string) imageResolverFunc {
 	return func(c context.Context, i string, creds config.DockerCredentials) (*ImageManifest, error) {
-		return &ImageManifest{digest: fmt.Sprintf("sha256:%s", val)}, nil
+		digest, _ := digest.Parse(fmt.Sprintf("sha256:%s", val))
+		return &ImageManifest{digest: digest}, nil
 	}
 }
 

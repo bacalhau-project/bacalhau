@@ -21,6 +21,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -308,8 +309,13 @@ func (c *Client) ImageDistribution(
 			// to go through supporting two different values in the returned
 			// ImageManifest (fully qualified IDs and also just digests)
 			digestParts := strings.Split(repos[0], "@")
+			digest, err := digest.Parse(digestParts[1])
+			if err != nil {
+				return nil, err
+			}
+
 			return &ImageManifest{
-				digest: digestParts[1],
+				digest: digest,
 				platforms: []v1.Platform{
 					{
 						Architecture: info.Architecture,
@@ -329,7 +335,7 @@ func (c *Client) ImageDistribution(
 
 	obj := dist.Descriptor.Digest
 	manifest := &ImageManifest{
-		digest: fmt.Sprintf("%s:%s", obj.Algorithm().String(), obj.Encoded()),
+		digest: obj,
 	}
 	copy(manifest.platforms, dist.Platforms)
 	return manifest, nil

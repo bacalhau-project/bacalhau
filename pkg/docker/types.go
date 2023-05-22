@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+
+	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -11,6 +13,6 @@ type imageResolverFunc func(context.Context, string, config.DockerCredentials) (
 
 type ImageManifest struct {
 	// We only ever expect the digest to be the `algorithm:hash`
-	digest    string
+	digest    digest.Digest
 	platforms []v1.Platform
 }
