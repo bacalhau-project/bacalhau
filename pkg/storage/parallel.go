@@ -2,9 +2,11 @@ package storage
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
+	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
 )
 
@@ -50,4 +52,35 @@ func ParallelPrepareStorage(
 		return true
 	})
 	return returnMap, err
+}
+
+func ParallelCleanStorage(
+	ctx context.Context,
+	provider StorageProvider,
+	volumeMap map[*model.StorageSpec]StorageVolume,
+) error {
+	var rootErr error
+
+	for storageSpec, storageVolume := range volumeMap {
+		storage, err := provider.Get(ctx, storageSpec.StorageSource)
+		if err != nil {
+			log.Ctx(ctx).
+				Debug().
+				Stringer("Source", storageSpec.StorageSource).
+				Msg("failed to get storage provider in cleanup")
+			rootErr = errors.Join(rootErr, err)
+			continue
+		}
+
+		err = storage.CleanupStorage(ctx, *storageSpec, storageVolume)
+		if err != nil {
+			log.Ctx(ctx).
+				Debug().
+				Stringer("Source", storageSpec.StorageSource).
+				Msg("failed to cleanup volume")
+			rootErr = errors.Join(rootErr, err)
+		}
+	}
+
+	return rootErr
 }
