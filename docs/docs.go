@@ -1740,7 +1740,8 @@ const docTemplate = `{
                 0,
                 1,
                 2,
-                3
+                3,
+                4
             ],
             "x-enum-comments": {
                 "verifierDone": "must be last",
@@ -1750,6 +1751,7 @@ const docTemplate = `{
                 "verifierUnknown",
                 "VerifierNoop",
                 "VerifierDeterministic",
+                "VerifierExternal",
                 "verifierDone"
             ]
         },
