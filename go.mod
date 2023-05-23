@@ -51,7 +51,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.20.0
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.10.7
+	github.com/lib/pq v1.10.9
 	github.com/libp2p/go-libp2p v0.26.3
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/mattn/go-isatty v0.0.18
