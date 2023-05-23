@@ -47,7 +47,9 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 
 		var m *docker.ImageManifest
 		m, ierr = s.client.ImageDistribution(ctx, request.Job.Spec.Docker.Image, config.GetDockerCredentials())
-		manifest = *m
+		if m != nil {
+			manifest = *m
+		}
 	} else {
 		log.Ctx(ctx).Debug().Str("Image", request.Job.Spec.Docker.Image).Msg("Image found in manifest cache")
 	}
