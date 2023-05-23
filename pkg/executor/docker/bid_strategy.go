@@ -7,7 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 func NewBidStrategy(client *docker.Client) bidstrategy.BidStrategy {

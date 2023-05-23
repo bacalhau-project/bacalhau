@@ -24,7 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"

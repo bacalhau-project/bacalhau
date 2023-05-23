@@ -6,8 +6,8 @@ import (
 
 	"github.com/ipld/go-ipld-prime/datamodel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
-	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 var _ JobType = (*DockerInputs)(nil)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime/datamodel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
 )
 
 var _ JobType = (*WasmInputs)(nil)

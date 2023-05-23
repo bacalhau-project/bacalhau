@@ -5,7 +5,7 @@ import (
 
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
 )
 
 //go:embed spec.ipldsch
@@ -23,6 +23,8 @@ var (
 	EngineSchema *engine.Schema = load()
 )
 
+// TODO this will need to have a docker specific name inorder to avoid a collions with names.
+// or we need a different semantic in spec.go
 type EngineSpec struct {
 	// Image is the docker image to run. This must be pull-able by docker.
 	Image string `json:"Image,omitempty"`

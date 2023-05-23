@@ -1,0 +1,8 @@
+type S3StorageSpec struct {
+    Bucket String
+    Key String
+    ChecksumSHA256 String
+    VersionID string
+    Endpoint string
+    Region string
+}

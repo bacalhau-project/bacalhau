@@ -1,6 +1,8 @@
 package docker
 
-import "github.com/bacalhau-project/bacalhau/pkg/model/engine"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
+)
 
 type MutateOpt func(spec *EngineSpec)
 

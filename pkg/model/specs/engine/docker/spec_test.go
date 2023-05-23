@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 func TestRoundTrip(t *testing.T) {

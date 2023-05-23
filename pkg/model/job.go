@@ -6,8 +6,8 @@ import (
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/selection"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine"
-	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
+	dockerspec "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 // Job contains data about a job request in the bacalhau network.

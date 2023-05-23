@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/engine/docker"
+	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 func TestMutations(t *testing.T) {
-	expectedEngine := docker.EngineSpec{
+	expectedEngine := docker2.EngineSpec{
 		Image:                "ubuntu:latest",
 		Entrypoint:           []string{"date"},
 		EnvironmentVariables: []string{"hello", "world"},
@@ -23,17 +23,17 @@ func TestMutations(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("override", func(t *testing.T) {
-		mutatedSpec, err := docker.Mutate(spec,
-			docker.WithImage("image:mutation"),
-			docker.WithEntrypoint("echo"),
-			docker.WithWorkingDirectory("/home"),
-			docker.WithEnvironmentVariables("goodbye", "universe"),
+		mutatedSpec, err := docker2.Mutate(spec,
+			docker2.WithImage("image:mutation"),
+			docker2.WithEntrypoint("echo"),
+			docker2.WithWorkingDirectory("/home"),
+			docker2.WithEnvironmentVariables("goodbye", "universe"),
 		)
 		require.NoError(t, err)
 		require.True(t, spec.Schema.Equals(mutatedSpec.Schema))
 		require.Equal(t, spec.SchemaData, mutatedSpec.SchemaData)
 
-		actualEngine, err := docker.Decode(mutatedSpec)
+		actualEngine, err := docker2.Decode(mutatedSpec)
 		require.NoError(t, err)
 		assert.NotEqual(t, spec.Params, mutatedSpec.Params)
 		assert.Equal(t, "image:mutation", actualEngine.Image)
@@ -43,15 +43,15 @@ func TestMutations(t *testing.T) {
 	})
 
 	t.Run("appended", func(t *testing.T) {
-		mutatedSpec, err := docker.Mutate(spec,
-			docker.AppendEntrypoint("echo"),
-			docker.AppendEnvironmentVariables("goodbye", "universe"),
+		mutatedSpec, err := docker2.Mutate(spec,
+			docker2.AppendEntrypoint("echo"),
+			docker2.AppendEnvironmentVariables("goodbye", "universe"),
 		)
 		require.NoError(t, err)
 		require.True(t, spec.Schema.Equals(mutatedSpec.Schema))
 		require.Equal(t, spec.SchemaData, mutatedSpec.SchemaData)
 
-		actualEngine, err := docker.Decode(mutatedSpec)
+		actualEngine, err := docker2.Decode(mutatedSpec)
 		require.NoError(t, err)
 		assert.NotEqual(t, spec.Params, mutatedSpec.Params)
 		assert.Equal(t, []string{"date", "echo"}, actualEngine.Entrypoint)
