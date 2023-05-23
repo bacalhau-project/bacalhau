@@ -315,8 +315,8 @@ func (c *Client) ImageDistribution(
 			}
 
 			return &ImageManifest{
-				digest: digest,
-				platforms: []v1.Platform{
+				Digest: digest,
+				Platforms: []v1.Platform{
 					{
 						Architecture: info.Architecture,
 						OS:           info.Os,
@@ -335,9 +335,9 @@ func (c *Client) ImageDistribution(
 
 	obj := dist.Descriptor.Digest
 	manifest := &ImageManifest{
-		digest: obj,
+		Digest: obj,
 	}
-	copy(manifest.platforms, dist.Platforms)
+	copy(manifest.Platforms, dist.Platforms)
 	return manifest, nil
 }
 
