@@ -87,14 +87,13 @@ func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBi
 //   - mount each input at the name specified by Path
 //   - make a directory in the job results directory for each output and mount that
 //     at the name specified by Name
-func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
+func (e *Executor) makeFsFromStorage(
+	ctx context.Context,
+	jobResultsDir string,
+	volumes map[*model.StorageSpec]storage.StorageVolume,
+	outputs []model.StorageSpec) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
-
-	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
-	if err != nil {
-		return nil, err
-	}
 
 	for input, volume := range volumes {
 		log.Ctx(ctx).Debug().
@@ -174,7 +173,24 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, job.Spec.Inputs, job.Spec.Outputs)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		log.Ctx(ctx).Debug().
+			Str("Execution", executionID).
+			Msg("attempting cleanup of inputs for execution")
+		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
+		if err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Str("Execution", executionID).
+				Msg("errors occurred when cleaning up inputs")
+		}
+	}()
+
+	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, inputVolumes, job.Spec.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
