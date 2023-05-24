@@ -72,23 +72,6 @@ func (handler *jobEventHandler) readEvent(ctx context.Context, event bacalhau_mo
 	}
 
 	if event.EventName == bacalhau_model.JobEventCreated {
-		isCanary := false
-		for _, label := range event.Spec.Annotations {
-			if label == "canary" {
-				isCanary = true
-				break
-			}
-		}
-		for _, entrypointPart := range event.Spec.Docker.Entrypoint {
-			if entrypointPart == "hello λ!" {
-				isCanary = true
-				break
-			}
-		}
-		if isCanary {
-			eventBuffer.ignore = true
-			return nil
-		}
 		eventBuffer.exists = true
 		err := handler.writeEventToDatabase(ctx, event)
 		if err != nil {
