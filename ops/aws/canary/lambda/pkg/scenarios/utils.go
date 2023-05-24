@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -26,18 +27,20 @@ func getSampleDockerJob() (*model.Job, error) {
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
+
+	dockerEngine, err := (&docker.DockerEngineSpec{
+		Image:      "ubuntu",
+		Entrypoint: []string{"echo", defaultEchoMessage},
+	}).AsSpec()
+	if err != nil {
+		return nil, err
+	}
+
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
+		Engine:   dockerEngine,
 		Verifier: model.VerifierNoop,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"echo",
-				defaultEchoMessage,
-			},
 		},
 		Annotations:   []string{canaryAnnotation},
 		NodeSelectors: nodeSelectors,
@@ -57,19 +60,24 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
+
+	dockerEngine, err := (&docker.DockerEngineSpec{
+		Image: "ubuntu",
+		Entrypoint: []string{
+			"bash",
+			"-c",
+			"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
+		},
+	}).AsSpec()
+	if err != nil {
+		return nil, err
+	}
+
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
+		Engine:   dockerEngine,
 		Verifier: model.VerifierNoop,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash",
-				"-c",
-				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
-			},
 		},
 		Inputs: []model.StorageSpec{
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
