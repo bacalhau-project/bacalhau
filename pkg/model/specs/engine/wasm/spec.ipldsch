@@ -1,0 +1,14 @@
+type WasmEngineSpec struct {
+    EntryModule StorageSpec
+    EntryPoint String
+    Parameters [String]
+    EnvironmentVariables [String]
+    ImportModules [StorageSpec]
+}
+
+type StorageSpec struct {
+    Name String
+    Schema Link
+    SchemaData Bytes
+    Params Bytes
+}
