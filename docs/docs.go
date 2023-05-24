@@ -793,9 +793,7 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4,
-                5,
-                6
+                4
             ],
             "x-enum-comments": {
                 "engineDone": "must be last",
@@ -1512,9 +1510,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Engine"
                         }
                     ]
-                },
-                "Language": {
-                    "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
