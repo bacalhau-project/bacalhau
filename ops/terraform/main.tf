@@ -76,6 +76,8 @@ export SECRETS_GRAFANA_CLOUD_LOKI_API_KEY="${var.grafana_cloud_loki_api_key}"
 export SECRETS_ESTUARY_API_KEY="${var.estuary_api_key}"
 export SECRETS_AWS_ACCESS_KEY_ID="${var.aws_access_key_id}"
 export SECRETS_AWS_SECRET_ACCESS_KEY="${var.aws_secret_access_key}"
+export SECRETS_DOCKER_USERNAME="${var.docker_username}"
+export SECRETS_DOCKER_PASSWORD="${var.docker_password}"
 EOI
 
 ##############################

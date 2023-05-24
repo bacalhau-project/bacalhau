@@ -207,3 +207,16 @@ variable "aws_secret_access_key" {
   default   = ""
   sensitive = true
 }
+
+// Credentials for docker hub
+variable "docker_username" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "docker_password" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
