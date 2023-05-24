@@ -54,9 +54,8 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 		writePath = os.TempDir()
 	}
 
-	if DevstackEnvFile() != "" {
-		RunInfoFilePath = DevstackEnvFile()
-	} else {
+	RunInfoFilePath = DevstackEnvFile()
+	if RunInfoFilePath == "" {
 		RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
 	}
 

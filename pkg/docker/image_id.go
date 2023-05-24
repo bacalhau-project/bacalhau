@@ -44,11 +44,11 @@ func (DigestTag) CacheDuration() int64 { return oneMonth }
 func ParseImageTag(s string) (string, ImageTag) {
 	// Check for a digest, and if not look for a tag
 	if strings.Contains(s, "@") {
-		tag_split := strings.Split(s, "@")
-		return tag_split[0], DigestTag(tag_split[1])
+		tagSplit := strings.Split(s, "@")
+		return tagSplit[0], DigestTag(tagSplit[1])
 	} else if strings.Contains(s, ":") {
-		tag_split := strings.Split(s, ":")
-		return tag_split[0], NameTag(tag_split[1])
+		tagSplit := strings.Split(s, ":")
+		return tagSplit[0], NameTag(tagSplit[1])
 	}
 
 	return s, EmptyTag{}
@@ -58,7 +58,7 @@ type ImageID struct {
 	// e.g. ghcr.io
 	repository string
 
-	// e.g. ubuntu or organisation/ubuntu or organisation/user/ubuntu
+	// e.g. ubuntu or organization/ubuntu or organization/user/ubuntu
 	name string
 
 	// e.g. latest or kinetic or @sha256:digest-string
