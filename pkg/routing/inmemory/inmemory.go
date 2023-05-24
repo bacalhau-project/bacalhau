@@ -4,12 +4,14 @@ import (
 	"context"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/rs/zerolog/log"
 )
 
 // TODO: replace the manual and lazy eviction with a more efficient caching library
@@ -25,7 +27,7 @@ type NodeInfoStoreParams struct {
 type NodeInfoStore struct {
 	ttl             time.Duration
 	nodeInfoMap     map[peer.ID]nodeInfoWrapper
-	engineNodeIDMap map[model.Engine]map[peer.ID]struct{}
+	engineNodeIDMap map[cid.Cid]map[peer.ID]struct{}
 	mu              sync.RWMutex
 }
 
@@ -33,7 +35,7 @@ func NewNodeInfoStore(params NodeInfoStoreParams) *NodeInfoStore {
 	res := &NodeInfoStore{
 		ttl:             params.TTL,
 		nodeInfoMap:     make(map[peer.ID]nodeInfoWrapper),
-		engineNodeIDMap: make(map[model.Engine]map[peer.ID]struct{}),
+		engineNodeIDMap: make(map[cid.Cid]map[peer.ID]struct{}),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -123,7 +125,7 @@ func (r *NodeInfoStore) List(ctx context.Context) ([]model.NodeInfo, error) {
 	return nodeInfos, nil
 }
 
-func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine model.Engine) ([]model.NodeInfo, error) {
+func (r *NodeInfoStore) ListForEngine(ctx context.Context, engine cid.Cid) ([]model.NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var nodeInfos []model.NodeInfo

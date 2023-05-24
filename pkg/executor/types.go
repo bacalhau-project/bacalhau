@@ -4,12 +4,14 @@ import (
 	"context"
 	"io"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Returns a executor for the given engine type
-type ExecutorProvider = model.Provider[model.Engine, Executor]
+type ExecutorProvider = model.Provider[cid.Cid, Executor]
 
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.

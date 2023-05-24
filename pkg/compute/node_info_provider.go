@@ -3,9 +3,13 @@ package compute
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	docker "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
@@ -45,7 +49,10 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	return model.ComputeNodeInfo{
-		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, model.EngineTypes()),
+		ExecutionEngines: model.InstalledTypes(ctx, n.executors, []cid.Cid{
+			docker.EngineSchema.Cid(),
+			wasm.EngineSchema.Cid(),
+		}),
 		Verifiers:          model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
 		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
 		StorageSources:     model.InstalledTypes(ctx, n.storages, model.StorageSourceTypes()),

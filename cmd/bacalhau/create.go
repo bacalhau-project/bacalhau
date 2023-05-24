@@ -8,17 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/ipld/go-ipld-prime/codec/json"
+	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/ipld/go-ipld-prime/codec/json"
-	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -80,7 +80,7 @@ func newCreateCmd() *cobra.Command {
 	return createCmd
 }
 
-func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
+func create(cmd *cobra.Command, cmdArgs []string, opts *CreateOptions) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
@@ -105,10 +105,10 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 			return err
 		}
 	} else {
-		OC.Filename = cmdArgs[0]
+		opts.Filename = cmdArgs[0]
 
 		var fileContent *os.File
-		fileContent, err = os.Open(OC.Filename)
+		fileContent, err = os.Open(opts.Filename)
 
 		if err != nil {
 			Fatal(cmd, fmt.Sprintf("Error opening file: %s", err), 1)
@@ -224,15 +224,10 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-			return err
-		} else {
-			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
-			return err
-		}
+		Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
+		return err
 	}
-	if OC.DryRun {
+	if opts.DryRun {
 		// Converting job to yaml
 		var yamlBytes []byte
 		yamlBytes, err = yaml.Marshal(j)
@@ -248,8 +243,10 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		cm,
 		cmd,
 		j,
-		OC.RunTimeSettings,
-		OC.DownloadFlags,
+		&ExecutionSettings{
+			Runtime:  opts.RunTimeSettings,
+			Download: opts.DownloadFlags,
+		},
 	)
 
 	if err != nil {

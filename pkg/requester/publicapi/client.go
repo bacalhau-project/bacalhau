@@ -7,14 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 )
 
 // APIRetryCount - for some queries (like read events and read state)
@@ -237,6 +238,38 @@ func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID strin
 	}
 
 	return res.Results, nil
+}
+
+func (apiClient *RequesterAPIClient) SubmitDockerJob(ctx context.Context, j *model.DockerJob) (*model.Job, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.SubmitDockerJob")
+	defer span.End()
+
+	var res submitResponse
+	err := apiClient.PostSigned(ctx, APIPrefix+"submit_docker", model.DockerJobCreatePayload{
+		ClientID:  system.GetClientID(),
+		DockerJob: j,
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Job, nil
+}
+
+func (apiClient *RequesterAPIClient) SubmitWasmJob(ctx context.Context, j *model.WasmJob) (*model.Job, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.SubmitWasmJob")
+	defer span.End()
+
+	var res submitResponse
+	err := apiClient.PostSigned(ctx, APIPrefix+"submit_wasm", model.WasmJobCreatePayload{
+		ClientID: system.GetClientID(),
+		WasmJob:  j,
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Job, nil
 }
 
 // Submit submits a new job to the node's transport.

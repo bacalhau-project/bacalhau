@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
@@ -14,6 +16,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	wasmengine "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
@@ -181,9 +185,9 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	executors := model.NewMappedProvider(map[model.Engine]executor.Executor{
-		model.EngineDocker: dockerExecutor,
-		model.EngineWasm:   wasmExecutor,
+	executors := model.NewMappedProvider(map[cid.Cid]executor.Executor{
+		dockerengine.EngineSchema.Cid(): dockerExecutor,
+		wasmengine.EngineSchema.Cid():   wasmExecutor,
 	})
 
 	// language executors wrap other executors, so pass them a reference to all
@@ -206,5 +210,5 @@ func NewStandardExecutorProvider(
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
+	return model.NewNoopProvider[cid.Cid, executor.Executor](noopExecutor)
 }

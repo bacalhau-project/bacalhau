@@ -14,6 +14,13 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -24,12 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"golang.org/x/exp/slices"
 )
 
 const (
@@ -249,21 +250,18 @@ func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	j *model.Job,
-	runtimeSettings RunTimeSettings,
-	downloadSettings model.DownloaderSettings,
+	settings *ExecutionSettings,
 ) error {
-	var apiClient *publicapi.RequesterAPIClient
 
-	if runtimeSettings.IsLocal {
+	client := GetAPIClient()
+	if settings.Runtime.IsLocal {
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
 
 		apiServer := stack.Nodes[0].APIServer
-		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
-	} else {
-		apiClient = GetAPIClient()
+		client = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
 	}
 
 	err := job.VerifyJob(ctx, j)
@@ -272,213 +270,19 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	j, err = submitJob(ctx, apiClient, j)
+	j, err = submitJob(ctx, client, j)
 	if err != nil {
 		return err
 	}
 
-	// if we are in --wait=false - print the id then exit
-	// because all code after this point is related to
-	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
-	if !runtimeSettings.WaitForJobToFinish {
-		cmd.Print(j.Metadata.ID + "\n")
-		return nil
-	}
-
-	// if we are in --id-only mode - print the id
-	if runtimeSettings.PrintJobIDOnly {
-		cmd.Print(j.Metadata.ID + "\n")
-	}
-
-	if runtimeSettings.Follow {
-		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
-		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
-
-		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
-		// the execution to appear.
-		for i := 0; i < 10; i++ {
-			jobState, stateErr := apiClient.GetJobState(ctx, j.ID())
-			if stateErr != nil {
-				Fatal(cmd, fmt.Sprintf("failed waiting for execution to start: %s", stateErr), 1)
-			}
-
-			executionID := ""
-			for _, execution := range jobState.Executions {
-				if execution.State.IsActive() {
-					executionID = execution.ComputeReference
-				}
-			}
-
-			if executionID != "" {
-				break
-			}
-			time.Sleep(time.Duration(1) * time.Second)
-		}
-
-		logOptions := LogCommandOptions{WithHistory: true, Follow: true}
-		return logs(cmd, []string{j.Metadata.ID}, logOptions)
-	}
-
-	// if we are only printing the id, set the rest of the output to "quiet",
-	// i.e. don't print
-	quiet := runtimeSettings.PrintJobIDOnly
-
-	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
-	if jobErr != nil {
-		if jobErr.Error() == PrintoutCanceledButRunningNormally {
-			Fatal(cmd, "", 0)
-		} else {
-			cmd.PrintErrf("\nError submitting job: %s", jobErr)
-		}
-	}
-
-	jobReturn, found, err := apiClient.Get(ctx, j.Metadata.ID)
-	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error getting job: %s", err), 1)
-	}
-	if !found {
-		Fatal(cmd, fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
-	}
-
-	js, err := apiClient.GetJobState(ctx, jobReturn.Job.Metadata.ID)
-	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
-	}
-
-	if runtimeSettings.PrintNodeDetails || jobErr != nil {
-		cmd.Println("\nJob Results By Node:")
-		for message, nodes := range summariseExecutions(js) {
-			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
-			if strings.ContainsRune(message, '\n') {
-				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
-			} else {
-				cmd.Println(message)
-			}
-		}
-	}
-
-	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
-	if !quiet && hasResults {
-		cmd.Printf("\nTo download the results, execute:\n\t%s get %s\n", getCommandLineExecutable(), j.ID())
-	}
-
-	if !quiet {
-		cmd.Printf("\nTo get more details about the run, execute:\n\t%s describe %s\n", getCommandLineExecutable(), j.ID())
-	}
-
-	if hasResults && runtimeSettings.AutoDownloadResults {
-		err = downloadResultsHandler(
-			ctx,
-			cm,
-			cmd,
-			j.Metadata.ID,
-			downloadSettings,
-		)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Groups the executions in the job state, returning a map of printable messages
-// to node(s) that generated that message.
-func summariseExecutions(state model.JobState) map[string][]string {
-	results := make(map[string][]string, len(state.Executions))
-	for _, execution := range state.Executions {
-		var message string
-		if execution.RunOutput != nil {
-			if execution.RunOutput.ErrorMsg != "" {
-				message = execution.RunOutput.ErrorMsg
-			} else if execution.RunOutput.ExitCode > 0 {
-				message = execution.RunOutput.STDERR
-			} else {
-				message = execution.RunOutput.STDOUT
-			}
-		} else if execution.State.IsDiscarded() {
-			message = execution.Status
-		}
-
-		if message != "" {
-			results[message] = append(results[message], system.GetShortID(execution.NodeID))
-		}
-	}
-	return results
-}
-
-func downloadResultsHandler(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	cmd *cobra.Command,
-	jobID string,
-	downloadSettings model.DownloaderSettings,
-) error {
-	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
-	j, _, err := GetAPIClient().Get(ctx, jobID)
-
-	if err != nil {
-		if _, ok := err.(*bacerrors.JobNotFound); ok {
-			return err
-		} else {
-			Fatal(cmd, fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
-		}
-	}
-
-	results, err := GetAPIClient().GetResults(ctx, j.Job.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
-	if len(results) == 0 {
-		return fmt.Errorf("no results found")
-	}
-
-	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Job.Metadata.ID)
-	if err != nil {
-		return err
-	}
-
-	downloaderProvider := util.NewStandardDownloaders(cm, &processedDownloadSettings)
-	if err != nil {
-		return err
-	}
-
-	// check if we don't support downloading the results
-	for _, result := range results {
-		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
-			cmd.PrintErrln(
-				"No supported downloader found for the published results. You will have to download the results differently.")
-			b, err := json.MarshalIndent(results, "", "    ")
-			if err != nil {
-				return err
-			}
-			cmd.PrintErrln(string(b))
-			return nil
-		}
-	}
-
-	err = downloader.DownloadResults(
-		ctx,
-		results,
-		downloaderProvider,
-		&processedDownloadSettings,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	cmd.Printf("Results for job '%s' have been written to...\n", jobID)
-	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
-
-	return nil
+	return printJobExecution(ctx, cmd, cm, client, j, settings)
 }
 
 func submitJob(ctx context.Context,
-	apiClient *publicapi.RequesterAPIClient,
+	client *publicapi.RequesterAPIClient,
 	j *model.Job,
 ) (*model.Job, error) {
-	j, err := apiClient.Submit(ctx, j)
+	j, err := client.Submit(ctx, j)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}
@@ -752,4 +556,248 @@ func DockerImageContainsTag(image string) bool {
 		return true
 	}
 	return false
+}
+
+type ExecutionSettings struct {
+	Runtime  RunTimeSettings
+	Download model.DownloaderSettings
+}
+
+func ExecuteDockerJob(ctx context.Context, cm *system.CleanupManager, cmd *cobra.Command, j *model.DockerJob, settings *ExecutionSettings) error {
+	client := GetAPIClient()
+
+	if settings.Runtime.IsLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.ResourceConfig.GPU))
+		if errLocalDevStack != nil {
+			return errLocalDevStack
+		}
+		apiServer := stack.Nodes[0].APIServer
+		client = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	}
+
+	// NOTE: job is verified when it constructed, we don't need to validate again.
+	jobSpec, err := client.SubmitDockerJob(ctx, j)
+	if err != nil {
+		return fmt.Errorf("submitting docker job: %w", err)
+	}
+
+	return printJobExecution(ctx, cmd, cm, client, jobSpec, settings)
+}
+
+func ExecuteWasmJob(ctx context.Context, cm *system.CleanupManager, cmd *cobra.Command, j *model.WasmJob, settings *ExecutionSettings) error {
+	client := GetAPIClient()
+
+	if settings.Runtime.IsLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.ResourceConfig.GPU))
+		if errLocalDevStack != nil {
+			return errLocalDevStack
+		}
+		apiServer := stack.Nodes[0].APIServer
+		client = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	}
+
+	jobSpec, err := client.SubmitWasmJob(ctx, j)
+	if err != nil {
+		return fmt.Errorf("submitting wasm job: %w", err)
+	}
+
+	return printJobExecution(ctx, cmd, cm, client, jobSpec, settings)
+}
+
+func printJobExecution(ctx context.Context, cmd *cobra.Command, cm *system.CleanupManager, client *publicapi.RequesterAPIClient, j *model.Job, settings *ExecutionSettings) error {
+	// if we are in --wait=false - print the id then exit
+	// because all code after this point is related to
+	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)
+	if !settings.Runtime.WaitForJobToFinish {
+		cmd.Print(j.Metadata.ID + "\n")
+		return nil
+	}
+
+	// if we are in --id-only mode - print the id
+	if settings.Runtime.PrintJobIDOnly {
+		cmd.Print(j.Metadata.ID + "\n")
+	}
+
+	if settings.Runtime.Follow {
+		cmd.Printf("Job successfully submitted. Job ID: %s\n", j.Metadata.ID)
+		cmd.Printf("Waiting for logs... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+
+		// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
+		// the execution to appear.
+		for i := 0; i < 10; i++ {
+			jobState, stateErr := client.GetJobState(ctx, j.ID())
+			if stateErr != nil {
+				Fatal(cmd, fmt.Sprintf("failed waiting for execution to start: %s", stateErr), 1)
+			}
+
+			executionID := ""
+			for _, execution := range jobState.Executions {
+				if execution.State.IsActive() {
+					executionID = execution.ComputeReference
+				}
+			}
+
+			if executionID != "" {
+				break
+			}
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+
+		logOptions := LogCommandOptions{WithHistory: true, Follow: true}
+		return logs(cmd, []string{j.Metadata.ID}, logOptions)
+	}
+
+	// if we are only printing the id, set the rest of the output to "quiet",
+	// i.e. don't print
+	quiet := settings.Runtime.PrintJobIDOnly
+
+	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
+	if jobErr != nil {
+		if jobErr.Error() == PrintoutCanceledButRunningNormally {
+			Fatal(cmd, "", 0)
+		} else {
+			cmd.PrintErrf("\nError submitting job: %s", jobErr)
+		}
+	}
+
+	jobReturn, found, err := client.Get(ctx, j.Metadata.ID)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error getting job: %s", err), 1)
+	}
+	if !found {
+		Fatal(cmd, fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.Metadata.ID), 1)
+	}
+
+	js, err := client.GetJobState(ctx, jobReturn.Job.Metadata.ID)
+	if err != nil {
+		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
+	}
+
+	if settings.Runtime.PrintNodeDetails || jobErr != nil {
+		cmd.Println("\nJob Results By Node:")
+		for message, nodes := range summariseExecutions(js) {
+			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+			if strings.ContainsRune(message, '\n') {
+				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
+			} else {
+				cmd.Println(message)
+			}
+		}
+	}
+
+	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
+	if !quiet && hasResults {
+		cmd.Printf("\nTo download the results, execute:\n\t%s get %s\n", getCommandLineExecutable(), j.ID())
+	}
+
+	if !quiet {
+		cmd.Printf("\nTo get more details about the run, execute:\n\t%s describe %s\n", getCommandLineExecutable(), j.ID())
+	}
+
+	if hasResults && settings.Runtime.AutoDownloadResults {
+		err = downloadResultsHandler(
+			ctx,
+			cm,
+			cmd,
+			j.Metadata.ID,
+			settings.Download,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Groups the executions in the job state, returning a map of printable messages
+// to node(s) that generated that message.
+func summariseExecutions(state model.JobState) map[string][]string {
+	results := make(map[string][]string, len(state.Executions))
+	for _, execution := range state.Executions {
+		var message string
+		if execution.RunOutput != nil {
+			if execution.RunOutput.ErrorMsg != "" {
+				message = execution.RunOutput.ErrorMsg
+			} else if execution.RunOutput.ExitCode > 0 {
+				message = execution.RunOutput.STDERR
+			} else {
+				message = execution.RunOutput.STDOUT
+			}
+		} else if execution.State.IsDiscarded() {
+			message = execution.Status
+		}
+
+		if message != "" {
+			results[message] = append(results[message], system.GetShortID(execution.NodeID))
+		}
+	}
+	return results
+}
+
+func downloadResultsHandler(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	jobID string,
+	downloadSettings model.DownloaderSettings,
+) error {
+	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
+	j, _, err := GetAPIClient().Get(ctx, jobID)
+
+	if err != nil {
+		if _, ok := err.(*bacerrors.JobNotFound); ok {
+			return err
+		} else {
+			Fatal(cmd, fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
+		}
+	}
+
+	results, err := GetAPIClient().GetResults(ctx, j.Job.Metadata.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
+
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.Job.Metadata.ID)
+	if err != nil {
+		return err
+	}
+
+	downloaderProvider := util.NewStandardDownloaders(cm, &processedDownloadSettings)
+	if err != nil {
+		return err
+	}
+
+	// check if we don't support downloading the results
+	for _, result := range results {
+		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
+			cmd.PrintErrln(
+				"No supported downloader found for the published results. You will have to download the results differently.")
+			b, err := json.MarshalIndent(results, "", "    ")
+			if err != nil {
+				return err
+			}
+			cmd.PrintErrln(string(b))
+			return nil
+		}
+	}
+
+	err = downloader.DownloadResults(
+		ctx,
+		results,
+		downloaderProvider,
+		&processedDownloadSettings,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Results for job '%s' have been written to...\n", jobID)
+	cmd.Printf("%s\n", processedDownloadSettings.OutputDir)
+
+	return nil
 }

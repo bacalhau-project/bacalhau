@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -35,7 +36,7 @@ func (n NodeInfo) IsComputeNode() bool {
 }
 
 type ComputeNodeInfo struct {
-	ExecutionEngines   []Engine            `json:"ExecutionEngines"`
+	ExecutionEngines   []cid.Cid           `json:"ExecutionEngines"`
 	Verifiers          []Verifier          `json:"Verifiers"`
 	Publishers         []Publisher         `json:"Publishers"`
 	StorageSources     []StorageSourceType `json:"StorageSources"`

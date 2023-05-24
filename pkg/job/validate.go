@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.
@@ -22,6 +26,28 @@ func VerifyJobCreatePayload(ctx context.Context, jc *model.JobCreatePayload) err
 		APIVersion: jc.APIVersion,
 		Spec:       *jc.Spec,
 	})
+}
+
+func VerifyWasmJobCreatePayload(ctx context.Context, jc *model.WasmJobCreatePayload) error {
+	if jc.ClientID == "" {
+		return fmt.Errorf("ClientID is empty")
+	}
+
+	if jc.WasmJob.APIVersion.String() == "" {
+		return fmt.Errorf("APIVersion is empty")
+	}
+	return jc.WasmJob.Validate()
+}
+
+func VerifyDockerJobCreatePayload(ctx context.Context, jc *model.DockerJobCreatePayload) error {
+	if jc.ClientID == "" {
+		return fmt.Errorf("ClientID is empty")
+	}
+
+	if jc.DockerJob.APIVersion.String() == "" {
+		return fmt.Errorf("APIVersion is empty")
+	}
+	return jc.DockerJob.Validate()
 }
 
 // VerifyJob verifies that job object passed is valid.
@@ -42,8 +68,10 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("confidence must be >= 0")
 	}
 
-	if !model.IsValidEngine(j.Spec.Engine) {
-		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String())
+	if j.Spec.Engine.Schema != docker.EngineSchema.Cid() ||
+		j.Spec.Engine.Schema != wasm.EngineSchema.Cid() {
+		log.Warn().Msgf("TODO cannot validate custom engine schema: %s", j.Spec.Engine.Schema)
+		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.Schema.String())
 	}
 
 	if !model.IsValidVerifier(j.Spec.Verifier) {

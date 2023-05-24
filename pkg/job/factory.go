@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -15,7 +16,6 @@ import (
 func ConstructDockerJob( //nolint:funlen
 	ctx context.Context,
 	a model.APIVersion,
-	e model.Engine,
 	v model.Verifier,
 	p model.PublisherSpec,
 	cpu, memory, gpu string,
@@ -40,7 +40,7 @@ func ConstructDockerJob( //nolint:funlen
 		GPU:    gpu,
 	}
 
-	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
+	jobOutputs, err := BuildJobOutputs(ctx, outputVolumes)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -79,15 +79,23 @@ func ConstructDockerJob( //nolint:funlen
 	}
 	j.APIVersion = a.String()
 
+	dockerEngine := docker.DockerEngineSpec{
+		Image:                image,
+		Entrypoint:           entrypoint,
+		EnvironmentVariables: env,
+	}
+	// override working dir if provided
+	if len(workingDir) > 0 {
+		dockerEngine.WorkingDirectory = workingDir
+	}
+	engine, err := dockerEngine.AsSpec()
+	if err != nil {
+		return nil, err
+	}
 	j.Spec = model.Spec{
-		Engine:        e,
+		Engine:        engine,
 		Verifier:      v,
 		PublisherSpec: p,
-		Docker: model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypoint,
-			EnvironmentVariables: env,
-		},
 		Network: model.NetworkConfig{
 			Type:    network,
 			Domains: domains,
@@ -98,11 +106,6 @@ func ConstructDockerJob( //nolint:funlen
 		Outputs:       jobOutputs,
 		Annotations:   jobAnnotations,
 		NodeSelectors: nodeSelectorRequirements,
-	}
-
-	// override working dir if provided
-	if len(workingDir) > 0 {
-		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
 	j.Spec.Deal = model.Deal{

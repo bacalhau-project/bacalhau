@@ -5,6 +5,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,11 +24,16 @@ func DockerImageDigest() Transformer {
 	}
 
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		if j.Spec.Engine != model.EngineDocker {
+		if j.Spec.Engine.Schema != docker2.EngineSchema.Cid() {
 			return false, nil
 		}
 
-		image, err := docker.NewImageID(j.Spec.Docker.Image)
+		dockerEngine, err := docker2.Decode(j.Spec.Engine)
+		if err != nil {
+			return false, err
+		}
+
+		image, err := docker.NewImageID(dockerEngine.Image)
 		if err != nil {
 			return false, nil
 		}
@@ -40,10 +47,14 @@ func DockerImageDigest() Transformer {
 			return false, nil
 		}
 
-		j.Spec.Docker.Image = resolver.Digest()
+		j.Spec.Engine, err = docker2.Mutate(j.Spec.Engine, docker2.WithImage(resolver.Digest()))
+		if err != nil {
+			return false, err
+		}
+
 		log.Ctx(ctx).Debug().
 			Stringer("OldImage", image).
-			Str("NewImage", j.Spec.Docker.Image).
+			Str("NewImage", resolver.Digest()).
 			Msg("updated docker image with digest")
 
 		return true, nil

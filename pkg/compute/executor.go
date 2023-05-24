@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/rs/zerolog/log"
 )
 
 type BaseExecutorParams struct {
@@ -93,7 +94,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine.Schema)
 	if err != nil {
 		err = fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
 		return

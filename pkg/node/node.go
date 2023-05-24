@@ -5,6 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/imdario/mergo"
+	"github.com/ipfs/go-cid"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -20,13 +29,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/imdario/mergo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
-	"github.com/rs/zerolog/log"
 )
 
 const JobEventsTopic = "bacalhau-job-events"
@@ -34,7 +36,7 @@ const NodeInfoTopic = "bacalhau-node-info"
 const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
 type FeatureConfig struct {
-	Engines    []model.Engine
+	Engines    []cid.Cid
 	Verifiers  []model.Verifier
 	Publishers []model.Publisher
 	Storages   []model.StorageSourceType

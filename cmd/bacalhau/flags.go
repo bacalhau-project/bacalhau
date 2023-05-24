@@ -5,13 +5,15 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/spf13/pflag"
-	"golang.org/x/exp/slices"
 )
 
 // A Parser is a function that can convert a string into a native object.
@@ -217,11 +219,15 @@ func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mode
 	}
 }
 
-func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
-	return &ValueFlag[model.Engine]{
+func ParseEngineCID(str string) (cid.Cid, error) {
+	return cid.Decode(str)
+}
+
+func EngineFlag(value *cid.Cid) *ValueFlag[cid.Cid] {
+	return &ValueFlag[cid.Cid]{
 		value:    value,
-		parser:   model.ParseEngine,
-		stringer: func(e *model.Engine) string { return e.String() },
+		parser:   ParseEngineCID,
+		stringer: func(e *cid.Cid) string { return e.String() },
 		typeStr:  "engine",
 	}
 }

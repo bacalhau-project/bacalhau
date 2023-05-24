@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
 )
 
 type WasmInputs struct {
@@ -18,13 +20,12 @@ type WasmInputs struct {
 var _ JobType = (*WasmInputs)(nil)
 
 // UnmarshalInto implements taskUnmarshal
-func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineWasm
-	spec.Wasm = JobSpecWasm{
-		EntryPoint:           wasm.Entrypoint,
-		Parameters:           wasm.Parameters,
-		EnvironmentVariables: wasm.Env.Values,
-		ImportModules:        []StorageSpec{},
+func (w *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
+	wasmEngine := wasm.WasmEngineSpec{
+		EntryPoint:           w.Entrypoint,
+		Parameters:           w.Parameters,
+		EnvironmentVariables: FlattenIPLDMap(w.Env),
+		ImportModules:        nil,
 	}
 
 	entryModule, err := parseResource(with)
@@ -33,19 +34,25 @@ func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 	}
 	spec.Inputs = []StorageSpec{parseStorageSource("/job", entryModule)}
 
-	for _, resource := range wasm.Modules {
-		resource := resource
-		spec.Wasm.ImportModules = append(spec.Wasm.ImportModules, parseStorageSource("", &resource))
+	for _, resource := range w.Modules {
+		_ = resource
+		panic("TODO")
+		//spec.Wasm.ImportModules = append(spec.Wasm.ImportModules, parseStorageSource("", &resource))
 	}
 
-	inputData, err := parseInputs(wasm.Mounts)
+	spec.Engine, err = wasmEngine.AsSpec()
+	if err != nil {
+		return err
+	}
+
+	inputData, err := parseInputs(w.Mounts)
 	if err != nil {
 		return err
 	}
 	spec.Inputs = append(spec.Inputs, inputData...)
 
 	spec.Outputs = []StorageSpec{}
-	for path := range wasm.Outputs.Values {
+	for path := range w.Outputs.Values {
 		spec.Outputs = append(spec.Outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),

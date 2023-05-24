@@ -3,13 +3,14 @@ package publicapi
 import (
 	"net/http"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/gorilla/websocket"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -55,6 +56,8 @@ func (s *RequesterAPIServer) RegisterAllHandlers() error {
 		{Path: "/" + APIPrefix + "results", Handler: http.HandlerFunc(s.results)},
 		{Path: "/" + APIPrefix + "events", Handler: http.HandlerFunc(s.events)},
 		{Path: "/" + APIPrefix + "submit", Handler: http.HandlerFunc(s.submit)},
+		{Path: "/" + APIPrefix + "submit_docker", Handler: http.HandlerFunc(s.submitDocker)},
+		{Path: "/" + APIPrefix + "submit_wasm", Handler: http.HandlerFunc(s.submitWasm)},
 		{Path: "/" + APIPrefix + ApprovalRoute, Handler: http.HandlerFunc(s.approve)},
 		{Path: "/" + APIPrefix + VerifyRoute, Handler: http.HandlerFunc(s.verify)},
 		{Path: "/" + APIPrefix + "cancel", Handler: http.HandlerFunc(s.cancel)},

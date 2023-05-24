@@ -3,9 +3,11 @@ package ranking
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/rs/zerolog/log"
 )
 
 // featureNodeRanker is a generic ranker that can rank nodes based on what
@@ -15,10 +17,10 @@ type featureNodeRanker[Key model.ProviderKey] struct {
 	getNodeProvidedKeys func(model.ComputeNodeInfo) []Key
 }
 
-func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
-	return &featureNodeRanker[model.Engine]{
-		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
+func NewEnginesNodeRanker() *featureNodeRanker[cid.Cid] {
+	return &featureNodeRanker[cid.Cid]{
+		getJobRequirement:   func(job model.Job) []cid.Cid { return []cid.Cid{job.Spec.Engine.Schema} },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []cid.Cid { return ni.ExecutionEngines },
 	}
 }
 

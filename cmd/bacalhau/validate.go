@@ -6,10 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -182,7 +185,7 @@ func GenerateJobJSONSchema() ([]byte, error) {
 	}{
 		{Name: "Engine",
 			Path:  "$defs.Spec.properties.Engine",
-			Enums: model.EngineNames()},
+			Enums: []string{docker.EngineSchema.Cid().String(), wasm.EngineSchema.Cid().String()}},
 		{Name: "Verifier",
 			Path:  "$defs.Spec.properties.Verifier",
 			Enums: model.VerifierNames()},

@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 )
 
 type DockerInputs struct {
@@ -16,27 +18,30 @@ type DockerInputs struct {
 
 var _ JobType = (*DockerInputs)(nil)
 
-func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineDocker
-	spec.Docker = JobSpecDocker{
-		Image:            with,
-		Entrypoint:       docker.Entrypoint,
-		WorkingDirectory: docker.Workdir,
-	}
+func (d DockerInputs) UnmarshalInto(with string, spec *Spec) error {
+	var err error
 
-	spec.Docker.EnvironmentVariables = []string{}
-	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
+	dockerEngine := docker.DockerEngineSpec{
+		Image:                with,
+		Entrypoint:           d.Entrypoint,
+		WorkingDirectory:     d.Workdir,
+		EnvironmentVariables: make([]string, 0, len(d.Env.Values)),
 	}
-
-	inputData, err := parseInputs(docker.Mounts)
+	for key, val := range d.Env.Values {
+		dockerEngine.EnvironmentVariables = append(dockerEngine.EnvironmentVariables, key, val)
+	}
+	spec.Engine, err = dockerEngine.AsSpec()
 	if err != nil {
 		return err
 	}
-	spec.Inputs = inputData
 
-	spec.Outputs = []StorageSpec{}
-	for path := range docker.Outputs.Values {
+	spec.Inputs, err = parseInputs(d.Mounts)
+	if err != nil {
+		return err
+	}
+
+	spec.Outputs = make([]StorageSpec, 0, len(d.Outputs.Values))
+	for path := range d.Outputs.Values {
 		spec.Outputs = append(spec.Outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),

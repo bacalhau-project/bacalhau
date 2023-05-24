@@ -7,10 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -71,7 +72,6 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 				j, err := ConstructDockerJob( //nolint:funlen
 					context.Background(),
 					model.APIVersionLatest(),
-					model.EngineNoop,
 					model.VerifierNoop,
 					model.PublisherSpec{Type: model.PublisherNoop},
 					"1",                   // cpu

@@ -5,6 +5,12 @@ import (
 
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/local"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/s3"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -49,18 +55,19 @@ type JobRequester struct {
 }
 
 // TODO: There's probably a better way we want to globally version APIs
+// TODO deprecate
 func NewJob() *Job {
 	return &Job{
 		APIVersion: APIVersionLatest().String(),
 	}
 }
 
+// TODO deprecate
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
 			Verifier: VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
@@ -148,7 +155,7 @@ type PublisherSpec struct {
 // execution provider.
 type Spec struct {
 	// e.g. docker or language
-	Engine Engine `json:"Engine,omitempty"`
+	Engine engine.Spec `json:"Engine,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 
@@ -156,11 +163,6 @@ type Spec struct {
 	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
-
-	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty"`
-	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -201,10 +203,7 @@ func (s *Spec) GetTimeout() time.Duration {
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Language.Context,
-		&s.Wasm.EntryModule,
-	}
+	var storages []*StorageSpec
 
 	for _, collection := range [][]StorageSpec{
 		s.Inputs,
@@ -215,57 +214,37 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 		}
 	}
 
+	if s.Engine.Schema == wasm.EngineSchema.Cid() {
+		wasmEngine, err := wasm.Decode(s.Engine)
+		if err != nil {
+			panic(err)
+		}
+		switch wasmEngine.EntryModule.Schema {
+		case ipfs.StorageSchema.Cid():
+			ipfsStorage, err := ipfs.Decode(wasmEngine.EntryModule)
+			if err != nil {
+				panic(err)
+			}
+			_ = ipfsStorage
+		case local.StorageSchema.Cid():
+			localStorage, err := local.Decode(wasmEngine.EntryModule)
+			if err != nil {
+				panic(err)
+			}
+			_ = localStorage
+		case s3.StorageSchema.Cid():
+			s3Storage, err := s3.Decode(wasmEngine.EntryModule)
+			if err != nil {
+				panic(err)
+			}
+			_ = s3Storage
+		default:
+			// TODO
+			panic("NYI AllStorageSpecs")
+		}
+	}
+
 	return storages
-}
-
-// for VM style executors
-type JobSpecDocker struct {
-	// this should be pullable by docker
-	Image string `json:"Image,omitempty"`
-	// optionally override the default entrypoint
-	Entrypoint []string `json:"Entrypoint,omitempty"`
-	// a map of env to run the container with
-	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
-	// working directory inside the container
-	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
-// for language style executors (can target docker or wasm)
-type JobSpecLanguage struct {
-	Language        string `json:"Language,omitempty"`        // e.g. python
-	LanguageVersion string `json:"LanguageVersion,omitempty"` // e.g. 3.8
-	// must this job be run in a deterministic context?
-	Deterministic bool `json:"DeterministicExecution,omitempty"`
-	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context StorageSpec `json:"JobContext,omitempty"`
-	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"Command,omitempty"`
-	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"ProgramPath,omitempty"`
-	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"RequirementsPath,omitempty"`
-}
-
-// Describes a raw WASM job
-type JobSpecWasm struct {
-	// The module that contains the WASM code to start running.
-	EntryModule StorageSpec `json:"EntryModule,omitempty"`
-
-	// The name of the function in the EntryModule to call to run the job. For
-	// WASI jobs, this will always be `_start`, but jobs can choose to call
-	// other WASM functions instead. The EntryPoint must be a zero-parameter
-	// zero-result function.
-	EntryPoint string `json:"EntryPoint,omitempty"`
-
-	// The arguments supplied to the program (i.e. as ARGV).
-	Parameters []string `json:"Parameters,omitempty"`
-
-	// The variables available in the environment of the running program.
-	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
-
-	// TODO #880: Other WASM modules whose exports will be available as imports
-	// to the EntryModule.
-	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
 // we emit these to other nodes so they update their

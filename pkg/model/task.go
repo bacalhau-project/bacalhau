@@ -8,6 +8,8 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/noop"
 )
 
 type TaskType string
@@ -56,7 +58,11 @@ type JobType interface {
 type NoopTask struct{}
 
 func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
+	noopEngine, err := (&noop.NoopEngineSpec{Noop: ""}).AsSpec()
+	if err != nil {
+		return err
+	}
+	spec.Engine = noopEngine
 	return nil
 }
 

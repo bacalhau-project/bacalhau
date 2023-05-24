@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
+
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/opts"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
 var (
@@ -47,7 +47,6 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine           string            // Executor - executor.Executor
 	Verifier         string            // Verifier - verifier.Verifier
 	Publisher        opts.PublisherOpt // Publisher - publisher.Publisher
 	Inputs           opts.StorageOpt   // Array of inputs
@@ -83,7 +82,6 @@ type DockerRunOptions struct {
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
-		Engine:             "docker",
 		Verifier:           "noop",
 		Publisher:          opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
 		Inputs:             opts.StorageOpt{},
@@ -135,11 +133,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		},
 	}
 
-	// TODO: don't make jobEngine specifiable in the docker subcommand
-	dockerRunCmd.PersistentFlags().StringVar(
-		&ODR.Engine, "engine", ODR.Engine,
-		`What executor engine to use to run the job`,
-	)
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.Verifier, "verifier", ODR.Verifier,
 		`What verification engine to use to run the job`,
@@ -229,124 +222,105 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
+func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
+	// TODO not a fan of storing things in the context like this, half the receives don't use it, and accept a context
+	// anyways - which they could pull this from. If we want to keep this perhaps it could be a global somewhere.
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
 
-	j, err := CreateJob(ctx, cmdArgs, ODR)
+	// also handles validation
+	dockerJob, err := createDockerJob(ctx, cmdArgs, opts)
 	if err != nil {
-		Fatal(cmd, fmt.Sprintf("Error creating job: %s", err), 1)
-		return nil
-	}
-	err = jobutils.VerifyJob(ctx, j)
-	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			Fatal(cmd, fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-			return nil
-		} else {
-			Fatal(cmd, fmt.Sprintf("Error verifying job: %s", err), 1)
-			return nil
-		}
+		return fmt.Errorf("creating docker job: %w", err)
 	}
 
-	quiet := ODR.RunTimeSettings.PrintJobIDOnly
-	if !quiet {
-		containsTag := DockerImageContainsTag(j.Spec.Docker.Image)
-		if !containsTag {
-			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
-		}
+	if !opts.RunTimeSettings.PrintJobIDOnly && !DockerImageContainsTag(dockerJob.DockerSpec.Image) {
+		return fmt.Errorf("image %s does not contain tag, please specify a tag/digest", dockerJob.DockerSpec.Image)
 	}
 
-	if ODR.DryRun {
-		// Converting job to yaml
+	if opts.DryRun {
+		// Converting docker job to Spec then to yaml
 		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(j)
+		yamlBytes, err = yaml.Marshal(dockerJob)
 		if err != nil {
-			Fatal(cmd, fmt.Sprintf("Error converting job to yaml: %s", err), 1)
-			return nil
+			return fmt.Errorf("converting job to yaml: %w", err)
 		}
 		cmd.Print(string(yamlBytes))
 		return nil
 	}
-
-	return ExecuteJob(ctx,
-		cm,
-		cmd,
-		j,
-		ODR.RunTimeSettings,
-		ODR.DownloadFlags,
-	)
+	return ExecuteDockerJob(ctx, cm, cmd, dockerJob, &ExecutionSettings{
+		Runtime:  opts.RunTimeSettings,
+		Download: opts.DownloadFlags,
+	})
 }
 
-// CreateJob creates a job object from the given command line arguments and options.
-func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
-	odr.Image = cmdArgs[0]
-	odr.Entrypoint = cmdArgs[1:]
-
-	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
-
-	if swarmAddresses == "" {
-		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
-	}
-
-	odr.DownloadFlags = model.DownloaderSettings{
-		Timeout:        odr.DownloadFlags.Timeout,
-		OutputDir:      odr.DownloadFlags.OutputDir,
-		IPFSSwarmAddrs: swarmAddresses,
-	}
-
-	engineType, err := model.ParseEngine(odr.Engine)
+func createDockerJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*model.DockerJob, error) {
+	verifierSpec, err := model.ParseVerifier(opts.Verifier)
 	if err != nil {
-		return &model.Job{}, err
+		return nil, err
 	}
 
-	verifierType, err := model.ParseVerifier(odr.Verifier)
+	outputSpec, err := jobutils.BuildJobOutputs(ctx, opts.OutputVolumes)
 	if err != nil {
-		return &model.Job{}, err
+		return nil, err
 	}
 
-	if len(odr.WorkingDirectory) > 0 {
-		err = system.ValidateWorkingDir(odr.WorkingDirectory)
-
-		if err != nil {
-			return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
-		}
+	nodeSelectors, err := jobutils.ParseNodeSelector(opts.NodeSelector)
+	if err != nil {
+		return nil, err
 	}
 
-	labels := odr.Labels
-
-	if odr.FilPlus {
+	labels := opts.Labels
+	if opts.FilPlus {
 		labels = append(labels, "filplus")
 	}
 
-	j, err := jobutils.ConstructDockerJob(
-		ctx,
-		model.APIVersionLatest(),
-		engineType,
-		verifierType,
-		odr.Publisher.Value(),
-		odr.CPU,
-		odr.Memory,
-		odr.GPU,
-		odr.Networking,
-		odr.NetworkDomains,
-		odr.Inputs.Values(),
-		odr.OutputVolumes,
-		odr.Env,
-		odr.Entrypoint,
-		odr.Image,
-		odr.Concurrency,
-		odr.Confidence,
-		odr.MinBids,
-		odr.Timeout,
-		labels,
-		odr.NodeSelector,
-		odr.WorkingDirectory,
-	)
-	if err != nil {
-		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")
+	swarmAddresses := opts.DownloadFlags.IPFSSwarmAddrs
+	if swarmAddresses == "" {
+		swarmAddresses = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
+	}
+	opts.DownloadFlags = model.DownloaderSettings{
+		Timeout:        opts.DownloadFlags.Timeout,
+		OutputDir:      opts.DownloadFlags.OutputDir,
+		IPFSSwarmAddrs: swarmAddresses,
 	}
 
-	return j, nil
+	out := &model.DockerJob{
+		// TODO this could be different than the api version as it only relates to docker jobs.
+		APIVersion: model.APIVersionLatest(),
+		DockerSpec: docker.DockerEngineSpec{
+			Image:                cmdArgs[0],
+			Entrypoint:           cmdArgs[1:],
+			EnvironmentVariables: opts.Env,
+			WorkingDirectory:     opts.WorkingDirectory,
+		},
+		PublisherSpec: opts.Publisher.Value(),
+		VerifierSpec:  verifierSpec,
+		ResourceConfig: model.ResourceUsageConfig{
+			CPU:    opts.CPU,
+			Memory: opts.Memory,
+			GPU:    opts.GPU,
+			// TODO this is unspecified on CLI
+			// Disk:   opts.Disk?,
+		},
+		NetworkConfig: model.NetworkConfig{
+			Type:    opts.Networking,
+			Domains: opts.NetworkDomains,
+		},
+		Inputs:  opts.Inputs.Values(),
+		Outputs: outputSpec,
+		DealSpec: model.Deal{
+			Concurrency: opts.Concurrency,
+			Confidence:  opts.Confidence,
+			MinBids:     opts.MinBids,
+		},
+		NodeSelectors: nodeSelectors,
+		Timeout:       opts.Timeout,
+		Annotations:   opts.Labels,
+	}
+	if err := out.Validate(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

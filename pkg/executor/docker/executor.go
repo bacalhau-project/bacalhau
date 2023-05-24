@@ -26,6 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -118,6 +119,9 @@ func (e *Executor) Run(
 	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
+	if job.Spec.Engine.Schema != dockerengine.EngineSchema.Cid() {
+		return nil, fmt.Errorf("job engine is not docker")
+	}
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
@@ -198,10 +202,14 @@ func (e *Executor) Run(
 		})
 	}
 
+	engine, err := dockerengine.Decode(job.Spec.Engine)
+	if err != nil {
+		return executor.FailResult(err)
+	}
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
+		if pullErr := e.client.PullImage(ctx, engine.Image, dockerCreds); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, engine.Image)
 			return executor.FailResult(pullErr)
 		}
 	}
@@ -216,17 +224,17 @@ func (e *Executor) Run(
 	}
 	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(job.Spec.Docker.EnvironmentVariables,
+	useEnv := append(engine.EnvironmentVariables,
 		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
 	)
 
 	containerConfig := &container.Config{
-		Image:      job.Spec.Docker.Image,
+		Image:      engine.Image,
 		Tty:        false,
 		Env:        useEnv,
-		Entrypoint: job.Spec.Docker.Entrypoint,
+		Entrypoint: engine.Entrypoint,
 		Labels:     e.containerLabels(executionID, job),
-		WorkingDir: job.Spec.Docker.WorkingDirectory,
+		WorkingDir: engine.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
