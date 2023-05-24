@@ -158,9 +158,8 @@ type Spec struct {
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty"`
-	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
+	Docker JobSpecDocker `json:"Docker,omitempty"`
+	Wasm   JobSpecWasm   `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -202,7 +201,6 @@ func (s *Spec) GetTimeout() time.Duration {
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	storages := []*StorageSpec{
-		&s.Language.Context,
 		&s.Wasm.EntryModule,
 	}
 
@@ -228,22 +226,6 @@ type JobSpecDocker struct {
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// working directory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
-// for language style executors (can target docker or wasm)
-type JobSpecLanguage struct {
-	Language        string `json:"Language,omitempty"`        // e.g. python
-	LanguageVersion string `json:"LanguageVersion,omitempty"` // e.g. 3.8
-	// must this job be run in a deterministic context?
-	Deterministic bool `json:"DeterministicExecution,omitempty"`
-	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context StorageSpec `json:"JobContext,omitempty"`
-	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"Command,omitempty"`
-	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"ProgramPath,omitempty"`
-	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"RequirementsPath,omitempty"`
 }
 
 // Describes a raw WASM job
