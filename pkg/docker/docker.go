@@ -330,14 +330,15 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, DistributionInspectError, image)
 	}
 
 	obj := dist.Descriptor.Digest
 	manifest := &ImageManifest{
-		Digest: obj,
+		Digest:    obj,
+		Platforms: append([]v1.Platform(nil), dist.Platforms...),
 	}
-	copy(manifest.Platforms, dist.Platforms)
+
 	return manifest, nil
 }
 
