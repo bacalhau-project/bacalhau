@@ -5,7 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 
 	"github.com/rs/zerolog/log"
 )

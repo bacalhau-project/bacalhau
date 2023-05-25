@@ -6,7 +6,7 @@ import (
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
 )
 
 //go:embed spec.ipldsch
@@ -42,10 +42,10 @@ type DockerEngineSpec struct {
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
-func (e *DockerEngineSpec) AsSpec() (engine.Spec, error) {
+func (e *DockerEngineSpec) AsSpec() (engine.Engine, error) {
 	return engine.Encode(e, defaultModelEncoder, EngineSchema)
 }
 
-func Decode(spec engine.Spec) (*DockerEngineSpec, error) {
+func Decode(spec engine.Engine) (*DockerEngineSpec, error) {
 	return engine.Decode[DockerEngineSpec](spec, defaultModelDecoder)
 }

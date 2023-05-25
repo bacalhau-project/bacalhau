@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 )
 
 type WasmJobCreatePayload struct {

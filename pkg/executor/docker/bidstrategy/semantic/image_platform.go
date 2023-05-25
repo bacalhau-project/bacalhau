@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 )
 
 const oneDayInSeconds = int64(86400)

@@ -12,7 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )

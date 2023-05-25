@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 )
 
 // VerifyJobCreatePayload verifies the values in a job creation request are legal.

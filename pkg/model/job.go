@@ -6,11 +6,11 @@ import (
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/selection"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/local"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -155,7 +155,7 @@ type PublisherSpec struct {
 // execution provider.
 type Spec struct {
 	// e.g. docker or language
-	Engine engine.Spec `json:"Engine,omitempty"`
+	Engine engine.Engine `json:"Engine,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 
@@ -220,19 +220,19 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 			panic(err)
 		}
 		switch wasmEngine.EntryModule.Schema {
-		case ipfs.StorageSchema.Cid():
+		case ipfs.Schema.Cid():
 			ipfsStorage, err := ipfs.Decode(wasmEngine.EntryModule)
 			if err != nil {
 				panic(err)
 			}
 			_ = ipfsStorage
-		case local.StorageSchema.Cid():
+		case local.Schema.Cid():
 			localStorage, err := local.Decode(wasmEngine.EntryModule)
 			if err != nil {
 				panic(err)
 			}
 			_ = localStorage
-		case s3.StorageSchema.Cid():
+		case s3.Schema.Cid():
 			s3Storage, err := s3.Decode(wasmEngine.EntryModule)
 			if err != nil {
 				panic(err)

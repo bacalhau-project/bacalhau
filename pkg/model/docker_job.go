@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 )
 
 type DockerJobCreatePayload struct {

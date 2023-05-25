@@ -9,7 +9,7 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/ipld/go-ipld-prime/datamodel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/noop"
 )
 
 type TaskType string

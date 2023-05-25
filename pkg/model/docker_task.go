@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime/datamodel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 )
 
 type DockerInputs struct {

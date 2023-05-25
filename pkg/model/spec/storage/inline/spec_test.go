@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	strgspec "github.com/bacalhau-project/bacalhau/pkg/model/specs/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/inline"
+	strgspec "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
 )
 
 func TestRoundTrip(t *testing.T) {

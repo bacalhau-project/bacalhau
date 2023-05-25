@@ -6,12 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/local"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
 )
 
 func TestRoundTrip(t *testing.T) {
 	expectedSpec := local.LocalStorageSpec{
-		Path: "/path/to/local/data",
+		Source: "/path/to/local/data",
 	}
 
 	spec, err := expectedSpec.AsSpec()
@@ -27,6 +27,6 @@ func TestRoundTrip(t *testing.T) {
 	actualSpec, err := local.Decode(spec)
 	require.NoError(t, err)
 
-	assert.Equal(t, expectedSpec.Path, actualSpec.Path)
+	assert.Equal(t, expectedSpec.Source, actualSpec.Source)
 
 }

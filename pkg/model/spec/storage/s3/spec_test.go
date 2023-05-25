@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 )
 
 func TestRoundTrip(t *testing.T) {

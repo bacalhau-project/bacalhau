@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"k8s.io/kubectl/pkg/util/i18n"

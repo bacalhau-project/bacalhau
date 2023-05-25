@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 )
 
 func TestRoundTrip(t *testing.T) {

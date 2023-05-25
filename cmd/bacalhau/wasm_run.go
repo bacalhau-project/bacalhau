@@ -20,11 +20,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	wasm2 "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
-	storagespec "github.com/bacalhau-project/bacalhau/pkg/model/specs/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/local"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/storage/s3"
+	wasm2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	storagespec "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
@@ -264,7 +264,7 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 		}
 	}
 
-	var em storagespec.Spec
+	var em storagespec.Storage
 	switch entryModule.StorageSource {
 	case model.StorageSourceIPFS:
 		em, err = (&ipfs.IPFSStorageSpec{CID: wasmCid}).AsSpec()
@@ -272,7 +272,7 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 			return nil, err
 		}
 	case model.StorageSourceLocalDirectory:
-		em, err = (&local.LocalStorageSpec{Path: entryModule.Path}).AsSpec()
+		em, err = (&local.LocalStorageSpec{Source: entryModule.Path}).AsSpec()
 		if err != nil {
 			return nil, err
 		}

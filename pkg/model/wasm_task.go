@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipld/go-ipld-prime/datamodel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 )
 
 type WasmInputs struct {

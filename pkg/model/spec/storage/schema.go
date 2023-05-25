@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime/codec"
@@ -11,34 +10,8 @@ import (
 	dmtschema "github.com/ipld/go-ipld-prime/schema/dmt"
 	"github.com/multiformats/go-multihash"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/util"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/util"
 )
-
-var (
-	defaultSchemaEncoder = ipldcodec.Encode
-	defaultSchemaDecoder = ipldcodec.Decode
-	cidBuilder           = cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.SHA2_256}
-)
-
-type Spec struct {
-	// Type is the name of the Go structure this Spec contains. Used to improve human readability.
-	Type string
-	// Schema is the CID of SchemaData.
-	Schema cid.Cid
-	// SchemaData is the IPLD schema encoded to bytes (deterministically). It described Params.
-	SchemaData []byte // TODO remove when we can safely resolve the Schema cid(s) across the network.
-	// Params is the data for a specific spec, it can be decoded using the IPLD Schema.
-	Params []byte
-
-	// Name is the name of the specs data for reference. Example could be a wasm module name
-	Name string
-	// Mount is the path that the spec's data will be mounted.
-	Mount string
-}
-
-func (s Spec) String() string {
-	return fmt.Sprintf("[%s]:%s", s.Type, s.Schema)
-}
 
 type Schema dmtschema.Schema
 
@@ -62,24 +35,30 @@ func (s *Schema) Cid() cid.Cid {
 	return c
 }
 
-func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Spec, error) {
+var (
+	defaultSchemaEncoder = ipldcodec.Encode
+	defaultSchemaDecoder = ipldcodec.Decode
+	cidBuilder           = cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.SHA2_256}
+)
+
+func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Storage, error) {
 	// construct a type system for the schema
 	ts, err := util.NewValidatedTypeSystem((*dmtschema.Schema)(modelSchema))
 	if err != nil {
-		return Spec{}, err
+		return Storage{}, err
 	}
 
 	encodedParams, err := util.MarshalIPLD(params, encoder, ts)
 	if err != nil {
-		return Spec{}, err
+		return Storage{}, err
 	}
 
 	encodedSchema, err := modelSchema.Serialize()
 	if err != nil {
-		return Spec{}, err
+		return Storage{}, err
 	}
 
-	storageSpec := Spec{
+	storageSpec := Storage{
 		Type: ts.GetSchemaType(params).Name(),
 		// NB: slightly wasteful since calling Cid() calls serialize, and we just called it above, ohh well, its cheap enough for now.
 		Schema:     modelSchema.Cid(),
@@ -90,7 +69,7 @@ func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Spec, error
 	return storageSpec, nil
 }
 
-func Decode[P any](spec Spec, decoder codec.Decoder) (*P, error) {
+func Decode[P any](spec Storage, decoder codec.Decoder) (*P, error) {
 	// decode the spec schema.
 	schemaBuilder := dmtschema.Prototypes.Schema.Representation().NewBuilder()
 	if err := defaultSchemaDecoder(schemaBuilder, bytes.NewReader(spec.SchemaData)); err != nil {

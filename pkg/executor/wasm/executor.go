@@ -20,7 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"

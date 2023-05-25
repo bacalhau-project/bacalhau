@@ -26,7 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/specs/engine/docker"
+	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
