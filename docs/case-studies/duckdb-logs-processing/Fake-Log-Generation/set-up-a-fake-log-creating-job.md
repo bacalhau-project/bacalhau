@@ -112,7 +112,7 @@ def generate_log_entry():
 def main():
     while True:
         log_entry = generate_log_entry()
-        
+
         # Load existing log entries
         try:
             with open("fake_logs.log", "r") as log_file:
@@ -171,4 +171,6 @@ sudo systemctl start fake_log_generator.service
 
 Now the fake log generator script will run reliably as a systemd service, creating log entries in the **`fake_logs.log`** file every 5 seconds.
 
-export BACALHAU_LOCAL_DIRECTORY_ALLOW_LIST=/home/`<your-username>`/logrotate/logs
+```bash
+export BACALHAU_LOCAL_DIRECTORY_ALLOW_LIST=/home/<your-username>/logrotate/logs
+```
