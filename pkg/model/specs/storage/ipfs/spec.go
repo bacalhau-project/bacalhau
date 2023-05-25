@@ -2,6 +2,8 @@ package ipfs
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
@@ -22,9 +24,11 @@ func load() *storage.Schema {
 }
 
 var (
-	StorageSchema       *storage.Schema = load()
+	Schema              *storage.Schema = load()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
+	EncodingError                       = errors.New("encoding IPFSStorageSpec to storage.Spec")
+	DecodingError                       = errors.New("decoding storage.Spec to IPFSStorageSpec")
 )
 
 type IPFSStorageSpec struct {
@@ -32,9 +36,20 @@ type IPFSStorageSpec struct {
 }
 
 func (e *IPFSStorageSpec) AsSpec() (storage.Spec, error) {
-	return storage.Encode("storage", e, defaultModelEncoder, StorageSchema)
+	spec, err := storage.Encode(e, defaultModelEncoder, Schema)
+	if err != nil {
+		return storage.Spec{}, errors.Join(EncodingError, err)
+	}
+	return spec, nil
 }
 
 func Decode(spec storage.Spec) (*IPFSStorageSpec, error) {
-	return storage.Decode[IPFSStorageSpec](spec, defaultModelDecoder)
+	if spec.Schema != Schema.Cid() {
+		return nil, fmt.Errorf("unexpected spec schema %s: %w", spec, DecodingError)
+	}
+	out, err := storage.Decode[IPFSStorageSpec](spec, defaultModelDecoder)
+	if err != nil {
+		return nil, errors.Join(DecodingError, err)
+	}
+	return out, nil
 }

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime/codec"
@@ -20,10 +21,23 @@ var (
 )
 
 type Spec struct {
-	Name       string
-	Schema     cid.Cid
+	// Type is the name of the Go structure this Spec contains. Used to improve human readability.
+	Type string
+	// Schema is the CID of SchemaData.
+	Schema cid.Cid
+	// SchemaData is the IPLD schema encoded to bytes (deterministically). It described Params.
 	SchemaData []byte // TODO remove when we can safely resolve the Schema cid(s) across the network.
-	Params     []byte
+	// Params is the data for a specific spec, it can be decoded using the IPLD Schema.
+	Params []byte
+
+	// Name is the name of the specs data for reference. Example could be a wasm module name
+	Name string
+	// Mount is the path that the spec's data will be mounted.
+	Mount string
+}
+
+func (s Spec) String() string {
+	return fmt.Sprintf("[%s]:%s", s.Type, s.Schema)
 }
 
 type Schema dmtschema.Schema
@@ -48,7 +62,7 @@ func (s *Schema) Cid() cid.Cid {
 	return c
 }
 
-func Encode(name string, params any, encoder codec.Encoder, modelSchema *Schema) (Spec, error) {
+func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Spec, error) {
 	// construct a type system for the schema
 	ts, err := util.NewValidatedTypeSystem((*dmtschema.Schema)(modelSchema))
 	if err != nil {
@@ -66,8 +80,8 @@ func Encode(name string, params any, encoder codec.Encoder, modelSchema *Schema)
 	}
 
 	storageSpec := Spec{
+		Type: ts.GetSchemaType(params).Name(),
 		// NB: slightly wasteful since calling Cid() calls serialize, and we just called it above, ohh well, its cheap enough for now.
-		Name:       name,
 		Schema:     modelSchema.Cid(),
 		SchemaData: encodedSchema,
 		Params:     encodedParams,

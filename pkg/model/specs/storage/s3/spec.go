@@ -2,6 +2,8 @@ package s3
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
 
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
@@ -21,9 +23,11 @@ func load() *storage.Schema {
 }
 
 var (
-	StorageSchema       *storage.Schema = load()
+	Schema              *storage.Schema = load()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
+	EncodingError                       = errors.New("encoding S3StorageSpec to storage.Spec")
+	DecodingError                       = errors.New("decoding storage.Spec to S3StorageSpec")
 )
 
 type S3StorageSpec struct {
@@ -36,9 +40,20 @@ type S3StorageSpec struct {
 }
 
 func (e *S3StorageSpec) AsSpec() (storage.Spec, error) {
-	return storage.Encode("storage", e, defaultModelEncoder, StorageSchema)
+	spec, err := storage.Encode(e, defaultModelEncoder, Schema)
+	if err != nil {
+		return storage.Spec{}, errors.Join(EncodingError, err)
+	}
+	return spec, nil
 }
 
 func Decode(spec storage.Spec) (*S3StorageSpec, error) {
-	return storage.Decode[S3StorageSpec](spec, defaultModelDecoder)
+	if spec.Schema != Schema.Cid() {
+		return nil, fmt.Errorf("unexpected spec schema %s: %w", spec, DecodingError)
+	}
+	out, err := storage.Decode[S3StorageSpec](spec, defaultModelDecoder)
+	if err != nil {
+		return nil, errors.Join(DecodingError, err)
+	}
+	return out, nil
 }

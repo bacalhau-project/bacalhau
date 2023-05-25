@@ -7,8 +7,11 @@ type WasmEngineSpec struct {
 }
 
 type StorageSpec struct {
-    Name String
+    Type String
     Schema Link
     SchemaData Bytes
     Params Bytes
+
+    Name String
+    Mount String
 }

@@ -22,7 +22,7 @@ func TestRoundTrip(t *testing.T) {
 
 	require.NotEmpty(t, spec.SchemaData)
 	require.NotEmpty(t, spec.Params)
-	require.True(t, ipfs.StorageSchema.Cid().Equals(spec.Schema))
+	require.True(t, ipfs.Schema.Cid().Equals(spec.Schema))
 
 	t.Log(string(spec.SchemaData))
 	t.Log(string(spec.Params))

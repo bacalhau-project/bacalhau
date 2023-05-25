@@ -1,4 +1,4 @@
-package local
+package inline
 
 import (
 	_ "embed"
@@ -26,15 +26,15 @@ var (
 	Schema              *storage.Schema = load()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
-	EncodingError                       = errors.New("encoding LocalStorageSpec to storage.Spec")
-	DecodingError                       = errors.New("decoding storage.Spec to LocalStorageSpec")
+	EncodingError                       = errors.New("encoding InlineStorageSpec to storage.Spec")
+	DecodingError                       = errors.New("decoding storage.Spec to InlineStorageSpec")
 )
 
-type LocalStorageSpec struct {
-	Source string
+type InlineStorageSpec struct {
+	URL string
 }
 
-func (e *LocalStorageSpec) AsSpec() (storage.Spec, error) {
+func (e *InlineStorageSpec) AsSpec() (storage.Spec, error) {
 	spec, err := storage.Encode(e, defaultModelEncoder, Schema)
 	if err != nil {
 		return storage.Spec{}, errors.Join(EncodingError, err)
@@ -42,11 +42,11 @@ func (e *LocalStorageSpec) AsSpec() (storage.Spec, error) {
 	return spec, nil
 }
 
-func Decode(spec storage.Spec) (*LocalStorageSpec, error) {
+func Decode(spec storage.Spec) (*InlineStorageSpec, error) {
 	if spec.Schema != Schema.Cid() {
 		return nil, fmt.Errorf("unexpected spec schema %s: %w", spec, DecodingError)
 	}
-	out, err := storage.Decode[LocalStorageSpec](spec, defaultModelDecoder)
+	out, err := storage.Decode[InlineStorageSpec](spec, defaultModelDecoder)
 	if err != nil {
 		return nil, errors.Join(DecodingError, err)
 	}

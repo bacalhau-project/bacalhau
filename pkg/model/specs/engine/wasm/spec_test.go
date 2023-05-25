@@ -49,7 +49,7 @@ func TestRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	t.Log(engineCid.String())
 
-	assert.True(t, s3.StorageSchema.Cid().Equals(actualEngine.EntryModule.Schema))
+	assert.True(t, s3.Schema.Cid().Equals(actualEngine.EntryModule.Schema))
 
 	assert.Equal(t, expectedEngine.EntryModule, actualEngine.EntryModule)
 	assert.Equal(t, expectedEngine.EntryPoint, actualEngine.EntryPoint)
