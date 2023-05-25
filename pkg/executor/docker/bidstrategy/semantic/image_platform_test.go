@@ -55,6 +55,8 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 	t.Run("cached manifest response for duplicate call", func(t *testing.T) {
 
+		previousCache := semantic.ManifestCache
+
 		var fc *fake.FakeCache[docker.ImageManifest] = fake.NewFakeCache[docker.ImageManifest]()
 		var cc cache.Cache[docker.ImageManifest] = fc
 		semantic.ManifestCache = &cc
@@ -81,5 +83,8 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 		require.Equal(t, 2, fc.SetCalls)
 		require.Equal(t, 2, fc.GetCalls)
 		require.Equal(t, 1, fc.SuccessfulGetCalls)
+
+		// Reset the cache to the default impl
+		semantic.ManifestCache = previousCache
 	})
 }
