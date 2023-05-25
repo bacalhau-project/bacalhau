@@ -13,6 +13,6 @@ type imageResolverFunc func(context.Context, string, config.DockerCredentials) (
 
 type ImageManifest struct {
 	// We only ever expect the digest to be the `algorithm:hash`
-	digest    digest.Digest
-	platforms []v1.Platform
+	Digest    digest.Digest
+	Platforms []v1.Platform
 }

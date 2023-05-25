@@ -315,8 +315,8 @@ func (c *Client) ImageDistribution(
 			}
 
 			return &ImageManifest{
-				digest: digest,
-				platforms: []v1.Platform{
+				Digest: digest,
+				Platforms: []v1.Platform{
 					{
 						Architecture: info.Architecture,
 						OS:           info.Os,
@@ -330,14 +330,15 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, DistributionInspectError, image)
 	}
 
 	obj := dist.Descriptor.Digest
 	manifest := &ImageManifest{
-		digest: obj,
+		Digest:    obj,
+		Platforms: append([]v1.Platform(nil), dist.Platforms...),
 	}
-	copy(manifest.platforms, dist.Platforms)
+
 	return manifest, nil
 }
 

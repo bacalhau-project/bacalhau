@@ -48,7 +48,7 @@ func (r *ImageResolver) Resolve(ctx context.Context, resolver imageResolverFunc,
 	}
 
 	cloned, _ := NewImageID(r.source.String())
-	cloned.tag = DigestTag(manifest.digest)
+	cloned.tag = DigestTag(manifest.Digest)
 	r.resolved = cloned.String()
 
 	// Save a copy of the digest in the local cache for a set period of time

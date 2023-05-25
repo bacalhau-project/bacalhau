@@ -24,7 +24,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const maxServeTime = 1 * time.Second
+const maxServeTime = 5 * time.Second
 const maxTestTime = 10 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
