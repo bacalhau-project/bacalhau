@@ -6,6 +6,7 @@ import (
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
 )
 
@@ -30,10 +31,10 @@ type NoopEngineSpec struct {
 	Noop string
 }
 
-func (e *NoopEngineSpec) AsSpec() (engine.Engine, error) {
+func (e *NoopEngineSpec) AsSpec() (spec.Engine, error) {
 	return engine.Encode(e, defaultModelEncoder, EngineSchema)
 }
 
-func Decode(spec engine.Engine) (*NoopEngineSpec, error) {
+func Decode(spec spec.Engine) (*NoopEngineSpec, error) {
 	return engine.Decode[NoopEngineSpec](spec, defaultModelDecoder)
 }

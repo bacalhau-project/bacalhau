@@ -8,8 +8,8 @@ import (
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 	"github.com/multiformats/go-multihash"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage"
 )
 
 //go:embed spec.ipldsch
@@ -32,7 +32,7 @@ var (
 
 type WasmEngineSpec struct {
 	// The module that contains the WASM code to start running.
-	EntryModule storage.Storage `json:"EntryModule,omitempty"`
+	EntryModule spec.Storage `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
@@ -48,7 +48,7 @@ type WasmEngineSpec struct {
 
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
-	ImportModules []storage.Storage `json:"ImportModules,omitempty"`
+	ImportModules []spec.Storage `json:"ImportModules,omitempty"`
 }
 
 func (e *WasmEngineSpec) Cid() (cid.Cid, error) {
@@ -59,10 +59,10 @@ func (e *WasmEngineSpec) Cid() (cid.Cid, error) {
 	return cidBuilder.Sum(spec.SchemaData)
 }
 
-func (e *WasmEngineSpec) AsSpec() (engine.Engine, error) {
+func (e *WasmEngineSpec) AsSpec() (spec.Engine, error) {
 	return engine.Encode(e, defaultModelEncoder, EngineSchema)
 }
 
-func Decode(spec engine.Engine) (*WasmEngineSpec, error) {
+func Decode(spec spec.Engine) (*WasmEngineSpec, error) {
 	return engine.Decode[WasmEngineSpec](spec, defaultModelDecoder)
 }

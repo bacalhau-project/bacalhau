@@ -6,7 +6,7 @@ import (
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/selection"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
@@ -155,7 +155,7 @@ type PublisherSpec struct {
 // execution provider.
 type Spec struct {
 	// e.g. docker or language
-	Engine engine.Engine `json:"Engine,omitempty"`
+	Engine spec.Engine `json:"Engine,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 

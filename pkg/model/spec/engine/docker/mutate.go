@@ -1,7 +1,7 @@
 package docker
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 type MutateOpt func(spec *DockerEngineSpec)
@@ -42,10 +42,10 @@ func AppendEnvironmentVariables(envvar ...string) MutateOpt {
 	}
 }
 
-func Mutate(e engine.Engine, mutations ...MutateOpt) (engine.Engine, error) {
+func Mutate(e spec.Engine, mutations ...MutateOpt) (spec.Engine, error) {
 	dockerSpec, err := Decode(e)
 	if err != nil {
-		return engine.Engine{}, err
+		return spec.Engine{}, err
 	}
 
 	for _, mutate := range mutations {

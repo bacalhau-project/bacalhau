@@ -10,6 +10,7 @@ import (
 	dmtschema "github.com/ipld/go-ipld-prime/schema/dmt"
 	"github.com/multiformats/go-multihash"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/util"
 )
 
@@ -41,24 +42,24 @@ var (
 	cidBuilder           = cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.SHA2_256}
 )
 
-func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Storage, error) {
+func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (spec.Storage, error) {
 	// construct a type system for the schema
 	ts, err := util.NewValidatedTypeSystem((*dmtschema.Schema)(modelSchema))
 	if err != nil {
-		return Storage{}, err
+		return spec.Storage{}, err
 	}
 
 	encodedParams, err := util.MarshalIPLD(params, encoder, ts)
 	if err != nil {
-		return Storage{}, err
+		return spec.Storage{}, err
 	}
 
 	encodedSchema, err := modelSchema.Serialize()
 	if err != nil {
-		return Storage{}, err
+		return spec.Storage{}, err
 	}
 
-	storageSpec := Storage{
+	storageSpec := spec.Storage{
 		Type: ts.GetSchemaType(params).Name(),
 		// NB: slightly wasteful since calling Cid() calls serialize, and we just called it above, ohh well, its cheap enough for now.
 		Schema:     modelSchema.Cid(),
@@ -69,7 +70,7 @@ func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (Storage, er
 	return storageSpec, nil
 }
 
-func Decode[P any](spec Storage, decoder codec.Decoder) (*P, error) {
+func Decode[P any](spec spec.Storage, decoder codec.Decoder) (*P, error) {
 	// decode the spec schema.
 	schemaBuilder := dmtschema.Prototypes.Schema.Representation().NewBuilder()
 	if err := defaultSchemaDecoder(schemaBuilder, bytes.NewReader(spec.SchemaData)); err != nil {

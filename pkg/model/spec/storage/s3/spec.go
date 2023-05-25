@@ -8,6 +8,7 @@ import (
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage"
 )
 
@@ -39,15 +40,15 @@ type S3StorageSpec struct {
 	Region         string
 }
 
-func (e *S3StorageSpec) AsSpec() (storage.Storage, error) {
-	spec, err := storage.Encode(e, defaultModelEncoder, Schema)
+func (e *S3StorageSpec) AsSpec() (spec.Storage, error) {
+	s, err := storage.Encode(e, defaultModelEncoder, Schema)
 	if err != nil {
-		return storage.Storage{}, errors.Join(EncodingError, err)
+		return spec.Storage{}, errors.Join(EncodingError, err)
 	}
-	return spec, nil
+	return s, nil
 }
 
-func Decode(spec storage.Storage) (*S3StorageSpec, error) {
+func Decode(spec spec.Storage) (*S3StorageSpec, error) {
 	if spec.Schema != Schema.Cid() {
 		return nil, fmt.Errorf("unexpected spec schema %s: %w", spec, DecodingError)
 	}
