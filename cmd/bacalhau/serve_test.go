@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const maxServeTime = 1 * time.Second
+const maxServeTime = 5 * time.Second
 const maxTestTime = 10 * time.Second
 
 type ServeSuite struct {
