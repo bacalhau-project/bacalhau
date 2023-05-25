@@ -48,10 +48,15 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 	} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
 		writePath = "/private/var/run" // MacOS
 	} else {
-		// otherwise write to temp dir, which should be available on all systems
-		log.Warn().Msg("Could not write to /run, /var/run, or /private/var/run, writing to temp dir instead." +
-			"This file contains sensitive information, so please ensure it is limited in visibility.")
-		writePath = os.TempDir()
+		// otherwise write to the user's dir, which should be available on all systems
+		userDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
+			return nil
+		}
+		log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
+			"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
+		writePath = userDir
 	}
 
 	RunInfoFilePath = DevstackEnvFile()
@@ -70,19 +75,19 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFilePath)
-		return err
+		return nil // Not a fatal error to not write the file
 	}
 
 	// Set permissions to constant for read read/write only by user
 	err = f.Chmod(RunInfoFilePermissions)
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFilePath)
-		return err
+		return nil // Not a fatal error to not write the file
 	}
 	_, err = f.Write([]byte(summaryShellVariablesString))
 	if err != nil {
 		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
-		return err
+		return nil // Not a fatal error to not write the file
 	}
 	return nil
 }
