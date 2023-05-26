@@ -8,9 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -177,11 +174,11 @@ type Spec struct {
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty"`
+	Inputs []spec.Storage `json:"inputs,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty"`
+	Outputs []spec.Storage `json:"outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
@@ -202,10 +199,10 @@ func (s *Spec) GetTimeout() time.Duration {
 }
 
 // Return pointers to all the storage specs in the spec.
-func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	var storages []*StorageSpec
+func (s *Spec) AllStorageSpecs() []*spec.Storage {
+	var storages []*spec.Storage
 
-	for _, collection := range [][]StorageSpec{
+	for _, collection := range [][]spec.Storage{
 		s.Inputs,
 		s.Outputs,
 	} {
@@ -219,29 +216,14 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 		if err != nil {
 			panic(err)
 		}
-		switch wasmEngine.EntryModule.Schema {
-		case ipfs.Schema.Cid():
-			ipfsStorage, err := ipfs.Decode(wasmEngine.EntryModule)
-			if err != nil {
-				panic(err)
+		for _, collection := range [][]spec.Storage{
+			wasmEngine.ImportModules,
+		} {
+			for index := range collection {
+				storages = append(storages, &collection[index])
 			}
-			_ = ipfsStorage
-		case local.Schema.Cid():
-			localStorage, err := local.Decode(wasmEngine.EntryModule)
-			if err != nil {
-				panic(err)
-			}
-			_ = localStorage
-		case s3.Schema.Cid():
-			s3Storage, err := s3.Decode(wasmEngine.EntryModule)
-			if err != nil {
-				panic(err)
-			}
-			_ = s3Storage
-		default:
-			// TODO
-			panic("NYI AllStorageSpecs")
 		}
+		storages = append(storages, &wasmEngine.EntryModule)
 	}
 
 	return storages

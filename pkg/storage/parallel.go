@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 // ParallelPrepareStorage downloads all of the data necessary for the passed
@@ -16,9 +17,11 @@ import (
 func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	specs []model.StorageSpec,
-) (map[*model.StorageSpec]StorageVolume, error) {
-	volumes := generic.SyncMap[*model.StorageSpec, StorageVolume]{}
+	specs []spec.Storage,
+	// TODO(frrist): dubious usage of points in a map to satisfy comparable constraint. Is the comparable constraint actually
+	// needed with the underlying sync.Map used by generic.SyncMap? Or maybe this is all fine.
+) (map[*spec.Storage]StorageVolume, error) {
+	volumes := generic.SyncMap[*spec.Storage, StorageVolume]{}
 	waitgroup := multierrgroup.Group{}
 
 	for _, inputStorageSpec := range specs {
@@ -27,7 +30,7 @@ func ParallelPrepareStorage(
 		addStorageSpec := func() error {
 			var storageProvider Storage
 			var volumeMount StorageVolume
-			storageProvider, err := provider.Get(ctx, spec.StorageSource)
+			storageProvider, err := provider.Get(ctx, spec.Schema)
 			if err != nil {
 				return err
 			}
@@ -45,28 +48,32 @@ func ParallelPrepareStorage(
 	}
 
 	err := waitgroup.Wait()
+	if err != nil {
+		return nil, err
+	}
 
-	returnMap := map[*model.StorageSpec]StorageVolume{}
-	volumes.Iter(func(key *model.StorageSpec, value StorageVolume) bool {
+	// TODO(frrist): dubious usage of points in a map.
+	returnMap := map[*spec.Storage]StorageVolume{}
+	volumes.Iter(func(key *spec.Storage, value StorageVolume) bool {
 		returnMap[key] = value
 		return true
 	})
-	return returnMap, err
+	return returnMap, nil
 }
 
 func ParallelCleanStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	volumeMap map[*model.StorageSpec]StorageVolume,
+	volumeMap map[*spec.Storage]StorageVolume,
 ) error {
 	var rootErr error
 
 	for storageSpec, storageVolume := range volumeMap {
-		storage, err := provider.Get(ctx, storageSpec.StorageSource)
+		storage, err := provider.Get(ctx, storageSpec.Schema)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", storageSpec.StorageSource).
+				Stringer("Source", storageSpec).
 				Msg("failed to get storage provider in cleanup")
 			rootErr = errors.Join(rootErr, err)
 			continue
@@ -76,7 +83,7 @@ func ParallelCleanStorage(
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", storageSpec.StorageSource).
+				Stringer("Source", storageSpec).
 				Msg("failed to cleanup volume")
 			rootErr = errors.Join(rootErr, err)
 		}

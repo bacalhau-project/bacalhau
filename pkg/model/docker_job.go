@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 )
 
@@ -26,8 +27,8 @@ type DockerJob struct {
 	ResourceConfig ResourceUsageConfig `json:"ResourceConfig"`
 	NetworkConfig  NetworkConfig       `json:"NetworkConfig"`
 
-	Inputs  []StorageSpec `json:"Inputs,omitempty"`
-	Outputs []StorageSpec `json:"Outputs,omitempty"`
+	Inputs  []spec.Storage `json:"Inputs,omitempty"`
+	Outputs []spec.Storage `json:"Outputs,omitempty"`
 
 	DealSpec Deal `json:"DealSpec"`
 
@@ -93,10 +94,14 @@ func (d *DockerJob) Validate() error {
 		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
 	}
 
-	for _, inputVolume := range d.Inputs {
-		if !IsValidStorageSourceType(inputVolume.StorageSource) {
-			return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
+	// TODO technically we no longer need to validate storage sources since they can be used defined.
+	// remove this commented after review
+	/*
+		for _, inputVolume := range d.Inputs {
+			if !IsValidStorageSourceType(inputVolume.StorageSource) {
+				return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
+			}
 		}
-	}
+	*/
 	return nil
 }

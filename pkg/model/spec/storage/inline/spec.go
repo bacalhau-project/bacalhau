@@ -35,12 +35,12 @@ type InlineStorageSpec struct {
 	URL string
 }
 
-func (e *InlineStorageSpec) AsSpec() (spec.Storage, error) {
-	spec, err := storage.Encode(e, defaultModelEncoder, Schema)
+func (e *InlineStorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
+	s, err := storage.Encode(name, mount, e, defaultModelEncoder, Schema)
 	if err != nil {
 		return spec.Storage{}, errors.Join(EncodingError, err)
 	}
-	return spec, nil
+	return s, nil
 }
 
 func Decode(spec spec.Storage) (*InlineStorageSpec, error) {

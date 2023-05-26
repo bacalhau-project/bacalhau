@@ -38,19 +38,23 @@ func NewPublishersNodeRanker() *featureNodeRanker[model.Publisher] {
 	}
 }
 
-func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
-	return &featureNodeRanker[model.StorageSourceType]{
-		getJobRequirement: func(j model.Job) []model.StorageSourceType {
+func NewStoragesNodeRanker() *featureNodeRanker[cid.Cid] {
+	return &featureNodeRanker[cid.Cid]{
+		getJobRequirement: func(j model.Job) []cid.Cid {
 			specs := j.Spec.AllStorageSpecs()
-			types := make([]model.StorageSourceType, 0, len(specs))
+			types := make([]cid.Cid, 0, len(specs))
 			for _, spec := range specs {
-				if spec != nil && model.IsValidStorageSourceType(spec.StorageSource) {
-					types = append(types, spec.StorageSource)
-				}
+				types = append(types, spec.Schema)
+				// TODO we no longer validate specs as them may be defined by a users
+				/*
+					if spec != nil && model.IsValidStorageSourceType(spec.Schema) {
+						types = append(types, spec.StorageSource)
+					}
+				*/
 			}
 			return types
 		},
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.StorageSourceType { return ni.StorageSources },
+		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []cid.Cid { return ni.StorageSources },
 	}
 }
 

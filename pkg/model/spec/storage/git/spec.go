@@ -1,4 +1,4 @@
-package s3
+package git
 
 import (
 	_ "embed"
@@ -27,20 +27,15 @@ var (
 	Schema              *storage.Schema = load()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
-	EncodingError                       = errors.New("encoding S3StorageSpec to spec.Storage")
-	DecodingError                       = errors.New("decoding spec.Storage to S3StorageSpec")
+	EncodingError                       = errors.New("encoding GitStorageSpec to spec.Storage")
+	DecodingError                       = errors.New("decoding spec.Storage to GitStorageSpec")
 )
 
-type S3StorageSpec struct {
-	Bucket         string
-	Key            string
-	ChecksumSHA256 string
-	VersionID      string
-	Endpoint       string
-	Region         string
+type GitStorageSpec struct {
+	Repo string
 }
 
-func (e *S3StorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
+func (e *GitStorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
 	s, err := storage.Encode(name, mount, e, defaultModelEncoder, Schema)
 	if err != nil {
 		return spec.Storage{}, errors.Join(EncodingError, err)
@@ -48,11 +43,11 @@ func (e *S3StorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
 	return s, nil
 }
 
-func Decode(spec spec.Storage) (*S3StorageSpec, error) {
+func Decode(spec spec.Storage) (*GitStorageSpec, error) {
 	if spec.Schema != Schema.Cid() {
 		return nil, fmt.Errorf("unexpected spec schema %s: %w", spec, DecodingError)
 	}
-	out, err := storage.Decode[S3StorageSpec](spec, defaultModelDecoder)
+	out, err := storage.Decode[GitStorageSpec](spec, defaultModelDecoder)
 	if err != nil {
 		return nil, errors.Join(DecodingError, err)
 	}

@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
+	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_git "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/rs/zerolog/log"
-
-	"net/http"
-	"net/url"
 )
 
 const baseURL = "http://kv.bacalhau.org/"
@@ -70,20 +70,21 @@ func RepoExistsOnIPFSGivenURL(ctx context.Context, urlStr string) (string, error
 	return response.CID, nil
 }
 
-func RemoveFromModelStorageSpec(inputs []model.StorageSpec, url string) []model.StorageSpec {
-	newArr := []model.StorageSpec{}
+func RemoveFromModelStorageSpec(inputs []spec.Storage, url string) ([]spec.Storage, error) {
+	newArr := make([]spec.Storage, 0, len(inputs))
 	for _, s := range inputs {
-		if s.StorageSource == model.StorageSourceRepoClone {
-			if s.Repo != url {
-				newArr = append(newArr, model.StorageSpec{
-					StorageSource: model.StorageSourceRepoClone,
-					Repo:          url,
-					Path:          "/inputs",
-				})
+		if s.Schema == spec_git.Schema.Cid() {
+			gitspec, err := spec_git.Decode(s)
+			if err != nil {
+				return nil, err
+			}
+
+			if gitspec.Repo != url {
+				newArr = append(newArr, s)
 			}
 		}
 	}
-	return newArr
+	return newArr, nil
 }
 
 func IsValidGitRepoURL(urlStr string) (*url.URL, error) {

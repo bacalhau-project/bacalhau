@@ -1,3 +1,4 @@
 type LocalStorageSpec struct {
     Source String
+    ReadWrite Bool
 }

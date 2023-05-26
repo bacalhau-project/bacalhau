@@ -223,6 +223,10 @@ func ParseEngineCID(str string) (cid.Cid, error) {
 	return cid.Decode(str)
 }
 
+func ParseStorageCID(str string) (cid.Cid, error) {
+	return cid.Decode(str)
+}
+
 func EngineFlag(value *cid.Cid) *ValueFlag[cid.Cid] {
 	return &ValueFlag[cid.Cid]{
 		value:    value,
@@ -250,11 +254,11 @@ func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 	}
 }
 
-func StorageSourceFlag(value *model.StorageSourceType) *ValueFlag[model.StorageSourceType] {
-	return &ValueFlag[model.StorageSourceType]{
+func StorageSourceFlag(value *cid.Cid) *ValueFlag[cid.Cid] {
+	return &ValueFlag[cid.Cid]{
 		value:    value,
-		parser:   model.ParseStorageSourceType,
-		stringer: func(s *model.StorageSourceType) string { return s.String() },
+		parser:   ParseStorageCID,
+		stringer: func(s *cid.Cid) string { return s.String() },
 		typeStr:  "storage-source",
 	}
 }

@@ -42,7 +42,7 @@ var (
 	cidBuilder           = cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.SHA2_256}
 )
 
-func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (spec.Storage, error) {
+func Encode(name, mount string, params any, encoder codec.Encoder, modelSchema *Schema) (spec.Storage, error) {
 	// construct a type system for the schema
 	ts, err := util.NewValidatedTypeSystem((*dmtschema.Schema)(modelSchema))
 	if err != nil {
@@ -65,6 +65,8 @@ func Encode(params any, encoder codec.Encoder, modelSchema *Schema) (spec.Storag
 		Schema:     modelSchema.Cid(),
 		SchemaData: encodedSchema,
 		Params:     encodedParams,
+		Name:       name,
+		Mount:      mount,
 	}
 
 	return storageSpec, nil

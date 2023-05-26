@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 // Returns a executor for the given engine type
@@ -20,7 +21,7 @@ type Executor interface {
 
 	// used to filter and select jobs
 	//    tells us if the storage resource is "close" i.e. cheap to access
-	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
+	HasStorageLocally(context.Context, spec.Storage) (bool, error)
 
 	// A BidStrategy that should return a positive response if the executor
 	// could run the job or a negative response otherwise.
@@ -31,7 +32,7 @@ type Executor interface {
 	//    tells us how much storage the given volume would consume
 	//    which we then use to calculate if there is capacity
 	//    alongside cpu & memory usage
-	GetVolumeSize(context.Context, model.StorageSpec) (uint64, error)
+	GetVolumeSize(context.Context, spec.Storage) (uint64, error)
 
 	// GetOutputStream retrieves a muxed stream from the executor
 	GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error)

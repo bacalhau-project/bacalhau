@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -47,11 +48,11 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume spec.Storage) (bool, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
+	s, err := e.StorageProvider.Get(ctx, volume.Schema)
 	if err != nil {
 		return false, err
 	}
@@ -59,11 +60,11 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return s.HasStorageLocally(ctx, volume)
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (e *Executor) GetVolumeSize(ctx context.Context, volume spec.Storage) (uint64, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
 	defer span.End()
 
-	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
+	storageProvider, err := e.StorageProvider.Get(ctx, volume.Schema)
 	if err != nil {
 		return 0, err
 	}
@@ -88,14 +89,14 @@ func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBi
 func (e *Executor) makeFsFromStorage(
 	ctx context.Context,
 	jobResultsDir string,
-	volumes map[*model.StorageSpec]storage.StorageVolume,
-	outputs []model.StorageSpec) (fs.FS, error) {
+	volumes map[*spec.Storage]storage.StorageVolume,
+	outputs []spec.Storage) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
 	for input, volume := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", input.Path).
+			Str("input", input.Mount).
 			Str("source", volume.Source).
 			Msg("Using input")
 
@@ -112,7 +113,7 @@ func (e *Executor) makeFsFromStorage(
 			inputFs = filefs.New(volume.Source)
 		}
 
-		err = rootFs.Mount(input.Path, inputFs)
+		err = rootFs.Mount(input.Mount, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +124,7 @@ func (e *Executor) makeFsFromStorage(
 			return nil, fmt.Errorf("output volume has no name: %+v", output)
 		}
 
-		if output.Path == "" {
+		if output.Mount == "" {
 			return nil, fmt.Errorf("output volume has no path: %+v", output)
 		}
 

@@ -23,8 +23,6 @@ import (
 	storagespec "github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	wasm2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
@@ -64,7 +62,7 @@ type WasmRunOptions struct {
 	NodeSelector         string // Selector (label query) to filter nodes on which this job can be executed
 	Publisher            opts.PublisherOpt
 	Inputs               opts.StorageOpt
-	Outputs              []model.StorageSpec
+	Outputs              opts.StorageOpt
 }
 
 func NewRunWasmOptions() *WasmRunOptions {
@@ -76,15 +74,11 @@ func NewRunWasmOptions() *WasmRunOptions {
 		Timeout:         DefaultTimeout.Seconds(),
 		Entrypoint:      defaultEntrypoint,
 		Concurrency:     1,
-		Outputs: []model.StorageSpec{
-			{
-				Name: "outputs",
-				Path: "/outputs",
-			},
-		},
 	}
 }
 
+// TODO now unused
+/*
 func defaultWasmJobSpec() *model.Job {
 	wasmEngine, err := (&wasm2.WasmEngineSpec{
 		EntryPoint: defaultEntrypoint,
@@ -105,6 +99,7 @@ func defaultWasmJobSpec() *model.Job {
 
 	return wasmJob
 }
+*/
 
 func newWasmCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
@@ -207,13 +202,14 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 	}
 	wasmCidOrPath := cmdArgs[0]
 	// Try interpreting this as a CID.
-	var entryModule model.StorageSpec
+	var entryModule storagespec.Storage
 	wasmCid, err := cid.Parse(wasmCidOrPath)
 	if err == nil {
 		// It is a valid CID – proceed to create IPFS context.
-		entryModule = model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           wasmCid.String(),
+		// TODO again does wasm entry module need to be different? It doesn't have a name or a mount.
+		entryModule, err = (&ipfs.IPFSStorageSpec{CID: wasmCid}).AsSpec("TODO", "TODO")
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		// Try interpreting this as a path.
@@ -239,8 +235,8 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 		// TODO this is a hilariously short duration to wait for user input. I'd rather abandon it, or reverse the logic to require input to continue.
 		time.Sleep(1 * time.Second)
 
-		storage := inline.NewStorage()
-		inlineData, err := storage.Upload(ctx, info.Name())
+		inlineStorage := inline.NewStorage()
+		inlineData, err := inlineStorage.Upload(ctx, info.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -264,39 +260,11 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 		}
 	}
 
-	var em storagespec.Storage
-	switch entryModule.StorageSource {
-	case model.StorageSourceIPFS:
-		em, err = (&ipfs.IPFSStorageSpec{CID: wasmCid}).AsSpec()
-		if err != nil {
-			return nil, err
-		}
-	case model.StorageSourceLocalDirectory:
-		em, err = (&local.LocalStorageSpec{Source: entryModule.Path}).AsSpec()
-		if err != nil {
-			return nil, err
-		}
-	case model.StorageSourceS3:
-		em, err = (&s3.S3StorageSpec{
-			Bucket:         entryModule.S3.Bucket,
-			Key:            entryModule.S3.Key,
-			ChecksumSHA256: entryModule.S3.ChecksumSHA256,
-			VersionID:      entryModule.S3.VersionID,
-			Endpoint:       entryModule.S3.Endpoint,
-			Region:         entryModule.S3.Region,
-		}).AsSpec()
-		if err != nil {
-			return nil, err
-		}
-	default:
-		panic(fmt.Sprintf("TODO implement storage spec for %s", entryModule.StorageSource))
-	}
-
 	out := &model.WasmJob{
 		// TODO this could be different than the api version as it only relates to docker jobs.
 		APIVersion: model.APIVersionLatest(),
 		WasmSpec: wasm2.WasmEngineSpec{
-			EntryModule:          em,
+			EntryModule:          entryModule,
 			EntryPoint:           opts.Entrypoint,
 			Parameters:           cmdArgs[1:],
 			EnvironmentVariables: FlattenMap(opts.EnvironmentVariables),
@@ -323,7 +291,7 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 			*/
 		},
 		Inputs:  opts.Inputs.Values(),
-		Outputs: opts.Outputs,
+		Outputs: opts.Outputs.Values(),
 		DealSpec: model.Deal{
 			Concurrency: opts.Concurrency,
 			Confidence:  opts.Confidence,
@@ -385,7 +353,7 @@ func validateWasm(cmd *cobra.Command, args []string, entrypoint string) error {
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
 	config := wazero.NewModuleConfig()
-	storage := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop.NewNoopStorage())
+	storage := model.NewNoopProvider[cid.Cid, storage.Storage](noop.NewNoopStorage())
 	loader := wasm.NewModuleLoader(engine, config, storage)
 	module, err := loader.Load(ctx, programPath)
 	if err != nil {

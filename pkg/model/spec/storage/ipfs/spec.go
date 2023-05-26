@@ -36,8 +36,8 @@ type IPFSStorageSpec struct {
 	CID cid.Cid
 }
 
-func (e *IPFSStorageSpec) AsSpec() (spec.Storage, error) {
-	s, err := storage.Encode(e, defaultModelEncoder, Schema)
+func (e *IPFSStorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
+	s, err := storage.Encode(name, mount, e, defaultModelEncoder, Schema)
 	if err != nil {
 		return spec.Storage{}, errors.Join(EncodingError, err)
 	}

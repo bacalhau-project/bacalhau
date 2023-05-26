@@ -13,6 +13,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,6 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -73,7 +75,7 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
+func (e *Executor) getStorage(ctx context.Context, engine cid.Cid) (storage.Storage, error) {
 	return e.StorageProvider.Get(ctx, engine)
 }
 
@@ -91,12 +93,12 @@ func (e *Executor) GetResourceBidStrategy(context.Context) (bidstrategy.Resource
 	return resource.NewChainedResourceBidStrategy(), nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume spec.Storage) (bool, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.getStorage(ctx, volume.StorageSource)
+	s, err := e.getStorage(ctx, volume.Schema)
 	if err != nil {
 		return false, err
 	}
@@ -104,8 +106,8 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return s.HasStorageLocally(ctx, volume)
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	storageProvider, err := e.getStorage(ctx, volume.StorageSource)
+func (e *Executor) GetVolumeSize(ctx context.Context, volume spec.Storage) (uint64, error) {
+	storageProvider, err := e.getStorage(ctx, volume.Schema)
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +176,7 @@ func (e *Executor) Run(
 			return executor.FailResult(err)
 		}
 
-		if output.Path == "" {
+		if output.Mount == "" {
 			err = fmt.Errorf("output volume has no path: %+v", output)
 			return executor.FailResult(err)
 		}
@@ -198,7 +200,7 @@ func (e *Executor) Run(
 			Source: srcd,
 
 			// the path of the output volume is from the perspective of inside the container
-			Target: output.Path,
+			Target: output.Mount,
 		})
 	}
 

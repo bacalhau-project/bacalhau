@@ -11,11 +11,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
-type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
-type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
+type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume spec.Storage) (bool, error)
+type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume spec.Storage) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
 type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
 
@@ -70,7 +71,7 @@ func (e *NoopExecutor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume spec.Storage) (bool, error) {
 	if e.Config.ExternalHooks.HasStorageLocally != nil {
 		handler := e.Config.ExternalHooks.HasStorageLocally
 		return handler(ctx, volume)
@@ -78,7 +79,7 @@ func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume model.Stora
 	return true, nil
 }
 
-func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume spec.Storage) (uint64, error) {
 	if e.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := e.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)

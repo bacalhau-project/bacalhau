@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	// git "github.com/gogs/git-module"
@@ -17,7 +16,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
@@ -65,22 +66,26 @@ func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, spec.Storage) (bool, error) {
 	return false, nil
 }
 
 // Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, spec.Storage) (uint64, error) {
 	return 0, nil
 }
 
 //nolint:gocyclo
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec spec.Storage) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 
-	repoURL := storageSpec.Repo
-	_, err := clone.IsValidGitRepoURL(repoURL)
+	gitspec, err := git.Decode(storageSpec)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+
+	_, err = clone.IsValidGitRepoURL(gitspec.Repo)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -94,20 +99,20 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 
 	// The `Output` method executes the command and
 	// collects the output, returning its value
-	cmd := exec.Command("git", "clone", repoURL, outputPath)
+	cmd := exec.Command("git", "clone", gitspec.Repo, outputPath)
 	out, err := cmd.Output()
 	log.Ctx(ctx).Debug().Msgf("git clone output is %s", string(out))
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Str("repository", repoURL).Msg("failed to clone repository")
+		log.Ctx(ctx).Error().Err(err).Str("repository", gitspec.Repo).Msg("failed to clone repository")
 		return storage.StorageVolume{}, err
 	}
 
-	filepath, err := url.Parse(repoURL)
+	repoPath, err := url.Parse(gitspec.Repo)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	filename := strings.Split(filepath.Path, ".")[0]
+	filename := strings.Split(repoPath.Path, ".")[0]
 	targetPath := "/inputs" + filename
 
 	CIDSpec, err := sp.Upload(ctx, outputPath)
@@ -115,21 +120,26 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 
+	ipfsspec, err := spec_ipfs.Decode(CIDSpec)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+
 	// Update the KV store
-	SHA1HASH, _ := urltoLatestCommitHash(ctx, repoURL)
+	SHA1HASH, _ := urltoLatestCommitHash(ctx, gitspec.Repo)
 	envkey := os.Getenv("ESTUARY_API_KEY")
 	if envkey != "" {
-		log.Ctx(ctx).Debug().Str("CID", CIDSpec.CID).Msg("Pinning CID to estuary")
-		err := estuary.PinToIPFSViaEstuary(ctx, envkey, CIDSpec.CID)
+		log.Ctx(ctx).Debug().Stringer("CID", ipfsspec.CID).Msg("Pinning CID to estuary")
+		err := estuary.PinToIPFSViaEstuary(ctx, envkey, ipfsspec.CID.String())
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
-		log.Ctx(ctx).Debug().Str("CID", CIDSpec.CID).Msg("successfully pinned to estuary")
+		log.Ctx(ctx).Debug().Stringer("CID", ipfsspec.CID).Msg("successfully pinned to estuary")
 	}
 
 	data := url.Values{}
 	data.Set("key", SHA1HASH)
-	data.Set("value", CIDSpec.CID)
+	data.Set("value", ipfsspec.CID.String())
 
 	err = createSHA1CIDPair(ctx, data)
 	if err != nil {
@@ -147,27 +157,29 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	return volume, nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (spec.Storage, error) {
 	ctx, span := system.GetTracer().Start(ctx, "storage/repo/apicopy.Upload")
 	defer span.End()
 
-	cid, err := sp.IPFSClient.Upload(ctx, localPath)
+	strgspec, err := sp.IPFSClient.Upload(ctx, localPath)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("repo provider failed to upload to IPFS")
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	log.Ctx(ctx).Debug().Str("CID", cid.CID).Msg("repo provider uploaded to ipfs")
+	// NB(frrist): we are only decoding this for the sake logging; remove if this is a performance bottleneck (doubt it will be)
+	ipfsspec, err := spec_ipfs.Decode(strgspec)
+	if err != nil {
+		return spec.Storage{}, err
+	}
+	log.Ctx(ctx).Debug().Stringer("CID", ipfsspec.CID).Msg("repo provider uploaded to ipfs")
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid.CID,
-	}, nil
+	return strgspec, nil
 }
 
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	_ model.StorageSpec,
+	_ spec.Storage,
 	volume storage.StorageVolume,
 ) error {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
@@ -176,17 +188,6 @@ func (sp *StorageProvider) CleanupStorage(
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Ctx(ctx).Debug().Str("Path", pathToCleanup).Msg("Cleaning up")
 	return os.RemoveAll(pathToCleanup)
-}
-
-func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	return []model.StorageSpec{
-		{
-			Name:          spec.Name,
-			StorageSource: model.StorageSourceRepoClone,
-			Path:          spec.Path,
-			Repo:          spec.Repo,
-		},
-	}, nil
 }
 
 func createSHA1CIDPair(ctx context.Context, data url.Values) error {

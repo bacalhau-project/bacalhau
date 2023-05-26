@@ -32,11 +32,12 @@ var (
 )
 
 type LocalStorageSpec struct {
-	Source string
+	Source    string
+	ReadWrite bool
 }
 
-func (e *LocalStorageSpec) AsSpec() (spec.Storage, error) {
-	s, err := storage.Encode(e, defaultModelEncoder, Schema)
+func (e *LocalStorageSpec) AsSpec(name, mount string) (spec.Storage, error) {
+	s, err := storage.Encode(name, mount, e, defaultModelEncoder, Schema)
 	if err != nil {
 		return spec.Storage{}, errors.Join(EncodingError, err)
 	}

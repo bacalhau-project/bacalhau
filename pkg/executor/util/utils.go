@@ -16,8 +16,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	wasmengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	spec_git "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
+	spec_gitlfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/gitlfs"
+	spec_inline "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	spec_local "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
+	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
+	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
@@ -98,8 +106,8 @@ func NewStandardStorageProvider(
 					ipfsAPICopyStorage,
 				}, nil
 			},
-			func(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {
-				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, spec)
+			func(ctx context.Context, s spec.Storage) (storage.Storage, error) {
+				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, s)
 				if err != nil {
 					return ipfsAPICopyStorage, err
 				}
@@ -121,15 +129,16 @@ func NewStandardStorageProvider(
 		useIPFSDriver = comboDriver
 	}
 
-	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
-		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
-		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
-		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
-		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
-		model.StorageSourceS3:               tracing.Wrap(s3Storage),
-		model.StorageSourceLocalDirectory:   tracing.Wrap(localDirectoryStorage),
+	return model.NewMappedProvider(map[cid.Cid]storage.Storage{
+		spec_ipfs.Schema.Cid():   tracing.Wrap(useIPFSDriver),
+		spec_url.Schema.Cid():    tracing.Wrap(urlDownloadStorage),
+		spec_inline.Schema.Cid(): tracing.Wrap(inlineStorage),
+		spec_git.Schema.Cid():    tracing.Wrap(repoCloneStorage),
+		spec_gitlfs.Schema.Cid(): tracing.Wrap(repoCloneStorage),
+		spec_s3.Schema.Cid():     tracing.Wrap(s3Storage),
+		spec_local.Schema.Cid():  tracing.Wrap(localDirectoryStorage),
+		// TODO(frrist): how important is it to continue supporting this? IPFS seems like it covers this.
+		//model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 	}), nil
 }
 
@@ -166,7 +175,7 @@ func NewNoopStorageProvider(
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
 	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
-	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
+	return model.NewNoopProvider[cid.Cid, storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(

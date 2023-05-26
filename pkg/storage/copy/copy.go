@@ -4,18 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type specSize struct {
-	spec *model.StorageSpec
+	spec *spec.Storage
 	size datasize.ByteSize
 }
 
@@ -33,8 +35,8 @@ type specSize struct {
 func CopyOversize(
 	ctx context.Context,
 	provider storage.StorageProvider,
-	specs []*model.StorageSpec,
-	srcType, dstType model.StorageSourceType,
+	srcSpecs []*spec.Storage,
+	srcType, dstType cid.Cid,
 	maxSingle, maxTotal datasize.ByteSize,
 ) (modified bool, err error) {
 	srcStorage, err := provider.Get(ctx, srcType)
@@ -43,9 +45,9 @@ func CopyOversize(
 		return
 	}
 
-	specsizes := make([]specSize, 0, len(specs))
-	for _, spec := range specs {
-		if spec.StorageSource != srcType {
+	specsizes := make([]specSize, 0, len(srcSpecs))
+	for _, spec := range srcSpecs {
+		if spec.Schema != srcType {
 			continue
 		}
 
@@ -88,27 +90,25 @@ func CopyOversize(
 func Copy(
 	ctx context.Context,
 	provider storage.StorageProvider,
-	spec model.StorageSpec,
-	destination model.StorageSourceType,
-) (model.StorageSpec, error) {
-	srcStorage, srcErr := provider.Get(ctx, spec.StorageSource)
+	source spec.Storage,
+	destination cid.Cid,
+) (spec.Storage, error) {
+	srcStorage, srcErr := provider.Get(ctx, source.Schema)
 	dstStorage, dstErr := provider.Get(ctx, destination)
 	err := multierr.Append(srcErr, dstErr)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	volume, err := srcStorage.PrepareStorage(ctx, spec)
+	srcVolume, err := srcStorage.PrepareStorage(ctx, source)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to prepare %s spec", spec.StorageSource)
-		return model.StorageSpec{}, err
+		return spec.Storage{}, errors.Wrapf(err, "failed to prepare %s spec", source)
 	}
-	defer srcStorage.CleanupStorage(ctx, spec, volume) //nolint:errcheck
+	defer srcStorage.CleanupStorage(ctx, source, srcVolume) //nolint:errcheck
 
-	var newSpec model.StorageSpec
-	newSpec, err = dstStorage.Upload(ctx, volume.Source)
+	newSpec, err := dstStorage.Upload(ctx, srcVolume.Source)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to save %s spec to %s", spec.StorageSource, destination)
+		return spec.Storage{}, errors.Wrapf(err, "failed to save %s spec to %s", source, destination)
 	}
-	return newSpec, err
+	return newSpec, nil
 }

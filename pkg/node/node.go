@@ -39,7 +39,7 @@ type FeatureConfig struct {
 	Engines    []cid.Cid
 	Verifiers  []model.Verifier
 	Publishers []model.Publisher
-	Storages   []model.StorageSourceType
+	Storages   []cid.Cid
 }
 
 // Node configuration

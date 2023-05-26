@@ -9,9 +9,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/ipfs/go-cid"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
@@ -21,6 +18,12 @@ import (
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // ModuleLoader handles the loading of WebAssembly modules from remote storage
@@ -60,7 +63,7 @@ func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.Compi
 }
 
 // LoadRemoteModules loads and compiles all of the modules located by the passed storage specs.
-func (loader *ModuleLoader) LoadRemoteModules(ctx context.Context, specs ...model.StorageSpec) ([]wazero.CompiledModule, error) {
+func (loader *ModuleLoader) LoadRemoteModules(ctx context.Context, specs ...spec.Storage) ([]wazero.CompiledModule, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.LoadRemoteModules")
 	defer span.End()
 
@@ -116,7 +119,7 @@ func (loader *ModuleLoader) LoadRemoteModules(ctx context.Context, specs ...mode
 // This function calls itself reucrsively for any discovered dependencies on the
 // loaded modules, so that the returned module has all of its dependencies fully
 // instantiated and is ready to use.
-func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, spec model.StorageSpec) (api.Module, error) {
+func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, spec spec.Storage) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
 	span.SetAttributes(attribute.String("ModuleName", spec.Name))
 	defer span.End()
@@ -187,27 +190,21 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 	return loader.InstantiateRemoteModule(ctx, spec)
 }
 
-func storageSpecFromImport(moduleName string) (model.StorageSpec, error) {
-	// If the module name looks like a CID, try and load it from IPFS.
+func storageSpecFromImport(moduleName string) (spec.Storage, error) {
+	// If the module name looks like a CID, attempt to parse it and return an IPFS storage spec.
 	moduleCID, err := cid.Parse(moduleName)
 	if err == nil {
-		return model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			Name:          moduleName,
-			CID:           moduleCID.String(),
-		}, nil
+		// TODO do modules need a mount path? Maybe they should have their own type of spec that is different from a storage spec.
+		return (&spec_ipfs.IPFSStorageSpec{CID: moduleCID}).AsSpec(moduleName, "TODO")
 	}
 
-	// If the module name looks like a URL, try and load via HTTP.
+	// If the module name looks like a URL, attempt to parse it and return a URL storage spec.
 	moduleURL, err := url.Parse(moduleName)
 	if err == nil && (moduleURL.Scheme == "http" || moduleURL.Scheme == "https") {
-		return model.StorageSpec{
-			StorageSource: model.StorageSourceURLDownload,
-			Name:          moduleName,
-			URL:           moduleURL.String(),
-		}, nil
+		// TODO do modules need a mount path? Maybe they should have their own type of spec that is different from a storage spec.
+		return (&spec_url.URLStorageSpec{URL: moduleURL.String()}).AsSpec(moduleName, "TODO")
 	}
 
 	// Don't know how to load this.
-	return model.StorageSpec{}, fmt.Errorf("unknown module source %q", moduleName)
+	return spec.Storage{}, fmt.Errorf("unknown module source %q", moduleName)
 }

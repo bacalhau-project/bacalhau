@@ -7,10 +7,13 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ipfs/go-cid"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	ipfs_spec "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -49,8 +52,8 @@ func NewNoopStateLoader() StateLoader {
 	return stateLoader
 }
 
-func BuildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.StorageSpec, error) {
-	outputVolumesMap := make(map[string]model.StorageSpec)
+func BuildJobOutputs(ctx context.Context, outputVolumes []string) ([]spec.Storage, error) {
+	outputVolumesMap := make(map[string]spec.Storage)
 	outputVolumes = append(outputVolumes, "outputs:/outputs")
 
 	for _, outputVolume := range outputVolumes {
@@ -64,22 +67,31 @@ func BuildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.Stora
 		if _, containsKey := outputVolumesMap[slices[1]]; containsKey {
 			log.Ctx(ctx).Warn().Msgf("Output volumes already contain a mapping to '%s:%s'. Replacing it with '%s:%s'.",
 				outputVolumesMap[slices[1]].Name,
-				outputVolumesMap[slices[1]].Path,
+				outputVolumesMap[slices[1]].Mount,
 				slices[0],
 				slices[1],
 			)
 		}
 
-		outputVolumesMap[slices[1]] = model.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			StorageSource: model.StorageSourceIPFS,
-			Name:          slices[0],
-			Path:          slices[1],
+		// TODO the intention here is to write the data to IPFS. The IPFSStorageSpec expects a CID
+		// but we won't know the CID until the data is hashed. We might want a different type for outputs in these cases.
+		// said output ought to describe the intention of writing data to IPFS.
+		// previous comment suggests:
+		/*
+			we have a chance to have a kind of storage multiaddress here
+			 e.g. --cid ipfs:abc --cid filecoin:efg
+		*/
+		ipfsSpec := &ipfs_spec.IPFSStorageSpec{CID: cid.Undef}
+		strgspec, err := ipfsSpec.AsSpec(slices[0], slices[2])
+		if err != nil {
+			return nil, err
 		}
+		// FIXME: if slices[1] has the same value we will be overriding the value in the map on this line.
+		// we must enforce uniqueness for output volume names.
+		outputVolumesMap[slices[1]] = strgspec
 	}
 
-	var returnOutputVolumes []model.StorageSpec
+	var returnOutputVolumes []spec.Storage
 	for _, storageSpec := range outputVolumesMap {
 		returnOutputVolumes = append(returnOutputVolumes, storageSpec)
 	}

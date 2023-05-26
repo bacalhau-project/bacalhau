@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -21,7 +22,7 @@ func ConstructDockerJob( //nolint:funlen
 	cpu, memory, gpu string,
 	network model.Network,
 	domains []string,
-	inputs []model.StorageSpec,
+	inputs []spec.Storage,
 	outputVolumes []string,
 	env []string,
 	entrypoint []string,
