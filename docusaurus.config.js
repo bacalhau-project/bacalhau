@@ -32,7 +32,7 @@ const config = {
           showLastUpdateTime: true,
         },
         gtag: {
-          trackingID: 'G-D6NP6P151C',
+          trackingID: 'G-10GYL172V9',
         },
         theme: {
           customCss: [require.resolve('./static/css/custom.css')],
