@@ -9,59 +9,71 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const maxWaitTime = 900
 
+var (
+	realEngine spec.Engine
+	testEngine spec.Engine
+	storage    spec.Storage
+)
+
 func init() { //nolint:gochecknoinits
 	err := system.InitConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	realEngine, err = (&docker.DockerEngineSpec{
+		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
+		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
+	}).AsSpec()
+	if err != nil {
+		panic(err)
+	}
+
+	testEngine, err = (&docker.DockerEngineSpec{
+		Image:      "ubuntu:latest",
+		Entrypoint: []string{"echo"},
+	}).AsSpec()
+	if err != nil {
+		panic(err)
+	}
+
+	storage, err = (&local.LocalStorageSpec{Source: "/"}).AsSpec("outputs", "/outputs")
 	if err != nil {
 		panic(err)
 	}
 }
 
 var realSpec model.Spec = model.Spec{
-	Engine:   model.EngineDocker,
+	Engine:   realEngine,
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
 	},
-	Docker: model.JobSpecDocker{
-		Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-		Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p"},
-	},
 	Resources: model.ResourceUsageConfig{
 		GPU: "1",
 	},
-	Outputs: []model.StorageSpec{
-		{
-			Name: "outputs",
-			Path: "/outputs",
-		},
-	},
+	Outputs: []spec.Storage{storage},
 	Deal: model.Deal{
 		Concurrency: 1,
 	},
 }
 
 var testSpec model.Spec = model.Spec{
-	Engine:   model.EngineDocker,
+	Engine:   testEngine,
 	Verifier: model.VerifierNoop,
 	PublisherSpec: model.PublisherSpec{
 		Type: model.PublisherIpfs,
 	},
-	Docker: model.JobSpecDocker{
-		Image:      "ubuntu",
-		Entrypoint: []string{"echo"},
-	},
-	Outputs: []model.StorageSpec{
-		{
-			Name: "outputs",
-			Path: "/outputs",
-		},
-	},
+	Outputs: []spec.Storage{storage},
 	Deal: model.Deal{
 		Concurrency: 1,
 	},
@@ -112,6 +124,10 @@ func runStableDiffusion(prompt string, testing bool) (string, error) {
 	} else {
 		s = realSpec
 	}
-	s.Docker.Entrypoint = append(s.Docker.Entrypoint, prompt)
+	mutEngine, err := docker.Mutate(s.Engine, docker.AppendEntrypoint(prompt))
+	if err != nil {
+		return "", err
+	}
+	s.Engine = mutEngine
 	return runGenericJob(s)
 }

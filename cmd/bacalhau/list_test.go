@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/bacalhau-project/bacalhau/pkg/test/engineutils"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -49,7 +50,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			ctx := context.Background()
 
 			for i := 0; i < tc.numberOfJobs; i++ {
-				j := testutils.MakeNoopJob()
+				j := engineutils.MakeDockerJob(suite.T(), model.VerifierNoop, model.PublisherNoop, []string{})
 				_, err := suite.client.Submit(ctx, j)
 				require.NoError(suite.T(), err)
 			}
@@ -76,7 +77,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	var jobLongIds []string
 	for i := 0; i < 10; i++ {
 		var err error
-		j := testutils.MakeNoopJob()
+		j := engineutils.MakeDockerJob(suite.T(), model.VerifierNoop, model.PublisherNoop, []string{})
 		j, err = suite.client.Submit(ctx, j)
 		jobIds = append(jobIds, shortID(false, j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
@@ -172,7 +173,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			suite.TearDownTest()
 			suite.SetupTest()
 
-			j := testutils.MakeNoopJob()
+			j := engineutils.MakeDockerJob(suite.T(), model.VerifierNoop, model.PublisherNoop, []string{})
 			j.Spec.Annotations = tc.JobLabels
 			j, err := suite.client.Submit(ctx, j)
 			require.NoError(suite.T(), err)
@@ -265,7 +266,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				var jobIDs []string
 				for i := 0; i < tc.numberOfJobs; i++ {
 					var err error
-					j := testutils.MakeNoopJob()
+					j := engineutils.MakeDockerJob(suite.T(), model.VerifierNoop, model.PublisherNoop, []string{})
 					j, err = suite.client.Submit(ctx, j)
 					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, shortID(false, j.Metadata.ID))

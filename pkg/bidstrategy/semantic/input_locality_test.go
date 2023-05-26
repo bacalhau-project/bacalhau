@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -13,6 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type InputLocalityStrategySuite struct {
@@ -22,16 +26,15 @@ type InputLocalityStrategySuite struct {
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
+	inputs, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID}).
+		AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
+
 	s.statelessJob = bidstrategy.BidStrategyRequest{}
 	s.statefulJob = bidstrategy.BidStrategyRequest{
 		Job: model.Job{
 			Spec: model.Spec{
-				Inputs: []model.StorageSpec{
-					{
-						StorageSource: model.StorageSourceIPFS,
-						CID:           "volume-id",
-					},
-				},
+				Inputs: []spec.Storage{inputs},
 			},
 		},
 	}
@@ -104,14 +107,14 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		s.Run(test.name, func() {
 			noop_executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
+					HasStorageLocally: func(ctx context.Context, volume spec.Storage) (bool, error) {
 						return test.hasStorageLocally, nil
 					},
 				},
 			})
 			params := semantic.InputLocalityStrategyParams{
 				Locality:  test.policy,
-				Executors: model.NewNoopProvider[model.Engine, executor.Executor](noop_executor),
+				Executors: model.NewNoopProvider[cid.Cid, executor.Executor](noop_executor),
 			}
 			strategy := semantic.NewInputLocalityStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), test.request)

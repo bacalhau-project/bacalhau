@@ -396,7 +396,7 @@ func (s *RetriesSuite) TestRetry() {
 }
 
 func makeBadTargetingJob(restrictedNodes []string) *model.Job {
-	j := testutils.MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{"echo", "hello"})
+	j := testutils.MakeDockerJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{"echo", "hello"})
 	req := []model.LabelSelectorRequirement{
 		{
 			Key:      "favour_name",

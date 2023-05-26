@@ -7,16 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func SetupTestWithDefaultConfigs(
@@ -80,16 +83,16 @@ func (m *mixedExecutorFactory) Get(
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
+	noopExecutor, err := noopProvider.Get(ctx, noop.EngineSchema.Cid())
 	if err != nil {
 		return nil, err
 	}
 
-	return &model.ChainedProvider[model.Engine, executor.Executor]{
-		Providers: []model.Provider[model.Engine, executor.Executor]{
+	return &model.ChainedProvider[cid.Cid, executor.Executor]{
+		Providers: []model.Provider[cid.Cid, executor.Executor]{
 			stdProvider,
-			model.NewMappedProvider(map[model.Engine]executor.Executor{
-				model.EngineNoop: noopExecutor,
+			model.NewMappedProvider(map[cid.Cid]executor.Executor{
+				noop.EngineSchema.Cid(): noopExecutor,
 			}),
 		},
 	}, nil

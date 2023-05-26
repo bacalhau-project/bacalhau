@@ -13,25 +13,27 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/c2h5oh/datasize"
+	"github.com/google/uuid"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/c2h5oh/datasize"
-	"github.com/google/uuid"
+	"github.com/bacalhau-project/bacalhau/pkg/test/engineutils"
 
-	"strings"
-	"testing"
-	"time"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	devstack_tests "github.com/bacalhau-project/bacalhau/pkg/test/devstack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -107,7 +109,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			var j *model.Job
 			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
+			s.Require().Equal(engineutils.DockerDecodeEngine(s.T(), j.Spec.Engine).Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }
@@ -251,13 +253,14 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
 					for _, jobInput := range j.Spec.Inputs {
-						if tcidIV.cid == jobInput.CID {
+						// assume these are IPFS specs?
+						if tcidIV.cid == testutils.DecodeIPFSStorage(s.T(), jobInput).CID.String() {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
 							if tcidIV.path != "" {
 								testPath = tcidIV.path
 							}
-							s.Require().Equal(testPath, jobInput.Path, "Test Path not equal to Path from job.")
+							s.Require().Equal(testPath, jobInput.Mount, "Test Path not equal to Path from job.")
 							break
 						}
 					}
@@ -309,9 +312,12 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				s.Require().Equal(1, len(j.Spec.Inputs), "Number of job urls != # of test urls.")
-				s.Require().Equal(turls.inputURL.url, j.Spec.Inputs[0].URL, "Test URL not equal to URL from job.")
-				s.Require().Equal(turls.inputURL.pathInContainer, j.Spec.Inputs[0].Path, "Test Path not equal to Path from job.")
+				s.Require().Equal(1, len(j.Spec.Inputs),
+					"Number of job urls != # of test urls.")
+				s.Require().Equal(turls.inputURL.url, testutils.DecodeURLStorage(s.T(), j.Spec.Inputs[0]).URL,
+					"Test URL not equal to URL from job.")
+				s.Require().Equal(turls.inputURL.pathInContainer, j.Spec.Inputs[0].Mount,
+					"Test Path not equal to Path from job.")
 
 			}()
 		}
@@ -397,11 +403,11 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 						}
 
 						if tcidOV.path == "" {
-							if jobOutput.Path == "/outputs" {
+							if jobOutput.Mount == "/outputs" {
 								testPathinJobOutputs = true
 							}
 						} else {
-							if tcidOV.path == jobOutput.Path {
+							if tcidOV.path == jobOutput.Mount {
 								testPathinJobOutputs = true
 							}
 						}
@@ -601,7 +607,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				s.Require().Equal(tc.workdir, j.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
+				s.Require().Equal(tc.workdir, engineutils.DockerDecodeEngine(s.T(), j.Spec.Engine).WorkingDirectory, "Job workdir != test workdir.")
 				s.Require().NoError(err, "Error in running command.")
 			}
 		}()

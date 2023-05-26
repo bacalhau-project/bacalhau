@@ -6,13 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/engineutils"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestUtilsSuite(t *testing.T) {
@@ -145,7 +147,7 @@ func (s *UtilsSuite) TestImages() {
 	for name, test := range tc {
 		s.Run(name, func() {
 			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
-			sampleJob.Spec.Docker.Image = test.Image
+			sampleJob.Spec.Engine = engineutils.DockerMakeEngine(s.T(), engineutils.DockerWithImage(test.Image))
 			err := job.VerifyJob(context.TODO(), sampleJob)
 			if test.Valid {
 				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)

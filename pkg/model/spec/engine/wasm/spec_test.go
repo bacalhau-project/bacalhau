@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	spec "github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 )
 
@@ -20,7 +20,8 @@ func TestRoundTrip(t *testing.T) {
 		Endpoint:       "endpoint",
 		Region:         "region",
 	}
-	s3EntryModule, err := s3Spec.AsSpec()
+	// TODO add test cases for name and mount
+	s3EntryModule, err := s3Spec.AsSpec("name", "mount")
 	require.NoError(t, err)
 
 	expectedEngine := wasm.WasmEngineSpec{
@@ -28,21 +29,21 @@ func TestRoundTrip(t *testing.T) {
 		EntryPoint:           "entry",
 		Parameters:           []string{"one", "two"},
 		EnvironmentVariables: []string{"foo", "bar"},
-		ImportModules:        []storage.Spec{s3EntryModule},
+		ImportModules:        []spec.Storage{s3EntryModule},
 	}
 
-	spec, err := expectedEngine.AsSpec()
+	es, err := expectedEngine.AsSpec()
 	require.NoError(t, err)
 
-	require.NotEmpty(t, spec.SchemaData)
-	require.NotEmpty(t, spec.Params)
+	require.NotEmpty(t, es.SchemaData)
+	require.NotEmpty(t, es.Params)
 
-	require.True(t, wasm.EngineSchema.Cid().Equals(spec.Schema))
+	require.True(t, wasm.EngineSchema.Cid().Equals(es.Schema))
 
-	t.Log(string(spec.SchemaData))
-	t.Log(string(spec.Params))
+	t.Log(string(es.SchemaData))
+	t.Log(string(es.Params))
 
-	actualEngine, err := wasm.Decode(spec)
+	actualEngine, err := wasm.Decode(es)
 	require.NoError(t, err)
 
 	engineCid, err := actualEngine.Cid()

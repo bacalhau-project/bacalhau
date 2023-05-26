@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -14,12 +17,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
@@ -62,13 +66,13 @@ func RunDeterministicVerifierTest( //nolint:funlen
 
 	storageProvidersFactory := devstack.NewNoopStorageProvidersFactoryWithConfig(noop_storage.StorageConfig{
 		ExternalHooks: noop_storage.StorageConfigExternalHooks{
-			Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
-				var results []model.StorageSpec
-				results = append(results, model.StorageSpec{
-					StorageSource: model.StorageSourceIPFS,
-					CID:           "123",
-					Path:          "/data/file1.txt",
-				})
+			Explode: func(ctx context.Context, storageSpec spec.Storage) ([]spec.Storage, error) {
+				var results []spec.Storage
+				ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: cid.Undef}).AsSpec("TODO", "/data/file1.txt")
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, ipfsspec)
 				return results, nil
 			},
 		},

@@ -5,18 +5,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
 )
 
 type ScenarioTestSuite interface {
@@ -49,9 +52,9 @@ func (s *ScenarioRunner) SetupTest() {
 	s.T().Cleanup(func() { _ = telemetry.Cleanup() })
 }
 
-func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []model.StorageSpec {
+func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage SetupStorage) []spec.Storage {
 	if getStorage == nil {
-		return []model.StorageSpec{}
+		return []spec.Storage{}
 	}
 
 	clients := stack.IPFSClients()
@@ -101,7 +104,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.MaybeNeedDocker(s.T(), spec.Engine.Schema == spec_docker.EngineSchema.Cid())
 
 	stack, cm := s.setupStack(scenario.Stack)
 

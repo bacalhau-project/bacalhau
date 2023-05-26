@@ -7,6 +7,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
+
 	"github.com/rs/zerolog/log"
 	"github.com/vincent-petithory/dataurl"
 )
@@ -18,7 +21,7 @@ type SetupStorage func(
 	ctx context.Context,
 	driverName model.StorageSourceType,
 	ipfsClients ...ipfs.Client,
-) ([]model.StorageSpec, error)
+) ([]spec.Storage, error)
 
 // StoredText will store the passed string as a file on an IPFS node, and return
 // the file name and CID in the model.StorageSpec.
@@ -26,7 +29,7 @@ func StoredText(
 	fileContents string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context, driverName model.StorageSourceType, clients ...ipfs.Client) ([]model.StorageSpec, error) {
+	return func(ctx context.Context, driverName model.StorageSourceType, clients ...ipfs.Client) ([]spec.Storage, error) {
 		fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), clients...)
 		if err != nil {
 			return nil, err
@@ -69,11 +72,12 @@ func StoredFile(
 // the other storage set-ups, this function loads the file immediately. This
 // makes it possible to store things deeper into the Spec object without the
 // test system needing to know how to prepare them.
-func InlineData(data []byte) model.StorageSpec {
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceInline,
-		URL:           dataurl.EncodeBytes(data),
+func InlineData(data []byte) spec.Storage {
+	out, err := (&inline.InlineStorageSpec{URL: dataurl.EncodeBytes(data)}).AsSpec("TODO", "TODO")
+	if err != nil {
+		panic(err)
 	}
+	return out
 }
 
 // URLDownload will return a model.StorageSpec referencing a file on the passed

@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/server"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -15,14 +19,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	noop2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 func ifNil[T comparable](value, defaultValue T) T {
@@ -195,7 +197,8 @@ func TestPreModerationWithBothHooks(t *testing.T) {
 
 func (e2e *PreModerationTestSuite) TestCanSeeJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	e2e.Require().NoError(err)
+	job.Spec.Engine, err = (&noop2.NoopEngineSpec{Noop: "noop"}).AsSpec()
 	e2e.Require().NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)
@@ -209,7 +212,8 @@ func (e2e *PreModerationTestSuite) TestCanSeeJob() {
 
 func (e2e *PreModerationTestSuite) TestCanApproveJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	e2e.Require().NoError(err)
+	job.Spec.Engine, err = (&noop2.NoopEngineSpec{Noop: "noop"}).AsSpec()
 	e2e.Require().NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)
@@ -252,7 +256,8 @@ func (e2e *PreModerationTestSuite) TestCanApproveJob() {
 
 func (e2e *PreModerationTestSuite) TestCanRejectJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
-	job.Spec.Engine = model.EngineNoop
+	e2e.Require().NoError(err)
+	job.Spec.Engine, err = (&noop2.NoopEngineSpec{Noop: "noop"}).AsSpec()
 	e2e.Require().NoError(err)
 
 	job, err = e2e.client.Submit(e2e.ctx, job)
@@ -308,9 +313,10 @@ func TestPostModeration(t *testing.T) {
 
 func (e2e *PostModerationTestSuite) TestCanApproveJob() {
 	j, err := model.NewJobWithSaneProductionDefaults()
-	j.Spec.Engine = model.EngineNoop
-	j.Spec.Verifier = model.VerifierExternal
 	e2e.Require().NoError(err)
+	j.Spec.Engine, err = (&noop2.NoopEngineSpec{Noop: "noop"}).AsSpec()
+	e2e.Require().NoError(err)
+	j.Spec.Verifier = model.VerifierExternal
 
 	j, err = e2e.client.Submit(e2e.ctx, j)
 	e2e.Require().NoError(err)
@@ -344,9 +350,10 @@ func (e2e *PostModerationTestSuite) TestCanApproveJob() {
 
 func (e2e *PostModerationTestSuite) TestCanRejectJob() {
 	j, err := model.NewJobWithSaneProductionDefaults()
-	j.Spec.Engine = model.EngineNoop
-	j.Spec.Verifier = model.VerifierExternal
 	e2e.Require().NoError(err)
+	j.Spec.Engine, err = (&noop2.NoopEngineSpec{Noop: "noop"}).AsSpec()
+	e2e.Require().NoError(err)
+	j.Spec.Verifier = model.VerifierExternal
 
 	j, err = e2e.client.Submit(e2e.ctx, j)
 	e2e.Require().NoError(err)

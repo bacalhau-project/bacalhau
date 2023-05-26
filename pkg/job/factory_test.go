@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -74,12 +75,12 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					model.APIVersionLatest(),
 					model.VerifierNoop,
 					model.PublisherSpec{Type: model.PublisherNoop},
-					"1",                   // cpu
-					"1",                   // memory
-					"0",                   // gpu
-					model.NetworkNone,     // networking
-					[]string{},            // domains
-					[]model.StorageSpec{}, // inputs
+					"1",               // cpu
+					"1",               // memory
+					"0",               // gpu
+					model.NetworkNone, // networking
+					[]string{},        // domains
+					[]spec.Storage{},  // inputs
 					outputVolumes,
 					[]string{}, // env
 					[]string{}, // entrypoint

@@ -7,13 +7,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
+
+var TestCID cid.Cid
+
+func init() {
+	// A real CID that can be resolved: https://docs.ipfs.tech/how-to/command-line-quick-start/#initialize-the-repository
+	c, err := cid.Decode("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")
+	if err != nil {
+		panic(err)
+	}
+	TestCID = c
+}
 
 func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
 	jobID := system.FindJobIDInTestOutput(out)
@@ -40,44 +56,20 @@ func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerCo
 	return model.TestFatalErrorHandlerContents{}, fmt.Errorf("no fatal error found in output")
 }
 
-func MakeGenericJob() *model.Job {
-	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
-		"echo",
-		"$(date +%s)",
-	})
+func DecodeIPFSStorage(t testing.TB, s spec.Storage) *ipfs.IPFSStorageSpec {
+	out, err := ipfs.Decode(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
-func MakeNoopJob() *model.Job {
-	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
-		"echo",
-		"$(date +%s)",
-	})
-}
-
-func MakeJob(
-	engineType model.Engine,
-	verifierType model.Verifier,
-	publisherType model.Publisher,
-	entrypointArray []string) *model.Job {
-	j := model.NewJob()
-
-	j.Spec = model.Spec{
-		Engine:   engineType,
-		Verifier: verifierType,
-		PublisherSpec: model.PublisherSpec{
-			Type: publisherType,
-		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: entrypointArray,
-		},
+func DecodeURLStorage(t testing.TB, s spec.Storage) *url.URLStorageSpec {
+	out, err := url.Decode(s)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
-
-	return j
+	return out
 }
 
 // WaitForNodeDiscovery for the requester node to pick up the nodeInfo messages

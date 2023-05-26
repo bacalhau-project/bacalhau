@@ -7,27 +7,45 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 var (
-	OneStorageSpec []model.StorageSpec = []model.StorageSpec{
-		{StorageSource: model.StorageSourceIPFS},
-	}
+	OneStorageSpec spec.Storage
+	EngineSpec     spec.Engine
+
+	EmptySpec       = model.Spec{}
+	SpecWithInputs  = model.Spec{Inputs: []spec.Storage{OneStorageSpec}}
+	SpecWithOutputs = model.Spec{Outputs: []spec.Storage{OneStorageSpec}}
+	SpecWithWasm    = model.Spec{Engine: EngineSpec}
 )
 
-var (
-	EmptySpec       = model.Spec{}
-	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
-	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
-)
+func init() {
+	c, err := cid.Decode("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")
+	if err != nil {
+		panic(err)
+	}
+
+	OneStorageSpec, err = (&ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "TODO")
+	if err != nil {
+		panic(err)
+	}
+
+	EngineSpec, err = (&wasm.WasmEngineSpec{EntryModule: OneStorageSpec}).AsSpec()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestStorageBidStrategy(t *testing.T) {
 	testCases := []struct {
@@ -55,7 +73,7 @@ func TestStorageBidStrategy(t *testing.T) {
 					},
 				},
 			})
-			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop_storage)
+			provider := model.NewNoopProvider[cid.Cid, storage.Storage](noop_storage)
 			strategy := semantic.NewStorageInstalledBidStrategy(provider)
 
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{

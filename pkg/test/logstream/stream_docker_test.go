@@ -6,12 +6,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestDockerOutputStream() {
@@ -27,7 +28,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	job := testutils.MakeJob(
+	job := testutils.MakeDockerJob(
 		model.EngineDocker,
 		model.VerifierNoop,
 		model.PublisherNoop,
