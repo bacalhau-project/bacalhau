@@ -29,7 +29,7 @@ type StorageSpec struct {
 	SourcePath string `json:"SourcePath,omitempty"`
 
 	// Allow write access for locally mounted inputs
-	ReadWrite bool `json:"ReadWrite"`
+	ReadWrite bool `json:"ReadWrite,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
