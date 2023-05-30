@@ -94,7 +94,7 @@ require (
 	golang.org/x/crypto v0.9.0
 	golang.org/x/exp v0.0.0-20230223210539-50820d90acfd
 	golang.org/x/mod v0.10.0
-	k8s.io/apimachinery v0.27.0
+	k8s.io/apimachinery v0.27.2
 	k8s.io/kubectl v0.27.0
 	modernc.org/sqlite v1.22.1
 	sigs.k8s.io/yaml v1.3.0
