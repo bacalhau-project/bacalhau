@@ -8,12 +8,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 var ctx context.Context
@@ -25,15 +29,14 @@ type FilecoinUnsealedSuite struct {
 	suite.Suite
 }
 
-func (suite *FilecoinUnsealedSuite) prepareCid(cid string) model.StorageSpec {
-	folderPath := filepath.Join(tempDir, cid)
+func (suite *FilecoinUnsealedSuite) prepareCid(c cid.Cid) spec.Storage {
+	folderPath := filepath.Join(tempDir, c.String())
 	err := os.MkdirAll(folderPath, os.ModePerm)
 	require.NoError(suite.T(), err)
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceFilecoinUnsealed,
-		CID:           cid,
-		Path:          folderPath,
-	}
+	// TODO determine if we are keeping model.StorageSourceFilecoinUnsealed or using the IPFS storage spec instead
+	out, err := (&ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", folderPath)
+	require.NoError(suite.T(), err)
+	return out
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -60,33 +63,31 @@ func (suite *FilecoinUnsealedSuite) TestIsInstalled() {
 }
 
 func (suite *FilecoinUnsealedSuite) TestHasStorageLocally() {
-	cid := "123"
-	spec := suite.prepareCid(cid)
-	hasStorageTrue, err := driver.HasStorageLocally(ctx, spec)
+	storage := suite.prepareCid(testutil.TestCID1)
+	hasStorageTrue, err := driver.HasStorageLocally(ctx, storage)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), hasStorageTrue, "file that exists should return true for HasStorageLocally")
-	spec.CID = "apples"
-	hasStorageFalse, err := driver.HasStorageLocally(ctx, spec)
+	storage = suite.prepareCid(testutil.TestCID2)
+	hasStorageFalse, err := driver.HasStorageLocally(ctx, storage)
 	require.NoError(suite.T(), err)
 	require.False(suite.T(), hasStorageFalse, "file that does not exist should return false for HasStorageLocally")
 }
 
 func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
-	cid := "123"
+	// NB: the CID here doesn't correspond to the contents of the file, but is used to validate this functionality that doesn't go to network.
 	fileContents := "hello world"
-	spec := suite.prepareCid(cid)
-	filePath := filepath.Join(spec.Path, "file")
+	storage := suite.prepareCid(testutil.TestCID1)
+	filePath := filepath.Join(storage.Mount, "file")
 	err := os.WriteFile(filePath, []byte(fileContents), 0644)
 	require.NoError(suite.T(), err)
-	volumeSize, err := driver.GetVolumeSize(ctx, spec)
+	volumeSize, err := driver.GetVolumeSize(ctx, storage)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), uint64(len(fileContents)), volumeSize, "the volume size should be the size of the file")
 }
 
 func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
-	cid := "123"
-	spec := suite.prepareCid(cid)
+	spec := suite.prepareCid(testutil.TestCID1)
 	volume, err := driver.PrepareStorage(ctx, spec)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
+	require.Equal(suite.T(), spec.Mount, volume.Source, "the volume source should be the same as the spec path")
 }

@@ -9,16 +9,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type IPFSHostStorageSuite struct {
@@ -44,7 +46,6 @@ type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api ipf
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
-		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
@@ -56,7 +57,6 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
-		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api ipfs.Client) (
 			storage.Storage, error) {
 
@@ -65,7 +65,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	)
 }
 
-func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
+func runFileTest(t *testing.T, getStorageDriver getStorageFunc) {
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
@@ -80,19 +80,18 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
+	c, err := cid.Decode(fileCid)
+	require.NoError(t, err)
 	// the storage spec for the cid we added
-	storage := model.StorageSpec{
-		StorageSource: engine,
-		CID:           fileCid,
-		Path:          "/data/file.txt",
-	}
+	ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "/data/file.txt")
+	require.NoError(t, err)
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorageLocally(ctx, storage)
+	hasCid, err := storageDriver.HasStorageLocally(ctx, ipfsspec)
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, storage)
+	volume, err := storageDriver.PrepareStorage(ctx, ipfsspec)
 	require.NoError(t, err)
 
 	// we should now be able to read our file content
@@ -101,11 +100,11 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 	require.Equal(t, string(r), EXAMPLE_TEXT)
 
-	err = storageDriver.CleanupStorage(ctx, storage, volume)
+	err = storageDriver.CleanupStorage(ctx, ipfsspec, volume)
 	require.NoError(t, err)
 }
 
-func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
+func runFolderTest(t *testing.T, getStorageDriver getStorageFunc) {
 	ctx := context.Background()
 	// get a single IPFS server
 	stack, cm := SetupTest(ctx, t, 1)
@@ -125,19 +124,18 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	storageDriver, err := getStorageDriver(ctx, cm, stack.IPFSClients[0])
 	require.NoError(t, err)
 
+	c, err := cid.Decode(folderCid)
+	require.NoError(t, err)
 	// the storage spec for the cid we added
-	storage := model.StorageSpec{
-		StorageSource: engine,
-		CID:           folderCid,
-		Path:          "/data/folder",
-	}
+	ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "/data/folder")
+	require.NoError(t, err)
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorageLocally(ctx, storage)
+	hasCid, err := storageDriver.HasStorageLocally(ctx, ipfsspec)
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, storage)
+	volume, err := storageDriver.PrepareStorage(ctx, ipfsspec)
 	require.NoError(t, err)
 
 	// we should now be able to read our file content
@@ -147,6 +145,6 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 	require.Equal(t, string(r), EXAMPLE_TEXT)
 
-	err = storageDriver.CleanupStorage(ctx, storage, volume)
+	err = storageDriver.CleanupStorage(ctx, ipfsspec, volume)
 	require.NoError(t, err)
 }

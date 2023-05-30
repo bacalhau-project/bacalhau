@@ -10,16 +10,21 @@ import (
 	"os"
 	"testing"
 
-	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
+
+	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type ParallelStorageSuite struct {
@@ -29,7 +34,7 @@ type ParallelStorageSuite struct {
 	cm       *system.CleanupManager
 	node     *ipfs.Node
 	cid      string
-	provider model.Provider[model.StorageSourceType, storage.Storage]
+	provider model.Provider[cid.Cid, storage.Storage]
 }
 
 func TestParallelStorageSuite(t *testing.T) {
@@ -64,14 +69,13 @@ func (s *ParallelStorageSuite) TearDownSuite() {
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, []model.StorageSpec{
-		{
-			StorageSource: model.StorageSourceIPFS,
-			Name:          "test",
-			CID:           s.cid,
-			Path:          "/inputs/test.txt",
-		},
-	})
+	c, err := cid.Decode(s.cid)
+	require.NoError(s.T(), err)
+
+	ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("test", "/inputs/test.txt")
+	require.NoError(s.T(), err)
+
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, []spec.Storage{ipfsspec})
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
@@ -99,14 +103,11 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 	}))
 	defer ts.Close()
 
-	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, []model.StorageSpec{
-		{
-			StorageSource: model.StorageSourceURLDownload,
-			Name:          "test",
-			URL:           fmt.Sprintf("%s/test.txt", ts.URL),
-			Path:          "/inputs/test.txt",
-		},
-	})
+	urlspec, err := (&url.URLStorageSpec{URL: fmt.Sprintf("%s/test.txt", ts.URL)}).
+		AsSpec("test", "inputs/test.txt")
+	require.NoError(s.T(), err)
+
+	volumes, err := storage.ParallelPrepareStorage(s.ctx, s.provider, []spec.Storage{urlspec})
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are

@@ -14,13 +14,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/test/engineutils"
+	testing2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 )
 
 func jobForDockerImage(t testing.TB, imageID string) model.Job {
 	return model.Job{
 		Spec: model.Spec{
-			Engine: engineutils.DockerMakeEngine(t, engineutils.DockerWithImage(imageID)),
+			Engine: testing2.DockerMakeEngine(t, testing2.DockerWithImage(imageID)),
 		},
 	}
 }

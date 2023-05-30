@@ -240,7 +240,7 @@ func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
 		j.Job.Spec.Engine.Schema.String(),
 	}
 	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-	if j.Job.Spec.Engine.Schema == docker.EngineSchema.Cid() {
+	if j.Job.Spec.Engine.Schema == docker.EngineType {
 		engine, err := docker.Decode(j.Job.Spec.Engine)
 		if err != nil {
 			return nil, err

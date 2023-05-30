@@ -7,11 +7,16 @@ import (
 	"math"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 )
 
 type StoreNodeDiscovererSuite struct {
@@ -35,20 +40,20 @@ func TestStoreNodeDiscovererSuite(t *testing.T) {
 
 func (s *StoreNodeDiscovererSuite) TestFindNodes() {
 	ctx := context.Background()
-	nodeInfo1 := generateNodeInfo("node1", model.EngineDocker)
-	nodeInfo2 := generateNodeInfo("node2", model.EngineDocker, model.EngineWasm)
+	nodeInfo1 := generateNodeInfo("node1", docker.EngineType)
+	nodeInfo2 := generateNodeInfo("node2", docker.EngineType, wasm.EngineType)
 	s.NoError(s.store.Add(ctx, nodeInfo1))
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
 	// both nodes are returned when asked for docker nodes
 	job := model.Job{}
-	job.Spec.Engine = model.EngineDocker
+	job.Spec.Engine = enginetesting.DockerMakeEngine(s.T())
 	peerIDs, err := s.discoverer.FindNodes(context.Background(), job)
 	s.NoError(err)
 	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
 
 	// only node2 is returned when asked for noop nodes
-	job.Spec.Engine = model.EngineNoop
+	job.Spec.Engine = enginetesting.NoopMakeEngine(s.T(), "noop")
 	peerIDs, err = s.discoverer.FindNodes(context.Background(), job)
 	s.NoError(err)
 	s.Empty(peerIDs)
@@ -60,7 +65,7 @@ func (s *StoreNodeDiscovererSuite) TestFindNodes_Empty() {
 	s.Empty(peerIDs)
 }
 
-func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {
+func generateNodeInfo(id string, engines ...cid.Cid) model.NodeInfo {
 	return model.NodeInfo{
 		PeerInfo: peer.AddrInfo{
 			ID: peer.ID(id),

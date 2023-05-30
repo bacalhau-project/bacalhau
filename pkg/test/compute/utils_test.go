@@ -4,20 +4,27 @@ package compute
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
+	"github.com/google/uuid"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 )
 
-func generateJob() model.Job {
+func generateJob(t testing.TB) model.Job {
 	return model.Job{
 		Metadata: model.Metadata{
 			ID: uuid.New().String(),
 		},
 		APIVersion: model.APIVersionLatest().String(),
 		Spec: model.Spec{
-			Engine:   model.EngineNoop,
+			Engine:   enginetesting.NoopMakeEngine(t, "noop"),
 			Verifier: model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,
@@ -26,12 +33,10 @@ func generateJob() model.Job {
 	}
 }
 
-func addInput(job model.Job, cid string) model.Job {
-	job.Spec.Inputs = append(job.Spec.Inputs, model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-		Path:          "/test_file.txt",
-	})
+func addInput(t testing.TB, job model.Job, cid cid.Cid) model.Job {
+	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: cid}).AsSpec("TODO", "/test_file.txt")
+	require.NoError(t, err)
+	job.Spec.Inputs = append(job.Spec.Inputs, ipfsspec)
 	return job
 }
 

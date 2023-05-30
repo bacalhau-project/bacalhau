@@ -83,7 +83,7 @@ func (m *mixedExecutorFactory) Get(
 		return nil, err
 	}
 
-	noopExecutor, err := noopProvider.Get(ctx, noop.EngineSchema.Cid())
+	noopExecutor, err := noopProvider.Get(ctx, noop.EngineType)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (m *mixedExecutorFactory) Get(
 		Providers: []model.Provider[cid.Cid, executor.Executor]{
 			stdProvider,
 			model.NewMappedProvider(map[cid.Cid]executor.Executor{
-				noop.EngineSchema.Cid(): noopExecutor,
+				noop.EngineType: noopExecutor,
 			}),
 		},
 	}, nil

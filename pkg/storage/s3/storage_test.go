@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -47,7 +48,7 @@ func TestStorageTestSuite(t *testing.T) {
 
 func (s *StorageTestSuite) TestHasStorageLocally() {
 	ctx := context.Background()
-	res, err := s.storage.HasStorageLocally(ctx, model.StorageSpec{})
+	res, err := s.storage.HasStorageLocally(ctx, spec.Storage{})
 	s.Require().NoError(err)
 	s.False(res)
 }
@@ -193,16 +194,15 @@ func (s *StorageTestSuite) TestStorage() {
 	} {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			storageSpec := model.StorageSpec{
-				StorageSource: model.StorageSourceS3,
-				S3: &model.S3StorageSpec{
-					Bucket:         bucket,
-					Key:            tc.key,
-					Region:         region,
-					ChecksumSHA256: tc.checksum,
-					VersionID:      tc.versionID,
-				},
-			}
+			storageSpec, err := (&s3.S3StorageSpec{
+				Bucket:         bucket,
+				Key:            tc.key,
+				ChecksumSHA256: tc.checksum,
+				VersionID:      tc.versionID,
+				Region:         region,
+			}).AsSpec("TODO", "TODO")
+			s.Require().NoError(err)
+
 			size, err := s.storage.GetVolumeSize(ctx, storageSpec)
 			if tc.shouldFail {
 				s.Error(err)
@@ -235,16 +235,14 @@ func (s *StorageTestSuite) TestStorage() {
 
 func (s *StorageTestSuite) TestNotFound() {
 	ctx := context.Background()
-	storageSpec := model.StorageSpec{
-		StorageSource: model.StorageSourceS3,
-		S3: &model.S3StorageSpec{
-			Bucket: bucket,
-			Key:    prefix1 + "00",
-			Region: region,
-		},
-	}
+	storageSpec, err := (&s3.S3StorageSpec{
+		Bucket: bucket,
+		Key:    prefix1 + "00",
+		Region: region,
+	}).AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
 
-	_, err := s.storage.GetVolumeSize(ctx, storageSpec)
+	_, err = s.storage.GetVolumeSize(ctx, storageSpec)
 	s.Require().Error(err)
 
 	_, err = s.storage.PrepareStorage(ctx, storageSpec)

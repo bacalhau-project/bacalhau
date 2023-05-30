@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DataLocalityBidSuite struct {
@@ -29,6 +31,6 @@ func (s *DataLocalityBidSuite) TestRejectStateless() {
 
 func (s *DataLocalityBidSuite) TestAcceptStateful() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addInput(generateJob(), "cid"),
+		job: addInput(s.T(), generateJob(s.T()), testutils.TestCID1),
 	})
 }

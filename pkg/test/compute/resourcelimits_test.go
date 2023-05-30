@@ -21,6 +21,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -118,8 +121,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return &model.RunCommandResult{}, nil
 		}
 
-		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-			return capacity.ConvertBytesString(volume.CID), nil
+		getVolumeSizeHandler := func(ctx context.Context, volume spec.Storage) (uint64, error) {
+			ipfsspec, err := ipfs.Decode(volume)
+			if err != nil {
+				return 0, err
+			}
+			return capacity.ConvertBytesString(ipfsspec.CID.String()), nil
 		}
 
 		stack := testutils.SetupTestWithNoopExecutor(
@@ -142,17 +149,15 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := testutils.MakeNoopJob()
+			j := model.NewJob()
 			j.Spec.Resources = jobResources
-			j.Spec.Inputs = []model.StorageSpec{
-				{
-					StorageSource: model.StorageSourceIPFS,
-					CID:           jobResources.Disk,
-					Name:          "testvolumesize",
-				},
-			}
+			j.Spec.Engine = enginetesting.NoopMakeEngine(suite.T(), "noop")
 
-			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
+			ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutils.TestCID1}).AsSpec("testvolumesize", "TOOD")
+			suite.Require().NoError(err)
+			j.Spec.Inputs = []spec.Storage{ipfsspec}
+
+			_, err = stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID:   "123",
 				APIVersion: j.APIVersion,
 				Spec:       &j.Spec,
@@ -325,7 +330,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{
-			Engine:   model.EngineNoop,
+			Engine:   enginetesting.NoopMakeEngine(suite.T(), "noop"),
 			Verifier: model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,

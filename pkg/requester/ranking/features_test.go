@@ -6,36 +6,45 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type FeatureNodeRankerSuite struct {
 	suite.Suite
-	EnginesNodeRanker   *featureNodeRanker[model.Engine]
+	EnginesNodeRanker   *featureNodeRanker[cid.Cid]
 	VerifiersNodeRanker *featureNodeRanker[model.Verifier]
 	PublisherNodeRanker *featureNodeRanker[model.Publisher]
-	StorageNodeRanker   *featureNodeRanker[model.StorageSourceType]
+	StorageNodeRanker   *featureNodeRanker[cid.Cid]
 }
 
 func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 	return []model.NodeInfo{
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("docker")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineDocker}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []cid.Cid{docker.EngineType}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("wasm")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []model.Engine{model.EngineWasm}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{ExecutionEngines: []cid.Cid{wasm.EngineType}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("ipfs")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceIPFS}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []cid.Cid{ipfs.StorageType}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("url")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceURLDownload}},
+			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []cid.Cid{url.StorageType}},
 		},
 		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("deterministic")},
@@ -48,10 +57,10 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 		{
 			PeerInfo: peer.AddrInfo{ID: peer.ID("combo")},
 			ComputeNodeInfo: &model.ComputeNodeInfo{
-				ExecutionEngines: []model.Engine{model.EngineDocker, model.EngineWasm},
+				ExecutionEngines: []cid.Cid{docker.EngineType, wasm.EngineType},
 				Verifiers:        []model.Verifier{model.VerifierNoop, model.VerifierDeterministic},
 				Publishers:       []model.Publisher{model.PublisherIpfs, model.PublisherEstuary},
-				StorageSources:   []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceURLDownload},
+				StorageSources:   []cid.Cid{ipfs.StorageType, url.StorageType},
 			},
 		},
 		{
@@ -72,7 +81,7 @@ func TestEnginesNodeRankerSuite(t *testing.T) {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineDocker() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineDocker}}
+	job := model.Job{Spec: model.Spec{Engine: enginetesting.DockerMakeEngine(s.T())}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -82,7 +91,7 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineWasm}}
+	job := model.Job{Spec: model.Spec{Engine: enginetesting.WasmMakeEngine(s.T())}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -93,7 +102,7 @@ func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineNoop() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineNoop}}
+	job := model.Job{Spec: model.Spec{Engine: enginetesting.NoopMakeEngine(s.T(), "noop")}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -124,9 +133,9 @@ func (s *FeatureNodeRankerSuite) TestPublisherEstuary() {
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
-	job := model.Job{Spec: model.Spec{Inputs: []model.StorageSpec{
-		{StorageSource: model.StorageSourceIPFS},
-	}}}
+	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
+	job := model.Job{Spec: model.Spec{Inputs: []spec.Storage{ipfsspec}}}
 	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -137,9 +146,13 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFSAndURL() {
-	job := model.Job{Spec: model.Spec{Inputs: []model.StorageSpec{
-		{StorageSource: model.StorageSourceIPFS},
-		{StorageSource: model.StorageSourceURLDownload},
+	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
+	urlspec, err := (&url.URLStorageSpec{URL: "https://example.com"}).AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
+	job := model.Job{Spec: model.Spec{Inputs: []spec.Storage{
+		ipfsspec,
+		urlspec,
 	}}}
 	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)

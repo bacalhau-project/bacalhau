@@ -79,7 +79,7 @@ func (driver *StorageProvider) PrepareStorage(
 	}
 	return storage.StorageVolume{
 		Type:     storage.StorageVolumeConnectorBind,
-		ReadOnly: localspec.ReadWrite,
+		ReadOnly: !localspec.ReadWrite,
 		Source:   localspec.Source,
 		Target:   storageSpec.Mount,
 	}, nil

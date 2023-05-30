@@ -21,7 +21,7 @@ func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 		var inputs []spec.Storage
 		for _, inputRepos := range j.Spec.Inputs {
 			var repoArray []string
-			if inputRepos.Schema == git.Schema.Cid() {
+			if inputRepos.Schema == git.StorageType {
 				gitspec, err := git.Decode(inputRepos)
 				if err != nil {
 					return false, err

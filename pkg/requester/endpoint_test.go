@@ -7,6 +7,9 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -17,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	"github.com/stretchr/testify/require"
 )
 
 type mockBidStrategy struct {
@@ -65,7 +67,7 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 		Selector:           strategy,
 		Store:              store,
 		Verifiers:          model.NewNoopProvider[model.Verifier, verifier.Verifier](verifier_mock),
-		StorageProviders:   model.NewNoopProvider[model.StorageSourceType, storage.Storage](storage_mock),
+		StorageProviders:   model.NewNoopProvider[cid.Cid, storage.Storage](storage_mock),
 		GetBiddingCallback: func() *url.URL { return nil },
 	})
 

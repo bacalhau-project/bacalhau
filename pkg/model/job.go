@@ -211,7 +211,7 @@ func (s *Spec) AllStorageSpecs() []*spec.Storage {
 		}
 	}
 
-	if s.Engine.Schema == wasm.EngineSchema.Cid() {
+	if s.Engine.Schema == wasm.EngineType {
 		wasmEngine, err := wasm.Decode(s.Engine)
 		if err != nil {
 			panic(err)

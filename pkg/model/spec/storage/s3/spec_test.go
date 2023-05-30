@@ -19,7 +19,7 @@ func TestRoundTrip(t *testing.T) {
 		Region:         "region",
 	}
 
-	spec, err := expectedSpec.AsSpec()
+	spec, err := expectedSpec.AsSpec("name", "mount")
 	require.NoError(t, err)
 
 	require.NotEmpty(t, spec.SchemaData)

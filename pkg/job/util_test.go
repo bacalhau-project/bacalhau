@@ -9,6 +9,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -83,9 +85,9 @@ func (s *JobUtilSuite) TestRun_URLs() {
 				if testURL.valid {
 					require.NoError(s.T(), err, fmt.Sprintf("%s: Should not have errored - %s", testURL.errorMsg, testURL.submittedURL))
 					if testURL.convertedURL != "" {
-						require.Equal(s.T(), convertedTrimmed, spec.URL, testURL.errorMsg)
+						require.Equal(s.T(), convertedTrimmed, storagetesting.URLDecodeStorage(s.T(), spec).URL, testURL.errorMsg)
 					} else {
-						require.Equal(s.T(), originalURLTrimmed, spec.URL, testURL.errorMsg)
+						require.Equal(s.T(), originalURLTrimmed, storagetesting.URLDecodeStorage(s.T(), spec).URL, testURL.errorMsg)
 					}
 				} else {
 					require.Error(s.T(), err, fmt.Sprintf("%s: Should have errored - %s", testURL.errorMsg, testURL.submittedURL))

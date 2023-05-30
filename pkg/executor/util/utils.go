@@ -130,13 +130,13 @@ func NewStandardStorageProvider(
 	}
 
 	return model.NewMappedProvider(map[cid.Cid]storage.Storage{
-		spec_ipfs.Schema.Cid():   tracing.Wrap(useIPFSDriver),
-		spec_url.Schema.Cid():    tracing.Wrap(urlDownloadStorage),
-		spec_inline.Schema.Cid(): tracing.Wrap(inlineStorage),
-		spec_git.Schema.Cid():    tracing.Wrap(repoCloneStorage),
-		spec_gitlfs.Schema.Cid(): tracing.Wrap(repoCloneStorage),
-		spec_s3.Schema.Cid():     tracing.Wrap(s3Storage),
-		spec_local.Schema.Cid():  tracing.Wrap(localDirectoryStorage),
+		spec_ipfs.StorageType:   tracing.Wrap(useIPFSDriver),
+		spec_url.StorageType:    tracing.Wrap(urlDownloadStorage),
+		spec_inline.StorageType: tracing.Wrap(inlineStorage),
+		spec_git.StorageType:    tracing.Wrap(repoCloneStorage),
+		spec_gitlfs.StorageType: tracing.Wrap(repoCloneStorage),
+		spec_s3.StorageType:     tracing.Wrap(s3Storage),
+		spec_local.StorageType:  tracing.Wrap(localDirectoryStorage),
 		// TODO(frrist): how important is it to continue supporting this? IPFS seems like it covers this.
 		//model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 	}), nil
@@ -195,8 +195,8 @@ func NewStandardExecutorProvider(
 	}
 
 	executors := model.NewMappedProvider(map[cid.Cid]executor.Executor{
-		dockerengine.EngineSchema.Cid(): dockerExecutor,
-		wasmengine.EngineSchema.Cid():   wasmExecutor,
+		dockerengine.EngineType: dockerExecutor,
+		wasmengine.EngineType:   wasmExecutor,
 	})
 
 	// language executors wrap other executors, so pass them a reference to all

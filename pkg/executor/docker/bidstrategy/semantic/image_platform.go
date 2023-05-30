@@ -34,7 +34,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// if the spec engine is not a docker engine do not bid.
-	if request.Job.Spec.Engine.Schema != dockerengine.EngineSchema.Cid() {
+	if request.Job.Spec.Engine.Schema != dockerengine.EngineType {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid:  false,
 			ShouldWait: false,

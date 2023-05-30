@@ -185,7 +185,7 @@ func GenerateJobJSONSchema() ([]byte, error) {
 	}{
 		{Name: "Engine",
 			Path:  "$defs.Spec.properties.Engine",
-			Enums: []string{docker.EngineSchema.Cid().String(), wasm.EngineSchema.Cid().String()}},
+			Enums: []string{docker.EngineType.String(), wasm.EngineType.String()}},
 		{Name: "Verifier",
 			Path:  "$defs.Spec.properties.Verifier",
 			Enums: model.VerifierNames()},

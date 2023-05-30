@@ -150,7 +150,7 @@ func (e *Executor) makeFsFromStorage(
 
 //nolint:funlen
 func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
-	if job.Spec.Engine.Schema != wasm.EngineSchema.Cid() {
+	if job.Spec.Engine.Schema != wasm.EngineType {
 		return nil, fmt.Errorf("job engine is not wasm")
 	}
 

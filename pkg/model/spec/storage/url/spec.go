@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
@@ -25,6 +26,7 @@ func load() *storage.Schema {
 
 var (
 	Schema              *storage.Schema = load()
+	StorageType         cid.Cid         = Schema.Cid()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
 	EncodingError                       = errors.New("encoding URLStorageSpec to spec.Storage")

@@ -73,7 +73,7 @@ func RepoExistsOnIPFSGivenURL(ctx context.Context, urlStr string) (string, error
 func RemoveFromModelStorageSpec(inputs []spec.Storage, url string) ([]spec.Storage, error) {
 	newArr := make([]spec.Storage, 0, len(inputs))
 	for _, s := range inputs {
-		if s.Schema == spec_git.Schema.Cid() {
+		if s.Schema == spec_git.StorageType {
 			gitspec, err := spec_git.Decode(s)
 			if err != nil {
 				return nil, err

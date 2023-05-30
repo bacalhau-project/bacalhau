@@ -25,6 +25,7 @@ func load() *engine.Schema {
 
 var (
 	EngineSchema        *engine.Schema = load()
+	EngineType          cid.Cid        = EngineSchema.Cid()
 	defaultModelEncoder                = ipldcodec.Encode
 	defaultModelDecoder                = ipldcodec.Decode
 	cidBuilder                         = cid.V1Builder{Codec: cid.DagJSON, MhType: multihash.SHA2_256}

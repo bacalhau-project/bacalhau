@@ -161,7 +161,7 @@ func TestParseMultipleStorageInputs(t *testing.T) {
 	require.NoError(t, opt.Set("ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA"))
 	require.NoError(t, opt.Set("s3://myBucket/dir/file-001.txt"))
 	assert.Equal(t, 2, len(opt.Values()))
-	assert.Equal(t, spec_ipfs.Schema.Cid(), opt.Values()[0].Schema)
-	assert.Equal(t, spec_s3.Schema.Cid(), opt.Values()[1].String())
+	assert.Equal(t, spec_ipfs.StorageType, opt.Values()[0].Schema)
+	assert.Equal(t, spec_s3.StorageType, opt.Values()[1].String())
 	assert.Equal(t, 2, len(strings.Split(opt.String(), ",")))
 }

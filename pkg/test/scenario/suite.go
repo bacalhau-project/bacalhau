@@ -104,7 +104,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine.Schema == spec_docker.EngineSchema.Cid())
+	docker.MaybeNeedDocker(s.T(), spec.Engine.Schema == spec_docker.EngineType)
 
 	stack, cm := s.setupStack(scenario.Stack)
 

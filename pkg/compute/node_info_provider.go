@@ -57,19 +57,19 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	return model.ComputeNodeInfo{
 		ExecutionEngines: model.InstalledTypes(ctx, n.executors, []cid.Cid{
-			wasm.EngineSchema.Cid(),
-			docker.EngineSchema.Cid(),
+			wasm.EngineType,
+			docker.EngineType,
 		}),
 		Verifiers:  model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
 		Publishers: model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
 		StorageSources: model.InstalledTypes(ctx, n.storages, []cid.Cid{
-			s3.Schema.Cid(),
-			url.Schema.Cid(),
-			git.Schema.Cid(),
-			ipfs.Schema.Cid(),
-			local.Schema.Cid(),
-			gitlfs.Schema.Cid(),
-			inline.Schema.Cid(),
+			s3.StorageType,
+			url.StorageType,
+			git.StorageType,
+			ipfs.StorageType,
+			local.StorageType,
+			gitlfs.StorageType,
+			inline.StorageType,
 		}),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),

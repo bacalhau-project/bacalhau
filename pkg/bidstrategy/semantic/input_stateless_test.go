@@ -21,8 +21,8 @@ type StatelessJobStrategySuite struct {
 }
 
 func (s *StatelessJobStrategySuite) SetupSuite() {
-	s.statelessJob = getBidStrategyRequest()
-	s.statefulJob = getBidStrategyRequestWithInput()
+	s.statelessJob = getBidStrategyRequest(s.T())
+	s.statefulJob = getBidStrategyRequestWithInput(s.T())
 }
 
 func (s *StatelessJobStrategySuite) TestRejectStateless_StatelessJob() {

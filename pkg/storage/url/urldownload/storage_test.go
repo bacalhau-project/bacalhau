@@ -11,11 +11,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -56,13 +57,10 @@ func (s *StorageSuite) TestNewStorageProvider() {
 func (s *StorageSuite) TestHasStorageLocally() {
 	sp := newStorage(s.T().TempDir())
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           "foo",
-		Path:          "foo",
-	}
+	urlSpec, err := (&url.URLStorageSpec{URL: "foo"}).AsSpec("TODO", "foo")
+	s.Require().NoError(err)
 	// files are not cached thus shall never return true
-	locally, err := sp.HasStorageLocally(context.Background(), spec)
+	locally, err := sp.HasStorageLocally(context.Background(), urlSpec)
 	s.Require().NoError(err, "failed to check if storage is locally available")
 
 	s.False(locally, "storage should not be locally available")
@@ -315,11 +313,10 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 
 			subject := newStorage(s.T().TempDir())
 
-			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
-			vol, err := subject.PrepareStorage(context.Background(), model.StorageSpec{
-				URL:  url,
-				Path: "/inputs",
-			})
+			urlstr := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
+			urlSpec, err := (&url.URLStorageSpec{URL: urlstr}).AsSpec("TODO", "/inputs")
+			s.Require().NoError(err)
+			vol, err := subject.PrepareStorage(context.Background(), urlSpec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)
@@ -329,7 +326,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				s.Regexp(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`, filepath.Base(vol.Target))
 				s.Equal(fmt.Sprintf("%s%s", string(os.PathSeparator), "inputs"), filepath.Dir(vol.Target))
 			} else {
-				s.Equal(test.expectedFilename, actualFilename, fmt.Sprintf("filename doesn't match calling %s", url))
+				s.Equal(test.expectedFilename, actualFilename, fmt.Sprintf("filename doesn't match calling %s", urlstr))
 				s.Equal(filepath.Join("/inputs", test.expectedFilename), vol.Target)
 			}
 

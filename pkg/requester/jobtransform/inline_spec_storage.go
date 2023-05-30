@@ -27,8 +27,8 @@ const (
 // exceeded it will move the largest specs into IPFS.
 func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		hasInline := provider.Has(ctx, inline.Schema.Cid())
-		hasIPFS := provider.Has(ctx, ipfs.Schema.Cid())
+		hasInline := provider.Has(ctx, inline.StorageType)
+		hasIPFS := provider.Has(ctx, ipfs.StorageType)
 		if !hasInline || !hasIPFS {
 			log.Ctx(ctx).Warn().Msg("Skipping inline data transform because storage not installed")
 			return false, nil
@@ -38,8 +38,8 @@ func NewInlineStoragePinner(provider storage.StorageProvider) Transformer {
 			ctx,
 			provider,
 			j.Spec.AllStorageSpecs(),
-			inline.Schema.Cid(),
-			ipfs.Schema.Cid(),
+			inline.StorageType,
+			ipfs.StorageType,
 			maximumIndividualSpec,
 			maximumTotalSpec,
 		)

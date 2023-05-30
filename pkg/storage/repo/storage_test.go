@@ -5,21 +5,19 @@ package repo
 import (
 	"context"
 	"fmt"
-
-	"github.com/go-git/go-git/v5"
-
 	// "net/http"
 	// "net/http/httptest"
 	"os"
 	"path/filepath"
-
 	// "regexp"
 	"testing"
 
+	"github.com/go-git/go-git/v5"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	spec_git "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
@@ -92,7 +90,7 @@ func (s *StorageSuite) TestNewStorageProvider() {
 	_, err = f.WriteString("test\n")
 	require.NoError(s.T(), err, "failed to write to file")
 
-	f.Close()
+	require.NoError(s.T(), f.Close())
 	// if sp.IPFSClient == nil {
 	// 	require.Fail(s.T(), "IPFSClient is nil")
 	// }
@@ -108,13 +106,10 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	sp, err := NewStorage(cm, storage, "")
 	require.NoError(s.T(), err, "failed to create storage provider")
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceRepoClone,
-		URL:           "foo",
-		Path:          "foo",
-	}
+	gitSpec, err := (&spec_git.GitStorageSpec{Repo: "foo"}).AsSpec("TODO", "foo")
+	require.NoError(s.T(), err)
 	// files are not cached thus shall never return true
-	locally, err := sp.HasStorageLocally(ctx, spec)
+	locally, err := sp.HasStorageLocally(ctx, gitSpec)
 	require.NoError(s.T(), err, "failed to check if storage is locally available")
 
 	if locally != false {
@@ -156,14 +151,13 @@ func (s *StorageSuite) TestCloneRepo() {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}
 
-			spec := model.StorageSpec{
-				StorageSource: model.StorageSourceRepoClone,
-				Repo:          ftc.URL,
-				Path:          "/inputs/" + ftc.repoName,
+			gitSpec, err := (&spec_git.GitStorageSpec{Repo: ftc.URL}).
+				AsSpec("TODO", "/inputs/"+ftc.repoName)
+			if err != nil {
+				return "", err
 			}
 
-			volume, err := sp.PrepareStorage(ctx, spec)
-
+			volume, err := sp.PrepareStorage(ctx, gitSpec)
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
 			}

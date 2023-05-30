@@ -26,7 +26,7 @@ type InputLocalityStrategySuite struct {
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
-	inputs, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID}).
+	inputs, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).
 		AsSpec("TODO", "TODO")
 	s.Require().NoError(err)
 

@@ -121,7 +121,7 @@ func (e *Executor) Run(
 	job model.Job,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	if job.Spec.Engine.Schema != dockerengine.EngineSchema.Cid() {
+	if job.Spec.Engine.Schema != dockerengine.EngineType {
 		return nil, fmt.Errorf("job engine is not docker")
 	}
 	//nolint:ineffassign,staticcheck

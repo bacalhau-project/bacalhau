@@ -3,11 +3,14 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -15,23 +18,25 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.JobSpecDocker{
-		Image:      "bash",
-		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
-	})
+	job := model.NewJob()
+	job.Metadata.ID = "address-test"
+	job.Spec.Engine = enginetesting.DockerMakeEngine(s.T(),
+		enginetesting.DockerWithImage("bash"),
+		enginetesting.DockerWithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"),
+	)
 
-	execution := newTestExecution("test-execution", job)
+	execution := newTestExecution("test-execution", *job)
 
-	err := node.RequesterNode.JobStore.CreateJob(s.ctx, job)
+	err := node.RequesterNode.JobStore.CreateJob(s.ctx, *job)
 	require.NoError(s.T(), err)
 
-	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
+	exec, err := node.ComputeNode.Executors.Get(s.ctx, spec_docker.EngineType)
 	require.NoError(s.T(), err)
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, _ = exec.Run(s.ctx, execution.ID, job, "/tmp")
+		_, _ = exec.Run(s.ctx, execution.ID, *job, "/tmp")
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when

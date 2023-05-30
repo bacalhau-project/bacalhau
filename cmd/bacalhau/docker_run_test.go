@@ -20,15 +20,15 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/google/uuid"
 
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testing2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/test/engineutils"
-
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -109,7 +109,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			var j *model.Job
 			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(engineutils.DockerDecodeEngine(s.T(), j.Spec.Engine).Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
+			s.Require().Equal(testing2.DockerDecodeEngine(s.T(), j.Spec.Engine).Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }
@@ -607,7 +607,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.client, out)
 
-				s.Require().Equal(tc.workdir, engineutils.DockerDecodeEngine(s.T(), j.Spec.Engine).WorkingDirectory, "Job workdir != test workdir.")
+				s.Require().Equal(tc.workdir, testing2.DockerDecodeEngine(s.T(), j.Spec.Engine).WorkingDirectory, "Job workdir != test workdir.")
 				s.Require().NoError(err, "Error in running command.")
 			}
 		}()

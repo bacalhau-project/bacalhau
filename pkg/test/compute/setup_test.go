@@ -6,6 +6,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -22,9 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	"github.com/google/uuid"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeSuite struct {
@@ -86,8 +88,8 @@ func (s *ComputeSuite) setupNode() {
 		s.config,
 		"",
 		nil,
-		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
-		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
+		model.NewNoopProvider[cid.Cid, storage.Storage](noopstorage),
+		model.NewNoopProvider[cid.Cid, executor.Executor](s.executor),
 		model.NewNoopProvider[model.Verifier, verifier.Verifier](s.verifier),
 		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
 	)

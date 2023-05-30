@@ -5,7 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 
 	"github.com/rs/zerolog/log"
 )
@@ -24,11 +24,11 @@ func DockerImageDigest() Transformer {
 	}
 
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		if j.Spec.Engine.Schema != docker2.EngineSchema.Cid() {
+		if j.Spec.Engine.Schema != spec_docker.EngineType {
 			return false, nil
 		}
 
-		dockerEngine, err := docker2.Decode(j.Spec.Engine)
+		dockerEngine, err := spec_docker.Decode(j.Spec.Engine)
 		if err != nil {
 			return false, err
 		}
@@ -47,7 +47,7 @@ func DockerImageDigest() Transformer {
 			return false, nil
 		}
 
-		j.Spec.Engine, err = docker2.Mutate(j.Spec.Engine, docker2.WithImage(resolver.Digest()))
+		j.Spec.Engine, err = spec_docker.Mutate(j.Spec.Engine, spec_docker.WithImage(resolver.Digest()))
 		if err != nil {
 			return false, err
 		}

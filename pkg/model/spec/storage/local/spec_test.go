@@ -14,10 +14,12 @@ func TestRoundTrip(t *testing.T) {
 		Source: "/path/to/local/data",
 	}
 
-	spec, err := expectedSpec.AsSpec()
+	spec, err := expectedSpec.AsSpec("name", "mount")
 	require.NoError(t, err)
 
 	require.NotEmpty(t, spec.SchemaData)
+	assert.Equal(t, "name", spec.Name)
+	assert.Equal(t, "mount", spec.Mount)
 	require.NotEmpty(t, spec.Params)
 	require.True(t, local.Schema.Cid().Equals(spec.Schema))
 

@@ -17,7 +17,7 @@ func TestRoundTrip(t *testing.T) {
 		CID: expectedCid,
 	}
 
-	spec, err := expectedSpec.AsSpec()
+	spec, err := expectedSpec.AsSpec("name", "mount")
 	require.NoError(t, err)
 
 	require.NotEmpty(t, spec.SchemaData)

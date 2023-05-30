@@ -26,6 +26,7 @@ func load() *storage.Schema {
 
 var (
 	Schema              *storage.Schema = load()
+	StorageType         cid.Cid         = Schema.Cid()
 	defaultModelEncoder                 = ipldcodec.Encode
 	defaultModelDecoder                 = ipldcodec.Decode
 	EncodingError                       = errors.New("encoding IPFSStorageSpec to spec.Storage")

@@ -6,11 +6,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 )
 
 type BidAcceptedSuite struct {
@@ -23,7 +24,7 @@ func TestBidAcceptedSuite(t *testing.T) {
 
 func (s *BidAcceptedSuite) TestBidAccepted() {
 	ctx := context.Background()
-	executionID := s.prepareAndAskForBid(ctx, generateJob())
+	executionID := s.prepareAndAskForBid(ctx, generateJob(s.T()))
 
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
@@ -47,7 +48,7 @@ func (s *BidAcceptedSuite) TestWrongState() {
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,
 	} {
-		executionID := s.prepareAndAskForBid(ctx, generateJob())
+		executionID := s.prepareAndAskForBid(ctx, generateJob(s.T()))
 		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 			ExecutionID: executionID,
 			NewState:    state,

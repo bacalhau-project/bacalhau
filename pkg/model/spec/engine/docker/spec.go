@@ -3,6 +3,7 @@ package docker
 import (
 	_ "embed"
 
+	"github.com/ipfs/go-cid"
 	ipldcodec "github.com/ipld/go-ipld-prime/codec/dagjson"
 	dslschema "github.com/ipld/go-ipld-prime/schema/dsl"
 
@@ -23,6 +24,7 @@ func load() *engine.Schema {
 
 var (
 	EngineSchema        *engine.Schema = load()
+	EngineType          cid.Cid        = EngineSchema.Cid()
 	defaultModelEncoder                = ipldcodec.Encode
 	defaultModelDecoder                = ipldcodec.Decode
 )

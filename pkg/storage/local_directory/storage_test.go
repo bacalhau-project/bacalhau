@@ -9,12 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type LocalDirectorySuite struct {
@@ -239,7 +241,7 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 			volume, err := storageProvider.PrepareStorage(context.Background(), spec)
 			require.NoError(s.T(), err)
 			require.Equal(s.T(), volume.Source, folderPath)
-			require.Equal(s.T(), volume.Target, spec.Path)
+			require.Equal(s.T(), volume.Target, spec.Mount)
 			require.Equal(s.T(), volume.ReadOnly, !tc.readWrite)
 			require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
 		})
@@ -247,15 +249,13 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 
 }
 
-func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) model.StorageSpec {
+func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) spec.Storage {
 	readWrite := false
 	if strings.HasSuffix(sourcePath, ":rw") {
 		readWrite = true
 		sourcePath = strings.TrimSuffix(sourcePath, ":rw")
 	}
-	return model.StorageSpec{
-		SourcePath: sourcePath,
-		Path:       "/path/inside/the/container",
-		ReadWrite:  readWrite,
-	}
+	out, err := (&local.LocalStorageSpec{Source: sourcePath, ReadWrite: readWrite}).AsSpec("TODO", "/path/inside/the/container")
+	s.Require().NoError(err)
+	return out
 }

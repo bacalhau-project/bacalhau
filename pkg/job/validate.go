@@ -68,8 +68,8 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("confidence must be >= 0")
 	}
 
-	if j.Spec.Engine.Schema != docker.EngineSchema.Cid() ||
-		j.Spec.Engine.Schema != wasm.EngineSchema.Cid() {
+	if j.Spec.Engine.Schema != docker.EngineType ||
+		j.Spec.Engine.Schema != wasm.EngineType {
 		log.Warn().Msgf("TODO cannot validate custom engine schema: %s", j.Spec.Engine.Schema)
 		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.Schema.String())
 	}

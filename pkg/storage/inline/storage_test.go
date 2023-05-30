@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 func TestPlaintextInlineStorage(t *testing.T) {
@@ -22,7 +23,7 @@ func TestPlaintextInlineStorage(t *testing.T) {
 
 	spec, err := storage.Upload(context.Background(), tempfile)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceInline)
+	require.Equal(t, spec.Schema, inline.StorageType)
 
 	size, err := storage.GetVolumeSize(context.Background(), spec)
 	require.NoError(t, err)
@@ -47,7 +48,7 @@ func TestDirectoryInlineStorage(t *testing.T) {
 
 	spec, err := storage.Upload(context.Background(), tempdir)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceInline)
+	require.Equal(t, spec.Schema, inline.StorageType)
 
 	size, err := storage.GetVolumeSize(context.Background(), spec)
 	require.NoError(t, err)

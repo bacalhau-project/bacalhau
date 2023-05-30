@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testing2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 )
 
 type mockBidStrategy func(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error)
@@ -65,7 +66,7 @@ func TestExecutorsBidStrategy(t *testing.T) {
 			strategy := NewExecutorSpecificBidStrategy(noop_provider)
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
 				Job: model.Job{
-					Spec: model.Spec{Engine: model.EngineNoop},
+					Spec: model.Spec{Engine: testing2.NoopMakeEngine(t, "noop")},
 				},
 			})
 			require.NoError(t, err)

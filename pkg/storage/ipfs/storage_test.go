@@ -8,11 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 // how many bytes more does ipfs report the file than the actual content?
@@ -44,14 +46,16 @@ func TestGetVolumeSize(t *testing.T) {
 		t.Run(testString, func(t *testing.T) {
 			storage := getIpfsStorage(t)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), storage.ipfsClient)
+			cidstr, err := ipfs.AddTextToNodes(ctx, []byte(testString), storage.ipfsClient)
 			require.NoError(t, err)
 
-			result, err := storage.GetVolumeSize(ctx, model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           cid,
-				Path:          "/",
-			})
+			c, err := cid.Decode(cidstr)
+			require.NoError(t, err)
+
+			ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "/")
+			require.NoError(t, err)
+
+			result, err := storage.GetVolumeSize(ctx, ipfsspec)
 
 			require.NoError(t, err)
 			require.Equal(t, uint64(len(testString))+IpfsMetadataSize, result)
@@ -69,14 +73,16 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 			defer cancel()
 			storage := getIpfsStorage(t)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
+			cidstr, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			_, err = storage.PrepareStorage(ctx, model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           cid,
-				Path:          "/",
-			})
+			c, err := cid.Decode(cidstr)
+			require.NoError(t, err)
+
+			ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "/")
+			require.NoError(t, err)
+
+			_, err = storage.PrepareStorage(ctx, ipfsspec)
 			require.Equal(t, testDuration == 0, err != nil)
 		})
 	}
@@ -91,15 +97,17 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 			ctx := context.Background()
 			storage := getIpfsStorage(t)
 
-			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
+			cidstr, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
+			require.NoError(t, err)
+
+			c, err := cid.Decode(cidstr)
+			require.NoError(t, err)
+
+			ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", "/")
 			require.NoError(t, err)
 
 			ctx = config.SetVolumeSizeRequestTimeout(ctx, testDuration)
-			_, err = storage.GetVolumeSize(ctx, model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           cid,
-				Path:          "/",
-			})
+			_, err = storage.GetVolumeSize(ctx, ipfsspec)
 			require.Equal(t, testDuration == 0, err != nil)
 		})
 	}

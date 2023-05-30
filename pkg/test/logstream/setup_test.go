@@ -10,14 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 )
 
 type LogStreamTestSuite struct {
@@ -68,29 +69,4 @@ func newTestExecution(name string, job model.Job) store.Execution {
 			CPU:    1,
 			Memory: 2,
 		})
-}
-
-func newWasmJob(id string, spec model.JobSpecWasm) model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: id,
-		},
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			Wasm:   spec,
-		},
-	}
-}
-
-func newDockerJob(id string, spec model.JobSpecDocker) model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: id,
-		},
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: spec,
-		},
-	}
-
 }
