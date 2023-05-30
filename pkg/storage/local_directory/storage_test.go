@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -43,7 +44,7 @@ func (s *LocalDirectorySuite) TestIsInstalled() {
 		{name: "no allowed paths", allowedPaths: []string{}, isInstalled: false},
 	} {
 		s.Run(tc.name, func() {
-			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: tc.allowedPaths})
+			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
 			require.NoError(s.T(), err)
 
 			installed, err := storageProvider.IsInstalled(context.Background())
@@ -119,9 +120,27 @@ func (s *LocalDirectorySuite) TestHasStorageLocally() {
 			allowedPaths:      []string{".*"},
 			hasStorageLocally: false,
 		},
+		{
+			name:              "has rw permission",
+			sourcePath:        tmpFile,
+			allowedPaths:      []string{tmpFile + ":rw"},
+			hasStorageLocally: true,
+		},
+		{
+			name:              "has and requires rw permission",
+			sourcePath:        tmpFile + ":rw",
+			allowedPaths:      []string{tmpFile + ":rw"},
+			hasStorageLocally: true,
+		},
+		{
+			name:              "missing rw permission",
+			sourcePath:        tmpFile + ":rw",
+			allowedPaths:      []string{tmpFile},
+			hasStorageLocally: false,
+		},
 	} {
 		s.Run(tc.name, func() {
-			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: tc.allowedPaths})
+			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
 			require.NoError(s.T(), err)
 
 			hasStorageLocally, err := storageProvider.HasStorageLocally(context.Background(), s.prepareStorageSpec(tc.sourcePath))
@@ -183,7 +202,7 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 		},
 	} {
 		s.Run(tc.name, func() {
-			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: tc.allowedPaths})
+			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
 			require.NoError(s.T(), err)
 
 			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), s.prepareStorageSpec(tc.sourcePath))
@@ -201,20 +220,42 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 	tmpDir := s.T().TempDir()
 	folderPath := filepath.Join(tmpDir, "sub", "path")
 	s.Require().NoError(os.MkdirAll(folderPath, 0755))
-	storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: []string{filepath.Join(tmpDir, "**")}})
+	storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths([]string{filepath.Join(tmpDir, "**:rw")})})
 	require.NoError(s.T(), err)
 
-	spec := s.prepareStorageSpec(folderPath)
-	volume, err := storageProvider.PrepareStorage(context.Background(), spec)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), volume.Source, folderPath)
-	require.Equal(s.T(), volume.Target, spec.Path)
-	require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
+	for _, tc := range []struct {
+		name      string
+		readWrite bool
+	}{
+		{name: "readonly", readWrite: false},
+		{name: "readWrite", readWrite: true},
+	} {
+		s.Run(tc.name, func() {
+			path := folderPath
+			if tc.readWrite {
+				path += ":rw"
+			}
+			spec := s.prepareStorageSpec(path)
+			volume, err := storageProvider.PrepareStorage(context.Background(), spec)
+			require.NoError(s.T(), err)
+			require.Equal(s.T(), volume.Source, folderPath)
+			require.Equal(s.T(), volume.Target, spec.Path)
+			require.Equal(s.T(), volume.ReadOnly, !tc.readWrite)
+			require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
+		})
+	}
+
 }
 
 func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) model.StorageSpec {
+	readWrite := false
+	if strings.HasSuffix(sourcePath, ":rw") {
+		readWrite = true
+		sourcePath = strings.TrimSuffix(sourcePath, ":rw")
+	}
 	return model.StorageSpec{
 		SourcePath: sourcePath,
 		Path:       "/path/inside/the/container",
+		ReadWrite:  readWrite,
 	}
 }
