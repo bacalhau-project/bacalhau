@@ -34,7 +34,8 @@ type Storage interface {
 // put simply - the nature of a storage volume depends on it's use by the
 // executor engine
 type StorageVolume struct {
-	Type   StorageVolumeConnectorType `json:"type"`
-	Source string                     `json:"source"`
-	Target string                     `json:"target"`
+	Type     StorageVolumeConnectorType `json:"type"`
+	ReadOnly bool                       `json:"readOnly"`
+	Source   string                     `json:"source"`
+	Target   string                     `json:"target"`
 }

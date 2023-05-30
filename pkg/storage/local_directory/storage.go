@@ -13,17 +13,17 @@ import (
 )
 
 type StorageProviderParams struct {
-	AllowedPaths []string
+	AllowedPaths []AllowedPath
 }
 type StorageProvider struct {
-	allowedPaths []string
+	allowedPaths []AllowedPath
 }
 
 func NewStorageProvider(params StorageProviderParams) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		allowedPaths: params.AllowedPaths,
 	}
-	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", params.AllowedPaths)
+	log.Debug().Msgf("Local directory driver created with allowedPaths: %s", storageHandler.allowedPaths)
 
 	return storageHandler, nil
 }
@@ -33,7 +33,7 @@ func (driver *StorageProvider) IsInstalled(context.Context) (bool, error) {
 }
 
 func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model.StorageSpec) (bool, error) {
-	if !driver.isInAllowedPaths(volume.SourcePath) {
+	if !driver.isInAllowedPaths(volume) {
 		return false, nil
 	}
 
@@ -44,7 +44,7 @@ func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model
 }
 
 func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume model.StorageSpec) (uint64, error) {
-	if !driver.isInAllowedPaths(volume.SourcePath) {
+	if !driver.isInAllowedPaths(volume) {
 		return 0, errors.New("volume not in allowed paths")
 	}
 	// check if the volume exists
@@ -60,13 +60,14 @@ func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
 	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
-	if !driver.isInAllowedPaths(storageSpec.SourcePath) {
+	if !driver.isInAllowedPaths(storageSpec) {
 		return storage.StorageVolume{}, errors.New("volume not in allowed paths")
 	}
 	return storage.StorageVolume{
-		Type:   storage.StorageVolumeConnectorBind,
-		Source: storageSpec.SourcePath,
-		Target: storageSpec.Path,
+		Type:     storage.StorageVolumeConnectorBind,
+		ReadOnly: !storageSpec.ReadWrite,
+		Source:   storageSpec.SourcePath,
+		Target:   storageSpec.Path,
 	}, nil
 }
 
@@ -78,9 +79,12 @@ func (driver *StorageProvider) Upload(context.Context, string) (model.StorageSpe
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) isInAllowedPaths(sourcePath string) bool {
+func (driver *StorageProvider) isInAllowedPaths(storageSpec model.StorageSpec) bool {
 	for _, allowedPath := range driver.allowedPaths {
-		match, err := doublestar.PathMatch(allowedPath, sourcePath)
+		if storageSpec.ReadWrite && !allowedPath.ReadWrite {
+			continue
+		}
+		match, err := doublestar.PathMatch(allowedPath.Path, storageSpec.SourcePath)
 		if match && err == nil {
 			return true
 		}

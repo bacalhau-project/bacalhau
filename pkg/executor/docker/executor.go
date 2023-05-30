@@ -150,9 +150,8 @@ func (e *Executor) Run(
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 
 			mounts = append(mounts, mount.Mount{
-				Type: mount.TypeBind,
-				// this is an input volume so is read only
-				ReadOnly: true,
+				Type:     mount.TypeBind,
+				ReadOnly: volumeMount.ReadOnly,
 				Source:   volumeMount.Source,
 				Target:   volumeMount.Target,
 			})
