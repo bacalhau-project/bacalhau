@@ -15,7 +15,7 @@ More content is available on the [full slide deck](https://docs.google.com/prese
 * A collection of code samples to showcase and compare APIs
 * A performance benchmark to compare how they behave in processing a large dataset
 
-[![](images/summary_video.png)](https://Winder.AI/comparison-computational-frameworks-spark-dask-snowflake/#video)
+[![](../../static/img/landscape/summary_video.png)](https://Winder.AI/comparison-computational-frameworks-spark-dask-snowflake/#video)
 
 > The past can hurt. But the way I see it, you can either run from it, or learn from it. - *Walt Disney*
 
@@ -28,7 +28,9 @@ Some are specifically designed to take advantage of data locality, by bringing t
 
 > The [full slide deck](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit?usp=sharing) contains a detailed overview of the compute frameworks and include sample code snippets. 
 
-![Compute Framework Analysis](images/landscape.png)
+
+![image](../../static/img/landscape/landscape.png 'Compute Framework Analysis')
+
 
 - The **Python data stack** includes tools like Pandas and Dask, which offers a very convenient data structure, [Dataframe](https://en.wikipedia.org/wiki/Dataframe), which is particularly suitable for handling tabular data.
 
@@ -42,7 +44,9 @@ Unfortunately, many of these systems are far from being easy to operate on your 
 
 The table below summarizes their score in terms of different requirements. The rating presented is based on the experience of setting up and running the code as described in the next section. To learn more, check out the [slides presented here](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit#slide=id.g11f8b483676_0_87).
 
-![Compute Framework Analysis](images/landscape-table.png)
+
+![image](../../static/img/landscape/landscape-table.png 'Compute Framework Analysis')
+
 
 **Why is Bachalau not on this list?** This analysis is not a direct comparison between Bacalhau and existing frameworks. Instead, this research aims to help the Bacalhau community to learn more about the benefits and drawbacks of traditional systems.
 
@@ -68,7 +72,8 @@ The benchmarked task is a [word count](https://en.wikipedia.org/wiki/Word_count)
 
 Performance across the landscape can vary 10x, and that behavior is expected, because Pandas is not a big-data tool and Hadoop was not really designed to perform well on a single-node setup. Its surprising to learn that only Spark and Snowflake provide an efficient setup combined with quick processing and very low resource usage.
 
-![Compute Framework Benchmarks](images/landscape-benchmarks.png)
+
+![image](../../static/img/landscape/landscape-benchmarks.png 'Compute Framework Analysis')
 
 Check out [the slides for a complete report on the benchmark results](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit#slide=id.g11c07429d0d_0_1091) or dive into the [code repository](https://github.com/winderai/bacalhau-landscape-analysis-benchmarks) to spin up a cluster and run the benchmarks yourself.
 

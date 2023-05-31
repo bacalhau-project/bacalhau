@@ -5,9 +5,10 @@ sidebar_position: 1
 
 # Architecture
 
+Bacalhau is a peer-to-peer network of nodes that allows for decentralized communication between computers. Each node in the network has two components: a **requestor** component and a **compute** component.
+
 ![image](../../static/img/architecture/architecture-purpose.jpeg 'Bacalhau Architecture')
 
-Bacalhau is a peer-to-peer network of nodes that allows for decentralized communication between computers. Each node in the network has two components: a **requestor** component and a **compute** component.
 
 To interact with the Bacalhau network, users can use the Bacalhau CLI (command-line interface) to send requests to a node in the network. These requests are sent using the JSON format over HTTP, a widely-used protocol for transmitting data over the internet.
 
