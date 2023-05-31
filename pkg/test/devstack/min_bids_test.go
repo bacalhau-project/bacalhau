@@ -72,7 +72,7 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 			ComputeConfig:   node.NewComputeConfigWith(computeConfig),
 			RequesterConfig: node.NewRequesterConfigWith(requesterConfig),
 		},
-		Spec: scenario.WasmHelloWorld.Spec,
+		Spec: scenario.WasmHelloWorld(s.T()).Spec,
 		Deal: model.Deal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,

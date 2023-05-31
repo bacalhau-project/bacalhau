@@ -12,14 +12,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 )
 
 func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	docker.MustHaveDocker(s.T())
 
 	node := s.stack.Nodes[0]
-	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
+	exec, err := node.ComputeNode.Executors.Get(s.ctx, spec_docker.EngineType)
 	require.NoError(s.T(), err)
 
 	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
@@ -28,8 +29,8 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	job := testutils.MakeDockerJob(
-		model.EngineDocker,
+	job := enginetesting.MakeDockerJob(
+		s.T(),
 		model.VerifierNoop,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"})

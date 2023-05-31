@@ -5,11 +5,15 @@ package devstack
 import (
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DisabledFeatureTestSuite struct {
@@ -24,7 +28,7 @@ var waitForError job.CheckStatesFunction = func(js model.JobState) (bool, error)
 	return js.State == model.JobStateError, nil
 }
 
-func disabledTestSpec() scenario.Scenario {
+func disabledTestSpec(t testing.TB) scenario.Scenario {
 	return scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{
@@ -32,13 +36,13 @@ func disabledTestSpec() scenario.Scenario {
 				NumberOfComputeOnlyNodes:   1,
 			},
 		},
-		Spec:          scenario.WasmHelloWorld.Spec,
+		Spec:          scenario.WasmHelloWorld(t).Spec,
 		SubmitChecker: scenario.SubmitJobErrorContains("not enough nodes to run job"),
 	}
 }
 
 func (s *DisabledFeatureTestSuite) TestNothingDisabled() {
-	testCase := disabledTestSpec()
+	testCase := disabledTestSpec(s.T())
 	testCase.SubmitChecker = scenario.SubmitJobSuccess()
 	testCase.JobCheckers = scenario.WaitUntilSuccessful(1)
 	testCase.Spec.Verifier = model.VerifierNoop
@@ -47,8 +51,8 @@ func (s *DisabledFeatureTestSuite) TestNothingDisabled() {
 }
 
 func (s *DisabledFeatureTestSuite) TestDisabledEngine() {
-	testCase := disabledTestSpec()
-	testCase.Stack.DevStackOptions.DisabledFeatures.Engines = []model.Engine{model.EngineWasm}
+	testCase := disabledTestSpec(s.T())
+	testCase.Stack.DevStackOptions.DisabledFeatures.Engines = []cid.Cid{wasm.EngineType}
 
 	// TODO: This is a hack – because we are doing engine filtering at the node
 	// selection rather than node ranking stage (see store.ListForEngine) the
@@ -63,14 +67,14 @@ func (s *DisabledFeatureTestSuite) TestDisabledEngine() {
 }
 
 func (s *DisabledFeatureTestSuite) TestDisabledStorage() {
-	testCase := disabledTestSpec()
-	testCase.Stack.DevStackOptions.DisabledFeatures.Storages = []model.StorageSourceType{model.StorageSourceInline}
+	testCase := disabledTestSpec(s.T())
+	testCase.Stack.DevStackOptions.DisabledFeatures.Storages = []cid.Cid{inline.StorageType}
 
 	s.RunScenario(testCase)
 }
 
 func (s *DisabledFeatureTestSuite) TestDisabledVerifier() {
-	testCase := disabledTestSpec()
+	testCase := disabledTestSpec(s.T())
 	testCase.Spec.Verifier = model.VerifierNoop
 	testCase.Stack.DevStackOptions.DisabledFeatures.Verifiers = []model.Verifier{model.VerifierNoop}
 
@@ -78,7 +82,7 @@ func (s *DisabledFeatureTestSuite) TestDisabledVerifier() {
 }
 
 func (s *DisabledFeatureTestSuite) TestDisabledPublisher() {
-	testCase := disabledTestSpec()
+	testCase := disabledTestSpec(s.T())
 	testCase.Spec.Publisher = model.PublisherIpfs
 	testCase.Stack.DevStackOptions.DisabledFeatures.Publishers = []model.Publisher{model.PublisherIpfs}
 

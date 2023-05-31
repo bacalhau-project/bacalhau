@@ -7,14 +7,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackErrorLogsSuite struct {
@@ -25,23 +28,24 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 	suite.Run(t, new(DevstackErrorLogsSuite))
 }
 
-var executorTestCases = []model.Spec{
-	{
-		Engine: model.EngineNoop,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
+func executorTestCases(t testing.TB) []model.Spec {
+	return []model.Spec{
+		{
+			Engine: enginetesting.NoopMakeEngine(t, "noop"),
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 		},
-	},
-	{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
+		{
+			Engine: enginetesting.DockerMakeEngine(t,
+				enginetesting.DockerWithImage("ubuntu"),
+				enginetesting.DockerWithEntrypoint("bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"),
+			),
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
+			},
 		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu",
-			Entrypoint: []string{"bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;"},
-		},
-	},
+	}
 }
 
 var errorLogsTestCase = scenario.Scenario{
@@ -64,9 +68,9 @@ var errorLogsTestCase = scenario.Scenario{
 }
 
 func (suite *DevstackErrorLogsSuite) TestCanGetResultsFromErroredJob() {
-	for _, testCase := range executorTestCases {
+	for _, testCase := range executorTestCases(suite.T()) {
 		suite.Run(testCase.Engine.String(), func() {
-			docker.MaybeNeedDocker(suite.T(), testCase.Engine == model.EngineDocker)
+			docker.MaybeNeedDocker(suite.T(), testCase.Engine.Schema == spec_docker.EngineType)
 
 			scenario := errorLogsTestCase
 			scenario.Spec = testCase

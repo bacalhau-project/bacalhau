@@ -4,8 +4,12 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testing2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
@@ -31,16 +35,18 @@ var CatFileToStdout = func(t testing.TB) Scenario {
 			FileEquals(model.DownloadFilenameStdout, helloWorld),
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(cat.Program())),
-				testing2.WasmWithEntrypoint("_start"),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(cat.Program())),
+				enginetesting.WasmWithEntrypoint("_start"),
 			),
 		},
 	}
 }
 
 var CatFileToVolume = func(t testing.TB) Scenario {
+	localspec, err := (&local.LocalStorageSpec{Source: "CatFileToVolumeTest"}).AsSpec("test", "/output_data")
+	require.NoError(t, err)
 	return Scenario{
 		Inputs: StoredText(
 			catProgram,
@@ -50,16 +56,11 @@ var CatFileToVolume = func(t testing.TB) Scenario {
 			"test/output_file.txt",
 			catProgram,
 		),
-		Outputs: []model.StorageSpec{
-			{
-				Name: "test",
-				Path: "/output_data",
-			},
-		},
+		Outputs: []spec.Storage{localspec},
 		Spec: model.Spec{
-			Engine: testing2.DockerMakeEngine(t,
-				testing2.DockerWithImage("ubuntu:latest"),
-				testing2.DockerWithEntrypoint("bash", simpleMountPath),
+			Engine: enginetesting.DockerMakeEngine(t,
+				enginetesting.DockerWithImage("ubuntu:latest"),
+				enginetesting.DockerWithEntrypoint("bash", simpleMountPath),
 			),
 		},
 	}
@@ -77,9 +78,9 @@ var GrepFile = func(t testing.TB) Scenario {
 			2,
 		),
 		Spec: model.Spec{
-			Engine: testing2.DockerMakeEngine(t,
-				testing2.DockerWithImage("ubuntu:latest"),
-				testing2.DockerWithEntrypoint("grep", "kiwi", simpleMountPath),
+			Engine: enginetesting.DockerMakeEngine(t,
+				enginetesting.DockerWithImage("ubuntu:latest"),
+				enginetesting.DockerWithEntrypoint("grep", "kiwi", simpleMountPath),
 			),
 		},
 	}
@@ -97,9 +98,9 @@ var SedFile = func(t testing.TB) Scenario {
 			5, //nolint:gomnd // magic number ok for testing
 		),
 		Spec: model.Spec{
-			Engine: testing2.DockerMakeEngine(t,
-				testing2.DockerWithImage("ubuntu:latest"),
-				testing2.DockerWithEntrypoint("sed", "-n", "/38.7[2-4]..,-9.1[3-7]../p", simpleMountPath),
+			Engine: enginetesting.DockerMakeEngine(t,
+				enginetesting.DockerWithImage("ubuntu:latest"),
+				enginetesting.DockerWithEntrypoint("sed", "-n", "/38.7[2-4]..,-9.1[3-7]../p", simpleMountPath),
 			),
 		},
 	}
@@ -117,9 +118,9 @@ var AwkFile = func(t testing.TB) Scenario {
 			501, //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: model.Spec{
-			Engine: testing2.DockerMakeEngine(t,
-				testing2.DockerWithImage("ubuntu:latest"),
-				testing2.DockerWithEntrypoint("awk", "-F,", "{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}", simpleMountPath),
+			Engine: enginetesting.DockerMakeEngine(t,
+				enginetesting.DockerWithImage("ubuntu:latest"),
+				enginetesting.DockerWithEntrypoint("awk", "-F,", "{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}", simpleMountPath),
 			),
 		},
 	}
@@ -132,10 +133,10 @@ var WasmHelloWorld = func(t testing.TB) Scenario {
 			"Hello, world!\n",
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(noop.Program())),
-				testing2.WasmWithParameters([]string{}...),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(noop.Program())),
+				enginetesting.WasmWithParameters([]string{}...),
 			),
 		},
 	}
@@ -148,11 +149,11 @@ var WasmExitCode = func(t testing.TB) Scenario {
 			"5",
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(exit_code.Program())),
-				testing2.WasmWithParameters([]string{}...),
-				testing2.WasmWithEnvironmentVariables("EXIT_CODE", "5"),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(exit_code.Program())),
+				enginetesting.WasmWithParameters([]string{}...),
+				enginetesting.WasmWithEnvironmentVariables("EXIT_CODE", "5"),
 			),
 		},
 	}
@@ -166,16 +167,18 @@ var WasmEnvVars = func(t testing.TB) Scenario {
 			3, //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(env.Program())),
-				testing2.WasmWithEnvironmentVariables("TEST", "yes", "AWESOME", "definitely"),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(env.Program())),
+				enginetesting.WasmWithEnvironmentVariables("TEST", "yes", "AWESOME", "definitely"),
 			),
 		},
 	}
 }
 
 var WasmCsvTransform = func(t testing.TB) Scenario {
+	localspec, err := (&local.LocalStorageSpec{Source: "WasmCsvTransform"}).AsSpec("outputs", "/outputs")
+	require.NoError(t, err)
 	return Scenario{
 		Inputs: StoredFile(
 			"../../../testdata/wasm/csv/inputs",
@@ -187,18 +190,13 @@ var WasmCsvTransform = func(t testing.TB) Scenario {
 			269, //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(csv.Program())),
-				testing2.WasmWithParameters("inputs/horses.csv", "outputs/parents-children.csv"),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(csv.Program())),
+				enginetesting.WasmWithParameters("inputs/horses.csv", "outputs/parents-children.csv"),
 			),
 		},
-		Outputs: []model.StorageSpec{
-			{
-				Name: "outputs",
-				Path: "/outputs",
-			},
-		},
+		Outputs: []spec.Storage{localspec},
 	}
 }
 
@@ -213,9 +211,9 @@ var WasmDynamicLink = func(t testing.TB) Scenario {
 			"17\n",
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(dynamic.Program())),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(dynamic.Program())),
 			),
 		},
 	}
@@ -233,10 +231,10 @@ var WasmLogTest = func(t testing.TB) Scenario {
 			-1,                                    //nolint:gomnd // magic number appropriate for test
 		),
 		Spec: model.Spec{
-			Engine: testing2.WasmMakeEngine(t,
-				testing2.WasmWithEntrypoint("_start"),
-				testing2.WasmWithEntryModule(InlineData(logtest.Program())),
-				testing2.WasmWithParameters("inputs/cosmic_computer.txt", "--fast"),
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(InlineData(logtest.Program())),
+				enginetesting.WasmWithParameters("inputs/cosmic_computer.txt", "--fast"),
 			),
 		},
 	}

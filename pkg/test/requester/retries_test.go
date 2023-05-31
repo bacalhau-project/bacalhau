@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -346,7 +347,7 @@ func (s *RetriesSuite) TestRetry() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := makeBadTargetingJob(tc.nodes)
+			j := makeBadTargetingJob(s.T(), tc.nodes)
 			j.Spec.Verifier = tc.verifier
 			if !model.IsValidVerifier(j.Spec.Verifier) {
 				j.Spec.Verifier = model.VerifierNoop
@@ -395,8 +396,8 @@ func (s *RetriesSuite) TestRetry() {
 	}
 }
 
-func makeBadTargetingJob(restrictedNodes []string) *model.Job {
-	j := testutils.MakeDockerJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{"echo", "hello"})
+func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *model.Job {
+	j := enginetesting.MakeDockerJob(t, model.VerifierNoop, model.PublisherNoop, []string{"echo", "hello"})
 	req := []model.LabelSelectorRequirement{
 		{
 			Key:      "favour_name",

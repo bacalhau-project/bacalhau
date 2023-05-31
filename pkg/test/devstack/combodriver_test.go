@@ -8,13 +8,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 )
 
 type ComboDriverSuite struct {
@@ -29,36 +34,33 @@ func TestComboDriverSuite(t *testing.T) {
 
 const exampleText = "hello world"
 
-var testcase = scenario.Scenario{
-	ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
-	Spec: model.Spec{
-		Engine:   model.EngineWasm,
-		Verifier: model.VerifierNoop,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-			EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-			Parameters: []string{
-				`/inputs/file.txt`,
+func makeTestCase(t testing.TB) scenario.Scenario {
+	localspec, err := (&local.LocalStorageSpec{Source: "combodriver_test"}).AsSpec("outputs", "/outputs")
+	require.NoError(t, err)
+	return scenario.Scenario{
+		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, exampleText),
+		Spec: model.Spec{
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(scenario.InlineData(cat.Program())),
+				enginetesting.WasmWithParameters(`inputs/file.txt`),
+			),
+			Verifier: model.VerifierNoop,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherIpfs,
 			},
 		},
-	},
-	Outputs: []model.StorageSpec{
-		{
-			Name: "outputs",
-			Path: "/outputs/",
+		Outputs: []spec.Storage{localspec},
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
 		},
-	},
-	JobCheckers: []job.CheckStatesFunction{
-		job.WaitForSuccessfulCompletion(),
-	},
+	}
 }
 
 // Test that the combo driver gives preference to the filecoin unsealed driver
 // also that this does not affect normal jobs where the CID resides on the IPFS driver
 func (suite *ComboDriverSuite) TestComboDriverSealed() {
+	testcase := makeTestCase(suite.T())
 	testcase.Inputs = scenario.StoredText(exampleText, "/inputs/file.txt")
 	suite.RunScenario(testcase)
 }
@@ -73,6 +75,7 @@ func (suite *ComboDriverSuite) TestComboDriverUnsealed() {
 	err = os.WriteFile(filePath, []byte(fmt.Sprintf(exampleText)), 0644)
 	require.NoError(suite.T(), err)
 
+	testcase := makeTestCase(suite.T())
 	testcase.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{
 			NumberOfHybridNodes:  1,

@@ -5,12 +5,13 @@ package devstack
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackConcurrencySuite struct {
@@ -25,7 +26,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
-	testCase := scenario.WasmHelloWorld
+	testCase := scenario.WasmHelloWorld(suite.T())
 	testCase.Stack = &scenario.StackConfig{
 		DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: 3},
 	}

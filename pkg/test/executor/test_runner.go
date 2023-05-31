@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
 )
 
 const testNodeCount = 1
@@ -20,26 +22,25 @@ func RunTestCase(
 	testCase scenario.Scenario,
 ) {
 	ctx := context.Background()
-	spec := testCase.Spec
+	testSpec := testCase.Spec
 
 	stack, _ := testutils.SetupTest(ctx, t, testNodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
-	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, testSpec.Engine.Schema)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
 	require.NoError(t, err)
 	require.True(t, isInstalled)
 
-	prepareStorage := func(getStorage scenario.SetupStorage) []model.StorageSpec {
+	prepareStorage := func(getStorage scenario.SetupStorage) []spec.Storage {
 		if getStorage == nil {
-			return []model.StorageSpec{}
+			return []spec.Storage{}
 		}
 
-		storageList, stErr := getStorage(ctx,
-			model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
+		storageList, stErr := getStorage(ctx, stack.IPFSClients()[:testNodeCount]...)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
@@ -52,9 +53,9 @@ func RunTestCase(
 		return storageList
 	}
 
-	spec.Inputs = prepareStorage(testCase.Inputs)
-	spec.Outputs = testCase.Outputs
-	spec.Deal = model.Deal{Concurrency: testNodeCount}
+	testSpec.Inputs = prepareStorage(testCase.Inputs)
+	testSpec.Outputs = testCase.Outputs
+	testSpec.Deal = model.Deal{Concurrency: testNodeCount}
 
 	job := model.Job{
 		Metadata: model.Metadata{
@@ -65,7 +66,7 @@ func RunTestCase(
 				RequesterNodeID: "test-owner",
 			},
 		},
-		Spec: spec,
+		Spec: testSpec,
 	}
 
 	resultsDirectory := t.TempDir()

@@ -10,14 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -78,7 +79,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 	// Pause to ensure the websocket connects _before_ we submit the job
 	time.Sleep(100 * time.Millisecond)
 
-	genericJob := testutils.MakeGenericJob()
+	genericJob := enginetesting.MakeDockerJob(s.T(), model.VerifierNoop, model.PublisherNoop, []string{"echo", "$(date +%s)"})
 	_, err = s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
@@ -92,7 +93,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 		"the job has already progressed and first event is not guaranteed to be 'Created'")
 	ctx := context.Background()
 
-	genericJob := testutils.MakeGenericJob()
+	genericJob := enginetesting.MakeDockerJob(s.T(), model.VerifierNoop, model.PublisherNoop, []string{"echo", "$(date +%s)"})
 	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 

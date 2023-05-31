@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -20,9 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type lotusNodeSuite struct {
@@ -46,7 +47,7 @@ func (s *lotusNodeSuite) TestLotusNode() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	testCase := scenario.WasmHelloWorld
+	testCase := scenario.WasmHelloWorld(s.T())
 	nodeCount := 1
 
 	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, node.NewComputeConfigWithDefaults(), node.NewRequesterConfigWithDefaults())

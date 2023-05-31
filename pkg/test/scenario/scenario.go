@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
@@ -48,7 +49,7 @@ type Scenario struct {
 
 	// Output volumes that must be available to the job. If nil, no output
 	// volumes will be attached to the job.
-	Outputs []model.StorageSpec
+	Outputs []spec.Storage
 
 	// The job specification
 	Spec model.Spec

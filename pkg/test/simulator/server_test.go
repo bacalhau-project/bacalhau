@@ -5,11 +5,12 @@ package simulator
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type SimulatorSuite struct {
@@ -30,7 +31,7 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 	nodeCount := 3
 	s := scenario.Scenario{
 		JobCheckers: scenario.WaitUntilSuccessful(3),
-		Spec:        scenario.WasmHelloWorld.Spec,
+		Spec:        scenario.WasmHelloWorld(suite.T()).Spec,
 		Deal: model.Deal{
 			Concurrency: 3,
 		},

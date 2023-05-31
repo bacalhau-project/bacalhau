@@ -60,7 +60,7 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 	clients := stack.IPFSClients()
 	s.Require().GreaterOrEqual(len(clients), 1, "No IPFS clients to upload to?")
 
-	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, stack.IPFSClients()...)
+	storageList, stErr := getStorage(s.Ctx, stack.IPFSClients()...)
 	s.Require().NoError(stErr)
 
 	return storageList
@@ -103,24 +103,24 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // Spin up a devstack, execute the job, check the results, and tear down the
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
-	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine.Schema == spec_docker.EngineType)
+	jobSpec := scenario.Spec
+	docker.MaybeNeedDocker(s.T(), jobSpec.Engine.Schema == spec_docker.EngineType)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
 	s.T().Log("Setting up storage")
-	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
-	spec.Outputs = scenario.Outputs
-	if spec.Outputs == nil {
-		spec.Outputs = []model.StorageSpec{}
+	jobSpec.Inputs = s.prepareStorage(stack, scenario.Inputs)
+	jobSpec.Outputs = scenario.Outputs
+	if jobSpec.Outputs == nil {
+		jobSpec.Outputs = []spec.Storage{}
 	}
 
 	s.T().Log("Submitting job")
 	j, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
 
-	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	j.Spec = jobSpec
+	// NB(forrest): we no longer need to validate storage as it may be user defined, remove after review
 	if !model.IsValidVerifier(j.Spec.Verifier) {
 		j.Spec.Verifier = model.VerifierNoop
 	}

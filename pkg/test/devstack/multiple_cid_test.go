@@ -9,7 +9,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,18 +39,17 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
+			Engine: enginetesting.WasmMakeEngine(s.T(),
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(scenario.InlineData(cat.Program())),
+				enginetesting.WasmWithParameters(
+					filepath.Join(dirCID1, fileName1),
+					filepath.Join(dirCID2, fileName2),
+				),
+			),
 			Verifier: model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					filepath.Join(dirCID1, fileName1),
-					filepath.Join(dirCID2, fileName2),
-				},
 			},
 		},
 		ResultsChecker: scenario.ManyChecks(

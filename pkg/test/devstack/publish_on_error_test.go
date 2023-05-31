@@ -8,7 +8,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
+
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,18 +31,17 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
+			Engine: enginetesting.WasmMakeEngine(s.T(),
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(scenario.InlineData(cat.Program())),
+				enginetesting.WasmWithParameters(
+					"data/hello.txt",
+					"does/not/exist.txt",
+				),
+			),
 			Verifier: model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
-				Parameters: []string{
-					"data/hello.txt",
-					"does/not/exist.txt",
-				},
 			},
 		},
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, stdoutText),

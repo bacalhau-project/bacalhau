@@ -7,17 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 type NodeSelectionSuite struct {
@@ -163,7 +165,8 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 	for _, tc := range testCase {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := testutils.MakeNoopJob()
+			j := model.NewJob()
+			j.Spec.Engine = enginetesting.NoopMakeEngine(s.T(), "noop")
 			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
 			j.Spec.Deal.Concurrency = system.Max(1, len(tc.expectedNodes))
 
