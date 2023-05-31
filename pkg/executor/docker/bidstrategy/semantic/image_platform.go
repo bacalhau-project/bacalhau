@@ -41,7 +41,9 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	var ierr error = nil
 	var manifest docker.ImageManifest
 
-	manifest, found := (*ManifestCache).Get(request.Job.Spec.Docker.Image)
+	// TODO: Re-enable
+	// manifest, found := (*ManifestCache).Get(request.Job.Spec.Docker.Image)
+	found := false
 	if !found {
 		log.Ctx(ctx).Debug().Str("Image", request.Job.Spec.Docker.Image).Msg("Image not found in manifest cache")
 
@@ -67,17 +69,18 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	// TODO: Once we have an LRU cache we can use that instead and not worry
 	// about managing eviction. In the meantime we get this through calling
 	// Set even when don't have to, to reset the expiry time.
-	err = (*ManifestCache).Set(
-		request.Job.Spec.Docker.Image, manifest, 1, oneDayInSeconds,
-	) //nolint:gomnd
-	if err != nil {
-		// Log the error but continue as it is not serious enough to stop
-		// processing
-		log.Ctx(ctx).Warn().
-			Str("Image", request.Job.Spec.Docker.Image).
-			Str("Error", err.Error()).
-			Msg("Failed to save to manifest cache")
-	}
+	// TODO: Re-enable
+	// err = (*ManifestCache).Set(
+	// 	request.Job.Spec.Docker.Image, manifest, 1, oneDayInSeconds,
+	// ) //nolint:gomnd
+	// if err != nil {
+	// 	// Log the error but continue as it is not serious enough to stop
+	// 	// processing
+	// 	log.Ctx(ctx).Warn().
+	// 		Str("Image", request.Job.Spec.Docker.Image).
+	// 		Str("Error", err.Error()).
+	// 		Msg("Failed to save to manifest cache")
+	// }
 
 	for _, canRun := range supported {
 		for _, imageHas := range manifest.Platforms {
