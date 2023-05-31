@@ -5,10 +5,12 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type Downloader struct {
@@ -61,17 +63,21 @@ func (d *Downloader) DescribeResult(ctx context.Context, result model.PublishedR
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
 	ipfsClient, err := d.getClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+	ipfsspec, err := spec_ipfs.Decode(result.Data)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Ctx(ctx).Debug().
-		Str("cid", result.Data.CID).
+		Stringer("cid", ipfsspec.CID).
 		Str("name", result.Data.Name).
 		Msg("Describing contents of result CID")
 
-	tree, err := ipfsClient.GetTreeNode(ctx, result.Data.CID)
+	tree, err := ipfsClient.GetTreeNode(ctx, ipfsspec.CID.String())
 	if err != nil {
 		return nil, err
 	}

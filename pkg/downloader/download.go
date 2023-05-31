@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // specialFiles - i.e. anything that is not a volume
@@ -81,7 +83,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 
 	if settings.SingleFile != "" {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.Schema) //nolint
 			if err != nil {
 				return err
 			}
@@ -115,7 +117,7 @@ func DownloadResults( //nolint:funlen,gocyclo
 			item := model.DownloadItem{
 				Name:       settings.SingleFile,
 				CID:        cid,
-				SourceType: publishedResult.Data.StorageSource,
+				SourceType: publishedResult.Data.Schema,
 				Target:     targetFile,
 			}
 
@@ -128,26 +130,30 @@ func DownloadResults( //nolint:funlen,gocyclo
 		}
 	} else {
 		for _, publishedResult := range publishedResults {
-			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.StorageSource) //nolint
+			downloader, err = downloadProvider.Get(ctx, publishedResult.Data.Schema) //nolint
 			if err != nil {
 				return err
 			}
 
-			cidDownloadDir := filepath.Join(cidParentDir, publishedResult.Data.CID)
-			_, alreadyExists := downloadedCids[publishedResult.Data.CID]
+			ipfsspec, err := spec_ipfs.Decode(publishedResult.Data)
+			if err != nil {
+				return err
+			}
+			cidDownloadDir := filepath.Join(cidParentDir, ipfsspec.CID.String())
+			_, alreadyExists := downloadedCids[ipfsspec.CID.String()]
 			if alreadyExists {
 				// We don't want to download the same CID twice, so we will just move
 				// on to the next item
 				log.Ctx(ctx).Debug().
-					Str("CID", publishedResult.Data.CID).
+					Stringer("CID", ipfsspec.CID).
 					Msg("asked to download a CID a second time")
 				continue
 			}
 
 			item := model.DownloadItem{
 				Name:       publishedResult.Data.Name,
-				CID:        publishedResult.Data.CID,
-				SourceType: publishedResult.Data.StorageSource,
+				CID:        ipfsspec.CID.String(),
+				SourceType: publishedResult.Data.Schema,
 				Target:     cidDownloadDir,
 			}
 

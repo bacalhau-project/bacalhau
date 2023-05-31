@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 // PublisherProvider returns a publisher for the given publisher type
@@ -32,5 +33,5 @@ type Publisher interface {
 		executionID string,
 		job model.Job,
 		resultPath string,
-	) (model.StorageSpec, error)
+	) (spec.Storage, error)
 }

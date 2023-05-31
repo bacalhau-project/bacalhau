@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
@@ -35,7 +36,7 @@ func (t *tracingPublisher) ValidateJob(ctx context.Context, j model.Job) error {
 
 func (t *tracingPublisher) PublishResult(
 	ctx context.Context, executionID string, j model.Job, resultPath string,
-) (model.StorageSpec, error) {
+) (spec.Storage, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name))
 	defer span.End()
 

@@ -151,13 +151,13 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	return verifiedSummary
 }
 
-func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
-	return model.StorageSpec{
-		Name:          "ipfs://" + cid,
-		StorageSource: storageType,
-		CID:           cid,
-		Metadata:      map[string]string{},
+// TODO(forrest) need to handle the case where this is an Estuary or Filecoin Publisher.
+func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType cid.Cid, cidstr string) (spec.Storage, error) {
+	c, err := cid.Decode(cidstr)
+	if err != nil {
+		return spec.Storage{}, err
 	}
+	return (&ipfs_spec.IPFSStorageSpec{CID: c}).AsSpec("ipfs://"+c.String(), "TODO")
 }
 
 func GetJobConcurrency(j model.Job) int {

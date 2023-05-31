@@ -10,14 +10,16 @@ import (
 	"net/url"
 	"path/filepath"
 
+	"go.uber.org/multierr"
+	"golang.org/x/mod/sumdb/dirhash"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/results"
-	"go.uber.org/multierr"
-	"golang.org/x/mod/sumdb/dirhash"
 )
 
 // ExternalVerifier provides verification proposals to some service outside of
@@ -42,9 +44,9 @@ func NewExternalVerifier(
 }
 
 type ExternalVerificationRequest struct {
-	ExecutionID model.ExecutionID   `json:"executionId"`
-	Results     []model.StorageSpec `json:"results"`
-	Callback    *url.URL            `json:"callback"`
+	ExecutionID model.ExecutionID `json:"executionId"`
+	Results     []spec.Storage    `json:"results"`
+	Callback    *url.URL          `json:"callback"`
 }
 
 type ExternalVerificationResponse struct {
@@ -80,6 +82,7 @@ func (v *ExternalVerifier) GetProposal(ctx context.Context, job model.Job, execu
 	if err != nil {
 		return nil, err
 	}
+	// TODO metadata is required on (all?) some storage specs
 	spec.Metadata["hash"] = hash
 
 	var size, count int64
@@ -100,6 +103,7 @@ func (v *ExternalVerifier) GetProposal(ctx context.Context, job model.Job, execu
 	if err != nil {
 		return nil, err
 	}
+	// TODO metadata is required on (all?) some storage specs
 	spec.Metadata["count"] = fmt.Sprint(count)
 	spec.Metadata["size"] = fmt.Sprint(size)
 
@@ -127,8 +131,11 @@ func (v *ExternalVerifier) Verify(
 		return nil, err
 	}
 
-	specs := make([]model.StorageSpec, len(request.Executions))
+	specs := make([]spec.Storage, len(request.Executions))
 	for i, state := range request.Executions {
+		// TODO will need to use the concrete spec unmarshaller probably with a switch statement on spec schema type
+		// alternativly we could change the type of VerificationProposal to be more descriptive seems like its basically
+		// a storage spec... maybe make it that?
 		err = multierr.Append(err, json.Unmarshal(state.VerificationProposal, &specs[i]))
 	}
 	if err != nil {

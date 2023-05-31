@@ -3,6 +3,8 @@ package downloader
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -19,5 +21,5 @@ type Downloader interface {
 }
 
 type DownloaderProvider interface {
-	model.Provider[model.StorageSourceType, Downloader]
+	model.Provider[cid.Cid, Downloader]
 }

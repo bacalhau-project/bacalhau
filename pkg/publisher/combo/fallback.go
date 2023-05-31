@@ -3,10 +3,12 @@ package combo
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 type fallbackPublisher struct {
@@ -67,8 +69,8 @@ func (f *fallbackPublisher) PublishResult(
 	executionID string,
 	job model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
-	return fallback(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
+) (spec.Storage, error) {
+	return fallback(ctx, f.publishers, func(p publisher.Publisher) (spec.Storage, error) {
 		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 }

@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 // ExecutionStateType The state of an execution. An execution represents a single attempt to execute a job on a node.
@@ -106,7 +108,7 @@ type ExecutionState struct {
 	// this will be resolved by the verifier somehow
 	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
 	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
+	PublishedResult      spec.Storage       `json:"PublishedResults,omitempty"`
 
 	// RunOutput of the job
 	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`

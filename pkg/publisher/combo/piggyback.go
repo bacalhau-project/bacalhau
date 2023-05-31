@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
@@ -47,14 +48,15 @@ func (c *piggybackedPublisher) ValidateJob(ctx context.Context, j model.Job) err
 
 func (c *piggybackedPublisher) PublishResult(
 	ctx context.Context, executionID string, job model.Job, resultPath string,
-) (model.StorageSpec, error) {
-	results, err := callAllPublishers(c.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
+) (spec.Storage, error) {
+	results, err := callAllPublishers(c.publishers, func(p publisher.Publisher) (spec.Storage, error) {
 		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
+	// TODO metadata is required on (all?) some storage specs
 	result := results[0]
 	if result.Metadata == nil {
 		result.Metadata = map[string]string{}

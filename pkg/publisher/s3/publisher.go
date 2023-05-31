@@ -10,10 +10,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
-	"github.com/rs/zerolog/log"
 )
 
 type PublisherParams struct {
@@ -52,82 +55,78 @@ func (publisher *Publisher) PublishResult(
 	executionID string,
 	j model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
-	spec, err := DecodeSpec(j.Spec.PublisherSpec)
+) (spec.Storage, error) {
+	s3spec, err := DecodeSpec(j.Spec.PublisherSpec)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	if spec.Compress {
-		return publisher.publishArchive(ctx, spec, executionID, j, resultPath)
+	if s3spec.Compress {
+		return publisher.publishArchive(ctx, s3spec, executionID, j, resultPath)
 	}
-	return publisher.publishDirectory(ctx, spec, executionID, j, resultPath)
+	return publisher.publishDirectory(ctx, s3spec, executionID, j, resultPath)
 }
 
 func (publisher *Publisher) publishArchive(
 	ctx context.Context,
-	spec Params,
+	params Params,
 	executionID string,
 	j model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
-	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
-	key := ParsePublishedKey(spec.Key, executionID, j, true)
+) (spec.Storage, error) {
+	client := publisher.clientProvider.GetClient(params.Endpoint, params.Region)
+	key := ParsePublishedKey(params.Key, executionID, j, true)
 
 	// Create a new GZIP writer that writes to the file.
 	targetFile, err := os.CreateTemp(publisher.localDir, "bacalhau-archive-*.tar.gz")
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 	defer targetFile.Close()
 	defer os.Remove(targetFile.Name())
 
 	err = archiveDirectory(resultPath, targetFile)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
 	// reset the archived file to read and upload it
 	_, err = targetFile.Seek(0, io.SeekStart)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
 	// Upload the GZIP archive to S3.
 	res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
-		Bucket:            aws.String(spec.Bucket),
+		Bucket:            aws.String(params.Bucket),
 		Key:               aws.String(key),
 		Body:              targetFile,
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 	})
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
-	log.Debug().Msgf("Uploaded s3://%s/%s", spec.Bucket, aws.ToString(res.Key))
+	log.Debug().Msgf("Uploaded s3://%s/%s", params.Bucket, aws.ToString(res.Key))
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceS3,
-		Name:          fmt.Sprintf("s3://%s/%s", spec.Bucket, key),
-		S3: &model.S3StorageSpec{
-			Bucket:         spec.Bucket,
-			Key:            key,
-			Endpoint:       spec.Endpoint,
-			Region:         spec.Region,
-			ChecksumSHA256: aws.ToString(res.ChecksumSHA256),
-			VersionID:      aws.ToString(res.VersionID),
-		},
-	}, nil
+	return (&spec_s3.S3StorageSpec{
+		Bucket:         params.Bucket,
+		Key:            key,
+		ChecksumSHA256: aws.ToString(res.ChecksumSHA256),
+		VersionID:      aws.ToString(res.VersionID),
+		Endpoint:       params.Endpoint,
+		Region:         params.Region,
+	}).AsSpec(fmt.Sprintf("s3://%s/%s", params.Bucket, key), "TODO")
 }
 
 func (publisher *Publisher) publishDirectory(
 	ctx context.Context,
-	spec Params,
+	params Params,
 	executionID string,
 	j model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
-	client := publisher.clientProvider.GetClient(spec.Endpoint, spec.Region)
-	key := ParsePublishedKey(spec.Key, executionID, j, false)
+) (spec.Storage, error) {
+	client := publisher.clientProvider.GetClient(params.Endpoint, params.Region)
+	key := ParsePublishedKey(params.Key, executionID, j, false)
 
 	// Walk the directory tree and upload each file to S3.
 	err := filepath.Walk(resultPath, func(path string, info os.FileInfo, err error) error {
@@ -150,7 +149,7 @@ func (publisher *Publisher) publishDirectory(
 		}
 		// Upload the file to S3.
 		res, err := client.Uploader.Upload(ctx, &s3.PutObjectInput{
-			Bucket:            aws.String(spec.Bucket),
+			Bucket:            aws.String(params.Bucket),
 			Key:               aws.String(key + filepath.ToSlash(relativePath)),
 			Body:              data,
 			ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
@@ -158,22 +157,19 @@ func (publisher *Publisher) publishDirectory(
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Uploaded s3://%s/%s", spec.Bucket, aws.ToString(res.Key))
+		log.Debug().Msgf("Uploaded s3://%s/%s", params.Bucket, aws.ToString(res.Key))
 		return nil
 	})
 
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceS3,
-		Name:          fmt.Sprintf("s3://%s/%s", spec.Bucket, key),
-		S3: &model.S3StorageSpec{
-			Bucket:   spec.Bucket,
-			Key:      key,
-			Endpoint: spec.Endpoint,
-			Region:   spec.Region,
-		},
-	}, nil
+	return (&spec_s3.S3StorageSpec{
+		Bucket:   params.Bucket,
+		Key:      key,
+		Endpoint: params.Endpoint,
+		Region:   params.Region,
+	}).AsSpec(fmt.Sprintf("s3://%s/%s", params.Bucket, key), "TODO")
+
 }

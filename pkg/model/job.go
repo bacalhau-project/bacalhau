@@ -253,7 +253,7 @@ type JobEvent struct {
 	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
 	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
 	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
+	PublishedResult      spec.Storage       `json:"PublishedResult,omitempty"`
 
 	EventTime       time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
 	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`

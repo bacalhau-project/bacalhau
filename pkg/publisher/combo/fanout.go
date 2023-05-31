@@ -6,10 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 // A fanoutPublisher is a publisher that will try multiple publishers in
@@ -127,16 +129,16 @@ func (f *fanoutPublisher) PublishResult(
 	executionID string,
 	job model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (spec.Storage, error) {
 	var err error
 	ctx = log.Ctx(ctx).With().Str("Method", "PublishResult").Logger().WithContext(ctx)
 
-	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (model.StorageSpec, error) {
+	valueChannel, errorChannel := fanout(ctx, f.publishers, func(p publisher.Publisher) (spec.Storage, error) {
 		return p.PublishResult(ctx, executionID, job, resultPath)
 	})
 
 	timeoutChannel := make(chan bool, 1)
-	results := map[publisher.Publisher]model.StorageSpec{}
+	results := map[publisher.Publisher]spec.Storage{}
 
 loop:
 	for {
@@ -183,7 +185,7 @@ loop:
 		}
 	}
 
-	return model.StorageSpec{}, err
+	return spec.Storage{}, err
 }
 
 var _ publisher.Publisher = (*fanoutPublisher)(nil)
