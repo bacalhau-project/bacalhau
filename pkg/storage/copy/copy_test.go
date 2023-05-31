@@ -15,10 +15,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	storage2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type copyOversizeTestCase struct {
@@ -41,7 +41,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	dstType, err = (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	dstType, err = (&ipfs.IPFSStorageSpec{CID: storage2.TestCID1}).AsSpec("TODO", "TODO")
 	if err != nil {
 		panic(err)
 	}
@@ -115,7 +115,7 @@ func TestCopyOversize(t *testing.T) {
 					},
 					Upload: func(ctx context.Context, localPath string) (spec.Storage, error) {
 						didUpload = true
-						return (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+						return (&ipfs.IPFSStorageSpec{CID: storage2.TestCID1}).AsSpec("TODO", "TODO")
 					},
 				},
 			})

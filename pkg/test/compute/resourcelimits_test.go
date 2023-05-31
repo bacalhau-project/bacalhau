@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -153,7 +154,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			j.Spec.Resources = jobResources
 			j.Spec.Engine = enginetesting.NoopMakeEngine(suite.T(), "noop")
 
-			ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutils.TestCID1}).AsSpec("testvolumesize", "TOOD")
+			ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).AsSpec("testvolumesize", "TOOD")
 			suite.Require().NoError(err)
 			j.Spec.Inputs = []spec.Storage{ipfsspec}
 

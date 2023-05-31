@@ -16,8 +16,8 @@ import (
 	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type FeatureNodeRankerSuite struct {
@@ -133,7 +133,7 @@ func (s *FeatureNodeRankerSuite) TestPublisherEstuary() {
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
-	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).AsSpec("TODO", "TODO")
 	s.Require().NoError(err)
 	job := model.Job{Spec: model.Spec{Inputs: []spec.Storage{ipfsspec}}}
 	ranks, err := s.StorageNodeRanker.RankNodes(context.Background(), job, s.Nodes())
@@ -146,7 +146,7 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFSAndURL() {
-	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	ipfsspec, err := (&ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).AsSpec("TODO", "TODO")
 	s.Require().NoError(err)
 	urlspec, err := (&url.URLStorageSpec{URL: "https://example.com"}).AsSpec("TODO", "TODO")
 	s.Require().NoError(err)

@@ -16,7 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 )
 
 type InputLocalityStrategySuite struct {
@@ -26,7 +26,7 @@ type InputLocalityStrategySuite struct {
 }
 
 func (s *InputLocalityStrategySuite) SetupSuite() {
-	inputs, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).
+	inputs, err := (&ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).
 		AsSpec("TODO", "TODO")
 	s.Require().NoError(err)
 

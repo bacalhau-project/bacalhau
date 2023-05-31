@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 )
 
 func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
@@ -30,7 +30,7 @@ func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
 
 func getBidStrategyRequestWithInput(t testing.TB) bidstrategy.BidStrategyRequest {
 	request := getBidStrategyRequest(t)
-	ipfsSpec, err := (&ipfs.IPFSStorageSpec{CID: testutil.TestCID1}).AsSpec("TODO", "TODO")
+	ipfsSpec, err := (&ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).AsSpec("TODO", "TODO")
 	if err != nil {
 		panic(fmt.Sprintf("developer error: %s", err))
 	}

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -19,25 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
-
-var TestCID1 cid.Cid
-var TestCID2 cid.Cid
-
-func init() {
-	// A real CID that can be resolved: https://docs.ipfs.tech/how-to/command-line-quick-start/#initialize-the-repository
-	c, err := cid.Decode("QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG")
-	if err != nil {
-		panic(err)
-	}
-	TestCID1 = c
-
-	// a real CID that can be resolved: https://docs.ipfs.tech/how-to/command-line-quick-start/#take-your-node-online (spaceship)
-	c, err = cid.Decode("QmSgvgwxZGaBLqkGyWemEDqikCqU52XxsYLKtdy3vGZ8uq")
-	if err != nil {
-		panic(err)
-	}
-	TestCID2 = c
-}
 
 func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
 	jobID := system.FindJobIDInTestOutput(out)
