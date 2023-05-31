@@ -11,5 +11,6 @@ func newRunCmd() *cobra.Command {
 		PreRun:            applyPorcelainLogLevel,
 		PersistentPreRunE: checkVersion,
 	}
+	runCmd.AddCommand(newRunPythonCmd())
 	return runCmd
 }

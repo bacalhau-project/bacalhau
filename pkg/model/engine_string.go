@@ -12,12 +12,14 @@ func _() {
 	_ = x[EngineNoop-1]
 	_ = x[EngineDocker-2]
 	_ = x[EngineWasm-3]
-	_ = x[engineDone-4]
+	_ = x[EngineLanguage-4]
+	_ = x[EnginePythonWasm-5]
+	_ = x[engineDone-6]
 }
 
-const _Engine_name = "engineUnknownNoopDockerWasmengineDone"
+const _Engine_name = "engineUnknownNoopDockerWasmLanguagePythonWasmengineDone"
 
-var _Engine_index = [...]uint8{0, 13, 17, 23, 27, 37}
+var _Engine_index = [...]uint8{0, 13, 17, 23, 27, 35, 45, 55}
 
 func (i Engine) String() string {
 	if i < 0 || i >= Engine(len(_Engine_index)-1) {
