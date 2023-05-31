@@ -8,7 +8,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	pythonwasm "github.com/bacalhau-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -183,6 +185,20 @@ func NewStandardExecutorProvider(
 		model.EngineDocker: dockerExecutor,
 		model.EngineWasm:   wasmExecutor,
 	})
+
+	// language executors wrap other executors, so pass them a reference to all
+	// the executors so they can look up the ones they need
+	exLang, err := language.NewExecutor(ctx, cm, executors)
+	if err != nil {
+		return nil, err
+	}
+	executors.Add(model.EngineLanguage, exLang)
+
+	exPythonWasm, err := pythonwasm.NewExecutor(executors)
+	if err != nil {
+		return nil, err
+	}
+	executors.Add(model.EnginePythonWasm, exPythonWasm)
 
 	return executors, nil
 }

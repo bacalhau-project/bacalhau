@@ -324,6 +324,12 @@ test-devstack:
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
+# .PHONY: test-pythonwasm
+# test-pythonwasm:
+# # TestSimplestPythonWasmDashC
+# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
+# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
+
 ################################################################################
 # Target: devstack
 ################################################################################
