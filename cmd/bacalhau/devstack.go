@@ -152,9 +152,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		Fatal(cmd, "Unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack.", 1)
 	}
 
-	if config.DevstackShouldWriteEnvFile() {
-		cm.RegisterCallback(cleanupDevstackDotEnv)
-	}
 	cm.RegisterCallback(telemetry.Cleanup)
 
 	config.DevstackSetShouldPrintInfo()
@@ -201,7 +198,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 		return stackErr
 	}
 
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx)
+	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
 	if err != nil {
 		Fatal(cmd, fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
 	}
@@ -240,12 +237,5 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 	<-ctx.Done() // block until killed
 
 	cmd.Println("\nShutting down devstack")
-	return nil
-}
-
-func cleanupDevstackDotEnv() error {
-	if _, err := os.Stat(config.DevstackEnvFile()); err == nil {
-		return os.Remove(config.DevstackEnvFile())
-	}
 	return nil
 }

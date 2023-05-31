@@ -12,22 +12,19 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	maxUInt16 uint16 = 0xFFFF
-	minUInt16 uint16 = 0x0000
+	maxUInt16              uint16 = 0xFFFF
+	minUInt16              uint16 = 0x0000
+	DefaultRunInfoFilename        = "bacalhau.run"
+	RunInfoFilePermissions        = 0400
 )
 
-func DevstackShouldWriteEnvFile() bool {
-	return DevstackEnvFile() != ""
-}
-
-func DevstackEnvFile() string {
-	return os.Getenv("DEVSTACK_ENV_FILE")
-}
+var RunInfoFilePath = ""
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -35,6 +32,72 @@ func DevstackGetShouldPrintInfo() bool {
 
 func DevstackSetShouldPrintInfo() {
 	os.Setenv("DEVSTACK_PRINT_INFO", "1")
+}
+
+func DevstackEnvFile() string {
+	return os.Getenv("DEVSTACK_ENV_FILE")
+}
+
+// WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
+func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
+	writePath := ""
+	if writeable, _ := filefs.IsWritable("/run"); writeable {
+		writePath = "/run" // Linux
+	} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
+		writePath = "/var/run" // Older Linux
+	} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
+		writePath = "/private/var/run" // MacOS
+	} else {
+		// otherwise write to the user's dir, which should be available on all systems
+		userDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
+			return nil
+		}
+		log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
+			"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
+		writePath = userDir
+	}
+
+	RunInfoFilePath = DevstackEnvFile()
+	if RunInfoFilePath == "" {
+		RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
+	}
+
+	// Use os.Create to truncate the file if it already exists
+	f, err := os.Create(RunInfoFilePath)
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msgf("Failed to close file %s", RunInfoFilePath)
+		}
+	}()
+
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to create file %s", RunInfoFilePath)
+		return nil // Not a fatal error to not write the file
+	}
+
+	// Set permissions to constant for read read/write only by user
+	err = f.Chmod(RunInfoFilePermissions)
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to chmod file %s", RunInfoFilePath)
+		return nil // Not a fatal error to not write the file
+	}
+	_, err = f.Write([]byte(summaryShellVariablesString))
+	if err != nil {
+		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
+		return nil // Not a fatal error to not write the file
+	}
+	return nil
+}
+
+func CleanupRunInfoFile() error {
+	return os.Remove(RunInfoFilePath)
+}
+
+func GetRunInfoFilePath() string {
+	return RunInfoFilePath
 }
 
 func ShouldKeepStack() bool {
@@ -223,4 +286,12 @@ func GetDockerCredentials() DockerCredentials {
 		Username: os.Getenv("DOCKER_USERNAME"),
 		Password: os.Getenv("DOCKER_PASSWORD"),
 	}
+}
+
+// PreferredAddress will allow for the specificying of
+// the preferred address to listen on for cases where it
+// is not clear, or where the address does not appear when
+// using 0.0.0.0
+func PreferredAddress() string {
+	return os.Getenv("BACALHAU_PREFERRED_ADDRESS")
 }

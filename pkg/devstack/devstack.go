@@ -358,7 +358,7 @@ func createIPFSNode(ctx context.Context,
 }
 
 //nolint:funlen
-func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
+func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -396,8 +396,23 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 		}
 		devstackPeerAddr := strings.Join(libp2pPeer, ",")
 		if len(libp2pPeer) > 0 {
-			// only add one of the addrs for this peer
-			devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+			chosen := false
+			preferredAddress := config.PreferredAddress()
+			if preferredAddress != "" {
+				for _, addr := range libp2pPeer {
+					if strings.Contains(addr, preferredAddress) {
+						devstackPeerAddrs = append(devstackPeerAddrs, addr)
+						chosen = true
+						break
+					}
+				}
+			}
+
+			if !chosen {
+				// only add one of the addrs for this peer and we will choose the first
+				// in the absence of a preference
+				devstackPeerAddrs = append(devstackPeerAddrs, libp2pPeer[0])
+			}
 		}
 
 		logString += fmt.Sprintf(`
@@ -445,13 +460,11 @@ export LOTUS_PATH=%s
 export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
 	}
 
-	if config.DevstackShouldWriteEnvFile() {
-		err := os.WriteFile(config.DevstackEnvFile(), []byte(summaryShellVariablesString), 0600) //nolint:gomnd
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", config.DevstackEnvFile())
-			return "", err
-		}
+	err := config.WriteRunInfoFile(ctx, summaryShellVariablesString)
+	if err != nil {
+		return "", err
 	}
+	cm.RegisterCallback(config.CleanupRunInfoFile)
 
 	if !stack.PublicIPFSMode {
 		summaryShellVariablesString += `
@@ -470,11 +483,14 @@ Devstack is ready!
 No. of requester only nodes: %d
 No. of compute only nodes: %d
 No. of hybrid nodes: %d
-To use the devstack, run the following commands in your shell: %s`,
+To use the devstack, run the following commands in your shell: %s
+
+The above variables were also written to this file (will be deleted when devstack exits): %s`,
 		requesterOnlyNodes,
 		computeOnlyNodes,
 		hybridNodes,
-		summaryShellVariablesString)
+		summaryShellVariablesString,
+		config.GetRunInfoFilePath())
 	return returnString, nil
 }
 
