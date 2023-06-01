@@ -166,8 +166,6 @@ module.exports = {
         'next-steps/gpu',
         'next-steps/networking',
         'next-steps/private-cluster',
-        'getting-started/wasm-workload-onboarding',
-        'getting-started/resources'
       ],
     },
     {
