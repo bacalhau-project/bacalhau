@@ -48,7 +48,6 @@ module.exports = {
           label: 'Workload Onboarding',
           link: {
             type: 'generated-index',
-            slug: 'examples/workload-onboarding/',
             description: "This directory contains examples relating to performing common tasks with Bacalhau.",
           },
           items: [
@@ -74,7 +73,6 @@ module.exports = {
           label: 'Data Engineering',
           link: {
             type: 'generated-index',
-            slug: 'examples/data-engineering/',
             description: "This directory contains examples relating to data engineering workloads. The goal is to provide a range of examples that show you how to work with Bacalhau in a variety of use cases.",  
           },
           items: [
@@ -91,7 +89,6 @@ module.exports = {
           label: 'Model Inference',
           link: {
             type: 'generated-index',
-            slug: 'examples/model-inference/',
             description: "This directory contains examples relating to model inference workloads.",
           },
           items: [
@@ -111,7 +108,6 @@ module.exports = {
           label: 'Model Training',
           link: {
             type: 'generated-index',
-            slug: 'examples/model-training/',
             description: "This directory contains examples relating to model training workloads.",
           },
           items: [
@@ -125,7 +121,6 @@ module.exports = {
           label: 'Molecular Dynamics',
           link: {
             type: 'generated-index',
-            slug: 'examples/molecular-dynamics/',
             description: "This directory contains examples relating to performing common tasks with Bacalhau.",
           },
           items: [
