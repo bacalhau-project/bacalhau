@@ -9,10 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
+	spec_estuary "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const testCID = "bafkreihhfsv64fxhjix43i66vue6ezcwews3eg6tacxar7mnkqrg5vn6pe"
@@ -46,21 +50,23 @@ func TestFetchResult(t *testing.T) {
 		require.NoError(t, err)
 		downloadPath := filepath.Join(downloadDir, testCID)
 
+		c, err := cid.Decode(ts.CID)
+		require.NoError(t, err)
+		estuaryspec, err := (&spec_estuary.EstuaryStorageSpec{
+			CID: c,
+			URL: ts.URL,
+		}).AsSpec(ts.Name, "TODO")
+
 		// create a PublishedResult with the test data
 		result := model.PublishedResult{
-			Data: model.StorageSpec{
-				StorageSource: model.StorageSourceEstuary,
-				Name:          ts.Name,
-				CID:           ts.CID,
-				URL:           ts.URL,
-			},
+			Data: estuaryspec,
 		}
 
 		item := model.DownloadItem{
 			Name:       result.Data.Name,
-			CID:        result.Data.CID,
-			URL:        result.Data.URL,
-			SourceType: model.StorageSourceEstuary,
+			CID:        ts.CID,
+			URL:        ts.URL,
+			SourceType: spec_estuary.StorageType,
 			Target:     downloadPath,
 		}
 

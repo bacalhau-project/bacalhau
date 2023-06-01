@@ -4,10 +4,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_estuary "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -33,8 +37,8 @@ func NewStandardDownloaders(
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
 	estuaryDownloader := estuary.NewEstuaryDownloader(cm, settings)
 
-	return model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-		model.StorageSourceIPFS:    ipfsDownloader,
-		model.StorageSourceEstuary: estuaryDownloader,
+	return model.NewMappedProvider(map[cid.Cid]downloader.Downloader{
+		spec_ipfs.StorageType:    ipfsDownloader,
+		spec_estuary.StorageType: estuaryDownloader,
 	})
 }

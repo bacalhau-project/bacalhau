@@ -67,6 +67,10 @@ func Encode(name, mount string, params any, encoder codec.Encoder, modelSchema *
 		Params:     encodedParams,
 		Name:       name,
 		Mount:      mount,
+		Metadata: &util.IPLDMap[string, string]{
+			Keys:   []string{},
+			Values: make(map[string]string),
+		},
 	}
 
 	return storageSpec, nil

@@ -1,0 +1,4 @@
+type EstuaryStorageSpec struct {
+    CID Link
+    URL String
+}

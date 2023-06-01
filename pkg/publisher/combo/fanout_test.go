@@ -7,14 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 )
 
-var sleepyPublisher = mockPublisher{
-	isInstalled:     true,
-	ValidateJobErr:  nil,
-	PublishedResult: model.StorageSpec{CID: "123"},
-	sleepTime:       50 * time.Millisecond,
+func sleepyPublisher(t testing.TB) mockPublisher {
+	return mockPublisher{
+		isInstalled:     true,
+		ValidateJobErr:  nil,
+		PublishedResult: storagetesting.MakeIpfsStorageSpec(t, "TODO", "TODO", storagetesting.TestCID1.String()),
+		sleepTime:       50 * time.Millisecond,
+	}
 }
 
 var uninstalledPublisher = mockPublisher{
@@ -25,15 +27,16 @@ var uninstalledPublisher = mockPublisher{
 }
 
 func TestFanoutPublisher(t *testing.T) {
+	sleepPub := sleepyPublisher(t)
 	runTestCases(t, map[string]comboTestCase{
 		"single publisher":                 {NewFanoutPublisher(&healthyPublisher), healthyPublisher},
-		"takes first value":                {NewFanoutPublisher(&healthyPublisher, &sleepyPublisher), healthyPublisher},
-		"waits for installed":              {NewFanoutPublisher(&uninstalledPublisher, &sleepyPublisher), sleepyPublisher},
+		"takes first value":                {NewFanoutPublisher(&healthyPublisher, &sleepPub), healthyPublisher},
+		"waits for installed":              {NewFanoutPublisher(&uninstalledPublisher, &sleepPub), sleepPub},
 		"noone is installed":               {NewFanoutPublisher(&uninstalledPublisher), uninstalledPublisher},
-		"waits for good value":             {NewFanoutPublisher(&errorPublisher, &sleepyPublisher), sleepyPublisher},
+		"waits for good value":             {NewFanoutPublisher(&errorPublisher, &sleepPub), sleepPub},
 		"returns error for all":            {NewFanoutPublisher(&errorPublisher, &errorPublisher), errorPublisher},
-		"waits for highest priority value": {NewPrioritizedFanoutPublisher(time.Millisecond*100, &sleepyPublisher, &healthyPublisher), sleepyPublisher},
-		"only waits for max time":          {NewPrioritizedFanoutPublisher(time.Millisecond*20, &sleepyPublisher, &healthyPublisher), healthyPublisher},
-		"waits for unprioritized value":    {NewPrioritizedFanoutPublisher(time.Millisecond*100, &errorPublisher, &sleepyPublisher), sleepyPublisher},
+		"waits for highest priority value": {NewPrioritizedFanoutPublisher(time.Millisecond*100, &sleepPub, &healthyPublisher), sleepPub},
+		"only waits for max time":          {NewPrioritizedFanoutPublisher(time.Millisecond*20, &sleepPub, &healthyPublisher), healthyPublisher},
+		"waits for unprioritized value":    {NewPrioritizedFanoutPublisher(time.Millisecond*100, &errorPublisher, &sleepPub), sleepPub},
 	})
 }

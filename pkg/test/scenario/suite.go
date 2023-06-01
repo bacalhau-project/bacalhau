@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -15,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -174,8 +176,8 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 		s.Require().NoError(err)
 
-		downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
-			model.StorageSourceIPFS: ipfsDownloader,
+		downloaderProvider := model.NewMappedProvider(map[cid.Cid]downloader.Downloader{
+			spec_ipfs.StorageType: ipfsDownloader,
 		})
 
 		err = downloader.DownloadResults(s.Ctx, results, downloaderProvider, downloaderSettings)

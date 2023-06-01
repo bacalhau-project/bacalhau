@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_estuary "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 func getPublisherWithGoodConfig(t *testing.T) publisher.Publisher {
@@ -53,6 +55,8 @@ func TestUpload(t *testing.T) {
 		tempDir,
 	)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceEstuary)
-	require.NotEmpty(t, spec.CID)
+	require.Equal(t, spec.Schema, spec_estuary.StorageType)
+	estuaryspec, err := spec_estuary.Decode(spec)
+	require.NoError(t, err)
+	require.NotEmpty(t, estuaryspec.CID)
 }

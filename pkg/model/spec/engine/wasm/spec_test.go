@@ -23,6 +23,7 @@ func TestRoundTrip(t *testing.T) {
 	// TODO add test cases for name and mount
 	s3EntryModule, err := s3Spec.AsSpec("name", "mount")
 	require.NoError(t, err)
+	s3EntryModule.Metadata.Put("foo", "bar")
 
 	expectedEngine := wasm.WasmEngineSpec{
 		EntryModule:          s3EntryModule,

@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/suite"
 )
 
 type AutoSelectionSuite struct {
@@ -47,7 +50,8 @@ func (s *AutoSelectionSuite) TestValidatesImmediately() {
 	s.Require().NoError(s.localDB.AddJob(s.ctx, &job))
 	s.Require().Empty(job.Spec.Inputs)
 
-	storageSpec := model.StorageSpec{StorageSource: model.StorageSourceIPFS}
+	storageSpec, err := (&spec_ipfs.IPFSStorageSpec{CID: storagetesting.TestCID1}).AsSpec("TODO", "TODO")
+	s.Require().NoError(err)
 	specBytes, err := json.Marshal(&storageSpec)
 	s.Require().NoError(err)
 

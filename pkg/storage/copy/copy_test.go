@@ -48,7 +48,7 @@ func init() {
 }
 
 func makeUrlStorageSpec(t testing.TB, str string) *spec.Storage {
-	out, err := (&inline.InlineStorageSpec{URL: strings.Repeat("a", int(maxSingle))}).
+	out, err := (&inline.InlineStorageSpec{URL: str}).
 		AsSpec("TODO", "TODO")
 	require.NoError(t, err)
 	return &out

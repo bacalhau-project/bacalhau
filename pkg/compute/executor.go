@@ -182,7 +182,7 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
-		Str("cid", publishedResult.CID).
+		Stringer("storage", publishedResult).
 		Msg("Execution published")
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{

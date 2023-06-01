@@ -17,10 +17,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
+	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 )
 
 const bucket = "bacalhau-test-datasets"
@@ -245,33 +248,36 @@ func (s *PublisherTestSuite) TestPublish() {
 			}
 			s.Require().NoError(err)
 
-			s.Equal(tc.expectedKey, storageSpec.S3.Key)
-			s.Equal(bucket, storageSpec.S3.Bucket)
-			s.Equal(params.Region, storageSpec.S3.Region)
-			s.Equal(params.Endpoint, storageSpec.S3.Endpoint)
+			s3spec, err := spec_s3.Decode(storageSpec)
+			s.Require().NoError(err)
+
+			s.Equal(tc.expectedKey, s3spec.Key)
+			s.Equal(bucket, s3spec.Bucket)
+			s.Equal(params.Region, s3spec.Region)
+			s.Equal(params.Endpoint, s3spec.Endpoint)
 
 			if tc.archived {
-				s.NotEmptyf(storageSpec.S3.ChecksumSHA256, "ChecksumSHA256 should not be empty")
-				s.NotEmptyf(storageSpec.S3.VersionID, "VersionID should not be empty")
-				dir := s.decompress(storageSpec)
+				s.NotEmptyf(s3spec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
+				s.NotEmptyf(s3spec.VersionID, "VersionID should not be empty")
+				dir := s.decompress(s3spec)
 				s.equalLocalContent("1", filepath.Join(dir, "1.txt"))
 				s.equalLocalContent("2", filepath.Join(dir, "2.txt"))
 				s.equalLocalContent("3", filepath.Join(dir, "nested", "3.txt"))
 				s.equalLocalContent("4", filepath.Join(dir, "nested", "4.txt"))
 
 			} else {
-				s.Empty(storageSpec.S3.ChecksumSHA256, "ChecksumSHA256 should be empty")
-				s.Empty(storageSpec.S3.VersionID, "VersionID should be empty")
-				s.equalS3Content("1", storageSpec, "1.txt")
-				s.equalS3Content("2", storageSpec, "2.txt")
-				s.equalS3Content("3", storageSpec, "nested/3.txt")
-				s.equalS3Content("4", storageSpec, "nested/4.txt")
+				s.Empty(s3spec.ChecksumSHA256, "ChecksumSHA256 should be empty")
+				s.Empty(s3spec.VersionID, "VersionID should be empty")
+				s.equalS3Content("1", s3spec, "1.txt")
+				s.equalS3Content("2", s3spec, "2.txt")
+				s.equalS3Content("3", s3spec, "nested/3.txt")
+				s.equalS3Content("4", s3spec, "nested/4.txt")
 			}
 		})
 	}
 }
 
-func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (model.StorageSpec, error) {
+func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (spec.Storage, error) {
 	resultPath, err := os.MkdirTemp(s.tempDir, "")
 	s.Require().NoError(err)
 
@@ -303,18 +309,18 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params
 	return s.publisher.PublishResult(ctx, executionID, job, resultPath)
 }
 
-func (s *PublisherTestSuite) equalS3Content(expected string, uploaded model.StorageSpec, suffix string) {
+func (s *PublisherTestSuite) equalS3Content(expected string, uploaded *spec_s3.S3StorageSpec, suffix string) {
 	ctx := context.Background()
 	client := s.publisher.clientProvider.GetClient("", region)
 	resp, err := client.S3.GetObject(ctx, &s3.GetObjectInput{
-		Bucket:       aws.String(uploaded.S3.Bucket),
-		Key:          aws.String(uploaded.S3.Key + suffix),
+		Bucket:       aws.String(uploaded.Bucket),
+		Key:          aws.String(uploaded.Key + suffix),
 		ChecksumMode: types.ChecksumModeEnabled,
 	})
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	if uploaded.S3.ChecksumSHA256 != "" {
-		s.Equal(uploaded.S3.ChecksumSHA256, aws.ToString(resp.ChecksumSHA256))
+	if uploaded.ChecksumSHA256 != "" {
+		s.Equal(uploaded.ChecksumSHA256, aws.ToString(resp.ChecksumSHA256))
 	}
 
 	// Read the object body into a byte buffer
@@ -330,15 +336,15 @@ func (s *PublisherTestSuite) equalLocalContent(expected string, path string) {
 	s.Equal(expected, string(bytes))
 }
 
-func (s *PublisherTestSuite) decompress(uploaded model.StorageSpec) string {
+func (s *PublisherTestSuite) decompress(uploaded *spec_s3.S3StorageSpec) string {
 	outputFile, err := os.CreateTemp(s.tempDir, "")
 	s.Require().NoError(err)
 	defer outputFile.Close()
 
 	_, err = s.publisher.clientProvider.GetClient("", region).Downloader.Download(context.Background(),
 		outputFile, &s3.GetObjectInput{
-			Bucket: aws.String(uploaded.S3.Bucket),
-			Key:    aws.String(uploaded.S3.Key),
+			Bucket: aws.String(uploaded.Bucket),
+			Key:    aws.String(uploaded.Key),
 		})
 	s.Require().NoError(err)
 

@@ -12,6 +12,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
@@ -176,21 +179,29 @@ func separatorParser(sep string) KeyValueParser[string, string] {
 	}
 }
 
-func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
-	cid, path, err := separatorParser(":")(input)
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-		Path:          path,
-	}, err
+func parseIPFSStorageSpec(input string) (spec.Storage, error) {
+	cidstr, path, err := separatorParser(":")(input)
+	if err != nil {
+		return spec.Storage{}, err
+	}
+	c, err := cid.Decode(cidstr)
+	if err != nil {
+		return spec.Storage{}, err
+	}
+	return (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec("TODO", path)
 }
 
-func storageSpecToIPFSMount(input *model.StorageSpec) string {
-	return fmt.Sprintf("%s:%s", input.CID, input.Path)
+func storageSpecToIPFSMount(input *spec.Storage) string {
+	ipfsspec, err := spec_ipfs.Decode(*input)
+	if err != nil {
+		// TODO(forrest): probably don't want to panic, need to expose the error somehow.
+		panic(err)
+	}
+	return fmt.Sprintf("%s:%s", ipfsspec.CID, input.Mount)
 }
 
-func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
+func NewIPFSStorageSpecArrayFlag(value *[]spec.Storage) *ArrayValueFlag[spec.Storage] {
+	return &ArrayValueFlag[spec.Storage]{
 		value:    value,
 		parser:   parseIPFSStorageSpec,
 		stringer: storageSpecToIPFSMount,
@@ -198,24 +209,27 @@ func NewIPFSStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mod
 	}
 }
 
-func parseURLStorageSpec(inputURL string) (model.StorageSpec, error) {
+func parseURLStorageSpec(inputURL string) (spec.Storage, error) {
 	u, err := urldownload.IsURLSupported(inputURL)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           u.String(),
-		Path:          "/inputs",
-	}, nil
+	return (&spec_url.URLStorageSpec{URL: u.String()}).AsSpec("TODO", "/inputs")
 }
 
-func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[model.StorageSpec] {
-	return &ArrayValueFlag[model.StorageSpec]{
-		value:    value,
-		parser:   parseURLStorageSpec,
-		stringer: func(s *model.StorageSpec) string { return s.URL },
-		typeStr:  "url",
+func NewURLStorageSpecArrayFlag(value *[]spec.Storage) *ArrayValueFlag[spec.Storage] {
+	return &ArrayValueFlag[spec.Storage]{
+		value:  value,
+		parser: parseURLStorageSpec,
+		// TODO(forrest): not sure this is correct.
+		stringer: func(s *spec.Storage) string {
+			urlspec, err := spec_url.Decode(*s)
+			if err != nil {
+				panic(err)
+			}
+			return urlspec.URL
+		},
+		typeStr: "url",
 	}
 }
 

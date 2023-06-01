@@ -3,8 +3,10 @@ package estuary
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -32,11 +34,16 @@ func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (downloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.DescribeResult")
 	defer span.End()
 
+	estuaryspec, err := estuary.Decode(result.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	// fallback to ipfs download for old results without URL
-	if result.Data.URL == "" {
+	if estuaryspec.URL == "" {
 		return downloader.ipfsDownloader.DescribeResult(ctx, result)
 	}
 

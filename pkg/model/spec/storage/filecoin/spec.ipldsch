@@ -1,0 +1,4 @@
+type FilecoinStorageSpec struct {
+    CID Link
+    Deal Link
+}

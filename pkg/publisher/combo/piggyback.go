@@ -3,8 +3,13 @@ package combo
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_estuary "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
+	spec_filecoin "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/filecoin"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
@@ -58,11 +63,30 @@ func (c *piggybackedPublisher) PublishResult(
 
 	// TODO metadata is required on (all?) some storage specs
 	result := results[0]
-	if result.Metadata == nil {
-		result.Metadata = map[string]string{}
-	}
+	// TODO(forrest): this seems wrong, not all storage specs have a CID. What is the point of this in the case of, for example, an s3 storage spec, inline spec, or URL spec.
+	var otherCID cid.Cid
 	for _, other := range results[1:] {
-		result.Metadata[other.StorageSource.String()] = other.CID
+		switch other.Schema {
+		case spec_estuary.StorageType:
+			o, err := spec_estuary.Decode(other)
+			if err != nil {
+				return spec.Storage{}, err
+			}
+			otherCID = o.CID
+		case spec_filecoin.StorageType:
+			o, err := spec_filecoin.Decode(other)
+			if err != nil {
+				return spec.Storage{}, err
+			}
+			otherCID = o.CID
+		case spec_ipfs.StorageType:
+			o, err := spec_ipfs.Decode(other)
+			if err != nil {
+				return spec.Storage{}, err
+			}
+			otherCID = o.CID
+		}
+		result.Metadata.Put(other.String(), otherCID.String())
 	}
 
 	return result, nil

@@ -773,7 +773,7 @@ func downloadResultsHandler(
 
 	// check if we don't support downloading the results
 	for _, result := range results {
-		if !downloaderProvider.Has(ctx, result.Data.StorageSource) {
+		if !downloaderProvider.Has(ctx, result.Data.Schema) {
 			cmd.PrintErrln(
 				"No supported downloader found for the published results. You will have to download the results differently.")
 			b, err := json.MarshalIndent(results, "", "    ")

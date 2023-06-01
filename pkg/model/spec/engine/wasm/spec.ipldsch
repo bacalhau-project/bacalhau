@@ -14,4 +14,5 @@ type StorageSpec struct {
 
     Name String
     Mount String
+    Metadata {String:String}
 }

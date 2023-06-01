@@ -6,6 +6,10 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
+	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,42 +20,39 @@ func TestParseStorageString(t *testing.T) {
 		source      string
 		destination string
 		options     map[string]string
-		expected    model.StorageSpec
+		expected    spec.Storage
 		error       bool
 	}{
 		{
 			name:   "ipfs",
 			source: "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
-			expected: model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
-				Path:          "/inputs",
-				CID:           "QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
-			},
+			expected: storagetesting.MakeIpfsStorageSpec(t,
+				"ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+				"/inputs",
+				"QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+			),
 		},
 		{
 			name:        "ipfs with explicit dst path",
 			source:      "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
 			destination: "/mount/path",
-			expected: model.StorageSpec{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
-				Path:          "/mount/path",
-				CID:           "QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
-			},
+			expected: storagetesting.MakeIpfsStorageSpec(t,
+				"ipfs://QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+				"/mount/path",
+				"QmXJ3wT1C27W8Vvc21NjLEb7VdNk9oM8zJYtDkG1yH2fnA",
+			),
 		},
 		{
 			name:   "s3",
 			source: "s3://myBucket/dir/file-001.txt",
-			expected: model.StorageSpec{
-				StorageSource: model.StorageSourceS3,
-				Name:          "s3://myBucket/dir/file-001.txt",
-				Path:          "/inputs",
-				S3: &model.S3StorageSpec{
+			expected: storagetesting.MakeS3StorageSpec(t,
+				"s3://myBucket/dir/file-001.txt",
+				"/inputs",
+				&spec_s3.S3StorageSpec{
 					Bucket: "myBucket",
 					Key:    "dir/file-001.txt",
 				},
-			},
+			),
 		},
 		{
 			name:   "s3 with endpoint and region",
@@ -60,17 +61,16 @@ func TestParseStorageString(t *testing.T) {
 				"endpoint": "http://localhost:9000",
 				"region":   "us-east-1",
 			},
-			expected: model.StorageSpec{
-				StorageSource: model.StorageSourceS3,
-				Name:          "s3://myBucket/dir/file-001.txt",
-				Path:          "/inputs",
-				S3: &model.S3StorageSpec{
+			expected: storagetesting.MakeS3StorageSpec(t,
+				"s3://myBucket/dir/file-001.txt",
+				"/inputs",
+				&spec_s3.S3StorageSpec{
 					Bucket:   "myBucket",
 					Key:      "dir/file-001.txt",
 					Endpoint: "http://localhost:9000",
 					Region:   "us-east-1",
 				},
-			},
+			),
 		},
 		{
 			name:   "empty",

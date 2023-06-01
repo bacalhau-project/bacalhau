@@ -56,7 +56,7 @@ type WasmRunOptions struct {
 	Timeout              float64        // Job execution timeout in seconds
 	Entrypoint           string
 	EnvironmentVariables map[string]string
-	ImportModules        []model.StorageSpec
+	ImportModules        []storagespec.Storage
 	RunTimeSettings      RunTimeSettings
 	DownloadFlags        model.DownloaderSettings
 	NodeSelector         string // Selector (label query) to filter nodes on which this job can be executed

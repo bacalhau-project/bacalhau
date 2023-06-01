@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/util"
 )
 
 type Storage struct {
@@ -20,6 +22,9 @@ type Storage struct {
 	Name string
 	// Mount is the path that the spec's data will be mounted.
 	Mount string
+
+	// Metadata contains details regarding the Storage spec. TODO remove this!!
+	Metadata *util.IPLDMap[string, string]
 }
 
 func (s Storage) String() string {

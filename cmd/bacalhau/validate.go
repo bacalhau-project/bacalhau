@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
+	engtypes "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/types"
+	strgtypes "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -185,16 +185,23 @@ func GenerateJobJSONSchema() ([]byte, error) {
 	}{
 		{Name: "Engine",
 			Path:  "$defs.Spec.properties.Engine",
-			Enums: []string{docker.EngineType.String(), wasm.EngineType.String()}},
-		{Name: "Verifier",
+			Enums: engtypes.EngineTypeNames(),
+		},
+		{
+			Name:  "Verifier",
 			Path:  "$defs.Spec.properties.Verifier",
-			Enums: model.VerifierNames()},
-		{Name: "Publisher",
+			Enums: model.VerifierNames(),
+		},
+		{
+			Name:  "Publisher",
 			Path:  "$defs.Spec.properties.Publisher",
-			Enums: model.PublisherNames()},
-		{Name: "StorageSource",
+			Enums: model.PublisherNames(),
+		},
+		{
+			Name:  "StorageSource",
 			Path:  "$defs.StorageSpec.properties.StorageSource",
-			Enums: model.StorageSourceNames()},
+			Enums: strgtypes.StorageTypeNames(),
+		},
 	}
 	for _, enumType := range enumTypes {
 		// Use sjson to find the enum type path in the JSON

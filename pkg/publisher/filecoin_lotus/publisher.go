@@ -8,19 +8,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/go-address"
 	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/filecoin"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type PublisherConfig struct {
@@ -93,7 +95,7 @@ func (l *Publisher) PublishResult(
 	executionID string,
 	j model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (spec.Storage, error) {
 	log.Ctx(ctx).Debug().
 		Stringer("job", j).
 		Str("executionID", executionID).
@@ -102,22 +104,28 @@ func (l *Publisher) PublishResult(
 
 	carFile, err := l.carResultsDir(ctx, resultPath)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
 	contentCid, err := l.importData(ctx, carFile)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	dealCid, err := l.createDeal(ctx, contentCid)
+	dealCidStr, err := l.createDeal(ctx, contentCid)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
 
-	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceFilecoin, contentCid.String())
-	spec.Metadata["deal_cid"] = dealCid
-	return spec, nil
+	dealCid, err := cid.Decode(dealCidStr)
+	if err != nil {
+		return spec.Storage{}, err
+	}
+
+	return (&filecoin.FilecoinStorageSpec{
+		CID:  contentCid,
+		Deal: dealCid,
+	}).AsSpec("TODO", "TODO")
 }
 
 func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (string, error) {

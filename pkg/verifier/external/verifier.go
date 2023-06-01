@@ -83,7 +83,7 @@ func (v *ExternalVerifier) GetProposal(ctx context.Context, job model.Job, execu
 		return nil, err
 	}
 	// TODO metadata is required on (all?) some storage specs
-	spec.Metadata["hash"] = hash
+	spec.Metadata.Put("hash", hash)
 
 	var size, count int64
 	err = filepath.WalkDir(resultPath, func(path string, d fs.DirEntry, err error) error {
@@ -104,8 +104,8 @@ func (v *ExternalVerifier) GetProposal(ctx context.Context, job model.Job, execu
 		return nil, err
 	}
 	// TODO metadata is required on (all?) some storage specs
-	spec.Metadata["count"] = fmt.Sprint(count)
-	spec.Metadata["size"] = fmt.Sprint(size)
+	spec.Metadata.Put("count", fmt.Sprint(count))
+	spec.Metadata.Put("size", fmt.Sprint(size))
 
 	return json.Marshal(&spec)
 }

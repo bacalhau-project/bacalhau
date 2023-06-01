@@ -9,9 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/filecoin-project/go-address"
 	abi2 "github.com/filecoin-project/go-state-types/abi"
 	big2 "github.com/filecoin-project/go-state-types/big"
@@ -19,6 +16,11 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	spec_filecoin "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/filecoin"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 )
 
 type PublisherTestSuite struct {
@@ -116,7 +118,10 @@ func (s *PublisherTestSuite) TestPublishToLotus() {
 	spec, err := s.executor.PublishResult(context.Background(), "1234", model.Job{Metadata: model.Metadata{ID: "foo"}}, resultsDir)
 	s.Require().NoError(err)
 
-	s.Equal(contentCid.String(), spec.CID)
+	filspec, err := spec_filecoin.Decode(spec)
+	s.Require().NoError(err)
+
+	s.Equal(contentCid.String(), filspec.CID.String())
 }
 
 func pointer[T any](t T) *T {

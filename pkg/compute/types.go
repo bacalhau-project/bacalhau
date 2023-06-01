@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -168,7 +169,7 @@ type RunResult struct {
 type PublishResult struct {
 	RoutingMetadata
 	ExecutionMetadata
-	PublishResult model.StorageSpec
+	PublishResult spec.Storage
 }
 
 // CancelResult Result of a job cancel that is returned to the caller through a Callback.

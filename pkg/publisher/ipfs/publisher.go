@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type IPFSPublisher struct {
@@ -46,12 +49,12 @@ func (publisher *IPFSPublisher) PublishResult(
 	executionID string,
 	j model.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (spec.Storage, error) {
 	cid, err := publisher.IPFSClient.Put(ctx, resultPath)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return spec.Storage{}, err
 	}
-	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
+	return job.GetIPFSPublishedStorageSpec(executionID, j, spec_ipfs.StorageType, cid)
 }
 
 // Compile-time check that Verifier implements the correct interface:

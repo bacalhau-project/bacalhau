@@ -11,6 +11,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	spec_estuary "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/estuary"
+	spec_filecoin "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/filecoin"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -109,8 +112,26 @@ func runGenericJob(s model.Spec) (string, error) {
 	}
 
 	for _, result := range results {
-		if result.Data.CID != "" {
-			return result.Data.CID, nil
+		// if the result has a CID type in the spec decode it and return the CID.
+		switch result.Data.Schema {
+		case spec_estuary.StorageType:
+			es, err := spec_estuary.Decode(result.Data)
+			if err != nil {
+				return "", err
+			}
+			return es.CID.String(), nil
+		case spec_filecoin.StorageType:
+			fs, err := spec_filecoin.Decode(result.Data)
+			if err != nil {
+				return "", err
+			}
+			return fs.CID.String(), nil
+		case spec_ipfs.StorageType:
+			is, err := spec_ipfs.Decode(result.Data)
+			if err != nil {
+				return "", err
+			}
+			return is.CID.String(), nil
 		}
 	}
 

@@ -6,16 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 type mockPublisher struct {
 	isInstalled        bool
 	isInstalledErr     error
 	ValidateJobErr     error
-	PublishedResult    model.StorageSpec
+	PublishedResult    spec.Storage
 	PublishedResultErr error
 	sleepTime          time.Duration
 }
@@ -33,7 +35,7 @@ func (m *mockPublisher) ValidateJob(context.Context, model.Job) error {
 }
 
 // PublishResult implements publisher.Publisher
-func (m *mockPublisher) PublishResult(context.Context, string, model.Job, string) (model.StorageSpec, error) {
+func (m *mockPublisher) PublishResult(context.Context, string, model.Job, string) (spec.Storage, error) {
 	time.Sleep(m.sleepTime)
 	return m.PublishedResult, m.PublishedResultErr
 }
@@ -42,7 +44,7 @@ var _ publisher.Publisher = (*mockPublisher)(nil)
 
 var healthyPublisher = mockPublisher{
 	isInstalled:     true,
-	PublishedResult: model.StorageSpec{Name: "test output"},
+	PublishedResult: spec.Storage{Name: "test output"},
 }
 
 var errorPublisher = mockPublisher{
