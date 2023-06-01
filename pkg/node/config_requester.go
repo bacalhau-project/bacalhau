@@ -16,7 +16,7 @@ type RequesterConfigParams struct {
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	NodeRankRandomnessRange            int
-	OverAskForBidsFactor               int
+	OverAskForBidsFactor               uint
 	JobSelectionPolicy                 model.JobSelectionPolicy
 	ExternalValidatorWebhook           *url.URL
 	SimulatorConfig                    model.SimulatorConfigRequester
@@ -39,7 +39,7 @@ type RequesterConfig struct {
 	HousekeepingBackgroundTaskInterval time.Duration
 	// NodeRankRandomnessRange defines the range of randomness used to rank nodes
 	NodeRankRandomnessRange  int
-	OverAskForBidsFactor     int
+	OverAskForBidsFactor     uint
 	JobSelectionPolicy       model.JobSelectionPolicy
 	ExternalValidatorWebhook *url.URL
 	SimulatorConfig          model.SimulatorConfigRequester

@@ -35,9 +35,9 @@ func TestChainedSuite(t *testing.T) {
 }
 
 func (s *ChainedSuite) TestFindNodes() {
-	s.chain.Add(newFixedDiscoverer(s.peerID1))
-	s.chain.Add(newFixedDiscoverer(s.peerID2))
-	s.chain.Add(newFixedDiscoverer(s.peerID3))
+	s.chain.Add(NewFixedDiscoverer(s.peerID1))
+	s.chain.Add(NewFixedDiscoverer(s.peerID2))
+	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
@@ -45,8 +45,8 @@ func (s *ChainedSuite) TestFindNodes() {
 }
 
 func (s *ChainedSuite) TestFindNodes_Overlap() {
-	s.chain.Add(newFixedDiscoverer(s.peerID1, s.peerID2))
-	s.chain.Add(newFixedDiscoverer(s.peerID2, s.peerID3))
+	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
+	s.chain.Add(NewFixedDiscoverer(s.peerID2, s.peerID3))
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
@@ -54,41 +54,22 @@ func (s *ChainedSuite) TestFindNodes_Overlap() {
 }
 
 func (s *ChainedSuite) TestHandle_Error() {
-	s.chain.Add(newFixedDiscoverer(s.peerID1, s.peerID2))
+	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(newBadDiscoverer())
-	s.chain.Add(newFixedDiscoverer(s.peerID3))
+	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 	_, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.Error(err)
 }
 
 func (s *ChainedSuite) TestHandle_IgnoreError() {
 	s.chain.ignoreErrors = true
-	s.chain.Add(newFixedDiscoverer(s.peerID1, s.peerID2))
+	s.chain.Add(NewFixedDiscoverer(s.peerID1, s.peerID2))
 	s.chain.Add(newBadDiscoverer())
-	s.chain.Add(newFixedDiscoverer(s.peerID3))
+	s.chain.Add(NewFixedDiscoverer(s.peerID3))
 
 	peerIDs, err := s.chain.FindNodes(context.Background(), model.Job{})
 	s.NoError(err)
 	s.ElementsMatch([]model.NodeInfo{s.peerID1, s.peerID2, s.peerID3}, peerIDs)
-}
-
-// node discoverer that always returns the same set of nodes
-type fixedDiscoverer struct {
-	peerIDs []model.NodeInfo
-}
-
-func newFixedDiscoverer(peerIDs ...model.NodeInfo) *fixedDiscoverer {
-	return &fixedDiscoverer{
-		peerIDs: peerIDs,
-	}
-}
-
-func (f *fixedDiscoverer) FindNodes(context.Context, model.Job) ([]model.NodeInfo, error) {
-	return f.peerIDs, nil
-}
-
-func (f *fixedDiscoverer) ListNodes(context.Context) ([]model.NodeInfo, error) {
-	return f.peerIDs, nil
 }
 
 // node discoverer that always returns an error

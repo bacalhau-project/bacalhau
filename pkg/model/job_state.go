@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/samber/lo"
 )
 
 // JobStateType The state of a job across the whole network that represents an aggregate view across
@@ -89,4 +91,26 @@ func (s *JobState) GroupExecutionsByState() map[ExecutionStateType][]ExecutionSt
 		result[execution.State] = append(result[execution.State], execution)
 	}
 	return result
+}
+
+func (s *JobState) ReceivedBidCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.HasAcceptedAskForBid() })
+}
+
+func (s *JobState) NonDiscardedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return !item.State.IsDiscarded() })
+}
+
+func (s *JobState) PublishedOrPublishingCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool {
+		return item.State == ExecutionStateCompleted || item.State == ExecutionStateResultAccepted
+	})
+}
+
+func (s *JobState) CompletedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State == ExecutionStateCompleted })
+}
+
+func (s *JobState) ActiveCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State.IsActive() })
 }

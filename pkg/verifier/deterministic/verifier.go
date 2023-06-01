@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/results"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -120,6 +121,7 @@ func (deterministicVerifier *DeterministicVerifier) Verify(
 
 	largestGroupHash := ""
 	largestGroupSize := 0
+	totalExecutions := 0
 	isVoidResult := false
 	groupSizeCounts := map[int]int{}
 	hashGroups := deterministicVerifier.getHashGroups(ctx, request.Executions)
@@ -130,15 +132,18 @@ func (deterministicVerifier *DeterministicVerifier) Verify(
 			largestGroupHash = hash
 		}
 		groupSizeCounts[len(group)]++
+		totalExecutions += len(group)
 	}
 
 	// this means there is a draw for the largest group size
 	if groupSizeCounts[largestGroupSize] > 1 {
+		log.Ctx(ctx).Debug().Str("Reason", "Draw for largest group size").Msg("Failing verification")
 		isVoidResult = true
 	}
 
 	// this means there is only a single result
 	if len(hashGroups) == 1 && largestGroupSize == 1 {
+		log.Ctx(ctx).Debug().Str("Reason", "Only a single result").Msg("Failing verification")
 		isVoidResult = true
 	}
 
@@ -146,11 +151,13 @@ func (deterministicVerifier *DeterministicVerifier) Verify(
 	// meet the confidence threshold
 	confidence := request.Deal.Confidence
 	if confidence > 0 && largestGroupSize < confidence {
+		log.Ctx(ctx).Debug().Str("Reason", "Largest group size below confidence").Msg("Failing verification")
 		isVoidResult = true
 	}
 
 	// the winning hash must not be empty string
 	if largestGroupHash == "" {
+		log.Ctx(ctx).Debug().Str("Reason", "Hash is empty string").Msg("Failing verification")
 		isVoidResult = true
 	}
 

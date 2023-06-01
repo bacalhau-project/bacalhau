@@ -91,6 +91,9 @@ type JobWithInfo struct {
 // The deal the client has made with the bacalhau network.
 // This is updateable by the client who submitted the job
 type Deal struct {
+	// Whether the job should be run on any matching node (false) or all
+	// matching nodes (true). If true, other fields in this struct are ignored.
+	TargetAll bool `json:"TargetAll,omitempty"`
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
@@ -100,10 +103,11 @@ type Deal struct {
 	// to be at least this size
 	Confidence int `json:"Confidence,omitempty"`
 	// The minimum number of bids that must be received before the Requester
-	// node will randomly accept concurrency-many of them. This allows the
-	// Requester node to get some level of guarantee that the execution of the
-	// jobs will be spread evenly across the network (assuming that this value
-	// is some large proportion of the size of the network).
+	// node will randomly accept concurrency-many of them (when
+	// TargetAll=false). This allows the Requester node to get some level of
+	// guarantee that the execution of the jobs will be spread evenly across the
+	// network (assuming that this value is some large proportion of the size of
+	// the network).
 	MinBids int `json:"MinBids,omitempty"`
 }
 
