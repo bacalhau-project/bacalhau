@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/util"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // This test submits a job that uses the Docker executor with an IPFS input.
@@ -26,8 +29,16 @@ func SubmitDockerIPFSJobAndGet(ctx context.Context) error {
 	expectedChecksum := "ea1efa312267e09809ae13f311970863  /inputs/data.tar.gz"
 	expectedStat := "62731802"
 	// Tests use the cid of the file we uploaded in scenarios_test.go
-	if os.Getenv("BACALHAU_CANARY_TEST_CID") != "" {
-		j.Spec.Inputs[0].CID = os.Getenv("BACALHAU_CANARY_TEST_CID")
+	if cidStr := os.Getenv("BACALHAU_CANARY_TEST_CID"); cidStr != "" {
+		c, err := cid.Decode(cidStr)
+		if err != nil {
+			return err
+		}
+		ipfsspec, err := (&spec_ipfs.IPFSStorageSpec{CID: c}).AsSpec(j.Spec.Inputs[0].Name, j.Spec.Inputs[0].Mount)
+		if err != nil {
+			return err
+		}
+		j.Spec.Inputs[0] = ipfsspec
 		expectedChecksum = "c639efc1e98762233743a75e7798dd9c  /inputs/data.tar.gz"
 		expectedStat = "21"
 	}

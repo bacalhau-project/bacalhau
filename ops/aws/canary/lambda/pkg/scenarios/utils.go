@@ -8,16 +8,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const defaultEchoMessage = "hello λ!"
 const canaryAnnotation = "canary"
+
+// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
+// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
+var canaryCID cid.Cid
+
+func init() {
+	var err error
+	canaryCID, err = cid.Decode("bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func getSampleDockerJob() (*model.Job, error) {
 	nodeSelectors, err := getNodeSelectors()
@@ -73,29 +89,24 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		return nil, err
 	}
 
+	inputIpfs, err := (&spec_ipfs.IPFSStorageSpec{CID: canaryCID}).AsSpec("inputs", "/inputs/data.tar.gz")
+	if err != nil {
+		return nil, err
+	}
+
+	outputIpfs, err := (&spec_ipfs.IPFSStorageSpec{CID: cid.Undef}).AsSpec("outputs", "/outputs")
+	if err != nil {
+		return nil, err
+	}
+
 	j.Spec = model.Spec{
 		Engine:   dockerEngine,
 		Verifier: model.VerifierNoop,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
-		Inputs: []model.StorageSpec{
-			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
-			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "inputs",
-				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
-				Path:          "/inputs/data.tar.gz",
-			},
-		},
-		Outputs: []model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "outputs",
-				Path:          "/outputs",
-			},
-		},
+		Inputs:        []spec.Storage{inputIpfs},
+		Outputs:       []spec.Storage{outputIpfs},
 		Annotations:   []string{canaryAnnotation},
 		NodeSelectors: nodeSelectors,
 	}
