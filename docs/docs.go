@@ -793,7 +793,9 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4
+                4,
+                5,
+                6
             ],
             "x-enum-comments": {
                 "EngineLanguage": "wraps python_wasm",
@@ -1551,6 +1553,9 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Engine"
                         }
                     ]
+                },
+                "Language": {
+                    "$ref": "#/definitions/model.JobSpecLanguage"
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",

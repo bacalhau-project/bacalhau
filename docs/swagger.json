@@ -789,7 +789,9 @@
                 1,
                 2,
                 3,
-                4
+                4,
+                5,
+                6
             ],
             "x-enum-comments": {
                 "EngineLanguage": "wraps python_wasm",
