@@ -9,6 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 )
 
@@ -68,10 +69,11 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("confidence must be >= 0")
 	}
 
-	if j.Spec.Engine.Schema != docker.EngineType ||
-		j.Spec.Engine.Schema != wasm.EngineType {
-		log.Warn().Msgf("TODO cannot validate custom engine schema: %s", j.Spec.Engine.Schema)
-		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.Schema.String())
+	if j.Spec.Engine.Schema != docker.EngineType &&
+		j.Spec.Engine.Schema != wasm.EngineType &&
+		j.Spec.Engine.Schema != noop.EngineType {
+		log.Warn().Msgf("TODO cannot validate custom engine schema: %s", j.Spec.Engine)
+		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String())
 	}
 
 	if !model.IsValidVerifier(j.Spec.Verifier) {

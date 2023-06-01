@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -28,6 +29,32 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.Reques
 	require.NoError(t, err)
 	require.NotNil(t, j, "Failed to get job with ID: %s", out)
 	return j.Job
+}
+
+func MakeNoopJob(t testing.TB) *model.Job {
+	noopEngine := enginetesting.NoopMakeEngine(t, "noop")
+	return MakeJob(noopEngine, model.VerifierNoop, model.PublisherNoop)
+}
+
+func MakeJob(
+	engineType spec.Engine,
+	verifierType model.Verifier,
+	publisherType model.Publisher) *model.Job {
+	j := model.NewJob()
+
+	j.Spec = model.Spec{
+		Engine:   engineType,
+		Verifier: verifierType,
+		PublisherSpec: model.PublisherSpec{
+			Type: publisherType,
+		},
+	}
+
+	j.Spec.Deal = model.Deal{
+		Concurrency: 1,
+	}
+
+	return j
 }
 
 func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerContents, error) {

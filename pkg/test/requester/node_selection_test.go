@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -165,8 +164,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 	for _, tc := range testCase {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := model.NewJob()
-			j.Spec.Engine = enginetesting.NoopMakeEngine(s.T(), "noop")
+			j := testutils.MakeNoopJob(s.T())
 			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
 			j.Spec.Deal.Concurrency = system.Max(1, len(tc.expectedNodes))
 
