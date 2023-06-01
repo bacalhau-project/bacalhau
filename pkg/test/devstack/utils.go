@@ -130,18 +130,16 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	state, err := resolver.GetJobState(ctx, jobID)
 	require.NoError(t, err)
 
-	verifiedCount := 0
-	failedCount := 0
-
-	for _, execution := range state.Executions { //nolint:gocritic
+	var passedCount, failedCount int
+	for _, execution := range state.Executions {
 		require.True(t, execution.VerificationResult.Complete)
 		if execution.VerificationResult.Result {
-			verifiedCount++
+			passedCount++
 		} else {
 			failedCount++
 		}
 	}
 
-	require.Equal(t, args.ExpectedPassed, verifiedCount, "verified count should be correct")
+	require.Equal(t, args.ExpectedPassed, passedCount, "passed count should be correct")
 	require.Equal(t, args.ExpectedFailed, failedCount, "failed count should be correct")
 }

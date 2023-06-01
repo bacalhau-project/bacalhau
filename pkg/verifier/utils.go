@@ -7,7 +7,7 @@ import (
 
 func ValidateExecutions(request VerifierRequest) error {
 	// minimum number of executions that should be present
-	minCount := system.Min(request.Deal.Confidence, request.Deal.Concurrency)
+	minCount := system.Min(request.Deal.GetConfidence(), request.Deal.GetConcurrency())
 	if len(request.Executions) < minCount {
 		return NewErrInsufficientExecutions(request.JobID, minCount, len(request.Executions))
 	}

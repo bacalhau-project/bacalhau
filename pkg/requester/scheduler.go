@@ -23,47 +23,44 @@ import (
 )
 
 type BaseSchedulerParams struct {
-	ID                   string
-	Host                 host.Host
-	JobStore             jobstore.Store
-	NodeSelector         NodeSelector
-	OverAskForBidsFactor int
-	RetryStrategy        RetryStrategy
-	ComputeEndpoint      compute.Endpoint
-	Verifiers            verifier.VerifierProvider
-	StorageProviders     storage.StorageProvider
-	EventEmitter         EventEmitter
-	GetVerifyCallback    func() *url.URL
+	ID                string
+	Host              host.Host
+	JobStore          jobstore.Store
+	NodeSelector      NodeSelector
+	RetryStrategy     RetryStrategy
+	ComputeEndpoint   compute.Endpoint
+	Verifiers         verifier.VerifierProvider
+	StorageProviders  storage.StorageProvider
+	EventEmitter      EventEmitter
+	GetVerifyCallback func() *url.URL
 }
 
 type BaseScheduler struct {
-	id                   string
-	host                 host.Host
-	jobStore             jobstore.Store
-	nodeSelector         NodeSelector
-	overAskForBidsFactor int
-	retryStrategy        RetryStrategy
-	computeService       compute.Endpoint
-	verifiers            verifier.VerifierProvider
-	storageProviders     storage.StorageProvider
-	eventEmitter         EventEmitter
-	getVerifyCallback    func() *url.URL
-	mu                   sync.Mutex
+	id                string
+	host              host.Host
+	jobStore          jobstore.Store
+	nodeSelector      NodeSelector
+	retryStrategy     RetryStrategy
+	computeService    compute.Endpoint
+	verifiers         verifier.VerifierProvider
+	storageProviders  storage.StorageProvider
+	eventEmitter      EventEmitter
+	getVerifyCallback func() *url.URL
+	mu                sync.Mutex
 }
 
 func NewBaseScheduler(params BaseSchedulerParams) *BaseScheduler {
 	res := &BaseScheduler{
-		id:                   params.ID,
-		host:                 params.Host,
-		jobStore:             params.JobStore,
-		nodeSelector:         params.NodeSelector,
-		overAskForBidsFactor: system.Max(1, params.OverAskForBidsFactor),
-		retryStrategy:        params.RetryStrategy,
-		computeService:       params.ComputeEndpoint,
-		verifiers:            params.Verifiers,
-		storageProviders:     params.StorageProviders,
-		eventEmitter:         params.EventEmitter,
-		getVerifyCallback:    params.GetVerifyCallback,
+		id:                params.ID,
+		host:              params.Host,
+		jobStore:          params.JobStore,
+		nodeSelector:      params.NodeSelector,
+		retryStrategy:     params.RetryStrategy,
+		computeService:    params.ComputeEndpoint,
+		verifiers:         params.Verifiers,
+		storageProviders:  params.StorageProviders,
+		eventEmitter:      params.EventEmitter,
+		getVerifyCallback: params.GetVerifyCallback,
 	}
 
 	// TODO: replace with job level lock
@@ -82,9 +79,7 @@ func (s *BaseScheduler) StartJob(ctx context.Context, req StartJobRequest) (err 
 	}()
 
 	// find nodes that can execute the job
-	minBids := system.Max(req.Job.Spec.Deal.MinBids, req.Job.Spec.Deal.Concurrency)
-	desiredBids := minBids * s.overAskForBidsFactor
-	selectedNodes, err := s.nodeSelector.SelectNodes(ctx, req.Job, minBids, desiredBids)
+	selectedNodes, err := s.nodeSelector.SelectNodes(ctx, &req.Job)
 	if err != nil {
 		return err
 	}
@@ -127,7 +122,7 @@ func (s *BaseScheduler) CancelJob(ctx context.Context, request CancelJobRequest)
 //   Compute Proxy Methods  //
 //////////////////////////////
 
-func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, job model.Job, nodes []NodeRank) {
+func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, job model.Job, nodes []model.NodeInfo) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.Scheduler.StartJob",
 		trace.WithLinks(link), // link to any api traces
 		trace.WithSpanKind(trace.SpanKindInternal),
@@ -144,7 +139,7 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 	for _, node := range nodes {
 		executionID := model.ExecutionID{
 			JobID:       job.Metadata.ID,
-			NodeID:      node.NodeInfo.PeerInfo.ID.String(),
+			NodeID:      node.PeerInfo.ID.String(),
 			ExecutionID: "e-" + uuid.NewString(),
 		}
 

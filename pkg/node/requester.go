@@ -23,6 +23,7 @@ import (
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/selection"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -125,24 +126,30 @@ func NewRequesterNode(
 		retryStrategy = retryStrategyChain
 	}
 
-	nodeSelector := requester.NewNodeSelector(requester.NodeSelectorParams{
-		NodeDiscoverer: nodeDiscoveryChain,
-		NodeRanker:     nodeRankerChain,
-	})
+	nodeSelector := selection.NewNodeSelectorSwitch(
+		selection.NewAnyNodeSelector(selection.AnyNodeSelectorParams{
+			NodeDiscoverer:       nodeDiscoveryChain,
+			NodeRanker:           nodeRankerChain,
+			OverAskForBidsFactor: config.OverAskForBidsFactor,
+		}),
+		selection.NewAllNodeSelector(selection.AllNodeSelectorParams{
+			NodeDiscoverer: nodeDiscoveryChain,
+			NodeRanker:     nodeRankerChain,
+		}),
+	)
 	emitter := requester.NewEventEmitter(requester.EventEmitterParams{
 		EventConsumer: localJobEventConsumer,
 	})
 	scheduler := requester.NewBaseScheduler(requester.BaseSchedulerParams{
-		ID:                   host.ID().String(),
-		Host:                 host,
-		JobStore:             jobStore,
-		NodeSelector:         *nodeSelector,
-		OverAskForBidsFactor: config.OverAskForBidsFactor,
-		RetryStrategy:        retryStrategy,
-		ComputeEndpoint:      computeProxy,
-		Verifiers:            verifiers,
-		StorageProviders:     storageProviders,
-		EventEmitter:         emitter,
+		ID:               host.ID().String(),
+		Host:             host,
+		JobStore:         jobStore,
+		NodeSelector:     nodeSelector,
+		RetryStrategy:    retryStrategy,
+		ComputeEndpoint:  computeProxy,
+		Verifiers:        verifiers,
+		StorageProviders: storageProviders,
+		EventEmitter:     emitter,
 		GetVerifyCallback: func() *url.URL {
 			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.VerifyRoute)
 		},

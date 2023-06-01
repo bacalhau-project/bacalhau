@@ -359,7 +359,9 @@ func (s *RetriesSuite) TestRetry() {
 				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			} else {
 				s.NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
+				s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 			}
+
 			jobState, err := s.stateResolver.GetJobState(ctx, submittedJob.ID())
 			if len(tc.expectedExecutionStates) == 0 {
 				// no job state is expected to exist for this scenario
@@ -376,13 +378,15 @@ func (s *RetriesSuite) TestRetry() {
 					tc.expectedJobState = model.JobStateCompleted
 				}
 			}
-			s.Equal(tc.expectedJobState, jobState.State)
+			s.Equal(tc.expectedJobState, jobState.State,
+				"Expected job in state %s, found %s", tc.expectedJobState, jobState.State)
 
 			// verify execution states
 			executionStates := jobState.GroupExecutionsByState()
 			s.Equal(len(tc.expectedExecutionStates), len(executionStates))
 			for state, count := range tc.expectedExecutionStates {
-				s.Equal(count, len(executionStates[state]))
+				s.Equal(count, len(executionStates[state]),
+					"Expected %d executions in state %s, found %d", count, state.String(), len(executionStates[state]))
 			}
 
 			// verify execution error status message
