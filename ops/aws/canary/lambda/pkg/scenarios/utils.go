@@ -94,7 +94,8 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		return nil, err
 	}
 
-	outputIpfs, err := (&spec_ipfs.IPFSStorageSpec{CID: cid.Undef}).AsSpec("outputs", "/outputs")
+	// TODO(forrest): we need a CID to create an output spec, which is wrong, but required for encoding
+	outputIpfs, err := (&spec_ipfs.IPFSStorageSpec{CID: canaryCID}).AsSpec("outputs", "/outputs")
 	if err != nil {
 		return nil, err
 	}
