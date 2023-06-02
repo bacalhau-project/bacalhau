@@ -4,19 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/scenarios"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 var TestcasesMap = map[string]Handler{
-	"list":                      scenarios.List,
-	"submit":                    scenarios.Submit,
-	"submitAndGet":              scenarios.SubmitAndGet,
-	"submitDockerIPFSJobAndGet": scenarios.SubmitDockerIPFSJobAndGet,
-	"submitAndDescribe":         scenarios.SubmitAnDescribe,
-	"submitWithConcurrency":     scenarios.SubmitWithConcurrency,
+	"list":         scenarios.List,
+	"submit":       scenarios.Submit,
+	"submitAndGet": scenarios.SubmitAndGet,
+	//skipping submitDockerIPFSJobAndGet as it is not stable yet: https://github.com/bacalhau-project/bacalhau/issues/1869
+	//"submitDockerIPFSJobAndGet": scenarios.SubmitDockerIPFSJobAndGet,
+	"submitAndDescribe":     scenarios.SubmitAnDescribe,
+	"submitWithConcurrency": scenarios.SubmitWithConcurrency,
 }
 
 func init() {
