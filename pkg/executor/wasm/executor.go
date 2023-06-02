@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +13,8 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/sys"
+	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -255,50 +258,43 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	}
 
 	// Load and instantiate imported modules
-	//loader := NewModuleLoader(engine, config, e.StorageProvider)
+	loader := NewModuleLoader(engine, config, e.StorageProvider)
 	for _, importModule := range wasmEngine.ImportModules {
-		_ = importModule
-		panic("NYI")
-		// TODO
-		//_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
-		//err = multierr.Append(err, ierr)
+		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
+		err = multierr.Append(err, ierr)
 	}
 
 	// Load and instantiate the entry module.
-	panic("TODO")
-	/*
-		instance, err := loader.InstantiateRemoteModule(ctx, wasmEngine.EntryModule)
-		if err != nil {
-			return executor.FailResult(err)
-		}
+	instance, err := loader.InstantiateRemoteModule(ctx, *wasmEngine.EntryModule)
+	if err != nil {
+		return executor.FailResult(err)
+	}
 
-		// The function should exit which results in a sys.ExitError. So we capture
-		// the exit code for inclusion in the job output, and ignore the return code
-		// from the function (most WASI compilers will not give one). Some compilers
-		// though do not set an exit code, so we use a default of -1.
-		log.Ctx(ctx).Debug().
-			Str("entryPoint", job.Spec.Wasm.EntryPoint).
-			Str("job", job.ID()).
-			Str("execution", executionID).
-			Msg("Running WASM job")
-		entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
-		exitCode := -1
-		_, wasmErr := entryFunc.Call(ctx)
+	// The function should exit which results in a sys.ExitError. So we capture
+	// the exit code for inclusion in the job output, and ignore the return code
+	// from the function (most WASI compilers will not give one). Some compilers
+	// though do not set an exit code, so we use a default of -1.
+	log.Ctx(ctx).Debug().
+		Str("entryPoint", wasmEngine.EntryPoint).
+		Str("job", job.ID()).
+		Str("execution", executionID).
+		Msg("Running WASM job")
+	entryFunc := instance.ExportedFunction(wasmEngine.EntryPoint)
+	exitCode := -1
+	_, wasmErr := entryFunc.Call(ctx)
 
-		var errExit *sys.ExitError
-		if errors.As(wasmErr, &errExit) {
-			exitCode = int(errExit.ExitCode())
-			wasmErr = nil
-		}
+	var errExit *sys.ExitError
+	if errors.As(wasmErr, &errExit) {
+		exitCode = int(errExit.ExitCode())
+		wasmErr = nil
+	}
 
-		// execution has finished and there's nothing else to read from so inform
-		// the logs that it is time to drain any remaining items.
-		logs.Drain()
+	// execution has finished and there's nothing else to read from so inform
+	// the logs that it is time to drain any remaining items.
+	logs.Drain()
 
-		stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-		return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
-
-	*/
+	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
+	return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
