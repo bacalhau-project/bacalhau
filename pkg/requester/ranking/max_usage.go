@@ -25,13 +25,13 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes
 	jobResourceUsage := capacity.ParseResourceUsageConfig(job.Spec.Resources)
 	jobResourceUsageSet := !jobResourceUsage.IsZero()
 	for i, node := range nodes {
-		rank := 0
+		rank := requester.RankPossible
 		if jobResourceUsageSet && node.ComputeNodeInfo != nil {
 			if jobResourceUsage.LessThanEq(node.ComputeNodeInfo.MaxJobRequirements) {
-				rank = 10
+				rank = requester.RankPreferred
 			} else {
 				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't accept MaxJobRequirements %s", node.PeerInfo.ID, jobResourceUsage)
-				rank = -1
+				rank = requester.RankUnsuitable
 			}
 		}
 		ranks[i] = requester.NodeRank{
