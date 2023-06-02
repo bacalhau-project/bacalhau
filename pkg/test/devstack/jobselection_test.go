@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
 
 	"github.com/stretchr/testify/suite"
 
@@ -24,6 +26,28 @@ type DevstackJobSelectionSuite struct {
 // a normal test function and pass our suite to suite.Run
 func TestDevstackJobSelectionSuite(t *testing.T) {
 	suite.Run(t, new(DevstackJobSelectionSuite))
+}
+
+// duplicated form test_scenarios because the one there is invalid for this test case.
+var WasmCsvTransform = func(t testing.TB) scenario.Scenario {
+	return scenario.Scenario{
+		Inputs: scenario.StoredFile(
+			"../../../testdata/wasm/csv/inputs",
+			"/inputs",
+		),
+		ResultsChecker: scenario.FileContains(
+			"outputs/parents-children.csv",
+			[]string{"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva"},
+			269, //nolint:gomnd // magic number appropriate for test
+		),
+		Spec: model.Spec{
+			Engine: enginetesting.WasmMakeEngine(t,
+				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithEntryModule(scenario.InlineData(csv.Program())),
+				enginetesting.WasmWithParameters("inputs/horses.csv", "outputs/parents-children.csv"),
+			),
+		},
+	}
 }
 
 // Re-use the docker executor tests but full end to end with libp2p transport
@@ -49,9 +73,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 					JobSelectionPolicy: testCase.policy,
 				}),
 			},
-			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform(suite.T()).Inputs),
-			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,
-			Spec:    scenario.WasmCsvTransform(suite.T()).Spec,
+			Inputs:  scenario.PartialAdd(testCase.addFilesCount, WasmCsvTransform(suite.T()).Inputs),
+			Outputs: WasmCsvTransform(suite.T()).Outputs,
+			Spec:    WasmCsvTransform(suite.T()).Spec,
 			Deal:    model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),

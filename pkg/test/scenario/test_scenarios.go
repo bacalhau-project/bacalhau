@@ -196,6 +196,8 @@ var WasmCsvTransform = func(t testing.TB) Scenario {
 				enginetesting.WasmWithParameters("inputs/horses.csv", "outputs/parents-children.csv"),
 			),
 		},
+		// TODO(forrest): FIXME previously this was an un specified storage type, which isn't allowed.
+		// what are we supposed to put here?
 		Outputs: []spec.Storage{localspec},
 	}
 }
