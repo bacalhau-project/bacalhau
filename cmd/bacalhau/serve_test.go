@@ -12,16 +12,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
+	"golang.org/x/sync/errgroup"
+
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
-	"golang.org/x/sync/errgroup"
 )
 
 const maxServeTime = 5 * time.Second
@@ -184,6 +187,8 @@ func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
+
+	job.Spec.Engine = enginetesting.DockerMakeEngine(s.T())
 
 	job.Spec.Network.Type = model.NetworkHTTP
 	job, err = client.Submit(s.ctx, job)

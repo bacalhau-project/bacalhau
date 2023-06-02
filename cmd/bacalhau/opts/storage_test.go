@@ -13,14 +13,7 @@ import (
 	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
-	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 )
-
-func makeUrlStorageSpec(t testing.TB, name, mount, url string) spec.Storage {
-	out, err := (&spec_url.URLStorageSpec{URL: url}).AsSpec(name, mount)
-	require.NoError(t, err)
-	return out
-}
 
 func TestParseStorage(t *testing.T) {
 	for _, test := range []struct {
@@ -115,7 +108,7 @@ func TestParseStorage(t *testing.T) {
 		{
 			name:  "http with port",
 			input: "https://example.com:9000/file:/mount/path",
-			expected: makeUrlStorageSpec(t,
+			expected: storagetesting.MakeUrlStorageSpec(t,
 				"https://example.com:9000/file",
 				"/mount/path",
 				"https://example.com:9000/file",

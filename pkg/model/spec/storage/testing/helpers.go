@@ -8,9 +8,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	spec_filecoin "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/filecoin"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
 	spec_ipfs "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	spec_s3 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
+	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 )
 
 func MakeIpfsStorageSpec(t testing.TB, name, mount, cidstr string) spec.Storage {
@@ -39,7 +39,7 @@ func MakeS3StorageSpec(t testing.TB, name, mount string, s3spec *spec_s3.S3Stora
 }
 
 func MakeUrlStorageSpec(t testing.TB, name, mount, url string) spec.Storage {
-	out, err := (&inline.InlineStorageSpec{URL: url}).
+	out, err := (&spec_url.URLStorageSpec{URL: url}).
 		AsSpec(name, mount)
 	require.NoError(t, err)
 	return out
