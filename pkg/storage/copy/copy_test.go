@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	storage2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
@@ -107,7 +106,7 @@ func TestCopyOversize(t *testing.T) {
 			noopStorage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
 					GetVolumeSize: func(ctx context.Context, volume spec.Storage) (uint64, error) {
-						urlspec, err := url.Decode(volume)
+						urlspec, err := inline.Decode(volume)
 						if err != nil {
 							return 0, err
 						}
@@ -125,7 +124,7 @@ func TestCopyOversize(t *testing.T) {
 				context.Background(),
 				provider,
 				testCase.specs,
-				url.StorageType,
+				inline.StorageType,
 				ipfs.StorageType,
 				maxSingle,
 				maxTotal,
