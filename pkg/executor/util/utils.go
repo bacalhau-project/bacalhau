@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	dockerengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	wasmengine "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	spec_git "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
@@ -28,8 +27,6 @@ import (
 	spec_url "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
-	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
@@ -68,11 +65,6 @@ func NewStandardStorageProvider(
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
-	if err != nil {
-		return nil, err
-	}
-
 	repoCloneStorage, err := repo.NewStorage(cm, ipfsAPICopyStorage, options.EstuaryAPIKey)
 	if err != nil {
 		return nil, err
@@ -94,41 +86,6 @@ func NewStandardStorageProvider(
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	// if we are using a FilecoinUnsealedPath then construct a combo
-	// driver that will give preference to the filecoin unsealed driver
-	// if the cid is deemed to be local
-	if options.FilecoinUnsealedPath != "" {
-		comboDriver, err := combo.NewStorage(
-			cm,
-			func(ctx context.Context) ([]storage.Storage, error) {
-				return []storage.Storage{
-					filecoinUnsealedStorage,
-					ipfsAPICopyStorage,
-				}, nil
-			},
-			func(ctx context.Context, s spec.Storage) (storage.Storage, error) {
-				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, s)
-				if err != nil {
-					return ipfsAPICopyStorage, err
-				}
-				if filecoinUnsealedHasCid {
-					return filecoinUnsealedStorage, nil
-				} else {
-					return ipfsAPICopyStorage, nil
-				}
-			},
-			func(ctx context.Context) (storage.Storage, error) {
-				return ipfsAPICopyStorage, nil
-			},
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		useIPFSDriver = comboDriver
-	}
-
 	return model.NewMappedProvider(map[cid.Cid]storage.Storage{
 		spec_ipfs.StorageType:   tracing.Wrap(useIPFSDriver),
 		spec_url.StorageType:    tracing.Wrap(urlDownloadStorage),
@@ -137,8 +94,6 @@ func NewStandardStorageProvider(
 		spec_gitlfs.StorageType: tracing.Wrap(repoCloneStorage),
 		spec_s3.StorageType:     tracing.Wrap(s3Storage),
 		spec_local.StorageType:  tracing.Wrap(localDirectoryStorage),
-		// TODO(frrist): how important is it to continue supporting this? IPFS seems like it covers this.
-		//model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
 	}), nil
 }
 
