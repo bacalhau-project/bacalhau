@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package local_test
 
 import (

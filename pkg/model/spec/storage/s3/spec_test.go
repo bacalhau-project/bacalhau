@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package s3_test
 
 import (
