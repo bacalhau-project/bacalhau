@@ -264,7 +264,7 @@ func createWasmJob(ctx context.Context, cmd *cobra.Command, cmdArgs []string, op
 		// TODO this could be different than the api version as it only relates to docker jobs.
 		APIVersion: model.APIVersionLatest(),
 		WasmSpec: wasm2.WasmEngineSpec{
-			EntryModule:          entryModule,
+			EntryModule:          &entryModule,
 			EntryPoint:           opts.Entrypoint,
 			Parameters:           cmdArgs[1:],
 			EnvironmentVariables: FlattenMap(opts.EnvironmentVariables),

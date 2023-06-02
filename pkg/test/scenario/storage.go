@@ -76,12 +76,12 @@ func StoredFile(
 // the other storage set-ups, this function loads the file immediately. This
 // makes it possible to store things deeper into the Spec object without the
 // test system needing to know how to prepare them.
-func InlineData(data []byte) spec.Storage {
+func InlineData(data []byte) *spec.Storage {
 	out, err := (&inline.InlineStorageSpec{URL: dataurl.EncodeBytes(data)}).AsSpec("TODO", "TODO")
 	if err != nil {
 		panic(err)
 	}
-	return out
+	return &out
 }
 
 // URLDownload will return a model.StorageSpec referencing a file on the passed
