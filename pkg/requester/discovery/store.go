@@ -3,6 +3,8 @@ package discovery
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
@@ -25,7 +27,12 @@ func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscover
 // FindNodes returns the nodes that support the job's execution engine, and have enough TOTAL capacity to run the job.
 func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	// filter nodes that support the job's engine
-	return d.store.ListForEngine(ctx, job.Spec.Engine.Schema)
+	log.Debug().Stringer("engine", job.Spec.Engine).Str("job", job.ID()).Msgf("Find nodes with engine")
+	nodes, err := d.store.ListForEngine(ctx, job.Spec.Engine.Schema)
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
 }
 
 // ListNodes implements requester.NodeDiscoverer

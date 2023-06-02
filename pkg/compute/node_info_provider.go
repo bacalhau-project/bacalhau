@@ -3,20 +3,11 @@ package compute
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/gitlfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/inline"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/local"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/url"
+	engtypes "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/types"
+	strgtypes "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
@@ -56,21 +47,10 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	return model.ComputeNodeInfo{
-		ExecutionEngines: model.InstalledTypes(ctx, n.executors, []cid.Cid{
-			wasm.EngineType,
-			docker.EngineType,
-		}),
-		Verifiers:  model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
-		Publishers: model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
-		StorageSources: model.InstalledTypes(ctx, n.storages, []cid.Cid{
-			s3.StorageType,
-			url.StorageType,
-			git.StorageType,
-			ipfs.StorageType,
-			local.StorageType,
-			gitlfs.StorageType,
-			inline.StorageType,
-		}),
+		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, engtypes.EngineTypes()),
+		Verifiers:          model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
+		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
+		StorageSources:     model.InstalledTypes(ctx, n.storages, strgtypes.StorageTypes()),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
