@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	docker2 "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
+	spec_docker "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -15,7 +15,7 @@ func TestScenarios(t *testing.T) {
 		t.Run(
 			name,
 			func(t *testing.T) {
-				docker.MaybeNeedDocker(t, testCase.Spec.Engine.Schema == docker2.EngineType)
+				docker.MaybeNeedDocker(t, testCase.Spec.Engine.Schema == spec_docker.EngineType)
 				RunTestCase(t, testCase)
 			},
 		)

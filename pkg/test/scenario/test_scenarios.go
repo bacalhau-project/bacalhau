@@ -38,7 +38,7 @@ var CatFileToStdout = func(t testing.TB) Scenario {
 			Engine: enginetesting.WasmMakeEngine(t,
 				enginetesting.WasmWithEntrypoint("_start"),
 				enginetesting.WasmWithEntryModule(InlineData(cat.Program())),
-				enginetesting.WasmWithEntrypoint("_start"),
+				enginetesting.WasmWithParameters(simpleMountPath),
 			),
 		},
 	}
