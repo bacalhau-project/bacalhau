@@ -29,6 +29,7 @@ type ComboDriverSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestComboDriverSuite(t *testing.T) {
+	t.Skip("Removed filecoin driver")
 	suite.Run(t, new(ComboDriverSuite))
 }
 
