@@ -19,6 +19,22 @@ func (m *IPLDMap[K, V]) Get(key K) V {
 	return m.Values[key]
 }
 
+func (m *IPLDMap[K, V]) ToMap() map[string]string {
+	// Initialize a new map of string to string
+	newMap := make(map[string]string)
+
+	// Iterate through each key-value pair in the original map
+	for _, k := range m.Keys {
+		v := m.Values[k]
+		// Convert the key and value to strings using fmt.Sprint
+		// Note: this may not work as expected for complex types!
+		newMap[fmt.Sprint(k)] = fmt.Sprint(v)
+	}
+
+	// Return the new map
+	return newMap
+}
+
 func FlattenIPLDMap[K comparable, V any](ipldMap IPLDMap[K, V]) []string {
 	var flatMap []string
 	for _, key := range ipldMap.Keys {

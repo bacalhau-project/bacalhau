@@ -7,6 +7,8 @@ import (
 
 	"go.ptx.dk/multierrgroup"
 
+	"github.com/pkg/errors"
+
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model/moderation"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
@@ -18,7 +20,6 @@ import (
 	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/pkg/errors"
 
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -178,11 +179,11 @@ func (api *ModelAPI) Start(ctx context.Context) error {
 		return err
 	}
 
-	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[bacalhau_model_beta.JobEvent](pubsub.BufferingPubSubParams{
+	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[bacalhau_model.JobEvent](pubsub.BufferingPubSubParams{
 		DelegatePubSub: libp2p2JobEventPubSub,
 		MaxBufferAge:   5 * time.Minute, //nolint:gomnd // required, but we don't publish events in the dashboard
 	})
-	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model_beta.JobEvent](api.jobEventHandler.readEvent))
+	err = bufferedJobEventPubSub.Subscribe(ctx, pubsub.SubscriberFunc[bacalhau_model.JobEvent](api.jobEventHandler.readEvent))
 	if err != nil {
 		return err
 	}
@@ -327,7 +328,8 @@ func (api *ModelAPI) GetTotalExecutorCount(
 }
 
 func (api *ModelAPI) AddEvent(event bacalhau_model_beta.JobEvent) error {
-	return api.jobEventHandler.readEvent(context.Background(), event)
+	panic("TODO")
+	//return api.jobEventHandler.readEvent(context.Background(), event)
 }
 
 func (api *ModelAPI) AddUser(
