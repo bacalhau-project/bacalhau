@@ -69,8 +69,8 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 
 	if !favourSelector.Empty() {
 		for i, rank := range ranks {
-			if rank.Rank != -1 && favourSelector.Matches(labels.Set(rank.NodeInfo.Labels)) {
-				ranks[i].Rank += 10
+			if rank.MeetsRequirement() && favourSelector.Matches(labels.Set(rank.NodeInfo.Labels)) {
+				ranks[i].Rank += requester.RankPreferred
 			}
 		}
 	}

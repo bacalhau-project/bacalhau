@@ -27,7 +27,7 @@ func (c *Chain) RankNodes(ctx context.Context, job model.Job, nodes []model.Node
 	// initialize map of node ranks
 	ranksMap := make(map[peer.ID]*requester.NodeRank, len(nodes))
 	for _, node := range nodes {
-		ranksMap[node.PeerInfo.ID] = &requester.NodeRank{NodeInfo: node, Rank: 0}
+		ranksMap[node.PeerInfo.ID] = &requester.NodeRank{NodeInfo: node, Rank: requester.RankPossible}
 	}
 
 	// iterate over the rankers and add their ranks to the map
@@ -39,8 +39,8 @@ func (c *Chain) RankNodes(ctx context.Context, job model.Job, nodes []model.Node
 			return nil, err
 		}
 		for _, nodeRank := range nodeRanks {
-			if ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank < 0 || nodeRank.Rank < 0 {
-				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank = -1
+			if !ranksMap[nodeRank.NodeInfo.PeerInfo.ID].MeetsRequirement() || !nodeRank.MeetsRequirement() {
+				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank = requester.RankUnsuitable
 			} else {
 				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank += nodeRank.Rank
 			}

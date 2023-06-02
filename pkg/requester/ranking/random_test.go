@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -38,7 +39,7 @@ func (s *RandomNodeRankerSuite) TestRankNodes() {
 
 	uniqueRanks := make(map[int]struct{})
 	for _, rank := range ranks {
-		s.True(rank.Rank >= 0)
+		s.True(rank.Rank >= requester.RankPossible)
 		s.True(rank.Rank <= randomnessRange)
 		uniqueRanks[rank.Rank] = struct{}{}
 	}

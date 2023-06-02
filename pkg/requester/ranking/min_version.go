@@ -31,14 +31,14 @@ func NewMinVersionNodeRanker(params MinVersionNodeRankerParams) *MinVersionNodeR
 func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]requester.NodeRank, error) {
 	ranks := make([]requester.NodeRank, len(nodes))
 	for i, node := range nodes {
-		rank := 10
+		rank := requester.RankPreferred
 		// TODO: nodes discovered through identity protocol will have nil version
 		//  this is a temporary fix to avoid filtering them out until we no longer depend on identity protocol for node discovery in our tests.
 		if s.match(node.BacalhauVersion, nilVersion) {
-			rank = 0
+			rank = requester.RankPossible
 		} else if !s.isCompatibleVersion(node.BacalhauVersion) {
 			log.Ctx(ctx).Debug().Msgf("filtering node %s with old bacalhau version %+v", node.PeerInfo.ID, node.BacalhauVersion)
-			rank = -1
+			rank = requester.RankUnsuitable
 		}
 		ranks[i] = requester.NodeRank{
 			NodeInfo: node,

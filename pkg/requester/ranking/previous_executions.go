@@ -46,14 +46,14 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context, job model.
 		}
 	}
 	for i, node := range nodes {
-		rank := 30
+		rank := 3 * requester.RankPreferred
 		if previousExecutions, ok := previousExecutors[node.PeerInfo.ID.String()]; ok {
 			if previousExecutions > 1 {
-				rank = -1
+				rank = requester.RankUnsuitable
 			} else if _, filterOut := toFilterOut[node.PeerInfo.ID.String()]; filterOut {
-				rank = -1
+				rank = requester.RankUnsuitable
 			} else {
-				rank = 0
+				rank = requester.RankPossible
 			}
 		}
 		ranks[i] = requester.NodeRank{

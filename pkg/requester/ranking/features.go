@@ -61,7 +61,7 @@ func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeIn
 		// Node supported types are not set, or the node was discovered not
 		// through nodeInfoPublisher (e.g. identity protocol). We will give the
 		// node the benefit of the doubt and ask it to bid.
-		return 0
+		return requester.RankPossible
 	}
 
 	providedKeys := s.getNodeProvidedKeys(*node.ComputeNodeInfo)
@@ -77,12 +77,12 @@ func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeIn
 		log.Ctx(ctx).Trace().Stringer("Requirement", requiredKey).Bool("Supported", found).Send()
 		if !found {
 			// Target wasn't found – we can end early as we won't use this node.
-			return -1
+			return requester.RankUnsuitable
 		}
 	}
 
 	// Node provides all the specified required types.
-	return 10 //nolint:gomnd
+	return requester.RankPreferred
 }
 
 func (s *featureNodeRanker[Key]) RankNodes(
