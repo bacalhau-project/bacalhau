@@ -175,6 +175,8 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
 
+	job.Spec.Engine = enginetesting.DockerMakeEngine(s.T())
+
 	_, err = client.Submit(s.ctx, job)
 	s.NoError(err)
 }
