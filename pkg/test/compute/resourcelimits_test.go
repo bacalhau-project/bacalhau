@@ -150,7 +150,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := model.NewJob()
+			j := testutils.MakeNoopJob(suite.T())
 			j.Spec.Resources = jobResources
 			j.Spec.Engine = enginetesting.NoopMakeEngine(suite.T(), "noop")
 
