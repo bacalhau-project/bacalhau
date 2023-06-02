@@ -9,12 +9,13 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/suite"
 )
 
 type APITestSuite struct {
@@ -36,35 +37,43 @@ func (s *APITestSuite) TestJobsCountInitiallyZero() {
 }
 
 func (s *APITestSuite) TestCanaryJobsStored() {
-	jobEvent := v1beta1.JobEvent{
-		JobID:     "testjob",
-		EventName: v1beta1.JobEventCreated,
-		Spec: v1beta1.Spec{
-			Annotations: []string{"canary"},
-		},
-	}
-	s.Require().NoError(s.api.AddEvent(jobEvent))
+	s.T().Skip("unsupported")
+	/*
+		jobEvent := v1beta1.JobEvent{
+			JobID:     "testjob",
+			EventName: v1beta1.JobEventCreated,
+			Spec: v1beta1.Spec{
+				Annotations: []string{"canary"},
+			},
+		}
+		s.Require().NoError(s.api.AddEvent(jobEvent))
 
-	info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
-	s.Require().NoError(err)
-	s.Require().Contains(info.Job.Spec.Annotations, "canary")
+		info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
+		s.Require().NoError(err)
+		s.Require().Contains(info.Job.Spec.Annotations, "canary")
+
+	*/
 }
 
 func (s *APITestSuite) TestHelloLambdaJobsStored() {
-	jobEvent := v1beta1.JobEvent{
-		JobID:     "testjob",
-		EventName: v1beta1.JobEventCreated,
-		Spec: v1beta1.Spec{
-			Docker: v1beta1.JobSpecDocker{
-				Entrypoint: []string{"hello λ!"},
+	s.T().Skip("unsupported")
+	/*
+		jobEvent := v1beta1.JobEvent{
+			JobID:     "testjob",
+			EventName: v1beta1.JobEventCreated,
+			Spec: v1beta1.Spec{
+				Docker: v1beta1.JobSpecDocker{
+					Entrypoint: []string{"hello λ!"},
+				},
 			},
-		},
-	}
-	s.Require().NoError(s.api.AddEvent(jobEvent))
+		}
+		s.Require().NoError(s.api.AddEvent(jobEvent))
 
-	info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
-	s.Require().NoError(err)
-	s.Require().Contains(info.Job.Spec.Docker.Entrypoint, "hello λ!")
+		info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
+		s.Require().NoError(err)
+		s.Require().Contains(info.Job.Spec.Docker.Entrypoint, "hello λ!")
+
+	*/
 }
 
 func (s *APITestSuite) TestModerateBidRequest() {

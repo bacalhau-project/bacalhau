@@ -1,17 +1,11 @@
 package dashboard
 
 import (
-	"bufio"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"os"
-	"strings"
+	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
 	bacalhau_model_v1alpha1 "github.com/bacalhau-project/bacalhau/pkg/model/v1alpha1"
 	bacalhau_model_v1beta1 "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
-	"github.com/spf13/cobra"
 )
 
 const TotalLogLines = 3226637
@@ -59,64 +53,68 @@ type LogLineBeta struct {
 }
 
 func importLogs(cmd *cobra.Command, modelOptions model.ModelOptions, opts importOptionsType) error {
-	model, err := model.NewModelAPI(modelOptions)
-	if err != nil {
-		return err
-	}
-
-	if opts.filename == "" {
-		return fmt.Errorf("please specify a filename")
-	}
-
-	_, err = os.Stat(opts.filename)
-	if errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("filename does not exist: %s", opts.filename)
-	}
-
-	file, err := os.Open(opts.filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	counter := 0
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		counter++
-		var event bacalhau_model_v1beta1.JobEvent
-		text := scanner.Text()
-		if strings.Contains(text, `"APIVersion":"V1beta1"`) {
-			var line LogLineBeta
-			err = json.Unmarshal([]byte(text), &line)
-			if err != nil {
-				return err
-			}
-			if line.Type != "model.JobEvent" {
-				return fmt.Errorf("expected JobEvent, got %s", line.Type)
-			}
-			event = line.Event
-		} else {
-			var line LogLineAlpha
-			err = json.Unmarshal([]byte(text), &line)
-			if err != nil {
-				return err
-			}
-			if line.Type != "model.JobEvent" {
-				return fmt.Errorf("expected JobEvent, got %s", line.Type)
-			}
-			event = bacalhau_model_v1beta1.ConvertV1alpha1JobEvent(line.Event)
-		}
-		fmt.Printf("%d / %d event %s %s\n", counter, TotalLogLines, event.JobID, event.EventName.String())
-		err = model.AddEvent(event)
+	panic("unsupported")
+	/*
+		model, err := model.NewModelAPI(modelOptions)
 		if err != nil {
 			return err
 		}
-	}
 
-	if err := scanner.Err(); err != nil {
-		return err
-	}
+		if opts.filename == "" {
+			return fmt.Errorf("please specify a filename")
+		}
 
-	return nil
+		_, err = os.Stat(opts.filename)
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("filename does not exist: %s", opts.filename)
+		}
+
+		file, err := os.Open(opts.filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		counter := 0
+
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			counter++
+			var event bacalhau_model_v1beta1.JobEvent
+			text := scanner.Text()
+			if strings.Contains(text, `"APIVersion":"V1beta1"`) {
+				var line LogLineBeta
+				err = json.Unmarshal([]byte(text), &line)
+				if err != nil {
+					return err
+				}
+				if line.Type != "model.JobEvent" {
+					return fmt.Errorf("expected JobEvent, got %s", line.Type)
+				}
+				event = line.Event
+			} else {
+				var line LogLineAlpha
+				err = json.Unmarshal([]byte(text), &line)
+				if err != nil {
+					return err
+				}
+				if line.Type != "model.JobEvent" {
+					return fmt.Errorf("expected JobEvent, got %s", line.Type)
+				}
+				event = bacalhau_model_v1beta1.ConvertV1alpha1JobEvent(line.Event)
+			}
+			fmt.Printf("%d / %d event %s %s\n", counter, TotalLogLines, event.JobID, event.EventName.String())
+			err = model.AddEvent(event)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		return nil
+
+	*/
 }

@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"net/url"
 
+	"go.uber.org/multierr"
+	"golang.org/x/exp/slices"
+
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"go.uber.org/multierr"
-	"golang.org/x/exp/slices"
 )
 
 // Response returned to signal that a job will be moderated.
@@ -106,7 +107,7 @@ func (m *manualModerator) Verify(ctx context.Context, req verifier.VerifierReque
 }
 
 func (m *manualModerator) createRequestForExecution(ctx context.Context, execution model.ExecutionState, callback *url.URL) error {
-	var executionSpec v1beta1.StorageSpec
+	var executionSpec spec.Storage
 	err := json.Unmarshal(execution.VerificationProposal, &executionSpec)
 	if err != nil {
 		return err

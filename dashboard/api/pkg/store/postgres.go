@@ -19,7 +19,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 )
 
 type nullableJSON[T any] struct {
@@ -511,7 +511,7 @@ VALUES ($1, $2, $3);`
 func (d *PostgresStore) CreateResultModerationRequest(
 	ctx context.Context,
 	executionID model.ExecutionID,
-	storageSpec v1beta1.StorageSpec,
+	storageSpec spec.Storage,
 	callback *types.URL,
 ) error {
 	jobRequest, err := d.CreateJobModerationRequest(ctx, executionID.JobID, types.ModerationTypeResult, callback)

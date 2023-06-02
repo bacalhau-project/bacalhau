@@ -327,9 +327,8 @@ func (api *ModelAPI) GetTotalExecutorCount(
 	return api.store.GetTotalExecutorCount(ctx)
 }
 
-func (api *ModelAPI) AddEvent(event bacalhau_model_beta.JobEvent) error {
-	panic("TODO")
-	//return api.jobEventHandler.readEvent(context.Background(), event)
+func (api *ModelAPI) AddEvent(event bacalhau_model.JobEvent) error {
+	return api.jobEventHandler.readEvent(context.Background(), event)
 }
 
 func (api *ModelAPI) AddUser(

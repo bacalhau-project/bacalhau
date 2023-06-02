@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
@@ -100,8 +101,8 @@ type JobModerationSummary = ModerationSummary
 // request to a moderation request for a job.
 type ResultModerationRequest struct {
 	JobModerationRequest
-	ExecutionID model.ExecutionID          `json:"execution_id"`
-	StorageSpec bacalhau_model.StorageSpec `json:"storage_spec"`
+	ExecutionID model.ExecutionID `json:"execution_id"`
+	StorageSpec spec.Storage      `json:"storage_spec"`
 }
 
 type JobInfo struct {
