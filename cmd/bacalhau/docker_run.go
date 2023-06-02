@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -236,7 +237,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 	}
 
 	if !opts.RunTimeSettings.PrintJobIDOnly && !DockerImageContainsTag(dockerJob.DockerSpec.Image) {
-		return fmt.Errorf("image %s does not contain tag, please specify a tag/digest", dockerJob.DockerSpec.Image)
+		log.Warn().Msgf("image %s does not contain tag, please specify a tag/digest", dockerJob.DockerSpec.Image)
 	}
 
 	if opts.DryRun {
