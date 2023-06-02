@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -260,8 +259,10 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// Load and instantiate imported modules
 	loader := NewModuleLoader(engine, config, e.StorageProvider)
 	for _, importModule := range wasmEngine.ImportModules {
-		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
-		err = multierr.Append(err, ierr)
+		_, err := loader.InstantiateRemoteModule(ctx, importModule)
+		if err != nil {
+			return executor.FailResult(err)
+		}
 	}
 
 	// Load and instantiate the entry module.

@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/git"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -16,9 +15,9 @@ import (
 
 func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
+		inputs := j.Spec.Inputs
 		modificationCount := 0
 
-		var inputs []spec.Storage
 		for _, inputRepos := range j.Spec.Inputs {
 			var repoArray []string
 			if inputRepos.Schema == git.StorageType {
@@ -36,7 +35,7 @@ func RepoExistsOnIPFS(provider storage.StorageProvider) Transformer {
 					return false, err
 				}
 
-				// FIXME(frrist): I have no idea what the the logic in this method is trying to do
+				// TODO(forrest): I have no idea what the the logic in this method is trying to do
 				// this looks broken. It was previously overriding the inputs then appending to it??
 				// I have attempted to correct it but unsure what initial intention was here.
 				// NEEDS REVIEW
