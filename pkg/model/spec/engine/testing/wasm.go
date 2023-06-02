@@ -9,7 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 )
 
-func WasmWithEntryModule(s spec.Storage) func(w *wasm.WasmEngineSpec) {
+func WasmWithEntryModule(s *spec.Storage) func(w *wasm.WasmEngineSpec) {
 	return func(w *wasm.WasmEngineSpec) {
 		w.EntryModule = s
 	}
@@ -41,7 +41,7 @@ func WasmWithImportModules(i ...spec.Storage) func(w *wasm.WasmEngineSpec) {
 
 func WasmMakeEngine(t testing.TB, opts ...func(engineSpec *wasm.WasmEngineSpec)) spec.Engine {
 	w := &wasm.WasmEngineSpec{
-		EntryModule:          spec.Storage{},
+		EntryModule:          nil,
 		EntryPoint:           "",
 		Parameters:           nil,
 		EnvironmentVariables: nil,

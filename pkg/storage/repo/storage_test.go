@@ -1,4 +1,6 @@
-//go:build unit || !integration
+//go:build !unit || integration
+
+// TODO(forrest): this test requires network access and creating an IPFS node there for it should be an integration test.
 
 package repo
 

@@ -91,7 +91,9 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
-	job := model.Job{Spec: model.Spec{Engine: enginetesting.WasmMakeEngine(s.T())}}
+	job := model.Job{Spec: model.Spec{Engine: enginetesting.WasmMakeEngine(s.T(),
+		enginetesting.WasmWithEntrypoint("_start"),
+	)}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))

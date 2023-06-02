@@ -223,7 +223,7 @@ func (s *Spec) AllStorageSpecs() []*spec.Storage {
 				storages = append(storages, &collection[index])
 			}
 		}
-		storages = append(storages, &wasmEngine.EntryModule)
+		storages = append(storages, wasmEngine.EntryModule)
 	}
 
 	return storages

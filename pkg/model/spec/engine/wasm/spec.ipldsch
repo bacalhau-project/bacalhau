@@ -1,5 +1,5 @@
 type WasmEngineSpec struct {
-    EntryModule StorageSpec
+    EntryModule nullable StorageSpec
     EntryPoint String
     Parameters [String]
     EnvironmentVariables [String]

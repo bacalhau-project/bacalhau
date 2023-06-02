@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec"
 	ipfs_spec "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/ipfs"
+	storagetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/testing"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -81,8 +82,11 @@ func BuildJobOutputs(ctx context.Context, outputVolumes []string) ([]spec.Storag
 			we have a chance to have a kind of storage multiaddress here
 			 e.g. --cid ipfs:abc --cid filecoin:efg
 		*/
-		ipfsSpec := &ipfs_spec.IPFSStorageSpec{CID: cid.Undef}
-		strgspec, err := ipfsSpec.AsSpec(slices[0], slices[2])
+		// TODO(forrest) previously an IPFS spec was being created with an empty CID, that's not allowed so stubbing one in for now.
+		// To me this indicates we need to have different specs for inputs and outputs. The intent of the output spec
+		// is to say: "hey store this thing on IPFS when you have a result"
+		ipfsSpec := &ipfs_spec.IPFSStorageSpec{CID: storagetesting.TestCID1}
+		strgspec, err := ipfsSpec.AsSpec(slices[0], slices[1])
 		if err != nil {
 			return nil, err
 		}

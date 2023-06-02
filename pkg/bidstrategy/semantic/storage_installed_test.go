@@ -24,10 +24,10 @@ var (
 	OneStorageSpec spec.Storage
 	EngineSpec     spec.Engine
 
-	EmptySpec       = model.Spec{}
-	SpecWithInputs  = model.Spec{Inputs: []spec.Storage{OneStorageSpec}}
-	SpecWithOutputs = model.Spec{Outputs: []spec.Storage{OneStorageSpec}}
-	SpecWithWasm    = model.Spec{Engine: EngineSpec}
+	EmptySpec       model.Spec
+	SpecWithInputs  model.Spec
+	SpecWithOutputs model.Spec
+	SpecWithWasm    model.Spec
 )
 
 func init() {
@@ -41,10 +41,15 @@ func init() {
 		panic(err)
 	}
 
-	EngineSpec, err = (&wasm.WasmEngineSpec{EntryModule: OneStorageSpec}).AsSpec()
+	EngineSpec, err = (&wasm.WasmEngineSpec{EntryModule: &OneStorageSpec}).AsSpec()
 	if err != nil {
 		panic(err)
 	}
+
+	EmptySpec = model.Spec{}
+	SpecWithInputs = model.Spec{Inputs: []spec.Storage{OneStorageSpec}}
+	SpecWithOutputs = model.Spec{Outputs: []spec.Storage{OneStorageSpec}}
+	SpecWithWasm = model.Spec{Engine: EngineSpec}
 }
 
 func TestStorageBidStrategy(t *testing.T) {

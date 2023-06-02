@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	spec "github.com/bacalhau-project/bacalhau/pkg/model/spec"
+	enginetesting "github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/engine/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model/spec/storage/s3"
 )
@@ -26,7 +27,7 @@ func TestRoundTrip(t *testing.T) {
 	s3EntryModule.Metadata.Put("foo", "bar")
 
 	expectedEngine := wasm.WasmEngineSpec{
-		EntryModule:          s3EntryModule,
+		EntryModule:          &s3EntryModule,
 		EntryPoint:           "entry",
 		Parameters:           []string{"one", "two"},
 		EnvironmentVariables: []string{"foo", "bar"},
@@ -59,4 +60,22 @@ func TestRoundTrip(t *testing.T) {
 	assert.Equal(t, expectedEngine.EnvironmentVariables, actualEngine.EnvironmentVariables)
 	assert.Equal(t, expectedEngine.ImportModules, actualEngine.ImportModules)
 
+}
+
+func TestEmpty(t *testing.T) {
+	s3Spec := &s3.S3StorageSpec{
+		Bucket:         "bucket",
+		Key:            "key",
+		ChecksumSHA256: "checksum",
+		VersionID:      "versionID",
+		Endpoint:       "endpoint",
+		Region:         "region",
+	}
+	// TODO add test cases for name and mount
+	s3EntryModule, err := s3Spec.AsSpec("name", "mount")
+	require.NoError(t, err)
+	s3EntryModule.Metadata.Put("foo", "bar")
+
+	e := enginetesting.WasmMakeEngine(t)
+	require.NotNil(t, e)
 }

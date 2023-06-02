@@ -33,7 +33,7 @@ var (
 
 type WasmEngineSpec struct {
 	// The module that contains the WASM code to start running.
-	EntryModule spec.Storage `json:"EntryModule,omitempty"`
+	EntryModule *spec.Storage `json:"EntryModule,omitempty"`
 
 	// The name of the function in the EntryModule to call to run the job. For
 	// WASI jobs, this will always be `_start`, but jobs can choose to call
