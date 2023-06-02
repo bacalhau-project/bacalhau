@@ -49,24 +49,25 @@ func NewIPFSPublishers(
 		}
 	}
 
-	var lotus publisher.Publisher = ipfsPublisher
+	/*var lotus publisher.Publisher = ipfsPublisher
 	if lotusConfig != nil {
 		lotus, err = filecoinlotus.NewPublisher(ctx, cm, *lotusConfig)
 		if err != nil {
 			return nil, err
 		}
 	}
+	*/
 
 	s3Publisher, err := configureS3Publisher(cm)
 	if err != nil {
 		return nil, err
 	}
 	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:     tracing.Wrap(noopPublisher),
-		model.PublisherIpfs:     tracing.Wrap(ipfsPublisher),
-		model.PublisherS3:       tracing.Wrap(s3Publisher),
-		model.PublisherEstuary:  tracing.Wrap(estuaryPublisher),
-		model.PublisherFilecoin: combo.NewPiggybackedPublisher(tracing.Wrap(ipfsPublisher), tracing.Wrap(lotus)),
+		model.PublisherNoop:    tracing.Wrap(noopPublisher),
+		model.PublisherIpfs:    tracing.Wrap(ipfsPublisher),
+		model.PublisherS3:      tracing.Wrap(s3Publisher),
+		model.PublisherEstuary: tracing.Wrap(estuaryPublisher),
+		//model.PublisherFilecoin: combo.NewPiggybackedPublisher(tracing.Wrap(ipfsPublisher), tracing.Wrap(lotus)),
 	}), nil
 }
 
