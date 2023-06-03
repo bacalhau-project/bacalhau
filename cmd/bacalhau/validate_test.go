@@ -29,7 +29,7 @@ func (s *ValidateSuite) TestValidate() {
 		"InvalidJobFile": {testFile: "../../testdata/job-noop-invalid.yml", valid: false},
 	}
 	for name, test := range tests {
-		func() {
+		s.Run(name, func() {
 			Fatal = FakeFatalErrorHandler
 
 			_, out, err := ExecuteTestCobraCommand("validate",
@@ -49,7 +49,7 @@ func (s *ValidateSuite) TestValidate() {
 				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
-		}()
+		})
 
 	}
 }

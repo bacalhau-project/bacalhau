@@ -1694,6 +1694,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
                 },
+                "ReadWrite": {
+                    "description": "Allow write access for locally mounted inputs",
+                    "type": "boolean"
+                },
                 "Repo": {
                     "description": "URL of the git Repo to clone",
                     "type": "string"

@@ -74,7 +74,7 @@ func NewStandardStorageProvider(
 	}
 
 	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
-		AllowedPaths: options.AllowListedLocalPaths,
+		AllowedPaths: localdirectory.ParseAllowPaths(options.AllowListedLocalPaths),
 	})
 	if err != nil {
 		return nil, err

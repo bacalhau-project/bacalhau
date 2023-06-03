@@ -340,6 +340,9 @@ function install-secrets() {
   export ESTUARY_API_KEY=""
   export AWS_ACCESS_KEY_ID=""
   export AWS_SECRET_ACCESS_KEY=""
+  export DOCKER_USERNAME=""
+  export DOCKER_PASSWORD=""
+
   if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
@@ -363,6 +366,12 @@ function install-secrets() {
   if [[ -n "${SECRETS_AWS_SECRET_ACCESS_KEY}" ]]; then
     export AWS_SECRET_ACCESS_KEY="${SECRETS_AWS_SECRET_ACCESS_KEY}"
   fi
+  if [[ -n "${SECRETS_DOCKER_USERNAME}" ]]; then
+    export DOCKER_USERNAME="${SECRETS_DOCKER_USERNAME}"
+  fi
+  if [[ -n "${SECRETS_DOCKER_PASSWORD}" ]]; then
+    export DOCKER_PASSWORD="${SECRETS_DOCKER_PASSWORD}"
+  fi  
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
@@ -372,6 +381,8 @@ export GRAFANA_CLOUD_LOKI_API_KEY="${GRAFANA_CLOUD_LOKI_API_KEY}"
 export ESTUARY_API_KEY="${ESTUARY_API_KEY}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+export DOCKER_USERNAME="${DOCKER_USERNAME}"
+export DOCKER_PASSWORD="${DOCKER_PASSWORD}"
 EOG
 
   # clean up variables file from any secret

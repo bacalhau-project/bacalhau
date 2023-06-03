@@ -19,3 +19,17 @@ func (f fileFs) Open(name string) (fs.File, error) {
 		return nil, os.ErrNotExist
 	}
 }
+
+func IsWritable(path string) (bool, error) {
+	tmpFile := "tmpfile"
+
+	file, err := os.CreateTemp(path, tmpFile)
+	if err != nil {
+		return false, err
+	}
+
+	defer os.Remove(file.Name())
+	defer file.Close()
+
+	return true, nil
+}

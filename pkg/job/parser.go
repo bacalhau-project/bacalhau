@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
@@ -63,6 +64,24 @@ func ParseStorageString(sourceURI, destinationPath string, options map[string]st
 		res = model.StorageSpec{
 			StorageSource: model.StorageSourceLocalDirectory,
 			SourcePath:    filepath.Join(parsedURI.Host, parsedURI.Path),
+		}
+		for key, value := range options {
+			switch key {
+			case "ro", "read-only", "read_only", "readonly":
+				readonly, parseErr := strconv.ParseBool(value)
+				if parseErr != nil {
+					return model.StorageSpec{}, fmt.Errorf("failed to parse read-only option: %s", parseErr)
+				}
+				res.ReadWrite = !readonly
+			case "rw", "read-write", "read_write", "readwrite":
+				readwrite, parseErr := strconv.ParseBool(value)
+				if parseErr != nil {
+					return model.StorageSpec{}, fmt.Errorf("failed to parse read-write option: %s", parseErr)
+				}
+				res.ReadWrite = readwrite
+			default:
+				return model.StorageSpec{}, fmt.Errorf("unknown option %s", key)
+			}
 		}
 	case "git", "gitlfs":
 		u, err := clone.IsValidGitRepoURL(sourceURI)

@@ -35,6 +35,38 @@ func (s *APITestSuite) TestJobsCountInitiallyZero() {
 	s.Equal(0, count)
 }
 
+func (s *APITestSuite) TestCanaryJobsStored() {
+	jobEvent := v1beta1.JobEvent{
+		JobID:     "testjob",
+		EventName: v1beta1.JobEventCreated,
+		Spec: v1beta1.Spec{
+			Annotations: []string{"canary"},
+		},
+	}
+	s.Require().NoError(s.api.AddEvent(jobEvent))
+
+	info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
+	s.Require().NoError(err)
+	s.Require().Contains(info.Job.Spec.Annotations, "canary")
+}
+
+func (s *APITestSuite) TestHelloLambdaJobsStored() {
+	jobEvent := v1beta1.JobEvent{
+		JobID:     "testjob",
+		EventName: v1beta1.JobEventCreated,
+		Spec: v1beta1.Spec{
+			Docker: v1beta1.JobSpecDocker{
+				Entrypoint: []string{"hello λ!"},
+			},
+		},
+	}
+	s.Require().NoError(s.api.AddEvent(jobEvent))
+
+	info, err := s.api.GetJobInfo(s.ctx, jobEvent.JobID)
+	s.Require().NoError(err)
+	s.Require().Contains(info.Job.Spec.Docker.Entrypoint, "hello λ!")
+}
+
 func (s *APITestSuite) TestModerateBidRequest() {
 	for _, shouldApprove := range []bool{true, false} {
 		s.Run(fmt.Sprintf("moderator approves is %t", shouldApprove), func() {

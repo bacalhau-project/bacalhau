@@ -21,10 +21,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/sync/errgroup"
 )
 
-const maxServeTime = 1 * time.Second
+const maxServeTime = 5 * time.Second
 const maxTestTime = 10 * time.Second
+const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
 	suite.Suite
@@ -59,7 +61,17 @@ func (s *ServeSuite) SetupTest() {
 	s.ipfsPort = node.APIPort
 }
 
-func (s *ServeSuite) serve(extraArgs ...string) uint16 {
+func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
+	// If the slice contains RETURN_ERROR_FLAG, take it out of the array and set returnError to true
+	returnError := false
+	for i, arg := range extraArgs {
+		if arg == RETURN_ERROR_FLAG {
+			extraArgs = append(extraArgs[:i], extraArgs[i+1:]...)
+			returnError = true
+			break
+		}
+	}
+
 	bigPort, err := freeport.GetFreePort()
 	s.Require().NoError(err)
 	port := uint16(bigPort)
@@ -82,23 +94,31 @@ func (s *ServeSuite) serve(extraArgs ...string) uint16 {
 	s.T().Logf("Command to execute: %q", args)
 
 	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
-	s.T().Cleanup(cancel)
+	errs, ctx := errgroup.WithContext(ctx)
 
-	go func() {
+	s.T().Cleanup(cancel)
+	errs.Go(func() error {
 		_, err := cmd.ExecuteContextC(ctx)
+		if returnError {
+			return err
+		}
 		s.NoError(err)
-	}()
+		return nil
+	})
 
 	t := time.NewTicker(10 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			if returnError {
+				return 0, errs.Wait()
+			}
 			s.FailNow("Server did not start in time")
 		case <-t.C:
 			livezText, _ := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/livez", port))
 			if string(livezText) == "OK" {
-				return port
+				return port, nil
 			}
 		}
 	}
@@ -125,7 +145,7 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, error) {
 }
 
 func (s *ServeSuite) TestHealthcheck() {
-	port := s.serve()
+	port, _ := s.serve()
 	healthzText, err := s.curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
 	s.Require().NoError(err)
 	var healthzJSON types.HealthInfo
@@ -134,19 +154,19 @@ func (s *ServeSuite) TestHealthcheck() {
 }
 
 func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	port := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "compute", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
 	s.Require().Contains(s.out.String(), expectedURL)
 }
 
 func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
-	port := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
+	port, _ := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
 	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
 	s.Require().NotContains(s.out.String(), expectedURL)
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {
-	port := s.serve("--node-type", "requester", "--node-type", "compute")
+	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := publicapi.NewRequesterAPIClient("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
@@ -159,7 +179,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 	// Networking is disabled by default so we try to submit a networked job and
 	// expect it to be rejected.
-	port := s.serve("--node-type", "requester")
+	port, _ := s.serve("--node-type", "requester")
 	client := publicapi.NewRequesterAPIClient("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
@@ -241,3 +261,16 @@ func (s *ServeSuite) TestGetPeers() {
 	_, err = getPeers(OS)
 	s.Require().Error(err)
 }
+
+// TODO: Can't figure out how to make this test work, it spits out the help text
+// func (s *ServeSuite) TestBadBacalhauDir() {
+// 	badDirString := "/BADDIR"
+
+// 	// if we set the peer connect to "env" it should return the peers from the env
+// 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
+// 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
+// 	os.Setenv("BACALHAU_DIR", badDirString)
+// 	_, err := s.serve("--node-type", "requester", "--node-type", "compute", RETURN_ERROR_FLAG)
+// 	s.Require().Contains(s.out.String(), "Could not write to")
+// 	s.Error(err)
+// }

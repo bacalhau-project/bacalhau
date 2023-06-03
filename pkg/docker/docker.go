@@ -21,6 +21,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -241,6 +242,106 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	}, nil
 }
 
+// ImageDistribution fetches the details for the specified image by asking
+// docker to fetch the distribution manifest from the remote registry. This
+// manifest will contain information on the digest along with the details
+// of the platform that the image supports.
+//
+// It is worth noting that if the call is made to the docker hub, the digest
+// retrieved may not appear accurate when compared to the hub website but
+// this is expected as the non-platform-specific digest is not displayed
+// on the docker hub. This digest is safe however as both manual and
+// programmatic pulls do the correct thing in retrieving the correct image
+// for the platform.
+//
+// cf:
+//   - https://github.com/moby/moby/issues/40636)
+//   - https://github.com/docker/roadmap/issues/262
+//
+// When a docker image is available on only a single platform, the digest
+// shown will be the digest pointing directly at the manifest for that image
+// on that platform (as shown by the docker hub).  Where multiple platforms
+// are available, the digest is pointing to a top level document describing
+// all of the different platform manifests available.
+//
+// In either case, `docker pull` will do the correct thing and download the
+// image for your platform. For example:
+//
+// $ docker manifest inspect  bitnami/rabbitmq@sha256:0be0d2a2 ...
+//
+//	"manifests": [ {
+//		  "digest": "sha256:959a02013e8ab5538167f9....",
+//		  "platform": { "architecture": "amd64", "os": "linux" }
+//		},
+//		{
+//		  "digest": "sha256:11ee2c7e9e69e3a8311a19....",
+//		  "platform": { "architecture": "arm64", "os": "linux"}
+//		}]
+//
+// $ docker pull bitnami/rabbitmq@sha256:0be0d2a2 ...
+// $ docker image ls
+// bitnami/rabbitmq ... 48603925e10c
+//
+// The digest 486039 can be found in manifest sha256:11ee2c7e which is the manifest for
+// the current authors machine.
+//
+// $ docker manifest inspect bitnami/rabbitmq@sha256:11ee2c7e
+//
+//	  "config": {
+//		   "size": 7383,
+//		   "digest": "sha256:48603925e10c01936ea4258f...."
+//	  }
+//
+// This is the image that will finally be installed.
+func (c *Client) ImageDistribution(
+	ctx context.Context, image string, creds config.DockerCredentials,
+) (*ImageManifest, error) {
+	// Check whether the requested image (e.g. ubuntu:kinetic) is available from
+	// the local docker daemon from a previous download, and use that digest.
+	// There is no guarantee that this digest is 100% the most recent digest for
+	// the provided image tag, it may have changed remotely and unless we
+	// explicitly query for it remotely, we will never know it has been updated.
+	info, _, err := c.ImageInspectWithRaw(ctx, image)
+	if err == nil {
+		repos := info.RepoDigests
+		if len(repos) >= 1 {
+			// We only want the digest part of the name, otherwise we would have
+			// to go through supporting two different values in the returned
+			// ImageManifest (fully qualified IDs and also just digests)
+			digestParts := strings.Split(repos[0], "@")
+			digest, err := digest.Parse(digestParts[1])
+			if err != nil {
+				return nil, err
+			}
+
+			return &ImageManifest{
+				Digest: digest,
+				Platforms: []v1.Platform{
+					{
+						Architecture: info.Architecture,
+						OS:           info.Os,
+						OSVersion:    info.OsVersion,
+					},
+				},
+			}, nil
+		}
+	}
+
+	authToken := getAuthToken(ctx, image, creds)
+	dist, err := c.DistributionInspect(ctx, image, authToken)
+	if err != nil {
+		return nil, errors.Wrapf(err, DistributionInspectError, image)
+	}
+
+	obj := dist.Descriptor.Digest
+	manifest := &ImageManifest{
+		Digest:    obj,
+		Platforms: append([]v1.Platform(nil), dist.Platforms...),
+	}
+
+	return manifest, nil
+}
+
 func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {
 	_, _, err := c.ImageInspectWithRaw(ctx, image)
 	if err == nil {
@@ -358,7 +459,10 @@ func getAuthToken(ctx context.Context, image string, dockerCreds config.DockerCr
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to encode docker credentials")
 			} else {
-				log.Ctx(ctx).Info().Msg("authenticated inspect from docker registry")
+				log.Ctx(ctx).
+					Info().
+					Str("Image", image).
+					Msg("authenticated inspect from docker registry")
 				return base64.URLEncoding.EncodeToString(encodedJSON)
 			}
 		} else {

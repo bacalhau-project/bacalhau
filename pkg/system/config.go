@@ -212,7 +212,7 @@ func EnsureConfigDir() (string, error) {
 		}
 	} else {
 		if fileinf, err := os.Stat(configDir); err != nil {
-			return "", errors.Wrapf(err, "failed to stat config dir %q", configDir)
+			return "", errors.Wrapf(err, "could not create or access config dir %q", configDir)
 		} else if !fileinf.IsDir() {
 			return "", fmt.Errorf("%q is not a directory", configDir)
 		}

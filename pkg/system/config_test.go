@@ -98,6 +98,7 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 		{tempDir, "", tempDir},
 		{"", tempDir, tempDir},
 		{tempDir, default_dir, default_dir},
+		{"/BADDIR", tempDir, tempDir},
 	}
 	for _, test := range tests {
 		s.Run(
@@ -111,4 +112,12 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 				s.NoError(err)
 			})
 	}
+}
+
+func (s *SystemConfigSuite) TestNiceErrorOnBadConfigDir() {
+	badDirString := "/BADDIR"
+	s.T().Setenv("BACALHAU_DIR", badDirString)
+	_, err := EnsureConfigDir()
+	s.Error(err)
+	s.Contains(err.Error(), badDirString)
 }

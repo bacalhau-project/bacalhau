@@ -29,6 +29,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -322,12 +323,12 @@ func ExecuteJob(ctx context.Context,
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	err = WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
-	if err != nil {
-		if err.Error() == PrintoutCanceledButRunningNormally {
+	jobErr := WaitForJobAndPrintResultsToUser(ctx, cmd, j, quiet)
+	if jobErr != nil {
+		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			Fatal(cmd, "", 0)
 		} else {
-			Fatal(cmd, fmt.Sprintf("Error submitting job: %s", err), 1)
+			cmd.PrintErrf("\nError submitting job: %s", jobErr)
 		}
 	}
 
@@ -344,60 +345,28 @@ func ExecuteJob(ctx context.Context,
 		Fatal(cmd, fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
 
-	printOut := "%s" // We only know this at the end, we'll fill it in there.
-	resultsCID := ""
-	indentOne := "  "
-	indentTwo := strings.Repeat(indentOne, 2)
-	if runtimeSettings.PrintNodeDetails {
-		printOut += "\n"
-		printOut += "Job Results By Node:\n"
-		for _, n := range js.Executions {
-			printOut += fmt.Sprintf("Node %s:\n", n.NodeID[:8])
-			if n.RunOutput == nil {
-				printOut += fmt.Sprintf(indentTwo + "No RunOutput for this execution" +
-					"\n")
+	if runtimeSettings.PrintNodeDetails || jobErr != nil {
+		cmd.Println("\nJob Results By Node:")
+		for message, nodes := range summariseExecutions(js) {
+			cmd.Printf("• Node %s: ", strings.Join(nodes, ", "))
+			if strings.ContainsRune(message, '\n') {
+				cmd.Printf("\n\t%s\n", strings.Join(strings.Split(message, "\n"), "\n\t"))
 			} else {
-				printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", n.RunOutput.ExitCode)
-				resultsCID = n.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
-				printResults := func(t string, s string, trunc bool) {
-					truncatedString := ""
-					if trunc {
-						truncatedString = " (truncated: last 2000 characters)"
-					}
-					if s != "" {
-						printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
-					} else {
-						printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
-					}
-				}
-				printResults("Stdout", n.RunOutput.STDOUT, n.RunOutput.StdoutTruncated)
-				printResults("Stderr", n.RunOutput.STDERR, n.RunOutput.StderrTruncated)
+				cmd.Println(message)
 			}
 		}
 	}
 
-	printOut += fmt.Sprintf(`
-To download the results, execute:
-%s%s get %s
-
-To get more details about the run, execute:
-%s%s describe %s
-`, indentOne,
-		getCommandLineExecutable(),
-		j.Metadata.ID,
-		indentOne,
-		getCommandLineExecutable(),
-		j.Metadata.ID)
-
-	// Have to do a final Sprintf so we can inject the resultsCID into the right place
-	if resultsCID != "" {
-		resultsCID = fmt.Sprintf("Results CID: %s\n", resultsCID)
+	hasResults := slices.ContainsFunc(js.Executions, func(e model.ExecutionState) bool { return e.RunOutput != nil })
+	if !quiet && hasResults {
+		cmd.Printf("\nTo download the results, execute:\n\t%s get %s\n", getCommandLineExecutable(), j.ID())
 	}
+
 	if !quiet {
-		cmd.Print(fmt.Sprintf(printOut, resultsCID))
+		cmd.Printf("\nTo get more details about the run, execute:\n\t%s describe %s\n", getCommandLineExecutable(), j.ID())
 	}
 
-	if runtimeSettings.AutoDownloadResults {
+	if hasResults && runtimeSettings.AutoDownloadResults {
 		err = downloadResultsHandler(
 			ctx,
 			cm,
@@ -410,6 +379,31 @@ To get more details about the run, execute:
 		}
 	}
 	return nil
+}
+
+// Groups the executions in the job state, returning a map of printable messages
+// to node(s) that generated that message.
+func summariseExecutions(state model.JobState) map[string][]string {
+	results := make(map[string][]string, len(state.Executions))
+	for _, execution := range state.Executions {
+		var message string
+		if execution.RunOutput != nil {
+			if execution.RunOutput.ErrorMsg != "" {
+				message = execution.RunOutput.ErrorMsg
+			} else if execution.RunOutput.ExitCode > 0 {
+				message = execution.RunOutput.STDERR
+			} else {
+				message = execution.RunOutput.STDOUT
+			}
+		} else if execution.State.IsDiscarded() {
+			message = execution.Status
+		}
+
+		if message != "" {
+			results[message] = append(results[message], system.GetShortID(execution.NodeID))
+		}
+	}
+	return results
 }
 
 func downloadResultsHandler(
@@ -609,8 +603,6 @@ To cancel the job, run:
 	// goroutine for handling SIGINT from the signal channel, or context
 	// completion messages.
 	go func() {
-		log.Ctx(ctx).Trace().Msgf("Signal goreturn")
-
 		for {
 			select {
 			case s := <-signalChan: // first signal, cancel context
@@ -695,16 +687,14 @@ To cancel the job, run:
 
 			lastEventState = event.JobState.New
 
-			if event.JobState.New == model.JobStateError {
-				err := errors.New(event.Comment)
-				spinner.Done(StopFailed)
-				cancel()
-				return err
-			}
-
 			if event.JobState.New.IsTerminal() {
+				if event.JobState.New != model.JobStateCompleted {
+					returnError = errors.New(event.Comment)
+					spinner.Done(StopFailed)
+				} else {
+					spinner.Done(StopSuccess)
+				}
 				cmdShuttingDown = true
-				spinner.Done(StopSuccess)
 				break
 			}
 		}
@@ -716,8 +706,6 @@ To cancel the job, run:
 
 		time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
 	}
-
-	spinner.Done(StopSuccess)
 
 	return returnError
 }

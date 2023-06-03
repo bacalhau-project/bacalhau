@@ -129,6 +129,18 @@ func (e *Executor) Run(
 	if err != nil {
 		return executor.FailResult(err)
 	}
+	defer func() {
+		log.Ctx(ctx).Debug().
+			Str("Execution", executionID).
+			Msg("attempting cleanup of inputs for execution")
+		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
+		if err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Str("Execution", executionID).
+				Msg("errors occurred when cleaning up inputs")
+		}
+	}()
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
@@ -136,10 +148,10 @@ func (e *Executor) Run(
 	for spec, volumeMount := range inputVolumes {
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+
 			mounts = append(mounts, mount.Mount{
-				Type: mount.TypeBind,
-				// this is an input volume so is read only
-				ReadOnly: true,
+				Type:     mount.TypeBind,
+				ReadOnly: volumeMount.ReadOnly,
 				Source:   volumeMount.Source,
 				Target:   volumeMount.Target,
 			})

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 
+	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/interface-go-ipfs-core"
@@ -415,6 +416,11 @@ func createRepo(path string, nodeConfig Config) error {
 		cfg.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
 	} else {
 		cfg.Addresses.API = []string{"/ip4/127.0.0.1/tcp/0"}
+	}
+
+	preferredAddress := bac_config.PreferredAddress()
+	if preferredAddress != "" {
+		cfg.Addresses.Swarm = []string{fmt.Sprintf("/ip4/%s/tcp/0", preferredAddress)}
 	}
 
 	// establish peering with the passed nodes. This is different than bootstrapping or manually connecting to peers,
