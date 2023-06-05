@@ -126,3 +126,13 @@ polygon-rpc.com
 eth.public-rpc.com
 bscrpc.com
 filecoin.public-rpc.com
+
+api.etherscan.io
+# Use Case
+# ==============================
+# Ethereum Fraud Detection
+# The following infomrations are needed from api.etherscan.io
+# 1. Balance for a Single Address
+# 2. Data about an account's token transfer transactions
+# 3. Get a list of 'Normal' Transactions By Address
+# Which are the core data needed for training the Machine Learning Model.
