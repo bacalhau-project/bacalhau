@@ -38,8 +38,25 @@ func DevstackEnvFile() string {
 	return os.Getenv("DEVSTACK_ENV_FILE")
 }
 
-// WriteRunInfoFile writes the ShellVariables to a file that can be imported. It writes bacalhauServe.run to TempDir().
+// WriteRunInfoFile writes the ShellVariables to a file that can be imported.
+// It attempts to bacalhauServe.run to /run, /var/run etc until it fails and
+// fallsback to the config path (/usr/x/.bacalhau).  Before it does this
+// however, it checks if we have a DEVSTACK_ENV_FILE environment variable set
+// which marks it as in dev mode (with shell vars provided by a devstack).
 func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) error {
+
+	// Attempt to write to the devstack env if the developer has specified it
+	// before we attempt the various run folders
+	RunInfoFilePath = DevstackEnvFile()
+	if RunInfoFilePath != "" {
+		// For devmode just dump the file to where the user specified
+		err := os.WriteFile(RunInfoFilePath, []byte(summaryShellVariablesString), 0644) //nolint:gosec,gomnd //devmode
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
+		}
+		return nil
+	}
+
 	writePath := ""
 	if writeable, _ := filefs.IsWritable("/run"); writeable {
 		writePath = "/run" // Linux
@@ -49,20 +66,13 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 		writePath = "/private/var/run" // MacOS
 	} else {
 		// otherwise write to the user's dir, which should be available on all systems
-		userDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
-			return nil
-		}
+		configPath := GetConfigPath()
 		log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
-			"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
-		writePath = userDir
+			"This file contains sensitive information, so please ensure it is limited in visibility.", configPath)
+		writePath = configPath
 	}
 
-	RunInfoFilePath = DevstackEnvFile()
-	if RunInfoFilePath == "" {
-		RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
-	}
+	RunInfoFilePath = filepath.Join(writePath, DefaultRunInfoFilename)
 
 	// Use os.Create to truncate the file if it already exists
 	f, err := os.Create(RunInfoFilePath)
@@ -89,6 +99,7 @@ func WriteRunInfoFile(ctx context.Context, summaryShellVariablesString string) e
 		log.Ctx(ctx).Err(err).Msgf("Failed to write file %s", RunInfoFilePath)
 		return nil // Not a fatal error to not write the file
 	}
+
 	return nil
 }
 
