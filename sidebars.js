@@ -45,6 +45,17 @@ module.exports = {
       items: [
         {
           type: 'category',
+          label: 'Case Studies',
+          link: {
+            type: 'generated-index',
+            description: "Case Studies",  
+          },
+          items: [
+            'examples/case-studies/duckdb-log-processing/index',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Workload Onboarding',
           link: {
             type: 'generated-index',
