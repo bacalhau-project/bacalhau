@@ -7,9 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const RegexString = "A-Za-z0-9._~!:@,;+-"
@@ -71,7 +72,7 @@ func buildJobOutputs(ctx context.Context, outputVolumes []string) ([]model.Stora
 
 		outputVolumesMap[slices[1]] = model.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
+			// e.g. --cid ipfs:abc
 			StorageSource: model.StorageSourceIPFS,
 			Name:          slices[0],
 			Path:          slices[1],

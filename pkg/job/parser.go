@@ -125,10 +125,6 @@ func ParsePublisherString(destinationURI string, options map[string]interface{})
 		res = model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		}
-	case "lotus":
-		res = model.PublisherSpec{
-			Type: model.PublisherFilecoin,
-		}
 	case "estuary":
 		res = model.PublisherSpec{
 			Type: model.PublisherEstuary,

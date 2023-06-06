@@ -11,7 +11,6 @@ const (
 	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
 	PublisherIpfs
-	PublisherFilecoin
 	PublisherEstuary
 	PublisherS3
 	publisherDone // must be last
