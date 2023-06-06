@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 // these are util methods for the CLI
@@ -106,73 +107,4 @@ func ConstructDockerJob( //nolint:funlen
 	j.Spec.Deal = deal
 
 	return j, nil
-}
-
-func ConstructLanguageJob(
-	ctx context.Context,
-	inputs []model.StorageSpec,
-	outputVolumes []string,
-	concurrency int,
-	confidence int,
-	minBids int,
-	timeout float64,
-	// See JobSpecLanguage
-	language string,
-	languageVersion string,
-	command string,
-	programPath string,
-	requirementsPath string,
-	deterministic bool,
-	annotations []string,
-) (*model.Job, error) {
-	// TODO refactor this wrt ConstructDockerJob
-
-	jobOutputs, err := buildJobOutputs(ctx, outputVolumes)
-	if err != nil {
-		return &model.Job{}, err
-	}
-
-	var jobAnnotations []string
-	var unSafeAnnotations []string
-	for _, a := range annotations {
-		if IsSafeAnnotation(a) && a != "" {
-			jobAnnotations = append(jobAnnotations, a)
-		} else {
-			unSafeAnnotations = append(unSafeAnnotations, a)
-		}
-	}
-
-	if len(unSafeAnnotations) > 0 {
-		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
-			RegexString,
-			strings.Join(unSafeAnnotations, ", "))
-	}
-
-	j, err := model.NewJobWithSaneProductionDefaults()
-	if err != nil {
-		return &model.Job{}, err
-	}
-
-	j.Spec.Engine = model.EngineLanguage
-	j.Spec.Language = model.JobSpecLanguage{
-		Language:         language,
-		LanguageVersion:  languageVersion,
-		Deterministic:    deterministic,
-		Context:          model.StorageSpec{},
-		Command:          command,
-		ProgramPath:      programPath,
-		RequirementsPath: requirementsPath,
-	}
-	j.Spec.Timeout = timeout
-	j.Spec.Inputs = inputs
-	j.Spec.Outputs = jobOutputs
-	j.Spec.Annotations = jobAnnotations
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: concurrency,
-		Confidence:  confidence,
-		MinBids:     minBids,
-	}
-
-	return j, err
 }
