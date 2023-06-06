@@ -9,12 +9,13 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/suite"
 )
 
 type APITestSuite struct {

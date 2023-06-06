@@ -3,7 +3,7 @@ package moderation
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"

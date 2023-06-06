@@ -7,18 +7,19 @@ import (
 
 	"go.ptx.dk/multierrgroup"
 
+	"github.com/pkg/errors"
+
+	localdb2 "github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb/postgres"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model/moderation"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
 	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model"
 	bacalhau_model_beta "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/pkg/errors"
 
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -44,10 +45,10 @@ type ModelOptions struct {
 
 type ModelAPI struct {
 	options         ModelOptions
-	localDB         localdb.LocalDB
+	localDB         localdb2.LocalDB
 	nodeDB          routing.NodeInfoStore
 	store           *store.PostgresStore
-	stateResolver   *localdb.StateResolver
+	stateResolver   *localdb2.StateResolver
 	jobEventHandler *jobEventHandler
 	moderator       moderation.ManualModerator
 	cleanupFunc     func(context.Context)
@@ -97,7 +98,7 @@ func NewModelAPI(options ModelOptions) (*ModelAPI, error) {
 		TTL: 2 * time.Minute,
 	})
 
-	stateResolver := localdb.GetStateResolver(postgresDB)
+	stateResolver := localdb2.GetStateResolver(postgresDB)
 
 	// Allow good jobs to be processed immediately but hold bad jobs for moderation.
 	jobSelector := bidstrategy.NewWaitingStrategy(
@@ -233,11 +234,11 @@ func (api *ModelAPI) GetJobsOperatingOnCID(ctx context.Context, cid string) ([]*
 	return api.store.GetJobsOperatingOnCID(ctx, cid)
 }
 
-func (api *ModelAPI) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*bacalhau_model_beta.Job, error) {
+func (api *ModelAPI) GetJobs(ctx context.Context, query localdb2.JobQuery) ([]*bacalhau_model_beta.Job, error) {
 	return api.localDB.GetJobs(ctx, query)
 }
 
-func (api *ModelAPI) GetJobsCount(ctx context.Context, query localdb.JobQuery) (int, error) {
+func (api *ModelAPI) GetJobsCount(ctx context.Context, query localdb2.JobQuery) (int, error) {
 	return api.localDB.GetJobsCount(ctx, query)
 }
 

@@ -8,13 +8,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type GenericSQLSuite struct {

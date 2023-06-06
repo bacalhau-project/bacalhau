@@ -6,10 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
 func TestEventHandlerSuite(t *testing.T) {

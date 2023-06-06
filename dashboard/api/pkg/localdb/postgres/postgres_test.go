@@ -9,16 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	shared2 "github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb/shared"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 func TestPostgresSuite(t *testing.T) {
@@ -65,9 +66,9 @@ func TestPostgresSuite(t *testing.T) {
 	port, err := strconv.Atoi(status.NetworkSettings.Ports["5432/tcp"][0].HostPort)
 	require.NoError(t, err)
 
-	var datastore *shared.GenericSQLDatastore
-	testingSuite := new(shared.GenericSQLSuite)
-	testingSuite.SetupHandler = func() *shared.GenericSQLDatastore {
+	var datastore *shared2.GenericSQLDatastore
+	testingSuite := new(shared2.GenericSQLSuite)
+	testingSuite.SetupHandler = func() *shared2.GenericSQLDatastore {
 		if datastore == nil {
 			for {
 				datastore, err = NewPostgresDatastore(

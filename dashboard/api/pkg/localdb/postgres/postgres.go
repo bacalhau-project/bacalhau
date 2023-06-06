@@ -4,11 +4,12 @@ import (
 	"fmt"
 
 	"github.com/XSAM/otelsql"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/lib/pq"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb/shared"
 )
 
 func NewPostgresDatastore(

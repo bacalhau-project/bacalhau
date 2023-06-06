@@ -2,20 +2,20 @@ package shared
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
-	"database/sql"
-
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
-	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
 // SQLClient is so we can pass *sql.DB and *sql.Tx to the same functions

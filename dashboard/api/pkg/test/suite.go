@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
-	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
-	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb/postgres"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb/shared"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb/postgres"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb/shared"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/store"
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const SpinUpWaitTime = 200 * time.Millisecond

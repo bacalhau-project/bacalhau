@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
-	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 	"github.com/rs/zerolog/log"
+
+	localdb2 "github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
+	bacalhau_model "github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 )
 
 type jobEventBuffer struct {
@@ -18,16 +19,16 @@ type jobEventBuffer struct {
 }
 
 type jobEventHandler struct {
-	localDB      localdb.LocalDB
-	eventHandler *localdb.LocalDBEventHandler
+	localDB      localdb2.LocalDB
+	eventHandler *localdb2.LocalDBEventHandler
 	eventBuffers map[string]*jobEventBuffer
 	eventMutex   sync.Mutex
 }
 
-func newJobEventHandler(localDB localdb.LocalDB) *jobEventHandler {
+func newJobEventHandler(localDB localdb2.LocalDB) *jobEventHandler {
 	return &jobEventHandler{
 		localDB:      localDB,
-		eventHandler: localdb.NewLocalDBEventHandler(localDB),
+		eventHandler: localdb2.NewLocalDBEventHandler(localDB),
 		eventBuffers: map[string]*jobEventBuffer{},
 	}
 }

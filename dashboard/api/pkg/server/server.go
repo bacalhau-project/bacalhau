@@ -14,12 +14,12 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/localdb"
 	bacmodel "github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta1"
 
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/model"
 	"github.com/bacalhau-project/bacalhau/dashboard/api/pkg/types"
-	"github.com/bacalhau-project/bacalhau/pkg/localdb"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
