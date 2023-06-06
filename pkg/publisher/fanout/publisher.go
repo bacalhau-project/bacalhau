@@ -1,4 +1,4 @@
-package combo
+package fanout
 
 import (
 	"context"
@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 )
 
 // A fanoutPublisher is a publisher that will try multiple publishers in
@@ -26,20 +27,31 @@ type fanoutPublisher struct {
 	timeout       time.Duration
 }
 
-func NewFanoutPublisher(publishers ...publisher.Publisher) publisher.Publisher {
-	return &fanoutPublisher{
+type fanoutOpt func(fp *fanoutPublisher)
+
+func WithTimeout(t time.Duration) fanoutOpt {
+	return func(fp *fanoutPublisher) {
+		fp.timeout = t
+	}
+}
+
+func WithPrioritization() fanoutOpt {
+	return func(fp *fanoutPublisher) {
+		fp.isPrioritized = true
+	}
+}
+
+func NewFanoutPublisher(publishers []publisher.Publisher, opts ...fanoutOpt) publisher.Publisher {
+	fp := &fanoutPublisher{
 		publishers,
 		false,
 		time.Duration(0),
 	}
-}
 
-func NewPrioritizedFanoutPublisher(timeout time.Duration, publishers ...publisher.Publisher) publisher.Publisher {
-	return &fanoutPublisher{
-		publishers,
-		true,
-		timeout,
+	for _, opt := range opts {
+		opt(fp)
 	}
+	return fp
 }
 
 type fanoutResult[T any, P any] struct {
