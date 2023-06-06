@@ -10,14 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 )
 
 type LogStreamTestSuite struct {
@@ -34,7 +35,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1, 0, false)
+	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1, 0)
 }
 
 func (s *LogStreamTestSuite) TearDownSuite() {

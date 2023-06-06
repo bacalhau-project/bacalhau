@@ -36,7 +36,6 @@ type Publisher enum {
     | Noop ("1")
     | IPFS ("2")
     | Estuary ("3")
-    | FilecoinLotus ("4")
 } representation int
 
 type Verifier enum {

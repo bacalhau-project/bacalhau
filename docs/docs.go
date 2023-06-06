@@ -1406,7 +1406,6 @@ const docTemplate = `{
                 "publisherUnknown",
                 "PublisherNoop",
                 "PublisherIpfs",
-                "PublisherFilecoin",
                 "PublisherEstuary",
                 "PublisherS3",
                 "publisherDone"
@@ -1669,8 +1668,6 @@ const docTemplate = `{
                 "StorageSourceRepoClone",
                 "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
-                "StorageSourceFilecoinUnsealed",
-                "StorageSourceFilecoin",
                 "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",

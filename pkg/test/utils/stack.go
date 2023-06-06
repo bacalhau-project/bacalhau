@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -15,22 +18,18 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func SetupTestWithDefaultConfigs(
 	ctx context.Context,
 	t *testing.T,
 	nodes int, badActors int,
-	lotusNode bool,
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	return SetupTest(
 		ctx,
 		t,
 		nodes, badActors,
-		lotusNode,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...,
@@ -41,7 +40,6 @@ func SetupTest(
 	ctx context.Context,
 	t *testing.T,
 	nodes int, badActors int,
-	lotusNode bool,
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
 	nodeOverrides ...node.NodeConfig,
@@ -54,7 +52,6 @@ func SetupTest(
 	options := devstack.DevStackOptions{
 		NumberOfHybridNodes:      nodes,
 		NumberOfBadComputeActors: badActors,
-		LocalNetworkLotus:        lotusNode,
 	}
 	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{}, nodeOverrides...)
 	return stack, cm

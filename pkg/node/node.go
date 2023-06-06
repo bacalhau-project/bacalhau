@@ -5,13 +5,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
@@ -21,13 +28,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/imdario/mergo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
-	"github.com/rs/zerolog/log"
 )
 
 const JobInfoTopic = "bacalhau-job-info"
@@ -47,7 +47,6 @@ type NodeConfig struct {
 	CleanupManager            *system.CleanupManager
 	JobStore                  jobstore.Store
 	Host                      host.Host
-	FilecoinUnsealedPath      string
 	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   uint16
@@ -55,7 +54,6 @@ type NodeConfig struct {
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
-	LotusConfig               *filecoinlotus.PublisherConfig
 	SimulatorNodeID           string
 	IsRequesterNode           bool
 	IsComputeNode             bool

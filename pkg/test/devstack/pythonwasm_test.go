@@ -18,11 +18,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
+	"github.com/rs/zerolog/log"
+
 	cmd "github.com/bacalhau-project/bacalhau/cmd/bacalhau"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -66,7 +67,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
 
@@ -163,7 +164,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
 
@@ -203,7 +204,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults())
 

@@ -5,11 +5,12 @@ package simulator
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type SimulatorSuite struct {
@@ -22,8 +23,6 @@ func TestSimulatorSuite(t *testing.T) {
 	suite.Run(t, new(SimulatorSuite))
 }
 
-// Test that the combo driver gives preference to the filecoin unsealed driver
-// also that this does not affect normal jobs where the CID resides on the IPFS driver
 func (suite *SimulatorSuite) TestSimulatorSanity() {
 	system.InitConfigForTesting(suite.T())
 

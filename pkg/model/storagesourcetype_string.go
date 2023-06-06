@@ -13,18 +13,16 @@ func _() {
 	_ = x[StorageSourceRepoClone-2]
 	_ = x[StorageSourceRepoCloneLFS-3]
 	_ = x[StorageSourceURLDownload-4]
-	_ = x[StorageSourceFilecoinUnsealed-5]
-	_ = x[StorageSourceFilecoin-6]
-	_ = x[StorageSourceEstuary-7]
-	_ = x[StorageSourceInline-8]
-	_ = x[StorageSourceLocalDirectory-9]
-	_ = x[StorageSourceS3-10]
-	_ = x[storageSourceDone-11]
+	_ = x[StorageSourceEstuary-5]
+	_ = x[StorageSourceInline-6]
+	_ = x[StorageSourceLocalDirectory-7]
+	_ = x[StorageSourceS3-8]
+	_ = x[storageSourceDone-9]
 }
 
-const _StorageSourceType_name = "storageSourceUnknownIPFSRepoCloneRepoCloneLFSURLDownloadFilecoinUnsealedFilecoinEstuaryInlineLocalDirectoryS3storageSourceDone"
+const _StorageSourceType_name = "storageSourceUnknownIPFSRepoCloneRepoCloneLFSURLDownloadEstuaryInlineLocalDirectoryS3storageSourceDone"
 
-var _StorageSourceType_index = [...]uint8{0, 20, 24, 33, 45, 56, 72, 80, 87, 93, 107, 109, 126}
+var _StorageSourceType_index = [...]uint8{0, 20, 24, 33, 45, 56, 63, 69, 83, 85, 102}
 
 func (i StorageSourceType) String() string {
 	if i < 0 || i >= StorageSourceType(len(_StorageSourceType_index)-1) {

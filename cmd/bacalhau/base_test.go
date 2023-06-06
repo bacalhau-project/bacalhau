@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
 )
 
 type BaseSuite struct {
@@ -26,7 +27,7 @@ func (s *BaseSuite) SetupTest() {
 	Fatal = FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0,
 		node.NewComputeConfigWith(node.ComputeConfigParams{
 			JobSelectionPolicy: model.JobSelectionPolicy{
 				Locality: model.Anywhere,
