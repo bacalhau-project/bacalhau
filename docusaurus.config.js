@@ -66,6 +66,7 @@ const config = {
         ],
       },
       metadata: [{name: 'keywords', content: 'Bacalhau Docs contains ifnormation for fast, cost efficient, and secure computation by explaining how to run jobs where the data is generated and stored.'}],
+      image: 'img/logo.png',
       blog: false,
       algolia :{
         appId: '15JCWQAGM1',
