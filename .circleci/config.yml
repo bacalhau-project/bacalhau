@@ -74,15 +74,15 @@ commands:
 
       - restore_cache:
           name: Restoring Go cache
-          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+          key: go-mod-v1-{{ arch }}-{{ checksum "go.sum" }}
 
       - run:
           name: Install packages
-          command: go get
+          command: go mod tidy
 
       - save_cache:
           name: Saving Go cache
-          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+          key: go-mod-v1-{{ arch }}-{{ checksum "go.sum" }}
           paths:
             - ~/.cache/go-build
             - ~/go/pkg/mod
@@ -326,6 +326,14 @@ jobs:
             golangci-lint version
 
       - run:
+          name: Set GOCACHE
+          command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
+
+      - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
@@ -338,7 +346,7 @@ jobs:
 
       - restore_cache:
           name: Restoring pre-commit cache
-          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
+          key: v2-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
 
       - run:
           name: Run linter
@@ -477,7 +485,7 @@ jobs:
           executor: linux-amd64
       - run:
           name: Install Swagger
-          command: | 
+          command: |
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH
             go install github.com/swaggo/swag/cmd/swag@v1.8.10
