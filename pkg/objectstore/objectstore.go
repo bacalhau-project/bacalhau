@@ -14,6 +14,11 @@ type ObjectStore interface {
 	// Returns a pointer to CallbackHooks where types can be registered
 	CallbackHooks() *commands.CallbackHooks
 
+	// Delete removes the value for the specified key from the provided
+	// prefix, and if any delete callbacks were registered, will also run
+	// those before returning
+	Delete(ctx context.Context, prefix string, key string, object any) error
+
 	// Get retrieves any data stored in the database with the specified prefix
 	// and key.  You can think of the prefix as a bucket, a namespace, or other
 	// named container which can group together IDs of a given type (to add an

@@ -112,6 +112,41 @@ func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string) (
 	return bytesValue, err
 }
 
+func (l *LocalObjectStore) Delete(ctx context.Context, prefix string, key string, object any) error {
+	if l.closed {
+		return ErrDatabaseClosed
+	}
+
+	if !slices.Contains[string](l.prefixes, prefix) {
+		return ErrNoSuchPrefix(prefix)
+	}
+
+	err := l.database.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(prefix))
+		return bucket.Delete([]byte(key))
+	})
+	if err != nil {
+		return err
+	}
+
+	if commands, err := l.callbacks.TriggerDelete(object); err == nil {
+		// err raised from trigger update above refers to whether the object has callbacks
+		// or not and so can be ignored if present.
+		for _, command := range commands {
+			err := l.runCallback(command)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Str("Prefix", command.Prefix).
+					Str("Key", command.Key).
+					Err(err).
+					Msg("failed to delete record from post-delete command")
+			}
+		}
+	}
+
+	return nil
+}
+
 func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, object any) error {
 	if l.closed {
 		return ErrDatabaseClosed
@@ -151,24 +186,7 @@ func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, o
 		// or not and so can be ignored if present.
 
 		for _, command := range commands {
-			// We want to get the existing data provided by the details in
-			// command, and then pass them to command.ModifyFunc. Whatever
-			// modify func returns is what we will set the new value to.
-			err = l.database.Update(func(tx *bolt.Tx) error {
-				bucket := tx.Bucket([]byte(command.Prefix))
-				if bucket == nil {
-					return ErrNoSuchPrefix(command.Prefix)
-				}
-				bytesValue := bucket.Get([]byte(command.Key))
-
-				bytes, err := command.Modify(bytesValue)
-				if err != nil {
-					return err
-				}
-
-				return bucket.Put([]byte(command.Key), bytes)
-			})
-
+			err := l.runCallback(command)
 			if err != nil {
 				log.Ctx(ctx).Error().
 					Str("Prefix", command.Prefix).
@@ -180,6 +198,26 @@ func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, o
 	}
 
 	return nil
+}
+
+func (l *LocalObjectStore) runCallback(cmd commands.Command) error {
+	// We want to get the existing data provided by the details in
+	// command, and then pass them to command.ModifyFunc. Whatever
+	// modify func returns is what we will set the new value to.
+	return l.database.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(cmd.Prefix))
+		if bucket == nil {
+			return ErrNoSuchPrefix(cmd.Prefix)
+		}
+		bytesValue := bucket.Get([]byte(cmd.Key))
+
+		bytes, err := cmd.Modify(bytesValue)
+		if err != nil {
+			return err
+		}
+
+		return bucket.Put([]byte(cmd.Key), bytes)
+	})
 }
 
 func (l *LocalObjectStore) Close(ctx context.Context) {

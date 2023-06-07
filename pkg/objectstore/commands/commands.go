@@ -30,7 +30,7 @@ func NewCommand(prefix string, key string, modifyFunc ModifyFunction) Command {
  */
 
 // AddToSet is a modify function that deserializes the string list
-// in the data parameter, adds a new new valuie
+// in the data parameter, adds a new value
 func AddToSet(newValue string) ModifyFunction {
 	return func(existingData []byte) ([]byte, error) {
 		var currentList []string
@@ -55,5 +55,31 @@ func AddToSet(newValue string) ModifyFunction {
 		currentList = slices.Insert[[]string](currentList, idx, newValue)
 
 		return json.Marshal(&currentList)
+	}
+}
+
+// DeleteFromSet returns a function. That function will take a json list
+// in []byte form and load it before removing `newValue` from the list
+// and re-saving it
+func DeleteFromSet(newValue string) ModifyFunction {
+	return func(existingData []byte) ([]byte, error) {
+		var currentList []string
+
+		if existingData != nil {
+			err := json.Unmarshal(existingData, &currentList)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		idx, found := slices.BinarySearch(currentList, newValue)
+		if found {
+			currentList = slices.Delete(currentList, idx, idx+1)
+			return json.Marshal(&currentList)
+		}
+
+		// Return what we were given as the data not in the
+		// list
+		return existingData, nil
 	}
 }

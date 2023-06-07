@@ -218,3 +218,56 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 
 	impl.Close(s.ctx)
 }
+
+func (s *ObjectStoreTestSuite) TestLocalDelete() {
+	type testdata struct {
+		ID   string
+		Name string
+	}
+
+	data1 := testdata{ID: "1", Name: "test"}
+	userUpdateCallback := func(object any) ([]commands.Command, error) {
+		t, ok := object.(testdata)
+		if !ok {
+			return nil, fmt.Errorf("callback type did not match: got %T", object)
+		}
+
+		c := commands.NewCommand("tags", "tagname", commands.AddToSet(t.ID))
+		return []commands.Command{c}, nil
+	}
+
+	userDeleteCallback := func(object any) ([]commands.Command, error) {
+		t, ok := object.(testdata)
+		if !ok {
+			return nil, fmt.Errorf("callback type did not match: got %T", object)
+		}
+
+		c := commands.NewCommand("tags", "tagname", commands.DeleteFromSet(t.ID))
+		return []commands.Command{c}, nil
+	}
+
+	impl, err := objectstore.GetImplementation(
+		objectstore.LocalImplementation,
+		local.WithPrefixes("job", "tags"),
+	)
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+
+	impl.CallbackHooks().RegisterUpdate(testdata{}, userUpdateCallback)
+	impl.CallbackHooks().RegisterDelete(testdata{}, userDeleteCallback)
+
+	err = impl.Put(s.ctx, "job", data1.ID, data1)
+	require.NoError(s.T(), err)
+
+	job, err := impl.Get(s.ctx, "job", data1.ID)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), job)
+
+	err = impl.Delete(s.ctx, "job", data1.ID, data1)
+	require.NoError(s.T(), err)
+
+	// The tag name should now be an empty list
+	tags, err := impl.Get(s.ctx, "tags", "tagname")
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "[]", string(tags))
+}

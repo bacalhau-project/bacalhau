@@ -20,6 +20,10 @@ func (d *DistributedObjectStore) CallbackHooks() *commands.CallbackHooks {
 	return d.callbacks
 }
 
+func (d *DistributedObjectStore) Delete(ctx context.Context, prefix string, key string, object any) error {
+	return nil
+}
+
 func (d *DistributedObjectStore) Get(ctx context.Context, prefix string, key string) ([]byte, error) {
 	return []byte{}, nil
 }
