@@ -44,6 +44,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      image: '/static/logo_assets/Icon/JPG/Bacalhau-icon.jpg',
       navbar: {
         title: "Bacalhau Docs",
         logo: {
