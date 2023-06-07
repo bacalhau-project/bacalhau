@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
@@ -270,4 +271,109 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	tags, err := impl.Get(s.ctx, "tags", "tagname")
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), "[]", string(tags))
+}
+
+func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
+	type testdata struct {
+		ID     string
+		Name   string
+		Labels map[string]string
+	}
+
+	data1 := testdata{
+		ID:   "1",
+		Name: "test",
+		Labels: map[string]string{
+			"height": "tall",
+			"depth":  "deep",
+		},
+	}
+
+	data2 := testdata{
+		ID:   "2",
+		Name: "another test",
+		Labels: map[string]string{
+			"height": "tall",
+			"depth":  "shallow",
+		},
+	}
+
+	userUpdateCallback := func(object any) ([]commands.Command, error) {
+		t, ok := object.(testdata)
+		if !ok {
+			return nil, fmt.Errorf("callback type did not match: got %T", object)
+		}
+
+		var commandList []commands.Command
+
+		// If labels is
+		//    Height=1
+		//    Depth=2
+		// we will end up with prefixes
+		// /labels/height -> {"1": [t.ID]}
+		// /labels/depth -> {"1": [t.ID]}
+		for k, v := range t.Labels {
+			// TODO: the ToLower should be slugify
+			c := commands.NewCommand("labels", strings.ToLower(k), commands.AddToMap(v, t.ID))
+			commandList = append(commandList, c)
+		}
+
+		return commandList, nil
+	}
+
+	userDeleteCallback := func(object any) ([]commands.Command, error) {
+		t, ok := object.(testdata)
+		if !ok {
+			return nil, fmt.Errorf("callback type did not match: got %T", object)
+		}
+
+		var commandList []commands.Command
+
+		for k, v := range t.Labels {
+			c := commands.NewCommand("labels", strings.ToLower(k), commands.DeleteFromMap(v, t.ID))
+			commandList = append(commandList, c)
+		}
+
+		return commandList, nil
+	}
+
+	impl, err := objectstore.GetImplementation(
+		objectstore.LocalImplementation,
+		local.WithPrefixes("job", "labels"),
+	)
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+
+	impl.CallbackHooks().RegisterUpdate(testdata{}, userUpdateCallback)
+	impl.CallbackHooks().RegisterDelete(testdata{}, userDeleteCallback)
+
+	err = impl.Put(s.ctx, "job", data1.ID, data1)
+	require.NoError(s.T(), err)
+
+	err = impl.Put(s.ctx, "job", data2.ID, data2)
+	require.NoError(s.T(), err)
+
+	checkLabels := func(name string, key string, values []string) {
+		var labelMap map[string][]string
+
+		d, err := impl.Get(s.ctx, "labels", name)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), d)
+
+		json.Unmarshal(d, &labelMap)
+		require.Equal(s.T(), values, labelMap[key])
+	}
+
+	checkLabels("height", "tall", []string{"1", "2"})
+
+	err = impl.Delete(s.ctx, "job", data1.ID, data1)
+	require.NoError(s.T(), err)
+
+	checkLabels("height", "tall", []string{"2"})
+
+	err = impl.Delete(s.ctx, "job", data2.ID, data2)
+	require.NoError(s.T(), err)
+
+	checkLabels("height", "tall", []string{})
+
 }
