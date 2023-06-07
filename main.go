@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bacalhau-project/bacalhau/cmd"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
-	"github.com/bacalhau-project/bacalhau/cmd/bacalhau"
+	"github.com/joho/godotenv"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/joho/godotenv"
-	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -34,5 +34,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	bacalhau.Execute()
+	cmd.Execute()
 }
