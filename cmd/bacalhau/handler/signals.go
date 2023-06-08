@@ -1,11 +1,9 @@
+//go:build !unix
+
 package handler
 
-import (
-	"os"
-	"syscall"
-)
+import "os"
 
 var ShutdownSignals = []os.Signal{
 	os.Interrupt,
-	syscall.SIGTERM,
 }

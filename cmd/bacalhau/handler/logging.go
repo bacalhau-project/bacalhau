@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
-// TODO(forrest): use viper configuration for this instead of a constant
 var LoggingMode = logger.LogModeDefault
 
 const (
