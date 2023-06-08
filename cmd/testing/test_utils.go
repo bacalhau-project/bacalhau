@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd"
+	"github.com/bacalhau-project/bacalhau/cmd/cli"
 )
 
 func ExecuteTestCobraCommand(args ...string) (c *cobra.Command, output string, err error) {
@@ -17,7 +17,7 @@ func ExecuteTestCobraCommand(args ...string) (c *cobra.Command, output string, e
 
 func ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...string) (c *cobra.Command, output string, err error) {
 	buf := new(bytes.Buffer)
-	root := cmd.NewRootCmd()
+	root := cli.NewRootCmd()
 	root.SetOut(buf)
 	root.SetErr(buf)
 	root.SetIn(stdin)

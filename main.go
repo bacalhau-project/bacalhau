@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/cmd"
+	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
@@ -34,5 +34,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd.Execute()
+	cli.Execute()
 }
