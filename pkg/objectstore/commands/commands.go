@@ -73,6 +73,9 @@ func DeleteFromSet(newValue string) ModifyFunction {
 			if err != nil {
 				return nil, err
 			}
+		} else {
+			// No existing data, just return it
+			return nil, nil
 		}
 
 		idx, found := slices.BinarySearch(currentList, newValue)

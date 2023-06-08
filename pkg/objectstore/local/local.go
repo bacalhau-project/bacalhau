@@ -129,6 +129,7 @@ func (l *LocalObjectStore) Delete(ctx context.Context, prefix string, key string
 		return err
 	}
 
+	// TODO: Triggers should be done via prefix and not type
 	if commands, err := l.callbacks.TriggerDelete(object); err == nil {
 		// err raised from trigger update above refers to whether the object has callbacks
 		// or not and so can be ignored if present.
