@@ -30,7 +30,7 @@ type ObjectStore interface {
 	// nil.
 	Put(ctx context.Context, prefix string, key string, object any) error
 
-	//
+	// Close will close the database, after which it should not be usable
 	Close(context.Context)
 }
 
