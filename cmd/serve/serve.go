@@ -358,8 +358,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 	}
 
 	// only in station logging output
-	// TODO(forrest)
-	if "default" == logger.LogModeStation && standardNode.IsComputeNode() {
+	if handler.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
 	}
 

@@ -184,9 +184,7 @@ func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
 	log.Ctx(ctx).Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 	var msgBytes []byte
-	// TODO(forrest) define constant for json format checking
-	//if OL.OutputFormat == cmd2.JSONFormat {
-	if OL.OutputFormat == "json" {
+	if OL.OutputFormat == handler.JSONFormat {
 		msgBytes, err = model.JSONMarshalWithMax(jobs)
 		if err != nil {
 			return fmt.Errorf("error marshaling jobs to JSON: %w", err), handler.ExitError

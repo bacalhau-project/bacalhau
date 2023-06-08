@@ -13,19 +13,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
-// ApplyPorcelainLogLevel sets the log level of loggers running on user-facing
-// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
-func ApplyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
-	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err != nil {
-		return
-	}
+// TODO(forrest): use viper configuration for this instead of a constant
+var LoggingMode = logger.LogModeDefault
 
-	ctx := cmd.Context()
-	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
-	cmd.SetContext(ctx)
-}
+const (
+	JSONFormat string = "json"
+	YAMLFormat string = "yaml"
+)
 
 func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	ctx := cmd.Context()
@@ -83,6 +80,18 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 		return fmt.Errorf("reading log output: %w", err)
 	}
 	return nil
+}
+
+// ApplyPorcelainLogLevel sets the log level of loggers running on user-facing
+// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
+func ApplyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
+	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err != nil {
+		return
+	}
+
+	ctx := cmd.Context()
+	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
+	cmd.SetContext(ctx)
 }
 
 type Msg struct {

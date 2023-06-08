@@ -207,7 +207,7 @@ To cancel the job, run:
 	// Capture Ctrl+C if the user wants to finish early the job
 	ctx, cancel := context.WithCancel(ctx)
 	signalChan := make(chan os.Signal, 2)
-	signal.Notify(signalChan, ShutdownSignals...)
+	signal.Notify(signalChan, handler.ShutdownSignals...)
 	defer func() {
 		signal.Stop(signalChan)
 		cancel()

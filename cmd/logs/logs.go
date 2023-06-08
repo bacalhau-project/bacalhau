@@ -45,10 +45,14 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	// TODO(forrest): this could use a with history flag
 	logsCmd.PersistentFlags().BoolVarP(
 		&options.Follow, "follow", "f", false,
 		`Follow the logs in real-time after retrieving the current logs.`,
+	)
+
+	logsCmd.PersistentFlags().BoolVarP(
+		&options.Follow, "history", "h", false,
+		`Show all logs with history. TODO better definition`,
 	)
 
 	return logsCmd

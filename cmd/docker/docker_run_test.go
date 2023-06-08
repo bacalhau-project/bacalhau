@@ -20,12 +20,12 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/google/uuid"
 
-	"github.com/bacalhau-project/bacalhau/cmd"
 	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/handler"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -928,7 +928,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, cmd.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+	s.Require().Equal(j.Spec.Timeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {

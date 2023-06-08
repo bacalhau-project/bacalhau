@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/id"
 	"github.com/bacalhau-project/bacalhau/cmd/list"
 	"github.com/bacalhau-project/bacalhau/cmd/logs"
-	"github.com/bacalhau-project/bacalhau/cmd/printer"
 	"github.com/bacalhau-project/bacalhau/cmd/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/simulate"
 	"github.com/bacalhau-project/bacalhau/cmd/validate"
@@ -34,13 +33,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 var apiHost string
 var apiPort uint16
-
-var loggingMode = logger.LogModeDefault
 
 var defaultAPIHost string
 var defaultAPIPort uint16
@@ -58,7 +54,7 @@ func init() { //nolint:gochecknoinits
 	}
 
 	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
-		loggingMode = logger.LogMode(strings.ToLower(logtype))
+		handler.LoggingMode = logger.LogMode(strings.ToLower(logtype))
 	}
 
 	// Force cobra to set apiHost & apiPort
@@ -67,13 +63,13 @@ func init() { //nolint:gochecknoinits
 
 func NewRootCmd() *cobra.Command {
 	RootCmd := &cobra.Command{
-		Use:   GetCommandLineExecutable(),
+		Use:   os.Args[0],
 		Short: "Compute over data",
 		Long:  `Compute over data`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
 
-			logger.ConfigureLogging(loggingMode)
+			logger.ConfigureLogging(handler.LoggingMode)
 
 			cm := system.NewCleanupManager()
 			cm.RegisterCallback(telemetry.Cleanup)
@@ -146,7 +142,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
 	viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port"))
 	RootCmd.PersistentFlags().Var(
-		flags.LoggingFlag(&loggingMode), "log-mode",
+		flags.LoggingFlag(&handler.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,
 	)
 	return RootCmd
@@ -156,7 +152,7 @@ func Execute() {
 	rootCmd := NewRootCmd()
 
 	// Ensure commands are able to stop cleanly if someone presses ctrl+c
-	ctx, cancel := signal.NotifyContext(context.Background(), printer.ShutdownSignals...)
+	ctx, cancel := signal.NotifyContext(context.Background(), handler.ShutdownSignals...)
 	defer cancel()
 	rootCmd.SetContext(ctx)
 
@@ -202,23 +198,3 @@ type contextKey struct {
 }
 
 var spanKey = contextKey{name: "context key for storing the root span"}
-
-func CheckVersion(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-
-	// corba doesn't do PersistentPreRun{,E} chaining yet
-	// https://github.com/spf13/cobra/issues/252
-	root := cmd
-	for ; root.HasParent(); root = root.Parent() {
-	}
-	root.PersistentPreRun(cmd, args)
-
-	// Check that the server version is compatible with the client version
-	serverVersion, _ := GetAPIClient().Version(ctx) // Ok if this fails, version validation will skip
-	if err := EnsureValidVersion(ctx, version.Get(), serverVersion); err != nil {
-		handler.Fatal(cmd, fmt.Errorf("version validation failed: %w", err), 1)
-		return err
-	}
-
-	return nil
-}

@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/cmd"
+	"github.com/bacalhau-project/bacalhau/cmd/bacalhau/handler"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/version"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -53,7 +53,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", cmd.JSONFormat,
+		"--output", handler.JSONFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
@@ -65,7 +65,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err = cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", cmd.YAMLFormat,
+		"--output", handler.YAMLFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 

@@ -222,8 +222,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err), handler.ExitError
 	}
 
-	// TODO(forrest)
-	if "default" == logger.LogModeStation {
+	if handler.LoggingMode == logger.LogModeStation {
 		for _, node := range stack.Nodes {
 			if node.IsComputeNode() {
 				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))

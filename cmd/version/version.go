@@ -92,8 +92,7 @@ func (oV *VersionOptions) Validate(*cobra.Command) error {
 		return fmt.Errorf("extra arguments: %v", oV.args)
 	}
 
-	// TODO constants for json and yaml
-	if oV.Output != "" && oV.Output != "yaml" && oV.Output != "json" {
+	if oV.Output != "" && oV.Output != handler.YAMLFormat && oV.Output != handler.JSONFormat {
 		return errors.New(`--output must be 'yaml' or 'json'`)
 	}
 
@@ -124,14 +123,13 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		if versions.ServerVersion != nil {
 			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
 		}
-		// TODO(forrest) constans for cases
-	case "yaml":
+	case handler.YAMLFormat:
 		marshaled, err := model.YAMLMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}
 		cmd.Println(string(marshaled))
-	case "json":
+	case handler.JSONFormat:
 		marshaled, err := model.JSONMarshalWithMax(versions)
 		if err != nil {
 			return err

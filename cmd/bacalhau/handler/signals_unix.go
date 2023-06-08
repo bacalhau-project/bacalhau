@@ -1,4 +1,6 @@
-package printer
+//go:build !unix
+
+package handler
 
 import (
 	"os"

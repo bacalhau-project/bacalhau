@@ -49,12 +49,11 @@ func runSimulator(cmd *cobra.Command) (error, int) {
 
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
-		CleanupManager: cm,
-		JobStore:       datastore,
-		Host:           libp2pHost,
-		HostAddress:    "0.0.0.0",
-		// TODO(forrest)
-		//APIPort:             cmd2.apiPort,
+		CleanupManager:      cm,
+		JobStore:            datastore,
+		Host:                libp2pHost,
+		HostAddress:         "0.0.0.0",
+		APIPort:             handler.GetAPIPort(ctx),
 		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: node.NewRequesterConfigWithDefaults(),
 		SimulatorNodeID:     libp2pHost.ID().String(),
