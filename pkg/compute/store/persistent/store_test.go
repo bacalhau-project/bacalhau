@@ -16,10 +16,12 @@ type Suite struct {
 	suite.Suite
 	executionStore store.ExecutionStore
 	execution      store.Execution
+	ctx            context.Context
 }
 
 func (s *Suite) SetupTest() {
-	s.executionStore, _ = NewStore("")
+	s.ctx = context.Background()
+	s.executionStore, _ = NewStore(s.ctx, "")
 	s.execution = newExecution()
 
 	s.execution.CreateTime = s.execution.CreateTime.Round(0)

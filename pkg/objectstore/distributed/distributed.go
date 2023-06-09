@@ -36,4 +36,6 @@ func (d *DistributedObjectStore) Put(ctx context.Context, prefix string, key str
 	return nil
 }
 
-func (d *DistributedObjectStore) Close(context.Context) {}
+func (d *DistributedObjectStore) Close(context.Context) error {
+	return nil
+}

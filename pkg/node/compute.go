@@ -63,13 +63,18 @@ func NewComputeNode(
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(host)
+		executionStore, err = createExecutionStore(ctx, host)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		executionStore = config.ExecutionStore
 	}
+
+	cleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
+		executionStore.Close(ctx)
+		return nil
+	})
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -293,7 +298,7 @@ func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
 }
 
-func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
+func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
 	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
 	// e.g. when running tests or when running devstack
 	configDir, err := system.EnsureConfigDir()
@@ -307,7 +312,7 @@ func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
 	}
 
 	// TODO: Enable to persist executions to disk
-	// pstore, err := persistent.NewStore(host.ID().String())
+	// pstore, err := persistent.NewStore(ctx, host.ID().String())
 	// if err != nil {
 	// 	return nil, err
 	// }

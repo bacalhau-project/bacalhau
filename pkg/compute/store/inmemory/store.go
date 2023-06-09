@@ -151,5 +151,9 @@ func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
 	return counter, nil
 }
 
+func (s *Store) Close(ctx context.Context) error {
+	return nil
+}
+
 // compile-time check that we implement the interface ExecutionStore
 var _ store.ExecutionStore = (*Store)(nil)

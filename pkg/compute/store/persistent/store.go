@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -26,7 +27,7 @@ type Store struct {
 	mu sync.RWMutex
 }
 
-func NewStore(nodeID string) (*Store, error) {
+func NewStore(ctx context.Context, nodeID string) (*Store, error) {
 	var filepath string
 
 	// Target folder
@@ -38,6 +39,7 @@ func NewStore(nodeID string) (*Store, error) {
 	}
 
 	db, err := objectstore.GetImplementation(
+		ctx,
 		objectstore.LocalImplementation,
 		local.WithPrefixes(PrefixExecution, PrefixExecutionHistory, PrefixJobExecutions),
 		local.WithDataFile(filepath),
@@ -45,6 +47,8 @@ func NewStore(nodeID string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debug().Str("NodeID", nodeID).Msgf("creating local objectstore in %s", filepath)
 
 	db.CallbackHooks().RegisterUpdate(PrefixExecution, updateJobExecutionList)
 	db.CallbackHooks().RegisterDelete(PrefixExecution, deleteJobExecutionList)
@@ -256,6 +260,10 @@ func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
 	// }
 	// return counter, nil
 	return 0, nil
+}
+
+func (s *Store) Close(ctx context.Context) error {
+	return s.db.Close(ctx)
 }
 
 // compile-time check that we implement the interface ExecutionStore

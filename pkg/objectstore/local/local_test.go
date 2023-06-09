@@ -12,7 +12,7 @@ import (
 
 func benchmarkWriteRead(i int, b *testing.B) {
 	ctx := context.Background()
-	db, _ := local.New(local.WithPrefixes("test"))
+	db, _ := local.New(ctx, local.WithPrefixes("test"))
 	defer db.Close(ctx)
 
 	type data struct {
@@ -40,7 +40,7 @@ func benchmarkWriteRead(i int, b *testing.B) {
 
 func benchmarkWrite(i int, b *testing.B) {
 	ctx := context.Background()
-	db, _ := local.New(local.WithPrefixes("test"))
+	db, _ := local.New(ctx, local.WithPrefixes("test"))
 	defer db.Close(ctx)
 
 	type data struct {
@@ -59,7 +59,7 @@ func benchmarkWrite(i int, b *testing.B) {
 
 func benchmarkRead(i int, b *testing.B) {
 	ctx := context.Background()
-	db, _ := local.New(local.WithPrefixes("test"))
+	db, _ := local.New(ctx, local.WithPrefixes("test"))
 	defer db.Close(ctx)
 
 	type data struct {

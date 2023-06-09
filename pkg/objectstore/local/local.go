@@ -42,7 +42,7 @@ type LocalObjectStore struct {
 	closed    bool
 }
 
-func New(options ...Option) (*LocalObjectStore, error) {
+func New(ctx context.Context, options ...Option) (*LocalObjectStore, error) {
 	var err error
 
 	config := &LocalObjectConfig{
@@ -76,6 +76,8 @@ func New(options ...Option) (*LocalObjectStore, error) {
 			return nil, err
 		}
 	}
+
+	log.Ctx(ctx).Debug().Str("Path", store.path).Msg("opening local database")
 
 	store.database, err = bolt.Open(store.path, DefaultPermissions, &bolt.Options{Timeout: 2 * time.Second})
 	if err != nil {
@@ -279,9 +281,13 @@ func (l *LocalObjectStore) runCallback(cmd commands.Command) error {
 	})
 }
 
-func (l *LocalObjectStore) Close(ctx context.Context) {
+func (l *LocalObjectStore) Close(ctx context.Context) error {
+	log.Ctx(ctx).Debug().Str("Path", l.path).Msg("closing database")
+
 	// Will block until all current transactions complete
 	l.closed = true
 	l.database.Close()
 	l.cm.Cleanup(ctx)
+
+	return nil
 }

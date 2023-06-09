@@ -34,7 +34,7 @@ type ObjectStore interface {
 	Put(ctx context.Context, prefix string, key string, object any) error
 
 	// Close will close the database, after which it should not be usable
-	Close(context.Context)
+	Close(context.Context) error
 }
 
 type ImplementationType int
@@ -49,7 +49,7 @@ const (
 // database it will do so using the provided options but it is the callers
 // responsibility to ensur they provide the correct options for the given
 // ImplementationType.
-func GetImplementation(impl ImplementationType, options ...interface{}) (ObjectStore, error) {
+func GetImplementation(ctx context.Context, impl ImplementationType, options ...interface{}) (ObjectStore, error) {
 	var os ObjectStore
 
 	if impl == LocalImplementation {
@@ -58,7 +58,7 @@ func GetImplementation(impl ImplementationType, options ...interface{}) (ObjectS
 			return nil, ErrInvalidOption
 		}
 
-		os, err = local.New(opts...)
+		os, err = local.New(ctx, opts...)
 		if err != nil {
 			return nil, err
 		}

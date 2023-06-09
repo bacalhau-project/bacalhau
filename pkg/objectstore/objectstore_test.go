@@ -28,14 +28,14 @@ func TestObjectStoreTestSuite(t *testing.T) {
 }
 
 func (s *ObjectStoreTestSuite) TestCreateLocal() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation)
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation)
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	impl.Close(s.ctx)
 }
 
 func (s *ObjectStoreTestSuite) TestCreateDistributed() {
-	impl, err := objectstore.GetImplementation(objectstore.DistributedImplementation)
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.DistributedImplementation)
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	impl.Close(s.ctx)
@@ -45,6 +45,7 @@ func (s *ObjectStoreTestSuite) TestCreateLocalBadOption() {
 	opt := distributed.WithPeers([]string{""})
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.LocalImplementation,
 		opt,
 	)
@@ -57,6 +58,7 @@ func (s *ObjectStoreTestSuite) TestCreateDistributedBadOption() {
 	opt := local.WithDataFile("")
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.DistributedImplementation,
 		opt,
 	)
@@ -66,7 +68,7 @@ func (s *ObjectStoreTestSuite) TestCreateDistributedBadOption() {
 }
 
 func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -88,7 +90,7 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 }
 
 func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -115,7 +117,7 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
 }
 
 func (s *ObjectStoreTestSuite) TestLocalBatchGetSingle() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -137,7 +139,7 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGetSingle() {
 }
 
 func (s *ObjectStoreTestSuite) TestLocalBatchGetNone() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -154,7 +156,7 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGetNone() {
 }
 
 func (s *ObjectStoreTestSuite) TestLocalReadAndWrite() {
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -181,7 +183,7 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObject() {
 		Name string
 	}
 
-	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
@@ -218,6 +220,7 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 	data := testdata{ID: "1", Name: "test"}
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.LocalImplementation,
 		local.WithPrefixes("job", "tags"),
 	)
@@ -259,6 +262,7 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 	}
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.LocalImplementation,
 		local.WithPrefixes("job", "tags"),
 	)
@@ -313,6 +317,7 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	}
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.LocalImplementation,
 		local.WithPrefixes("job", "tags"),
 	)
@@ -404,6 +409,7 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 	}
 
 	impl, err := objectstore.GetImplementation(
+		s.ctx,
 		objectstore.LocalImplementation,
 		local.WithPrefixes("job", "labels"),
 	)

@@ -101,6 +101,11 @@ func (proxy *PersistentExecutionStore) GetExecutions(ctx context.Context, shared
 	return proxy.store.GetExecutions(ctx, sharedID)
 }
 
+// Close implements store.ExecutionStore
+func (proxy *PersistentExecutionStore) Close(ctx context.Context) error {
+	return proxy.store.Close(ctx)
+}
+
 // UpdateExecutionState implements store.ExecutionStore
 func (proxy *PersistentExecutionStore) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
 	err := proxy.store.UpdateExecutionState(ctx, request)
