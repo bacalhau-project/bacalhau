@@ -2,8 +2,6 @@ package persistent
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -74,17 +72,9 @@ func deleteJobExecutionList(object any) ([]commands.Command, error) {
 func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, error) {
 	var execution store.Execution
 
-	bytes, err := s.db.Get(ctx, PrefixExecution, id)
+	err := s.db.Get(ctx, PrefixExecution, id, &execution)
 	if err != nil {
-		return execution, err
-	}
-	if bytes == nil {
 		return execution, store.NewErrExecutionNotFound(id)
-	}
-
-	err = json.Unmarshal(bytes, &execution)
-	if err != nil {
-		return execution, err
 	}
 
 	return execution, nil
@@ -93,32 +83,17 @@ func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, e
 // TODO
 func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
 	var execList []string
-	execListBytes, err := s.db.Get(ctx, PrefixJobExecutions, jobID)
+	err := s.db.Get(ctx, PrefixJobExecutions, jobID, &execList)
 	if err != nil {
-		return nil, err
-	}
-
-	if execListBytes == nil {
 		return nil, store.NewErrExecutionsNotFoundForJob(jobID)
-	}
-
-	err = json.Unmarshal(execListBytes, &execList)
-	if err != nil {
-		return nil, err
 	}
 
 	if len(execList) == 0 {
 		return nil, store.NewErrExecutionsNotFoundForJob(jobID)
 	}
 
-	// TODO: We need GetBatch() so we can fetch multiples of same prefix
-	executions := make([]store.Execution, len(execList))
-	for i, execID := range execList {
-		var execution store.Execution
-		ebytes, _ := s.db.Get(ctx, PrefixExecution, execID)
-		_ = json.Unmarshal(ebytes, &execution)
-		executions[i] = execution
-	}
+	var executions []store.Execution
+	_ = s.db.GetBatch(ctx, PrefixExecution, execList, &executions)
 
 	// Sort by CreateTime so that we get them back in the order we stored them
 	sort.Slice(executions, func(i, j int) bool {
@@ -131,25 +106,22 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 func (s *Store) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {
 	var history []store.ExecutionHistory
 
-	bytes, err := s.db.Get(ctx, PrefixExecutionHistory, id)
+	err := s.db.Get(ctx, PrefixExecutionHistory, id, &history)
 	if err != nil {
-		return history, err
+		return history, store.NewErrExecutionHistoryNotFound(id)
 	}
-	if bytes == nil {
+	if len(history) == 0 {
 		return history, store.NewErrExecutionHistoryNotFound(id)
 	}
 
-	err = json.Unmarshal(bytes, &history)
-	if err != nil {
-		return history, err
-	}
 	return history, nil
 }
 
 func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) error {
-	_, err := s.GetExecution(ctx, execution.ID)
-	if !errors.Is(err, store.ErrExecutionNotFound{ExecutionID: execution.ID}) {
-		return store.NewErrExecutionAlreadyExists(execution.ID)
+	exec, err := s.GetExecution(ctx, execution.ID)
+	if err == nil && exec.ID != "" {
+		// We didn't get an error, which means we found the thing we wanted
+		return store.ErrExecutionNotFound{ExecutionID: execution.ID}
 	}
 
 	if err := store.ValidateNewExecution(ctx, execution); err != nil {
@@ -161,14 +133,10 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 		return err
 	}
 
-	err = s.appendHistory(ctx, execution, store.ExecutionStateUndefined, newExecutionComment)
+	err = s.appendHistory(ctx, execution, store.ExecutionStateUndefined, newExecutionComment, true)
 	if err != nil {
 		return err
 	}
-
-	// TODO
-	// from job-id -> list of executions
-	// s.jobMap[execution.Job.ID()] = append(s.jobMap[execution.Job.ID()], execution.ID)
 
 	return nil
 }
@@ -205,7 +173,7 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		return err
 	}
 
-	return s.appendHistory(ctx, execution, previousState, request.Comment)
+	return s.appendHistory(ctx, execution, previousState, request.Comment, false)
 }
 
 // Adds a new execution history item to the list of items for the provided execution,
@@ -214,7 +182,8 @@ func (s *Store) appendHistory(
 	ctx context.Context,
 	updatedExecution store.Execution,
 	previousState store.ExecutionState,
-	comment string) error {
+	comment string,
+	first bool) error {
 	historyEntry := store.ExecutionHistory{
 		ExecutionID:   updatedExecution.ID,
 		PreviousState: previousState,
@@ -226,15 +195,15 @@ func (s *Store) appendHistory(
 
 	var items []store.ExecutionHistory
 
-	// Get the current list of history items for this ID
-	lst, err := s.db.Get(ctx, PrefixExecutionHistory, updatedExecution.ID)
-	if err != nil {
-		return err
-	}
-	if lst != nil {
-		err = json.Unmarshal(lst, &items)
+	if !first {
+		// Get the existing history
+		err := s.db.Get(ctx, PrefixExecutionHistory, updatedExecution.ID, &items)
 		if err != nil {
-			return err
+			return fmt.Errorf("no history found for execution: %s", updatedExecution.ID)
+		}
+
+		if len(items) == 0 {
+			return fmt.Errorf("no history found for execution: %s", updatedExecution.ID)
 		}
 	}
 
@@ -257,10 +226,8 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	// and then check if it is the empty list, at which point we should delete it
 
 	var execList []string
-	execListBytes, _ := s.db.Get(ctx, PrefixJobExecutions, execution.Job.ID())
-	_ = json.Unmarshal(execListBytes, &execList)
+	_ = s.db.Get(ctx, PrefixJobExecutions, execution.Job.ID(), &execList)
 	if len(execList) == 0 {
-		// TODO: The remove tasks shoulds auto-cleanup
 		_ = s.db.Delete(ctx, PrefixJobExecutions, execution.Job.ID(), []string{})
 	}
 

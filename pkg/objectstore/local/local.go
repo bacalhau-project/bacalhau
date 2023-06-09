@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
@@ -93,23 +94,73 @@ func (l *LocalObjectStore) CallbackHooks() *commands.CallbackHooks {
 	return l.callbacks
 }
 
-func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string) ([]byte, error) {
+func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []string, objects any) error {
 	if l.closed {
-		return nil, ErrDatabaseClosed
+		return ErrDatabaseClosed
 	}
 
 	if !slices.Contains[string](l.prefixes, prefix) {
-		return nil, ErrNoSuchPrefix(prefix)
+		return ErrNoSuchPrefix(prefix)
+	}
+
+	added := 0
+	var buffer []byte
+
+	err := l.database.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(prefix))
+
+		first := true
+		buffer = append(buffer, '[')
+
+		for _, key := range keys {
+			if first {
+				first = false
+			} else {
+				buffer = append(buffer, ',')
+			}
+
+			b := bucket.Get([]byte(key))
+			buffer = append(buffer, b...)
+			added = added + 1
+		}
+		buffer = append(buffer, ']')
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if added != len(keys) {
+		return ErrNoSuchKey(strings.Join(keys, ","))
+	}
+
+	return json.Unmarshal(buffer, &objects)
+}
+
+func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string, object any) error {
+	if l.closed {
+		return ErrDatabaseClosed
+	}
+
+	if !slices.Contains[string](l.prefixes, prefix) {
+		return ErrNoSuchPrefix(prefix)
 	}
 
 	var bytesValue []byte
 	err := l.database.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
 		bytesValue = bucket.Get([]byte(key))
-		return nil
+
+		if bytesValue == nil {
+			return ErrNoSuchKey(key)
+		}
+
+		return json.Unmarshal(bytesValue, &object)
 	})
 
-	return bytesValue, err
+	return err
 }
 
 func (l *LocalObjectStore) Delete(ctx context.Context, prefix string, key string, object any) error {

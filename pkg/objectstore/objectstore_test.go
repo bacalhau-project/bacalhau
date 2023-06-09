@@ -4,7 +4,6 @@ package objectstore_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -71,14 +70,85 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	val, err := impl.Get(s.ctx, "test", "irrelevant")
+	type testdata struct {
+		Name string
+	}
+
+	data := testdata{Name: "Test"}
+
+	err = impl.Get(s.ctx, "test", "irrelevant", &data)
 	require.Error(s.T(), err)
 	require.EqualError(s.T(), err, "unknown prefix: test")
-	require.Nil(s.T(), val)
 
-	val, err = impl.Get(s.ctx, "job", "nosuchkey")
+	err = impl.Get(s.ctx, "job", "nosuchkey", &data)
+	require.Error(s.T(), err)
+	require.EqualError(s.T(), err, "unknown key: nosuchkey")
+
+	impl.Close(s.ctx)
+}
+
+func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
+	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
-	require.Nil(s.T(), val)
+
+	type testdata struct {
+		ID string
+	}
+
+	data1 := testdata{ID: "1"}
+	data2 := testdata{ID: "2"}
+	data3 := testdata{ID: "3"}
+
+	_ = impl.Put(s.ctx, "job", data1.ID, data1)
+	_ = impl.Put(s.ctx, "job", data2.ID, data2)
+	_ = impl.Put(s.ctx, "job", data3.ID, data3)
+
+	var results []testdata
+
+	err = impl.GetBatch(s.ctx, "job", []string{"1", "2", "3"}, &results)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "1", results[0].ID)
+	require.Equal(s.T(), 3, len(results))
+
+	impl.Close(s.ctx)
+}
+
+func (s *ObjectStoreTestSuite) TestLocalBatchGetSingle() {
+	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+
+	type testdata struct {
+		ID string
+	}
+
+	data1 := testdata{ID: "1"}
+
+	_ = impl.Put(s.ctx, "job", data1.ID, data1)
+
+	var results []testdata
+
+	err = impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "1", results[0].ID)
+
+	impl.Close(s.ctx)
+}
+
+func (s *ObjectStoreTestSuite) TestLocalBatchGetNone() {
+	impl, err := objectstore.GetImplementation(objectstore.LocalImplementation, local.WithPrefixes("job"))
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+
+	type testdata struct {
+		ID string
+	}
+
+	var results []testdata
+	err = impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), []testdata{}, results)
 
 	impl.Close(s.ctx)
 }
@@ -88,14 +158,19 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWrite() {
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	data := []byte("some data")
+	type testdata struct {
+		Data string
+	}
+
+	data := testdata{Data: "some data"}
 
 	err = impl.Put(s.ctx, "job", "key", data)
 	require.NoError(s.T(), err)
 
-	value, err := impl.Get(s.ctx, "job", "key")
+	toFill := testdata{}
+	err = impl.Get(s.ctx, "job", "key", &toFill)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), data, value)
+	require.Equal(s.T(), data, toFill)
 
 	impl.Close(s.ctx)
 }
@@ -115,11 +190,9 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObject() {
 	err = impl.Put(s.ctx, "job", "key", data)
 	require.NoError(s.T(), err)
 
-	value, err := impl.Get(s.ctx, "job", "key")
+	t := testdata{}
+	err = impl.Get(s.ctx, "job", "key", &t)
 	require.NoError(s.T(), err)
-
-	var t testdata
-	json.Unmarshal(value, &t)
 	require.Equal(s.T(), "test", t.Name)
 
 	impl.Close(s.ctx)
@@ -157,12 +230,8 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 	require.NoError(s.T(), err)
 
 	// We now expect tags/tagname to contain a list of "1"
-	tagListBytes, err := impl.Get(s.ctx, "tags", "tagname")
-	require.NoError(s.T(), err)
-
 	var tagList []string
-
-	err = json.Unmarshal(tagListBytes, &tagList)
+	err = impl.Get(s.ctx, "tags", "tagname", &tagList)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), data.ID, tagList[0])
 
@@ -208,12 +277,8 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 	require.NoError(s.T(), err)
 
 	// We now expect tags/tagname to contain a list of "1"
-	tagListBytes, err := impl.Get(s.ctx, "tags", "tagname")
-	require.NoError(s.T(), err)
-
 	var tagList []string
-
-	err = json.Unmarshal(tagListBytes, &tagList)
+	err = impl.Get(s.ctx, "tags", "tagname", &tagList)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), []string{"1", "2", "3"}, tagList)
 
@@ -260,17 +325,18 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	err = impl.Put(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)
 
-	job, err := impl.Get(s.ctx, "job", data1.ID)
+	retr := testdata{}
+	err = impl.Get(s.ctx, "job", data1.ID, retr)
 	require.NoError(s.T(), err)
-	require.NotNil(s.T(), job)
 
 	err = impl.Delete(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)
 
 	// The tag name should now be an empty list
-	tags, err := impl.Get(s.ctx, "tags", "tagname")
+	var tagList []string
+	err = impl.Get(s.ctx, "tags", "tagname", tagList)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), "[]", string(tags))
+	require.Equal(s.T(), []string(nil), tagList)
 }
 
 func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
@@ -356,11 +422,8 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 	checkLabels := func(name string, key string, values []string) {
 		var labelMap map[string][]string
 
-		d, err := impl.Get(s.ctx, "labels", name)
+		err = impl.Get(s.ctx, "labels", name, &labelMap)
 		require.NoError(s.T(), err)
-		require.NotNil(s.T(), d)
-
-		json.Unmarshal(d, &labelMap)
 		require.Equal(s.T(), values, labelMap[key])
 	}
 

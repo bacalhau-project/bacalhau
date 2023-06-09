@@ -20,7 +20,6 @@ func benchmarkWriteRead(i int, b *testing.B) {
 	}
 
 	counter := 0
-	length := 0
 
 	d := data{ID: "1"}
 
@@ -33,9 +32,8 @@ func benchmarkWriteRead(i int, b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		for x := 0; x < i; x++ {
-			byt, _ := db.Get(ctx, "test", d.ID)
+			_ = db.Get(ctx, "test", d.ID, d)
 			counter = counter + 1
-			length = length + len(byt)
 		}
 	}
 }
@@ -68,7 +66,6 @@ func benchmarkRead(i int, b *testing.B) {
 		ID string
 	}
 
-	length := 0
 	d := data{ID: "1"}
 
 	for x := 0; x < i; x++ {
@@ -79,8 +76,7 @@ func benchmarkRead(i int, b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		for x := 0; x < i; x++ {
-			bytes, _ := db.Get(ctx, "test", fmt.Sprintf("%d", x))
-			length = length + len(bytes) // make sure we ref bytes
+			_ = db.Get(ctx, "test", fmt.Sprintf("%d", x), d)
 		}
 	}
 }
