@@ -26,29 +26,27 @@ func NewCallbackHooks() *CallbackHooks {
 	}
 }
 
-func (c *CallbackHooks) RegisterUpdate(object any, callback UserCallback) {
-	c.UpdateHooks[fmt.Sprintf("%T", object)] = callback
+func (c *CallbackHooks) RegisterUpdate(prefix string, callback UserCallback) {
+	c.UpdateHooks[prefix] = callback
 }
 
-func (c *CallbackHooks) RegisterDelete(object any, callback UserCallback) {
-	c.DeleteHooks[fmt.Sprintf("%T", object)] = callback
+func (c *CallbackHooks) RegisterDelete(prefix string, callback UserCallback) {
+	c.DeleteHooks[prefix] = callback
 }
 
-func (c *CallbackHooks) TriggerUpdate(object any) ([]Command, error) {
-	t := fmt.Sprintf("%T", object)
-	callback, present := c.UpdateHooks[t]
+func (c *CallbackHooks) TriggerUpdate(prefix string, object any) ([]Command, error) {
+	callback, present := c.UpdateHooks[prefix]
 	if !present {
-		return nil, fmt.Errorf("failed to process update callback hook for %s", t)
+		return nil, fmt.Errorf("failed to process update callback hook for %s", prefix)
 	}
 
 	return callback(object)
 }
 
-func (c *CallbackHooks) TriggerDelete(object any) ([]Command, error) {
-	t := fmt.Sprintf("%T", object)
-	callback, present := c.DeleteHooks[t]
+func (c *CallbackHooks) TriggerDelete(prefix string, object any) ([]Command, error) {
+	callback, present := c.DeleteHooks[prefix]
 	if !present {
-		return nil, fmt.Errorf("failed to process delete callback hook for %s", t)
+		return nil, fmt.Errorf("failed to process delete callback hook for %s", prefix)
 	}
 
 	return callback(object)

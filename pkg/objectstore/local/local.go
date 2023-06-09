@@ -181,7 +181,7 @@ func (l *LocalObjectStore) Delete(ctx context.Context, prefix string, key string
 	}
 
 	// TODO: Triggers should be done via prefix and not type
-	if commands, err := l.callbacks.TriggerDelete(object); err == nil {
+	if commands, err := l.callbacks.TriggerDelete(prefix, object); err == nil {
 		// err raised from trigger update above refers to whether the object has callbacks
 		// or not and so can be ignored if present.
 		for _, command := range commands {
@@ -233,7 +233,7 @@ func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, o
 
 	// Check if there are any update callbacks registered for this
 	// object type, and if so we want to
-	if commands, err := l.callbacks.TriggerUpdate(object); err == nil {
+	if commands, err := l.callbacks.TriggerUpdate(prefix, object); err == nil {
 		// err raised from trigger update above refers to whether the object has callbacks
 		// or not and so can be ignored if present.
 

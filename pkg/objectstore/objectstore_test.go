@@ -224,7 +224,7 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	impl.CallbackHooks().RegisterUpdate(testdata{}, userCallback)
+	impl.CallbackHooks().RegisterUpdate("job", userCallback)
 
 	err = impl.Put(s.ctx, "job", "key", data)
 	require.NoError(s.T(), err)
@@ -265,7 +265,7 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	impl.CallbackHooks().RegisterUpdate(testdata{}, userCallback)
+	impl.CallbackHooks().RegisterUpdate("job", userCallback)
 
 	err = impl.Put(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)
@@ -319,8 +319,8 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	impl.CallbackHooks().RegisterUpdate(testdata{}, userUpdateCallback)
-	impl.CallbackHooks().RegisterDelete(testdata{}, userDeleteCallback)
+	impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
+	impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
 
 	err = impl.Put(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)
@@ -410,8 +410,8 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 
-	impl.CallbackHooks().RegisterUpdate(testdata{}, userUpdateCallback)
-	impl.CallbackHooks().RegisterDelete(testdata{}, userDeleteCallback)
+	impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
+	impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
 
 	err = impl.Put(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)

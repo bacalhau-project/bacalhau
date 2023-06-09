@@ -34,8 +34,8 @@ func NewStore() (*Store, error) {
 		return nil, err
 	}
 
-	db.CallbackHooks().RegisterUpdate(store.Execution{}, updateJobExecutionList)
-	db.CallbackHooks().RegisterDelete(store.Execution{}, deleteJobExecutionList)
+	db.CallbackHooks().RegisterUpdate(PrefixExecution, updateJobExecutionList)
+	db.CallbackHooks().RegisterDelete(PrefixExecution, deleteJobExecutionList)
 
 	res := &Store{db: db}
 	res.mu.EnableTracerWithOpts(sync.Opts{
