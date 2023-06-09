@@ -35,3 +35,7 @@ func ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...string) (c *cobra
 	c, err = root.ExecuteC()
 	return c, buf.String(), err
 }
+
+func ExecuteTestCobraCommandWithStdinBytes(stdin []byte, args ...string) (c *cobra.Command, output string, err error) {
+	return ExecuteTestCobraCommandWithStdin(bytes.NewReader(stdin), args...)
+}

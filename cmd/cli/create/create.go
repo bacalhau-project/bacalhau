@@ -65,7 +65,7 @@ func NewCmd() *cobra.Command {
 		Long:    createLong,
 		Example: createExample,
 		Args:    cobra.MinimumNArgs(0),
-		//PreRun:  applyPorcelainLogLevel,
+		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			err, exitcode := create(cmd, cmdArgs, OC)
 			if err != nil {

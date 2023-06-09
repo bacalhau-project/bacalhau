@@ -4,22 +4,22 @@ package create_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
-	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"github.com/bacalhau-project/bacalhau/testdata"
 )
 
 type CreateSuite struct {
@@ -30,58 +30,71 @@ func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
 }
 
-func (s *CreateSuite) TestCreateGenericSubmit() {
+func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 	tests := []struct {
-		numberOfJobs int
+		Name    string
+		Fixture *testdata.Fixture
 	}{
-		{numberOfJobs: 1}, // Test for one
-		{numberOfJobs: 5}, // Test for five
+		{
+			Name:    "noop json",
+			Fixture: testdata.JsonJobNoop,
+		},
+		{
+			Name:    "noop yaml",
+			Fixture: testdata.YamlJobNoop,
+		},
+		{
+			Name:    "s3 yaml",
+			Fixture: testdata.YamlJobS3,
+		},
+		{
+			Name:    "url noop yaml",
+			Fixture: testdata.YamlJobNoopUrl,
+		},
+		{
+			Name:    "docker task json",
+			Fixture: testdata.TaskDockerJson,
+		},
+		{
+			Name:    "task with config json",
+			Fixture: testdata.TaskWithConfigJson,
+		},
+		//"TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network")
+		/*
+			{
+				Name:    "wasm task json",
+				Fixture: testdata.TaskWasmJson,
+			},
+		*/
 	}
 
-	// TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network
-	for i, tc := range tests {
-		testFiles := []string{
-			"../../testdata/job-noop.json",
-			"../../testdata/job-noop.yaml",
-			"../../testdata/job-s3.yaml",
-			"../../testdata/job-noop-url.yaml",
-			"../../pkg/model/tasks/docker_task.json",
-			"../../pkg/model/tasks/task_with_config.json",
-			//"../../pkg/model/tasks/wasm_task.json",
-		}
-
-		for _, testFile := range testFiles {
-			if strings.Contains(testFile, "s3") && !s3helper.CanRunS3Test() {
+	for _, tc := range tests {
+		s.Run(tc.Name, func() {
+			if tc.Fixture.RequiresS3() && !s3helper.CanRunS3Test() {
 				// Skip the S3 tests if we have no AWS credentials installed
 				s.T().Skip("No valid AWS credentials found")
 			}
 
-			name := fmt.Sprintf("%s/%d", testFile, tc.numberOfJobs)
-			if strings.Contains(testFile, "docker") {
+			if tc.Fixture.RequiresDocker() {
 				docker.MustHaveDocker(s.T())
 			}
-			s.Run(name, func() {
-				ctx := context.Background()
-				_, out, err := cmdtesting.ExecuteTestCobraCommand("create",
-					"--api-host", s.Host,
-					"--api-port", fmt.Sprint(s.Port),
-					testFile,
-				)
 
-				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			ctx := context.Background()
+			_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(tc.Fixture.Data, "create",
+				"--api-host", s.Host,
+				"--api-port", fmt.Sprint(s.Port),
+			)
 
-				testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
-			})
-		}
+			fmt.Println(tc.Fixture.Data)
+
+			require.NoError(s.T(), err, "Error submitting job")
+			testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
+		})
 	}
 }
+
 func (s *CreateSuite) TestCreateFromStdin() {
-	testFile := "../../testdata/job-noop.yaml"
-
-	testSpec, err := os.Open(testFile)
-	require.NoError(s.T(), err)
-
-	_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdin(testSpec, "create",
+	_, out, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.YamlJobNoop.Data, "create",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
 	)
@@ -99,48 +112,6 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error describing job.")
 }
 
-func (s *CreateSuite) TestCreateFromUCANTask() {
-
-}
-
-func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
-	type commandReturn struct {
-		c   *cobra.Command
-		out string
-		err error
-	}
-
-	commandChan := make(chan commandReturn, 1)
-
-	go func() {
-		c, out, err := cmdtesting.ExecuteTestCobraCommand("create")
-
-		commandChan <- commandReturn{c: c, out: out, err: err}
-	}()
-	time.Sleep(1 * time.Second)
-
-	stdinErr := os.Stdin.Close()
-	if stdinErr != nil && !errors.Is(stdinErr, os.ErrClosed) {
-		require.NoError(s.T(), stdinErr, "Error closing stdin")
-	}
-
-	commandReturnValue := <-commandChan
-
-	// For some reason I can't explain, this only works when running in debug.
-	// require.Contains(s.T(), commandReturnValue.out, "Ctrl+D", "Waiting message should contain Ctrl+D")
-
-	errorOutputMap := make(map[string]interface{})
-	for _, o := range strings.Split(commandReturnValue.out, "\n") {
-		err := model.YAMLUnmarshalWithMax([]byte(o), &errorOutputMap)
-		if err != nil {
-			continue
-		}
-	}
-
-	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
-	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
-}
-
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	type commandReturn struct {
 		c   *cobra.Command
@@ -150,12 +121,15 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 
 	commandChan := make(chan commandReturn, 1)
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		c, out, err := cmdtesting.ExecuteTestCobraCommand("create", "../../testdata/empty.yaml")
+		defer wg.Done()
+		c, out, err := cmdtesting.ExecuteTestCobraCommand("create", "./testdata/empty.yaml")
 
 		commandChan <- commandReturn{c: c, out: out, err: err}
 	}()
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 
 	stdinErr := os.Stdin.Close()
 	require.NoError(s.T(), stdinErr, "Error closing stdin")

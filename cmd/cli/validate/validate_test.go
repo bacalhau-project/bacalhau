@@ -12,6 +12,7 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/testdata"
 )
 
 type ValidateSuite struct {
@@ -23,13 +24,12 @@ func TestValidateSuite(t *testing.T) {
 }
 
 func (s *ValidateSuite) TestValidate() {
-
 	tests := map[string]struct {
-		testFile string
+		testFile *testdata.Fixture
 		valid    bool
 	}{
-		"validJobFile":   {testFile: "../../testdata/job-noop.yaml", valid: true},
-		"InvalidJobFile": {testFile: "../../testdata/job-noop-invalid.yml", valid: false},
+		"validJobFile":   {testFile: testdata.YamlJobNoop, valid: true},
+		"InvalidJobFile": {testFile: testdata.YamlJobNoopInvalid, valid: false},
 	}
 	for name, test := range tests {
 		s.Run(name, func() {
@@ -38,12 +38,10 @@ func (s *ValidateSuite) TestValidate() {
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("validate",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
-				test.testFile,
+				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name), s.T().TempDir()),
 			)
-
 			require.NoError(s.T(), err)
 
-			// fmt.Print(s)
 			if test.valid {
 				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {

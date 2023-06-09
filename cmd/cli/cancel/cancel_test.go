@@ -14,6 +14,7 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/testdata"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -32,13 +33,10 @@ func TestCancelSuite(t *testing.T) {
 }
 
 func (suite *CancelSuite) TestCancelTerminalJob() {
-	testFile := "../../pkg/model/tasks/docker_task.json"
-
 	ctx := context.Background()
-	_, stdout, err := cmdtesting.ExecuteTestCobraCommand("create",
+	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.TaskDockerJson.Data, "create",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		testFile,
 	)
 	require.NoError(suite.T(), err, "Error submitting job")
 
@@ -55,15 +53,12 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 }
 
 func (suite *CancelSuite) TestCancelJob() {
-	testFile := "../../testdata/job_cancel.json"
-
 	ctx := context.Background()
 
-	_, stdout, err := cmdtesting.ExecuteTestCobraCommand("create",
+	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.JsonJobCancel.Data, "create",
 		"--wait=false",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		testFile,
 	)
 	require.NoError(suite.T(), err, "Error submitting job")
 

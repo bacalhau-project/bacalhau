@@ -188,7 +188,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--",
 				"echo", "hello from docker submit wait",
 			)
-			s.Require().NoError(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			s.Require().NoErrorf(err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 		})
