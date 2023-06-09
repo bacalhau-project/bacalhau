@@ -777,8 +777,12 @@
                     "type": "integer"
                 },
                 "MinBids": {
-                    "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them. This allows the\nRequester node to get some level of guarantee that the execution of the\njobs will be spread evenly across the network (assuming that this value\nis some large proportion of the size of the network).",
+                    "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them (when\nTargetAll=false). This allows the Requester node to get some level of\nguarantee that the execution of the jobs will be spread evenly across the\nnetwork (assuming that this value is some large proportion of the size of\nthe network).",
                     "type": "integer"
+                },
+                "TargetAll": {
+                    "description": "Whether the job should be run on any matching node (false) or all\nmatching nodes (true). If true, other fields in this struct are ignored.",
+                    "type": "boolean"
                 }
             }
         },
