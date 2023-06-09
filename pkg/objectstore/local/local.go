@@ -22,7 +22,7 @@ const (
 var defaultPrefixes = []string{"job"}
 
 type LocalObjectConfig struct {
-	Path          string
+	Filepath      string
 	Prefixes      []string
 	CallbackHooks commands.CallbackHooks
 }
@@ -46,13 +46,13 @@ func New(options ...Option) (*LocalObjectStore, error) {
 	var err error
 
 	config := &LocalObjectConfig{
-		Path:     "",
+		Filepath: "",
 		Prefixes: defaultPrefixes,
 	}
 	config.Load(options...)
 
 	store := &LocalObjectStore{
-		path:      config.Path,
+		path:      config.Filepath,
 		prefixes:  []string{},
 		callbacks: commands.NewCallbackHooks(),
 		cm:        system.NewCleanupManager(),
@@ -68,6 +68,13 @@ func New(options ...Option) (*LocalObjectStore, error) {
 		store.cm.RegisterCallback(func() error {
 			return os.RemoveAll(dir)
 		})
+	} else {
+		// Ensure the directory for the file exists
+		directory := filepath.Dir(store.path)
+		err := os.MkdirAll(directory, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	store.database, err = bolt.Open(store.path, DefaultPermissions, &bolt.Options{Timeout: 2 * time.Second})

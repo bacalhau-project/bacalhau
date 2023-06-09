@@ -54,7 +54,7 @@ func (s *ObjectStoreTestSuite) TestCreateLocalBadOption() {
 }
 
 func (s *ObjectStoreTestSuite) TestCreateDistributedBadOption() {
-	opt := local.WithDataFolder("")
+	opt := local.WithDataFile("")
 
 	impl, err := objectstore.GetImplementation(
 		objectstore.DistributedImplementation,

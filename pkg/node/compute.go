@@ -306,6 +306,12 @@ func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
 		return nil, err
 	}
 
+	// TODO: Enable to persist executions to disk
+	// pstore, err := persistent.NewStore(host.ID().String())
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
 		Store:   inmemory.NewStore(),
 		RootDir: stateRootDir,

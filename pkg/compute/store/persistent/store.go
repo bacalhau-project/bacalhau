@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -25,10 +26,21 @@ type Store struct {
 	mu sync.RWMutex
 }
 
-func NewStore() (*Store, error) {
+func NewStore(nodeID string) (*Store, error) {
+	var filepath string
+
+	// Target folder
+	if nodeID == "" {
+		// Set the filepath to empty for a test database
+		filepath = ""
+	} else {
+		filepath = "/tmp/bacalhau/executions/" + strings.ToLower(nodeID)
+	}
+
 	db, err := objectstore.GetImplementation(
 		objectstore.LocalImplementation,
 		local.WithPrefixes(PrefixExecution, PrefixExecutionHistory, PrefixJobExecutions),
+		local.WithDataFile(filepath),
 	)
 	if err != nil {
 		return nil, err

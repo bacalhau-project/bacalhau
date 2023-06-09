@@ -2,9 +2,9 @@ package local
 
 type Option func(*LocalObjectConfig)
 
-func WithDataFolder(path string) Option {
+func WithDataFile(path string) Option {
 	return func(c *LocalObjectConfig) {
-		c.Path = path
+		c.Filepath = path
 	}
 }
 

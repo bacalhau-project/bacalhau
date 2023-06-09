@@ -19,7 +19,7 @@ type Suite struct {
 }
 
 func (s *Suite) SetupTest() {
-	s.executionStore, _ = NewStore()
+	s.executionStore, _ = NewStore("")
 	s.execution = newExecution()
 
 	s.execution.CreateTime = s.execution.CreateTime.Round(0)
