@@ -91,7 +91,7 @@ var retryTestCases = []nodeSelectorTestCase{
 		expectedNodes: []peer.ID{},
 	},
 	{
-		name:  "does not retry job after many failed retries",
+		name:  "many failed retries is a job failure",
 		nodes: []peer.ID{test1},
 		ranks: []int{1},
 		states: map[peer.ID][]model.ExecutionStateType{
@@ -101,8 +101,7 @@ var retryTestCases = []nodeSelectorTestCase{
 				model.ExecutionStateFailed,
 			},
 		},
-		checkError:    require.NoError,
-		expectedNodes: []peer.ID{},
+		checkError: require.Error,
 	},
 	{
 		name:  "does not retry job on a different node",
@@ -118,11 +117,11 @@ var retryTestCases = []nodeSelectorTestCase{
 				model.ExecutionStateCompleted,
 			},
 		},
-		checkError:    require.NoError,
+		checkError:    require.Error,
 		expectedNodes: []peer.ID{},
 	},
 	{
-		name:  "throws error if node disappeared",
+		name:  "disappeared node is a job failure",
 		nodes: []peer.ID{},
 		ranks: []int{},
 		states: map[peer.ID][]model.ExecutionStateType{
@@ -130,8 +129,7 @@ var retryTestCases = []nodeSelectorTestCase{
 				model.ExecutionStateFailed,
 			},
 		},
-		checkError:    require.Error,
-		expectedNodes: []peer.ID{},
+		checkError: require.Error,
 	},
 }
 

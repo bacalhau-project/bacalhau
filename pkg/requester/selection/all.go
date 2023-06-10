@@ -89,16 +89,12 @@ func (s *allNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 
 	failedNodes := make([]string, 0, len(jobState.Executions))
 	for nodeID, failureCount := range failureCounts {
-		if failureCount > 0 && failureCount < maxRetriesPerNode {
+		if failureCount > 0 {
 			failedNodes = append(failedNodes, nodeID)
 		}
 	}
 
 	log.Ctx(ctx).Debug().Int("Retryable", len(failedNodes)).Msg("Found nodes to retry")
-	if len(failedNodes) == 0 {
-		return nil, nil
-	}
-
 	foundNodes, err := s.nodeDiscoverer.FindNodes(ctx, *job)
 	if err != nil {
 		return nil, err
@@ -107,12 +103,14 @@ func (s *allNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 
 	retryNodes := make([]model.NodeInfo, 0, len(failedNodes))
 	for _, foundNode := range foundNodes {
-		if slices.Contains(failedNodes, string(foundNode.PeerInfo.ID)) {
+		id := string(foundNode.PeerInfo.ID)
+		if slices.Contains(failedNodes, id) && failureCounts[id] < maxRetriesPerNode {
 			retryNodes = append(retryNodes, foundNode)
 		}
 	}
 
 	if len(failedNodes) > len(retryNodes) {
+		// A node failed but has disappeared or a node is over the retry limit
 		return nil, requester.NewErrNotEnoughNodes(len(failedNodes), len(retryNodes))
 	}
 
