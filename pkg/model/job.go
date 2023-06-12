@@ -244,12 +244,11 @@ type Spec struct {
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty"`
+	Inputs []StorageSpec `json:"Inputs,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty"`
+	Outputs []StorageSpec `json:"Outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
