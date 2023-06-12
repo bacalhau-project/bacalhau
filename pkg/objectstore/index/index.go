@@ -1,4 +1,4 @@
-package commands
+package index
 
 import (
 	"encoding/json"
@@ -6,19 +6,19 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type Command struct {
+type IndexCommand struct {
 	Prefix string
 	Key    string
-	Modify ModifyFunction
+	Modify IndexUpdateFunction
 }
 
-// ModifyFunction is intended to take data retrieved from the database
+// IndexUpdateFunction is intended to take data retrieved from the database
 // and modify it in some way, returning the newly modified data as a
 // []byte. This returned []byte will then be written over the old data.
-type ModifyFunction func(existingData []byte) ([]byte, error)
+type IndexUpdateFunction func(existingData []byte) ([]byte, error)
 
-func NewCommand(prefix string, key string, modifyFunc ModifyFunction) Command {
-	return Command{
+func NewIndexCommand(prefix string, key string, modifyFunc IndexUpdateFunction) IndexCommand {
+	return IndexCommand{
 		Prefix: prefix,
 		Key:    key,
 		Modify: modifyFunc,
@@ -34,7 +34,7 @@ func NewCommand(prefix string, key string, modifyFunc ModifyFunction) Command {
 // typically be a pointer to another key (to be interpreted by
 // the developer).  This can be used for simple values such as
 // tags.
-func AddToSet(newValue string) ModifyFunction {
+func AddToSet(newValue string) IndexUpdateFunction {
 	return func(existingData []byte) ([]byte, error) {
 		var currentList []string
 
@@ -64,7 +64,7 @@ func AddToSet(newValue string) ModifyFunction {
 // DeleteFromSet returns a function. That function will take a json list
 // in []byte form and load it before removing `newValue` from the list
 // and re-saving it
-func DeleteFromSet(newValue string) ModifyFunction {
+func DeleteFromSet(newValue string) IndexUpdateFunction {
 	return func(existingData []byte) ([]byte, error) {
 		var currentList []string
 
@@ -94,7 +94,7 @@ func DeleteFromSet(newValue string) ModifyFunction {
 // to reference another type. For example, if a type has a dictionary
 // of labels containing things such as Location=X, Production=True then
 // these will be stored as a map in a prefix.
-func AddToMap(key, value string) ModifyFunction {
+func AddToMap(key, value string) IndexUpdateFunction {
 	return func(existingData []byte) ([]byte, error) {
 		var currentMap map[string][]string
 
@@ -117,7 +117,7 @@ func AddToMap(key, value string) ModifyFunction {
 	}
 }
 
-func DeleteFromMap(key, value string) ModifyFunction {
+func DeleteFromMap(key, value string) IndexUpdateFunction {
 	return func(existingData []byte) ([]byte, error) {
 		var currentMap map[string][]string
 

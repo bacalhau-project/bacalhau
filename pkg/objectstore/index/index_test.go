@@ -1,24 +1,24 @@
 //go:build unit || !integration
 
-package commands_test
+package index_test
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
-type CommandsTestSuite struct {
+type IndexTestSuite struct {
 	suite.Suite
 	ctx context.Context
 }
 
-func TestCommandsTestSuite(t *testing.T) {
-	suite.Run(t, &CommandsTestSuite{
+func TestIndexTestSuite(t *testing.T) {
+	suite.Run(t, &IndexTestSuite{
 		ctx: context.Background(),
 	})
 }
@@ -38,7 +38,7 @@ func bytesToList(data []byte) []string {
 	return list
 }
 
-func (s *CommandsTestSuite) TestAddToSet() {
+func (s *IndexTestSuite) TestAddToSet() {
 	type testCase struct {
 		existingList   []string
 		toAdd          string
@@ -63,7 +63,7 @@ func (s *CommandsTestSuite) TestAddToSet() {
 				input = listToBytes(tc.existingList)
 			}
 
-			f := commands.AddToSet(tc.toAdd)
+			f := index.AddToSet(tc.toAdd)
 			ba, err := f(input)
 			if tc.expectError {
 				require.Error(s.T(), err)

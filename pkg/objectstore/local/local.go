@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
@@ -24,7 +24,7 @@ var defaultPrefixes = []string{"job"}
 type LocalObjectConfig struct {
 	Filepath      string
 	Prefixes      []string
-	CallbackHooks commands.CallbackHooks
+	CallbackHooks index.CallbackHooks
 }
 
 func (l *LocalObjectConfig) Load(options ...Option) {
@@ -36,7 +36,7 @@ func (l *LocalObjectConfig) Load(options ...Option) {
 type LocalObjectStore struct {
 	path      string
 	prefixes  []string
-	callbacks *commands.CallbackHooks
+	callbacks *index.CallbackHooks
 	cm        *system.CleanupManager
 	database  *bolt.DB
 	closed    bool
@@ -54,7 +54,7 @@ func New(ctx context.Context, options ...Option) (*LocalObjectStore, error) {
 	store := &LocalObjectStore{
 		path:      config.Filepath,
 		prefixes:  []string{},
-		callbacks: commands.NewCallbackHooks(),
+		callbacks: index.NewCallbackHooks(),
 		cm:        system.NewCleanupManager(),
 		closed:    false,
 	}
@@ -99,7 +99,7 @@ func New(ctx context.Context, options ...Option) (*LocalObjectStore, error) {
 	return store, err
 }
 
-func (l *LocalObjectStore) CallbackHooks() *commands.CallbackHooks {
+func (l *LocalObjectStore) CallbackHooks() *index.CallbackHooks {
 	return l.callbacks
 }
 
@@ -261,10 +261,10 @@ func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, o
 	return nil
 }
 
-func (l *LocalObjectStore) runCallback(cmd commands.Command) error {
-	// We want to get the existing data provided by the details in
-	// command, and then pass them to command.ModifyFunc. Whatever
-	// modify func returns is what we will set the new value to.
+func (l *LocalObjectStore) runCallback(cmd index.IndexCommand) error {
+	// We want to get the existing data for the index provided by the details in
+	// the provided command. These bytes are passed to the relevant indexing
+	// function. Whatever that func returns is what we will set the new value to.
 	return l.database.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(cmd.Prefix))
 		if bucket == nil {

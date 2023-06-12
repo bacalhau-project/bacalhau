@@ -9,7 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
@@ -61,27 +61,27 @@ func NewStore(ctx context.Context, nodeID string) (*Store, error) {
 	return res, nil
 }
 
-func updateJobExecutionList(object any) ([]commands.Command, error) {
+func updateJobExecutionList(object any) ([]index.IndexCommand, error) {
 	execution, ok := object.(store.Execution)
 	if !ok {
 		return nil, fmt.Errorf("callback type did not match: got %T", object)
 	}
 
-	return []commands.Command{
+	return []index.IndexCommand{
 		// Add the execution ID to the list of IDs found at PrefixJobExecutions/jobID
-		commands.NewCommand(PrefixJobExecutions, execution.Job.ID(), commands.AddToSet(execution.ID)),
+		index.NewIndexCommand(PrefixJobExecutions, execution.Job.ID(), index.AddToSet(execution.ID)),
 	}, nil
 }
 
-func deleteJobExecutionList(object any) ([]commands.Command, error) {
+func deleteJobExecutionList(object any) ([]index.IndexCommand, error) {
 	execution, ok := object.(store.Execution)
 	if !ok {
 		return nil, fmt.Errorf("callback type did not match: got %T", object)
 	}
 
-	return []commands.Command{
+	return []index.IndexCommand{
 		// Add the execution ID to the list of IDs found at PrefixJobExecutions/jobID
-		commands.NewCommand(PrefixJobExecutions, execution.Job.ID(), commands.DeleteFromSet(execution.ID)),
+		index.NewIndexCommand(PrefixJobExecutions, execution.Job.ID(), index.DeleteFromSet(execution.ID)),
 	}, nil
 }
 

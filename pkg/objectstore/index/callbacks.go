@@ -1,4 +1,4 @@
-package commands
+package index
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 // for a specific action against a specific type. e.g. we might register
 // a UserCallback for Jobs, which might then generate commands to index
 // some of the fields we want to later find it by.
-type UserCallback func(any) ([]Command, error)
+type UserCallback func(any) ([]IndexCommand, error)
 
 type CallbackHooks struct {
 	UpdateHooks map[string]UserCallback
@@ -34,7 +34,7 @@ func (c *CallbackHooks) RegisterDelete(prefix string, callback UserCallback) {
 	c.DeleteHooks[prefix] = callback
 }
 
-func (c *CallbackHooks) TriggerUpdate(prefix string, object any) ([]Command, error) {
+func (c *CallbackHooks) TriggerUpdate(prefix string, object any) ([]IndexCommand, error) {
 	callback, present := c.UpdateHooks[prefix]
 	if !present {
 		return nil, fmt.Errorf("failed to process update callback hook for %s", prefix)
@@ -43,7 +43,7 @@ func (c *CallbackHooks) TriggerUpdate(prefix string, object any) ([]Command, err
 	return callback(object)
 }
 
-func (c *CallbackHooks) TriggerDelete(prefix string, object any) ([]Command, error) {
+func (c *CallbackHooks) TriggerDelete(prefix string, object any) ([]IndexCommand, error) {
 	callback, present := c.DeleteHooks[prefix]
 	if !present {
 		return nil, fmt.Errorf("failed to process delete callback hook for %s", prefix)

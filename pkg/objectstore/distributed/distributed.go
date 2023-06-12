@@ -3,20 +3,20 @@ package distributed
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 )
 
 type DistributedObjectStore struct {
-	callbacks *commands.CallbackHooks
+	callbacks *index.CallbackHooks
 }
 
 func New(options ...Option) (*DistributedObjectStore, error) {
 	return &DistributedObjectStore{
-		callbacks: commands.NewCallbackHooks(),
+		callbacks: index.NewCallbackHooks(),
 	}, nil
 }
 
-func (d *DistributedObjectStore) CallbackHooks() *commands.CallbackHooks {
+func (d *DistributedObjectStore) CallbackHooks() *index.CallbackHooks {
 	return d.callbacks
 }
 

@@ -44,6 +44,7 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.UpdateExecutionStateFn = s.store.UpdateExecutionState
 	s.callbackStore.DeleteExecutionFn = s.store.DeleteExecution
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
+	s.callbackStore.CloseFn = s.store.Close
 	s.config.ExecutionStore = s.callbackStore
 }
 

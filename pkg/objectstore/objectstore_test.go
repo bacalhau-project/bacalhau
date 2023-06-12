@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/distributed"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -207,14 +207,14 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 		Name string
 	}
 
-	userCallback := func(object any) ([]commands.Command, error) {
+	userCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		c := commands.NewCommand("tags", "tagname", commands.AddToSet(t.ID))
-		return []commands.Command{c}, nil
+		c := index.NewIndexCommand("tags", "tagname", index.AddToSet(t.ID))
+		return []index.IndexCommand{c}, nil
 	}
 
 	data := testdata{ID: "1", Name: "test"}
@@ -251,14 +251,14 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 	data2 := testdata{ID: "2", Name: "test"}
 	data3 := testdata{ID: "3", Name: "test"}
 
-	userCallback := func(object any) ([]commands.Command, error) {
+	userCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		c := commands.NewCommand("tags", "tagname", commands.AddToSet(t.ID))
-		return []commands.Command{c}, nil
+		c := index.NewIndexCommand("tags", "tagname", index.AddToSet(t.ID))
+		return []index.IndexCommand{c}, nil
 	}
 
 	impl, err := objectstore.GetImplementation(
@@ -296,24 +296,24 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	}
 
 	data1 := testdata{ID: "1", Name: "test"}
-	userUpdateCallback := func(object any) ([]commands.Command, error) {
+	userUpdateCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		c := commands.NewCommand("tags", "tagname", commands.AddToSet(t.ID))
-		return []commands.Command{c}, nil
+		c := index.NewIndexCommand("tags", "tagname", index.AddToSet(t.ID))
+		return []index.IndexCommand{c}, nil
 	}
 
-	userDeleteCallback := func(object any) ([]commands.Command, error) {
+	userDeleteCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		c := commands.NewCommand("tags", "tagname", commands.DeleteFromSet(t.ID))
-		return []commands.Command{c}, nil
+		c := index.NewIndexCommand("tags", "tagname", index.DeleteFromSet(t.ID))
+		return []index.IndexCommand{c}, nil
 	}
 
 	impl, err := objectstore.GetImplementation(
@@ -369,13 +369,13 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 		},
 	}
 
-	userUpdateCallback := func(object any) ([]commands.Command, error) {
+	userUpdateCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		var commandList []commands.Command
+		var commandList []index.IndexCommand
 
 		// If labels is
 		//    Height=1
@@ -385,23 +385,23 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 		// /labels/depth -> {"1": [t.ID]}
 		for k, v := range t.Labels {
 			// TODO: the ToLower should be slugify
-			c := commands.NewCommand("labels", strings.ToLower(k), commands.AddToMap(v, t.ID))
+			c := index.NewIndexCommand("labels", strings.ToLower(k), index.AddToMap(v, t.ID))
 			commandList = append(commandList, c)
 		}
 
 		return commandList, nil
 	}
 
-	userDeleteCallback := func(object any) ([]commands.Command, error) {
+	userDeleteCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
 			return nil, fmt.Errorf("callback type did not match: got %T", object)
 		}
 
-		var commandList []commands.Command
+		var commandList []index.IndexCommand
 
 		for k, v := range t.Labels {
-			c := commands.NewCommand("labels", strings.ToLower(k), commands.DeleteFromMap(v, t.ID))
+			c := index.NewIndexCommand("labels", strings.ToLower(k), index.DeleteFromMap(v, t.ID))
 			commandList = append(commandList, c)
 		}
 

@@ -3,8 +3,8 @@ package objectstore
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/commands"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/distributed"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
 )
 
@@ -12,7 +12,7 @@ import (
 // components
 type ObjectStore interface {
 	// Returns a pointer to CallbackHooks where types can be registered
-	CallbackHooks() *commands.CallbackHooks
+	CallbackHooks() *index.CallbackHooks
 
 	// Delete removes the value for the specified key from the provided
 	// prefix, and if any delete callbacks were registered, will also run
