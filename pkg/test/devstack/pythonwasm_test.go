@@ -55,6 +55,8 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+	s.T().Skip("PythonWasm is deprecated")
+
 	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
@@ -155,6 +157,8 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	require.Equal(s.T(), fileContents, strings.TrimSpace(string(outputData)))
 }
 func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
+	s.T().Skip("PythonWasm is deprecated")
+
 	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
@@ -193,6 +197,8 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 // TODO: test that > 10MB context is rejected
 
 func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
+	s.T().Skip("PythonWasm is deprecated")
+
 	testutils.SkipIfArm(s.T(), "https://github.com/bacalhau-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
