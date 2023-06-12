@@ -4,10 +4,10 @@ Spec:
   Engine: Noop
   Verifier: Noop
   Publisher: Noop
-  outputs:
+  Outputs:
     - StorageSource: IPFS
       Name: output_custom
-      path: /output_custom
+      Path: /output_custom
   Deal:
     Concurrency: 1
     Confidence: 0
