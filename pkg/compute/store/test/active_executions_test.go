@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/persistent"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -17,10 +17,12 @@ type Suite struct {
 	suite.Suite
 	executionStore store.ExecutionStore
 	execution      store.Execution
+	ctx            context.Context
 }
 
 func (s *Suite) SetupTest() {
-	s.executionStore = inmemory.NewStore()
+	s.ctx = context.Background()
+	s.executionStore, _ = persistent.NewStore(s.ctx, "")
 	s.execution = newExecution()
 }
 

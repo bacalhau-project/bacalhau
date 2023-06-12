@@ -13,12 +13,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/persistent"
 )
 
 type AsyncBidSuite struct {
 	ComputeSuite
 
+	ctx      context.Context
 	strategy *bidstrategy.CallbackBidStrategy
 
 	store         store.ExecutionStore
@@ -35,7 +36,9 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.config.BidSemanticStrategy = s.strategy
 	s.config.BidResourceStrategy = s.strategy
 
-	s.store = inmemory.NewStore()
+	s.ctx = context.Background()
+
+	s.store, _ = persistent.NewStore(s.ctx, "")
 	s.callbackStore = &CallbackStore{}
 	s.callbackStore.GetExecutionFn = s.store.GetExecution
 	s.callbackStore.GetExecutionsFn = s.store.GetExecutions

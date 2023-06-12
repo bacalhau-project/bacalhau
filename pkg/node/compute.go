@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/libp2p/go-libp2p/core/host"
 
@@ -19,6 +20,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/persistent"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -298,6 +301,10 @@ func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
 }
 
+func (c *Compute) cleanup(ctx context.Context) {
+	c.cleanupFunc(ctx)
+}
+
 func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
 	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
 	// e.g. when running tests or when running devstack
@@ -311,18 +318,19 @@ func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionS
 		return nil, err
 	}
 
-	// TODO: Enable to persist executions to disk
-	// pstore, err := persistent.NewStore(ctx, host.ID().String())
-	// if err != nil {
-	// 	return nil, err
-	// }
+	var execStore store.ExecutionStore
+	es := strings.ToLower(config.GetExecutionStoreEnv())
+	if es == "persistent" {
+		execStore, err = persistent.NewStore(ctx, host.ID().String())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		execStore = inmemory.NewStore()
+	}
 
 	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   inmemory.NewStore(),
+		Store:   execStore,
 		RootDir: stateRootDir,
 	})
-}
-
-func (c *Compute) cleanup(ctx context.Context) {
-	c.cleanupFunc(ctx)
 }

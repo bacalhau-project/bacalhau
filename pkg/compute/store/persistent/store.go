@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,20 +19,22 @@ const (
 	PrefixExecution        = "executions"
 	PrefixExecutionHistory = "execution-history"
 	PrefixJobExecutions    = "job-executions"
+
+	TestDatabaseFilepath = ""
+	TestNodeID           = ""
 )
 
 type Store struct {
 	db objectstore.ObjectStore
-	mu sync.RWMutex
 }
 
 func NewStore(ctx context.Context, nodeID string) (*Store, error) {
 	var filepath string
 
 	// Target folder
-	if nodeID == "" {
+	if nodeID == TestNodeID {
 		// Set the filepath to empty for a test database
-		filepath = ""
+		filepath = TestDatabaseFilepath
 	} else {
 		filepath = "/tmp/bacalhau/executions/" + strings.ToLower(nodeID)
 	}
@@ -52,13 +53,7 @@ func NewStore(ctx context.Context, nodeID string) (*Store, error) {
 
 	db.CallbackHooks().RegisterUpdate(PrefixExecution, updateJobExecutionList)
 	db.CallbackHooks().RegisterDelete(PrefixExecution, deleteJobExecutionList)
-
-	res := &Store{db: db}
-	res.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "InMemoryExecutionStore.mu",
-	})
-	return res, nil
+	return &Store{db: db}, nil
 }
 
 func updateJobExecutionList(object any) ([]index.IndexCommand, error) {

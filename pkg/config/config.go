@@ -22,6 +22,7 @@ const (
 	minUInt16              uint16 = 0x0000
 	DefaultRunInfoFilename        = "bacalhau.run"
 	RunInfoFilePermissions        = 0400
+	DefaultExecutionStore         = "inmemory"
 )
 
 var RunInfoFilePath = ""
@@ -208,6 +209,14 @@ func GetConfigPath() string {
 		log.Fatal().Err(err).Send()
 	}
 	return d
+}
+
+func GetExecutionStoreEnv() string {
+	s := os.Getenv("BACALHAU_EXECUTION_STORE")
+	if s == "" {
+		s = DefaultExecutionStore
+	}
+	return s
 }
 
 const BitsForKeyPair = 2048
