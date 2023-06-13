@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -18,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -48,6 +50,7 @@ func TestDockerEntrypointTestSuite(t *testing.T) {
 
 type DockerEntrypointTestSuite struct {
 	suite.Suite
+	testName string
 }
 
 type dockerfilePermutation struct {
@@ -66,7 +69,6 @@ var defaultUserOverwrites = userOverwrites{
 }
 
 func createDockerfile(d dockerfilePermutation) string {
-	//olgibbons: Use pkg template for this:
 	ep := "\nENTRYPOINT [\"/bin/echo\"]"
 	cmd := "\nCMD [\"echo\", \"This is from CMD\"]"
 	baseDockerFile := "FROM alpine:latest"
@@ -82,6 +84,7 @@ func createDockerfile(d dockerfilePermutation) string {
 func (suite *DockerEntrypointTestSuite) SetupSuite() {
 	docker.MustHaveDocker(suite.T())
 	ctx := context.Background()
+	suite.testName = strings.ToLower(suite.Suite.T().Name())
 
 	tempDir := suite.T().TempDir()
 	dockerfilePermutations := []struct {
@@ -98,7 +101,7 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		//create dockerfile
 		dockerFile := createDockerfile(permutation)
 		createUniqueName := func(name string) string {
-			return fmt.Sprintf("%s-%s-%s", name,
+			return fmt.Sprintf("%s-%s-%s-%s", suite.testName, name,
 				strconv.FormatBool(permutation.entrypoint),
 				strconv.FormatBool(permutation.cmd))
 		}
@@ -108,7 +111,6 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		require.NoError(suite.T(), err, "creating temp file")
 		_, err = f.WriteString(dockerFile)
 		require.NoError(suite.T(), err, "writing string to file")
-		//delete following line after testing olgibbons
 		data, err := os.ReadFile(filename)
 		require.NoError(suite.T(), err, "reading file")
 		suite.T().Log(string(data))
@@ -127,6 +129,10 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		}
 
 		response, err := cli.ImageBuild(ctx, buildContext, buildOptions)
+		//olgibbons delete after testing:
+		if err != nil {
+			suite.T().Fatal("Error building image: ", err)
+		}
 		output, err := io.ReadAll(response.Body)
 		require.NoError(suite.T(), err, "building image")
 		suite.T().Logf("Image %q built successfully: %s", tag, string(output))
@@ -136,6 +142,36 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 
 func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 	// delete the test docker images here!
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	require.NoError(suite.T(), err)
+
+	imageTags := []string{
+		suite.testName + "-image-true-true",
+		suite.testName + "-image-false-true",
+		suite.testName + "-image-true-false",
+		suite.testName + "-image-false-false",
+	}
+
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	require.NoError(suite.T(), err, "Error listing containers")
+
+	for _, tag := range imageTags {
+		for _, runningContainer := range containers {
+			if strings.Contains(runningContainer.Image, tag) {
+
+				err := cli.ContainerStop(ctx, runningContainer.ID, container.StopOptions{})
+				require.NoError(suite.T(), err, fmt.Sprintf("Error stopping container %q", runningContainer.ID))
+
+				err = cli.ContainerRemove(ctx, runningContainer.ID, types.ContainerRemoveOptions{})
+				require.NoError(suite.T(), err, fmt.Sprintf("Error removing container %q", runningContainer.ID))
+			}
+		}
+
+		_, err = cli.ImageRemove(ctx, tag+":latest", types.ImageRemoveOptions{Force: true})
+		require.NoError(suite.T(), err, "Error removing image")
+	}
+
 }
 
 type tests []struct {
@@ -167,7 +203,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueTrue() {
 	//CMD is set AND Entrypoint is set:
 	//Entrypoint ["bin/echo"]
 	//Cmd ["echo","This is from CMD"]
-	image := "image-true-true"
+	image := suite.testName + "-image-true-true"
 	stderr := ""
 	newTests := tests{
 
@@ -188,7 +224,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueFalse() {
 	//Entrypoint is set to bin/echo
 	//CMD is empty
 
-	image := "image-true-false"
+	image := suite.testName + "-image-true-false"
 	stderr := ""
 	newTests := tests{
 		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd},
@@ -206,7 +242,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueFalse() {
 func (suite *DockerEntrypointTestSuite) TestCaseImageFalseTrue() {
 	//Entrypoint is empty
 	//CMD is set to ["echo","This is from CMD"]
-	image := "image-false-true"
+	image := suite.testName + "-image-false-true"
 	stderr := ""
 	newTests := tests{
 		//override Cmd expect: error.
@@ -226,7 +262,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseTrue() {
 func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
 	//Entrypoint is empty
 	//CMD is empty, so dockerfile will use Alpine default of /bin/sh
-	image := "image-false-false"
+	image := suite.testName + "-image-false-false"
 	stderr := ""
 	newTests := tests{
 		//override Cmd expect: error.
@@ -240,35 +276,6 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
 		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters)
 		RunTestCase(suite.T(), testScenario)
 	}
-}
-
-func (suite *DockerEntrypointTestSuite) TestDeleteMeAfterOlGibbons() {
-	DockerfileOverWriteCmdAndEntrypoint := createTestScenario(
-		"",
-		"cdrom\nfloppy\nusb\n",
-		"image-true-true",
-		defaultUserOverwrites.entrypoint,
-		defaultUserOverwrites.cmd,
-	)
-	RunTestCase(suite.T(), DockerfileOverWriteCmdAndEntrypoint)
-}
-func (suite *DockerEntrypointTestSuite) TestDockerfileEntryPointSetNoCmd() {
-	DockerFileNoEntryPointYesCommand := scenario.Scenario{
-		ResultsChecker: scenario.ManyChecks(
-			scenario.FileEquals(model.DownloadFilenameStderr, ""),
-			scenario.FileEquals(model.DownloadFilenameStdout, "I am overriding the ubuntu image's default command (bash)\n"),
-		),
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: model.JobSpecDocker{
-				Image:      "ubuntu:latest",
-				Entrypoint: nil,
-				Parameters: []string{"echo", "I am overriding the ubuntu image's default command (bash)"},
-			},
-		}, // Docker will always run ENTRYPOINT + CMD. If entrypoint = [], this is the same as just running CMD
-	}
-
-	RunTestCase(suite.T(), DockerFileNoEntryPointYesCommand)
 }
 
 //in cmd/docker_run_test.go: make sure flag is hooked up correctly
