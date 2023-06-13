@@ -103,13 +103,13 @@ func (l *LocalObjectStore) CallbackHooks() *index.CallbackHooks {
 	return l.callbacks
 }
 
-func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []string, objects any) error {
+func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []string, objects any) (bool, error) {
 	if l.closed {
-		return ErrDatabaseClosed
+		return false, ErrDatabaseClosed
 	}
 
 	if !slices.Contains[string](l.prefixes, prefix) {
-		return ErrNoSuchPrefix(prefix)
+		return false, ErrNoSuchPrefix(prefix)
 	}
 
 	added := 0
@@ -138,23 +138,23 @@ func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []s
 	})
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if added != len(keys) {
-		return ErrNoSuchKey(strings.Join(keys, ","))
+		return false, ErrNoSuchKey(strings.Join(keys, ","))
 	}
 
-	return json.Unmarshal(buffer, &objects)
+	return true, json.Unmarshal(buffer, &objects)
 }
 
-func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string, object any) error {
+func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string, object any) (bool, error) {
 	if l.closed {
-		return ErrDatabaseClosed
+		return false, ErrDatabaseClosed
 	}
 
 	if !slices.Contains[string](l.prefixes, prefix) {
-		return ErrNoSuchPrefix(prefix)
+		return false, ErrNoSuchPrefix(prefix)
 	}
 
 	var bytesValue []byte
@@ -169,7 +169,7 @@ func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string, o
 		return json.Unmarshal(bytesValue, &object)
 	})
 
-	return err
+	return err == nil, err
 }
 
 func (l *LocalObjectStore) Delete(ctx context.Context, prefix string, key string, object any) error {

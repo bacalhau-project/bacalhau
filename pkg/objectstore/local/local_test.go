@@ -32,7 +32,7 @@ func benchmarkWriteRead(i int, b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		for x := 0; x < i; x++ {
-			_ = db.Get(ctx, "test", d.ID, d)
+			_, _ = db.Get(ctx, "test", d.ID, d)
 			counter = counter + 1
 		}
 	}
@@ -76,7 +76,7 @@ func benchmarkRead(i int, b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		for x := 0; x < i; x++ {
-			_ = db.Get(ctx, "test", fmt.Sprintf("%d", x), d)
+			_, _ = db.Get(ctx, "test", fmt.Sprintf("%d", x), d)
 		}
 	}
 }

@@ -47,8 +47,12 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.UpdateExecutionStateFn = s.store.UpdateExecutionState
 	s.callbackStore.DeleteExecutionFn = s.store.DeleteExecution
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
-	s.callbackStore.CloseFn = s.store.Close
+	s.callbackStore.CloseFn = func(context.Context) error { return nil }
 	s.config.ExecutionStore = s.callbackStore
+}
+
+func (s *AsyncBidSuite) TeardownSuite() {
+	s.store.Close(context.Background())
 }
 
 func (s *AsyncBidSuite) TestAsyncApproval() {

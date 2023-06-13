@@ -5,6 +5,7 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/persistent"
@@ -47,7 +48,7 @@ func (s *Suite) TestGetActiveExecution_Multiple() {
 	newerExecution := s.execution
 	newerExecution.ID = uuid.NewString()
 	newerExecution.Job = s.execution.Job
-	newerExecution.UpdateTime = s.execution.UpdateTime.Add(1)
+	newerExecution.UpdateTime = s.execution.UpdateTime.Add(1 * time.Second)
 
 	err := s.executionStore.CreateExecution(ctx, s.execution)
 	s.NoError(err)

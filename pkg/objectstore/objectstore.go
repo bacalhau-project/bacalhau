@@ -23,10 +23,10 @@ type ObjectStore interface {
 	// and key.  You can think of the prefix as a bucket, a namespace, or other
 	// named container which can group together IDs of a given type (to add an
 	// extra level of uniqueness
-	Get(ctx context.Context, prefix string, key string, object any) error
+	Get(ctx context.Context, prefix string, key string, object any) (bool, error)
 
 	// GetBatch retrieves one record for each key provided
-	GetBatch(ctx context.Context, prefix string, keys []string, objects any) error
+	GetBatch(ctx context.Context, prefix string, keys []string, objects any) (bool, error)
 
 	// Put will store `data` in the prefix namespace/bucket/container with the
 	// provided key.  If the Put fails then an error is returned, otherwise

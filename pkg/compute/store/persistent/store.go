@@ -83,8 +83,8 @@ func deleteJobExecutionList(object any) ([]index.IndexCommand, error) {
 func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, error) {
 	var execution store.Execution
 
-	err := s.db.Get(ctx, PrefixExecution, id, &execution)
-	if err != nil {
+	found, err := s.db.Get(ctx, PrefixExecution, id, &execution)
+	if err != nil || !found {
 		return execution, store.NewErrExecutionNotFound(id)
 	}
 
@@ -94,17 +94,17 @@ func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, e
 // TODO
 func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
 	var execList []string
-	err := s.db.Get(ctx, PrefixJobExecutions, jobID, &execList)
+	found, err := s.db.Get(ctx, PrefixJobExecutions, jobID, &execList)
 	if err != nil {
 		return nil, store.NewErrExecutionsNotFoundForJob(jobID)
 	}
 
-	if len(execList) == 0 {
+	if !found || len(execList) == 0 {
 		return nil, store.NewErrExecutionsNotFoundForJob(jobID)
 	}
 
 	var executions []store.Execution
-	_ = s.db.GetBatch(ctx, PrefixExecution, execList, &executions)
+	_, _ = s.db.GetBatch(ctx, PrefixExecution, execList, &executions)
 
 	// Sort by CreateTime so that we get them back in the order we stored them
 	sort.Slice(executions, func(i, j int) bool {
@@ -117,11 +117,11 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 func (s *Store) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {
 	var history []store.ExecutionHistory
 
-	err := s.db.Get(ctx, PrefixExecutionHistory, id, &history)
+	found, err := s.db.Get(ctx, PrefixExecutionHistory, id, &history)
 	if err != nil {
 		return history, store.NewErrExecutionHistoryNotFound(id)
 	}
-	if len(history) == 0 {
+	if !found || len(history) == 0 {
 		return history, store.NewErrExecutionHistoryNotFound(id)
 	}
 
@@ -177,8 +177,10 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	previousState := execution.State
 	execution.State = request.NewState
 	execution.Version += 1
-	execution.UpdateTime = time.Now()
+	execution.UpdateTime = time.Now().UTC()
 
+	// TODO: This will re-index unnecessarily, so perhaps we should allow the caller to
+	// skip indexing
 	err = s.db.Put(ctx, PrefixExecution, request.ExecutionID, execution)
 	if err != nil {
 		return err
@@ -208,12 +210,12 @@ func (s *Store) appendHistory(
 
 	if !first {
 		// Get the existing history
-		err := s.db.Get(ctx, PrefixExecutionHistory, updatedExecution.ID, &items)
+		found, err := s.db.Get(ctx, PrefixExecutionHistory, updatedExecution.ID, &items)
 		if err != nil {
 			return fmt.Errorf("no history found for execution: %s", updatedExecution.ID)
 		}
 
-		if len(items) == 0 {
+		if !found || len(items) == 0 {
 			return fmt.Errorf("no history found for execution: %s", updatedExecution.ID)
 		}
 	}
@@ -222,7 +224,6 @@ func (s *Store) appendHistory(
 	return s.db.Put(ctx, PrefixExecutionHistory, updatedExecution.ID, items)
 }
 
-// TODO: CLeanup
 func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	execution, err := s.GetExecution(ctx, id)
 	if err != nil {
@@ -237,8 +238,8 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	// and then check if it is the empty list, at which point we should delete it
 
 	var execList []string
-	_ = s.db.Get(ctx, PrefixJobExecutions, execution.Job.ID(), &execList)
-	if len(execList) == 0 {
+	found, _ := s.db.Get(ctx, PrefixJobExecutions, execution.Job.ID(), &execList)
+	if found && len(execList) == 0 {
 		_ = s.db.Delete(ctx, PrefixJobExecutions, execution.Job.ID(), []string{})
 	}
 
@@ -258,6 +259,7 @@ func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
 }
 
 func (s *Store) Close(ctx context.Context) error {
+	log.Ctx(ctx).Debug().Msg("closing persistent execution store")
 	return s.db.Close(ctx)
 }
 

@@ -78,12 +78,14 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 
 	data := testdata{Name: "Test"}
 
-	err = impl.Get(s.ctx, "test", "irrelevant", &data)
+	found, err := impl.Get(s.ctx, "test", "irrelevant", &data)
 	require.Error(s.T(), err)
+	require.False(s.T(), found)
 	require.EqualError(s.T(), err, "unknown prefix: test")
 
-	err = impl.Get(s.ctx, "job", "nosuchkey", &data)
+	found, err = impl.Get(s.ctx, "job", "nosuchkey", &data)
 	require.Error(s.T(), err)
+	require.False(s.T(), found)
 	require.EqualError(s.T(), err, "unknown key: nosuchkey")
 
 	impl.Close(s.ctx)
@@ -108,8 +110,9 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
 
 	var results []testdata
 
-	err = impl.GetBatch(s.ctx, "job", []string{"1", "2", "3"}, &results)
+	found, err := impl.GetBatch(s.ctx, "job", []string{"1", "2", "3"}, &results)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), "1", results[0].ID)
 	require.Equal(s.T(), 3, len(results))
 
@@ -131,8 +134,9 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGetSingle() {
 
 	var results []testdata
 
-	err = impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+	found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), "1", results[0].ID)
 
 	impl.Close(s.ctx)
@@ -148,8 +152,9 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGetNone() {
 	}
 
 	var results []testdata
-	err = impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+	found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), []testdata{}, results)
 
 	impl.Close(s.ctx)
@@ -170,8 +175,9 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWrite() {
 	require.NoError(s.T(), err)
 
 	toFill := testdata{}
-	err = impl.Get(s.ctx, "job", "key", &toFill)
+	found, err := impl.Get(s.ctx, "job", "key", &toFill)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), data, toFill)
 
 	impl.Close(s.ctx)
@@ -193,8 +199,9 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObject() {
 	require.NoError(s.T(), err)
 
 	t := testdata{}
-	err = impl.Get(s.ctx, "job", "key", &t)
+	found, err := impl.Get(s.ctx, "job", "key", &t)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), "test", t.Name)
 
 	impl.Close(s.ctx)
@@ -234,8 +241,9 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 
 	// We now expect tags/tagname to contain a list of "1"
 	var tagList []string
-	err = impl.Get(s.ctx, "tags", "tagname", &tagList)
+	found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), data.ID, tagList[0])
 
 	impl.Close(s.ctx)
@@ -282,8 +290,9 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 
 	// We now expect tags/tagname to contain a list of "1"
 	var tagList []string
-	err = impl.Get(s.ctx, "tags", "tagname", &tagList)
+	found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), []string{"1", "2", "3"}, tagList)
 
 	impl.Close(s.ctx)
@@ -331,16 +340,18 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 	require.NoError(s.T(), err)
 
 	retr := testdata{}
-	err = impl.Get(s.ctx, "job", data1.ID, retr)
+	found, err := impl.Get(s.ctx, "job", data1.ID, retr)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 
 	err = impl.Delete(s.ctx, "job", data1.ID, data1)
 	require.NoError(s.T(), err)
 
 	// The tag name should now be an empty list
 	var tagList []string
-	err = impl.Get(s.ctx, "tags", "tagname", tagList)
+	found, err = impl.Get(s.ctx, "tags", "tagname", tagList)
 	require.NoError(s.T(), err)
+	require.True(s.T(), found)
 	require.Equal(s.T(), []string(nil), tagList)
 }
 
@@ -428,8 +439,9 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 	checkLabels := func(name string, key string, values []string) {
 		var labelMap map[string][]string
 
-		err = impl.Get(s.ctx, "labels", name, &labelMap)
+		found, err := impl.Get(s.ctx, "labels", name, &labelMap)
 		require.NoError(s.T(), err)
+		require.True(s.T(), found)
 		require.Equal(s.T(), values, labelMap[key])
 	}
 
