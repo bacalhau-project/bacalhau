@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/distributed"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/index"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/local"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,6 +20,7 @@ import (
 type ObjectStoreTestSuite struct {
 	suite.Suite
 	ctx context.Context
+	cm  *system.CleanupManager
 }
 
 func TestObjectStoreTestSuite(t *testing.T) {
@@ -27,8 +29,22 @@ func TestObjectStoreTestSuite(t *testing.T) {
 	})
 }
 
+func (s *ObjectStoreTestSuite) SetupTest() {
+	s.cm = system.NewCleanupManager()
+}
+
+func (s *ObjectStoreTestSuite) TearDownTest() {
+	if s.cm != nil {
+		s.cm.Cleanup(s.ctx)
+	}
+}
+
 func (s *ObjectStoreTestSuite) makeLocal(prefixes ...string) objectstore.ObjectStore {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes(prefixes...))
+	s.cm.RegisterCallbackWithContext(func(c context.Context) error {
+		return impl.Close(c)
+	})
+
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	return impl
@@ -36,6 +52,10 @@ func (s *ObjectStoreTestSuite) makeLocal(prefixes ...string) objectstore.ObjectS
 
 func (s *ObjectStoreTestSuite) makeDistributed() objectstore.ObjectStore {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.DistributedImplementation, distributed.WithTestConfig())
+	s.cm.RegisterCallbackWithContext(func(c context.Context) error {
+		return impl.Close(c)
+	})
+
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	return impl
@@ -43,18 +63,20 @@ func (s *ObjectStoreTestSuite) makeDistributed() objectstore.ObjectStore {
 
 func (s *ObjectStoreTestSuite) TestCreateLocal() {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation)
+	defer func() { _ = impl.Close(s.ctx) }()
+
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
-	impl.Close(s.ctx)
 }
 
 func (s *ObjectStoreTestSuite) TestCreateDistributed() {
 	impl, err := objectstore.GetImplementation(
 		s.ctx, objectstore.DistributedImplementation, distributed.WithTestConfig(),
 	)
+	defer func() { _ = impl.Close(s.ctx) }()
+
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
-	impl.Close(s.ctx)
 }
 
 func (s *ObjectStoreTestSuite) TestCreateLocalBadOption() {
@@ -87,6 +109,7 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
+	defer func() { _ = impl.Close(s.ctx) }()
 
 	type testdata struct {
 		Name string
@@ -103,15 +126,9 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 	require.Error(s.T(), err)
 	require.False(s.T(), found)
 	require.EqualError(s.T(), err, "unknown key: nosuchkey")
-
-	impl.Close(s.ctx)
 }
 
 func (s *ObjectStoreTestSuite) TestBatchGet() {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
-
 	type testdata struct {
 		ID string
 	}
@@ -132,15 +149,13 @@ func (s *ObjectStoreTestSuite) TestBatchGet() {
 		require.True(t, found)
 		require.Equal(t, "1", results[0].ID)
 		require.Equal(t, 3, len(results))
-
-		impl.Close(s.ctx)
 	}
 
-	s.T().Run("Local Batch Get - Local", func(t *testing.T) {
+	s.T().Run("Batch Get - Local", func(t *testing.T) {
 		l := s.makeLocal("job")
 		f(l, s.T())
 	})
-	s.T().Run("Local Batch Get - Distributed", func(t *testing.T) {
+	s.T().Run("Batch Get - Distributed", func(t *testing.T) {
 		l := s.makeDistributed()
 		f(l, s.T())
 	})
@@ -161,8 +176,6 @@ func (s *ObjectStoreTestSuite) TestBatchGetSingle() {
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, "1", results[0].ID)
-
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Local Batch Single - Local", func(t *testing.T) {
@@ -191,12 +204,10 @@ func (s *ObjectStoreTestSuite) TestBatchGetNone() {
 	s.T().Run("Batch None - Local", func(t *testing.T) {
 		l := s.makeLocal("job")
 		f(l, s.T())
-		l.Close(s.ctx)
 	})
 	s.T().Run("Batch None - Distributed", func(t *testing.T) {
 		l := s.makeDistributed()
 		f(l, s.T())
-		l.Close(s.ctx)
 	})
 }
 
@@ -216,8 +227,6 @@ func (s *ObjectStoreTestSuite) TestReadAndWrite() {
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, data, toFill)
-
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Read and Write - Local", func(t *testing.T) {
@@ -246,8 +255,6 @@ func (s *ObjectStoreTestSuite) TestReadAndWriteObject() {
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, "test", test.Name)
-
-		impl.Close(s.ctx)
 	}
 	s.T().Run("Read and Write Object - Local", func(t *testing.T) {
 		l := s.makeLocal("job")
@@ -290,8 +297,6 @@ func (s *ObjectStoreTestSuite) TestReadAndWriteObjectWithCallbacks() {
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, data.ID, tagList[0])
-
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Read and Write Callbacks - Local", func(t *testing.T) {
@@ -342,8 +347,6 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, []string{"1", "2", "3"}, tagList)
-
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Read and Write Multiple Callbacks - Local", func(t *testing.T) {
@@ -405,8 +408,6 @@ func (s *ObjectStoreTestSuite) TestDelete() {
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, []string(nil), tagList)
-
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Delete - Local", func(t *testing.T) {
@@ -513,7 +514,6 @@ func (s *ObjectStoreTestSuite) TestMapCallbacks() {
 		require.NoError(t, err)
 
 		checkLabels("height", "tall", []string{})
-		impl.Close(s.ctx)
 	}
 
 	s.T().Run("Map Callbacks - Local", func(t *testing.T) {
