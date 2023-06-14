@@ -28,7 +28,7 @@ func TestObjectStoreTestSuite(t *testing.T) {
 }
 
 func (s *ObjectStoreTestSuite) makeLocal(prefixes ...string) objectstore.ObjectStore {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes(prefixes...))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	return impl
@@ -419,7 +419,7 @@ func (s *ObjectStoreTestSuite) TestDelete() {
 	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
+func (s *ObjectStoreTestSuite) TestMapCallbacks() {
 	type testdata struct {
 		ID     string
 		Name   string

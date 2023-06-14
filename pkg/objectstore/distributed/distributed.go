@@ -78,6 +78,21 @@ func (d *DistributedObjectStore) Delete(ctx context.Context, prefix string, key 
 		return err
 	}
 
+	if commands, err := d.callbacks.TriggerDelete(prefix, object); err == nil {
+		// err raised from trigger update above refers to whether the object has callbacks
+		// or not and so can be ignored if present.
+		for _, command := range commands {
+			err := d.runCallback(command)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Str("Prefix", command.Prefix).
+					Str("Key", command.Key).
+					Err(err).
+					Msg("failed to delete record from post-delete command")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -120,6 +135,7 @@ func (d *DistributedObjectStore) GetBatch(ctx context.Context, prefix string, ke
 
 func (d *DistributedObjectStore) Get(ctx context.Context, prefix string, key string, object any) (bool, error) {
 	p := prefixKey(prefix, key)
+
 	response, err := d.cli.Get(ctx, p)
 	if err != nil {
 		// switch err {
@@ -157,6 +173,19 @@ func (d *DistributedObjectStore) Put(ctx context.Context, prefix string, key str
 	_, err = d.cli.Put(ctx, p, string(bytes))
 	if err != nil {
 		return err
+	}
+
+	if commands, err := d.callbacks.TriggerUpdate(prefix, object); err == nil {
+		for _, command := range commands {
+			err := d.runCallback(command)
+			if err != nil {
+				log.Ctx(ctx).Error().
+					Str("Prefix", command.Prefix).
+					Str("Key", command.Key).
+					Err(err).
+					Msg("failed to delete record from post-delete command")
+			}
+		}
 	}
 
 	return nil
@@ -227,4 +256,29 @@ func (d *DistributedObjectStore) startLocalInstance(ctx context.Context) {
 
 func prefixKey(prefix, key string) string {
 	return fmt.Sprintf("%s/%s", prefix, key)
+}
+
+func (d *DistributedObjectStore) runCallback(cmd index.IndexCommand) error {
+	// We want to get the existing data for the index provided by the details in
+	// the provided command. These bytes are passed to the relevant indexing
+	// function. Whatever that func returns is what we will set the new value to.
+	p := prefixKey(cmd.Prefix, cmd.Key)
+
+	response, err := d.cli.Get(d.ctx, p)
+	if err != nil {
+		return err
+	}
+
+	var bytes []byte
+	if response.Count != 0 {
+		bytes = response.Kvs[0].Value
+	}
+
+	newBytes, err := cmd.Modify(bytes)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.cli.Put(d.ctx, p, string(newBytes))
+	return err
 }
