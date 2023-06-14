@@ -35,7 +35,9 @@ func (s *ObjectStoreTestSuite) TestCreateLocal() {
 }
 
 func (s *ObjectStoreTestSuite) TestCreateDistributed() {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.DistributedImplementation)
+	impl, err := objectstore.GetImplementation(
+		s.ctx, objectstore.DistributedImplementation, distributed.WithTestConfig(),
+	)
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
 	impl.Close(s.ctx)
