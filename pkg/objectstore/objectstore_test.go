@@ -27,6 +27,20 @@ func TestObjectStoreTestSuite(t *testing.T) {
 	})
 }
 
+func (s *ObjectStoreTestSuite) makeLocal(prefixes ...string) objectstore.ObjectStore {
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+	return impl
+}
+
+func (s *ObjectStoreTestSuite) makeDistributed() objectstore.ObjectStore {
+	impl, err := objectstore.GetImplementation(s.ctx, objectstore.DistributedImplementation, distributed.WithTestConfig())
+	require.NotNil(s.T(), impl)
+	require.NoError(s.T(), err)
+	return impl
+}
+
 func (s *ObjectStoreTestSuite) TestCreateLocal() {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation)
 	require.NotNil(s.T(), impl)
@@ -93,7 +107,7 @@ func (s *ObjectStoreTestSuite) TestLocalPrefixes() {
 	impl.Close(s.ctx)
 }
 
-func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
+func (s *ObjectStoreTestSuite) TestBatchGet() {
 	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
 	require.NotNil(s.T(), impl)
 	require.NoError(s.T(), err)
@@ -102,114 +116,150 @@ func (s *ObjectStoreTestSuite) TestLocalBatchGet() {
 		ID string
 	}
 
-	data1 := testdata{ID: "1"}
-	data2 := testdata{ID: "2"}
-	data3 := testdata{ID: "3"}
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data1 := testdata{ID: "1"}
+		data2 := testdata{ID: "2"}
+		data3 := testdata{ID: "3"}
 
-	_ = impl.Put(s.ctx, "job", data1.ID, data1)
-	_ = impl.Put(s.ctx, "job", data2.ID, data2)
-	_ = impl.Put(s.ctx, "job", data3.ID, data3)
+		_ = impl.Put(s.ctx, "job", data1.ID, data1)
+		_ = impl.Put(s.ctx, "job", data2.ID, data2)
+		_ = impl.Put(s.ctx, "job", data3.ID, data3)
 
-	var results []testdata
+		var results []testdata
 
-	found, err := impl.GetBatch(s.ctx, "job", []string{"1", "2", "3"}, &results)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), "1", results[0].ID)
-	require.Equal(s.T(), 3, len(results))
+		found, err := impl.GetBatch(s.ctx, "job", []string{"1", "2", "3"}, &results)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, "1", results[0].ID)
+		require.Equal(t, 3, len(results))
 
-	impl.Close(s.ctx)
+		impl.Close(s.ctx)
+	}
+
+	s.T().Run("Local Batch Get - Local", func(t *testing.T) {
+		l := s.makeLocal("job")
+		f(l, s.T())
+	})
+	s.T().Run("Local Batch Get - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalBatchGetSingle() {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
-
+func (s *ObjectStoreTestSuite) TestBatchGetSingle() {
 	type testdata struct {
 		ID string
 	}
 
-	data1 := testdata{ID: "1"}
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data1 := testdata{ID: "1"}
+		_ = impl.Put(s.ctx, "job", data1.ID, data1)
 
-	_ = impl.Put(s.ctx, "job", data1.ID, data1)
+		var results []testdata
 
-	var results []testdata
+		found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, "1", results[0].ID)
 
-	found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), "1", results[0].ID)
+		impl.Close(s.ctx)
+	}
 
-	impl.Close(s.ctx)
+	s.T().Run("Local Batch Single - Local", func(t *testing.T) {
+		l := s.makeLocal("job")
+		f(l, s.T())
+	})
+	s.T().Run("Local Batch Single - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalBatchGetNone() {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
-
+func (s *ObjectStoreTestSuite) TestBatchGetNone() {
 	type testdata struct {
 		ID string
 	}
 
-	var results []testdata
-	found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), []testdata{}, results)
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		var results []testdata
+		found, err := impl.GetBatch(s.ctx, "job", []string{"1"}, &results)
+		require.Error(t, err) // No such key
+		require.False(t, found)
+		require.Nil(t, results)
+	}
 
-	impl.Close(s.ctx)
+	s.T().Run("Batch None - Local", func(t *testing.T) {
+		l := s.makeLocal("job")
+		f(l, s.T())
+		l.Close(s.ctx)
+	})
+	s.T().Run("Batch None - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+		l.Close(s.ctx)
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalReadAndWrite() {
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
-
+func (s *ObjectStoreTestSuite) TestReadAndWrite() {
 	type testdata struct {
 		Data string
 	}
 
-	data := testdata{Data: "some data"}
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data := testdata{Data: "some data"}
 
-	err = impl.Put(s.ctx, "job", "key", data)
-	require.NoError(s.T(), err)
+		err := impl.Put(s.ctx, "job", "key", data)
+		require.NoError(s.T(), err)
 
-	toFill := testdata{}
-	found, err := impl.Get(s.ctx, "job", "key", &toFill)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), data, toFill)
+		toFill := testdata{}
+		found, err := impl.Get(s.ctx, "job", "key", &toFill)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, data, toFill)
 
-	impl.Close(s.ctx)
+		impl.Close(s.ctx)
+	}
+
+	s.T().Run("Read and Write - Local", func(t *testing.T) {
+		l := s.makeLocal("job")
+		f(l, s.T())
+	})
+	s.T().Run("Read and Write - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObject() {
-
+func (s *ObjectStoreTestSuite) TestReadAndWriteObject() {
 	type testdata struct {
 		Name string
 	}
 
-	impl, err := objectstore.GetImplementation(s.ctx, objectstore.LocalImplementation, local.WithPrefixes("job"))
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data := testdata{Name: "test"}
 
-	data := testdata{Name: "test"}
+		err := impl.Put(s.ctx, "job", "key", data)
+		require.NoError(t, err)
 
-	err = impl.Put(s.ctx, "job", "key", data)
-	require.NoError(s.T(), err)
+		test := testdata{}
+		found, err := impl.Get(s.ctx, "job", "key", &test)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, "test", test.Name)
 
-	t := testdata{}
-	found, err := impl.Get(s.ctx, "job", "key", &t)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), "test", t.Name)
-
-	impl.Close(s.ctx)
+		impl.Close(s.ctx)
+	}
+	s.T().Run("Read and Write Object - Local", func(t *testing.T) {
+		l := s.makeLocal("job")
+		f(l, s.T())
+	})
+	s.T().Run("Read and Write Object - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
+func (s *ObjectStoreTestSuite) TestReadAndWriteObjectWithCallbacks() {
 
 	type testdata struct {
 		ID   string
@@ -226,29 +276,32 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithCallbacks() {
 		return []index.IndexCommand{c}, nil
 	}
 
-	data := testdata{ID: "1", Name: "test"}
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data := testdata{ID: "1", Name: "test"}
 
-	impl, err := objectstore.GetImplementation(
-		s.ctx,
-		objectstore.LocalImplementation,
-		local.WithPrefixes("job", "tags"),
-	)
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
+		impl.CallbackHooks().RegisterUpdate("job", userCallback)
 
-	impl.CallbackHooks().RegisterUpdate("job", userCallback)
+		err := impl.Put(s.ctx, "job", "key", data)
+		require.NoError(t, err)
 
-	err = impl.Put(s.ctx, "job", "key", data)
-	require.NoError(s.T(), err)
+		// We now expect tags/tagname to contain a list of "1"
+		var tagList []string
+		found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, data.ID, tagList[0])
 
-	// We now expect tags/tagname to contain a list of "1"
-	var tagList []string
-	found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), data.ID, tagList[0])
+		impl.Close(s.ctx)
+	}
 
-	impl.Close(s.ctx)
+	s.T().Run("Read and Write Callbacks - Local", func(t *testing.T) {
+		l := s.makeLocal("job", "tags")
+		f(l, s.T())
+	})
+	s.T().Run("Read and Write Callbacks - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
 func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks() {
@@ -257,10 +310,6 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 		Name string
 	}
 
-	data1 := testdata{ID: "1", Name: "test"}
-	data2 := testdata{ID: "2", Name: "test"}
-	data3 := testdata{ID: "3", Name: "test"}
-
 	userCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
@@ -271,42 +320,48 @@ func (s *ObjectStoreTestSuite) TestLocalReadAndWriteObjectWithMultipleCallbacks(
 		return []index.IndexCommand{c}, nil
 	}
 
-	impl, err := objectstore.GetImplementation(
-		s.ctx,
-		objectstore.LocalImplementation,
-		local.WithPrefixes("job", "tags"),
-	)
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data1 := testdata{ID: "1", Name: "test"}
+		data2 := testdata{ID: "2", Name: "test"}
+		data3 := testdata{ID: "3", Name: "test"}
 
-	impl.CallbackHooks().RegisterUpdate("job", userCallback)
+		impl.CallbackHooks().RegisterUpdate("job", userCallback)
 
-	err = impl.Put(s.ctx, "job", data1.ID, data1)
-	require.NoError(s.T(), err)
+		err := impl.Put(s.ctx, "job", data1.ID, data1)
+		require.NoError(t, err)
 
-	err = impl.Put(s.ctx, "job", data3.ID, data3)
-	require.NoError(s.T(), err)
+		err = impl.Put(s.ctx, "job", data3.ID, data3)
+		require.NoError(t, err)
 
-	err = impl.Put(s.ctx, "job", data2.ID, data2)
-	require.NoError(s.T(), err)
+		err = impl.Put(s.ctx, "job", data2.ID, data2)
+		require.NoError(t, err)
 
-	// We now expect tags/tagname to contain a list of "1"
-	var tagList []string
-	found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), []string{"1", "2", "3"}, tagList)
+		// We now expect tags/tagname to contain a list of "1"
+		var tagList []string
+		found, err := impl.Get(s.ctx, "tags", "tagname", &tagList)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string{"1", "2", "3"}, tagList)
 
-	impl.Close(s.ctx)
+		impl.Close(s.ctx)
+	}
+
+	s.T().Run("Read and Write Multiple Callbacks - Local", func(t *testing.T) {
+		l := s.makeLocal("job", "tags")
+		f(l, s.T())
+	})
+	s.T().Run("Read and Write Callbacks - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
-func (s *ObjectStoreTestSuite) TestLocalDelete() {
+func (s *ObjectStoreTestSuite) TestDelete() {
 	type testdata struct {
 		ID   string
 		Name string
 	}
 
-	data1 := testdata{ID: "1", Name: "test"}
 	userUpdateCallback := func(object any) ([]index.IndexCommand, error) {
 		t, ok := object.(testdata)
 		if !ok {
@@ -327,34 +382,41 @@ func (s *ObjectStoreTestSuite) TestLocalDelete() {
 		return []index.IndexCommand{c}, nil
 	}
 
-	impl, err := objectstore.GetImplementation(
-		s.ctx,
-		objectstore.LocalImplementation,
-		local.WithPrefixes("job", "tags"),
-	)
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data1 := testdata{ID: "1", Name: "test"}
 
-	impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
-	impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
+		impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
+		impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
 
-	err = impl.Put(s.ctx, "job", data1.ID, data1)
-	require.NoError(s.T(), err)
+		err := impl.Put(s.ctx, "job", data1.ID, data1)
+		require.NoError(t, err)
 
-	retr := testdata{}
-	found, err := impl.Get(s.ctx, "job", data1.ID, retr)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
+		retr := testdata{}
+		found, err := impl.Get(s.ctx, "job", data1.ID, retr)
+		require.NoError(t, err)
+		require.True(t, found)
 
-	err = impl.Delete(s.ctx, "job", data1.ID, data1)
-	require.NoError(s.T(), err)
+		err = impl.Delete(s.ctx, "job", data1.ID, data1)
+		require.NoError(t, err)
 
-	// The tag name should now be an empty list
-	var tagList []string
-	found, err = impl.Get(s.ctx, "tags", "tagname", tagList)
-	require.NoError(s.T(), err)
-	require.True(s.T(), found)
-	require.Equal(s.T(), []string(nil), tagList)
+		// The tag name should now be an empty list
+		var tagList []string
+		found, err = impl.Get(s.ctx, "tags", "tagname", tagList)
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, []string(nil), tagList)
+
+		impl.Close(s.ctx)
+	}
+
+	s.T().Run("Delete - Local", func(t *testing.T) {
+		l := s.makeLocal("job", "tags")
+		f(l, s.T())
+	})
+	s.T().Run("Delete - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }
 
 func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
@@ -362,24 +424,6 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 		ID     string
 		Name   string
 		Labels map[string]string
-	}
-
-	data1 := testdata{
-		ID:   "1",
-		Name: "test",
-		Labels: map[string]string{
-			"height": "tall",
-			"depth":  "deep",
-		},
-	}
-
-	data2 := testdata{
-		ID:   "2",
-		Name: "another test",
-		Labels: map[string]string{
-			"height": "tall",
-			"depth":  "shallow",
-		},
 	}
 
 	userUpdateCallback := func(object any) ([]index.IndexCommand, error) {
@@ -421,42 +465,63 @@ func (s *ObjectStoreTestSuite) TestLocalMapCallbacks() {
 		return commandList, nil
 	}
 
-	impl, err := objectstore.GetImplementation(
-		s.ctx,
-		objectstore.LocalImplementation,
-		local.WithPrefixes("job", "labels"),
-	)
-	require.NotNil(s.T(), impl)
-	require.NoError(s.T(), err)
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data1 := testdata{
+			ID:   "1",
+			Name: "test",
+			Labels: map[string]string{
+				"height": "tall",
+				"depth":  "deep",
+			},
+		}
 
-	impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
-	impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
+		data2 := testdata{
+			ID:   "2",
+			Name: "another test",
+			Labels: map[string]string{
+				"height": "tall",
+				"depth":  "shallow",
+			},
+		}
 
-	err = impl.Put(s.ctx, "job", data1.ID, data1)
-	require.NoError(s.T(), err)
+		impl.CallbackHooks().RegisterUpdate("job", userUpdateCallback)
+		impl.CallbackHooks().RegisterDelete("job", userDeleteCallback)
 
-	err = impl.Put(s.ctx, "job", data2.ID, data2)
-	require.NoError(s.T(), err)
+		err := impl.Put(s.ctx, "job", data1.ID, data1)
+		require.NoError(t, err)
 
-	checkLabels := func(name string, key string, values []string) {
-		var labelMap map[string][]string
+		err = impl.Put(s.ctx, "job", data2.ID, data2)
+		require.NoError(t, err)
 
-		found, err := impl.Get(s.ctx, "labels", name, &labelMap)
-		require.NoError(s.T(), err)
-		require.True(s.T(), found)
-		require.Equal(s.T(), values, labelMap[key])
+		checkLabels := func(name string, key string, values []string) {
+			var labelMap map[string][]string
+
+			found, err := impl.Get(s.ctx, "labels", name, &labelMap)
+			require.NoError(t, err)
+			require.True(t, found)
+			require.Equal(t, values, labelMap[key])
+		}
+
+		checkLabels("height", "tall", []string{"1", "2"})
+
+		err = impl.Delete(s.ctx, "job", data1.ID, data1)
+		require.NoError(t, err)
+
+		checkLabels("height", "tall", []string{"2"})
+
+		err = impl.Delete(s.ctx, "job", data2.ID, data2)
+		require.NoError(t, err)
+
+		checkLabels("height", "tall", []string{})
+		impl.Close(s.ctx)
 	}
 
-	checkLabels("height", "tall", []string{"1", "2"})
-
-	err = impl.Delete(s.ctx, "job", data1.ID, data1)
-	require.NoError(s.T(), err)
-
-	checkLabels("height", "tall", []string{"2"})
-
-	err = impl.Delete(s.ctx, "job", data2.ID, data2)
-	require.NoError(s.T(), err)
-
-	checkLabels("height", "tall", []string{})
-
+	s.T().Run("Map Callbacks - Local", func(t *testing.T) {
+		l := s.makeLocal("job", "labels")
+		f(l, s.T())
+	})
+	s.T().Run("Map - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
 }

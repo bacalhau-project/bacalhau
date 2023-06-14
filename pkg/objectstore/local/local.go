@@ -129,6 +129,10 @@ func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []s
 			}
 
 			b := bucket.Get([]byte(key))
+			if b == nil {
+				return ErrNoSuchKey(key)
+			}
+
 			buffer = append(buffer, b...)
 			added = added + 1
 		}

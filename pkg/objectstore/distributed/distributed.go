@@ -60,7 +60,7 @@ func New(options ...Option) (*DistributedObjectStore, error) {
 		DialKeepAliveTimeout: 5 * time.Second,
 	})
 	if err != nil {
-		panic("Errk")
+		return nil, err
 	}
 
 	return store, nil
@@ -71,11 +71,51 @@ func (d *DistributedObjectStore) CallbackHooks() *index.CallbackHooks {
 }
 
 func (d *DistributedObjectStore) Delete(ctx context.Context, prefix string, key string, object any) error {
+	p := prefixKey(prefix, key)
+
+	_, err := d.cli.Delete(ctx, p)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
+// TODO: Find a cleaner way to do this, what we can support are ranges and perhaps if that is the use-case we
+// can do that instead of this hacky solution
 func (d *DistributedObjectStore) GetBatch(ctx context.Context, prefix string, keys []string, objects any) (bool, error) {
-	return false, nil
+	var bytes []byte
+
+	first := true
+	bytes = append(bytes, '[')
+
+	for _, k := range keys {
+		if first {
+			first = !first
+		} else {
+			bytes = append(bytes, ',', '\n')
+		}
+
+		p := prefixKey(prefix, k)
+		resp, err := d.cli.Get(ctx, p)
+		if err != nil {
+			return false, err
+		}
+
+		if resp.Count == 0 {
+			return false, ErrNoSuchKey(k)
+		}
+
+		bytes = append(bytes, resp.Kvs[0].Value...)
+	}
+	bytes = append(bytes, ']')
+
+	err := json.Unmarshal(bytes, &objects)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (d *DistributedObjectStore) Get(ctx context.Context, prefix string, key string, object any) (bool, error) {
