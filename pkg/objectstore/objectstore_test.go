@@ -250,12 +250,17 @@ func (s *ObjectStoreTestSuite) TestReadAndWriteObject() {
 		err := impl.Put(s.ctx, "job", "key", data)
 		require.NoError(t, err)
 
+		data.Name = "test-again"
+		err = impl.Put(s.ctx, "job", "key", data)
+		require.NoError(t, err)
+
 		test := testdata{}
 		found, err := impl.Get(s.ctx, "job", "key", &test)
 		require.NoError(t, err)
 		require.True(t, found)
-		require.Equal(t, "test", test.Name)
+		require.Equal(t, "test-again", test.Name)
 	}
+
 	s.T().Run("Read and Write Object - Local", func(t *testing.T) {
 		l := s.makeLocal("job")
 		f(l, s.T())
