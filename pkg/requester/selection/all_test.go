@@ -15,9 +15,17 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func MustDecode(s string) peer.ID {
+	v, err := peer.Decode(s)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
 var (
-	test1 peer.ID = peer.ID("test1")
-	test2 peer.ID = peer.ID("test2")
+	test1 peer.ID = MustDecode("Qme4YAdSLd9RSJdd8wF6vRXP1inDwvjTfLCCDubuzC64FR")
+	test2 peer.ID = MustDecode("QmUPB6nPQf5tZ11h9sGsL5ukhVtgFaiJabKvP43ps2ymsM")
 )
 
 type nodeSelectorTestCase struct {
@@ -179,7 +187,7 @@ func TestSelectNodesForRetry(t *testing.T) {
 			job := model.NewJob()
 			executions := lo.Flatten(lo.MapToSlice(testCase.states, func(key peer.ID, value []model.ExecutionStateType) []model.ExecutionState {
 				return lo.Map(value, func(state model.ExecutionStateType, _ int) model.ExecutionState {
-					return model.ExecutionState{JobID: job.ID(), NodeID: string(key), State: state}
+					return model.ExecutionState{JobID: job.ID(), NodeID: key.String(), State: state}
 				})
 			}))
 

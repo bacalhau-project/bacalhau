@@ -103,7 +103,7 @@ func (s *allNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 
 	retryNodes := make([]model.NodeInfo, 0, len(failedNodes))
 	for _, foundNode := range foundNodes {
-		id := string(foundNode.PeerInfo.ID)
+		id := foundNode.PeerInfo.ID.String()
 		if slices.Contains(failedNodes, id) && failureCounts[id] < maxRetriesPerNode {
 			retryNodes = append(retryNodes, foundNode)
 		}

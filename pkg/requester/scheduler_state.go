@@ -53,6 +53,8 @@ func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.
 	nodesToRetry, err := s.nodeSelector.SelectNodesForRetry(ctx, &job, &jobState)
 	if err != nil || (len(nodesToRetry) > 0 && !s.retryStrategy.ShouldRetry(ctx, RetryRequest{JobID: job.ID()})) {
 		// There was an error selecting nodes, or we need to retry some but retry strategy says no.
+		log.Ctx(ctx).Debug().Err(err).Int("NodesToRetry", len(nodesToRetry)).Msg("Failing job")
+
 		var finalErr error
 		var errMsg string
 
