@@ -425,6 +425,26 @@ func (s *ObjectStoreTestSuite) TestDelete() {
 	})
 }
 
+func (s *ObjectStoreTestSuite) TestStream() {
+	type testdata struct {
+		Name string
+	}
+
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+
+	}
+
+	s.T().Run("Stream - Local", func(t *testing.T) {
+		l := s.makeLocal("job", "labels")
+		err := l.Stream(s.ctx, "jobs", &testdata{})
+		require.Error(t, err)
+	})
+	s.T().Run("Stream - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
+}
+
 func (s *ObjectStoreTestSuite) TestMapCallbacks() {
 	type testdata struct {
 		ID     string

@@ -33,6 +33,17 @@ type ObjectStore interface {
 	// nil.
 	Put(ctx context.Context, prefix string, key string, object any) error
 
+	// Stream returns a continuous stream of `object` from the provided prefix.
+	// TODO: This currently only streams changes from 'now' meaning that there
+	// may be unprocessed objects in the prefix.  Ideally we would iterate over
+	// the prefix (in revision order) until we find an unprocessed item and then
+	// stream from revision+1. Do we need to ask for a function so that the caller
+	// can check all of the items for the list and then tell us the first one they
+	// haven't seen? Or do we need to require a revision identifier in this call?
+	// NB: This may not be supported by all impls, for instance although we can
+	// fake it with a local store it would require a very long-lived txn :(
+	Stream(ctx context.Context, prefix string, object any) error
+
 	// Close will close the database, after which it should not be usable
 	Close(context.Context) error
 }

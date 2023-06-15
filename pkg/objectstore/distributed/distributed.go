@@ -191,6 +191,10 @@ func (d *DistributedObjectStore) Put(ctx context.Context, prefix string, key str
 	return nil
 }
 
+func (d *DistributedObjectStore) Stream(ctx context.Context, prefix string, object any) error {
+	return nil
+}
+
 func (d *DistributedObjectStore) Close(ctx context.Context) error {
 	// Tell the embedded DB we want to close...
 	d.closeChannel <- struct{}{}

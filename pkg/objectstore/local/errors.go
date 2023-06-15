@@ -9,3 +9,4 @@ var ErrInvalidPrefixName = func(s string) error { return fmt.Errorf("invalid pre
 var ErrNoSuchPrefix = func(s string) error { return fmt.Errorf("unknown prefix: %s", s) }
 var ErrDatabaseClosed = errors.New("database is closed")
 var ErrNoSuchKey = func(s string) error { return fmt.Errorf("unknown key: %s", s) }
+var ErrNotImplemented = errors.New("not implemented")
