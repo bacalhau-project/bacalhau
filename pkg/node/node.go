@@ -29,7 +29,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const JobEventsTopic = "bacalhau-job-events"
+const CompletedJobsTopics = "bacalhau-completed-jobs"
 const NodeInfoTopic = "bacalhau-node-info"
 const DefaultNodeInfoPublisherInterval = 30 * time.Second
 

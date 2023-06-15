@@ -3,6 +3,7 @@ package requester
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -121,6 +122,13 @@ func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job mod
 			log.Ctx(ctx).Error().Err(err).Msgf("[checkForCompletedExecutions] failed to update job state")
 			return
 		} else {
+			s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
+				SourceNodeID: s.id,
+				JobID:        job.ID(),
+				EventName:    model.JobEventCompleted,
+				EventTime:    time.Now(),
+			})
+
 			msg := fmt.Sprintf("job %s completed", job.ID())
 			if newState == model.JobStateCompletedPartially {
 				msg += " partially; some executions failed to publish results"

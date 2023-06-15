@@ -162,7 +162,7 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) created(event model.JobEvent) error {
-	log.Info().Msgf("SIM: received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received create event for job id: %s\n", event.JobID)
 	// wallets.jobOwners[event.JobID] = event.ClientID
 	// if we want to use the requester node as the wallet address then it's this
 	wallets.jobOwners.Put(event.JobID, event.SourceNodeID)
@@ -170,7 +170,7 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) checkWallet(event model.JobEvent) error {
-	log.Info().Msgf("--> SIM(%s): ClientID: %s, SourceNodeID: %s", event.EventName.String(), event.ClientID, event.SourceNodeID)
+	log.Info().Msgf("--> SIM(%s): SourceNodeID: %s", event.EventName.String(), event.SourceNodeID)
 	walletID := event.SourceNodeID
 	wallets.ensureWallet(walletID)
 	if v, _ := wallets.balances.Get(walletID); v < MinWallet {
@@ -276,7 +276,7 @@ func (wallets *walletsModel) bidAccepted(event model.JobEvent) error {
 		return err
 	}
 
-	log.Info().Msgf("SIM: received bidAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received bidAccepted event for job id: %s\n", event.JobID)
 	return nil
 }
 
@@ -286,7 +286,7 @@ func (wallets *walletsModel) resultsProposed(event model.JobEvent) error {
 		return err
 	}
 
-	log.Info().Msgf("SIM: received resultsProposed event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received resultsProposed event for job id: %s\n", event.JobID)
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (wallets *walletsModel) resultsAccepted(event model.JobEvent) error {
 		return err
 	}
 
-	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s\n", event.JobID)
 	return nil
 }
 
@@ -306,6 +306,6 @@ func (wallets *walletsModel) resultsPublished(event model.JobEvent) error {
 		return err
 	}
 
-	log.Info().Msgf("SIM: received resultsPublished event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received resultsPublished event for job id: %s\n", event.JobID)
 	return nil
 }

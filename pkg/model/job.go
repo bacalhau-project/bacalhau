@@ -337,39 +337,6 @@ type JobSpecWasm struct {
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
-// we emit these to other nodes so they update their
-// state locally and can emit events locally
-type JobEvent struct {
-	// APIVersion of the Job
-	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
-
-	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// compute execution identifier
-	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
-	// the node that this event is for
-	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
-	EventName    JobEventType `json:"EventName,omitempty"`
-	// this is only defined in "create" events
-	Spec Spec `json:"Spec,omitempty"`
-	// this is only defined in "update_deal" events
-	Deal                 Deal               `json:"Deal,omitempty"`
-	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
-
-	EventTime       time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
-	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`
-
-	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
-}
-
 // we need to use a struct for the result because:
 // a) otherwise we don't know if VerificationResult==false
 // means "I've not verified yet" or "verification failed"

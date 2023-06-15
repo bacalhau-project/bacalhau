@@ -61,9 +61,7 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 		logMsg = logMsg.
 			Str("EventName", event.EventName.String()).
 			Str("JobID", event.JobID).
-			Str("SourceNodeID", event.SourceNodeID).
-			Str("TargetNodeID", event.TargetNodeID).
-			Str("ClientID", event.ClientID).
+			Str("NodeID", event.SourceNodeID).
 			Str("Status", event.Status).
 			Dur("HandleDuration", time.Since(startTime))
 		if *handlerError != nil {

@@ -127,10 +127,6 @@ func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunRe
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
 	}
-	event.VerificationProposal = result.ResultProposal
-	event.RunOutput = result.RunCommandResult
-	event.TargetNodeID = "" // requester node is never targeted
-
 	err = e.wallets.addEvent(event)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
@@ -143,9 +139,6 @@ func (e *RequestHandler) OnPublishComplete(ctx context.Context, result compute.P
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
 	}
-	event.PublishedResult = result.PublishResult
-	event.TargetNodeID = "" // requester node is never targeted
-
 	err = e.wallets.addEvent(event)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
@@ -163,7 +156,6 @@ func (e *RequestHandler) OnComputeFailure(ctx context.Context, result compute.Co
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventComputeError, result.ExecutionID)
 	}
 	event.Status = result.Error()
-	event.TargetNodeID = "" // requester node is never targeted
 
 	err = e.wallets.addEvent(event)
 	if err != nil {
