@@ -3,8 +3,8 @@ package node
 import (
 	"context"
 	"net/url"
-	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
@@ -220,20 +219,18 @@ func NewRequesterNode(
 	}
 
 	// PubSub to publish job events to the network
-	libp2p2JobEventPubSub, err := libp2p.NewPubSub[pubsub.BufferingEnvelope](libp2p.PubSubParams{
+	libp2p2JobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
 		Host:        host,
-		TopicName:   JobEventsTopic,
+		TopicName:   CompletedJobsTopics,
 		PubSub:      gossipSub,
 		IgnoreLocal: true,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	bufferedJobEventPubSub := pubsub.NewBufferingPubSub[model.JobEvent](pubsub.BufferingPubSubParams{
-		DelegatePubSub: libp2p2JobEventPubSub,
-		MaxBufferSize:  1, //nolint:gomnd // increase this once we move to an external job storage
-		MaxBufferAge:   1 * time.Minute,
+	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
+		JobStore: jobStore,
+		PubSub:   libp2p2JobInfoPubSub,
 	})
 
 	// Register event handlers
@@ -253,8 +250,8 @@ func NewRequesterNode(
 		eventTracer,
 		// dispatches events to listening websockets
 		requesterAPIServer,
-		// dispatches events to the network
-		eventhandler.JobEventHandlerFunc(bufferedJobEventPubSub.Publish),
+		// publish job events to the network
+		jobInfoPublisher,
 	)
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
@@ -262,9 +259,7 @@ func NewRequesterNode(
 		// stop the housekeeping background task
 		housekeeping.Stop()
 
-		cleanupErr := bufferedJobEventPubSub.Close(ctx)
-		util.LogDebugIfContextCancelled(ctx, cleanupErr, "buffered job event pubsub")
-		cleanupErr = libp2p2JobEventPubSub.Close(ctx)
+		cleanupErr := libp2p2JobInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "libp2p job event pubsub")
 		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {

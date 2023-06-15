@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
+	"time"
 )
 
-//go:generate stringer -type=JobEventType --trimprefix=JobEvent --output jobeventtype_string.go
+//go:generate stringer -type=JobEventType --trimprefix=JobEvent --output job_event_string.go
 type JobEventType int
 
 const (
@@ -29,10 +30,6 @@ const (
 
 	// a compute node canceled a job bid
 	JobEventBidCancelled
-
-	// TODO: what if a requester node accepts a bid
-	// and the compute node takes too long to start running it?
-	// JobEventBidRevoked
 
 	// a compute node progressed with running a job
 	// this is called periodically for running jobs
@@ -69,20 +66,16 @@ const (
 	// not hear back it will be stuck in reserving the resources for the job
 	JobEventInvalidRequest
 
+	// a job has been completed
+	JobEventCompleted
+
 	jobEventDone // must be last
 )
 
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (je JobEventType) IsTerminal() bool {
-	return je == JobEventError || je == JobEventResultsPublished || je == JobEventCanceled
-}
-
-// IsIgnorable returns true if given event type signals that a node can safely
-// ignore the rest of the job's lifecycle. This is the case for events caused
-// by a node's bid being rejected.
-func (je JobEventType) IsIgnorable() bool {
-	return je.IsTerminal() || je == JobEventComputeError || je == JobEventBidRejected || je == JobEventInvalidRequest
+	return je == JobEventError || je == JobEventCompleted || je == JobEventCanceled
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {
@@ -113,4 +106,20 @@ func (je *JobEventType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
 	*je, err = ParseJobEventType(name)
 	return
+}
+
+type JobEvent struct {
+	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	// compute execution identifier
+	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	// the node that emitted this event
+	SourceNodeID string `json:"SourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
+	// the node that this event is for
+	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
+	TargetNodeID string `json:"TargetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
+
+	EventName JobEventType `json:"EventName,omitempty"`
+	Status    string       `json:"Status,omitempty" example:"Got results proposal of length: 0"`
+
+	EventTime time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
 }
