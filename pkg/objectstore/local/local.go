@@ -265,8 +265,8 @@ func (l *LocalObjectStore) Put(ctx context.Context, prefix string, key string, o
 	return nil
 }
 
-func (l *LocalObjectStore) Stream(ctx context.Context, prefix string, object any) error {
-	return ErrNotImplemented
+func (l *LocalObjectStore) Stream(ctx context.Context, prefix string, closeSignal chan struct{}) (chan []byte, error) {
+	return nil, ErrNotImplemented
 }
 
 func (l *LocalObjectStore) runCallback(cmd index.IndexCommand) error {

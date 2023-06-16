@@ -4,6 +4,7 @@ package objectstore_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -431,14 +432,51 @@ func (s *ObjectStoreTestSuite) TestStream() {
 	}
 
 	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		readyChan := make(chan struct{})
+		closeChan := make(chan struct{})
+		closeStream := make(chan struct{}, 1)
 
+		readChannel, err := impl.Stream(s.ctx, "jobs/", closeStream)
+		require.NoError(t, err)
+
+		decoder := func(b []byte) testdata {
+			var td testdata
+			_ = json.Unmarshal(b, &td)
+			return td
+		}
+
+		go func() {
+			readyChan <- struct{}{}
+
+			td := decoder(<-readChannel)
+			require.Equal(t, "Jobs1", td.Name)
+
+			td = decoder(<-readChannel)
+			require.Equal(t, "Jobs2", td.Name)
+
+			td = decoder(<-readChannel)
+			require.Equal(t, "Jobs3", td.Name)
+
+			closeChan <- struct{}{}
+		}()
+
+		<-readyChan
+
+		data := testdata{}
+		for _, key := range []string{"1", "2", "3"} {
+			data.Name = fmt.Sprintf("Jobs%s", key)
+			_ = impl.Put(s.ctx, "jobs", key, &data)
+		}
+
+		<-closeChan
 	}
 
 	s.T().Run("Stream - Local", func(t *testing.T) {
 		l := s.makeLocal("job", "labels")
-		err := l.Stream(s.ctx, "jobs", &testdata{})
+		_, err := l.Stream(s.ctx, "jobs", nil)
 		require.Error(t, err)
 	})
+
 	s.T().Run("Stream - Distributed", func(t *testing.T) {
 		l := s.makeDistributed()
 		f(l, s.T())

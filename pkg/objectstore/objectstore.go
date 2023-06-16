@@ -42,7 +42,7 @@ type ObjectStore interface {
 	// haven't seen? Or do we need to require a revision identifier in this call?
 	// NB: This may not be supported by all impls, for instance although we can
 	// fake it with a local store it would require a very long-lived txn :(
-	Stream(ctx context.Context, prefix string, object any) error
+	Stream(ctx context.Context, prefix string, closeSignal chan struct{}) (chan []byte, error)
 
 	// Close will close the database, after which it should not be usable
 	Close(context.Context) error

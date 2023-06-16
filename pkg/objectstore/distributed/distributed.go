@@ -191,8 +191,38 @@ func (d *DistributedObjectStore) Put(ctx context.Context, prefix string, key str
 	return nil
 }
 
-func (d *DistributedObjectStore) Stream(ctx context.Context, prefix string, object any) error {
-	return nil
+func (d *DistributedObjectStore) Stream(ctx context.Context, prefix string, closeSignal chan struct{}) (chan []byte, error) {
+	clientChannel := make(chan []byte)
+
+	go func(closeOn chan struct{}, clientChannel chan []byte) {
+		c, cancel := context.WithCancel(ctx)
+		watchChannel := d.cli.Watch(c, prefix, client.WithPrefix(), client.WithRev(0))
+
+		for {
+			select {
+			case <-closeSignal:
+				fmt.Println("Received close request")
+				cancel() // will trigger the c.done below
+			case <-c.Done():
+				fmt.Println("We've been canceled!")
+				close(clientChannel)
+				cancel() // to keep the linter happy
+				return
+			case response := <-watchChannel:
+				if response.Canceled {
+					cancel()
+					return
+				}
+				for _, event := range response.Events {
+					if event.IsCreate() {
+						clientChannel <- event.Kv.Value
+					}
+				}
+			}
+		}
+	}(closeSignal, clientChannel)
+
+	return clientChannel, nil
 }
 
 func (d *DistributedObjectStore) Close(ctx context.Context) error {
