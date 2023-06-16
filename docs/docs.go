@@ -784,7 +784,7 @@ const docTemplate = `{
                     "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them (when\nTargetAll=false). This allows the Requester node to get some level of\nguarantee that the execution of the jobs will be spread evenly across the\nnetwork (assuming that this value is some large proportion of the size of\nthe network).",
                     "type": "integer"
                 },
-                "TargetAll": {
+                "TargetingMode": {
                     "description": "Whether the job should be run on any matching node (false) or all\nmatching nodes (true). If true, other fields in this struct are ignored.",
                     "type": "boolean"
                 }
