@@ -8,22 +8,22 @@ import (
 )
 
 type switcher struct {
-	selectors map[bool]requester.NodeSelector
+	selectors map[model.TargetingMode]requester.NodeSelector
 }
 
 // Returns a node selector that switches between node selectors dependent on the
 // targeting type defined in the job.
 func NewNodeSelectorSwitch(forAny, forAll requester.NodeSelector) requester.NodeSelector {
 	return &switcher{
-		selectors: map[bool]requester.NodeSelector{
-			false: forAny,
-			true:  forAll,
+		selectors: map[model.TargetingMode]requester.NodeSelector{
+			model.TargetAny: forAny,
+			model.TargetAll: forAll,
 		},
 	}
 }
 
 func (s *switcher) SelectorForJob(job *model.Job) requester.NodeSelector {
-	return s.selectors[job.Spec.Deal.TargetAll]
+	return s.selectors[job.Spec.Deal.TargetingMode]
 }
 
 // CanCompleteJob implements requester.NodeSelector.

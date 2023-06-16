@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
+	"github.com/samber/lo"
 	"golang.org/x/exp/constraints"
 )
 
@@ -48,18 +49,12 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func Min[T constraints.Ordered](a, b T) T {
-	if a < b {
-		return a
-	}
-	return b
+func Min[T constraints.Ordered](item T, items ...T) T {
+	return lo.Min(append(items, item))
 }
 
-func Max[T constraints.Ordered](a, b T) T {
-	if a > b {
-		return a
-	}
-	return b
+func Max[T constraints.Ordered](item T, items ...T) T {
+	return lo.Max(append(items, item))
 }
 
 func ReverseList(s []string) []string {

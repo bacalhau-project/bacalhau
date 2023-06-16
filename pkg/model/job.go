@@ -1,9 +1,11 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/imdario/mergo"
+	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -88,12 +90,38 @@ type JobWithInfo struct {
 	History []JobHistory `json:"History,omitempty"`
 }
 
+type TargetingMode bool
+
+const (
+	TargetAny TargetingMode = false
+	TargetAll TargetingMode = true
+)
+
+func (t TargetingMode) String() string {
+	if bool(t) {
+		return "all"
+	} else {
+		return "any"
+	}
+}
+
+func ParseTargetingMode(s string) (TargetingMode, error) {
+	switch s {
+	case "any":
+		return TargetAny, nil
+	case "all":
+		return TargetAll, nil
+	default:
+		return TargetAny, fmt.Errorf(`expecting "any" or "all", not %q`, s)
+	}
+}
+
 // The deal the client has made with the bacalhau network.
 // This is updateable by the client who submitted the job
 type Deal struct {
 	// Whether the job should be run on any matching node (false) or all
 	// matching nodes (true). If true, other fields in this struct are ignored.
-	TargetAll bool `json:"TargetAll,omitempty"`
+	TargetingMode TargetingMode `json:"TargetingMode,omitempty"`
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
@@ -125,6 +153,44 @@ func (d Deal) GetConfidence() int {
 		return d.GetConcurrency()
 	}
 	return d.Confidence
+}
+
+func (d Deal) IsValid() error {
+	var err error
+	switch d.TargetingMode {
+	case TargetAll:
+		if d.Concurrency > 1 {
+			// Although the requirement is stated as == 0, the default value is
+			// 1, so we just ignore both 1 or 0 for convenience.
+			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
+		}
+
+		if d.Confidence != 0 {
+			err = multierr.Append(err, fmt.Errorf("confidence ignored for target all mode, must be == 0"))
+		}
+
+		if d.MinBids != 0 {
+			err = multierr.Append(err, fmt.Errorf("min bids ignored for target all mode, must be == 0"))
+		}
+	case TargetAny:
+		if d.Concurrency <= 0 {
+			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
+		}
+
+		if d.Confidence < 0 {
+			err = multierr.Append(err, fmt.Errorf("confidence must be >= 1"))
+		}
+
+		if d.MinBids < 0 {
+			err = multierr.Append(err, fmt.Errorf("min bids must be >= 1"))
+		}
+
+		if d.Confidence > d.Concurrency {
+			err = multierr.Append(err, fmt.Errorf("the deal confidence cannot be higher than the concurrency"))
+		}
+	}
+
+	return err
 }
 
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
