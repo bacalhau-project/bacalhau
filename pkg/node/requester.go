@@ -5,7 +5,6 @@ import (
 	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
@@ -16,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -29,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
@@ -56,7 +53,7 @@ func NewRequesterNode(
 	simulatorRequestHandler *simulator.RequestHandler,
 	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
-	gossipSub *libp2p_pubsub.PubSub,
+	jobInfoPublisher *jobinfo.Publisher,
 	nodeInfoStore routing.NodeInfoStore,
 ) (*Requester, error) {
 	// prepare event handlers
@@ -218,21 +215,6 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	// PubSub to publish job events to the network
-	libp2p2JobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
-		Host:        host,
-		TopicName:   CompletedJobsTopics,
-		PubSub:      gossipSub,
-		IgnoreLocal: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
-		JobStore: jobStore,
-		PubSub:   libp2p2JobInfoPubSub,
-	})
-
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(host.ID().String())
 	eventTracer, err := eventhandler.NewTracer()
@@ -259,9 +241,7 @@ func NewRequesterNode(
 		// stop the housekeeping background task
 		housekeeping.Stop()
 
-		cleanupErr := libp2p2JobInfoPubSub.Close(ctx)
-		util.LogDebugIfContextCancelled(ctx, cleanupErr, "libp2p job event pubsub")
-		cleanupErr = tracerContextProvider.Shutdown()
+		cleanupErr := tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
 		}
