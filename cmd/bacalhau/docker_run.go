@@ -54,10 +54,8 @@ type DockerRunOptions struct {
 	OutputVolumes    []string          // Array of output volumes in 'name:mount point' form
 	Env              []string          // Array of environment variables
 	IDOnly           bool              // Only print the job ID
-	Concurrency      int               // Number of concurrent jobs to run
-	Confidence       int               // Minimum number of nodes that must agree on a verification result
-	MinBids          int               // Minimum number of bids before they will be accepted (at random)
-	Timeout          float64           // Job execution timeout in seconds
+	Deal             model.Deal
+	Timeout          float64 // Job execution timeout in seconds
 	CPU              string
 	Memory           string
 	GPU              string
@@ -89,9 +87,6 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Inputs:             opts.StorageOpt{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
-		Concurrency:        1,
-		Confidence:         0,
-		MinBids:            0, // 0 means no minimum before bidding
 		Timeout:            DefaultTimeout.Seconds(),
 		CPU:                "",
 		Memory:             "",
@@ -104,7 +99,12 @@ func NewDockerRunOptions() *DockerRunOptions {
 		NodeSelector:       "",
 		DownloadFlags:      *util.NewDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
-
+		Deal: model.Deal{
+			TargetingMode: model.TargetAny,
+			Concurrency:   1,
+			Confidence:    0,
+			MinBids:       0, // 0 means no minimum before bidding
+		},
 		FilPlus: false,
 	}
 }
@@ -156,18 +156,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Env, "env", "e", ODR.Env,
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
-	)
-	dockerRunCmd.PersistentFlags().IntVarP(
-		&ODR.Concurrency, "concurrency", "c", ODR.Concurrency,
-		`How many nodes should run the job`,
-	)
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.Confidence, "confidence", ODR.Confidence,
-		`The minimum number of nodes that must agree on a verification result`,
-	)
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.MinBids, "min-bids", ODR.MinBids,
-		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
 	dockerRunCmd.PersistentFlags().Float64Var(
 		&ODR.Timeout, "timeout", ODR.Timeout,
@@ -223,6 +211,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Mark the job as a candidate for moderation for FIL+ rewards.`,
 	)
 
+	dockerRunCmd.PersistentFlags().AddFlagSet(DealCLIFlags(&ODR.Deal))
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
 	dockerRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
 
@@ -336,9 +325,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.Env,
 		odr.Entrypoint,
 		odr.Image,
-		odr.Concurrency,
-		odr.Confidence,
-		odr.MinBids,
+		odr.Deal,
 		odr.Timeout,
 		labels,
 		odr.NodeSelector,
