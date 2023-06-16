@@ -30,16 +30,8 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("job spec is empty")
 	}
 
-	if reflect.DeepEqual(model.Deal{}, j.Spec.Deal) {
-		return fmt.Errorf("job deal is empty")
-	}
-
-	if j.Spec.Deal.Concurrency <= 0 {
-		return fmt.Errorf("concurrency must be >= 1")
-	}
-
-	if j.Spec.Deal.Confidence < 0 {
-		return fmt.Errorf("confidence must be >= 0")
+	if err := j.Spec.Deal.IsValid(); err != nil {
+		return err
 	}
 
 	if !model.IsValidEngine(j.Spec.Engine) {
@@ -56,10 +48,6 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 
 	if err := j.Spec.Network.IsValid(); err != nil {
 		return err
-	}
-
-	if j.Spec.Deal.Confidence > j.Spec.Deal.Concurrency {
-		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
 	}
 
 	for _, inputVolume := range j.Spec.Inputs {
