@@ -25,6 +25,10 @@ func (s *ConfigSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 }
 
+func (s *ConfigSuite) TearDownTest() {
+	_ = CleanupRunInfoFile()
+}
+
 func (s *ConfigSuite) TestEnvWriter() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
