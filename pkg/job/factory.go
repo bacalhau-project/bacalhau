@@ -26,9 +26,7 @@ func ConstructDockerJob( //nolint:funlen
 	env []string,
 	entrypoint []string,
 	image string,
-	concurrency int,
-	confidence int,
-	minBids int,
+	deal model.Deal,
 	timeout float64,
 	annotations []string,
 	nodeSelector string,
@@ -105,11 +103,7 @@ func ConstructDockerJob( //nolint:funlen
 		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
-	j.Spec.Deal = model.Deal{
-		Concurrency: concurrency,
-		Confidence:  confidence,
-		MinBids:     minBids,
-	}
+	j.Spec.Deal = deal
 
 	return j, nil
 }

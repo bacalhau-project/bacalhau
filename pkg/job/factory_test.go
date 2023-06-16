@@ -84,9 +84,12 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					[]string{}, // env
 					[]string{}, // entrypoint
 					"",         // image
-					1,          // concurrency
-					0,          // confidence
-					0,          // min bids
+					model.Deal{
+						TargetingMode: model.TargetAny,
+						Concurrency:   1,
+						Confidence:    0,
+						MinBids:       0,
+					},
 					300,        // timeout
 					[]string{}, // annotations
 					"",         // node selector
