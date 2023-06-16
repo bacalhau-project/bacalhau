@@ -14,6 +14,7 @@ import (
 	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
@@ -29,7 +30,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const CompletedJobsTopics = "bacalhau-completed-jobs"
+const JobInfoTopic = "bacalhau-job-info"
 const NodeInfoTopic = "bacalhau-node-info"
 const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
@@ -198,6 +199,25 @@ func NewNode(
 		return nil, err
 	}
 
+	// PubSub to publish job events to the network
+	jobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
+		Host:        config.Host,
+		TopicName:   JobInfoTopic,
+		PubSub:      gossipSub,
+		IgnoreLocal: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
+		JobStore: config.JobStore,
+		PubSub:   jobInfoPubSub,
+	})
+	err = jobInfoPubSub.Subscribe(ctx, pubsub.NewNoopSubscriber[jobinfo.Envelope]())
+	if err != nil {
+		return nil, err
+	}
+
 	// public http api server
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address:          config.HostAddress,
@@ -226,7 +246,7 @@ func NewNode(
 			simulatorRequestHandler,
 			verifiers,
 			storageProviders,
-			gossipSub,
+			jobInfoPublisher,
 			nodeInfoStore,
 		)
 		if err != nil {
@@ -266,6 +286,8 @@ func NewNode(
 		nodeInfoPublisher.Stop(ctx)
 		cleanupErr := nodeInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
+		cleanupErr = jobInfoPubSub.Close(ctx)
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()
