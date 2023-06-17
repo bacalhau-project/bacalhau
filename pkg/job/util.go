@@ -131,7 +131,7 @@ func ComputeVerifiedSummary(j *model.JobWithInfo) string {
 	if j.Job.Spec.Verifier == model.VerifierNoop {
 		verifiedSummary = ""
 	} else {
-		desiredExecutionCount := GetJobConcurrency(j.Job)
+		desiredExecutionCount := len(j.State.Executions)
 		verifiedExecutionCount := CountVerifiedExecutionStates(j.State)
 		verifiedSummary = fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount)
 	}
@@ -145,12 +145,4 @@ func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType 
 		CID:           cid,
 		Metadata:      map[string]string{},
 	}
-}
-
-func GetJobConcurrency(j model.Job) int {
-	concurrency := j.Spec.Deal.Concurrency
-	if concurrency < 1 {
-		concurrency = 1
-	}
-	return concurrency
 }

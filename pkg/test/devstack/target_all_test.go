@@ -33,7 +33,7 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfComputeOnlyNodes:   0,
 		}},
 		Spec:          model.Spec{Engine: model.EngineNoop},
-		Deal:          model.Deal{TargetAll: true},
+		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(0),
 	}
@@ -49,7 +49,7 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 			NumberOfComputeOnlyNodes:   1,
 		}},
 		Spec:          model.Spec{Engine: model.EngineNoop},
-		Deal:          model.Deal{TargetAll: true},
+		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(1),
 	}
@@ -65,7 +65,7 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfComputeOnlyNodes:   5,
 		}},
 		Spec:          model.Spec{Engine: model.EngineNoop},
-		Deal:          model.Deal{TargetAll: true},
+		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(5),
 	}
@@ -92,7 +92,7 @@ func (suite *TargetAllSuite) TestCanRetryOnNodes() {
 			},
 		},
 		Spec:          model.Spec{Engine: model.EngineNoop},
-		Deal:          model.Deal{TargetAll: true},
+		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForExecutionStates(map[model.ExecutionStateType]int{

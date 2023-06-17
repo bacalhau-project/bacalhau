@@ -76,45 +76,6 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 	return currentJobState.String(), nil
 }
 
-func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.VerifiedSummary")
-	defer span.End()
-
-	j, err := resolver.jobLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-
-	if j.Spec.Verifier == model.VerifierNoop {
-		return "", nil
-	}
-
-	jobState, err := resolver.stateLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-	desiredExecutionCount := GetJobConcurrency(j)
-	verifiedExecutionCount := CountVerifiedExecutionStates(jobState)
-
-	return fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount), nil
-}
-
-func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.ResultSummary")
-	defer span.End()
-
-	jobState, err := resolver.stateLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-	completedExecutions := GetCompletedExecutionStates(jobState)
-	if len(completedExecutions) == 0 {
-		return "", nil
-	}
-
-	return completedExecutions[0].PublishedResult.Name, nil
-}
-
 func (resolver *StateResolver) Wait(
 	ctx context.Context,
 	jobID string,
@@ -215,38 +176,6 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 	}
 
 	return results, nil
-}
-
-type ExecutionStateChecker func(
-	executionStates []model.ExecutionState,
-	concurrency int,
-) (bool, error)
-
-// iterate each execution and pass off []model.ExecutionState to the given function
-// every execution must return true for this function to return true
-// this is useful for example to say "do we have enough to begin verification"
-func (resolver *StateResolver) CheckExecutionStates(
-	ctx context.Context,
-	job model.Job,
-	executionStateChecker ExecutionStateChecker,
-) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/job.StateResolver.CheckExecutionStates")
-	defer span.End()
-
-	jobState, err := resolver.stateLoader(ctx, job.ID())
-	if err != nil {
-		return false, err
-	}
-
-	concurrency := GetJobConcurrency(job)
-	checkResult, err := executionStateChecker(jobState.Executions, concurrency)
-	if err != nil {
-		return false, err
-	}
-	if !checkResult {
-		return false, nil
-	}
-	return true, nil
 }
 
 func FlattenExecutionStates(jobState model.JobState) []model.ExecutionState {

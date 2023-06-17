@@ -269,6 +269,15 @@ func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
 	}
 }
 
+func TargetingFlag(value *model.TargetingMode) *ValueFlag[model.TargetingMode] {
+	return &ValueFlag[model.TargetingMode]{
+		value:    value,
+		parser:   model.ParseTargetingMode,
+		stringer: func(tm *model.TargetingMode) string { return tm.String() },
+		typeStr:  "all|any",
+	}
+}
+
 func DataLocalityFlag(value *model.JobSelectionDataLocality) *ValueFlag[model.JobSelectionDataLocality] {
 	return &ValueFlag[model.JobSelectionDataLocality]{
 		value:    value,
@@ -383,6 +392,21 @@ func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
 	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
 	flags.Var(VerifiersFlag(&config.Verifiers), "disable-verifier", "A verifier to disable.")
 	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
+
+	return flags
+}
+
+func DealCLIFlags(deal *model.Deal) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Deal", pflag.ContinueOnError)
+
+	flags.Var(TargetingFlag(&deal.TargetingMode), "target",
+		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all")`)
+	flags.IntVarP(&deal.Concurrency, "concurrency", "c", deal.Concurrency,
+		`How many nodes should run the job when using --target=any`)
+	flags.IntVar(&deal.Confidence, "confidence", deal.Confidence,
+		`The minimum number of nodes that must agree on a verification result`)
+	flags.IntVar(&deal.MinBids, "min-bids", deal.MinBids,
+		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`)
 
 	return flags
 }
