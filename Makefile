@@ -412,7 +412,7 @@ ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
 		--format testname \
 		-- \
 			-p ${TEST_PARALLEL_PACKAGES} \
-			./pkg/... ./cmd/... ./dashboard/... \
+			./pkg/... ./cmd/... \
 			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}
 
