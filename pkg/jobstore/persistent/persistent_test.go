@@ -4,6 +4,7 @@ package persistent
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -127,4 +128,30 @@ func (s *PersistentTestSuite) TestLevelFilteredJobHistory() {
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 4, len(history))
 	require.Equal(s.T(), model.ExecutionStateAskForBid, history[0].ExecutionState.New)
+}
+
+func (s *PersistentTestSuite) TestActiveJobs() {
+
+	for i := 0; i < 50; i++ {
+		job := model.Job{
+			Metadata: model.Metadata{
+				ID: strconv.Itoa(i),
+			},
+		}
+		execution := model.ExecutionState{
+			JobID: job.ID(),
+			State: model.ExecutionStateAskForBid,
+		}
+
+		err := s.store.CreateJob(s.ctx, job)
+		require.NoError(s.T(), err)
+
+		err = s.store.CreateExecution(s.ctx, execution)
+		require.NoError(s.T(), err)
+	}
+
+	infos, err := s.store.GetInProgressJobs(s.ctx)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), 50, len(infos))
+	require.Equal(s.T(), "0", infos[0].Job.ID())
 }

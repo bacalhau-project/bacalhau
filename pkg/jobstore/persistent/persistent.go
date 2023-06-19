@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/distributed"
 	"github.com/google/uuid"
 	"github.com/imdario/mergo"
+	"github.com/samber/lo"
 )
 
 const newJobComment = "Job created"
@@ -158,19 +159,50 @@ func (p *PersistentJobStore) GetJobState(ctx context.Context, jobID string) (mod
 }
 
 func (p *PersistentJobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
-	// var result []model.JobWithInfo
-	// var job model.Job
 
-	// p.store.Get(ctx)
+	keys, err := p.store.List(ctx, PrefixActiveJobs)
+	if err != nil {
+		return nil, err
+	}
 
-	// for id := range d.inprogress {
-	// 	result = append(result, model.JobWithInfo{
-	// 		Job:   d.jobs[id],
-	// 		State: d.states[id],
-	// 	})
-	// }
-	//return result, nil
-	return nil, nil
+	var infos []model.JobWithInfo
+	var states []model.JobState
+	var jobs []model.Job
+
+	found, err := p.store.GetBatch(ctx, PrefixActiveJobs, keys, &jobs)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return infos, nil
+	}
+
+	found, err = p.store.GetBatch(ctx, PrefixJobState, keys, &states)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return infos, nil
+	}
+
+	/* map[string]model.Job */
+	groupedJobs := lo.KeyBy(jobs, func(val model.Job) string {
+		return val.Metadata.ID
+	})
+
+	/* map[string]model.JobState */
+	groupedStates := lo.KeyBy(states, func(val model.JobState) string {
+		return val.JobID
+	})
+
+	for _, k := range keys {
+		infos = append(infos, model.JobWithInfo{
+			Job:   groupedJobs[k],
+			State: groupedStates[k],
+		})
+	}
+
+	return infos, nil
 }
 
 func (p *PersistentJobStore) GetJobHistory(ctx context.Context,
