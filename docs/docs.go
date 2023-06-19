@@ -1558,6 +1558,13 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "Inputs": {
+                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
+                    }
+                },
                 "Language": {
                     "$ref": "#/definitions/model.JobSpecLanguage"
                 },
@@ -1574,6 +1581,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.LabelSelectorRequirement"
+                    }
+                },
+                "Outputs": {
+                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
                 "Publisher": {
@@ -1604,20 +1618,6 @@ const docTemplate = `{
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
-                },
-                "inputs": {
-                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"\nTODO: #667 Replace with \"Inputs\", \"Outputs\" (note the caps) for yaml/json when we update the n.js file",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
-                },
-                "outputs": {
-                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
                 }
             }
         },
@@ -1698,6 +1698,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
                 },
+                "Path": {
+                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).",
+                    "type": "string"
+                },
                 "ReadWrite": {
                     "description": "Allow write access for locally mounted inputs",
                     "type": "boolean"
@@ -1723,10 +1727,6 @@ const docTemplate = `{
                 },
                 "URL": {
                     "description": "Source URL of the data",
-                    "type": "string"
-                },
-                "path": {
-                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).\nTODO: #668 Replace with \"Path\" (note the caps) for yaml/json when we update the n.js file",
                     "type": "string"
                 }
             }
