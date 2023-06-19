@@ -161,6 +161,25 @@ func (d *DistributedObjectStore) Get(ctx context.Context, prefix string, key str
 	return true, err
 }
 
+func (d *DistributedObjectStore) List(ctx context.Context, prefix string) ([]string, error) {
+	p := prefixKey(prefix, "")
+
+	response, err := d.cli.Get(ctx, p, client.WithKeysOnly(), client.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Count == 0 {
+		return nil, nil
+	}
+	keys := make([]string, response.Count)
+	for i, kv := range response.Kvs {
+		keys[i] = string(kv.Key[len(p):])
+	}
+
+	return keys, nil
+}
+
 func (d *DistributedObjectStore) Put(ctx context.Context, prefix string, key string, object any) error {
 	p := prefixKey(prefix, key)
 

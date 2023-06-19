@@ -28,6 +28,9 @@ type ObjectStore interface {
 	// GetBatch retrieves one record for each key provided
 	GetBatch(ctx context.Context, prefix string, keys []string, objects any) (bool, error)
 
+	// List returns a list of keys found within the specified prefix
+	List(ctx context.Context, prefix string) ([]string, error)
+
 	// Put will store `data` in the prefix namespace/bucket/container with the
 	// provided key.  If the Put fails then an error is returned, otherwise
 	// nil.

@@ -427,6 +427,39 @@ func (s *ObjectStoreTestSuite) TestDelete() {
 	})
 }
 
+func (s *ObjectStoreTestSuite) TestList() {
+	type testdata struct {
+		Key string
+	}
+
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+		data := []testdata{
+			{Key: "Jobs1"},
+			{Key: "Jobs2"},
+			{Key: "Jobs3"},
+		}
+		for _, tc := range data {
+			_ = impl.Put(s.ctx, "jobs", tc.Key, &tc)
+		}
+
+		keys, _ := impl.List(s.ctx, "jobs")
+		for _, tc := range data {
+			require.Contains(t, keys, tc.Key)
+		}
+
+	}
+
+	s.T().Run("List keys - Local", func(t *testing.T) {
+		l := s.makeLocal("jobs", "labels")
+		f(l, t)
+	})
+
+	s.T().Run("List keys - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, t)
+	})
+}
+
 func (s *ObjectStoreTestSuite) TestStream() {
 	type testdata struct {
 		Name string

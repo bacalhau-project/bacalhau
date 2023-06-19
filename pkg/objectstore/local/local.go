@@ -152,6 +152,28 @@ func (l *LocalObjectStore) GetBatch(ctx context.Context, prefix string, keys []s
 	return true, json.Unmarshal(buffer, &objects)
 }
 
+func (l *LocalObjectStore) List(ctx context.Context, prefix string) ([]string, error) {
+	if l.closed {
+		return nil, ErrDatabaseClosed
+	}
+
+	if !slices.Contains[string](l.prefixes, prefix) {
+		return nil, ErrNoSuchPrefix(prefix)
+	}
+
+	var keys []string
+
+	err := l.database.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(prefix))
+		return bucket.ForEach(func(k, _ []byte) error {
+			keys = append(keys, string(k))
+			return nil
+		})
+	})
+
+	return keys, err
+}
+
 func (l *LocalObjectStore) Get(ctx context.Context, prefix string, key string, object any) (bool, error) {
 	if l.closed {
 		return false, ErrDatabaseClosed
