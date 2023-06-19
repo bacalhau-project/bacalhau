@@ -14,17 +14,17 @@ Spec:
       - /bin/bash
       - -c
       - ls /input_custom
-  inputs:
+  Inputs:
     - StorageSource: S3
       S3:
         Bucket: bacalhau-test-datasets
         Key: integration-tests-do-not-delete/set1/
         Region: eu-west-1
-      path: /input_custom
-  outputs:
+      Path: /input_custom
+  Outputs:
     - StorageSource: IPFS
       Name: output_custom
-      path: /output_custom
+      Path: /output_custom
   Deal:
     Concurrency: 1
     Confidence: 0
