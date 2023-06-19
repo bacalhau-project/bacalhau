@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -207,6 +208,10 @@ type LabelSelectorRequirement struct {
 	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
 	// the values array must be empty. This array is replaced during a strategic
 	Values []string `json:"Values,omitempty"`
+}
+
+func (r LabelSelectorRequirement) String() string {
+	return fmt.Sprintf("%s %s %s", r.Key, r.Operator, strings.Join(r.Values, "|"))
 }
 
 type PublisherSpec struct {

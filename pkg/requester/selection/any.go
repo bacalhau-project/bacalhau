@@ -56,19 +56,18 @@ func (s *anyNodeSelector) Select(ctx context.Context, job *model.Job, minCount, 
 			filteredNodes = append(filteredNodes, nodeRank)
 		}
 	}
-	rankedNodes = filteredNodes
-	log.Ctx(ctx).Debug().Int("Ranked", len(rankedNodes)).Msg("Ranked nodes for job")
+	log.Ctx(ctx).Debug().Int("Ranked", len(filteredNodes)).Msg("Ranked nodes for job")
 
-	if len(rankedNodes) < minCount {
-		err = requester.NewErrNotEnoughNodes(minCount, len(rankedNodes))
+	if len(filteredNodes) < minCount {
+		err = requester.NewErrNotEnoughNodes(minCount, rankedNodes)
 		return nil, err
 	}
 
-	sort.Slice(rankedNodes, func(i, j int) bool {
-		return rankedNodes[i].Rank > rankedNodes[j].Rank
+	sort.Slice(filteredNodes, func(i, j int) bool {
+		return filteredNodes[i].Rank > filteredNodes[j].Rank
 	})
 
-	selectedNodes := rankedNodes[:system.Min(len(rankedNodes), desiredCount)]
+	selectedNodes := filteredNodes[:system.Min(len(filteredNodes), desiredCount)]
 	selectedInfos := generic.Map(selectedNodes, func(nr requester.NodeRank) model.NodeInfo { return nr.NodeInfo })
 	return selectedInfos, nil
 }
