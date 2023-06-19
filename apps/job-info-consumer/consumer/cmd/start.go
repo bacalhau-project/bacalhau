@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/bacalhau-project/bacalhau/apps/job-info-consumer/consumer/pkg"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -22,15 +24,16 @@ type StartOptions struct {
 func NewStartOptions() *StartOptions {
 	return &StartOptions{
 		postgres: pkg.PostgresDatastoreParams{
-			Host:        getDefaultOptionString("POSTGRES_HOST", "127.0.0.1"), //nolint:gomnd
-			Port:        getDefaultOptionInt("POSTGRES_PORT", 5432),           //nolint:gomnd
-			Database:    getDefaultOptionString("POSTGRES_DB", "bacalhau"),    //nolint:gomnd
-			User:        getDefaultOptionString("POSTGRES_USER", "postgres"),  //nolint:gomnd
-			Password:    getDefaultOptionString("POSTGRES_PASSWORD", ""),      //nolint:gomnd
-			AutoMigrate: getDefaultOptionBool("POSTGRES_AUTO_MIGRATE", false), //nolint:gomnd
+			Host:        util.GetEnv("POSTGRES_HOST", "127.0.0.1"),                              //nolint:gomnd
+			Port:        util.GetEnvAs[int]("POSTGRES_PORT", 5432, strconv.Atoi),                //nolint:gomnd
+			Database:    util.GetEnv("POSTGRES_DB", "bacalhau"),                                 //nolint:gomnd
+			User:        util.GetEnv("POSTGRES_USER", "postgres"),                               //nolint:gomnd
+			Password:    util.GetEnv("POSTGRES_PASSWORD", ""),                                   //nolint:gomnd
+			SSLMode:     util.GetEnv("POSTGRES_SSL_MODE", "disable"),                            //nolint:gomnd
+			AutoMigrate: util.GetEnvAs[bool]("POSTGRES_AUTO_MIGRATE", false, strconv.ParseBool), //nolint:gomnd
 		},
-		swarmPort:   getDefaultOptionInt("SWARM_PORT", 1236), //nolint:gomnd
-		peerConnect: getDefaultOptionString("BACALHAU_PEER_CONNECT", ""),
+		swarmPort:   util.GetEnvAs[int]("SWARM_PORT", 1236, strconv.Atoi), //nolint:gomnd
+		peerConnect: util.GetEnv("BACALHAU_PEER_CONNECT", ""),
 	}
 }
 
@@ -64,6 +67,10 @@ func newStartCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&opts.postgres.Password, "postgres-password", opts.postgres.Password,
 		`The password for the postgres server.`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&opts.postgres.SSLMode, "postgres-ssl-mode", opts.postgres.Password,
+		`The ssl mode for the postgres server.`,
 	)
 	cmd.PersistentFlags().BoolVar(
 		&opts.postgres.AutoMigrate, "postgres-auto-migrate", opts.postgres.AutoMigrate,

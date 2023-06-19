@@ -1,4 +1,5 @@
-## dev
+## Job Info Consumer
+This application consumes job info events from a gossipsub topic and feeds them into a postgres database.
 
 Deploy VM:
 

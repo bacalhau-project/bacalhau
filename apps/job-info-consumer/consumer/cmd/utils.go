@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -12,36 +11,6 @@ import (
 
 func getCommandLineExecutable() string {
 	return os.Args[0]
-}
-
-func getDefaultOptionString(envName string, defaultValue string) string {
-	envValue := os.Getenv(envName)
-	if envValue != "" {
-		return envValue
-	}
-	return defaultValue
-}
-
-func getDefaultOptionInt(envName string, defaultValue int) int {
-	envValue := os.Getenv(envName)
-	if envValue != "" {
-		i, err := strconv.Atoi(envValue)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultValue
-}
-
-func getDefaultOptionBool(envName string, defaultValue bool) bool {
-	envValue := os.Getenv(envName)
-	if envValue != "" {
-		i, err := strconv.ParseBool(envValue)
-		if err == nil {
-			return i
-		}
-	}
-	return defaultValue
 }
 
 func FatalErrorHandler(cmd *cobra.Command, msg string, code int) {

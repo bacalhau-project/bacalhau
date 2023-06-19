@@ -22,6 +22,7 @@ type PostgresDatastoreParams struct {
 	Database    string
 	User        string
 	Password    string
+	SSLMode     string
 	AutoMigrate bool
 }
 
@@ -33,8 +34,12 @@ type PostgresDatastore struct {
 }
 
 func NewPostgresDatastore(params PostgresDatastoreParams) (*PostgresDatastore, error) {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		params.Host, params.Port, params.User, params.Password, params.Database)
+	sslmode := params.SSLMode
+	if sslmode == "" {
+		sslmode = "disable"
+	}
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		params.Host, params.Port, params.User, params.Password, params.Database, sslmode)
 
 	// Open a connection to the database
 	db, err := sql.Open("postgres", dsn)
