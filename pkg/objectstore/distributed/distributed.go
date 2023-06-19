@@ -201,10 +201,10 @@ func (d *DistributedObjectStore) Stream(ctx context.Context, prefix string, clos
 		for {
 			select {
 			case <-closeSignal:
-				fmt.Println("Received close request")
+				log.Ctx(ctx).Debug().Str("Prefix", prefix).Msg("Asked to close stream")
 				cancel() // will trigger the c.done below
 			case <-c.Done():
-				fmt.Println("We've been canceled!")
+				log.Ctx(ctx).Debug().Str("Prefix", prefix).Msg("Stream canceled")
 				close(clientChannel)
 				cancel() // to keep the linter happy
 				return

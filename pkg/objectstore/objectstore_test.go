@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/distributed"
@@ -478,6 +479,62 @@ func (s *ObjectStoreTestSuite) TestStream() {
 	})
 
 	s.T().Run("Stream - Distributed", func(t *testing.T) {
+		l := s.makeDistributed()
+		f(l, s.T())
+	})
+}
+
+func (s *ObjectStoreTestSuite) TestStreamWatcher() {
+	type testdata struct {
+		ID   string
+		Name string
+	}
+
+	f := func(impl objectstore.ObjectStore, t *testing.T) {
+
+		readyChan := make(chan struct{})
+
+		go func() {
+			<-readyChan
+			time.Sleep(50 * time.Millisecond) // TODO: Remove me
+
+			testcases := []testdata{
+				{ID: "1", Name: "Jobs1"},
+				{ID: "2", Name: "Jobs2"},
+				{ID: "3", Name: "Jobs3"},
+			}
+
+			for _, tc := range testcases {
+				_ = impl.Put(s.ctx, "jobs", tc.ID, &tc)
+			}
+
+		}()
+
+		expected := []string{"Jobs1", "Jobs2", "Jobs3"}
+
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+
+		callback := func(object testdata) bool {
+			var elem string
+			elem, expected = expected[0], expected[1:]
+			require.Equal(t, elem, object.Name)
+
+			return len(expected) > 0
+		}
+
+		db, _ := impl.(*distributed.DistributedObjectStore)
+		w := distributed.NewWatcher[testdata](db, callback)
+
+		readyChan <- struct{}{}
+
+		err := w.Watch(ctx, "jobs/") // blocks
+		require.NoError(t, err)
+
+		cancel()
+	}
+
+	s.T().Run("Stream Watcher", func(t *testing.T) {
 		l := s.makeDistributed()
 		f(l, s.T())
 	})
