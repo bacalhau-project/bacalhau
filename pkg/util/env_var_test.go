@@ -59,3 +59,12 @@ func (s *EnvTestSuite) TestIntegerEnv() {
 	require.Equal(s.T(), int64(100), v)
 
 }
+
+func (s *EnvTestSuite) TestStringEnv() {
+	v := util.GetEnv("TEST_STR", "hello")
+	require.Equal(s.T(), "hello", v)
+
+	s.T().Setenv("TEST_STR", "world")
+	v = util.GetEnv("TEST_STR", "hello")
+	require.Equal(s.T(), "world", v)
+}
