@@ -111,6 +111,7 @@ func newRunWasmCmd() *cobra.Command {
 
 	wasmRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
+	wasmRunCmd.PersistentFlags().AddFlagSet(DealCLIFlags(&ODR.Job.Spec.Deal))
 
 	wasmRunCmd.PersistentFlags().StringVarP(
 		&ODR.NodeSelector, "selector", "s", ODR.NodeSelector,
@@ -123,18 +124,6 @@ func newRunWasmCmd() *cobra.Command {
 	)
 	wasmRunCmd.PersistentFlags().VarP(&ODR.Publisher, "publisher", "p",
 		`Where to publish the result of the job`,
-	)
-	wasmRunCmd.PersistentFlags().IntVarP(
-		&ODR.Job.Spec.Deal.Concurrency, "concurrency", "c", ODR.Job.Spec.Deal.Concurrency,
-		`How many nodes should run the job`,
-	)
-	wasmRunCmd.PersistentFlags().IntVar(
-		&ODR.Job.Spec.Deal.Confidence, "confidence", ODR.Job.Spec.Deal.Confidence,
-		`The minimum number of nodes that must agree on a verification result`,
-	)
-	wasmRunCmd.PersistentFlags().IntVar(
-		&ODR.Job.Spec.Deal.MinBids, "min-bids", ODR.Job.Spec.Deal.MinBids,
-		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
 	wasmRunCmd.PersistentFlags().Float64Var(
 		&ODR.Job.Spec.Timeout, "timeout", ODR.Job.Spec.Timeout,
