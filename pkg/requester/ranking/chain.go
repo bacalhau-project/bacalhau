@@ -39,9 +39,10 @@ func (c *Chain) RankNodes(ctx context.Context, job model.Job, nodes []model.Node
 			return nil, err
 		}
 		for _, nodeRank := range nodeRanks {
-			if !ranksMap[nodeRank.NodeInfo.PeerInfo.ID].MeetsRequirement() || !nodeRank.MeetsRequirement() {
+			if !nodeRank.MeetsRequirement() {
 				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank = requester.RankUnsuitable
-			} else {
+				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Reason = nodeRank.Reason
+			} else if ranksMap[nodeRank.NodeInfo.PeerInfo.ID].MeetsRequirement() {
 				ranksMap[nodeRank.NodeInfo.PeerInfo.ID].Rank += nodeRank.Rank
 			}
 		}
