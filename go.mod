@@ -39,7 +39,7 @@ require (
 	github.com/ipfs/go-merkledag v0.10.0
 	github.com/ipfs/go-unixfs v0.4.4
 	github.com/ipfs/go-unixfsnode v1.7.0
-	github.com/ipfs/interface-go-ipfs-core v0.11.1
+	github.com/ipfs/interface-go-ipfs-core v0.11.2
 	github.com/ipfs/kubo v0.19.0
 	github.com/ipld/go-car/v2 v2.8.0
 	github.com/ipld/go-codec-dagpb v1.6.0
