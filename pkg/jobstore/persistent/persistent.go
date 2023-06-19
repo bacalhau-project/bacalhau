@@ -239,13 +239,13 @@ func (p *PersistentJobStore) CreateJob(ctx context.Context, job model.Job) error
 		UpdateTime: time.Now(),
 	}
 
-	err = p.store.Put(ctx, PrefixJobState, jobState.JobID, jobState)
-	if err != nil {
+	if err = p.store.Put(ctx, PrefixJobState, jobState.JobID, jobState); err != nil {
 		return err
 	}
 
-	// TODO: InProgress!
-	// d.inprogress[job.Metadata.ID] = struct{}{}
+	if err = p.store.Put(ctx, PrefixActiveJobs, job.ID(), &job); err != nil {
+		return err
+	}
 
 	return p.appendJobHistory(ctx, jobState, model.JobStateNew, newJobComment)
 }
@@ -310,10 +310,18 @@ func (p *PersistentJobStore) UpdateJobState(ctx context.Context, request jobstor
 		return err
 	}
 
-	// if request.NewState.IsTerminal() {
-	// 	// delete(d.inprogress, request.JobID)
-	// 	// TODO: Delete from inprogress
-	// }
+	if request.NewState.IsTerminal() {
+		job := model.Job{}
+		_, err := p.store.Get(ctx, PrefixActiveJobs, request.JobID, &job)
+		if err != nil {
+			return err
+		}
+
+		err = p.store.Delete(ctx, PrefixActiveJobs, request.JobID, &job)
+		if err != nil {
+			return err
+		}
+	}
 
 	return p.appendJobHistory(ctx, state, previousState, request.Comment)
 }
