@@ -66,6 +66,10 @@ func New(options ...Option) (*DistributedObjectStore, error) {
 	return store, nil
 }
 
+func (d *DistributedObjectStore) GetClient() *client.Client {
+	return d.cli
+}
+
 func (d *DistributedObjectStore) CallbackHooks() *index.CallbackHooks {
 	return d.callbacks
 }

@@ -72,6 +72,7 @@ require (
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
+	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.etcd.io/etcd/server/v3 v3.5.9
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.39.0
@@ -135,7 +136,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.9 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.9 // indirect
