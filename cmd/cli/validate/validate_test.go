@@ -38,7 +38,7 @@ func (s *ValidateSuite) TestValidate() {
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("validate",
 				"--api-host", s.Host,
 				"--api-port", fmt.Sprint(s.Port),
-				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name), s.T().TempDir()),
+				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
 			)
 			require.NoError(s.T(), err)
 

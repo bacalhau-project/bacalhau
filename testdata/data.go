@@ -86,16 +86,13 @@ func (f *Fixture) RequiresS3() bool {
 	return false
 }
 
-func (f *Fixture) AsTempFile(t testing.TB, pattern, dir string) string {
-	// Create a temporary file
-	tmpfile, err := os.CreateTemp(dir, pattern)
+func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
+	tmpfile, err := os.CreateTemp("", pattern)
 	require.NoError(t, err)
 
-	// Write the data to the file
 	_, err = tmpfile.Write(f.Data)
 	require.NoError(t, err)
 
-	// If needed, you can also close the file
 	err = tmpfile.Close()
 	require.NoError(t, err)
 
