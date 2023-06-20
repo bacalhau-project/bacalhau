@@ -67,7 +67,7 @@ func (q *Queue[T]) Dequeue(ctx context.Context) (T, error) {
 		return emptyT(), err
 	}
 
-	kv, err := ClaimFirstKey(q.client, response.Kvs)
+	kv, err := ClaimFirstKey(ctx, q.client, response.Kvs)
 	if err != nil {
 		return emptyT(), err
 	} else if kv != nil {
@@ -88,7 +88,7 @@ func (q *Queue[T]) Dequeue(ctx context.Context) (T, error) {
 		return emptyT(), err
 	}
 
-	ok, err := DeleteRevKey(q.client, string(ev.Kv.Key), ev.Kv.ModRevision)
+	ok, err := DeleteRevKey(ctx, q.client, string(ev.Kv.Key), ev.Kv.ModRevision)
 	if err != nil {
 		return emptyT(), err
 	} else if !ok {

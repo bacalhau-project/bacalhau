@@ -57,9 +57,9 @@ func NewSequentialKV(
 	return newKey, nil
 }
 
-func ClaimFirstKey(kv etcd_client.KV, kvs []*spb.KeyValue) (*spb.KeyValue, error) {
+func ClaimFirstKey(ctx context.Context, kv etcd_client.KV, kvs []*spb.KeyValue) (*spb.KeyValue, error) {
 	for _, k := range kvs {
-		ok, err := DeleteRevKey(kv, string(k.Key), k.ModRevision)
+		ok, err := DeleteRevKey(ctx, kv, string(k.Key), k.ModRevision)
 		if err != nil {
 			return nil, err
 		} else if ok {
@@ -70,10 +70,10 @@ func ClaimFirstKey(kv etcd_client.KV, kvs []*spb.KeyValue) (*spb.KeyValue, error
 }
 
 // DeleteRevKey deletes a key by revision, returning false if key is missing
-func DeleteRevKey(kv etcd_client.KV, key string, rev int64) (succeeded bool, err error) {
+func DeleteRevKey(ctx context.Context, kv etcd_client.KV, key string, rev int64) (succeeded bool, err error) {
 	cmp := etcd_client.Compare(etcd_client.ModRevision(key), "=", rev)
 	req := etcd_client.OpDelete(key)
-	txnResponse, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
+	txnResponse, err := kv.Txn(ctx).If(cmp).Then(req).Commit()
 	if err != nil {
 		return false, err
 	} else if !txnResponse.Succeeded {
