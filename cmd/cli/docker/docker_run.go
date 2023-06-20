@@ -142,7 +142,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(1),
-		//PreRun:  bacalhau.ApplyPorcelainLogLevel,
+		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
 				handler.Fatal(cmd, err, 1)
