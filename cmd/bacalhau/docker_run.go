@@ -67,7 +67,7 @@ type DockerRunOptions struct {
 
 	Image      string   // Image to execute
 	Entrypoint string   // Entrypoint to the docker image
-	Cmd        []string //Command arguments for Entrypoint
+	Parameters []string //Command arguments for Entrypoint
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
 
@@ -81,8 +81,6 @@ type DockerRunOptions struct {
 }
 
 func NewDockerRunOptions() *DockerRunOptions {
-	//Olgibbons!! delete:
-	fmt.Println("NewDockerRunOptions has been called")
 	return &DockerRunOptions{
 		Engine:             "docker",
 		Verifier:           "noop",
@@ -227,8 +225,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 }
 
 func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) error {
-	//Olgibbons: delete
-	fmt.Println("dockerRun has been called")
 	ctx := cmd.Context()
 
 	cm := ctx.Value(systemManagerKey).(*system.CleanupManager)
@@ -280,12 +276,8 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, ODR *DockerRunOptions) erro
 
 // CreateJob creates a job object from the given command line arguments and options.
 func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*model.Job, error) { //nolint:funlen,gocyclo
-	//olgibbons: delete:
-	fmt.Println("CreateJobFunc has been called")
 	odr.Image = cmdArgs[0]
-	odr.Cmd = cmdArgs[1:]
-	fmt.Println("cmdArgs[0] is", odr.Image)
-	fmt.Println("odr.Cmd is", odr.Cmd)
+	odr.Parameters = cmdArgs[1:]
 	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
 
 	if swarmAddresses == "" {
@@ -337,7 +329,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.OutputVolumes,
 		odr.Env,
 		odr.Entrypoint,
-		odr.Cmd,
+		odr.Parameters,
 		odr.Image,
 		odr.Deal,
 		odr.Timeout,
@@ -345,7 +337,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, odr *DockerRunOptions) (*m
 		odr.NodeSelector,
 		odr.WorkingDirectory,
 	)
-	fmt.Println("odr.Entrypoint is", odr.Entrypoint)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")
 	}

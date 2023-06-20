@@ -64,36 +64,6 @@ var CatFileToVolume = Scenario{
 	},
 }
 
-var DockerFileNoEntryPointYesCommand = Scenario{
-	ResultsChecker: ManyChecks(
-		FileEquals(model.DownloadFilenameStderr, ""),
-		FileEquals(model.DownloadFilenameStdout, "I am overriding the ubuntu image's default command (bash)\n"),
-	),
-	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: nil,
-			Parameters: []string{"echo", "I am overriding the ubuntu image's default command (bash)"},
-		},
-	}, // Docker will always run ENTRYPOINT + CMD. If entrypoint = [], this is the same as just running CMD
-}
-
-var DockerFileNoEntryPointNoCommand = Scenario{
-	ResultsChecker: ManyChecks(
-		FileEquals(model.DownloadFilenameStderr, ""),
-		FileEquals(model.DownloadFilenameStdout, ""),
-	),
-	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: nil,
-			Parameters: nil,
-		},
-	}, // Docker will always run ENTRYPOINT + CMD. If entrypoint = [], this is the same as just running CMD
-}
-
 var GrepFile = Scenario{
 	Inputs: StoredFile(
 		"../../../testdata/grep_file.txt",
@@ -298,9 +268,6 @@ func GetAllScenarios() map[string]Scenario {
 		"wasm_csv_transform": WasmCsvTransform,
 		"wasm_exit_code":     WasmExitCode,
 		"wasm_dynamic_link":  WasmDynamicLink,
-		//olgibbons: do this properly:
-		"DockerfileNoEntryPointNoCommand":  DockerFileNoEntryPointNoCommand,
-		"DockerfileNoEntryPointYesCommand": DockerFileNoEntryPointYesCommand,
 	}
 
 	if runtime.GOOS == "windows" {

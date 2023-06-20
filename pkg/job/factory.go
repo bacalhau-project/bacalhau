@@ -162,12 +162,8 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []st
 		return &model.Job{}, err
 	}
 	j.APIVersion = a.String()
-	//If entrypoint is specified, construct a 1 element slice for it. Otherwise don't pass anything for that field
 	var entrypointSlice []string
-	if entrypoint == "" {
-		//tell docker to use default entrypoint, which can be defined in the Dockerfile
-		entrypointSlice = nil
-	} else {
+	if entrypoint != "" {
 		entrypointSlice = []string{entrypoint}
 	}
 	j.Spec = model.Spec{

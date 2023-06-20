@@ -27,22 +27,11 @@ import (
 
 //When the entrypoint flag is used on the CLI, eg "docker run --entrypoint /bin/echo image hello world" docker will ignore the CMD
 //Stored in the dockerfile. Any paramaters used after the image will be interpreted as the new CMD.
-//If no entrypoint is specified in the dockerfile and the CMD appended to the CLI does not contain an executable that can
-//be found in Alpine's $PATH, the docker daemon will throw an error.
+//If no entrypoint is specified in the dockerfile, and the CMD appended to the CLI does not contain an executable that can
+//be found in the chosen image's $PATH, the docker daemon will throw an error.
 //Please note that if a dockerfile specifies neither the CMD or ENTRYPOINT then docker will use the base image's (if specified).
 //Alpine's base image has a CMD of '/bin/sh' and no entrypoint.
 //Dockerfiles in this test use the JSON array syntax, or 'exec format', i.e. CMD ["/bin/echo", "hello world"]
-
-// cases:
-// 	1. Dockerfile specifies ENTRYPOINT, no CMD (error with Alpine)
-// 	2. Dockerfile specifies no ENTRYPOINT, but CMD
-// 	3. Dockerfile specifies ENTRYPOINT and CMD
-// 	4. Dockerfile specifies neither
-
-// for each of these cases:
-//  1. what happens when we only set CMD
-//  2. what happens when we set ENTRYPOINT and CMD
-//  3. what happens when we set neither
 
 func TestDockerEntrypointTestSuite(t *testing.T) {
 	suite.Run(t, new(DockerEntrypointTestSuite))
@@ -50,7 +39,8 @@ func TestDockerEntrypointTestSuite(t *testing.T) {
 
 type DockerEntrypointTestSuite struct {
 	suite.Suite
-	testName string
+	testName   string
+	imageNames []string
 }
 
 type dockerfilePermutation struct {
@@ -129,10 +119,8 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		}
 
 		response, err := cli.ImageBuild(ctx, buildContext, buildOptions)
-		//olgibbons delete after testing:
-		if err != nil {
-			suite.T().Fatal("Error building image: ", err)
-		}
+		require.NoError(suite.T(), err, "Error building image: ")
+		suite.imageNames = append(suite.imageNames, tag)
 		output, err := io.ReadAll(response.Body)
 		require.NoError(suite.T(), err, "building image")
 		suite.T().Logf("Image %q built successfully: %s", tag, string(output))
@@ -146,17 +134,10 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(suite.T(), err)
 
-	imageTags := []string{
-		suite.testName + "-image-true-true",
-		suite.testName + "-image-false-true",
-		suite.testName + "-image-true-false",
-		suite.testName + "-image-false-false",
-	}
-
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
 	require.NoError(suite.T(), err, "Error listing containers")
 
-	for _, tag := range imageTags {
+	for _, tag := range suite.imageNames {
 		for _, runningContainer := range containers {
 			if strings.Contains(runningContainer.Image, tag) {
 
@@ -277,5 +258,3 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
 		RunTestCase(suite.T(), testScenario)
 	}
 }
-
-//in cmd/docker_run_test.go: make sure flag is hooked up correctly
