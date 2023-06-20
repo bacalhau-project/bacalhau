@@ -11,15 +11,8 @@ type JobEventType int
 const (
 	jobEventUnknown JobEventType = iota // must be first
 
-	// Job has been created by client and is communicating with requestor node
-	JobEventInitialSubmission
-
 	// Job has been created on the requestor node
 	JobEventCreated
-
-	// the concurrency or other mutable properties of the job were
-	// changed by the client
-	JobEventDealUpdated
 
 	// a compute node bid on a job
 	JobEventBid
@@ -27,15 +20,6 @@ const (
 	// a requester node accepted for rejected a job bid
 	JobEventBidAccepted
 	JobEventBidRejected
-
-	// a compute node canceled a job bid
-	JobEventBidCancelled
-
-	// a compute node progressed with running a job
-	// this is called periodically for running jobs
-	// to give the client confidence the job is still running
-	// this is like a heartbeat for running jobs
-	JobEventRunning
 
 	// a compute node had an error running a job
 	JobEventComputeError
@@ -58,13 +42,6 @@ const (
 
 	// a user canceled a job
 	JobEventCanceled
-
-	// the requester node gives a compute node permission
-	// to forget about the job and free any resources it might
-	// currently be reserving - this can happen if a compute node
-	// bids when a job has completed - if the compute node does
-	// not hear back it will be stuck in reserving the resources for the job
-	JobEventInvalidRequest
 
 	// a job has been completed
 	JobEventCompleted
