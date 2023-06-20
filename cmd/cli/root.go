@@ -27,8 +27,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -54,7 +54,7 @@ func init() { //nolint:gochecknoinits
 	}
 
 	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
-		handler.LoggingMode = logger.LogMode(strings.ToLower(logtype))
+		util.LoggingMode = logger.LogMode(strings.ToLower(logtype))
 	}
 
 	// Force cobra to set apiHost & apiPort
@@ -69,11 +69,11 @@ func NewRootCmd() *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
 
-			logger.ConfigureLogging(handler.LoggingMode)
+			logger.ConfigureLogging(util.LoggingMode)
 
 			cm := system.NewCleanupManager()
 			cm.RegisterCallback(telemetry.Cleanup)
-			ctx = context.WithValue(ctx, handler.SystemManagerKey, cm)
+			ctx = context.WithValue(ctx, util.SystemManagerKey, cm)
 
 			var names []string
 			root := cmd
@@ -89,7 +89,7 @@ func NewRootCmd() *cobra.Command {
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
 			ctx.Value(spanKey).(trace.Span).End()
-			ctx.Value(handler.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
+			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
 	// ====== Start a job
@@ -142,7 +142,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
 	viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port"))
 	RootCmd.PersistentFlags().Var(
-		flags.LoggingFlag(&handler.LoggingMode), "log-mode",
+		flags.LoggingFlag(&util.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,
 	)
 	return RootCmd
@@ -152,7 +152,7 @@ func Execute() {
 	rootCmd := NewRootCmd()
 
 	// Ensure commands are able to stop cleanly if someone presses ctrl+c
-	ctx, cancel := signal.NotifyContext(context.Background(), handler.ShutdownSignals...)
+	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
 	defer cancel()
 	rootCmd.SetContext(ctx)
 
@@ -189,7 +189,7 @@ func Execute() {
 	rootCmd.SetErr(system.Stdout)
 
 	if err := rootCmd.Execute(); err != nil {
-		handler.Fatal(rootCmd, err, 1)
+		util.Fatal(rootCmd, err, 1)
 	}
 }
 

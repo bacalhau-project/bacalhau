@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -47,10 +47,10 @@ func NewCmd() *cobra.Command {
 		Long:    getLong,
 		Example: getExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := get(cmd, cmdArgs, OG); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -65,7 +65,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 
 	jobID := cmdArgs[0]
 	if jobID == "" {
-		byteResult, err := handler.ReadFromStdinIfAvailable(cmd)
+		byteResult, err := util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
@@ -79,7 +79,7 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 		jobID, OG.DownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
-	err := handler.DownloadResultsHandler(
+	err := util.DownloadResultsHandler(
 		ctx,
 		cmd,
 		jobID,

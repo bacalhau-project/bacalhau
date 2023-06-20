@@ -8,7 +8,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -56,10 +56,10 @@ func NewCmd() *cobra.Command {
 		Long:    describeLong,
 		Example: describeExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
 			if err := describe(cmd, cmdArgs, OD); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -91,14 +91,14 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	inputJobID := cmdArgs[0]
 	if inputJobID == "" {
 		var byteResult []byte
-		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
+		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
 		// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
 		inputJobID = string(byteResult)
 	}
-	j, foundJob, err := handler.GetAPIClient(ctx).Get(ctx, inputJobID)
+	j, foundJob, err := util.GetAPIClient(ctx).Get(ctx, inputJobID)
 
 	if err != nil {
 		if err, ok := err.(*bacerrors.ErrorResponse); ok {
@@ -115,7 +115,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, err := handler.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}

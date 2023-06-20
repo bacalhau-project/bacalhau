@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -76,10 +76,10 @@ func NewCmd() *cobra.Command {
 		Short:   "List jobs on the network",
 		Long:    listLong,
 		Example: listExample,
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := list(cmd, OL); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -165,7 +165,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	log.Ctx(ctx).Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
 	log.Ctx(ctx).Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
-	jobs, err := handler.GetAPIClient(ctx).List(
+	jobs, err := util.GetAPIClient(ctx).List(
 		ctx,
 		OL.IDFilter,
 		OL.IncludeTags,
@@ -183,7 +183,7 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 	log.Ctx(ctx).Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 	var msgBytes []byte
-	if OL.OutputFormat == handler.JSONFormat {
+	if OL.OutputFormat == util.JSONFormat {
 		msgBytes, err = model.JSONMarshalWithMax(jobs)
 		if err != nil {
 			return fmt.Errorf("error marshaling jobs to JSON: %w", err)

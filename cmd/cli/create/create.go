@@ -13,8 +13,8 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
@@ -65,11 +65,11 @@ func NewCmd() *cobra.Command {
 		Long:         createLong,
 		Example:      createExample,
 		Args:         cobra.MinimumNArgs(0),
-		PreRun:       handler.ApplyPorcelainLogLevel,
+		PreRun:       util.ApplyPorcelainLogLevel,
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := create(cmd, cmdArgs, OC); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -97,7 +97,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	}
 
 	if len(cmdArgs) == 0 {
-		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
+		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file or stdin: %w", err)
 		}
@@ -230,7 +230,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return nil
 	}
 
-	executingJob, err := handler.ExecuteJob(ctx,
+	executingJob, err := util.ExecuteJob(ctx,
 		j,
 		OC.RunTimeSettings,
 	)
@@ -238,7 +238,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, handler.GetAPIClient(ctx)); err != nil {
+	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx)); err != nil {
 		return err
 	}
 

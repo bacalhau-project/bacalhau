@@ -9,8 +9,8 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -71,7 +71,7 @@ func NewCmd() *cobra.Command {
 		Example: devstackExample,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := runDevstack(cmd, ODs, OS, IsNoop); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -145,7 +145,7 @@ func NewCmd() *cobra.Command {
 func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.ServeOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
-	cm := handler.GetCleanupManager(ctx)
+	cm := util.GetCleanupManager(ctx)
 
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
@@ -221,7 +221,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
 	}
 
-	if handler.LoggingMode == logger.LogModeStation {
+	if util.LoggingMode == logger.LogModeStation {
 		for _, node := range stack.Nodes {
 			if node.IsComputeNode() {
 				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))

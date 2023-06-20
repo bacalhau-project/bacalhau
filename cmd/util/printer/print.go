@@ -14,8 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -100,7 +100,7 @@ func PrintJobExecution(
 			time.Sleep(time.Duration(1) * time.Second)
 		}
 
-		return handler.Logs(cmd, j.Metadata.ID, true, true)
+		return util.Logs(cmd, j.Metadata.ID, true, true)
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
@@ -151,7 +151,7 @@ func PrintJobExecution(
 	}
 
 	if hasResults && runtimeSettings.AutoDownloadResults {
-		if err := handler.DownloadResultsHandler(ctx, cmd, j.Metadata.ID, downloadSettings); err != nil {
+		if err := util.DownloadResultsHandler(ctx, cmd, j.Metadata.ID, downloadSettings); err != nil {
 			return err
 		}
 	}
@@ -217,7 +217,7 @@ To cancel the job, run:
 	// Capture Ctrl+C if the user wants to finish early the job
 	ctx, cancel := context.WithCancel(ctx)
 	signalChan := make(chan os.Signal, 2)
-	signal.Notify(signalChan, handler.ShutdownSignals...)
+	signal.Notify(signalChan, util.ShutdownSignals...)
 	defer func() {
 		signal.Stop(signalChan)
 		cancel()
@@ -257,7 +257,7 @@ To cancel the job, run:
 	var lastEventState model.JobStateType
 	for !cmdShuttingDown {
 		// Get the job level history events that happened since the last one we saw
-		jobEvents, err := handler.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
+		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Metadata.ID, publicapi.EventFilterOptions{
 			Since:                 lastSeenTimestamp,
 			ExcludeExecutionLevel: true,
 		})

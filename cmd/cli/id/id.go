@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -29,7 +29,7 @@ func NewCmd() *cobra.Command {
 		Short: "Show bacalhau node id info",
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := id(cmd, OS); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}

@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -36,10 +36,10 @@ func NewCmd() *cobra.Command {
 		Short:   logsShortDesc,
 		Example: logsExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
-			if err := handler.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
-				handler.Fatal(cmd, err, 1)
+			if err := util.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}

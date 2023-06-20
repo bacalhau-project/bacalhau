@@ -21,7 +21,7 @@ import (
 	"github.com/google/uuid"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -48,7 +48,7 @@ type DockerRunSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRunSuite(t *testing.T) {
-	handler.Fatal = handler.FakeFatalErrorHandler
+	util.Fatal = util.FakeFatalErrorHandler
 	suite.Run(t, new(DockerRunSuite))
 }
 

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata"
 )
@@ -33,7 +33,7 @@ func (s *ValidateSuite) TestValidate() {
 	}
 	for name, test := range tests {
 		s.Run(name, func() {
-			handler.Fatal = handler.FakeFatalErrorHandler
+			util.Fatal = util.FakeFatalErrorHandler
 
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("validate",
 				"--api-host", s.Host,

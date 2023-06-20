@@ -24,7 +24,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -53,7 +53,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", handler.JSONFormat,
+		"--output", util.JSONFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
@@ -65,7 +65,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err = cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", handler.YAMLFormat,
+		"--output", util.YAMLFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 

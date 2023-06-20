@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -138,7 +138,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.Node.Host.ID().String()
-	outputFolder := filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID))
+	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID, nil)
 
@@ -188,8 +188,8 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)), hostID, nil)
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, nil)
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
@@ -235,8 +235,8 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
@@ -261,9 +261,9 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)))
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(),
-		filepath.Join(tempDir, handler.GetDefaultJobFolder(jobID)),
+		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
 		hostID,
 		[]string{
 			"/data",

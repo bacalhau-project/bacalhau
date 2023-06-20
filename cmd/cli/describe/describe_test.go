@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -183,7 +183,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 		{numOfJobs: 1}, // just enough that describe could get screwed up
 	}
 
-	handler.Fatal = handler.FakeFatalErrorHandler
+	util.Fatal = util.FakeFatalErrorHandler
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
 			func() {

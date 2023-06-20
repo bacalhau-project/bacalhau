@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/theckman/yacspin"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -101,7 +101,7 @@ func NewSpinner(ctx context.Context, w io.Writer, maxWidth int, handleSigint boo
 
 	if s.handleSigint {
 		s.signalChannel = make(chan os.Signal, 2)
-		signal.Notify(s.signalChannel, handler.ShutdownSignals...)
+		signal.Notify(s.signalChannel, util.ShutdownSignals...)
 	}
 
 	return s, nil

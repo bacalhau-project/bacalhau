@@ -14,8 +14,8 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
@@ -75,7 +75,7 @@ func NewCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
 		Use:               "wasm",
 		Short:             "Run and prepare WASM jobs on the network",
-		PersistentPreRunE: handler.CheckVersion,
+		PersistentPreRunE: util.CheckVersion,
 	}
 
 	wasmCmd.AddCommand(
@@ -95,10 +95,10 @@ func newRunCmd() *cobra.Command {
 		Long:    wasmRunLong,
 		Example: wasmRunExample,
 		Args:    cobra.MinimumNArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runWasm(cmd, args, opts); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -152,12 +152,12 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 
 	}
 
-	executingJob, err := handler.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
 	if err != nil {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, handler.GetAPIClient(ctx))
+	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {
@@ -288,7 +288,7 @@ func newValidateCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err, exitcode := validateWasm(cmd, args, opts); err != nil {
-				handler.Fatal(cmd, err, exitcode)
+				util.Fatal(cmd, err, exitcode)
 			}
 			return nil
 		},
@@ -317,7 +317,7 @@ func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) (erro
 	loader := wasm.NewModuleLoader(engine, config, storage)
 	module, err := loader.Load(ctx, programPath)
 	if err != nil {
-		return err, handler.ExitError
+		return err, util.ExitError
 	}
 
 	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
@@ -339,5 +339,5 @@ func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) (erro
 	}
 
 	cmd.Println("OK")
-	return nil, handler.ExitSuccess
+	return nil, util.ExitSuccess
 }

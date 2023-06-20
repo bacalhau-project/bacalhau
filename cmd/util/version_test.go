@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package handler
+package util
 
 import (
 	"context"

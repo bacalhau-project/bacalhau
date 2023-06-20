@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -25,7 +25,7 @@ type BaseSuite struct {
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	handler.Fatal = handler.FakeFatalErrorHandler
+	util.Fatal = util.FakeFatalErrorHandler
 
 	ctx := context.Background()
 	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0,
@@ -46,7 +46,7 @@ func (s *BaseSuite) SetupTest() {
 
 // After each test
 func (s *BaseSuite) TearDownTest() {
-	handler.Fatal = handler.FakeFatalErrorHandler
+	util.Fatal = util.FakeFatalErrorHandler
 	if s.Node != nil {
 		s.Node.CleanupManager.Cleanup(context.Background())
 	}

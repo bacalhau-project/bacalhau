@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -20,7 +20,7 @@ func NewCmd() *cobra.Command {
 		Short: "Run the bacalhau simulator",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := runSimulator(cmd); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -28,7 +28,7 @@ func NewCmd() *cobra.Command {
 
 func runSimulator(cmd *cobra.Command) error {
 	ctx := cmd.Context()
-	cm := handler.GetCleanupManager(ctx)
+	cm := util.GetCleanupManager(ctx)
 	//Cleanup manager ensures that resources are freed before exiting:
 	datastore := inmemory.NewJobStore()
 	libp2pHost, err := libp2p.NewHost(9075) //nolint:gomnd
@@ -52,7 +52,7 @@ func runSimulator(cmd *cobra.Command) error {
 		JobStore:            datastore,
 		Host:                libp2pHost,
 		HostAddress:         "0.0.0.0",
-		APIPort:             handler.GetAPIPort(ctx),
+		APIPort:             util.GetAPIPort(ctx),
 		ComputeConfig:       node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: node.NewRequesterConfigWithDefaults(),
 		SimulatorNodeID:     libp2pHost.ID().String(),

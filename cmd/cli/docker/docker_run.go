@@ -9,8 +9,8 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -80,7 +80,7 @@ func NewCmd() *cobra.Command {
 	dockerCmd := &cobra.Command{
 		Use:               "docker",
 		Short:             "Run a docker job on the network (see run subcommand)",
-		PersistentPreRunE: handler.CheckVersion,
+		PersistentPreRunE: util.CheckVersion,
 	}
 
 	dockerCmd.AddCommand(newDockerRunCmd())
@@ -96,10 +96,10 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		Long:    runLong,
 		Example: runExample,
 		Args:    cobra.MinimumNArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := dockerRun(cmd, cmdArgs, opts); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -154,12 +154,12 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return nil
 	}
 
-	executingJob, err := handler.ExecuteJob(ctx, j, opts.RunTimeSettings)
+	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
 	if err != nil {
 		return err
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, handler.GetAPIClient(ctx))
+	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
 }
 
 // CreateJob creates a job object from the given command line arguments and options.

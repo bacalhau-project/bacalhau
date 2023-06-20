@@ -25,7 +25,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -57,7 +57,7 @@ func NewCmd() *cobra.Command {
 		Short: "Get the client and server version.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := runVersion(cmd, oV); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -91,7 +91,7 @@ func (oV *VersionOptions) Validate(*cobra.Command) error {
 		return fmt.Errorf("extra arguments: %v", oV.args)
 	}
 
-	if oV.Output != "" && oV.Output != handler.YAMLFormat && oV.Output != handler.JSONFormat {
+	if oV.Output != "" && oV.Output != util.YAMLFormat && oV.Output != util.JSONFormat {
 		return errors.New(`--output must be 'yaml' or 'json'`)
 	}
 
@@ -107,7 +107,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	versions.ClientVersion = version.Get()
 
 	if !oV.ClientOnly {
-		serverVersion, err := handler.GetAPIClient(ctx).Version(ctx)
+		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("could not get server version")
 			return err
@@ -122,13 +122,13 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		if versions.ServerVersion != nil {
 			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
 		}
-	case handler.YAMLFormat:
+	case util.YAMLFormat:
 		marshaled, err := model.YAMLMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}
 		cmd.Println(string(marshaled))
-	case handler.JSONFormat:
+	case util.JSONFormat:
 		marshaled, err := model.JSONMarshalWithMax(versions)
 		if err != nil {
 			return err

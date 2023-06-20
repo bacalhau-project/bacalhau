@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -58,7 +58,7 @@ func NewCmd() *cobra.Command {
 		Long:    cancelLong,
 		Example: cancelExample,
 		Args:    cobra.ExactArgs(1),
-		PreRun:  handler.ApplyPorcelainLogLevel,
+		PreRun:  util.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			return cancel(cmd, cmdArgs, cancelOptions)
 		},
@@ -101,7 +101,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	requestedJobID := cmdArgs[0]
 	if requestedJobID == "" {
 		var byteResult []byte
-		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
+		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %s", err)
 		}
@@ -110,7 +110,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 
 	// Let the user know we are initiating the request
 	spinner.NextStep(connectingMessage)
-	apiClient := handler.GetAPIClient(ctx)
+	apiClient := util.GetAPIClient(ctx)
 
 	// Fetch the job information so we can check whether the task is already
 	// terminal or not. We will not send requests if it is.

@@ -9,7 +9,7 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -68,7 +68,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, cmdArgs []string) { //nolint:unparam // incorrect that cmd is unused.
 			if err := validate(cmd, cmdArgs, OV); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}

@@ -14,8 +14,8 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -210,7 +210,7 @@ func NewCmd() *cobra.Command {
 		Example: serveExample,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := serve(cmd, OS); err != nil {
-				handler.Fatal(cmd, err, 1)
+				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
@@ -265,7 +265,7 @@ func NewCmd() *cobra.Command {
 //nolint:funlen,gocyclo
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx := cmd.Context()
-	cm := handler.GetCleanupManager(ctx)
+	cm := util.GetCleanupManager(ctx)
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -330,7 +330,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
-		APIPort:               handler.GetAPIPort(ctx),
+		APIPort:               util.GetAPIPort(ctx),
 		ComputeConfig:         GetComputeConfig(OS),
 		RequesterNodeConfig:   GetRequesterConfig(OS),
 		IsComputeNode:         isComputeNode,
@@ -357,7 +357,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// only in station logging output
-	if handler.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
+	if util.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
 	}
 
@@ -394,7 +394,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
 export BACALHAU_API_PORT=%d
-export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, handler.GetAPIPort(ctx), peerAddress)
+export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, util.GetAPIPort(ctx), peerAddress)
 
 		if isRequesterNode {
 			cmd.Println()
