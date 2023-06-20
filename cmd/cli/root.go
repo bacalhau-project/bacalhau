@@ -25,7 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/simulate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
-	version2 "github.com/bacalhau-project/bacalhau/cmd/cli/version"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
@@ -103,7 +103,7 @@ func NewRootCmd() *cobra.Command {
 
 	RootCmd.AddCommand(validate.NewCmd())
 
-	RootCmd.AddCommand(version2.NewCmd())
+	RootCmd.AddCommand(version.NewCmd())
 
 	// ====== Get information or results about a job
 	// Describe a job
