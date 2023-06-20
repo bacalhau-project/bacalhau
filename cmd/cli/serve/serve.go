@@ -392,10 +392,10 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 		)
 
 		shellVariablesString := fmt.Sprintf(`
-			export BACALHAU_IPFS_SWARM_ADDRESSES=%s
-			export BACALHAU_API_HOST=%s
-			export BACALHAU_API_PORT=%d
-			export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, handler.GetAPIPort(ctx), peerAddress)
+export BACALHAU_IPFS_SWARM_ADDRESSES=%s
+export BACALHAU_API_HOST=%s
+export BACALHAU_API_PORT=%d
+export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, handler.GetAPIPort(ctx), peerAddress)
 
 		if isRequesterNode {
 			cmd.Println()
