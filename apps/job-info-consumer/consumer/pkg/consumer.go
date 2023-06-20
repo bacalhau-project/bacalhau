@@ -34,8 +34,7 @@ func NewConsumer(params ConsumerParams) *Consumer {
 	return consumer
 }
 
-func (c *Consumer) Start(ctx context.Context) error {
-	var err error
+func (c *Consumer) Start(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer func() {
 		if err != nil {

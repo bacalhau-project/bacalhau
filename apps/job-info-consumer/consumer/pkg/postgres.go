@@ -97,8 +97,7 @@ func (d *PostgresDatastore) getMigrations() (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
-	migrations, err := migrate.NewWithInstance("iofs", files, d.dbname, drive)
-	return migrations, nil
+	return migrate.NewWithInstance("iofs", files, d.dbname, drive)
 }
 
 func (d *PostgresDatastore) MigrateUp() error {
