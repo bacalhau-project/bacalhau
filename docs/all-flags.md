@@ -135,26 +135,37 @@ There is no support for sharding, concurrency or minimum bidding for these jobs.
 
 #### Examples
 
+Refers to example models at balcalhau repository under [pkg/model/tasks](https://github.com/bacalhau-project/bacalhau/tree/main/pkg/model/tasks)
+
 An example UCAN Invocation that runs the same job as the above example would look like:
 
 ```json
 {
-    "with": "ubuntu",
-    "do": "docker/run",
-    "inputs": {
-        "entrypoint": ["echo", "hello", "world"],
-        "workdir": "/",
-        "mounts": {},
-        "outputs": {
-            "/outputs": ""
-        },
-    },
-    "meta": {
-        "bacalhau/config": {
-            "verifier": 1,
-            "publisher": 4,
-        }
+  "with": "ubuntu",
+  "do": "docker/run",
+  "inputs": {
+    "entrypoint": ["echo", "hello", "world"],
+    "workdir": "/",
+    "mounts": {},
+    "outputs": {
+      "/outputs": ""
     }
+  },
+  "meta": {
+    "bacalhau/config": {
+      "verifier": 1,
+      "publisher": 4,
+      "annotations": ["hello"],
+      "resources": {
+        "cpu": 1,
+        "disk": 1073741824,
+        "memory": 1073741824,
+        "gpu": 0
+      },
+      "timeout": 300e9,
+      "dnt": false
+    }
+  }
 }
 ```
 
@@ -178,9 +189,6 @@ An example UCAN Invocation that runs a WebAssembly job might look like:
 		}
 	},
 	"meta": {
-    "bacalhau/config": {
-        "verifier": 2,
-        "publisher": 4,
     }
   }
 }
