@@ -78,10 +78,7 @@ func NewCmd() *cobra.Command {
 		Example: listExample,
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err, exitcode := list(cmd, OL); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return list(cmd, OL)
 		},
 	}
 
@@ -153,7 +150,7 @@ func (c *ColumnEnum) Set(v string) error {
 	}
 }
 
-func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
+func list(cmd *cobra.Command, OL *ListOptions) error {
 	ctx := cmd.Context()
 
 	log.Ctx(ctx).Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
@@ -177,7 +174,7 @@ func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
 		OL.SortReverse,
 	)
 	if err != nil {
-		return fmt.Errorf("error listing jobs: %w", err), handler.ExitError
+		return fmt.Errorf("error listing jobs: %w", err)
 	}
 
 	numberInTable := system.Min(OL.MaxJobs, len(jobs))
@@ -187,7 +184,7 @@ func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
 	if OL.OutputFormat == handler.JSONFormat {
 		msgBytes, err = model.JSONMarshalWithMax(jobs)
 		if err != nil {
-			return fmt.Errorf("error marshaling jobs to JSON: %w", err), handler.ExitError
+			return fmt.Errorf("error marshaling jobs to JSON: %w", err)
 		}
 		cmd.Printf("%s\n", msgBytes)
 	} else {
@@ -204,12 +201,12 @@ func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
 			var summaryRow table.Row
 			summaryRow, err = summarizeJob(j, OL)
 			if err != nil {
-				return fmt.Errorf("error summarizing job: %w", err), handler.ExitError
+				return fmt.Errorf("error summarizing job: %w", err)
 			}
 			rows = append(rows, summaryRow)
 		}
 		if err != nil {
-			return err, handler.ExitError
+			return err
 		}
 		tw.AppendRows(rows)
 
@@ -236,7 +233,7 @@ func list(cmd *cobra.Command, OL *ListOptions) (error, int) {
 		tw.Render()
 	}
 
-	return nil, handler.ExitSuccess
+	return nil
 }
 
 // Renders job details into a table row

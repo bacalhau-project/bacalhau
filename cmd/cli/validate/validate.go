@@ -9,7 +9,6 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -67,10 +66,7 @@ func NewCmd() *cobra.Command {
 		Example: validateExample,
 		Args:    cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
-			if err, exitcode := validate(cmd, cmdArgs, OV); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return validate(cmd, cmdArgs, OV)
 		},
 	}
 
@@ -82,22 +78,22 @@ func NewCmd() *cobra.Command {
 	return validateCmd
 }
 
-func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) (error, int) {
+func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) error {
 	j := &model.Job{}
 	jsonSchemaData, err := GenerateJobJSONSchema()
 	if err != nil {
-		return err, handler.ExitError
+		return err
 	}
 
 	if OV.OutputSchema {
 		//nolint
 		cmd.Printf("%s", jsonSchemaData)
-		return nil, handler.ExitSuccess
+		return nil
 	}
 
 	if len(cmdArgs) == 0 {
 		_ = cmd.Usage()
-		return fmt.Errorf("you must specify a filename or provide the content to be validated via stdin"), handler.ExitError
+		return fmt.Errorf("you must specify a filename or provide the content to be validated via stdin")
 	}
 
 	OV.Filename = cmdArgs[0]
@@ -107,32 +103,32 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) (error,
 		// Read from stdin
 		byteResult, err = io.ReadAll(cmd.InOrStdin())
 		if err != nil {
-			return fmt.Errorf("error reading from stdin: %w", err), handler.ExitError
+			return fmt.Errorf("error reading from stdin: %w", err)
 		}
 		if byteResult == nil {
 			// Can you ever get here?
-			return fmt.Errorf("no filename provided"), handler.ExitError
+			return fmt.Errorf("no filename provided")
 		}
 	} else {
 		fileextension := filepath.Ext(OV.Filename)
 		file, err := os.Open(OV.Filename)
 		if err != nil {
-			return fmt.Errorf("error opening file (%s): %w", OV.Filename, err), handler.ExitError
+			return fmt.Errorf("error opening file (%s): %w", OV.Filename, err)
 		}
 
 		byteResult, err = io.ReadAll(file)
 		if err != nil {
-			return err, handler.ExitError
+			return err
 		}
 
 		if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
 			// Yaml can parse json
 			err = model.YAMLUnmarshalWithMax(byteResult, &j)
 			if err != nil {
-				return fmt.Errorf("error unmarshaling yaml from file (%s): %w", OV.Filename, err), handler.ExitError
+				return fmt.Errorf("error unmarshaling yaml from file (%s): %w", OV.Filename, err)
 			}
 		} else {
-			return fmt.Errorf("file extension (%s) not supported. The file must end in either .yaml, .yml or .json", fileextension), handler.ExitError
+			return fmt.Errorf("file extension (%s) not supported. The file must end in either .yaml, .yml or .json", fileextension)
 		}
 	}
 
@@ -140,7 +136,7 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) (error,
 	// Noop if you pass JSON through
 	fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
 	if err != nil {
-		return fmt.Errorf("error converting yaml to json: %w", err), handler.ExitError
+		return fmt.Errorf("error converting yaml to json: %w", err)
 	}
 
 	// println(str)
@@ -149,7 +145,7 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) (error,
 
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	if err != nil {
-		return fmt.Errorf("error validating json: %w", err), handler.ExitError
+		return fmt.Errorf("error validating json: %w", err)
 	}
 
 	if result.Valid() {
@@ -159,9 +155,9 @@ func validate(cmd *cobra.Command, cmdArgs []string, OV *ValidateOptions) (error,
 		for _, desc := range result.Errors() {
 			msg += fmt.Sprintf("- %s\n", desc)
 		}
-		return fmt.Errorf(msg), handler.ExitError
+		return fmt.Errorf(msg)
 	}
-	return nil, handler.ExitSuccess
+	return nil
 }
 
 func GenerateJobJSONSchema() ([]byte, error) {

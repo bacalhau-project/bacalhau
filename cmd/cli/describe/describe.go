@@ -58,11 +58,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-			err, exitcode := describe(cmd, cmdArgs, OD)
-			if err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return describe(cmd, cmdArgs, OD)
 		},
 	}
 
@@ -82,11 +78,11 @@ func NewCmd() *cobra.Command {
 	return describeCmd
 }
 
-func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error, int) {
+func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	ctx := cmd.Context()
 
 	if err := cmd.ParseFlags(cmdArgs[1:]); err != nil {
-		return fmt.Errorf("failed to parse flags: %w", err), handler.ExitError
+		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
 	var err error
@@ -96,7 +92,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error,
 		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
 		// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 		if err != nil {
-			return fmt.Errorf("unknown error reading from file: %w", err), handler.ExitError
+			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
 		inputJobID = string(byteResult)
 	}
@@ -104,14 +100,14 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error,
 
 	if err != nil {
 		if err, ok := err.(*bacerrors.ErrorResponse); ok {
-			return err, handler.ExitError
+			return err
 		} else {
-			return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, err), handler.ExitError
+			return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, err)
 		}
 	}
 
 	if !foundJob {
-		return fmt.Errorf("job not found: %w", err), handler.ExitError
+		return fmt.Errorf("job not found: %w", err)
 	}
 
 	jobDesc := j
@@ -119,7 +115,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error,
 	if OD.IncludeEvents {
 		jobEvents, err := handler.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
 		if err != nil {
-			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err), handler.ExitError
+			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}
 		jobDesc.History = jobEvents
 	}
@@ -127,14 +123,14 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error,
 	//b, err := model.JSONMarshalIndentWithMax(jobDesc, 3)
 	b, err := json.Marshal(jobDesc)
 	if err != nil {
-		return fmt.Errorf("failure marshaling job description '%s': %w", j.Job.Metadata.ID, err), handler.ExitError
+		return fmt.Errorf("failure marshaling job description '%s': %w", j.Job.Metadata.ID, err)
 	}
 
 	if !OD.JSON {
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
 		if err != nil {
-			return fmt.Errorf("able to marshal to YAML but not JSON whatttt '%s': %w", j.Job.Metadata.ID, err), handler.ExitError
+			return fmt.Errorf("able to marshal to YAML but not JSON whatttt '%s': %w", j.Job.Metadata.ID, err)
 		}
 		cmd.Print(string(y))
 	} else {
@@ -142,5 +138,5 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) (error,
 		cmd.Print(string(b))
 	}
 
-	return nil, handler.ExitSuccess
+	return nil
 }

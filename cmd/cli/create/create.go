@@ -67,11 +67,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(0),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			err, exitcode := create(cmd, cmdArgs, OC)
-			if err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return create(cmd, cmdArgs, OC)
 		},
 	}
 
@@ -81,7 +77,7 @@ func NewCmd() *cobra.Command {
 	return createCmd
 }
 
-func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int) { //nolint:funlen,gocyclo
+func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //nolint:funlen,gocyclo
 	ctx := cmd.Context()
 
 	// Custom unmarshaller
@@ -94,13 +90,13 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 
 	j, err = model.NewJobWithSaneProductionDefaults()
 	if err != nil {
-		return err, 1
+		return err
 	}
 
 	if len(cmdArgs) == 0 {
 		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
-			return fmt.Errorf("unknown error reading from file or stdin: %w", err), handler.ExitError
+			return fmt.Errorf("unknown error reading from file or stdin: %w", err)
 		}
 	} else {
 		OC.Filename = cmdArgs[0]
@@ -109,37 +105,37 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 		fileContent, err = os.Open(OC.Filename)
 
 		if err != nil {
-			return fmt.Errorf("error opening file: %w", err), handler.ExitError
+			return fmt.Errorf("error opening file: %w", err)
 		}
 
 		byteResult, err = io.ReadAll(fileContent)
 		if err != nil {
-			return fmt.Errorf("error reading file: %w", err), handler.ExitError
+			return fmt.Errorf("error reading file: %w", err)
 		}
 	}
 
 	// Do a first pass for parsing to see if it's a Job or JobWithInfo
 	err = model.YAMLUnmarshalWithMax(byteResult, &rawMap)
 	if err != nil {
-		return fmt.Errorf("error parsing file: %w", err), handler.ExitError
+		return fmt.Errorf("error parsing file: %w", err)
 	}
 
 	// If it's a JobWithInfo, we need to convert it to a Job
 	if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
 		err = model.YAMLUnmarshalWithMax(byteResult, &jwi)
 		if err != nil {
-			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 		byteResult, err = model.YAMLMarshalWithMax(jwi.Job)
 		if err != nil {
-			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 	} else if _, isTask := rawMap["with"]; isTask {
 		// Else it might be a IPVM Task in JSON format
 		var task *model.Task
 		task, err = model.UnmarshalIPLD[model.Task](byteResult, json.Decode, model.UCANTaskSchema)
 		if err != nil {
-			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 
 		job, err := model.NewJobWithSaneProductionDefaults()
@@ -150,32 +146,32 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 
 		spec, err := task.ToSpec()
 		if err != nil {
-			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 
 		job.Spec = *spec
 		byteResult, err = model.YAMLMarshalWithMax(job)
 		if err != nil {
-			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 	}
 
 	if len(byteResult) == 0 {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad), handler.ExitError
+		return fmt.Errorf("%s", userstrings.JobSpecBad)
 	}
 
 	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 	// so we can just use that
 	err = model.YAMLUnmarshalWithMax(byteResult, &j)
 	if err != nil {
-		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err), handler.ExitError
+		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
 	// See if the job spec is empty
 	if j == nil || reflect.DeepEqual(j.Spec, &model.Job{}) {
 		// TODO better error
-		return fmt.Errorf("%s", userstrings.JobSpecBad), handler.ExitError
+		return fmt.Errorf("%s", userstrings.JobSpecBad)
 	}
 
 	// Warn on fields with data that will be ignored
@@ -215,9 +211,9 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image), handler.ExitError
+			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
 		} else {
-			return fmt.Errorf("error verifying job: %w", err), handler.ExitError
+			return fmt.Errorf("error verifying job: %w", err)
 		}
 	}
 	if OC.RunTimeSettings.DryRun {
@@ -225,10 +221,10 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 		var yamlBytes []byte
 		yamlBytes, err = yaml.Marshal(j)
 		if err != nil {
-			return fmt.Errorf("error converting job to yaml: %w", err), handler.ExitError
+			return fmt.Errorf("error converting job to yaml: %w", err)
 		}
 		cmd.Print(string(yamlBytes))
-		return nil, handler.ExitSuccess
+		return nil
 	}
 
 	executingJob, err := handler.ExecuteJob(ctx,
@@ -236,12 +232,12 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) (error, int
 		*OC.RunTimeSettings,
 	)
 	if err != nil {
-		return fmt.Errorf("error executing job: %w", err), handler.ExitError
+		return fmt.Errorf("error executing job: %w", err)
 	}
 
 	if err := printer.PrintJobExecution(ctx, executingJob, cmd, *OC.DownloadFlags, *OC.RunTimeSettings, handler.GetAPIClient(ctx)); err != nil {
-		return err, handler.ExitError
+		return err
 	}
 
-	return nil, handler.ExitSuccess
+	return nil
 }

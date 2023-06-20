@@ -56,10 +56,7 @@ func NewCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Get the client and server version.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err, exitcode := runVersion(cmd, oV); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return runVersion(cmd, oV)
 		},
 	}
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
@@ -68,22 +65,22 @@ func NewCmd() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(cmd *cobra.Command, oV *VersionOptions) (error, int) {
+func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
 	oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
 
 	err := oV.Validate(cmd)
 	if err != nil {
-		return fmt.Errorf("error validating version: %w", err), handler.ExitError
+		return fmt.Errorf("error validating version: %w", err)
 	}
 
 	err = oV.Run(ctx, cmd)
 	if err != nil {
-		return fmt.Errorf("error running version: %w", err), handler.ExitError
+		return fmt.Errorf("error running version: %w", err)
 	}
 
-	return nil, handler.ExitSuccess
+	return nil
 }
 
 // Validate validates the provided options

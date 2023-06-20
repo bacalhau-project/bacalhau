@@ -70,10 +70,7 @@ func NewCmd() *cobra.Command {
 		Long:    devStackLong,
 		Example: devstackExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err, exitcode := runDevstack(cmd, ODs, OS, IsNoop); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return runDevstack(cmd, ODs, OS, IsNoop)
 		},
 	}
 
@@ -143,14 +140,14 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo
-func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.ServeOptions, IsNoop bool) (error, int) {
+func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.ServeOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := handler.GetCleanupManager(ctx)
 
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
-		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack"), handler.ExitError
+		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack")
 	}
 
 	cm.RegisterCallback(telemetry.Cleanup)
@@ -160,10 +157,10 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
 	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
 	if ODs.NumberOfBadComputeActors > totalComputeNodes {
-		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)", ODs.NumberOfBadComputeActors, totalComputeNodes), handler.ExitError
+		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)", ODs.NumberOfBadComputeActors, totalComputeNodes)
 	}
 	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
-		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)", ODs.NumberOfBadRequesterActors, totalRequesterNodes), handler.ExitError
+		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)", ODs.NumberOfBadRequesterActors, totalRequesterNodes)
 	}
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
@@ -172,11 +169,11 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
 		_, err := os.Stat(portFileName)
 		if err == nil {
-			return fmt.Errorf("found file %s - Devstack likely already running", portFileName), handler.ExitError
+			return fmt.Errorf("found file %s - Devstack likely already running", portFileName)
 		}
 		_, err = os.Stat(pidFileName)
 		if err == nil {
-			return fmt.Errorf("found file %s - Devstack likely already running", pidFileName), handler.ExitError
+			return fmt.Errorf("found file %s - Devstack likely already running", pidFileName)
 		}
 	}
 
@@ -191,35 +188,35 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	}
 	if stackErr != nil {
-		return stackErr, handler.ExitError
+		return stackErr
 	}
 
 	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
 	if err != nil {
-		return fmt.Errorf("failed to print node info: %w", err), handler.ExitError
+		return fmt.Errorf("failed to print node info: %w", err)
 	}
 	cmd.Println(nodeInfoOutput)
 
 	f, err := os.Create(portFileName)
 	if err != nil {
-		return fmt.Errorf("error writing out port file to %v: %w", portFileName, err), handler.ExitError
+		return fmt.Errorf("error writing out port file to %v: %w", portFileName, err)
 	}
 	defer os.Remove(portFileName)
 	firstNode := stack.Nodes[0]
 	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
 	if err != nil {
-		return fmt.Errorf("error writing out port file: %v: %w", portFileName, err), handler.ExitError
+		return fmt.Errorf("error writing out port file: %v: %w", portFileName, err)
 	}
 
 	fPid, err := os.Create(pidFileName)
 	if err != nil {
-		return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err), handler.ExitError
+		return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err)
 	}
 	defer os.Remove(pidFileName)
 
 	_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
 	if err != nil {
-		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err), handler.ExitError
+		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
 	}
 
 	if handler.LoggingMode == logger.LogModeStation {
@@ -233,5 +230,5 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	<-ctx.Done() // block until killed
 
 	cmd.Println("\nShutting down devstack")
-	return nil, handler.ExitSuccess
+	return nil
 }

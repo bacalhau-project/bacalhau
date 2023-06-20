@@ -209,10 +209,7 @@ func NewCmd() *cobra.Command {
 		Long:    serveLong,
 		Example: serveExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err, exitcode := serve(cmd, OS); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return serve(cmd, OS)
 		},
 	}
 
@@ -264,7 +261,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
+func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx := cmd.Context()
 	cm := handler.GetCleanupManager(ctx)
 
@@ -275,28 +272,28 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 		} else if nodeType == "requester" {
 			isRequesterNode = true
 		} else {
-			return fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType), handler.ExitError
+			return fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
 		}
 	}
 
 	if OS.IPFSConnect != "" && OS.PrivateInternalIPFS {
-		return fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect"), handler.ExitError
+		return fmt.Errorf("--private-internal-ipfs cannot be used with --ipfs-connect")
 	}
 
 	if OS.IPFSConnect != "" && len(OS.IPFSSwarmAddresses) != 0 {
-		return fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect"), handler.ExitError
+		return fmt.Errorf("--ipfs-swarm-addr cannot be used with --ipfs-connect")
 	}
 
 	// Establishing p2p connection
 	peers, err := GetPeers(OS)
 	if err != nil {
-		return err, handler.ExitError
+		return err
 	}
 	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
 	if err != nil {
-		return fmt.Errorf("error creating libp2p host: %w", err), handler.ExitError
+		return fmt.Errorf("error creating libp2p host: %w", err)
 	}
 	cm.RegisterCallback(libp2pHost.Close)
 
@@ -306,12 +303,12 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 	// Establishing IPFS connection
 	ipfsClient, err := IpfsClient(ctx, OS, cm)
 	if err != nil {
-		return err, handler.ExitError
+		return err
 	}
 
 	datastore := inmemory.NewJobStore()
 	if err != nil {
-		return fmt.Errorf("error creating in memory datastore: %w", err), handler.ExitError
+		return fmt.Errorf("error creating in memory datastore: %w", err)
 	}
 	AutoLabels := AutoOutputLabels()
 	combinedMap := make(map[string]string)
@@ -343,18 +340,18 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
-		return fmt.Errorf("error creating node: %w", err), handler.ExitError
+		return fmt.Errorf("error creating node: %w", err)
 	}
 
 	// Start transport layer
 	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
-		return err, handler.ExitError
+		return err
 	}
 
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
-		return fmt.Errorf("error starting node: %w", err), handler.ExitError
+		return fmt.Errorf("error starting node: %w", err)
 	}
 
 	// only in station logging output
@@ -373,12 +370,12 @@ func serve(cmd *cobra.Command, OS *ServeOptions) (error, int) {
 
 		ipfsAddresses, err := ipfsClient.SwarmMultiAddresses(ctx)
 		if err != nil {
-			return fmt.Errorf("error looking up IPFS addresses: %w", err), handler.ExitError
+			return fmt.Errorf("error looking up IPFS addresses: %w", err)
 		}
 
 		p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
 		if err != nil {
-			return err, handler.ExitError
+			return err
 		}
 
 		peerAddress := pickP2pAddress(libp2pHost.Addrs()).Encapsulate(p2pAddr).String()
@@ -405,19 +402,19 @@ export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, handler.GetA
 
 		err = config.WriteRunInfoFile(ctx, shellVariablesString)
 		if err != nil {
-			return err, handler.ExitError
+			return err
 		}
 		cmd.Println("\nA copy of these variables have been written to: " + config.GetRunInfoFilePath())
 
 		cm.RegisterCallback(config.CleanupRunInfoFile)
 
 		if err != nil {
-			return err, handler.ExitError
+			return err
 		}
 	}
 
 	<-ctx.Done() // block until killed
-	return nil, handler.ExitSuccess
+	return nil
 }
 
 // pickP2pAddress will aim to select a non-localhost IPv4 TCP address, or at least a non-localhost IPv6 one, from a list

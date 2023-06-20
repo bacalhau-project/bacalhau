@@ -148,10 +148,7 @@ func newRunCmd() *cobra.Command {
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := runWasm(cmd, args, opts); err != nil {
-				handler.Fatal(cmd, err, handler.ExitError)
-			}
-			return nil
+			return runWasm(cmd, args, opts)
 		},
 	}
 

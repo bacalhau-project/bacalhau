@@ -49,10 +49,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			if err, exitcode := get(cmd, cmdArgs, OG); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return get(cmd, cmdArgs, OG)
 		},
 	}
 
@@ -61,14 +58,14 @@ func NewCmd() *cobra.Command {
 	return getCmd
 }
 
-func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) (error, int) {
+func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 	ctx := cmd.Context()
 
 	jobID := cmdArgs[0]
 	if jobID == "" {
 		byteResult, err := handler.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
-			return fmt.Errorf("unknown error reading from file: %w", err), handler.ExitError
+			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
 		jobID = string(byteResult)
 	}
@@ -88,8 +85,8 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) (error, int) {
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "error downloading job"), handler.ExitError
+		return errors.Wrap(err, "error downloading job")
 	}
 
-	return nil, handler.ExitSuccess
+	return nil
 }

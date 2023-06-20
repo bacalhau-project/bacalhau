@@ -38,10 +38,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			if err := handler.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory); err != nil {
-				handler.Fatal(cmd, err, handler.ExitError)
-			}
-			return nil
+			return handler.Logs(cmd, cmdArgs[0], options.Follow, options.WithHistory)
 		},
 	}
 

@@ -19,29 +19,26 @@ func NewCmd() *cobra.Command {
 		Use:   "simulator",
 		Short: "Run the bacalhau simulator",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err, exitcode := runSimulator(cmd); err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return runSimulator(cmd)
 		},
 	}
 }
 
-func runSimulator(cmd *cobra.Command) (error, int) {
+func runSimulator(cmd *cobra.Command) error {
 	ctx := cmd.Context()
 	cm := handler.GetCleanupManager(ctx)
 	//Cleanup manager ensures that resources are freed before exiting:
 	datastore := inmemory.NewJobStore()
 	libp2pHost, err := libp2p.NewHost(9075) //nolint:gomnd
 	if err != nil {
-		return fmt.Errorf("error creating libp2p host: %w", err), handler.ExitError
+		return fmt.Errorf("error creating libp2p host: %w", err)
 	}
 	cm.RegisterCallback(libp2pHost.Close)
 
 	// print out simulator multi-address
 	p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
 	if err != nil {
-		return fmt.Errorf("error creating p2p multiaddr: %w", err), handler.ExitError
+		return fmt.Errorf("error creating p2p multiaddr: %w", err)
 	}
 	fullAddr := libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
 	log.Ctx(ctx).Info().Msgf("Simulator reachable at: %s", fullAddr)
@@ -63,14 +60,14 @@ func runSimulator(cmd *cobra.Command) (error, int) {
 	}
 	node, err := node.NewNode(ctx, nodeConfig)
 	if err != nil {
-		return fmt.Errorf("error creating node: %w", err), handler.ExitError
+		return fmt.Errorf("error creating node: %w", err)
 	}
 	// Start node
 	err = node.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("error starting node: %w", err), handler.ExitError
+		return fmt.Errorf("error starting node: %w", err)
 	}
 
 	<-ctx.Done() // block until killed
-	return nil, handler.ExitSuccess
+	return nil
 }

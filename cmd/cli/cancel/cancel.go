@@ -60,11 +60,7 @@ func NewCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			err, exitcode := cancel(cmd, cmdArgs, cancelOptions)
-			if err != nil {
-				handler.Fatal(cmd, err, exitcode)
-			}
-			return nil
+			return cancel(cmd, cmdArgs, cancelOptions)
 		},
 	}
 
@@ -75,7 +71,7 @@ func NewCmd() *cobra.Command {
 	return cancelCmd
 }
 
-func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error, int) {
+func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error {
 	ctx := cmd.Context()
 
 	if options.Quiet {
@@ -98,7 +94,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error
 	// Create a spinner that will exit if/when it sees ctrl-c
 	spinner, err := printer.NewSpinner(ctx, writer, widestString, true)
 	if err != nil {
-		return err, handler.ExitError
+		return err
 	}
 	spinner.Run()
 
@@ -107,7 +103,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error
 		var byteResult []byte
 		byteResult, err = handler.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
-			return fmt.Errorf("unknown error reading from file: %s", err), handler.ExitError
+			return fmt.Errorf("unknown error reading from file: %s", err)
 		}
 		requestedJobID = string(byteResult)
 	}
@@ -122,7 +118,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error
 	job, jobFound, err := apiClient.Get(ctx, requestedJobID)
 	if err != nil {
 		spinner.Done(printer.StopFailed)
-		return err, handler.ExitError
+		return err
 	}
 
 	if !jobFound {
@@ -134,7 +130,7 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error
 	if job.State.State.IsTerminal() {
 		spinner.Done(printer.StopFailed)
 		errorMessage := fmt.Errorf(jobAlreadyCompleteMessage, job.State.State.String())
-		return errorMessage, handler.ExitError
+		return errorMessage
 	}
 
 	// Submit a request to cancel the specified job. It is the responsibility of the
@@ -146,16 +142,16 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) (error
 		spinner.Done(printer.StopFailed)
 
 		if err, ok := err.(*bacerrors.ErrorResponse); ok {
-			return err, handler.ExitError
+			return err
 		} else {
-			return fmt.Errorf("unknown error trying to cancel job (ID: %s): %+v", requestedJobID, err), handler.ExitError
+			return fmt.Errorf("unknown error trying to cancel job (ID: %s): %+v", requestedJobID, err)
 		}
 	}
 
 	spinner.Done(printer.StopSuccess)
 	cmd.Printf("\nJob successfully canceled. Job ID: %s\n", jobState.JobID)
 
-	return nil, handler.ExitSuccess
+	return nil
 }
 
 func findWidestString(messages ...string) int {
