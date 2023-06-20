@@ -18,8 +18,10 @@ func NewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "simulator",
 		Short: "Run the bacalhau simulator",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSimulator(cmd)
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := runSimulator(cmd); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 }

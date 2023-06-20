@@ -50,8 +50,18 @@ type eventStruct struct {
 	IsError       bool
 }
 
-// TODO remove the download portion of this.
-func PrintJobExecution(ctx context.Context, j *model.Job, cmd *cobra.Command, downloadSettings *flags.DownloaderSettings, runtimeSettings *flags.RunTimeSettings, client *publicapi.RequesterAPIClient) error {
+// PrintJobExecution displays information about the execution of a job
+// TODO gocyclo rates this as a 24, which is very high, we should refactor someday.
+//
+//nolint:gocyclo,funlen
+func PrintJobExecution(
+	ctx context.Context,
+	j *model.Job,
+	cmd *cobra.Command,
+	downloadSettings *flags.DownloaderSettings,
+	runtimeSettings *flags.RunTimeSettings,
+	client *publicapi.RequesterAPIClient,
+) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
 	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)

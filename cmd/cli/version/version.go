@@ -55,8 +55,10 @@ func NewCmd() *cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Get the client and server version.",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runVersion(cmd, oV)
+		Run: func(cmd *cobra.Command, _ []string) {
+			if err := runVersion(cmd, oV); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")

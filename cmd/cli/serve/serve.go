@@ -208,8 +208,10 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return serve(cmd, OS)
+		Run: func(cmd *cobra.Command, _ []string) {
+			if err := serve(cmd, OS); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 

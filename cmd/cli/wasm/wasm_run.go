@@ -96,8 +96,10 @@ func newRunCmd() *cobra.Command {
 		Example: wasmRunExample,
 		Args:    cobra.MinimumNArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWasm(cmd, args, opts)
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := runWasm(cmd, args, opts); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 

@@ -57,8 +57,10 @@ func NewCmd() *cobra.Command {
 		Example: describeExample,
 		Args:    cobra.ExactArgs(1),
 		PreRun:  handler.ApplyPorcelainLogLevel,
-		RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-			return describe(cmd, cmdArgs, OD)
+		Run: func(cmd *cobra.Command, cmdArgs []string) { // nolintunparam // incorrectly suggesting unused
+			if err := describe(cmd, cmdArgs, OD); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 

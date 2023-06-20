@@ -69,8 +69,10 @@ func NewCmd() *cobra.Command {
 		Short:   "Start a cluster of bacalhau nodes for testing and development",
 		Long:    devStackLong,
 		Example: devstackExample,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runDevstack(cmd, ODs, OS, IsNoop)
+		Run: func(cmd *cobra.Command, _ []string) {
+			if err := runDevstack(cmd, ODs, OS, IsNoop); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 

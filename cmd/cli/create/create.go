@@ -60,14 +60,17 @@ func NewCmd() *cobra.Command {
 	OC := NewCreateOptions()
 
 	createCmd := &cobra.Command{
-		Use:     "create",
-		Short:   "Create a job using a json or yaml file.",
-		Long:    createLong,
-		Example: createExample,
-		Args:    cobra.MinimumNArgs(0),
-		PreRun:  handler.ApplyPorcelainLogLevel,
-		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-			return create(cmd, cmdArgs, OC)
+		Use:          "create",
+		Short:        "Create a job using a json or yaml file.",
+		Long:         createLong,
+		Example:      createExample,
+		Args:         cobra.MinimumNArgs(0),
+		PreRun:       handler.ApplyPorcelainLogLevel,
+		SilenceUsage: true,
+		Run: func(cmd *cobra.Command, cmdArgs []string) {
+			if err := create(cmd, cmdArgs, OC); err != nil {
+				handler.Fatal(cmd, err, 1)
+			}
 		},
 	}
 
