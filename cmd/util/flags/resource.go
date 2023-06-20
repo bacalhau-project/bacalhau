@@ -2,6 +2,15 @@ package flags
 
 import "github.com/spf13/pflag"
 
+func NewDefaultResourceUsageSettings() *ResourceUsageSettings {
+	return &ResourceUsageSettings{
+		CPU:    "",
+		Memory: "",
+		Disk:   "",
+		GPU:    "",
+	}
+}
+
 type ResourceUsageSettings struct {
 	CPU    string
 	Memory string

@@ -11,13 +11,11 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
-	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -52,12 +50,12 @@ var (
 type DockerRunOptions struct {
 	WorkingDirectory string // Working directory for docker
 
-	SpecSettings       flags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings flags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       flags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    flags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   flags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
+	ResourceSettings   *flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
+	NetworkingSettings *flags.NetworkingFlagSettings // Settings for the jobs networking.
+	DealSettings       *flags.DealFlagSettings       // Settings for the jobs deal.
+	RunTimeSettings    *flags.RunTimeSettings        // Settings for running the job.
+	DownloadSettings   *flags.DownloaderSettings     // Settings for running Download.
 
 }
 
@@ -67,58 +65,14 @@ const (
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
-		SpecSettings: flags.SpecFlagSettings{
-			Verifier: model.VerifierNoop.String(),
-			// TODO most users would probably prefer IPFS
-			Publisher: opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
-			Inputs:    opts.StorageOpt{},
-			// TODO validate this works or make it a concrete spec type
-			OutputVolumes: []string{"outputs:/outputs"},
-			EnvVar:        []string{},
-			Timeout:       jobutils.DefaultTimeout.Seconds(),
-			Labels:        []string{},
-			Selector:      "",
-			DoNotTrack:    false,
-		},
-		// Below is common across wasm
-		ResourceSettings: flags.ResourceUsageSettings{
-			CPU:    "",
-			Memory: "",
-			Disk:   "",
-			GPU:    "",
-		},
-		NetworkingSettings: flags.NetworkingFlagSettings{
-			Network: model.NetworkNone,
-			Domains: []string{},
-		},
-		DealSettings: flags.DealFlagSettings{
-			Concurrency:   1,
-			Confidence:    0,
-			MinBids:       0, // 0 means no minimum before bidding
-			TargetingMode: model.TargetAny,
-		},
 		WorkingDirectory: "",
 
-		DownloadSettings: flags.DownloaderSettings{
-			Timeout:        model.DefaultIPFSTimeout,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ","),
-			OutputDir:      "",
-			SingleFile:     "",
-			LocalIPFS:      false,
-			Raw:            false,
-		},
-		RunTimeSettings: flags.RunTimeSettings{
-			AutoDownloadResults:   false,
-			WaitForJobToFinish:    true,
-			WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
-			IPFSGetTimeOut:        10,
-			IsLocal:               false,
-			PrintJobIDOnly:        false,
-			PrintNodeDetails:      false,
-			Follow:                false,
-			SkipSyntaxChecking:    false,
-			DryRun:                false,
-		},
+		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
+		ResourceSettings:   flags.NewDefaultResourceUsageSettings(),
+		NetworkingSettings: flags.NewDefaultNetworkingFlagSettings(),
+		DealSettings:       flags.NewDefaultDealFlagSettings(),
+		DownloadSettings:   flags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:    flags.NewDefaultRunTimeSettings(),
 	}
 }
 
@@ -153,12 +107,12 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
 	)
 
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(&opts.SpecSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(&opts.DealSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(&opts.DownloadSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(&opts.NetworkingSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(&opts.ResourceSettings))
-	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(&opts.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(opts.DealSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(opts.DownloadSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(opts.NetworkingSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(opts.ResourceSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	return dockerRunCmd
 }

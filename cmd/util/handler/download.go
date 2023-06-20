@@ -21,7 +21,7 @@ func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
 	jobID string,
-	downloadSettings flags.DownloaderSettings,
+	downloadSettings *flags.DownloaderSettings,
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
@@ -48,7 +48,7 @@ func DownloadResultsHandler(
 		return err
 	}
 
-	downloaderProvider := util.NewStandardDownloaders(cm, (*model.DownloaderSettings)(&processedDownloadSettings))
+	downloaderProvider := util.NewStandardDownloaders(cm, (*model.DownloaderSettings)(processedDownloadSettings))
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func DownloadResultsHandler(
 		ctx,
 		results,
 		downloaderProvider,
-		(*model.DownloaderSettings)(&processedDownloadSettings),
+		(*model.DownloaderSettings)(processedDownloadSettings),
 	)
 
 	if err != nil {
@@ -83,7 +83,7 @@ func DownloadResultsHandler(
 
 	return nil
 }
-func processDownloadSettings(settings flags.DownloaderSettings, jobID string) (flags.DownloaderSettings, error) {
+func processDownloadSettings(settings *flags.DownloaderSettings, jobID string) (*flags.DownloaderSettings, error) {
 	if settings.OutputDir == "" {
 		dir, err := ensureDefaultDownloadLocation(jobID)
 		if err != nil {

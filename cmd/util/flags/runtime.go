@@ -2,6 +2,21 @@ package flags
 
 import "github.com/spf13/pflag"
 
+func NewDefaultRunTimeSettings() *RunTimeSettings {
+	return &RunTimeSettings{
+		AutoDownloadResults:   false,
+		WaitForJobToFinish:    true,
+		WaitForJobTimeoutSecs: DefaultRunWaitSeconds,
+		IPFSGetTimeOut:        10,
+		IsLocal:               false,
+		PrintJobIDOnly:        false,
+		PrintNodeDetails:      false,
+		Follow:                false,
+		SkipSyntaxChecking:    false,
+		DryRun:                false,
+	}
+}
+
 type RunTimeSettings struct {
 	AutoDownloadResults   bool // Automatically download the results after finishing
 	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
@@ -15,22 +30,7 @@ type RunTimeSettings struct {
 	DryRun                bool // iff true do not submit the job, but instead print out what will be submitted.
 }
 
-const DefaultDockerRunWaitSeconds = 600
-
-func NewDefaultRunTimeSettings() *RunTimeSettings {
-	return &RunTimeSettings{
-		AutoDownloadResults:   false,
-		WaitForJobToFinish:    true,
-		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
-		IPFSGetTimeOut:        10,
-		IsLocal:               false,
-		PrintJobIDOnly:        false,
-		PrintNodeDetails:      false,
-		Follow:                false,
-		SkipSyntaxChecking:    false,
-		DryRun:                false,
-	}
-}
+const DefaultRunWaitSeconds = 600
 
 func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)

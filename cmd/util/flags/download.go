@@ -11,17 +11,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-type DownloaderSettings struct {
-	Timeout        time.Duration
-	OutputDir      string
-	IPFSSwarmAddrs string
-	SingleFile     string
-	LocalIPFS      bool
-	Raw            bool
-}
-
-func NewDefaultDownloadSettings() *DownloaderSettings {
-	settings := DownloaderSettings{
+func NewDefaultDownloaderSettings() *DownloaderSettings {
+	settings := &DownloaderSettings{
 		Timeout: model.DefaultIPFSTimeout,
 		// we leave this blank so the CLI will auto-create a job folder in pwd
 		SingleFile:     "",
@@ -33,8 +24,18 @@ func NewDefaultDownloadSettings() *DownloaderSettings {
 	} else {
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
-	return &settings
+	return settings
 }
+
+type DownloaderSettings struct {
+	Timeout        time.Duration
+	OutputDir      string
+	IPFSSwarmAddrs string
+	SingleFile     string
+	LocalIPFS      bool
+	Raw            bool
+}
+
 func NewDownloadFlags(settings *DownloaderSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
 	flags.BoolVar(&settings.Raw, "raw",

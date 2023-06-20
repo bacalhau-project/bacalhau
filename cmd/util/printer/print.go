@@ -51,7 +51,7 @@ type eventStruct struct {
 }
 
 // TODO remove the download portion of this.
-func PrintJobExecution(ctx context.Context, j *model.Job, cmd *cobra.Command, downloadSettings flags.DownloaderSettings, runtimeSettings flags.RunTimeSettings, client *publicapi.RequesterAPIClient) error {
+func PrintJobExecution(ctx context.Context, j *model.Job, cmd *cobra.Command, downloadSettings *flags.DownloaderSettings, runtimeSettings *flags.RunTimeSettings, client *publicapi.RequesterAPIClient) error {
 	// if we are in --wait=false - print the id then exit
 	// because all code after this point is related to
 	// "wait for the job to finish" (via WaitForJobAndPrintResultsToUser)

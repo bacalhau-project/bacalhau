@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/handler"
-	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
@@ -26,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -48,77 +45,29 @@ var (
 const null rune = 0
 
 type WasmRunOptions struct {
-	// parametes and entry modules are arguments
+	// parameters and entry modules are arguments
 	ImportModules []model.StorageSpec
 	Entrypoint    string
 
-	SpecSettings       flags.SpecFlagSettings       // Setting for top level job spec fields.
-	ResourceSettings   flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
-	NetworkingSettings flags.NetworkingFlagSettings // Settings for the jobs networking.
-	DealSettings       flags.DealFlagSettings       // Settings for the jobs deal.
-	RunTimeSettings    flags.RunTimeSettings        // Settings for running the job.
-	DownloadSettings   flags.DownloaderSettings     // Settings for running Download.
+	SpecSettings       *flags.SpecFlagSettings       // Setting for top level job spec fields.
+	ResourceSettings   *flags.ResourceUsageSettings  // Settings for the jobs resource requirements.
+	NetworkingSettings *flags.NetworkingFlagSettings // Settings for the jobs networking.
+	DealSettings       *flags.DealFlagSettings       // Settings for the jobs deal.
+	RunTimeSettings    *flags.RunTimeSettings        // Settings for running the job.
+	DownloadSettings   *flags.DownloaderSettings     // Settings for running Download.
 
 }
 
-const (
-	DefaultWasmRunWaitSeconds = 600
-)
-
 func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
-		ImportModules: []model.StorageSpec{},
-		Entrypoint:    "_start",
-		SpecSettings: flags.SpecFlagSettings{
-			Verifier: model.VerifierNoop.String(),
-			// TODO most users would probably prefer IPFS
-			Publisher: opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
-			Inputs:    opts.StorageOpt{},
-			// TODO validate this works or make it a concrete spec type
-			OutputVolumes: []string{"outputs:/outputs"},
-			EnvVar:        []string{},
-			Timeout:       job.DefaultTimeout.Seconds(),
-			Labels:        []string{},
-			Selector:      "",
-			DoNotTrack:    false,
-		},
-		// Below is common across docker
-		ResourceSettings: flags.ResourceUsageSettings{
-			CPU:    "",
-			Memory: "",
-			Disk:   "",
-			GPU:    "",
-		},
-		NetworkingSettings: flags.NetworkingFlagSettings{
-			Network: model.NetworkNone,
-			Domains: []string{},
-		},
-		DealSettings: flags.DealFlagSettings{
-			Concurrency:   1,
-			Confidence:    0,
-			MinBids:       0, // 0 means no minimum before bidding
-			TargetingMode: model.TargetAny,
-		},
-		DownloadSettings: flags.DownloaderSettings{
-			Timeout:        model.DefaultIPFSTimeout,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ","),
-			OutputDir:      "",
-			SingleFile:     "",
-			LocalIPFS:      false,
-			Raw:            false,
-		},
-		RunTimeSettings: flags.RunTimeSettings{
-			AutoDownloadResults:   false,
-			WaitForJobToFinish:    true,
-			WaitForJobTimeoutSecs: DefaultWasmRunWaitSeconds,
-			IPFSGetTimeOut:        10,
-			IsLocal:               false,
-			PrintJobIDOnly:        false,
-			PrintNodeDetails:      false,
-			Follow:                false,
-			SkipSyntaxChecking:    false,
-			DryRun:                false,
-		},
+		ImportModules:      []model.StorageSpec{},
+		Entrypoint:         "_start",
+		SpecSettings:       flags.NewSpecFlagDefaultSettings(),
+		ResourceSettings:   flags.NewDefaultResourceUsageSettings(),
+		NetworkingSettings: flags.NewDefaultNetworkingFlagSettings(),
+		DealSettings:       flags.NewDefaultDealFlagSettings(),
+		DownloadSettings:   flags.NewDefaultDownloaderSettings(),
+		RunTimeSettings:    flags.NewDefaultRunTimeSettings(),
 	}
 }
 
@@ -167,12 +116,12 @@ func newRunCmd() *cobra.Command {
 		will execute the job.`,
 	)
 
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(&opts.SpecSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(&opts.DealSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(&opts.DownloadSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(&opts.NetworkingSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(&opts.ResourceSettings))
-	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(&opts.RunTimeSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(opts.SpecSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(opts.DealSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(opts.DownloadSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NetworkingFlags(opts.NetworkingSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.ResourceUsageFlags(opts.ResourceSettings))
+	wasmRunCmd.PersistentFlags().AddFlagSet(flags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
 	return wasmRunCmd
 }

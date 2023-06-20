@@ -6,6 +6,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+func NewDefaultNetworkingFlagSettings() *NetworkingFlagSettings {
+	return &NetworkingFlagSettings{
+		Network: model.NetworkNone,
+		Domains: []string{},
+	}
+}
+
 type NetworkingFlagSettings struct {
 	Network model.Network
 	Domains []string

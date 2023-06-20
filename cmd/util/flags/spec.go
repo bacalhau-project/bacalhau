@@ -4,6 +4,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const InputUsageMsg = `Mount URIs as inputs to the job. Can be specified multiple times. Format: src=URI,dst=PATH[,opt=key=value]
@@ -17,6 +19,21 @@ Examples:
 # Mount S3 object with specific endpoint and region
 -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
 `
+
+func NewSpecFlagDefaultSettings() *SpecFlagSettings {
+	return &SpecFlagSettings{
+		Verifier: model.VerifierNoop.String(),
+		// TODO most users would probably prefer IPFS
+		Publisher:     opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
+		Inputs:        opts.StorageOpt{},
+		OutputVolumes: []string{"outputs:/outputs"},
+		EnvVar:        []string{},
+		Timeout:       jobutils.DefaultTimeout.Seconds(),
+		Labels:        []string{},
+		Selector:      "",
+		DoNotTrack:    false,
+	}
+}
 
 type SpecFlagSettings struct {
 	Verifier      string            // Verifier - verifier.Verifier

@@ -6,6 +6,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+func NewDefaultDealFlagSettings() *DealFlagSettings {
+	return &DealFlagSettings{
+		Concurrency:   1,
+		Confidence:    0,
+		MinBids:       0, // 0 means no minimum before bidding
+		TargetingMode: model.TargetAny,
+	}
+}
+
 type DealFlagSettings struct {
 	TargetingMode model.TargetingMode
 	Concurrency   int // Number of concurrent jobs to run

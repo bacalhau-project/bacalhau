@@ -29,12 +29,12 @@ var (
 )
 
 type GetOptions struct {
-	IPFSDownloadSettings *flags.DownloaderSettings
+	DownloadSettings *flags.DownloaderSettings
 }
 
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
-		IPFSDownloadSettings: flags.NewDefaultDownloadSettings(),
+		DownloadSettings: flags.NewDefaultDownloaderSettings(),
 	}
 }
 
@@ -53,7 +53,7 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	getCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(OG.IPFSDownloadSettings))
+	getCmd.PersistentFlags().AddFlagSet(flags.NewDownloadFlags(OG.DownloadSettings))
 
 	return getCmd
 }
@@ -74,14 +74,14 @@ func get(cmd *cobra.Command, cmdArgs []string, OG *GetOptions) error {
 	// entire jobid.
 	parts := strings.SplitN(jobID, "/", 2)
 	if len(parts) == 2 {
-		jobID, OG.IPFSDownloadSettings.SingleFile = parts[0], parts[1]
+		jobID, OG.DownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
 	err := handler.DownloadResultsHandler(
 		ctx,
 		cmd,
 		jobID,
-		*OG.IPFSDownloadSettings,
+		OG.DownloadSettings,
 	)
 
 	if err != nil {

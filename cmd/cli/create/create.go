@@ -51,7 +51,7 @@ func NewCreateOptions() *CreateOptions {
 		Filename:        "",
 		Concurrency:     1,
 		Confidence:      0,
-		DownloadFlags:   flags.NewDefaultDownloadSettings(),
+		DownloadFlags:   flags.NewDefaultDownloaderSettings(),
 		RunTimeSettings: flags.NewDefaultRunTimeSettings(),
 	}
 }
@@ -229,13 +229,13 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	executingJob, err := handler.ExecuteJob(ctx,
 		j,
-		*OC.RunTimeSettings,
+		OC.RunTimeSettings,
 	)
 	if err != nil {
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(ctx, executingJob, cmd, *OC.DownloadFlags, *OC.RunTimeSettings, handler.GetAPIClient(ctx)); err != nil {
+	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, handler.GetAPIClient(ctx)); err != nil {
 		return err
 	}
 

@@ -16,7 +16,7 @@ import (
 //nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	j *model.Job,
-	runtimeSettings flags.RunTimeSettings,
+	runtimeSettings *flags.RunTimeSettings,
 ) (*model.Job, error) {
 	var apiClient *publicapi.RequesterAPIClient
 
