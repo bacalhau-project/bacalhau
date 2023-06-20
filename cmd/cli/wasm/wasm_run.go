@@ -169,13 +169,6 @@ func newRunCmd() *cobra.Command {
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
-	// removed this for commonality with docker
-	/*
-		wasmRunCmd.PersistentFlags().VarP(
-			flags.EnvVarMapFlag(&ODR.Job.Spec.Wasm.EnvironmentVariables), "env", "e",
-			`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
-		)
-	*/
 
 	wasmRunCmd.PersistentFlags().AddFlagSet(flags.SpecFlags(&opts.SpecSettings))
 	wasmRunCmd.PersistentFlags().AddFlagSet(flags.DealFlags(&opts.DealSettings))
