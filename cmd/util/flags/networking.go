@@ -12,7 +12,7 @@ type NetworkingFlagSettings struct {
 }
 
 func NetworkingFlags(settings *NetworkingFlagSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Networking settings", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("Networking settings", pflag.ContinueOnError)
 	flags.Var(
 		NetworkFlag(&settings.Network),
 		"network",

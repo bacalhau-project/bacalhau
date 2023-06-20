@@ -92,9 +92,10 @@ func NewDockerRunOptions() *DockerRunOptions {
 			Domains: []string{},
 		},
 		DealSettings: flags.DealFlagSettings{
-			Concurrency: 1,
-			Confidence:  0,
-			MinBids:     0, // 0 means no minimum before bidding
+			Concurrency:   1,
+			Confidence:    0,
+			MinBids:       0, // 0 means no minimum before bidding
+			TargetingMode: model.TargetAny,
 		},
 		WorkingDirectory: "",
 
@@ -253,6 +254,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 		jobutils.WithAnnotations(labels...),
 		jobutils.WithNodeSelector(nodeSelectorRequirements),
 		jobutils.WithDeal(
+			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 			opts.DealSettings.Confidence,
 			opts.DealSettings.MinBids,

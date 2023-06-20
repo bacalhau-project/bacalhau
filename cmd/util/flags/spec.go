@@ -31,7 +31,7 @@ type SpecFlagSettings struct {
 }
 
 func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Spec settings", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("Spec settings", pflag.ContinueOnError)
 	flags.StringVarP(
 		&settings.Verifier,
 		"verifier",

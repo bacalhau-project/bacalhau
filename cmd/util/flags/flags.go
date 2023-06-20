@@ -297,15 +297,6 @@ func LoggingFlag(value *logger.LogMode) *ValueFlag[logger.LogMode] {
 	}
 }
 
-func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
-	return &MapValueFlag[string, string]{
-		value:    value,
-		parser:   separatorParser("="),
-		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
-		typeStr:  "key=value",
-	}
-}
-
 func URLFlag(value **url.URL, schemes ...string) *ValueFlag[*url.URL] {
 	return &ValueFlag[*url.URL]{
 		value: value,
@@ -393,21 +384,6 @@ func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
 	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
 	flags.Var(VerifiersFlag(&config.Verifiers), "disable-verifier", "A verifier to disable.")
 	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
-
-	return flags
-}
-
-func DealCLIFlags(deal *model.Deal) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Deal", pflag.ContinueOnError)
-
-	flags.Var(TargetingFlag(&deal.TargetingMode), "target",
-		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all")`)
-	flags.IntVarP(&deal.Concurrency, "concurrency", "c", deal.Concurrency,
-		`How many nodes should run the job when using --target=any`)
-	flags.IntVar(&deal.Confidence, "confidence", deal.Confidence,
-		`The minimum number of nodes that must agree on a verification result`)
-	flags.IntVar(&deal.MinBids, "min-bids", deal.MinBids,
-		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`)
 
 	return flags
 }

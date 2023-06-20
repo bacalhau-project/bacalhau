@@ -94,9 +94,10 @@ func NewWasmOptions() *WasmRunOptions {
 			Domains: []string{},
 		},
 		DealSettings: flags.DealFlagSettings{
-			Concurrency: 1,
-			Confidence:  0,
-			MinBids:     0, // 0 means no minimum before bidding
+			Concurrency:   1,
+			Confidence:    0,
+			MinBids:       0, // 0 means no minimum before bidding
+			TargetingMode: model.TargetAny,
 		},
 		DownloadSettings: flags.DownloaderSettings{
 			Timeout:        model.DefaultIPFSTimeout,
@@ -271,6 +272,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		job.WithAnnotations(labels...),
 		job.WithNodeSelector(nodeSelectorRequirements),
 		job.WithDeal(
+			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 			opts.DealSettings.Confidence,
 			opts.DealSettings.MinBids,

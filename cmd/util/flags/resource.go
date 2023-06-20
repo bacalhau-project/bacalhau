@@ -10,7 +10,7 @@ type ResourceUsageSettings struct {
 }
 
 func ResourceUsageFlags(settings *ResourceUsageSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Resource settings", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("Resource settings", pflag.ContinueOnError)
 	flags.StringVar(
 		&settings.CPU,
 		"cpu",

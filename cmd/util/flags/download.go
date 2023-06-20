@@ -36,7 +36,7 @@ func NewDefaultDownloadSettings() *DownloaderSettings {
 	return &settings
 }
 func NewDownloadFlags(settings *DownloaderSettings) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ExitOnError)
+	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
 	flags.BoolVar(&settings.Raw, "raw",
 		settings.Raw, "Download raw result CIDs instead of merging multiple CIDs into a single result")
 	flags.DurationVar(&settings.Timeout, "download-timeout-secs",
