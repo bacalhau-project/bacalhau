@@ -48,8 +48,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.NoError(suite.T(), err, "Error cancelling job")
-	require.Contains(suite.T(), stdout, "already in a terminal state")
+	require.ErrorContains(suite.T(), err, "already in a terminal state")
 }
 
 func (suite *CancelSuite) TestCancelJob() {
