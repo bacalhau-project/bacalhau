@@ -797,13 +797,9 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4,
-                5,
-                6
+                4
             ],
             "x-enum-comments": {
-                "EngineLanguage": "wraps python_wasm",
-                "EnginePythonWasm": "wraps docker",
                 "engineDone": "must be last",
                 "engineUnknown": "must be first"
             },
@@ -812,8 +808,6 @@ const docTemplate = `{
                 "EngineNoop",
                 "EngineDocker",
                 "EngineWasm",
-                "EngineLanguage",
-                "EnginePythonWasm",
                 "engineDone"
             ]
         },
@@ -1067,43 +1061,6 @@ const docTemplate = `{
                 },
                 "WorkingDirectory": {
                     "description": "working directory inside the container",
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobSpecLanguage": {
-            "type": "object",
-            "properties": {
-                "Command": {
-                    "description": "optional program specified on commandline, like python -c \"print(1+1)\"",
-                    "type": "string"
-                },
-                "DeterministicExecution": {
-                    "description": "must this job be run in a deterministic context?",
-                    "type": "boolean"
-                },
-                "JobContext": {
-                    "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.StorageSpec"
-                        }
-                    ]
-                },
-                "Language": {
-                    "description": "e.g. python",
-                    "type": "string"
-                },
-                "LanguageVersion": {
-                    "description": "e.g. 3.8",
-                    "type": "string"
-                },
-                "ProgramPath": {
-                    "description": "optional program path relative to the context dir. one of Command or ProgramPath must be specified",
-                    "type": "string"
-                },
-                "RequirementsPath": {
-                    "description": "optional requirements.txt (or equivalent) path relative to the context dir",
                     "type": "string"
                 }
             }
@@ -1395,8 +1352,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -1564,9 +1520,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
-                "Language": {
-                    "$ref": "#/definitions/model.JobSpecLanguage"
-                },
                 "Network": {
                     "description": "The type of networking access that the job needs",
                     "allOf": [
@@ -1654,9 +1607,7 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9,
-                10,
-                11
+                9
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
