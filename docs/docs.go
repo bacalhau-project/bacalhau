@@ -1395,8 +1395,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -1654,9 +1653,7 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9,
-                10,
-                11
+                9
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
