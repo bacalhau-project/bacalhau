@@ -7,6 +7,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
+	"github.com/rs/zerolog"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
@@ -72,6 +73,7 @@ type NodeSelector interface {
 type NodeRank struct {
 	NodeInfo model.NodeInfo
 	Rank     int
+	Reason   string
 }
 
 const (
@@ -88,6 +90,12 @@ const (
 // Returns whether the node meets the requirements to run the job.
 func (r NodeRank) MeetsRequirement() bool {
 	return r.Rank > RankUnsuitable
+}
+
+func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
+	e.Stringer("Node", r.NodeInfo.PeerInfo.ID).
+		Bool("MeetsRequirement", r.MeetsRequirement()).
+		Str("Reason", r.Reason)
 }
 
 // StartJobRequest triggers the scheduling of a job.

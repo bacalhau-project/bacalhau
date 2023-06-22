@@ -5,21 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/imdario/mergo"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -27,9 +12,25 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/simulator"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-const JobEventsTopic = "bacalhau-job-events"
+const JobInfoTopic = "bacalhau-job-info"
 const NodeInfoTopic = "bacalhau-node-info"
 const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
@@ -46,7 +47,6 @@ type NodeConfig struct {
 	CleanupManager            *system.CleanupManager
 	JobStore                  jobstore.Store
 	Host                      host.Host
-	FilecoinUnsealedPath      string
 	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   uint16
@@ -54,7 +54,6 @@ type NodeConfig struct {
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
-	LotusConfig               *filecoinlotus.PublisherConfig
 	SimulatorNodeID           string
 	IsRequesterNode           bool
 	IsComputeNode             bool
@@ -198,6 +197,25 @@ func NewNode(
 		return nil, err
 	}
 
+	// PubSub to publish job events to the network
+	jobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
+		Host:        config.Host,
+		TopicName:   JobInfoTopic,
+		PubSub:      gossipSub,
+		IgnoreLocal: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
+		JobStore: config.JobStore,
+		PubSub:   jobInfoPubSub,
+	})
+	err = jobInfoPubSub.Subscribe(ctx, pubsub.NewNoopSubscriber[jobinfo.Envelope]())
+	if err != nil {
+		return nil, err
+	}
+
 	// public http api server
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address:          config.HostAddress,
@@ -226,7 +244,7 @@ func NewNode(
 			simulatorRequestHandler,
 			verifiers,
 			storageProviders,
-			gossipSub,
+			jobInfoPublisher,
 			nodeInfoStore,
 		)
 		if err != nil {
@@ -266,6 +284,8 @@ func NewNode(
 		nodeInfoPublisher.Stop(ctx)
 		cleanupErr := nodeInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
+		cleanupErr = jobInfoPubSub.Close(ctx)
+		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()

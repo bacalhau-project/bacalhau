@@ -9,13 +9,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackSubmitSuite struct {
@@ -43,7 +44,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 
 		1,
 		0,
-		false,
+
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)

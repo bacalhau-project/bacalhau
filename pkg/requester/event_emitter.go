@@ -32,12 +32,8 @@ func NewEventEmitter(params EventEmitterParams) EventEmitter {
 func (e EventEmitter) EmitJobCreated(
 	ctx context.Context, job model.Job) {
 	event := model.JobEvent{
-		APIVersion:   job.APIVersion,
-		ClientID:     job.Metadata.ClientID,
-		Spec:         job.Spec,
-		Deal:         job.Spec.Deal,
-		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
 		JobID:        job.Metadata.ID,
+		SourceNodeID: job.Metadata.Requester.RequesterNodeID,
 		EventName:    model.JobEventCreated,
 		EventTime:    time.Now(),
 	}
@@ -56,72 +52,46 @@ func (e EventEmitter) EmitJobCanceled(ctx context.Context, req CancelJobRequest)
 
 func (e EventEmitter) EmitBidReceived(
 	ctx context.Context, result compute.BidResult) {
-	event := e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, model.JobEventBid)
-	// we flip senders to mimic a bid was received instead of being asked
-	event.SourceNodeID = result.RoutingMetadata.SourcePeerID
-	event.TargetNodeID = "" // localdb don't assume a target node for events coming from compute nodes
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(result.RoutingMetadata, result.ExecutionMetadata, model.JobEventBid))
 }
 
 func (e EventEmitter) EmitBidAccepted(
 	ctx context.Context, request compute.BidAcceptedRequest, response compute.BidAcceptedResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidAccepted)
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidAccepted))
 }
 
 func (e EventEmitter) EmitBidRejected(
 	ctx context.Context, request compute.BidRejectedRequest, response compute.BidRejectedResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidRejected)
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidRejected))
 }
 
 func (e EventEmitter) EmitResultAccepted(
 	ctx context.Context, request compute.ResultAcceptedRequest, response compute.ResultAcceptedResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsAccepted)
-	event.VerificationResult = model.VerificationResult{
-		Complete: true,
-		Result:   true,
-	}
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsAccepted))
 }
 
 func (e EventEmitter) EmitResultRejected(
 	ctx context.Context, request compute.ResultRejectedRequest, response compute.ResultRejectedResponse) {
-	event := e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsRejected)
-	event.VerificationResult = model.VerificationResult{
-		Complete: true,
-		Result:   false,
-	}
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsRejected))
 }
 
 func (e EventEmitter) EmitRunComplete(ctx context.Context, response compute.RunResult) {
-	event := e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsProposed)
-	event.VerificationProposal = response.ResultProposal
-	event.RunOutput = response.RunCommandResult
-	event.TargetNodeID = "" // localDB don't assume a target node for events coming from compute nodes
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsProposed))
 }
 
 func (e EventEmitter) EmitPublishComplete(ctx context.Context, response compute.PublishResult) {
-	event := e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsPublished)
-	event.PublishedResult = response.PublishResult
-	event.TargetNodeID = "" // localDB don't assume a target node for events coming from compute nodes
-	e.EmitEventSilently(ctx, event)
+	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsPublished))
 }
 
 func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID model.ExecutionID, err error) {
-	// incoming error routing metadata
-	routingMetadata := compute.RoutingMetadata{
-		SourcePeerID: executionID.NodeID,
-		TargetPeerID: "", // localDB don't assume a target node for events coming from compute nodes
+	event := model.JobEvent{
+		SourceNodeID: executionID.NodeID,
+		JobID:        executionID.JobID,
+		ExecutionID:  executionID.ExecutionID,
+		EventName:    model.JobEventComputeError,
+		Status:       err.Error(),
+		EventTime:    time.Now(),
 	}
-	executionMetadata := compute.ExecutionMetadata{
-		JobID:       executionID.JobID,
-		ExecutionID: executionID.ExecutionID,
-	}
-	event := e.constructEvent(routingMetadata, executionMetadata, model.JobEventComputeError)
-	event.Status = err.Error()
 	e.EmitEventSilently(ctx, event)
 }
 
@@ -138,6 +108,7 @@ func (e EventEmitter) constructEvent(
 		EventTime:    time.Now(),
 	}
 }
+
 func (e EventEmitter) EmitEvent(ctx context.Context, event model.JobEvent) error {
 	return e.eventConsumer.HandleJobEvent(ctx, event)
 }

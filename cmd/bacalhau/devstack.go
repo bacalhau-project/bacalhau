@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"k8s.io/kubectl/pkg/util/i18n"
+
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -13,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +45,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:                       "",
 		PublicIPFSMode:             false,
 		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
-		LocalNetworkLotus:          false,
 		SimulatorAddr:              "",
 		SimulatorMode:              false,
 		CPUProfilingFile:           "",
@@ -99,10 +99,6 @@ func newDevStackCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
-	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.LocalNetworkLotus, "lotus-node", ODs.LocalNetworkLotus,
-		"Also start a Lotus FileCoin instance",
 	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.SimulatorAddr, "simulator-addr", ODs.SimulatorAddr,
@@ -183,9 +179,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *ServeOpt
 
 	computeConfig := getComputeConfig(OS)
 	requestorConfig := getRequesterConfig(OS)
-	if ODs.LocalNetworkLotus {
-		cmd.Println("Note that starting up the Lotus node can take many minutes!")
-	}
 
 	var stack *devstack.DevStack
 	var stackErr error

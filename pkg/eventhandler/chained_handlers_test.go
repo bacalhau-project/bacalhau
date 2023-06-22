@@ -46,8 +46,6 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 		EventName:    model.JobEventCreated,
 		JobID:        uuid.NewString(),
 		SourceNodeID: "nodeA",
-		TargetNodeID: "nodeB",
-		ClientID:     "clientX",
 		Status:       "this is a test event",
 	}
 	logger.ConfigureTestLogging(suite.T())

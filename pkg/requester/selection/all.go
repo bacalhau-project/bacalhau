@@ -2,9 +2,11 @@ package selection
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
@@ -101,17 +103,31 @@ func (s *allNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 	}
 	log.Ctx(ctx).Debug().Int("Discovered", len(foundNodes)).Msg("Found nodes for job")
 
+	nodeErrors := make([]error, 0, len(failedNodes))
 	retryNodes := make([]model.NodeInfo, 0, len(failedNodes))
-	for _, foundNode := range foundNodes {
-		id := foundNode.PeerInfo.ID.String()
-		if slices.Contains(failedNodes, id) && failureCounts[id] < maxRetriesPerNode {
-			retryNodes = append(retryNodes, foundNode)
+	for _, failedNode := range failedNodes {
+		id, err := peer.Decode(failedNode)
+		if err != nil {
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+
+		idx := slices.IndexFunc[model.NodeInfo](foundNodes, func(ni model.NodeInfo) bool {
+			return ni.PeerInfo.ID == id
+		})
+
+		if idx < 0 {
+			nodeErrors = append(nodeErrors, requester.NewErrNodeNotFound(id))
+		} else if failureCounts[failedNode] >= maxRetriesPerNode {
+			nodeErrors = append(nodeErrors, requester.NewErrTooManyRetries(failureCounts[failedNode]))
+		} else {
+			retryNodes = append(retryNodes, foundNodes[idx])
 		}
 	}
 
-	if len(failedNodes) > len(retryNodes) {
+	if len(nodeErrors) > 0 {
 		// A node failed but has disappeared or a node is over the retry limit
-		return nil, requester.NewErrNotEnoughNodes(len(failedNodes), len(retryNodes))
+		return nil, errors.Join(nodeErrors...)
 	}
 
 	return retryNodes, nil

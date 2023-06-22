@@ -68,8 +68,8 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 }
 
 func (t *TracerContextProvider) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
-	// If the event is known to be ignorable, end the local lifecycle context:
-	if event.EventName.IsIgnorable() {
+	// If the event is known to be terminal, end the local lifecycle context:
+	if event.EventName.IsTerminal() {
 		t.endJobNodeContext(ctx, event.JobID)
 	}
 

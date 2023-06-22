@@ -10,9 +10,8 @@ import (
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/combo"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/fanout"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
@@ -21,12 +20,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
+/* TODO(forrest): Fix me(!):
+- method has wrong name, this make S3 publisher, estuary, and noop, in addition to IPFS
+- is assigning estuary publisher as IPFS publisher and registering it even when not setup
+  - I think this will result in the estuary publisher being listed as installed, but really its just IPFS
+Issue: https://github.com/bacalhau-project/bacalhau/issues/2555
+
+*/
+
 func NewIPFSPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	cl ipfsClient.Client,
 	estuaryAPIKey string,
-	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	defaultPriorityPublisherTimeout := time.Second * 2
 	noopPublisher := noop.NewNoopPublisher()
@@ -37,21 +43,18 @@ func NewIPFSPublishers(
 
 	// we don't want to enforce that every compute node needs to have an estuary API key
 	// and so let's only add the
+	// TODO(forrest): this seems like bug, we should not register an estuary publisher if there isn't a key
+	// see issue: https://github.com/bacalhau-project/bacalhau/issues/2555
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher = combo.NewPrioritizedFanoutPublisher(
-			defaultPriorityPublisherTimeout,
-			estuary.NewEstuaryPublisher(estuary.EstuaryPublisherConfig{APIKey: estuaryAPIKey}),
-			ipfsPublisher,
+		estuaryPublisher = fanout.NewFanoutPublisher(
+			[]publisher.Publisher{
+				estuary.NewEstuaryPublisher(estuary.EstuaryPublisherConfig{APIKey: estuaryAPIKey}),
+				ipfsPublisher,
+			},
+			fanout.WithPrioritization(),
+			fanout.WithTimeout(defaultPriorityPublisherTimeout),
 		)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var lotus publisher.Publisher = ipfsPublisher
-	if lotusConfig != nil {
-		lotus, err = filecoinlotus.NewPublisher(ctx, cm, *lotusConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -62,11 +65,10 @@ func NewIPFSPublishers(
 		return nil, err
 	}
 	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:     tracing.Wrap(noopPublisher),
-		model.PublisherIpfs:     tracing.Wrap(ipfsPublisher),
-		model.PublisherS3:       tracing.Wrap(s3Publisher),
-		model.PublisherEstuary:  tracing.Wrap(estuaryPublisher),
-		model.PublisherFilecoin: combo.NewPiggybackedPublisher(tracing.Wrap(ipfsPublisher), tracing.Wrap(lotus)),
+		model.PublisherNoop:    tracing.Wrap(noopPublisher),
+		model.PublisherIpfs:    tracing.Wrap(ipfsPublisher),
+		model.PublisherS3:      tracing.Wrap(s3Publisher),
+		model.PublisherEstuary: tracing.Wrap(estuaryPublisher),
 	}), nil
 }
 

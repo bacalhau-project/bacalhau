@@ -5,9 +5,10 @@ package job
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func TestParseStorageString(t *testing.T) {
@@ -115,13 +116,6 @@ func TestParsePublisherString(t *testing.T) {
 			publisherURI: "ipfs://",
 			expected: model.PublisherSpec{
 				Type: model.PublisherIpfs,
-			},
-		},
-		{
-			name:         "lotus",
-			publisherURI: "lotus",
-			expected: model.PublisherSpec{
-				Type: model.PublisherFilecoin,
 			},
 		},
 		{

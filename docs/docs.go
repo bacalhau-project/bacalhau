@@ -797,13 +797,9 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4,
-                5,
-                6
+                4
             ],
             "x-enum-comments": {
-                "EngineLanguage": "wraps python_wasm",
-                "EnginePythonWasm": "wraps docker",
                 "engineDone": "must be last",
                 "engineUnknown": "must be first"
             },
@@ -812,8 +808,6 @@ const docTemplate = `{
                 "EngineNoop",
                 "EngineDocker",
                 "EngineWasm",
-                "EngineLanguage",
-                "EnginePythonWasm",
                 "engineDone"
             ]
         },
@@ -1067,43 +1061,6 @@ const docTemplate = `{
                 },
                 "WorkingDirectory": {
                     "description": "working directory inside the container",
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobSpecLanguage": {
-            "type": "object",
-            "properties": {
-                "Command": {
-                    "description": "optional program specified on commandline, like python -c \"print(1+1)\"",
-                    "type": "string"
-                },
-                "DeterministicExecution": {
-                    "description": "must this job be run in a deterministic context?",
-                    "type": "boolean"
-                },
-                "JobContext": {
-                    "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.StorageSpec"
-                        }
-                    ]
-                },
-                "Language": {
-                    "description": "e.g. python",
-                    "type": "string"
-                },
-                "LanguageVersion": {
-                    "description": "e.g. 3.8",
-                    "type": "string"
-                },
-                "ProgramPath": {
-                    "description": "optional program path relative to the context dir. one of Command or ProgramPath must be specified",
-                    "type": "string"
-                },
-                "RequirementsPath": {
-                    "description": "optional requirements.txt (or equivalent) path relative to the context dir",
                     "type": "string"
                 }
             }
@@ -1395,8 +1352,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -1406,7 +1362,6 @@ const docTemplate = `{
                 "publisherUnknown",
                 "PublisherNoop",
                 "PublisherIpfs",
-                "PublisherFilecoin",
                 "PublisherEstuary",
                 "PublisherS3",
                 "publisherDone"
@@ -1558,8 +1513,12 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "Language": {
-                    "$ref": "#/definitions/model.JobSpecLanguage"
+                "Inputs": {
+                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
+                    }
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
@@ -1574,6 +1533,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.LabelSelectorRequirement"
+                    }
+                },
+                "Outputs": {
+                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
                 "Publisher": {
@@ -1604,20 +1570,6 @@ const docTemplate = `{
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
-                },
-                "inputs": {
-                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"\nTODO: #667 Replace with \"Inputs\", \"Outputs\" (note the caps) for yaml/json when we update the n.js file",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
-                },
-                "outputs": {
-                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
                 }
             }
         },
@@ -1655,9 +1607,7 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9,
-                10,
-                11
+                9
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
@@ -1669,8 +1619,6 @@ const docTemplate = `{
                 "StorageSourceRepoClone",
                 "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
-                "StorageSourceFilecoinUnsealed",
-                "StorageSourceFilecoin",
                 "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",
@@ -1698,6 +1646,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
                 },
+                "Path": {
+                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).",
+                    "type": "string"
+                },
                 "ReadWrite": {
                     "description": "Allow write access for locally mounted inputs",
                     "type": "boolean"
@@ -1723,10 +1675,6 @@ const docTemplate = `{
                 },
                 "URL": {
                     "description": "Source URL of the data",
-                    "type": "string"
-                },
-                "path": {
-                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).\nTODO: #668 Replace with \"Path\" (note the caps) for yaml/json when we update the n.js file",
                     "type": "string"
                 }
             }

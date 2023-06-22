@@ -9,7 +9,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"time"
+
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
@@ -21,10 +22,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -65,7 +64,6 @@ type ServeOptions struct {
 	NodeType                              []string                 // "compute", "requester" node or both
 	PeerConnect                           string                   // The libp2p multiaddress to connect to.
 	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
-	FilecoinUnsealedPath                  string                   // Go template to turn a Filecoin CID into a local filepath with the unsealed data.
 	EstuaryAPIKey                         string                   // The API key used when using the estuary API.
 	HostAddress                           string                   // The host address to listen on.
 	SwarmPort                             int                      // The host port for libp2p network.
@@ -78,10 +76,6 @@ type ServeOptions struct {
 	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
 	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
 	DisabledFeatures                      node.FeatureConfig       // What feautres should not be enbaled even if installed
-	LotusFilecoinStorageDuration          time.Duration            // How long deals should be for the Lotus Filecoin publisher
-	LotusFilecoinPathDirectory            string                   // The location of the Lotus configuration directory which contains config.toml, etc
-	LotusFilecoinUploadDirectory          string                   // Directory to put files when uploading to Lotus (optional)
-	LotusFilecoinMaximumPing              time.Duration            // The maximum ping allowed when selecting a Filecoin miner
 	JobExecutionTimeoutClientIDBypassList []string                 // IDs of clients that can submit jobs more than the configured job execution timeout
 	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
 	IPFSSwarmAddresses                    []string                 // IPFS multiaddresses that the in-process IPFS should connect to
@@ -91,23 +85,20 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:                   []string{"requester"},
-		PeerConnect:                DefaultPeerConnect,
-		IPFSConnect:                "",
-		FilecoinUnsealedPath:       "",
-		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
-		HostAddress:                "0.0.0.0",
-		SwarmPort:                  DefaultSwarmPort,
-		JobSelectionPolicy:         model.NewDefaultJobSelectionPolicy(),
-		LimitTotalCPU:              "",
-		LimitTotalMemory:           "",
-		LimitTotalGPU:              "",
-		LimitJobCPU:                "",
-		LimitJobMemory:             "",
-		LimitJobGPU:                "",
-		LotusFilecoinPathDirectory: os.Getenv("LOTUS_PATH"),
-		LotusFilecoinMaximumPing:   2 * time.Second,
-		PrivateInternalIPFS:        true,
+		NodeType:            []string{"requester"},
+		PeerConnect:         DefaultPeerConnect,
+		IPFSConnect:         "",
+		EstuaryAPIKey:       os.Getenv("ESTUARY_API_KEY"),
+		HostAddress:         "0.0.0.0",
+		SwarmPort:           DefaultSwarmPort,
+		JobSelectionPolicy:  model.NewDefaultJobSelectionPolicy(),
+		LimitTotalCPU:       "",
+		LimitTotalMemory:    "",
+		LimitTotalGPU:       "",
+		LimitJobCPU:         "",
+		LimitJobMemory:      "",
+		LimitJobGPU:         "",
+		PrivateInternalIPFS: true,
 	}
 }
 
@@ -233,28 +224,8 @@ func newServeCmd() *cobra.Command {
 		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&OS.FilecoinUnsealedPath, "filecoin-unsealed-path", OS.FilecoinUnsealedPath,
-		`The go template that can turn a filecoin CID into a local filepath with the unsealed data.`,
-	)
-	serveCmd.PersistentFlags().StringVar(
 		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
 		`The API key used when using the estuary API.`,
-	)
-	serveCmd.PersistentFlags().DurationVar(
-		&OS.LotusFilecoinStorageDuration, "lotus-storage-duration", OS.LotusFilecoinStorageDuration,
-		"Duration to store data in Lotus Filecoin for.",
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&OS.LotusFilecoinPathDirectory, "lotus-path-directory", OS.LotusFilecoinPathDirectory,
-		"Location of the Lotus Filecoin configuration directory.",
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&OS.LotusFilecoinUploadDirectory, "lotus-upload-directory", OS.LotusFilecoinUploadDirectory,
-		"Directory to use when uploading content to Lotus Filecoin.",
-	)
-	serveCmd.PersistentFlags().DurationVar(
-		&OS.LotusFilecoinMaximumPing, "lotus-max-ping", OS.LotusFilecoinMaximumPing,
-		"The highest ping a Filecoin miner could have when selecting.",
 	)
 	serveCmd.PersistentFlags().StringSliceVar(
 		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
@@ -350,7 +321,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		CleanupManager:        cm,
 		JobStore:              datastore,
 		Host:                  libp2pHost,
-		FilecoinUnsealedPath:  OS.FilecoinUnsealedPath,
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
@@ -361,17 +331,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                combinedMap,
 		AllowListedLocalPaths: OS.AllowListedLocalPaths,
-	}
-
-	if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
-		OS.LotusFilecoinPathDirectory != "" &&
-		OS.LotusFilecoinMaximumPing != time.Duration(0) {
-		nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
-			StorageDuration: OS.LotusFilecoinStorageDuration,
-			PathDir:         OS.LotusFilecoinPathDirectory,
-			UploadDir:       OS.LotusFilecoinUploadDirectory,
-			MaximumPing:     OS.LotusFilecoinMaximumPing,
-		}
 	}
 
 	// Create node
