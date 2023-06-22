@@ -4,10 +4,10 @@ sidebar_position: 5
 ---
 # Private Cluster
 
-It is possible to run Bacalhau completely disconnected from the main Bacalhau network, so that you can run private workloads without risking running on public nodes or inadvertently sharing your data outside of your organization. The isolated network will not connect to the public Bacalhau network nor connect to a public network. To do this, we will run our network in-process rather than externally.
+It is possible to run Bacalhau completely disconnected from the main Bacalhau network so that you can run private workloads without risking running on public nodes or inadvertently sharing your data outside of your organization. The isolated network will not connect to the public Bacalhau network nor connect to a public network. To do this, we will run our network in-process rather than externally.
 
 :::info
-Private network and storage is easier to set up, but a separate public server is better for production. The private network and storage will use a temporary directory for its repository and so the contents will be lost on shutdown.
+A private network and storage is easier to set up, but a separate public server is better for production. The private network and storage will use a temporary directory for its repository and so the contents will be lost on shutdown.
 :::
 
 ## Initial Requester Node
@@ -67,7 +67,7 @@ The command `export BACALHAU_IPFS_SWARM_ADDRESSES=...` sends jobs into the clust
 
 ## Public IPFS Network
 
-Instructions for connecting to the public IPFS network via private Bacalhau cluster:
+Instructions for connecting to the public IPFS network via the private Bacalhau cluster:
 
 On all nodes, start ipfs:
 
@@ -124,6 +124,6 @@ Good news. Spinning up a private cluster is really a piece of cake :cake::
 1. Run `bacalhau docker run ubuntu echo hello` on the client machine
 1. That's all folks! :tada:
 
-Optionally, set up [systemd](https://en.wikipedia.org/wiki/Systemd) units make Bacalhau daemons permanent , here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
+Optionally, set up [systemd](https://en.wikipedia.org/wiki/Systemd) units make Bacalhau daemons permanent, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
 
 Please contact us on [Slack](https://bit.ly/bacalhau-project-slack/) `#bacalhau` channel for questions and feedback!

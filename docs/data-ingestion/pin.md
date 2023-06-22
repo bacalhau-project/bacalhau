@@ -5,11 +5,11 @@ description: "How to pin data to public storage"
 ---
 # Pinning Data
 
-If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Estuary, etc. Pinning services store data on behalf of users. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money. 
+If you have data that you want to make available to your Bacalhau jobs (or other people), you can pin it using a pinning service like Web3.Storage, Estuary, etc. Pinning services store data on behalf of users. The pinning provider is essentially guaranteeing that your data will be available if someone knows the CID. Most pinning services offer you a free tier, so you can try them out without spending any money.
 
 ## Web3.Storage
 
-This example will demonstrate how to pin data using Web3.Storage. Web3.Storage is a pinning service that is built on top of IPFS and Filecoin. It is free to use for small amounts of data, and has a generous free tier. You can find more information about Web3.Storage [here](https://web3.storage/).
+This example will demonstrate how to pin data using Web3.Storage. Web3.Storage is a pinning service that is built on top of IPFS and Filecoin. It is free to use for small amounts of data and has a generous free tier. You can find more information about Web3.Storage [here](https://web3.storage/).
 
 - First you need to create an [account](https://web3.storage/login/) (if you don't have one already).
 - Next, sign in and browse to the [Create API Key](https://web3.storage/tokens/?create=true) page. Follow the instructions to create an API key. Once created, you will need to copy the API key to your clipboard.
@@ -34,7 +34,7 @@ curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}"
 
 3. **Pin multiple local files via Node.JS**: Web3.Storage has a [node.js library](https://web3.storage/docs/reference/js-client-library/) to interact with their API. The following example requires node.js to be installed. The following code uses a docker container. The javascript code is located on [their website](https://web3.storage/docs/intro/#create-the-upload-script) or on [github](https://github.com/bacalhau-project/examples/blob/main/data-ingestion/nodejs/put-files.js).
 
-First create some files to upload.
+First, create some files to upload.
 
 ```python
 %%writefile nodejs/test1.txt
@@ -50,7 +50,7 @@ docker run --rm --env TOKEN=$TOKEN -v $PWD/nodejs:/nodejs node:18-alpine ash -c 
 
 The response will return the CID of the file, which can now be used as an input to Bacalhau.
 
-4. **Pin a file from a URL via Curl**: You can use curl to download a file then re-upload to web3.storage. For example:
+4. **Pin a file from a URL via Curl**: You can use curl to download a file and then re-upload it to web3.storage. For example:
 
 ```bash
 export TOKEN=YOUR_API_KEY
@@ -67,13 +67,13 @@ docker run --rm --env TOKEN=$TOKEN -v $PWD/nodejs:/nodejs node:18-alpine ash -c 
 
 ## Estuary
 
-This example show you how to pin data using [estuary](https://estuary.tech/api-admin).
+This example shows you how to pin data using [estuary](https://estuary.tech/api-admin).
 
-- Before you can upload files via estuary,create an [account](https://estuary.tech) (if you don't have one already).
+- Before you can upload files via estuary, you must create an [account](https://estuary.tech) (if you don't have one already).
 
 - Browse to [the API Key management page](https://estuary.tech/api-admin) and create a key.
 
-### Ways to pin using Esturay 
+### Ways to pin using Esturay
 
 1. **Pin a local file via the Esturay UI**: You can [browse to the Estuary UI](https://estuary.tech/upload) to upload a file via your web browser.
 
@@ -91,7 +91,7 @@ curl -X POST https://upload.estuary.tech/content/add -H "Authorization: Bearer $
 
 The response will return the CID of the file.
 
-## View pinned files 
+## View pinned files
 
 If the upload was successful, you can view the file via your [estuary account page](https://estuary.tech/home). Alternatively, you can obtain this information from the CLI:
 

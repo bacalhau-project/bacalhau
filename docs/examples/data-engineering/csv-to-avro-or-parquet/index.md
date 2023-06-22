@@ -9,9 +9,9 @@ sidebar_position: 2
 
 ## Introduction
 
-Converting from csv to parquet or avro reduces the size of file and allows for faster read and write speeds. With Bacalhau, you can convert your csv files stored on ipfs or on the web without the need to download files and install dependencies locally.
+Converting from CSV to parquet or avro reduces the size of the file and allows for faster read and write speeds. With Bacalhau, you can convert your CSV files stored on ipfs or on the web without the need to download files and install dependencies locally.
 
-In this example tutorial we will convert a csv file from a url to parquet format and save the converted parquet file to IPFS
+In this example tutorial we will convert a CSV file from a URL to parquet format and save the converted parquet file to IPFS
 
 ## TD;LR
 Converting CSV stored in public storage with Bacalhau
@@ -34,7 +34,7 @@ Installing dependencies
 %cd csv_to_avro_or_parquet
 ```
 
-## Install the following dependencies 
+## Install the following dependencies
 
 Run the following commands:
 
@@ -84,7 +84,7 @@ pd.read_parquet('./movies.parquet').head()
 ## Containerize Script with Docker
 
 :::info
-You can skip this section entirely and directly go to running on bacalhau
+You can skip this section entirely and directly go to running on Bacalhau
 :::
 
 To build your own docker container, create a `Dockerfile`, which contains instructions to build your image.
@@ -144,7 +144,7 @@ docker push jsacex/csv-to-arrow-or-parquet
 
 ## Running a Bacalhau Job
 
-To submit a job, we are going to either mount the script from a IPFS or from an URL.
+To submit a job, we are going to either mount the script from an IPFS or from an URL.
 
 ### Mounting the CSV File from IPFS
 
@@ -172,15 +172,15 @@ jsacex/csv-to-arrow-or-parquet \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i ipfs://QmTAQMGiSv9xocaB4PUCT5nSBHrf9HZrYj21BAZ5nMTY2W`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 
 * `../inputs/movies.csv `: path to input dataset
 
-* `../outputs/movies.parquet parquet`: path to output
+* `../outputs/movies.parquet parquet`: path to the output
 
 * `python3 src/converter.py`: execute the script
 
@@ -200,15 +200,15 @@ jsacex/csv-to-arrow-or-parquet \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
-* `-i https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv`: URL:path of the input data volumes downloaded from a URL source
+* `bacalhau docker run`: call to bacalhau
+
+* `-i https://raw.githubusercontent.com/bacalhau-project/csv_to_avro_or_parquet/master/movies.csv`: URL: path of the input data volumes downloaded from a URL source
 
 * `jsacex/csv-to-arrow-or-parque`: the name and the tag of the docker image we are using
 
-* `../inputs/movies.csv `: path to input dataset
+* `../inputs/movies.csv `: path to the input dataset
 
-* `../outputs/movies.parquet parquet`: path to output
+* `../outputs/movies.parquet parquet`: path to the output
 
 * `python3 src/converter.py`: execute the script
 
@@ -224,7 +224,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 :::note
 Replace the {JOB_ID} with your generated ID.
@@ -281,4 +281,4 @@ pd.read_parquet('results/outputs/transactions.parquet')
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

@@ -7,7 +7,7 @@ sidebar_position: 9
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-You can use official Docker containers for each language like R or Python. In this example, we will use the official R container and run it on bacalhau. 
+You can use official Docker containers for each language like R or Python. In this example, we will use the official R container and run it on Bacalhau.
 
 ## TD;LR
 A quick guide on how to run a hello world script on Bacalhau
@@ -55,8 +55,8 @@ r-base \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i ipfs://QmQRVx3gXVLaRXywgwo8GCTQ63fHqWV88FiwEqCidmUGhk`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `:/hello.R`: the name and the tag of the docker image we are using
@@ -122,7 +122,7 @@ cat results/stdout
 
 ### Futureproofing your R Scripts
 
-You can generate the the job request with the following command. This will allow you to re-run that job in the future.
+You can generate the job request with the following command. This will allow you to re-run that job in the future.
 
 
 ```bash

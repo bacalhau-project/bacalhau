@@ -7,9 +7,9 @@ sidebar_position: 9
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of multilingual and multitask supervised data collected from the web. We show that the use of such a large and diverse dataset leads to improved robustness to accents, background noise and technical language. Moreover, it enables transcription in multiple languages, as well as translation from those languages into English. We are open-sourcing models and inference code to serve as a foundation for building useful applications and for further research on robust speech processing. In this example we will transcribe an audio clip locally, containerize the script and then run the container on bacalhau
+Whisper is an automatic speech recognition (ASR) system trained on 680,000 hours of multilingual and multitask supervised data collected from the web. We show that the use of such a large and diverse dataset leads to improved robustness to accents, background noise, and technical language. Moreover, it enables transcription in multiple languages, as well as translation from those languages into English. We are open-sourcing models and inference code to serve as a foundation for building useful applications and for further research on robust speech processing. In this example, we will transcribe an audio clip locally, containerize the script and then run the container on Bacalhau.
 
-The advantages of using bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of videos or audio for automatic speech recognition
+The advantage of using Bacalhau over managed Automatic Speech Recognition services is that you can run your own containers which can scale to do batch process petabytes of videos or audio for automatic speech recognition
 
 ## TD:LR
 Using OpenAI whisper with Bacalhau to process audio files
@@ -18,7 +18,7 @@ Using OpenAI whisper with Bacalhau to process audio files
 
 To get started, you need to install:
 - Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
-- Whisper, 
+- Whisper,
 - pytorch
 - pandas
 
@@ -45,14 +45,14 @@ wget https://github.com/js-ts/hello/raw/main/hello.mp3
 ## Create the script
 
 
-We will create a script that accepts parameters (input file path, output file path, temperature etc.) and set the default parameters. Also:
-* If input file is in mp4 format, than the script converts it to wav format. 
-* Save the transcript in various formats, 
+We will create a script that accepts parameters (input file path, output file path, temperature, etc.) and set the default parameters. Also:
+* If the input file is in mp4 format, then the script converts it to wav format.
+* Save the transcript in various formats,
 * We load the large model
 * Then pass it the required parameters.
-This model is not only limited to english and transcription, it supports other languages and also does translation, to the following languages:
+  This model is not only limited to English and transcription, it supports other languages and also does translation, into the following languages:
 
-Next, lets create a openai-whisper script:
+Next, let's create a openai-whisper script:
 
 
 ```python
@@ -267,7 +267,7 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -298,13 +298,13 @@ docker push jsacex/whisper
 
 We will transcribe the moon landing video, which can be found here: https://www.nasa.gov/multimedia/hd/apollo11_hdpage.html
 
-Since the downloaded video is in mov format we convert the video to mp4 format, and then upload it to our public storage in this case IPFS.
+Since the downloaded video is in mov format we convert the video to mp4 format and then upload it to our public storage in this case IPFS.
 We will be using [NFT.Storage](https://nft.storage/) (Recommended Option). To upload your dataset using [NFTup](https://nft.storage/docs/how-to/nftup/)  just drag and drop your directory it will upload it to IPFS
 
 
 After the dataset has been uploaded, copy the CID:
 
-`bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu` 
+`bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu`
 
 To submit a job, run the following Bacalhau command:
 
@@ -338,7 +338,7 @@ Let's look closely at the command above:
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

@@ -14,9 +14,9 @@ When running a node, you can choose which jobs you want to run. This is done by 
   --job-selection-reject-stateless       Reject jobs that don't specify any data.
 ```
 
-These are the flags that control how the bacalhau node selects jobs to run.
+These are the flags that control how the Bacalhau node selects jobs to run.
 
-The `--job-selection-data-locality` flag (which can be "local" or "anywhere") controls whether the data used for a job has a actually live on the IPFS server you are connected to.
+The `--job-selection-data-locality` flag (which can be "local" or "anywhere") controls whether the data used for a job is actually live on the IPFS server you are connected to.
 
 The `--job-selection-reject-stateless` controls whether you want to accept jobs that don't use any data volumes.
 
@@ -24,7 +24,7 @@ The `--job-selection-reject-stateless` controls whether you want to accept jobs 
 
 If you want more control over making the decision to take on jobs, you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags.
 
-These are external programs that are passed the following data structure, so that they can make a decision about whether or not to take on a job:
+These are external programs that are passed the following data structure so that they can make a decision about whether or not to take on a job:
 
 ```json
 {
@@ -48,4 +48,4 @@ These are external programs that are passed the following data structure, so tha
 
 The `exec` probe is a script to run that will be given the job data on `stdin`, and must exit with status code 0 if the job should be run.
 
-The `http` probe is a URL to POST the job data to, and must return a 200 status code if the job should be run.
+The `http` probe is a URL to POST the job data, and must return a 200 status code if the job should be run.

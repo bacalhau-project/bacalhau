@@ -32,7 +32,7 @@ Bacalhau uses a syntax that is similar to docker and you can use the same contai
 
 The `--wait` flag tells Bacalhau to wait for the job to finish before returning. This is useful in interactive sessions like this, but you would normally allow jobs to complete in the background and use the `list` command to check on their status.
 
-Another difference is that by default Bacalhau overwrites the default entrypoint for the container so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
+Another difference is that by default Bacalhau overwrites the default entry point for the container so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
 
 ### Running a Bacalhau Job
 
@@ -90,7 +90,7 @@ $the_cow = <<"EOC";
 EOC
 ```
 
-Next, the Dockerfile adds the script and sets the entrypoint.
+Next, the Dockerfile adds the script and sets the entry point.
 
 
 ```python
@@ -128,10 +128,10 @@ Once your container is working as expected then you should push it to a public c
 
 ##  Running Your Custom Container on Bacalhau
 
-Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results and prints the stdout.
+Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results, and prints the stdout.
 
 :::tip
-The `bacalhau docker run` command strips the default entrypoint, so don't forget to run your entrypoint in the command line arguments.
+The `bacalhau docker run` command strips the default entry point, so don't forget to run your entry point in the command line arguments.
 :::
 
 

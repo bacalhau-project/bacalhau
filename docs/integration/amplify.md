@@ -8,7 +8,7 @@ description: Bacalhau Amplify is a tool for automatically explaining, enriching,
 
 ## Introduction
 
-Bacalhau Amplify is a tool for automatically explaining, enriching, and enhancing your data. This document explains how it works and how to use it.
+Bacalhau Amplify is a tool for automatically explaining, enriching and enhancing your data. This document explains how it works and how to use it.
 
 ### What is Bacalhau Amplify?
 
@@ -82,7 +82,7 @@ amplify run QmS8ioZzB8foNEwFmJZTVJT1se5ycgRuc1Ey5fjHfZi5wb # for a single job
 
 ## Configuration
 
-Amplify can be configured using parameters or environment variables. 
+Amplify can be configured using parameters or environment variables.
 
 Get the most recent configuration options by passing `-h` to the subcommand of your choice:
 
@@ -92,7 +92,7 @@ docker run ghcr.io/bacalhau-project/amplify:latest serve -h
 
 ### Database
 
-By default, Amplify runs with an in-memory database. But that implementation is very bare-bones and obviously you will lose historical information when it restarts. We recommend running Amplify with a PostgreSQL database.
+By default, Amplify runs with an in-memory database. But that implementation is very bare-bones and obviously, you will lose historical information when it restarts. We recommend running Amplify with a PostgreSQL database.
 
 The instructions below describe how to start a PostgreSQL database using Docker. You can also use a managed database service like [Amazon RDS](https://aws.amazon.com/rds/postgresql/) or [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres).
 

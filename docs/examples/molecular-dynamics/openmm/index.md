@@ -2,12 +2,12 @@
 sidebar_label: "Simulation with OpenMM"
 sidebar_position: 5
 ---
-# Molecular Simulation with OpenMM and Bacalhau 
+# Molecular Simulation with OpenMM and Bacalhau
 
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. It is a physic based libraries that is useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
+In this tutorial example, we will showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and take advantage of the distributed storage & compute resources. [OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. It is a physic-based library that is useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
 
 ## TD;LR
 Running OpenMM m molecular simulation with Bacalhau
@@ -23,7 +23,7 @@ You can find more details on this protein at the related [RCSB Protein Data Bank
 
 ![image.png](./2dri-image.png)
 
-Protein data can be stored in a `.pdb` file, this is a human readable format. It provides for description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
+Protein data can be stored in a `.pdb` file, this is a human-readable format. It provides for the description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
 See more information about PDB format [here](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html).
 
 ## Write the script
@@ -109,7 +109,7 @@ simulation.reporters.append(checkpointReporter)
 simulation.currentStep = 0
 simulation.step(steps)
 
-# Write file with final simulation state
+# Write a file with the final simulation state
 
 state = simulation.context.getState(getPositions=True, enforcePeriodicBox=system.usesPeriodicBoundaryConditions())
 with open(output_path, mode="w+") as file:
@@ -139,7 +139,7 @@ head ./dataset/2dri-processed.pdb
 
 ## Upload the Data to IPFS
 
-The simplest way to upload the data to IPFS is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or nft.storage . Once registered you can use their UI or API or SDKs to upload files.
+The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or nft.storage . Once registered you can use their UI or API or SDKs to upload files.
 
 ## Containerize Script using Docker
 
@@ -190,7 +190,7 @@ docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/ex
 
 ### Push the container
 
-Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name, or tag.
 
 ```
 docker push <hub-user>/<repo-name>:<tag>
@@ -219,7 +219,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -246,7 +246,7 @@ rm -rf results && mkdir -p results
 bacalhau get ${JOB_ID} # Download the results
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 

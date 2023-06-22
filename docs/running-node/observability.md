@@ -4,7 +4,7 @@ sidebar_position: 200
 ---
 # Observability
 
-Bacalhau supports the three main 'pillars' of observability - logging, metrics and tracing. Bacalhau uses the [OpenTelemetry Go SDK](https://github.com/open-telemetry/opentelemetry-go) for metrics and tracing, which can be configured using the [standard environment variables](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md). Exporting metrics and traces can be as simple as setting the `OTEL_EXPORTER_OTLP_PROTOCOL` and `OTEL_EXPORTER_OTLP_ENDPOINT` environment variables. Custom code is used for logging as the [OpenTelemetry Go SDK currently doesn't support logging](https://github.com/open-telemetry/opentelemetry-go#project-status).
+Bacalhau supports the three main 'pillars' of observability - logging, metrics, and tracing. Bacalhau uses the [OpenTelemetry Go SDK](https://github.com/open-telemetry/opentelemetry-go) for metrics and tracing, which can be configured using the [standard environment variables](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md). Exporting metrics and traces can be as simple as setting the `OTEL_EXPORTER_OTLP_PROTOCOL` and `OTEL_EXPORTER_OTLP_ENDPOINT` environment variables. Custom code is used for logging as the [OpenTelemetry Go SDK currently doesn't support logging](https://github.com/open-telemetry/opentelemetry-go#project-status).
 
 ## Logging
 Logging in Bacalhau outputs in human-friendly format to stderr at `INFO` level by default, but this can be changed by two environment variables:
@@ -14,11 +14,11 @@ Logging in Bacalhau outputs in human-friendly format to stderr at `INFO` level b
   * `json` - log messages outputted to stdout in JSON format
   * `combined` - log JSON formatted messages to stdout and human-friendly format to stderr
 
-Log statements should include the relevant trace, span and job ID so it can be tracked back to the work being performed. 
+Log statements should include the relevant trace, span and job ID so it can be tracked back to the work being performed.
 
 ## Metrics
-Bacalhau produces a number of different metrics including those aroundf the libp2p resource manager (`rcmgr`), performance
-of the requester HTTP API and number of jobs accepted/completed/received.
+Bacalhau produces a number of different metrics including those around the libp2p resource manager (`rcmgr`), performance
+of the requester HTTP API and the number of jobs accepted/completed/received.
 
 ## Tracing
 Traces are produced for all major pieces of work when processing a job, although the naming of some spans is still being worked on. You can find relevant traces covering working on a job by searching for the `jobid` attribute.

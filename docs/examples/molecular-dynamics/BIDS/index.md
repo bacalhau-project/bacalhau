@@ -29,7 +29,7 @@ data
 
 ## Uploading the datasets to IPFS
 
-The simplest way to upload the data to IPFS is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/docs/how-tos/pinning-services-api/) or [Pinata](https://app.pinata.cloud/pinmanager) or [nft.storage](https://nft.storage/docs/how-to/nftup/) . Once registered you can use their UI or API or SDKs to upload files.
+The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/docs/how-tos/pinning-services-api/) or [Pinata](https://app.pinata.cloud/pinmanager) or [nft.storage](https://nft.storage/docs/how-to/nftup/). Once registered you can use their UI or API or SDKs to upload files.
 
 When you pin your data, you'll get a CID which is in a format like this `QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz`. Copy the CID as it will be used to access your data
 
@@ -57,15 +57,15 @@ nipreps/mriqc:latest
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i ipfs://QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data`: mount the CID of the dataset that is uploaded to IPFS and mount it to a folder called data on the container
 
 * `nipreps/mriqc:latest`: the name and the tag of the docker image we are using
 
 * `../data/ds005`: path to input dataset
 
-* `../outputs`: path to output
+* `../outputs`: path to the output
 
 * `participant --participant_label 01 02 03`: run the participant level in subjects 001 002 003
 
@@ -79,7 +79,7 @@ When a job is submitted, Bacalhau prints out the related job_id. We store that i
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 
@@ -107,7 +107,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 

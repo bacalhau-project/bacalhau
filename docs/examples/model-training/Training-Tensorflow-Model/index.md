@@ -7,13 +7,13 @@ sidebar_position: 3
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-Tensorflow is an open-source machine learning software library, TensorFlow is used to train neural networks. Expressed in the form of stateful dataflow graphs, each node in the graph 
-represents the operations performed by neural networks on multi-dimensional arrays. These multi-dimensional arrays are commonly known as “tensors,” hence the name TensorFlow. In this example we will be training a MNIST model.
+TensorFlow is an open-source machine learning software library, TensorFlow is used to train neural networks. Expressed in the form of stateful dataflow graphs, each node in the graph
+represents the operations performed by neural networks on multi-dimensional arrays. These multi-dimensional arrays are commonly known as “tensors,” hence the name TensorFlow. In this example, we will be training a MNIST model.
 
 ## TD;lR
 Running any type of Tensorflow model with Bacalhau
 
-## Training Tensorflow models Locally 
+## Training TensorFlow models Locally
 This section is from  [TensorFlow 2 quickstart for beginners]( https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/quickstart/beginner.ipynb)
 
 ### TensorFlow 2 quickstart for beginners
@@ -50,7 +50,7 @@ CWD = '' if os.getcwd() == '/' else os.getcwd()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 ```
 
-### Build a machine learning model
+### Build a machine-learning model
 
 Build a `tf.keras.Sequential` model by stacking layers.
 
@@ -72,14 +72,14 @@ predictions = model(x_train[:1]).numpy()
 predictions
 ```
 
-The `tf.nn.softmax` function converts these logits to *probabilities* for each class: 
+The `tf.nn.softmax` function converts these logits to *probabilities* for each class:
 
 
 ```python
 tf.nn.softmax(predictions).numpy()
 ```
 
-Note: It is possible to bake the `tf.nn.softmax` function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output. 
+Note: It is possible to bake the `tf.nn.softmax` function into the activation function for the last layer of the network. While this can make the model output more directly interpretable, this approach is discouraged as it's impossible to provide an exact and numerically stable loss calculation for all models when using a softmax output.
 
 Define a loss function for training using `losses.SparseCategoricalCrossentropy`, which takes a vector of logits and a `True` index and returns a scalar loss for each example.
 
@@ -108,7 +108,7 @@ model.compile(optimizer='adam',
 
 ### Train and evaluate your model
 
-Use the `Model.fit` method to adjust your model parameters and minimize the loss: 
+Use the `Model.fit` method to adjust your model parameters and minimize the loss:
 
 
 ```python
@@ -145,7 +145,7 @@ probability_model(x_test[:5])
 mkdir /outputs
 ```
 
- the following method can be used to save the model as checkpoint
+the following method can be used to save the model as a checkpoint
 
 
 ```python
@@ -158,11 +158,11 @@ model.save_weights('/outputs/checkpoints/my_checkpoint')
 ls /outputs/
 ```
 
-### Converting the notebook into a python script
+### Converting the notebook into a Python script
 
-You can use tool like `nbconvert` to convert your python notebook into a script.
+You can use a tool like `nbconvert` to convert your Python notebook into a script.
 
-After that you can create a gist of the training script at gist.github.com
+After that, you can create a gist of the training script at gist.github.com
 copy the raw link of the gist
 
 
@@ -189,7 +189,7 @@ python train.py
 !curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
-The dataset and the script is mounted to the tensorflow container using an URL
+The dataset and the script are mounted to the TensorFlow container using an URL
 we then run the script inside the container
 
 
@@ -205,7 +205,7 @@ tensorflow/tensorflow \
 -- python train.py
 ```
 
-Structure the of the command:
+Structure of the command:
 
 * `-i  https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py`: mount the training script
 
@@ -219,7 +219,7 @@ By default whatever URL you mount using the -i flag gets mounted at the path
 /inputs so we choose that as our input directory `-w /inputs`
 
 
- 
+
 
 
 ```bash

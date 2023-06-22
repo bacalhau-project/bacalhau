@@ -7,11 +7,11 @@ sidebar_position: 2
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-In this example tutorial, we will show you how to train a Pytorch RNN MNIST neural network model with Bacalhau. PyTorch is a framework developed by Facebook AI Research for deep learning, featuring both beginner-friendly debugging tools and a high-level of customization for advanced users, with researchers and practitioners using it across companies like Facebook and Tesla. Applications include computer vision, natural language processing, cryptography, and more.
+In this example tutorial, we will show you how to train a Pytorch RNN MNIST neural network model with Bacalhau. PyTorch is a framework developed by Facebook AI Research for deep learning, featuring both beginner-friendly debugging tools and a high level of customization for advanced users, with researchers and practitioners using it across companies like Facebook and Tesla. Applications include computer vision, natural language processing, cryptography, and more.
 
 ## TD;LR
 
-Running any type of Pytorch models with Bacalhau
+Running any type of Pytorch model with Bacalhau
 
 ## Prerequisite
 
@@ -49,7 +49,7 @@ pip install torch
 pip install torchvision
 ```
 
-Next, we run the command below to begin training of the _mnist_rnn_ model. We added the `--save-model` flag to save the model
+Next, we run the command below to begin the training of the _mnist_rnn_ model. We added the `--save-model` flag to save the model
 
 
 ```bash
@@ -61,14 +61,14 @@ Next, the downloaded MNIST dataset is saved in the `data` folder.
 
 ## Uploading Dataset to IPFS
 
-Now that we have downloaded our dataset, the next step is to upload it to IPFS. The simplest way to upload the data to IPFS is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or [NFT.Storage](https://nft.storage/). Once registered you can use their UI or API or SDKs to upload files.
+Now that we have downloaded our dataset, the next step is to upload it to IPFS. The simplest way to upload the data to IPFS is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/) or [NFT.Storage](https://nft.storage/). Once registered you can use their UI or API or SDKs to upload files.
 
-Once you have uploaded your data, you'll finished copy the CID. Here is the dataset we have uploaded [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
+Once you have uploaded your data, you'll be finished copying the CID. Here is the dataset we have uploaded [https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data](https://gateway.pinata.cloud/ipfs/QmdeQjz1HQQdT9wT2NHX86Le9X6X6ySGxp8dfRUKPtgziw/?filename=data)
 
 
 ## Running a Bacalhau Job
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -88,25 +88,25 @@ pytorch/pytorch \
 
 ### Structure  of the command
 
-- `bacalhau docker run`: call to bacalhau 
+- `bacalhau docker run`: call to bacalhau
 
 - `--gpu 1`: Request 1 GPU to train the model
 
 - `pytorch/pytorch`: Using the official pytorch Docker image
 
-- `-i ipfs://QmdeQjz1HQQd.....`: Mounting the uploaded dataset to path
+- `-i ipfs://QmdeQjz1HQQd.....`: Mounting the uploaded dataset to the path
 
-- `-i https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py) 
+- `-i https://raw.githubusercontent.com/py..........`: Mounting our training script we will use the URL to this [Pytorch example](https://github.com/pytorch/examples/blob/main/mnist_rnn/main.py)
 
-- `-w /outputs:` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
+- `-w /outputs:` Our working directory is /outputs. This is the folder where we will save the model as it will automatically get uploaded to IPFS as outputs
 
-`python ../inputs/main.py --save-model`: URL script gets mounted to the /inputs folder in the container. 
+`python ../inputs/main.py --save-model`: URL script gets mounted to the /inputs folder in the container.
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -134,7 +134,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 

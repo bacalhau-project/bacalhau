@@ -8,7 +8,7 @@ sidebar_position: 3
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 
-DuckDB is a relational table-oriented database management system and supports SQL queries for producing analytical results. It also comes with various features that are useful for data analytics.
+DuckDB is a relational table-oriented database management system that supports SQL queries for producing analytical results. It also comes with various features that are useful for data analytics.
 
 DuckDB is suited for the following use cases:
 
@@ -17,7 +17,7 @@ DuckDB is suited for the following use cases:
 - Concurrent large changes, to multiple large tables, e.g. appending rows, adding/removing/updating columns
 - Large result set transfer to client
 
-In this example tutorial, we will show how to use DuckDB with Bacalhau. The advantage of using DuckDB with Bacalhau is that you don’t need to install,  there is no need to download the datasets since the datasets are
+In this example tutorial, we will show how to use DuckDB with Bacalhau. The advantage of using DuckDB with Bacalhau is that you don’t need to install, and there is no need to download the datasets since the datasets are
 already there on IPFS or on the web.
 
 ## TD;lR
@@ -101,7 +101,7 @@ docker push davidgasquez/datadex:v0.2.0
 
 ## Running a Bacalhau Job
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -117,7 +117,7 @@ davidgasquez/datadex:v0.2.0 -- /bin/bash -c 'duckdb -s "select 1"'
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
+* `bacalhau docker run`: call to bacalhau
 
 * `davidgasquez/datadex:v0.2.0 `: the name and the tag of the docker image we are using
 
@@ -135,7 +135,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -182,7 +182,7 @@ cat results/stdout  # displays the contents of the file
 
 ## Running Arbitrary SQL commands
 
-Below is the `bacalhau docker run` command to to run arbitrary SQL commands over yellow taxi trips dataset
+Below is the `bacalhau docker run` command to to run arbitrary SQL commands over the yellow taxi trips dataset
 
 
 ```bash
@@ -201,8 +201,8 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i ipfs://bafybeiejgmdpwlfgo3dzfxfv3cn55qgnxmghyv7vcarqe3onmtzczohwaq \`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `davidgasquez/duckdb:latest`: the name and the tag of the docker image we are using
@@ -214,7 +214,7 @@ Let's look closely at the command above:
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -260,4 +260,4 @@ cat results/stdout
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

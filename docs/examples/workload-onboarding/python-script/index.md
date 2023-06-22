@@ -8,7 +8,7 @@ Bacalhau allows you to easily execute batch jobs via the CLI. But sometimes you 
 This example demonstrates a simple Python script that is able to orchestrate the execution of lots of jobs in a repeatable manner.
 
 ## TD;LR
-Running Python script in Bacalhau 
+Running Python script in Bacalhau
 
 ## Prerequisite
 
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
 This code has a few interesting features:
 * Change the value in the `main` call to change the number of jobs to execute
-* Because all jobs complete at different times, there's a loop to check that all jobs have completed before downloading the results -- if you don't do this you'll likely see an error when trying to download the results
+* Because all jobs are complete at different times, there's a loop to check that all jobs have been completed before downloading the results -- if you don't do this you'll likely see an error when trying to download the results
 * When downloading the results, the IPFS get often times out, so I wrapped that in a loop
 
 Let's run it!
@@ -177,7 +177,7 @@ Let's run it!
 python bacalhau.py
 ```
 
-Hopefully the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see csv files:
+Hopefully, the results directory contains all the combined results from the jobs we just executed. Here's we're expecting to see CSV files:
 
 
 ```bash

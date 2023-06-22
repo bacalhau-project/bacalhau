@@ -111,7 +111,7 @@ print(f"Predicted class: {predicted_class}")
 
 ### Running the inference script
 
-To use this script, you need to provide the paths to the tar.gz file containing the pretrained model, the output directory where the model will be extracted, and the input image file for which you want to perform inference. The script will output the predicted digit (class) for the given input image.
+To use this script, you need to provide the paths to the tar.gz file containing the pre-trained model, the output directory where the model will be extracted, and the input image file for which you want to perform inference. The script will output the predicted digit (class) for the given input image.
 
 
 ```bash
@@ -119,7 +119,7 @@ To use this script, you need to provide the paths to the tar.gz file containing 
 python inference.py --tar_gz_file_path ./model.tar.gz --output_directory ./model --image_path ./digit.png
 ```
 
-## Running inference on bacalhau
+## Running inference on Bacalhau
 
 ### Prerequisite
 
@@ -146,20 +146,20 @@ pytorch/pytorch \
 
 * `-w /inputs` Setting the current working directory at /inputs in the container
 
-* `-i src=s3://sagemaker-sample-files/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz,dst=/model/,opt=region=us-east-1`: Mounting the s3 bucket at the destination path provided 
-`/model/` and specifying the region where the bucket is located `opt=region=us-east-1`
+* `-i src=s3://sagemaker-sample-files/datasets/image/MNIST/model/pytorch-training-2020-11-21-22-02-56-203/model.tar.gz,dst=/model/,opt=region=us-east-1`: Mounting the s3 bucket at the destination path provided
+  `/model/` and specifying the region where the bucket is located `opt=region=us-east-1`
 
 * `-i git://github.com/js-ts/mnist-test.git`: Flag to mount the source code repo from GitHub. It would mount the repo at `/inputs/js-ts/mnist-test`
-in this case it also contains the test image.
+  in this case it also contains the test image.
 
 * `pytorch/pytorch`: The name of the Docker image.
 
 * `-- python /inputs/js-ts/mnist-test/inference.py --tar_gz_file_path /model/model.tar.gz --output_directory /model-pth --image_path /inputs/js-ts/mnist-test/image.png`: The command to run inference on the model.
 
   - `/model/model.tar.gz` is the path to the model file.
-  
+
   - `/model-pth` is the output directory for the model.
-  
+
   - `/inputs/js-ts/mnist-test/image.png` is the path to the input image.
 
 The job has been submitted and Bacalhau has printed out the related job id. We store that in an environment variable so that we can reuse it later on.

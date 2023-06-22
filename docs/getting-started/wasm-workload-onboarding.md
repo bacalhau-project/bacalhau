@@ -4,11 +4,11 @@ sidebar_position: 3
 ---
 # Onboarding Your WebAssembly Workloads
 
-Bacalhau supports running programs that are compiled to [WebAssembly (WASM)](https://webassembly.org/). With Bacalhau client, you can upload WASM programs, retrieve data from public storage, read and write data, receive program arguments and access environment variables.
+Bacalhau supports running programs that are compiled to [WebAssembly (WASM)](https://webassembly.org/). With the Bacalhau client, you can upload WASM programs, retrieve data from public storage, read and write data, receive program arguments, and access environment variables.
 
 ## Prerequisites and Limitations
 
-Bacalhau can run compiled WASM programs that expect the WebAssembly System Interface (WASI) Snapshot 1. Through this interface, WebAssembly programs can access data, environment variables and program arguments.
+Bacalhau can run compiled WASM programs that expect the WebAssembly System Interface (WASI) Snapshot 1. Through this interface, WebAssembly programs can access data, environment variables, and program arguments.
 
 All ingress/egress networking is disabled – you won't be able to pull data/code/weights/etc from an external source. WASM jobs can say what data they need using URLs or CIDs (Content IDentifier) and can then access the data by reading from the filesystem.
 
@@ -56,7 +56,7 @@ To run a locally compiled WASM program, specify it as an argument. For example, 
 The program you specify will be uploaded to a Bacalhau storage node and will be publicly available.
 :::
 
-Alternatively, you can specify a WASM program by 
+Alternatively, you can specify a WASM program by
 using a CID, like `bacalhau wasm run Qmajb9T3jBdMSp7xh2JruNrqg3hniCnM6EUVsBocARPJRQ`.
 
 Make sure to specify any input data using `--input` flag.
@@ -64,7 +64,7 @@ Make sure to specify any input data using `--input` flag.
 
 #### Program arguments
 
-You can give the WASM program arguments by specifying them after the program path or CID. 
+You can give the WASM program arguments by specifying them after the program path or CID.
 
 ```shell
 $ bacalhau wasm run echo.wasm hello world
@@ -72,7 +72,7 @@ $ bacalhau wasm run echo.wasm hello world
 
 :::tip
 
-Write your program to use program arguments to specify input and output paths. This makes your program more flexible at handling different configurations of input and output volumes.
+Write your program to use program arguments to specify input and output paths. This makes your program more flexible in handling different configurations of input and output volumes.
 
 For example, instead of hard-coding your program to read from `/inputs/data.txt`, accept a program argument that should contain the path and then specify the path as an argument to `bacalhau wasm run`:
 

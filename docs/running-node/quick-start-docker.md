@@ -15,12 +15,12 @@ This page describes several ways in which to operate Bacalhau. You can choose th
 
 ### Pre-Prerequisites
 
-* This guide works best on a Linux machine. If you're trying to run this on a mac, you may encounter issues. Remember that network host mode doesn't work.
+* This guide works best on a Linux machine. If you're trying to run this on a Mac, you may encounter issues. Remember that network host mode doesn't work.
 * You need to have Docker installed. If you don't have it, you can [install it here](https://docs.docker.com/get-docker/).
 
 ## <a id="public">Connect to the Public Bacalhau Network Using Docker</a>
 
-This method is appropriate for those that:
+This method is appropriate for those who:
 
 * Provide compute resources to the public Bacalhau network
 
@@ -66,7 +66,7 @@ Bacalhau consists of two parts: a "requester" that is responsible for operating 
 Notes about the command:
 
 * It runs the Bacalhau container in "host" mode. This means that the container will use the same network as the host.
-* It uses the `root` user, which is the default system user that has access to the Docker socket on a mac. You may need to change this to suit your environment.
+* It uses the `root` user, which is the default system user that has access to the Docker socket on a Mac. You may need to change this to suit your environment.
 * It mounts the Docker Socket
 * It mounts the `/tmp` directory
 * It exposes the Bacalhau API ports to the world
@@ -95,7 +95,7 @@ sudo docker run \
 
 There are several ways to ensure that the Bacalhau compute node is connected to the network.
 
-First check that the Bacalhau libp2p port is open and connected. On linux you can run `lsof` and it should look something like this:
+First, check that the Bacalhau libp2p port is open and connected. On Linux you can run `lsof` and it should look something like this:
 
 ```bash
 ❯ sudo lsof -i :1235
@@ -136,7 +136,7 @@ Finally, submit a job with the label you specified when you ran the compute node
 bacalhau docker run --input=http://example.org/index.html --selector owner=docs-quick-start ghcr.io/bacalhau-project/examples/upload:v1
 ```
 
-If instead your job fails with the following error, it means that the compute node is not connected to the network:
+If instead, your job fails with the following error, it means that the compute node is not connected to the network:
 
 ```text
 Error: failed to submit job: publicapi: after posting request: error starting job: not enough nodes to run job. requested: 1, available: 0
@@ -166,7 +166,7 @@ This method is not appropriate for:
 
 ### Start a Local IPFS Node (Insecure)
 
-To run an insecure, private node, you need to initialise your IPFS configuration by removing all of the default public bootstrap nodes. Then we run the node in the normal way, without the special `LIBP2P_FORCE_PNET` flag that checks for a secure private connection.
+To run an insecure, private node, you need to initialize your IPFS configuration by removing all of the default public bootstrap nodes. Then we run the node in the normal way, without the special `LIBP2P_FORCE_PNET` flag that checks for a secure private connection.
 
 Some notes about this command:
 
@@ -199,7 +199,7 @@ Bacalhau consists of two parts: a "requester" that is responsible for operating 
 Notes about the command:
 
 * It runs the Bacalhau container in the specified Docker network
-* It uses the `root` user, which is the default system user that has access to the Docker socket on a mac. You may need to change this to suit your environment
+* It uses the `root` user, which is the default system user that has access to the Docker socket on a Mac. You may need to change this to suit your environment
 * It mounts the Docker Socket
 * It mounts the `/tmp` directory
 * It exposes the Bacalhau API ports to the local host only, to prevent accidentally exposing the API to the public internet
@@ -238,7 +238,7 @@ export JOB_ID=$(bacalhau docker run --api-host=localhost --input=http://example.
 
 ### Retrieve the Results on the Private Network (Insecure)
 
-To retrieve the results using the Bacalhau CLI, you need to know the p2p swarm multiaddress of the IPFS node, because you don't want to connect to the public global IPFS network. To do that you can run the IPFS id command (and parse to remove the trub at the bottom of the barrel):
+To retrieve the results using the Bacalhau CLI, you need to know the p2p swarm multiaddress of the IPFS node because you don't want to connect to the public global IPFS network. To do that you can run the IPFS id command (and parse to remove the trub at the bottom of the barrel):
 
 ```bash
 export SWARM_ID=$(docker run -t --rm --network=bacalhau-network ipfs/kubo:latest --api=/dns4/ipfs_host/tcp/5001 id -f="<id>" | tail -n 1)
@@ -282,7 +282,7 @@ You need two things. A private IPFS node to store data and a Bacalhau node to ex
 Private IPFS nodes are experimental. [See the IPFS documentation](https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#private-networks) for more information.
 :::
 
-First you need to bootstrap a new IPFS cluster for your own private use. This consists of a process of generating a swarm key, removing any bootstrap nodes and then starting the IPFS node.
+First, you need to bootstrap a new IPFS cluster for your own private use. This consists of a process of generating a swarm key, removing any bootstrap nodes, and then starting the IPFS node.
 
 Some notes about this command:
 
@@ -322,7 +322,7 @@ The instructions to run a job are the same as the insecure version, [please foll
 
 It is not yet possible to retrieve the results from a secure IPFS node because Bacalhau does not yet support the IPFS swarm key. To retrieve the results you must use the IPFS command or container with the CID.
 
-First obtain the CID from the Bacalhau job. The following parses the JSON output of the Bacalhau job to get the CID using `jq`:
+First, obtain the CID from the Bacalhau job. The following parses the JSON output of the Bacalhau job to get the CID using `jq`:
 
 ```bash
 export CID=$(bacalhau --api-host=localhost list $JOB_ID --output json | jq -r '.[0].Status.JobState.Nodes[] | .Shards."0".PublishedResults | select(.CID) | .CID')
@@ -356,7 +356,7 @@ rm -rf results && mkdir results && \
 
 ### <a id="docker-network">Create a New Docker Network</a>
 
-Without this, inter-container dns will not work, and internet access may not work either.
+Without this, inter-container DNS will not work, and internet access may not work either.
 
 ```bash
 docker network create --driver bridge bacalhau-network
@@ -364,19 +364,19 @@ docker network create --driver bridge bacalhau-network
 
 :::tip
 
-Double check that this network can access the internet (so bacalhau can call external URLs).
+Double check that this network can access the internet (so Bacalhau can call external URLs).
 
 ```bash
 docker run --rm --network bacalhau-network alpine ping -c 2 bacalhau.org
 ```
 
-This should be successful. If it is not, then please troubleshoot your docker networking. For example, on my mac, I had to totally uninstall Docker, restart the computer, and then reinstall Docker. Then it worked. Also check https://docs.docker.com/desktop/troubleshoot/known-issues/. Apparently "ping from inside a container to the Internet does not work as expected.". No idea what that means. How do you break ping?
+This should be successful. If it is not, then please troubleshoot your docker networking. For example, on my Mac, I had to totally uninstall Docker, restart the computer, and then reinstall Docker. Then it worked. Also check https://docs.docker.com/desktop/troubleshoot/known-issues/. Apparently "ping from inside a container to the Internet does not work as expected.". No idea what that means. How do you break ping?
 
 :::
 
 ### <a id="test-ipfs">Test that the IPFS Node is Working</a>
 
-You can now browse to the IPFS web UI at http://127.0.0.1:5001/webui.
+You can now browse the IPFS web UI at http://127.0.0.1:5001/webui.
 
 Read more about the IPFS docker image [here](https://docs.ipfs.tech/install/run-ipfs-inside-docker/#set-up).
 
@@ -411,9 +411,9 @@ It should return empty.
 ### <a id="authenticate-with-dockerhub">Authenticate with docker hub</a>
 
 If you are retrieving and running images from [docker hub](https://hub.docker.com/) you
-may encounter issues with rate-limiting. Docker provide higher limits when authenticated, the size of the limit based on the type of your account.
+may encounter issues with rate-limiting. Docker provides higher limits when authenticated, the size of the limit is based on the type of your account.
 
-Should you wish to authenticate with docker hub when pulling images, you can do so
+Should you wish to authenticate with Docker Hub when pulling images, you can do so
 by specifying credentials as environment variables wherever your compute node is running.
 
 |Environment variable|Description|
@@ -422,5 +422,5 @@ by specifying credentials as environment variables wherever your compute node is
 |DOCKER_PASSWORD|A read-only access token, generated from the page at <https://hub.docker.com/settings/security> |
 
 :::info
-Currently this authentication is only available (and required) by the [docker hub](https://hub.docker.com/)
+Currently, this authentication is only available (and required) by the [Docker Hub](https://hub.docker.com/)
 :::

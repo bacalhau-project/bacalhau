@@ -31,7 +31,7 @@ RUN kipoi_veff2_predict ./examples/input/test.vcf ./examples/input/test.fa ./out
 
 ### Build the container
 
-The `docker build` command builds Docker images from a Dockerfile. 
+The `docker build` command builds Docker images from a Dockerfile.
 
 ```
 docker build -t <hub-user>/<repo-name>:<tag> .
@@ -39,7 +39,7 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker Account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -61,7 +61,7 @@ docker push <hub-user>/<repo-name>:<tag>
 
 ## Running a Bacalhau job to Generate Genomics Data
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 
@@ -86,7 +86,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -113,7 +113,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 

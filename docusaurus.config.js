@@ -14,7 +14,7 @@ const config = {
   baseUrl: "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
-  favicon: "img/favicon.ico",
+  favicon: "img/logo.png",
   organizationName: "bacalhau-project", // Usually your GitHub org/user name.
   projectName: "docs.bacalhau.org", // Usually your repo name.
   scripts: [{src: 'https://plausible.io/js/plausible.js', async: true, defer: true, 'data-domain': 'docs.bacalhau.org'}],
@@ -44,6 +44,10 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      colorMode: {
+        defaultMode: 'light',
+        disableSwitch: true,
+      },
       image: '/static/logo_assets/Icon/JPG/Bacalhau-icon.jpg',
       navbar: {
         title: "Bacalhau Docs",

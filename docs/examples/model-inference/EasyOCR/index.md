@@ -2,14 +2,14 @@
 sidebar_label: "EasyOCR"
 sidebar_position: 8
 ---
-# EasyOCR (Optical Character Recognition) on bacalhau
 
+# EasyOCR (Optical Character Recognition) on Bacalhau
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
 ## Introduction
 
-In this example tutorial, we use Bacalhau and Easy OCR to digitize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pretrained models or use your own fine tuned model.
+In this example tutorial, we use Bacalhau and Easy OCR to digitize paper records or for recognizing characters or extract text data from images stored on IPFS/Filecoin or on the web. [EasyOCR](https://www.jaided.ai/) is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. With easy OCR you use the pre-trained models or use your own fine-tuned model.
 
 ## TD:LR
 Using Bacalhau and Easy OCR to extract text data from images stored on the web.
@@ -69,7 +69,7 @@ from PIL import ImageDraw
 im = PIL.Image.open("thai.jpg")
 ```
 
-Next, we create a reader to do OCR to get coordinates which represent a rectangle containing text and the text itself 
+Next, we create a reader to do OCR to get coordinates which represent a rectangle containing text and the text itself
 
 
 ```python
@@ -97,7 +97,7 @@ cd EasyOCR
 
 ### Build the Container
 
-The `docker build` command builds Docker images from a Dockerfile. 
+The `docker build` command builds Docker images from a Dockerfile.
 
 ```
 docker build -t hub-user/repo-name:tag .
@@ -113,7 +113,7 @@ Before running the command replace;
 
 ### Push the container
 
-Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name, or tag.
 
 ```
 docker push <hub-user>/<repo-name>:<tag>
@@ -121,7 +121,7 @@ docker push <hub-user>/<repo-name>:<tag>
 
 ## Running a Bacalhau Job to Generate Easy OCR output
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 
 ```bash
@@ -139,7 +139,7 @@ jsacex/easyocr \
 
 ```
 
-Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS ou can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
+Since the model and the image aren't present in the container we will mount the image from an URL and the model from IPFS. You can find models to download from [here](https://www.jaided.ai/easyocr/modelhub/). You can choose the model you want to use in this case we will be using the zh_sim_g2 model
 
 ### Structure of the command
 
@@ -160,14 +160,14 @@ Breaking up the easyocr command
 
 - `--detail=1`:  level of detail
 
-- `--gpu=True`: we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false 
+- `--gpu=True`: we set this flag to true since we are running inference on a GPU, if you run this on a CPU you set this to false
 
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -194,7 +194,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 

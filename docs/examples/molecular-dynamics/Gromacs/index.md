@@ -12,7 +12,7 @@ sidebar_position: 4
 
 GROMACS is a package for high-performance molecular dynamics and output analysis. Molecular dynamics is a computer simulation method for analyzing the physical movements of atoms and molecules
 
-In this example we will make use of [gmx pdb2gmx](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html#description) program to add hydrogens to the molecules and generates coordinates in Gromacs (Gromos) format and a topology in Gromacs format
+In this example, we will make use of [gmx pdb2gmx](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html#description) program to add hydrogens to the molecules and generates coordinates in Gromacs (Gromos) format and topology in Gromacs format
 
 ## TD;LR
 Running Gromacs package with Bacalhau
@@ -62,7 +62,7 @@ Lets look at the command above more closely:
 
 * `-i ipfs://QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input` here we mount the CID of the dataset we uploaded to IPFS and mount it to a folder called data on the container
 
-* `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs) 
+* `gromacs/gromacs` we use the official [gromacs - Docker Image](https://hub.docker.com/r/gromacs/gromacs)
 
 * `-f input/1AKI.pdb` input file
 
@@ -70,7 +70,7 @@ Lets look at the command above more closely:
 
 * `-water` Water model to use in this case we use spc
 
-Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html) 
+Additional parameters could be found here [gmx pdb2gmx — GROMACS 2022.2 documentation](https://manual.gromacs.org/documentation/current/onlinehelp/gmx-pdb2gmx.html)
 
 (similar tutorial you can try yourself [KALP-15 in DPPC - GROMACS Tutorial](http://www.mdtutorials.com/gmx/membrane_protein/01_pdb2gmx.html) )
 
@@ -145,8 +145,7 @@ rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
 
-After the download has finished you should 
-see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 
 ```bash
@@ -154,4 +153,4 @@ see the following contents in results directory
 ls results/
 ```
 
-Rach repository contains selfexplanatory results.
+The Rach repository contains self-explanatory results.

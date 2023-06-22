@@ -11,7 +11,7 @@ sidebar_position: 2
 
 ## Introduction
 
-Bacalhau, a powerful and versatile data processing platform, has recently integrated Amazon Web Services (AWS) S3, allowing users to seamlessly access and process data stored in S3 buckets within their Bacalhau jobs. This integration not only simplifies data input, output, and processing operations but also streamlines the overall workflow by enabling users to store and manage their data effectively in S3 buckets. With bacalhau you can process several Large s3 buckets in parallel . In this example, we will walk you through the process of reading data from multiple S3 buckets, converting TIFF images to JPEG format.
+Bacalhau, a powerful and versatile data processing platform, has recently integrated Amazon Web Services (AWS) S3, allowing users to seamlessly access and process data stored in S3 buckets within their Bacalhau jobs. This integration not only simplifies data input, output, and processing operations but also streamlines the overall workflow by enabling users to store and manage their data effectively in S3 buckets. With Bacalhau, you can process several Large s3 buckets in parallel. In this example, we will walk you through the process of reading data from multiple S3 buckets, converting TIFF images to JPEG format.
 
 ### Advantages of Converting TIFF to JPEG
 
@@ -33,7 +33,7 @@ Firstly we will demonstrate how to run the job with just one bucket and then run
 To get started, you need to install the Bacalhau client, see more information [here](https://docs.bacalhau.org/getting-started/installation)
 
 
-### Running the job on a multiple buckets with multiple objects
+### Running the job on multiple buckets with multiple objects
 
 
 ```bash
@@ -48,11 +48,11 @@ bacalhau docker run \
 jsacex/gdal-s3
 ```
 
-**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`** 
+**`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif,dst=/sentinel-s1-rtc-indigo/,opt=region=us-west-2`**
 
 Breakdown of the flag:
 
-`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`: 
+`-i src=s3://sentinel-s1-rtc-indigo/tiles/RTC/1/IW/10/S/DH/2017/S1A_20170125_10SDH_ASC/Gamma0_VH.tif`:
 
 Specifying the bucket source along with the keys in this case it's `s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*` but if you want to specify the entire objects located in the path you can simply add `*` to the end of the path `s3://bdc-sentinel-2/s2-16d/v1/075/086/2018/02/18/*`
 
@@ -68,7 +68,7 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -95,7 +95,7 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-After the download has finished you should see the following contents in results directory.
+After the download has finished you should see the following contents in the results directory.
 
 ## Viewing your Job Output
 
@@ -103,7 +103,7 @@ To view the file, run the following command:
 
 ### Display the image
 
-To view the images, we will use **glob** to return all file paths that match a specific pattern. 
+To view the images, we will use **glob** to return all file paths that match a specific pattern.
 
 
 ```python
@@ -141,16 +141,16 @@ for imageName in glob.glob('results/outputs/*.jpg'):
 
 
 
-    
+
 ![png](index_files/index_19_1.png)
-    
+
 
 
     results/outputs/B04_TCI.jpg
 
 
 
-    
+
 ![png](index_files/index_19_3.png)
     
 

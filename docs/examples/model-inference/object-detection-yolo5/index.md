@@ -8,7 +8,7 @@ sidebar_position: 2
 
 The identification and localization of objects in images and videos is a computer vision task called object detection. Several algorithms have emerged in the past few years to tackle the problem. One of the most popular algorithms to date for real-time object detection is [YOLO (You Only Look Once)](https://towardsdatascience.com/yolo-you-only-look-once-real-time-object-detection-explained-492dc9230006), initially proposed by Redmond et al.[[1]](https://arxiv.org/abs/1506.02640)
 
-Traditionally, models like YOLO required enormous amounts of training data to yield reasonable results. People might not have access to such high-quality labelled data. Thankfully, open source communities and researchers have made it possible to utilise pre-trained models to perform inference. In other words, you can use models that have already been trained on large datasets to perform object detection on your own data.
+Traditionally, models like YOLO required enormous amounts of training data to yield reasonable results. People might not have access to such high-quality labeled data. Thankfully, open-source communities and researchers have made it possible to utilize pre-trained models to perform inference. In other words, you can use models that have already been trained on large datasets to perform object detection on your own data.
 
 In this tutorial you will perform an end-to-end object detection inference, using the [YOLOv5 Docker Image developed by Ultralytics.](https://github.com/ultralytics/yolov5/wiki/Docker-Quickstart)
 
@@ -21,7 +21,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Running Object Detection Jobs on Bacalhau
 
-Bacalhau is a highly scalable decentralised computing platform and is well suited to running massive object detection jobs. In this example, you can take advantage of the GPUs available on the Bacalhau network.
+Bacalhau is a highly scalable decentralized computing platform and is well suited to running massive object detection jobs. In this example, you can take advantage of the GPUs available on the Bacalhau network.
 
 ### Test Run with Sample Data
 
@@ -41,11 +41,11 @@ The model requires pre-trained weights to run and by default downloads them from
 The container has its own options that we must specify:
 
 * `--input` to select which pre-trained weights you desire with details on the [yolov5 release page](https://github.com/ultralytics/yolov5/releases)
-* `--project` specifies the output volume that the model will save its results to. Bacalhau defaults to using `/outputs` as the output directory, so we save to there.
+* `--project` specifies the output volume that the model will save its results to. Bacalhau defaults to using `/outputs` as the output directory, so we save it there.
 
 For more container flags refer to the [`yolov5/detect.py` file in the YOLO repository](https://github.com/ultralytics/yolov5/blob/master/detect.py#L3-#L25).
 
-One final additional hack that we have to do is move the weights file to a location with the standard name. As of writing this, Bacalhau downloads the file to a UUID-named file, which the model is not expecting. This is because github 302 redirects the request to a random file in its backend.
+One final additional hack that we have to do is move the weights file to a location with the standard name. As of writing this, Bacalhau downloads the file to a UUID-named file, which the model is not expecting. This is because GitHub 302 redirects the request to a random file in its backend.
 
 
 ```bash
@@ -67,7 +67,7 @@ This should output a UUID (like `59c59bfb-4ef8-45ac-9f4b-f0e9afd26e70`). This is
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -107,7 +107,7 @@ display.Image("results/outputs/exp/zidane.jpg")
 
 ## Using custom Images as an input
 
-Now let's use some custom images. First you will need to ingest your images onto IPFS/Filecoin. For more information about how to do that see data ingestion section.
+Now let's use some custom images. First, you will need to ingest your images onto IPFS/Filecoin. For more information about how to do that see the data ingestion section.
 
 This example will use the [Cyclist Dataset for Object Detection | Kaggle](https://www.kaggle.com/datasets/f445f341fc5e3ab58757efa983a38d6dc709de82abd1444c8817785ecd42a1ac) dataset.
 
@@ -134,7 +134,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ### Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

@@ -6,11 +6,11 @@ toc_max_heading_level: 4
 
 # Join as Compute Provider
 
-Bacalhau is a peer-to-peer network of compute providers that will run jobs submitted by users. A Compute Provider (CP) is anyone who is running a Bacalhau compute node participating in the Bacalhau compute network, regardless of whether they are hosting any Filecoin data.
+Bacalhau is a peer-to-peer network of computing providers that will run jobs submitted by users. A Compute Provider (CP) is anyone who is running a Bacalhau compute node participating in the Bacalhau compute network, regardless of whether they are hosting any Filecoin data.
 
-This section will show you how to configure and run a bacalhau node and start accepting and running jobs.
+This section will show you how to configure and run a Bacalhau node and start accepting and running jobs.
 
-To bootstrap your node and join the network as a CP you can leap right into the [Ubuntu 22.04 quick start](#quick-start-ubuntu-2204) below, or find for more setup details in these guides:
+To bootstrap your node and join the network as a CP you can leap right into the [Ubuntu 22.04 quick start](#quick-start-ubuntu-2204) below, or find more setup details in these guides:
 
 * [Networking](https://docs.bacalhau.org/running-node/networking)
 * [Storage Providers](https://docs.bacalhau.org/running-node/storage-providers)
@@ -37,16 +37,16 @@ Tested on: Ubuntu 22.04 LTS (x86/64) running on a GCP e2-standard-4 (4 vCPU, 16 
 * Docker Engine - to take on Docker workloads
 * Connection to storage provider - for storing job's results
 * Firewall - to ensure your node can communicate with the rest of the network
-* Physical hardware, Virtual Machine or cloud based host. A Bacalhau compute node is not intended to be ran from within a Docker container.
+* Physical hardware, Virtual Machine, or cloud-based host. A Bacalhau compute node is not intended to be run from within a Docker container.
 
 #### Install Docker
 
-To run docker based workloads, you should have docker installed and running.
+To run docker-based workloads, you should have docker installed and running.
 
 If you already have it installed and want to configure the connection to Docker with the following environment variables:
 
-* `DOCKER_HOST` to set the url to the docker server.
-* `DOCKER_API_VERSION` to set the version of the API to reach, leave empty for latest.
+* `DOCKER_HOST` to set the URL to the docker server.
+* `DOCKER_API_VERSION` to set the version of the API to reach, leave empty for "latest".
 * `DOCKER_CERT_PATH` to load the TLS certificates from.
 * `DOCKER_TLS_VERIFY` to enable or disable TLS verification, off by default.
 
@@ -81,7 +81,7 @@ sudo usermod -aG docker $USER
 
 #### Ensure your Storage Server is Running
 
-We will need to connect our bacalhau node to an storage server for this we will be using IPFS server so we can run jobs that consume CIDs as inputs.
+We will need to connect our Bacalhau node to a storage server for this we will be using IPFS server so we can run jobs that consume CIDs as inputs.
 
 You can either install and run it locally or you can connect to a remote IPFS server.
 
@@ -97,7 +97,7 @@ The multiaddress above is just an example - you need to get the multiaddress of 
 
 :::
 
-To install a single IPFS node locally on Ubuntu you can follow the [official instructions](https://docs.ipfs.tech/install/ipfs-desktop/#ubuntu), or follow the steps below. We advise to run the same IPFS version as the Bacalhau main network.
+To install a single IPFS node locally on Ubuntu you can follow the [official instructions](https://docs.ipfs.tech/install/ipfs-desktop/#ubuntu), or follow the steps below. We advise running the same IPFS version as the Bacalhau main network.
 
 Using the command below:
 
@@ -176,7 +176,7 @@ export IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWNhRU6H1eeqvT1jQAXFAdFDvT
 
 To ensure that our node can communicate with other nodes on the network - we need to make sure the **1235** port is open.
 
-(Optional) To ensure the cli can communicate with our node directly (i.e. `bacalhau --api-host <MY_NODE_PUBLIC_IP> version`) - we need to make sure the **1234** port is open.
+(Optional) To ensure the CLI can communicate with our node directly (i.e. `bacalhau --api-host <MY_NODE_PUBLIC_IP> version`) - we need to make sure the **1234** port is open.
 
 Firewall configuration is very specific to your network and we can't provide generic instructions for this step but if you need any help feel free to reach out on [Slack!](https://bit.ly/bacalhau-project-slack/archives/C02RLM3JHUY)
 
@@ -186,7 +186,7 @@ Firewall configuration is very specific to your network and we can't provide gen
 
 :::info
 
-If you want to run Bacalhau  as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
+If you want to run Bacalhau as a [systemd](https://en.wikipedia.org/wiki/Systemd) service, here's an example [systemd service file](https://github.com/bacalhau-project/bacalhau/blob/main/ops/terraform/remote_files/configs/bacalhau.service).
 
 :::
 
@@ -220,17 +220,17 @@ These commands join this node to the public Bacalhau network, congrats! :tada:
 
 ### Check your node works
 
-Even though the cli (by default) submits jobs, each node listens for events on the global network and possibly bids for taking a job: your logs should therefore show activity of your node bidding for incoming jobs.
+Even though the CLI (by default) submits jobs, each node listens for events on the global network and possibly bids for taking a job: your logs should therefore show the activity of your node bidding for incoming jobs.
 
-To quick check your node runs properly, let's submit the following dummy job:
+To quickly check your node runs properly, let's submit the following dummy job:
 
 ```bash
 bacalhau docker run ubuntu echo Test
 ```
 
-If you see logs of your computenode bidding for the job above it means you've successfully joined Bacalhau as a Compute Provider!
+If you see logs of your compute node bidding for the job above it means you've successfully joined Bacalhau as a Compute Provider!
 
 ### What's next?
 
-At this point you probably have a number of questions for us. What incentive should you expect for running a public Bacalhau node?
+At this point, you probably have a number of questions for us. What incentive should you expect for running a public Bacalhau node?
 Please contact us on [Slack](https://bit.ly/bacalhau-project-slack/archives/C02RLM3JHUY) to further discuss this topic and for sharing your valuable feedback.

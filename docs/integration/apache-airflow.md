@@ -6,7 +6,7 @@ sidebar_position: 1
 # Apache Airflow Provider for Bacalhau
 
 This is `bacalhau-airflow`, a Python package that integrates [Bacalhau](https://github.com/bacalhau-project/bacalhau) with [Apache Airflow](https://github.com/apache/airflow).
-The benefit is two fold.
+The benefit is twofold.
 First, thanks to this package you can now write complex pipelines for Bacalhau.
 For instance, jobs can communicate their output's CIDs to downstream jobs, that can use those as inputs.
 Second, Apache Airflow provides a solid solution to reliably orchestrate your DAGs.
@@ -18,9 +18,9 @@ Second, Apache Airflow provides a solid solution to reliably orchestrate your DA
 - Create Airflow tasks that run on Bacalhau (via custom operator!)
 - Support for sharded jobs: output shards can be passed downstream (via [XComs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html))
 - Coming soon...
-    - Lineage (see [OpenLineage proof-of-concept integration here](https://github.com/enricorotundo/bacalhau-airflow-provider))
-    - Various working code examples
-    - Hosting instructions
+  - Lineage (see [OpenLineage proof-of-concept integration here](https://github.com/enricorotundo/bacalhau-airflow-provider))
+  - Various working code examples
+  - Hosting instructions
 
 ## Requirements
 
@@ -93,7 +93,7 @@ airflow standalone
 
 ### Example DAG: chaining jobs
 
-While Airflow's pinwheel is warming up in the background, let's take a look at the `hello_world.py` break down below.
+While Airflow's pinwheel is warming up in the background, let's take a look at the `hello_world.py` breakdown below.
 
 > In brief, the first task of this DAG prints out "Hello World" to stdout, then automatically pipe its output into the subsequent task as an input file. The second task will simply print out the content of its input file.
 
@@ -155,27 +155,27 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
 
 ### Run it
 
-Now the we understand what the example DAG is supposed to do, let's just run it!
-Head over to http://0.0.0.0:8080 were Airflow UI is being served.
+Now that we understand what the example DAG is supposed to do, let's just run it!
+Head over to http://0.0.0.0:8080, where Airflow UI is being served.
 The screenshot below shows our hello world has been loaded correctly.
 
 ![](../../static/img/apache-image/airflow_01.png)
 
 When you inspect a DAG, Airflow will render a graph depicting a color-coded topology (see image below).
-For active (i.e. running) pipelines, this will be useful to oversee what the status of each task is.
+For active (i.e. running) pipelines, this will be useful to oversee the status of each task.
 
 To trigger a DAG please enable the toggle shown below.
 
 ![](../../static/img/apache-image/airflow_02.png)
 
-When all tasks have completed, we want to fetch the output of our pipeline.
+When all tasks have been completed, we want to fetch the output of our pipeline.
 To do so we need to retrieve the job-id of the last task.
 Click on a green box in the `task_2` line and then open the XCom tab.
 
 ![](../../static/img/apache-image/airflow_03.png)
 
 Here we find the `bacalhau_job_id`.
-Select that value and copy into your clipboard.
+Select that value and copy it into your clipboard.
 
 ![](../../static/img/apache-image/airflow_04.png)
 

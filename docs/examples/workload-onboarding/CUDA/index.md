@@ -11,7 +11,7 @@ sidebar_position: 10
 
 In this tutorial, we will look at how to run CUDA programs on Bacalhau. CUDA (Compute Unified Device Architecture) is an extension of C/C++ programming. It is a parallel computing platform and programming model created by NVIDIA. It helps developers speed up their applications by harnessing the power of GPU accelerators.
 
-In addition to accelerating high performance computing (HPC) and research applications, CUDA has also been widely adopted across consumer and industrial ecosystems. CUDA also makes it easy for developers to take advantage of all the latest GPU architecture innovations
+In addition to accelerating high-performance computing (HPC) and research applications, CUDA has also been widely adopted across consumer and industrial ecosystems. CUDA also makes it easy for developers to take advantage of all the latest GPU architecture innovations
 
 ### Advantage of GPU over CPU
 Architecturally, the CPU is composed of just a few cores with lots of cache memory that can handle a few software threads at a time. In contrast, a GPU is composed of hundreds of cores that can handle thousands of threads simultaneously.
@@ -57,7 +57,7 @@ wget -P inputs https://raw.githubusercontent.com/tristanpenman/cuda-examples/mas
 cat inputs/00-hello-world.cu
 ```
 
-This is a standard c++ program which uses loops which are not parallizable so it doesn't use the most of the processing power of the GPU
+This is a standard C++ program, which uses loops that are not parallelizable so it doesn't use the most processing power of the GPU
 
 
 ```python
@@ -84,7 +84,7 @@ using cudaMemcpy so that it can utilize the HBM (High Bandwidth memory of the GP
 !nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello
 ```
 
-It takes around 8.67s to run 
+It takes around 8.67s to run
 00-hello-world.cu
 while it takes 1.39s to run
 02-cuda-hello-world-faster.cu
@@ -118,15 +118,15 @@ Let's look closely at the command above:
 
 * `nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu`: Compilation using the nvcc compiler and save it to the outputs directory as hello
 
-* `./outputs/hello`: Execution hello binary: 
+* `./outputs/hello`: Execution hello binary:
 * You can combine compilation and execution commands. Note that there is `;` between the commands:
-`-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello `
+  `-- /bin/bash -c 'nvcc --expt-relaxed-constexpr  -o ./outputs/hello ./inputs/02-cuda-hello-world-faster.cu; ./outputs/hello `
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

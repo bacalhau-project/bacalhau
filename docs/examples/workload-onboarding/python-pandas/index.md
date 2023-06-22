@@ -9,7 +9,7 @@ sidebar_position: 6
 
 ### Introduction
 
-Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
+Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real-world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open-source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
 ## TD;LR
 Running pandas script in Bacalhau
@@ -21,7 +21,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Running Pandas Locally
 
-To run Pandas script on Bacalhau for analysis, first we will place the Pandas script in a container and then run it at scale on Bacalhau. To get started, you need to install the Pandas library from pip.
+To run the Pandas script on Bacalhau for analysis, first, we will place the Pandas script in a container and then run it at scale on Bacalhau. To get started, you need to install the Pandas library from pip.
 
 
 ```bash
@@ -31,7 +31,7 @@ pip install pandas
 
 ### Importing data from CSV to DataFrame
 
-Pandas is built around the idea of a DataFrame, a container for representing data. Below you will create a DataFrame by importing a CSV file. A CSV file is a text file with one record of data per line. The values within the record are separated using the “comma” character. Pandas provides a useful method, named `read_csv()` to read the contents of the CSV file into a DataFrame. For example, we can create a file named `transactions.csv` containing details of Transactions. The CSV file is stored in the same directory that contains Python script.
+Pandas is built around the idea of a DataFrame, a container for representing data. Below you will create a DataFrame by importing a CSV file. A CSV file is a text file with one record of data per line. The values within the record are separated using the “comma” character. Pandas provides a useful method, named `read_csv()` to read the contents of the CSV file into a DataFrame. For example, we can create a file named `transactions.csv` containing details of Transactions. The CSV file is stored in the same directory that contains the Python script.
 
 
 
@@ -93,13 +93,13 @@ bacalhau docker run \
 
 ### Structure of the command
 
-- `bacalhau docker run`: call to bacalhau 
+- `bacalhau docker run`: call to bacalhau
 
 - `amancevice/pandas `: Using the official pytorch Docker image
 
 - ``-i ipfs://QmfKJT13h5k1b23ja3Z .....`: Mounting the uploaded dataset to path
 
-- `-w /files` Our working directory is /outputs. This is the folder where we will to save the model as it will automatically gets uploaded to IPFS as outputs
+- `-w /files` Our working directory is /outputs. This is the folder where we will save the model as it will automatically get uploaded to IPFS as outputs
 
 ` python read_csv.py`: python script to read pandas script
 
@@ -107,7 +107,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

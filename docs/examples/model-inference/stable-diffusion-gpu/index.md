@@ -6,7 +6,7 @@ sidebar_position: 6
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-This example tutorial demonstrates how to use stable diffusion on a GPU and run it on the [Bacalhau](https://www.bacalhau.org/) network.[Stable Diffusion](https://github.com/CompVis/stable-diffusion) is a state of the art text-to-image model that generates images from text and was developed as an open source alternative to [DALL·E 2](https://openai.com/dall-e-2/). It is based on a [Diffusion Probabilistic Model](https://arxiv.org/abs/2102.09672) and uses a [Transformer](https://arxiv.org/abs/1706.03762) to generate images from text. 
+This example tutorial demonstrates how to use stable diffusion on a GPU and run it on the [Bacalhau](https://www.bacalhau.org/) network.[Stable Diffusion](https://github.com/CompVis/stable-diffusion) is a state of the art text-to-image model that generates images from text and was developed as an open-source alternative to [DALL·E 2](https://openai.com/dall-e-2/). It is based on a [Diffusion Probabilistic Model](https://arxiv.org/abs/2102.09672) and uses a [Transformer](https://arxiv.org/abs/1706.03762) to generate images from text.
 
 ## TD;LR
 
@@ -33,7 +33,7 @@ This stable diffusion example is based on the [Keras/Tensorflow implementation](
 ### Installing dependencies
 
 :::info
-When you run this code for the first time, it will download the pretrained weights, which may add a short delay.
+When you run this code for the first time, it will download the pre-trained weights, which may add a short delay.
 :::
 
 Based on the requirements [here](https://github.com/fchollet/stable-diffusion-tensorflow), we will install the following:
@@ -52,7 +52,7 @@ apt install --allow-change-held-packages libcudnn8=8.1.0.77-1+cuda11.2
 We have a sample code from this the [Stable Diffusion in TensorFlow/Keras](https://github.com/fchollet/stable-diffusion-tensorflow) repo which we will use to check if the code is working as expected. Our output for this code will be a _DSLR photograph of an astronaut riding a horse_.
 
 :::tip
-When you run this code for the first time, it will download the pretrained weights, which may add a short delay.
+When you run this code for the first time, it will download the pre-trained weights, which may add a short delay.
 :::
 
 
@@ -76,9 +76,9 @@ pil_img = Image.fromarray(img[0])
 display(pil_img)
 ```
 
-When running this code, if you check the GPU RAM usage, you'll see that it's sucked up many GBs and depending on what GPU you're running, it may OOM(Out of memory) if you run this again.
+When running this code, if you check the GPU RAM usage, you'll see that it's sucked up many GBs, and depending on what GPU you're running, it may OOM (Out of memory) if you run this again.
 
-You can try and reduce RAM usage by playing with batch sizes (although it is only set to 1 above!) or more carefully controlling the tensorflow session.
+You can try and reduce RAM usage by playing with batch sizes (although it is only set to 1 above!) or more carefully controlling the TensorFlow session.
 
 To clear the GPU memory we will use **numba**. This won't be required when running in a single-shot manner.
 
@@ -98,7 +98,7 @@ device.reset()
 
 ### Write the Script
 
-You need a script to execute when we submitting jobs. The code below is a slightly modified version of the code we ran above which we got from [here](https://github.com/fchollet/stable-diffusion-tensorflow), however this includes more things such as argument parsing [argument parsing](https://github.com/fchollet/stable-diffusion-tensorflow/blob/master/text2image.py) to be able to customize the generator.
+You need a script to execute when we submit jobs. The code below is a slightly modified version of the code we ran above which we got from [here](https://github.com/fchollet/stable-diffusion-tensorflow), however, this includes more things such as argument parsing [argument parsing](https://github.com/fchollet/stable-diffusion-tensorflow/blob/master/text2image.py) to be able to customize the generator.
 
 
 ```python
@@ -170,9 +170,9 @@ display.Image("image0.png")
 
 
 
-    
+
 ![png](index_files/index_18_0.png)
-    
+
 
 
 
@@ -180,14 +180,14 @@ The following presents additional parameters you can try:
 
 - `python main.py --p "cat with three eyes`  - to set prompt
 
-- `python main.py --p "cat with three eyes` --n 100 - to set number of iterations to 100
+- `python main.py --p "cat with three eyes` --n 100 - to set the number of iterations to 100
 
 -  `python stable-diffusion.py --p "cat with three eyes" --b 2` to set batch size to 2 (No of images to generate)
 
 
 ## Containerize Script using Docker
 
-Docker is the easiest way to run TensorFlow on a GPU since the host machine only requires the [NVIDIA® driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver). To containerize the inference code, we we will create a `Dockerfile`. The Dockerfile is a text document that contains the commands that specify how the image will be built.
+Docker is the easiest way to run TensorFlow on a GPU since the host machine only requires the [NVIDIA® driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver). To containerize the inference code, we will create a `Dockerfile`. The Dockerfile is a text document that contains the commands that specify how the image will be built.
 
 ```Dockerfile
 FROM tensorflow/tensorflow:2.10.0-gpu
@@ -208,7 +208,7 @@ ADD main.py main.py
 RUN python main.py --n 1
 ```
 
-The dockerfile leverages the latest official tensorflow GPU image and then installs other dependencies like `git`, `CUDA` packages and other image related necessities. See [the original repository](https://github.com/fchollet/stable-diffusion-tensorflow/blob/master/requirements.txt) for the expected requirements.
+The Dockerfile leverages the latest official TensorFlow GPU image and then installs other dependencies like `git`, `CUDA` packages, and other image-related necessities. See [the original repository](https://github.com/fchollet/stable-diffusion-tensorflow/blob/master/requirements.txt) for the expected requirements.
 
 
 :::info
@@ -226,7 +226,7 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -266,18 +266,18 @@ bacalhau docker run --id-only --gpu 1 ghcr.io/bacalhau-project/examples/stable-d
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
+* `bacalhau docker run`: call to bacalhau
 
 * `--gpu 1`: No of GPUs
 
 * `ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1`: the name and the tag of the docker image we are using
 
-* `../outputs`: path to output
+* `../outputs`: path to the output
 
-* `python main.py`: execute script
+* `python main.py`: execute the script
 
 
-The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation. 
+The Bacalhau command passes a prompt to the model and generates an image in the outputs directory. The main difference in the example below compared to all the other examples is the addition of the `--gpu X` flag, which tells Bacalhau to only schedule the job on nodes that have `X` GPUs free. You can [read more about GPU support](https://docs.bacalhau.org/running-node/gpu/#gpu-node-configuration) in the documentation.
 
 :::tip
 This will take about 5 minutes to complete and is mainly due to the cold-start GPU setup time. This is faster than the CPU version, but you might still want to grab some fruit or plan your lunchtime run.
@@ -294,7 +294,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -346,7 +346,7 @@ display.Image("results/outputs/image0.png")
 
 
 
-    
+
 ![png](index_files/index_35_0.png)
     
 

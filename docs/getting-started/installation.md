@@ -9,15 +9,15 @@ In this tutorial, you'll learn how to install and run a job with the Bacalhau cl
 
 ## The Bacalhau Client
 
-The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container. 
+The Bacalhau client is a command-line interface (CLI) that allows you to submit jobs to the Bacalhau network. The Bacalhau client is available for Linux, macOS, and Windows. You can also run the Bacalhau client in a Docker container.
 
-### Install the Bacalhau CLI 
+### Install the Bacalhau CLI
 
 You can install or update the Bacalhau CLI or pull a Docker image by running the commands in a terminal.
 You may need sudo mode or root password to install the local Bacalhau binary to `/usr/local/bin`:
 
 :::tip
-Using the **CLI**: Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere on the PATH. 
+Using the **CLI**: Windows users can download the [latest release tarball from Github](https://github.com/bacalhau-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere on the PATH.
 :::
 
 :::info
@@ -30,11 +30,11 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 <Tabs
-    defaultValue="CLI"
-    values={[
-        {label: 'CLI', value: 'CLI'},
-        {label: 'Docker', value: 'Docker'},
-    ]}>
+defaultValue="CLI"
+values={[
+{label: 'CLI', value: 'CLI'},
+{label: 'Docker', value: 'Docker'},
+]}>
 <TabItem value="CLI">
 
     curl -sL https://get.bacalhau.org/install.sh | bash
@@ -50,17 +50,17 @@ import TabItem from '@theme/TabItem';
 
 ### Verify the Installation
 
-To run and Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`. 
+To run and Bacalhau client command with Docker, prefix it with `docker run ghcr.io/bacalhau-project/bacalhau:latest`.
 
 To verify installation and check the version of the client and server, use the `version` command, you can run the command:
 
 
 <Tabs
-    defaultValue="CLI"
-    values={[
-        {label: 'CLI', value: 'CLI'},
-        {label: 'Docker', value: 'Docker'},
-    ]}>
+defaultValue="CLI"
+values={[
+{label: 'CLI', value: 'CLI'},
+{label: 'Docker', value: 'Docker'},
+]}>
 <TabItem value="CLI">
 
     bacalhau version
@@ -85,11 +85,11 @@ To submit a job in Bacalhau, we will use the `bacalhau docker run` command. Let'
 The command below submits a Hello World job that runs an [echo](https://en.wikipedia.org/wiki/Echo_(command)) program within an [Ubuntu container](https://hub.docker.com/_/ubuntu):
 
 <Tabs
-    defaultValue="CLI"
-    values={[
-        {label: 'CLI', value: 'CLI'},
-        {label: 'Docker', value: 'Docker'},
-    ]}>
+defaultValue="CLI"
+values={[
+{label: 'CLI', value: 'CLI'},
+{label: 'Docker', value: 'Docker'},
+]}>
 <TabItem value="CLI">
 
     bacalhau docker run ubuntu echo Hello World
@@ -127,7 +127,7 @@ $ export JOB_ID=3b39baee # make sure to use the right job id from the docker run
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -162,7 +162,7 @@ $ cd /tmp/myfolder
 bacalhau get $JOB_ID
 ```
 
-After the download has finished you should see the following contents in results directory
+After the download has finished you should see the following contents in the results directory
 
 ## Viewing your Job Output
 
@@ -179,7 +179,7 @@ With that, you have just successfully run a job on the Bacalhau network! :fish:
 
 ## Where to go next?
 
-Here are a few resources that provides a deeper dive into running jobs with Bacalhau:
+Here are a few resources that provide a deeper dive into running jobs with Bacalhau:
 
 * [How to run an existing workload on Bacalhau](../getting-started/docker-workload-onboarding.md)
 * [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)

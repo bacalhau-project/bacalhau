@@ -13,7 +13,7 @@ The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](ht
 In this example tutorial, we will investigate the data and convert the workload so that it can be executed on the Bacalhau network, to take advantage of the distributed storage and compute resources.
 
 ## TD;LR
-Running oceanography dataseet with Bacalhau
+Running oceanography dataset with Bacalhau
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ res.plot() # plot the result
 
 ```
 
-We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have travelled.
+We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have traveled.
 
 ### Data Conversion
 
@@ -90,7 +90,7 @@ To execute this workload on the Bacalhau network we need to perform three steps:
 
 ## Upload the Data to IPFS
 
-The first step is to upload the data to IPFS. The simplest way to do this is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
+The first step is to upload the data to IPFS. The simplest way to do this is to use a third-party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
 
 For the purposes of this example:
 1. Downloaded the latest monthly data from the [SOCAT website](https://www.socat.info/)
@@ -220,7 +220,7 @@ docker build -t <hub-user>/<repo-name>:<tag> .
 
 Before running the command replace;
 
-- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+- **hub-user** with your docker hub username, If you don’t have a docker hub account [follow these instructions to create a Docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
 
 - **repo-name** with the name of the container, you can name it anything you want
 
@@ -271,7 +271,7 @@ bacalhau list --id-filter ${JOB_ID}
 
 When it says `Published` or `Completed`, that means the job is done, and we can get the results.
 
-- **Job information**: You can find out more information about your job by using `bacalhau describe`. 
+- **Job information**: You can find out more information about your job by using `bacalhau describe`.
 
 
 ```bash
@@ -302,4 +302,4 @@ cat results/stdout
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

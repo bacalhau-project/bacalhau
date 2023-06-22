@@ -14,7 +14,7 @@ sidebar_position: 5
 In this tutorial example, we will walk you through building your own docker container and running the container on the bacalhau network.
 
 ## TD;LR
-Running python container on Bacalhau
+Running a Python container on Bacalhau
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Sample Recommendation Dataset
 
-We will using a simple recommendation script that when given a movie ID will recommend other movies based on user ratings. Assuming you want if recommendations for the movie Toy Story (1995) it will recommend movies from similar categories:
+We will be using a simple recommendation script that when given a movie ID will recommend other movies based on user ratings. Assuming you want if recommendations for the movie Toy Story (1995) it will recommend movies from similar categories:
 
 ```
 Recommendations for Toy Story (1995):
@@ -49,9 +49,9 @@ Download Movielens1M dataset from this link [https://files.grouplens.org/dataset
 !wget https://files.grouplens.org/datasets/movielens/ml-1m.zip
 ```
 
-In this example we’ll be using 2 files from the MovieLens 1M dataset: ratings.dat and movies.dat. After the dataset is downloaded extract the zip and place ratings.dat and movies.dat into a folder called input
+In this example, we’ll be using 2 files from the MovieLens 1M dataset: ratings.dat and movies.dat. After the dataset is downloaded extract the zip and place ratings.dat and movies.dat into a folder called input
 
-The structure of input directory should be
+The structure of the input directory should be
 
 ```
 input
@@ -131,7 +131,7 @@ normalised_mat = ratings_mat - np.matrix(np.mean(ratings_mat, 1)).T
 cov_mat = np.cov(normalised_mat)
 evals, evecs = np.linalg.eig(cov_mat)
 
-# Calculate cosine similarity, sort by most similar and return the top N.
+# Calculate cosine similarity, sort by most similar, and return the top N.
 
 def top_cosine_similarity(data, movie_id, top_n=10):
    
@@ -179,8 +179,8 @@ What the similar-movies.py script does
 * Create the ratings matrix of shape (m×u) with rows as movies and columns as user
 * Normalise matrix (subtract mean off)
 * Compute SVD
-* Calculate cosine similarity, sort by most similar and return the top N.
-* Select k principal components to represent the movies, a movie_id to find recommendations and print the top_n results.
+* Calculate cosine similarity, sort by most similar, and return the top N.
+* Select k principal components to represent the movies, a movie_id to find recommendations, and print the top_n results.
 
 For further reading on how the script works, go to [Simple Movie Recommender Using SVD | Alyssa](https://alyssaq.github.io/2015/20150426-simple-movie-recommender-using-svd/)
 
@@ -210,9 +210,9 @@ RUN pip install -r requirements.txt
 ```
 
 
-We will use the python:3.8 docker image and add our script `similar-movies.py` to copy the script to the docker image, similarly we also add the dataset directory and also the requirements, after that run the command to install the dependencies in the image
+We will use the python:3.8 docker image and add our script `similar-movies.py` to copy the script to the docker image, similarly, we also add the dataset directory and also the requirements, after that run the command to install the dependencies in the image
 
-The final folder structure will look like this: 
+The final folder structure will look like this:
 
 
 ```
@@ -267,11 +267,11 @@ docker push jsace/python-similar-movies
 
 ## Running a Bacalhau Job
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. You can submit a Bacalhau job using by running your container on bacalhau with default or custom parameters
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. You can submit a Bacalhau job using by running your container on Bacalhau with default or custom parameters
 
 ### Running the Container with Default Parameters
 
-To submit a Bacalhau job by running your container on bacalhau with default parameters, run the following Bacalhau command:
+To submit a Bacalhau job by running your container on Bacalhau with default parameters, run the following Bacalhau command:
 
 
 ```bash
@@ -287,17 +287,17 @@ jsace/python-similar-movies \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
+* `bacalhau docker run`: call to bacalhau
 
 * `jsace/python-similar-movies`: the name and the tag of the docker image we are using
 
-* `-- python similar-movies.py`: execute the python script
+* `-- python similar-movies.py`: execute the Python script
 
 When a job is submitted, Bacalhau prints out the related `job_id`. We store that in an environment variable so that we can reuse it later on.
 
 ### Running the Container with Custom Parameters
 
-To submit a Bacalhau job by running your container on bacalhau with custom parameters, run the following Bacalhau command:
+To submit a Bacalhau job by running your container on Bacalhau with custom parameters, run the following Bacalhau command:
 
 
 ```
@@ -310,7 +310,7 @@ jsace/python-similar-movies \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
+* `bacalhau docker run`: call to bacalhau
 
 * `jsace/python-similar-movies`: the name and the tag of the docker image we are using
 
@@ -318,7 +318,7 @@ Let's look closely at the command above:
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash

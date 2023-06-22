@@ -19,7 +19,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Submit the workload
 
-To submit a workload to Bacalhau, we will use the `bacalhau docker run` command. 
+To submit a workload to Bacalhau, we will use the `bacalhau docker run` command.
 
 
 ```bash
@@ -47,7 +47,7 @@ We created a 72px wide video thumbnails for all the videos in the `inputs` direc
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -74,7 +74,7 @@ mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
 
-After the download has finished you should see the following contents in results directory.
+After the download has finished you should see the following contents in the results directory.
 
 ## Viewing your Job Output
 
@@ -82,7 +82,7 @@ To view the file, run the following command:
 
 ### Display the videos
 
-To view the videos, we will use **glob** to return all file paths that match a specific pattern. 
+To view the videos, we will use **glob** to return all file paths that match a specific pattern.
 
 <!-- This is for the benefit of the documentation -->
 <video src={require('./scaled_Bird_flying_over_the_lake.mp4').default} controls  >
@@ -97,4 +97,4 @@ Your browser does not support the <code>video</code> element.
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions, and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

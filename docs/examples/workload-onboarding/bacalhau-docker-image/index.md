@@ -67,7 +67,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest version
 
 ## Running a Bacalhau Job
 
-To submit a bi to Bacalhau, we use the `bacalhau docker run` command. 
+To submit a bi to Bacalhau, we use the `bacalhau docker run` command.
 
 
 ```bash
@@ -80,7 +80,7 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
             sh -c 'uname -a && echo "Hello from Docker Bacalhau!"'
 ```
 
-In this example, I run an ubuntu-based job that echo's some stuff.
+In this example, I run an Ubuntu-based job that echo's some stuff.
 
 ### Structure of the command
 
@@ -110,9 +110,9 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
             Hello from Docker Bacalhau!
 
 
-## Sumbit a Job With Output Files
+## Submit a Job With Output Files
 
-One inconvenience that you'll see is that you'll need to mount directories into the container to access files. This is because the container is running in a separate environment to your host machine. Let's take a look at the example below:
+One inconvenience that you'll see is that you'll need to mount directories into the container to access files. This is because the container is running in a separate environment from your host machine. Let's take a look at the example below:
 
 The first part of the example should look familiar, except for the Docker commands.
 
@@ -136,7 +136,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -165,14 +165,14 @@ docker run -t ghcr.io/bacalhau-project/bacalhau:latest \
 bacalhau get ${JOB_ID} --output-dir result
 ```
 
-After the download has finished you should see the following contents in results directory. 
+After the download has finished you should see the following contents in the results directory.
 
 
 
 
-    
+
 ![png](index_files/index_25_0.png)
-    
+
 
 
 

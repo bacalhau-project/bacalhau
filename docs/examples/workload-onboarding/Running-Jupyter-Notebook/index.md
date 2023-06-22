@@ -15,7 +15,7 @@ In the following sections, we will explore two examples of executing Jupyter Not
 
 1. Executing a Simple Hello World Notebook: We will begin with a basic example to familiarize you with the process of running a Jupyter Notebook on Bacalhau. We will execute a simple "Hello, World!" notebook to demonstrate the steps required for running a notebook in a containerized environment.
 
-2. Notebook to Train an MNIST Model: : In this section, we will dive into a more advanced example. We will execute a Jupyter Notebook that trains a machine learning model on the popular MNIST dataset. This will showcase the potential of Bacalhau to handle more complex tasks while providing you with insights into utilizing containerized environments for your data science projects.
+2. Notebook to Train an MNIST Model: In this section, we will dive into a more advanced example. We will execute a Jupyter Notebook that trains a machine-learning model on the popular MNIST dataset. This will showcase the potential of Bacalhau to handle more complex tasks while providing you with insights into utilizing containerized environments for your data science projects.
 
 ## 1. Executing a Simple Hello World Notebook
 
@@ -52,7 +52,7 @@ jsacex/jupyter \
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -79,7 +79,7 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-After the download has finished you should see the following contents in results directory.
+After the download has finished you should see the following contents in the results directory.
 
 
 ```bash
@@ -94,7 +94,7 @@ ls results/outputs
 #### Prerequisite
 - Install Docker on your local machine.
 - Sign up for a DockerHub account if you don't already have one.
-Steps
+  Steps
 
 Step 1: Create a Dockerfile
 Create a new file named Dockerfile in your project directory with the following content:
@@ -127,7 +127,7 @@ In your terminal, navigate to the directory containing the Dockerfile and run th
 ```bash
 docker build -t your-dockerhub-username/jupyter-mnist-tensorflow:latest .
 ```
-Replace your-dockerhub-username with your actual DockerHub username. This command will build the Docker image and tag it with your DockerHub username and the name "your-dockerhub-username/jupyter-mnist-tensorflow".
+Replace "your-dockerhub-username" with your actual DockerHub username. This command will build the Docker image and tag it with your DockerHub username and the name "your-dockerhub-username/jupyter-mnist-tensorflow".
 
 Step 3: Push the Docker Image to DockerHub
 Once the build process is complete, Next, push the Docker image to DockerHub using the following command:
@@ -135,9 +135,9 @@ Once the build process is complete, Next, push the Docker image to DockerHub usi
 docker push your-dockerhub-username/jupyter-mnist-tensorflow
 ```
 
-Again, replace your-dockerhub-username with your actual DockerHub username. This command will push the Docker image to your DockerHub repository.
+Again, replace "your-dockerhub-username" with your actual DockerHub username. This command will push the Docker image to your DockerHub repository.
 
-### Running the job on bacalhau
+### Running the job on Bacalhau
 
 #### Prerequisite
 
@@ -171,7 +171,7 @@ jsacex/jupyter-tensorflow-mnist:v02 \
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 ```bash
@@ -198,7 +198,7 @@ rm -rf results && mkdir results # Temporary directory to store the results
 bacalhau get ${JOB_ID} --output-dir results # Download the results
 ```
 
-After the download has finished you should see the following contents in results directory.
+After the download has finished you should see the following contents in the results directory.
 
 
 ```bash

@@ -7,7 +7,7 @@ sidebar_position: 10
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org/) program rather than using a Docker container. This examples demonstrates how to compile a [Rust](https://www.rust-lang.org/) project into WebAssembly and run the program on Bacalhau.
+Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org/) program rather than using a Docker container. This example demonstrates how to compile a [Rust](https://www.rust-lang.org/) project into WebAssembly and run the program on Bacalhau.
 
 ## TD;LR
 Run WASM job on Bacalhau
@@ -21,7 +21,7 @@ For those using the notebook, these are installed in hidden cells below.
 
 ## Develop a Rust Program Locally
 
-We can use `cargo` (which will have been installed by `rustup`) to start a new project and compile it. 
+We can use `cargo` (which will have been installed by `rustup`) to start a new project and compile it.
 
 
 ```bash
@@ -29,7 +29,7 @@ We can use `cargo` (which will have been installed by `rustup`) to start a new p
 cargo init my-program
 ```
 
-We can then write a Rust program. Rust programs that run on Bacalhau can read and write files, access a simple clock and make use of psudeo-random numbers. They cannot memory-map files or run code on multiple threads.
+We can then write a Rust program. Rust programs that run on Bacalhau can read and write files, access a simple clock, and make use of pseudo-random numbers. They cannot memory-map files or run code on multiple threads.
 
 The below program will make use of the Rust `imageproc` create to resize an image through seam carving, based on [an example from their repository](https://github.com/image-rs/imageproc/blob/master/examples/seam_carving.rs).
 
@@ -132,7 +132,7 @@ This will generate a WASM file at `./my-program/target/wasm32-wasi/my-program.wa
 ## Running WASM on Bacalhau
 Now that we have a WASM binary, we can upload it to IPFS and use it as input to a Bacalhau job.
 
-The -i switch allows specifying a URI to be mounted as named volume in the job, which can be an IPFS CID, HTTP URL or S3 object.
+The -i switch allows specifying a URI to be mounted as a named volume in the job, which can be an IPFS CID, HTTP URL, or S3 object.
 
 For this example, we are using an image of the Statue of Liberty that has been pinned to a storage facility.
 
@@ -169,9 +169,9 @@ display.Image("./wasm_results/outputs/original.png")
 
 
 
-    
+
 ![png](index_files/index_18_0.png)
-    
+
 
 
 
@@ -183,9 +183,9 @@ display.Image("./wasm_results/outputs/annotated_gradients.png")
 
 
 
-    
+
 ![png](index_files/index_19_0.png)
-    
+
 
 
 
@@ -197,7 +197,7 @@ display.Image("./wasm_results/outputs/shrunk.png")
 
 
 
-    
+
 ![png](index_files/index_20_0.png)
     
 

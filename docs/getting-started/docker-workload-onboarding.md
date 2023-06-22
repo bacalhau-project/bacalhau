@@ -7,22 +7,22 @@ import ReactPlayer from 'react-player'
 
 # Onboarding Your Docker Workloads
 
-Bacalhau executes jobs by running them within containers. This sections describes how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client. 
+Bacalhau executes jobs by running them within containers. This section describes how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client.
 
 :::tip
 
-You can check out this example tutorial on [how to work with custom containers in Bacalhau](https://docs.bacalhau.org/examples/workload-onboarding/custom-containers/) to see how we used all these steps together. 
+You can check out this example tutorial on [how to work with custom containers in Bacalhau](https://docs.bacalhau.org/examples/workload-onboarding/custom-containers/) to see how we used all these steps together.
 
 :::
 
 ## Requirements
-Here are some few things to note before getting started:
+Here are a few things to note before getting started:
 * You must publish the container to a public container registry that is accessible from the Bacalhau network
 * Bacalhau supports only `amd64` images. Does not support `arm64` images
 * Containers must have an `x86_64` CPU architecture
-* The `--input ipfs://...` flag does not support CID subpaths only **directories** 
+* The `--input ipfs://...` flag does not support CID subpaths only **directories**
 * The `--input https://...` flag does not support URL directories only **single files** only
-* The `--input s3://...` flag does support S3 keys and prefixes. e.g. `s3://bucket/logs-2023-04*` for all April 2023 logs 
+* The `--input s3://...` flag does support S3 keys and prefixes. e.g. `s3://bucket/logs-2023-04*` for all April 2023 logs
 
 :::tip
 
@@ -201,7 +201,7 @@ The `--input` flag does not support URL directories.
 <!-- <ReactPlayer playing controls url='https://www.youtube.com/watch?v=t2AHD8yJhLY' playing='false'/> -->
 
 ## Troubleshooting
-If you run into this compute error while running your docker image 
+If you run into this compute error while running your docker image
 
 ```
 Creating job for submission ... done ✅

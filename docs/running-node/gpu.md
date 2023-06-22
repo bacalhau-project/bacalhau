@@ -6,7 +6,7 @@ description: How to enable GPU support on your Bacalhau node.
 
 # GPU Support
 
-Bacalhau supports GPUs out of the box, and defaults to allowing execution on all GPUs installed on the node.
+Bacalhau supports GPUs out of the box and defaults to allowing execution on all GPUs installed on the node.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 
 ### Unofficial GPU Node Setup
 
-You should review the documented links above for official install instructions. For a quickstart, you can use:
+You should review the documented links above for official install instructions. For a quick start, you can use:
 
 ```bash
 sudo apt update

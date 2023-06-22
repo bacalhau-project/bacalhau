@@ -70,7 +70,7 @@ head -n 15 ./results/combined_results/stdout
 
 ## Get the CID From the Completed Job
 
-To get the CID from a completed jon output, run the following command:
+To get the output CID from a completed job, run the following command:
 
 ```bash
 %%bash --out cid
@@ -100,4 +100,4 @@ The job has been submitted and Bacalhau has printed out the related job id. We s
 
 ## Need Support?
 
-For questions, feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)
+For questions and feedback, please reach out in our [forum](https://github.com/filecoin-project/bacalhau/discussions)

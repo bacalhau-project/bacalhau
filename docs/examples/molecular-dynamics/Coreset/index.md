@@ -1,14 +1,14 @@
 ---
-sidebar_label: Coresets On Bacalhau 
+sidebar_label: Coresets On Bacalhau
 sidebar_position: 2
 ---
-# Coresets On Bacalhau 
+# Coresets On Bacalhau
 
 
 
 [![stars - badge-generator](https://img.shields.io/github/stars/bacalhau-project/bacalhau?style=social)](https://github.com/bacalhau-project/bacalhau)
 
-[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method the coreset method can also be applied to other datasets. In this case, we use the coreset method which can lead to a fast speed in solving the k-means problem among the big data with high accuracy in the meantime.
+[Coreset ](https://arxiv.org/abs/2011.09384)is a data subsetting method. Since the uncompressed datasets can get very large when compressed, it becomes much harder to train them as training time increases with the dataset size. To reduce the training time to save costs we use the coreset method; the coreset method can also be applied to other datasets. In this case, we use the coreset method which can lead to a fast speed in solving the k-means problem among the big data with high accuracy in the meantime.
 
 We construct a small coreset for arbitrary shapes of numerical data with a decent time cost. The implementation was mainly based on the coreset construction algorithm that was proposed by Braverman et al. (SODA 2021).
 
@@ -28,9 +28,9 @@ git clone https://github.com/js-ts/Coreset
 ```
 
 
-To download the dataset you should open Street Map, which is a public repository that aims to generate and distribute accessible geographic data for the whole world. Basically, it supplies detailed position information, including the longitude and latitude of the places around the world. 
+To download the dataset you should open Street Map, which is a public repository that aims to generate and distribute accessible geographic data for the whole world. Basically, it supplies detailed position information, including the longitude and latitude of the places around the world.
 
- The dataset is a osm.pbf (compressed format for .osm file), the file can be downloaded from [Geofabrik Download Server](https://download.geofabrik.de/) 
+The dataset is a osm.pbf (compressed format for .osm file), the file can be downloaded from [Geofabrik Download Server](https://download.geofabrik.de/)
 
 
 
@@ -69,7 +69,7 @@ To run coreset locally, you need to convert from compressed pbf format to geojso
 osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 ```
 
-The following command is to run the python script to generate the coreset:
+The following command is to run the Python script to generate the coreset:
 
 
 ```bash
@@ -140,7 +140,7 @@ docker push jsace/coreset
 
 ## Running a Bacalhau Job
 
-After the repo image has been pushed to docker hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
+After the repo image has been pushed to Docker Hub, we can now use the container for running on Bacalhau. To submit a job, run the following Bacalhau command:
 
 ```
 bacalhau docker run \
@@ -153,7 +153,7 @@ python Coreset/python/coreset.py -f input/liechtenstein-latest.geojson -o output
 
 Backend: Docker backend here for running the job
 
-* `input/liechtenstein-latest.osm.pbf`: Upload the .osm.pbf file 
+* `input/liechtenstein-latest.osm.pbf`: Upload the .osm.pbf file
 
 * `-i ipfs://QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/inpu`: mount dataset to the folder inside the container so it can be used by the script
 
@@ -174,7 +174,7 @@ python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs
 
 We get the output in stdout
 
-Additional parameters: 
+Additional parameters:
 * `-k`: amount of initialized centers (default=5)
 
 * `-n`: size of coreset (default=50)
@@ -191,7 +191,7 @@ When a job is submitted, Bacalhau prints out the related `job_id`. We store that
 
 ## Checking the State of your Jobs
 
-- **Job status**: You can check the status of the job using `bacalhau list`. 
+- **Job status**: You can check the status of the job using `bacalhau list`.
 
 
 
@@ -229,7 +229,7 @@ To view the file, run the following command:
 ls results/
 ```
 
-To view the output csv file run:
+To view the output as a CSV file, run:
 
 
 ```bash

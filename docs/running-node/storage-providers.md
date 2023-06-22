@@ -50,7 +50,7 @@ bacalhau serve \
   --estuary-api-key XXX
 ```
 
-To get an api key for estuary, you'll need to [register an account](https://estuary.tech/) and then [create an api key](https://estuary.tech/api-admin).
+To get an API key for estuary, you'll need to [register an account](https://estuary.tech/) and then [create an api key](https://estuary.tech/api-admin).
 
 ### IPFS
 

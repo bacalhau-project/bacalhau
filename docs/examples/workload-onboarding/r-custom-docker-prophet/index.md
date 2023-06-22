@@ -25,7 +25,7 @@ To get started, you need to install the Bacalhau client, see more information [h
 
 ## Running Prophet in R Locally
 
-Open R studio or R supported IDE. If you want to run this on a notebook server, then make sure you use an R kernel. Prophet is a CRAN package so you can use install.packages to install the prophet package.
+Open R studio or R-supported IDE. If you want to run this on a notebook server, then make sure you use an R kernel. Prophet is a CRAN package so you can use install.packages to install the prophet package.
 
 
 ```bash
@@ -118,7 +118,7 @@ COPY Saturating-Forecasts.R R
 WORKDIR /R
 ```
 
-These commands specify how the image will be built, and what extra requirements will be included. We use r-base as the base image, and then install the prophet package. We then copy the R script into the container and set the working directory to the R folder.
+These commands specify how the image will be built, and what extra requirements will be included. We use r-base as the base image and then install the prophet package. We then copy the R script into the container and set the working directory to the R folder.
 
 
 ### Build the container
@@ -145,7 +145,7 @@ docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/ex
 
 ### Push the container
 
-Next, upload the image to the registry. This can be done by using the Docker hub username, repo name or tag.
+Next, upload the image to the registry. This can be done by using the Docker hub username, repo name, or tag.
 
 ```
 docker push <hub-user>/<repo-name>:<tag>
@@ -176,15 +176,15 @@ bacalhau docker run \
 
 Let's look closely at the command above:
 
-* `bacalhau docker run`: call to bacalhau 
-  
+* `bacalhau docker run`: call to bacalhau
+
 * `-i ipfs://QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt`: CIDs to use on the job. Mounts them at '/inputs' in the execution.
 
 * `ghcr.io/bacalhau-project/examples/r-prophet:0.0.2`: the name and the tag of the docker image we are using
 
-* `/example_wp_log_R.csv `: path to input dataset
+* `/example_wp_log_R.csv `: path to the input dataset
 
-* `/outputs/output0.pdf....`: path to output
+* `/outputs/output0.pdf....`: path to the output
 
 * `Rscript Saturating-Forecasts.R`: execute the R script
 
@@ -229,7 +229,7 @@ To view the file, run the following command:
 ls results/outputs
 ```
 
-You can't natively display PDFs in notebooks, so here are some static images of the PDFS:
+You can't natively display PDFs in notebooks, so here are some static images of the PDFs:
 
 * output0.pdf
 

@@ -38,7 +38,7 @@ Jobs will be provided with [`http_proxy` and `https_proxy` environment variables
 The required networking can be specified using the `--network` flag. For `http` networking, the required domains can be specified using the `--domain` flag, multiple times for as many domains as required. Specifying a domain starting with a `.` means that all sub-domains will be included. For example, specifying `.example.com` will cover `some.thing.example.com` as well as `example.com`.
 
 :::caution
-Bacalhau jobs are explicitly prevented from starting other Bacalhau jobs, even if a Bacalhau requestor node is specified on the HTTP allowlist.
+Bacalhau jobs are explicitly prevented from starting other Bacalhau jobs, even if a Bacalhau requester node is specified on the HTTP allowlist.
 :::
 
 ## Support for networked jobs on the public network
