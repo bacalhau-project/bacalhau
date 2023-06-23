@@ -94,7 +94,7 @@ const config = {
               },
               {
                 label: "FAQs",
-                to: "https://docs.bacalhau.org/faqs",
+                to: "https://docs.bacalhau.org/troubleshooting/faqs",
               },
             ],
           },
