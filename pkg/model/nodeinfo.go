@@ -6,10 +6,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
+//go:generate stringer -type=NodeType -trimprefix=NodeType -output=nodeinfo_string.go
 type NodeType int
 
 const (
-	nodeTypeUnknown NodeType = iota
+	NodeTypeRequester NodeType = iota
 	NodeTypeCompute
 )
 

@@ -209,6 +209,7 @@ func NewRequesterNode(
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
 		StorageProviders:   storageProviders,
+		NodeDiscoverer:     nodeDiscoveryChain,
 	})
 	err = requesterAPIServer.RegisterAllHandlers()
 	if err != nil {

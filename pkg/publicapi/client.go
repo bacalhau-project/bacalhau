@@ -87,6 +87,18 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 	return res.VersionInfo, nil
 }
 
+func (apiClient *APIClient) Get(ctx context.Context, api string, resData any) error {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Get")
+	defer span.End()
+
+	addr := apiClient.BaseURI.JoinPath(api).String()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
+	if err != nil {
+		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating Get request: %v", err))
+	}
+	return apiClient.Do(ctx, req, resData)
+}
+
 func (apiClient *APIClient) PostSigned(ctx context.Context, api string, reqData, resData interface{}) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.PostSigned")
 	defer span.End()
@@ -115,13 +127,17 @@ func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resDa
 		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating Post request: %v", err))
 	}
 	req.Header.Set("Content-type", "application/json")
+	return apiClient.Do(ctx, req, resData)
+}
+
+func (apiClient *APIClient) Do(ctx context.Context, req *http.Request, resData any) error {
 	for header, value := range apiClient.DefaultHeaders {
 		req.Header.Set(header, value)
 	}
 	req.Close = true // don't keep connections lying around
 
 	var res *http.Response
-	res, err = apiClient.Client.Do(req)
+	res, err := apiClient.Client.Do(req)
 	if err != nil {
 		errString := err.Error()
 		if errorResponse, ok := err.(*bacerrors.ErrorResponse); ok {
