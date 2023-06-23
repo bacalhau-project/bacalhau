@@ -22,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/id"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/nodes"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/simulate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
@@ -120,6 +121,9 @@ func NewRootCmd() *cobra.Command {
 
 	// List jobs
 	RootCmd.AddCommand(list.NewCmd())
+
+	// List nodes
+	RootCmd.AddCommand(nodes.NewCmd())
 
 	// ====== Run a server
 
