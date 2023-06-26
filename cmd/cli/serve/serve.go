@@ -12,8 +12,6 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
