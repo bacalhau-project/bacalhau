@@ -2,17 +2,17 @@ package list
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/rs/zerolog/log"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -39,32 +39,26 @@ var (
 )
 
 type ListOptions struct {
-	HideHeader   bool                // Hide the column headers
-	IDFilter     string              // Filter by Job List to IDs matching substring.
-	IncludeTags  []model.IncludedTag // Only return jobs with these annotations
-	ExcludeTags  []model.ExcludedTag // Only return jobs without these annotations
-	NoStyle      bool                // Remove all styling from table output.
-	MaxJobs      int                 // Print the first NUM jobs instead of the first 10.
-	OutputFormat string              // The output format for the list of jobs (json or text)
-	SortReverse  bool                // Reverse order of table - for time sorting, this will be newest first.
-	SortBy       ColumnEnum          // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
-	OutputWide   bool                // Print full values in the table results
-	ReturnAll    bool                // Return all jobs, not just those that belong to the user
+	IDFilter    string               // Filter by Job List to IDs matching substring.
+	IncludeTags []model.IncludedTag  // Only return jobs with these annotations
+	ExcludeTags []model.ExcludedTag  // Only return jobs without these annotations
+	MaxJobs     int                  // Print the first NUM jobs instead of the first 10.
+	OutputOpts  output.OutputOptions // The output format for the list of jobs (json or text)
+	SortReverse bool                 // Reverse order of table - for time sorting, this will be newest first.
+	SortBy      ColumnEnum           // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
+	ReturnAll   bool                 // Return all jobs, not just those that belong to the user
 }
 
 func NewListOptions() *ListOptions {
 	return &ListOptions{
-		HideHeader:   false,
-		IDFilter:     "",
-		IncludeTags:  model.IncludeAny,
-		ExcludeTags:  DefaultExcludedTags,
-		NoStyle:      false,
-		MaxJobs:      10,
-		OutputFormat: "text",
-		SortReverse:  true,
-		SortBy:       ColumnCreatedAt,
-		OutputWide:   false,
-		ReturnAll:    false,
+		IDFilter:    "",
+		IncludeTags: model.IncludeAny,
+		ExcludeTags: DefaultExcludedTags,
+		MaxJobs:     10,
+		OutputOpts:  output.OutputOptions{Format: output.TableFormat},
+		SortReverse: true,
+		SortBy:      ColumnCreatedAt,
+		ReturnAll:   false,
 	}
 }
 
@@ -84,21 +78,14 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	listCmd.PersistentFlags().BoolVar(&OL.HideHeader, "hide-header", OL.HideHeader,
-		`do not print the column headers.`)
 	listCmd.PersistentFlags().StringVar(&OL.IDFilter, "id-filter", OL.IDFilter, `filter by Job List to IDs matching substring.`)
 	listCmd.PersistentFlags().Var(flags.IncludedTagFlag(&OL.IncludeTags), "include-tag",
 		`Only return jobs that have the passed tag in their annotations`)
 	listCmd.PersistentFlags().Var(flags.ExcludedTagFlag(&OL.ExcludeTags), "exclude-tag",
 		`Only return jobs that do not have the passed tag in their annotations`)
-	listCmd.PersistentFlags().BoolVar(&OL.NoStyle, "no-style", OL.NoStyle, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
 		&OL.MaxJobs, "number", "n", OL.MaxJobs,
 		`print the first NUM jobs instead of the first 10.`,
-	)
-	listCmd.PersistentFlags().StringVar(
-		&OL.OutputFormat, "output", OL.OutputFormat,
-		`The output format for the list of jobs (json or text)`,
 	)
 	listCmd.PersistentFlags().BoolVar(&OL.SortReverse, "reverse", OL.SortReverse,
 		//nolint:lll // Documentation
@@ -110,16 +97,12 @@ func NewCmd() *cobra.Command {
 	if OL.SortBy == "" {
 		OL.SortBy = ColumnCreatedAt
 	}
-
-	listCmd.PersistentFlags().BoolVar(
-		&OL.OutputWide, "wide", OL.OutputWide,
-		`Print full values in the table results`,
-	)
 	listCmd.PersistentFlags().BoolVar(
 		&OL.ReturnAll, "all", OL.ReturnAll,
 		//nolint:lll // Documentation
 		`Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.`,
 	)
+	listCmd.PersistentFlags().AddFlagSet(flags.OutputFormatFlags(&OL.OutputOpts))
 
 	return listCmd
 }
@@ -152,19 +135,52 @@ func (c *ColumnEnum) Set(v string) error {
 	}
 }
 
+const (
+	maxDescWidth = 40
+	maxDescLines = 10
+)
+
+var listColumns = []output.TableColumn[*model.JobWithInfo]{
+	{
+		ColumnConfig: table.ColumnConfig{Name: "created", WidthMax: 8, WidthMaxEnforcer: shortenTime},
+		Value:        func(j *model.JobWithInfo) string { return j.Job.Metadata.CreatedAt.Format(time.DateTime) },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{
+			Name:             "id",
+			WidthMax:         model.ShortIDLength,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return system.GetShortID(col) }},
+		Value: func(jwi *model.JobWithInfo) string { return jwi.Job.ID() },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "job", WidthMax: maxDescWidth, WidthMaxEnforcer: text.WrapText},
+		Value: func(j *model.JobWithInfo) string {
+			jobDesc := []string{j.Job.Spec.Engine.String()}
+			// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
+			if j.Job.Spec.Engine == model.EngineDocker {
+				jobDesc = append(jobDesc, j.Job.Spec.Docker.Image)
+				jobDesc = append(jobDesc, j.Job.Spec.Docker.Entrypoint...)
+			}
+			finalStr := strings.Join(jobDesc, " ")
+			return finalStr[:system.Min(len(finalStr), maxDescLines*maxDescWidth)]
+		},
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "state", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
+		Value:        func(jwi *model.JobWithInfo) string { return job.ComputeStateSummary(jwi.State) },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "verified"},
+		Value:        job.ComputeVerifiedSummary,
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "published"},
+		Value:        job.ComputeResultsSummary,
+	},
+}
+
 func list(cmd *cobra.Command, OL *ListOptions) error {
 	ctx := cmd.Context()
-
-	log.Ctx(ctx).Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
-	log.Ctx(ctx).Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
-	log.Ctx(ctx).Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
-	log.Ctx(ctx).Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
-	log.Ctx(ctx).Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
-	log.Ctx(ctx).Debug().Msgf("Found sort flag: %s", OL.SortBy)
-	log.Ctx(ctx).Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
-	log.Ctx(ctx).Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
-	log.Ctx(ctx).Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
-
 	jobs, err := util.GetAPIClient(ctx).List(
 		ctx,
 		OL.IDFilter,
@@ -176,128 +192,21 @@ func list(cmd *cobra.Command, OL *ListOptions) error {
 		OL.SortReverse,
 	)
 	if err != nil {
-		return fmt.Errorf("error listing jobs: %w", err)
+		util.Fatal(cmd, err, 1)
+		return err
 	}
 
-	numberInTable := system.Min(OL.MaxJobs, len(jobs))
-	log.Ctx(ctx).Debug().Msgf("Number of jobs printing: %d", numberInTable)
+	return output.Output(cmd, listColumns, OL.OutputOpts, jobs)
+}
 
-	var msgBytes []byte
-	if OL.OutputFormat == util.JSONFormat {
-		msgBytes, err = model.JSONMarshalWithMax(jobs)
+func shortenTime(formattedTime string, maxLen int) string {
+	if len(formattedTime) > maxLen {
+		t, err := time.Parse(time.DateTime, formattedTime)
 		if err != nil {
-			return fmt.Errorf("error marshaling jobs to JSON: %w", err)
+			panic(err)
 		}
-		cmd.Printf("%s\n", msgBytes)
-	} else {
-		tw := table.NewWriter()
-		tw.SetOutputMirror(cmd.OutOrStderr())
-		if !OL.HideHeader {
-			tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
-		}
-		columnConfig := []table.ColumnConfig{}
-		tw.SetColumnConfigs(columnConfig)
-
-		var rows []table.Row
-		for _, j := range jobs {
-			var summaryRow table.Row
-			summaryRow, err = summarizeJob(j, OL)
-			if err != nil {
-				return fmt.Errorf("error summarizing job: %w", err)
-			}
-			rows = append(rows, summaryRow)
-		}
-		if err != nil {
-			return err
-		}
-		tw.AppendRows(rows)
-
-		if OL.NoStyle {
-			tw.SetStyle(table.Style{
-				Name:   "StyleDefault",
-				Box:    table.StyleBoxDefault,
-				Color:  table.ColorOptionsDefault,
-				Format: table.FormatOptionsDefault,
-				HTML:   table.DefaultHTMLOptions,
-				Options: table.Options{
-					DrawBorder:      false,
-					SeparateColumns: false,
-					SeparateFooter:  false,
-					SeparateHeader:  false,
-					SeparateRows:    false,
-				},
-				Title: table.TitleOptionsDefault,
-			})
-		} else {
-			tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
-		}
-
-		tw.Render()
+		formattedTime = t.Format(time.TimeOnly)
 	}
 
-	return nil
-}
-
-// Renders job details into a table row
-func summarizeJob(j *model.JobWithInfo, OL *ListOptions) (table.Row, error) {
-	jobDesc := []string{
-		j.Job.Spec.Engine.String(),
-	}
-	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-	if j.Job.Spec.Engine == model.EngineDocker {
-		jobDesc = append(jobDesc, j.Job.Spec.Docker.Image, strings.Join(j.Job.Spec.Docker.Entrypoint, " "))
-	}
-
-	// compute state summary
-	//nolint:gocritic
-	stateSummary := job.ComputeStateSummary(j.State)
-
-	// compute verifiedSummary
-	verifiedSummary := job.ComputeVerifiedSummary(j)
-
-	// compute resultSummary
-	resultSummary := job.ComputeResultsSummary(j)
-
-	row := table.Row{
-		shortenTime(OL.OutputWide, j.Job.Metadata.CreatedAt),
-		ShortID(OL.OutputWide, j.Job.Metadata.ID),
-		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
-		shortenString(OL.OutputWide, stateSummary),
-		shortenString(OL.OutputWide, verifiedSummary),
-		shortenString(OL.OutputWide, resultSummary),
-	}
-
-	return row, nil
-}
-
-func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
-	if outputWide {
-		return t.Format("06-01-02-15:04:05")
-	}
-
-	return t.Format("15:04:05")
-}
-
-var DefaultShortenStringLength = 20
-
-func shortenString(outputWide bool, st string) string {
-	if outputWide {
-		return st
-	}
-
-	if len(st) < DefaultShortenStringLength {
-		return st
-	}
-
-	return st[:20] + "..."
-}
-
-func ShortID(outputWide bool, id string) string {
-	if outputWide {
-		return id
-	}
-	if len(id) < model.ShortIDLength {
-		return id
-	}
-	return id[:model.ShortIDLength]
+	return formattedTime
 }

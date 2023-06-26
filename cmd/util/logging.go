@@ -18,11 +18,6 @@ import (
 
 var LoggingMode = logger.LogModeDefault
 
-const (
-	JSONFormat string = "json"
-	YAMLFormat string = "yaml"
-)
-
 func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	ctx := cmd.Context()
 
