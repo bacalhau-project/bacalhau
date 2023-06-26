@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
-// TODO you must vlidate your assumptions of how this works before continuing.
 func GetAPIClient(ctx context.Context) *publicapi.RequesterAPIClient {
 	var apiHost string
 	var apiPort uint16

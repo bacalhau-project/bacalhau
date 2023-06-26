@@ -287,8 +287,8 @@ func newValidateCmd() *cobra.Command {
 		Short: "Check that a WASM program is runnable on the network",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err, exitcode := validateWasm(cmd, args, opts); err != nil {
-				util.Fatal(cmd, err, exitcode)
+			if err := validateWasm(cmd, args, opts); err != nil {
+				util.Fatal(cmd, err, 1)
 			}
 			return nil
 		},
@@ -303,7 +303,7 @@ func newValidateCmd() *cobra.Command {
 	return validateWasmCommand
 }
 
-func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) (error, int) {
+func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
 	programPath := args[0]
@@ -317,27 +317,24 @@ func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) (erro
 	loader := wasm.NewModuleLoader(engine, config, storage)
 	module, err := loader.Load(ctx, programPath)
 	if err != nil {
-		return err, util.ExitError
+		return err
 	}
 
 	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
 	if err != nil {
-		// TODO what is exit code 3?!
-		return err, 3
+		return err
 	}
 
 	err = wasm.ValidateModuleImports(module, wasi)
 	if err != nil {
-		// TODO what is exit code 2?!
-		return err, 2
+		return err
 	}
 
 	err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
 	if err != nil {
-		// TODO what is exit code 2?!
-		return err, 2
+		return err
 	}
 
 	cmd.Println("OK")
-	return nil, util.ExitSuccess
+	return nil
 }

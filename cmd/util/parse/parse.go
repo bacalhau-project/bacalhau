@@ -30,12 +30,6 @@ func Labels(ctx context.Context, labels []string) ([]string, error) {
 		log.Ctx(ctx).Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
 			RegexString,
 			strings.Join(unSafeAnnotations, ", "))
-		/*
-			return nil, fmt.Errorf("the following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
-				RegexString,
-				strings.Join(unSafeAnnotations, ", "))
-
-		*/
 	}
 	return jobAnnotations, nil
 }
