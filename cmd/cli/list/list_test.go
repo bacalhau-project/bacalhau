@@ -81,7 +81,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		var err error
 		j := testutils.MakeNoopJob()
 		j, err = suite.Client.Submit(ctx, j)
-		jobIds = append(jobIds, list.ShortID(false, j.Metadata.ID))
+		jobIds = append(jobIds, system.GetShortID(j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
 		require.NoError(suite.T(), err)
 	}
@@ -90,20 +90,15 @@ func (suite *ListSuite) TestList_IdFilter() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 		"--id-filter", jobIds[0],
+		"--wide",
 	)
 	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), "\n", out[len(out)-1:], "Expected output to end with a newline: %q", out)
 
 	// parse list output
-	var seenIds []string
-	for _, line := range strings.Split(out, "\n") {
-		parts := strings.Split(line, " ")
-		if len(parts) > 2 {
-			seenIds = append(seenIds, strings.Split(line, " ")[3])
-		}
-	}
-
-	require.Equal(suite.T(), 1, len(seenIds), "We didn't get only one result")
-	require.Equal(suite.T(), seenIds[0], jobIds[0], "The returned job id was not what we asked for")
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	require.Equal(suite.T(), 1, len(lines), "We didn't get only one result: %q", lines)
+	require.Contains(suite.T(), lines[0], jobIds[0], "The returned job id was not what we asked for")
 
 	//// Test --output json
 
@@ -271,7 +266,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					j := testutils.MakeNoopJob()
 					j, err = suite.Client.Submit(ctx, j)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, list.ShortID(false, j.Metadata.ID))
+					jobIDs = append(jobIDs, system.GetShortID(j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ

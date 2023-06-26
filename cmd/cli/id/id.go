@@ -1,15 +1,16 @@
 package id
 
 import (
-	"encoding/json"
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 type IDInfo struct {
@@ -19,6 +20,9 @@ type IDInfo struct {
 
 func NewCmd() *cobra.Command {
 	OS := serve.NewServeOptions()
+	outputOpts := output.OutputOptions{
+		Format: output.JSONFormat,
+	}
 
 	// make sure serve options point to local mode
 	OS.PeerConnect = serve.DefaultPeerConnect
@@ -28,34 +32,40 @@ func NewCmd() *cobra.Command {
 		Use:   "id",
 		Short: "Show bacalhau node id info",
 		Run: func(cmd *cobra.Command, _ []string) {
-			if err := id(cmd, OS); err != nil {
+			if err := id(cmd, OS, outputOpts); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
 
+	idCmd.Flags().AddFlagSet(flags.OutputFormatFlags(&outputOpts))
 	serve.SetupLibp2pCLIFlags(idCmd, OS)
 
 	return idCmd
 }
 
-func id(_ *cobra.Command, OS *serve.ServeOptions) error {
+var idColumns = []output.TableColumn[IDInfo]{
+	{
+		ColumnConfig: table.ColumnConfig{Name: "id"},
+		Value:        func(i IDInfo) string { return i.ID },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "client id"},
+		Value:        func(i IDInfo) string { return i.ClientID },
+	},
+}
+
+func id(cmd *cobra.Command, OS *serve.ServeOptions, outputOpts output.OutputOptions) error {
 	libp2pHost, err := libp2p.NewHost(OS.SwarmPort)
 	if err != nil {
 		return err
 	}
+	defer closer.CloseWithLogOnError("libp2pHost", libp2pHost)
 
 	info := IDInfo{
 		ID:       libp2pHost.ID().String(),
 		ClientID: system.GetClientID(),
 	}
-	_ = libp2pHost.Close()
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "    ")
-	if err := enc.Encode(info); err != nil {
-		return err
-	}
-
-	return nil
+	return output.OutputOne(cmd, idColumns, outputOpts, info)
 }

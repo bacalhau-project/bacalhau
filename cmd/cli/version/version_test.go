@@ -24,7 +24,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -38,22 +38,22 @@ type VersionSuite struct {
 	cmdtesting.BaseSuite
 }
 
-func (suite *VersionSuite) Test_Version() {
+func (suite *VersionSuite) TestVersionHumanOutput() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), out, "Client Version", "Client version not in output")
-	require.Contains(suite.T(), out, "Server Version", "Server version not in output")
+	require.Contains(suite.T(), out, "CLIENT", "Client version not in output")
+	require.Contains(suite.T(), out, "SERVER", "Server version not in output")
 }
 
-func (suite *VersionSuite) Test_VersionOutputs() {
+func (suite *VersionSuite) TestVersionJSONOutput() {
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", util.JSONFormat,
+		"--output", string(output.JSONFormat),
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
@@ -61,11 +61,13 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	err = model.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
 	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
+}
 
-	_, out, err = cmdtesting.ExecuteTestCobraCommand("version",
+func (suite *VersionSuite) TestVersionYAMLOutput() {
+	_, out, err := cmdtesting.ExecuteTestCobraCommand("version",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
-		"--output", util.YAMLFormat,
+		"--output", string(output.YAMLFormat),
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 

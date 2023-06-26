@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -347,6 +348,21 @@ func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedT
 		},
 		stringer: func(t *model.ExcludedTag) string { return string(*t) },
 		typeStr:  "tag",
+	}
+}
+
+func OutputFormatFlag(value *output.OutputFormat) *ValueFlag[output.OutputFormat] {
+	return &ValueFlag[output.OutputFormat]{
+		value: value,
+		parser: func(s string) (output.OutputFormat, error) {
+			o := output.OutputFormat(s)
+			if !slices.Contains(output.AllFormats, o) {
+				return "", fmt.Errorf("should be one of %q", output.AllFormats)
+			}
+			return o, nil
+		},
+		stringer: func(o *output.OutputFormat) string { return string(*o) },
+		typeStr:  "format",
 	}
 }
 

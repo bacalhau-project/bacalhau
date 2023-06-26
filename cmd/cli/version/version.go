@@ -18,16 +18,17 @@ package version
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 )
 
 // Versions is a struct for version information
@@ -39,14 +40,14 @@ type Versions struct {
 // VersionOptions is a struct to support version command
 type VersionOptions struct {
 	ClientOnly bool
-	Output     string
-
-	args []string
+	OutputOpts output.OutputOptions
 }
 
 // NewVersionOptions returns initialized Options
 func NewVersionOptions() *VersionOptions {
-	return &VersionOptions{}
+	return &VersionOptions{
+		OutputOpts: output.OutputOptions{Format: output.TableFormat},
+	}
 }
 
 func NewCmd() *cobra.Command {
@@ -55,6 +56,7 @@ func NewCmd() *cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Get the client and server version.",
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, _ []string) {
 			if err := runVersion(cmd, oV); err != nil {
 				util.Fatal(cmd, err, 1)
@@ -62,7 +64,7 @@ func NewCmd() *cobra.Command {
 		},
 	}
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
-	versionCmd.Flags().StringVarP(&oV.Output, "output", "o", oV.Output, "One of 'yaml' or 'json'.")
+	versionCmd.Flags().AddFlagSet(flags.OutputFormatFlags(&oV.OutputOpts))
 
 	return versionCmd
 }
@@ -70,41 +72,33 @@ func NewCmd() *cobra.Command {
 func runVersion(cmd *cobra.Command, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
-	oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
-
-	err := oV.Validate(cmd)
-	if err != nil {
-		return fmt.Errorf("error validating version: %w", err)
-	}
-
-	err = oV.Run(ctx, cmd)
+	err := oV.Run(ctx, cmd)
 	if err != nil {
 		return fmt.Errorf("error running version: %w", err)
 	}
 
-	return nil
+	return err
 }
 
-// Validate validates the provided options
-func (oV *VersionOptions) Validate(*cobra.Command) error {
-	if len(oV.args) != 0 {
-		return fmt.Errorf("extra arguments: %v", oV.args)
-	}
+var clientVersionColumn = output.TableColumn[Versions]{
+	ColumnConfig: table.ColumnConfig{Name: "client"},
+	Value:        func(v Versions) string { return v.ClientVersion.GitVersion },
+}
 
-	if oV.Output != "" && oV.Output != util.YAMLFormat && oV.Output != util.JSONFormat {
-		return errors.New(`--output must be 'yaml' or 'json'`)
-	}
-
-	return nil
+var serverVersionColumn = output.TableColumn[Versions]{
+	ColumnConfig: table.ColumnConfig{Name: "server"},
+	Value:        func(v Versions) string { return v.ServerVersion.GitVersion },
 }
 
 // Run executes version command
 func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	var (
 		versions Versions
+		columns  []output.TableColumn[Versions]
 	)
 
 	versions.ClientVersion = version.Get()
+	columns = append(columns, clientVersionColumn)
 
 	if !oV.ClientOnly {
 		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
@@ -114,31 +108,8 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		}
 
 		versions.ServerVersion = serverVersion
+		columns = append(columns, serverVersionColumn)
 	}
 
-	switch oV.Output {
-	case "":
-		cmd.Printf("Client Version: %s\n", versions.ClientVersion.GitVersion)
-		if versions.ServerVersion != nil {
-			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
-		}
-	case util.YAMLFormat:
-		marshaled, err := model.YAMLMarshalWithMax(versions)
-		if err != nil {
-			return err
-		}
-		cmd.Println(string(marshaled))
-	case util.JSONFormat:
-		marshaled, err := model.JSONMarshalWithMax(versions)
-		if err != nil {
-			return err
-		}
-		cmd.Println(string(marshaled))
-	default:
-		// There is a bug in the program if we hit this case.
-		// However, we follow a policy of never panicking.
-		return fmt.Errorf("VersionOptions were not validated: --output=%q should have been rejected", oV.Output)
-	}
-
-	return nil
+	return output.OutputOne(cmd, columns, oV.OutputOpts, versions)
 }
