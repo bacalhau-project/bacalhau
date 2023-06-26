@@ -920,7 +920,12 @@ const docTemplate = `{
                     "example": "V1beta1"
                 },
                 "Metadata": {
-                    "$ref": "#/definitions/model.Metadata"
+                    "description": "TODO this doesn't seem like it should be a part of the job as it cannot be known by a client ahead of time.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Metadata"
+                        }
+                    ]
                 },
                 "Spec": {
                     "description": "The specification of this job.",
