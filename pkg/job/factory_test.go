@@ -3,14 +3,13 @@
 package job
 
 import (
-	"context"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -39,76 +38,39 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 	}
 
 	for range tests {
-		type (
-			OutputVolumes struct {
-				name string
-				path string
-			}
-		)
-
 		testCids := []struct {
-			outputVolumes []OutputVolumes
+			outputVolumes []model.StorageSpec
 			correctLength int
-			err           string
 		}{
-			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 0, err: "invalid output volume"}, // Flag not provided
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}}, correctLength: 1, err: ""},
-			{outputVolumes: []OutputVolumes{{name: "APPLE_1", path: "/apple"}, {name: "APPLE_2", path: "/apple"}}, correctLength: 2, err: ""},
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}, {name: "OUTPUT_NAME_1", path: "/outputs_1"}}, correctLength: 2, err: ""},     // Two outputs, one default (and dupe), one not
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_1", path: "/outputs_1"}}, correctLength: 2, err: ""},                                              // Correct output flag
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
-			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volume"},                                      // OV requested but no name (should error)
+			{outputVolumes: []model.StorageSpec{{Name: "OUTPUT_NAME", Path: "/outputs"}}, correctLength: 1},
+			{outputVolumes: []model.StorageSpec{{Name: "APPLE_1", Path: "/apple"}, {Name: "APPLE_2", Path: "/apple"}}, correctLength: 2},
+			{outputVolumes: []model.StorageSpec{{Name: "OUTPUT_NAME", Path: "/outputs"}, {Name: "OUTPUT_NAME_1", Path: "/outputs_1"}}, correctLength: 2},     // Two outputs, one default (and dupe), one not
+			{outputVolumes: []model.StorageSpec{{Name: "OUTPUT_NAME_1", Path: "/outputs_1"}}, correctLength: 1},                                              // Correct output flag
+			{outputVolumes: []model.StorageSpec{{Name: "OUTPUT_NAME_2", Path: "/outputs_2"}, {Name: "OUTPUT_NAME_3", Path: "/outputs_3"}}, correctLength: 2}, // 2 correct output flags
 		}
 
 		for _, tcids := range testCids {
 			func() {
-				var outputVolumes []string
-				for _, tcidOV := range tcids.outputVolumes {
-					outputVolumes = append(outputVolumes, strings.Join([]string{tcidOV.name, tcidOV.path}, ":"))
-				}
-
-				j, err := ConstructDockerJob( //nolint:funlen
-					context.Background(),
-					model.APIVersionLatest(),
-					model.EngineNoop,
-					model.VerifierNoop,
-					model.PublisherSpec{Type: model.PublisherNoop},
-					"1",                   // cpu
-					"1",                   // memory
-					"0",                   // gpu
-					model.NetworkNone,     // networking
-					[]string{},            // domains
-					[]model.StorageSpec{}, // inputs
-					outputVolumes,
-					[]string{}, // env
-					[]string{}, // entrypoint
-					"",         // image
-					model.Deal{
-						TargetingMode: model.TargetAny,
-						Concurrency:   1,
-						Confidence:    0,
-						MinBids:       0,
-					},
-					300,        // timeout
-					[]string{}, // annotations
-					"",         // node selector
-					"",         // working dir
+				spec, err := MakeSpec(
+					WithDockerEngine("", "", []string{}, []string{}),
+					WithResources("1", "1", "0", "0"),
+					WithOutputs(tcids.outputVolumes...),
+					WithTimeout(300),
+					WithDeal(model.TargetAny, 1, 0, 0),
 				)
-
-				if tcids.err != "" {
-					require.Error(suite.T(), err, "No error received, but error expected - %+v", tcids)
-					require.Contains(suite.T(), err.Error(), tcids.err, "Error does not contain expected - %+v - %+v", tcids, err)
-				} else {
-					require.NoError(suite.T(), err, "Error in creating spec - %+v", tcids)
-					require.Equal(suite.T(), len(j.Spec.Outputs),
-						tcids.correctLength,
-						"Length of deal outputs (%d) not the same as expected (%d). %+v",
-						len(j.Spec.Outputs),
-						tcids.correctLength,
-						tcids.outputVolumes,
-					)
+				j := model.Job{
+					APIVersion: model.APIVersionLatest().String(),
+					Spec:       spec,
 				}
+
+				require.NoError(suite.T(), err, "Error in creating spec - %+v", tcids)
+				require.Equal(suite.T(), len(j.Spec.Outputs),
+					tcids.correctLength,
+					"Length of deal outputs (%d) not the same as expected (%d). %+v",
+					len(j.Spec.Outputs),
+					tcids.correctLength,
+					tcids.outputVolumes,
+				)
 			}()
 		}
 	}

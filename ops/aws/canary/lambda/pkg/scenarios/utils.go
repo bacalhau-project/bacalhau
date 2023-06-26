@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -151,7 +152,7 @@ func getClient() *publicapi.RequesterAPIClient {
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
 	nodeSelectors := os.Getenv("BACALHAU_NODE_SELECTORS")
 	if nodeSelectors != "" {
-		return job.ParseNodeSelector(nodeSelectors)
+		return parse.NodeSelector(nodeSelectors)
 	}
 	return nil, nil
 }

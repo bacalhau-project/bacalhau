@@ -14,6 +14,7 @@ import (
 type Job struct {
 	APIVersion string `json:"APIVersion" example:"V1beta1"`
 
+	// TODO this doesn't seem like it should be a part of the job as it cannot be known by a client ahead of time.
 	Metadata Metadata `json:"Metadata,omitempty"`
 
 	// The specification of this job.

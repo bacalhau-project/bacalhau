@@ -136,6 +136,7 @@ func SetupTestWithNoopExecutor(
 // Returns whether the requester node(s) in the stack have discovered all of the
 // other nodes in the stack and have complete information for them (i.e. each
 // node has actually announced itself.)
+// TODO(forrest): this is a major source of slowness in our testing, if we can speed up the discovery of nodes we will save a lot of time
 func allNodesDiscovered(t *testing.T, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
