@@ -69,9 +69,8 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
 			return errResp
-		} else {
-			return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, errResp)
 		}
+		return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, err)
 	}
 	defer conn.Close()
 

@@ -103,9 +103,8 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
 			return errResp
-		} else {
-			return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, errResp)
 		}
+		return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, err)
 	}
 
 	if !foundJob {

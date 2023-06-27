@@ -140,12 +140,10 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	jobState, err := apiClient.Cancel(ctx, job.Job.Metadata.ID, "Canceled at user request")
 	if err != nil {
 		spinner.Done(printer.StopFailed)
-
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
 			return errResp
-		} else {
-			return fmt.Errorf("unknown error trying to cancel job (ID: %s): %+v", requestedJobID, errResp)
 		}
+		return fmt.Errorf("unknown error trying to cancel job (ID: %s): %w", requestedJobID, err)
 	}
 
 	spinner.Done(printer.StopSuccess)
