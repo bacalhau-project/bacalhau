@@ -15,7 +15,7 @@ func TestScenarios(t *testing.T) {
 		t.Run(
 			name,
 			func(t *testing.T) {
-				docker.MaybeNeedDocker(t, testCase.Spec.Engine == model.EngineDocker)
+				docker.MaybeNeedDocker(t, testCase.Spec.EngineDeprecated == model.EngineDocker && testCase.Spec.EngineSpec.Type == model.EngineTypeDocker)
 				RunTestCase(t, testCase)
 			},
 		)

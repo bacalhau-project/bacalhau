@@ -65,7 +65,7 @@ func TestExecutorsBidStrategy(t *testing.T) {
 			strategy := NewExecutorSpecificBidStrategy(noop_provider)
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
 				Job: model.Job{
-					Spec: model.Spec{Engine: model.EngineNoop},
+					Spec: model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}},
 				},
 			})
 			require.NoError(t, err)

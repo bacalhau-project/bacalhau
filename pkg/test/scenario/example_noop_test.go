@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/suite"
 )
 
 var noopScenario Scenario = Scenario{
@@ -22,10 +23,9 @@ var noopScenario Scenario = Scenario{
 		},
 	},
 	Spec: model.Spec{
-		Engine: model.EngineNoop,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-		},
+		// TODO(forrest): [correctness] this doesn't make sense, why wasm?
+		EngineDeprecated: model.EngineNoop,
+		EngineSpec:       model.NewWasmEngineSpec(model.StorageSpec{}, "_start", nil, nil, nil),
 	},
 	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),

@@ -18,11 +18,13 @@ func TestUnmarshalDocker(t *testing.T) {
 
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
-	require.Equal(t, EngineDocker, spec.Engine)
-	require.Equal(t, "ubuntu", spec.Docker.Image)
-	require.Equal(t, []string{"date"}, spec.Docker.Entrypoint)
-	require.Equal(t, "/", spec.Docker.WorkingDirectory)
-	require.Equal(t, []string{"HELLO", "world"}, spec.Docker.EnvironmentVariables)
+	require.Equal(t, EngineDocker, spec.EngineDeprecated)
+	dockerEngine, err := DockerEngineFromEngineSpec(spec.EngineSpec)
+	require.NoError(t, err)
+	require.Equal(t, "ubuntu", dockerEngine.Image)
+	require.Equal(t, []string{"date"}, dockerEngine.Entrypoint)
+	require.Equal(t, "/", dockerEngine.WorkingDirectory)
+	require.Equal(t, []string{"HELLO", "world"}, dockerEngine.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{}, spec.Inputs)
 	require.Equal(t, []StorageSpec{
 		{Path: "/outputs", Name: "outputs"},

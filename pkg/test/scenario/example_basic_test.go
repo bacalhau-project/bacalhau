@@ -3,8 +3,9 @@ package scenario
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 var basicScenario Scenario = Scenario{
@@ -14,10 +15,8 @@ var basicScenario Scenario = Scenario{
 	),
 	Outputs: []model.StorageSpec{},
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(model.StorageSpec{}, "_start", nil, nil, nil),
 	},
 	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
 	JobCheckers:    WaitUntilSuccessful(1),

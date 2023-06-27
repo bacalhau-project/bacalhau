@@ -18,10 +18,12 @@ func TestUnmarshalWasm(t *testing.T) {
 
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
-	require.Equal(t, EngineWasm, spec.Engine)
-	require.Equal(t, "_start", spec.Wasm.EntryPoint)
-	require.Equal(t, []string{"/inputs/data.tar.gz"}, spec.Wasm.Parameters)
-	require.Equal(t, map[string]string{"HELLO": "world"}, spec.Wasm.EnvironmentVariables)
+	require.Equal(t, EngineWasm, spec.EngineDeprecated)
+	wasmEngine, err := WasmEngineFromEngineSpec(spec.EngineSpec)
+	require.NoError(t, err)
+	require.Equal(t, "_start", wasmEngine.Entrypoint)
+	require.Equal(t, []string{"/inputs/data.tar.gz"}, wasmEngine.Parameters)
+	require.Equal(t, map[string]string{"HELLO": "world"}, wasmEngine.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{
 		{Path: "/job", StorageSource: StorageSourceIPFS, CID: "bafybeig7mdkzcgpacpozamv7yhhaelztfrnb6ozsupqqh7e5uyqdkijegi"},
 		{Path: "/inputs", StorageSource: StorageSourceURLDownload, URL: "https://www.example.com/data.tar.gz"},

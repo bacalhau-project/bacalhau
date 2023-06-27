@@ -28,12 +28,8 @@ var CatFileToStdout = Scenario{
 		FileEquals(model.DownloadFilenameStdout, helloWorld),
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(cat.Program()),
-			Parameters:  []string{simpleMountPath},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(cat.Program()), "_start", []string{simpleMountPath}, nil, nil),
 	},
 }
 
@@ -53,14 +49,8 @@ var CatFileToVolume = Scenario{
 		},
 	},
 	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"bash",
-				simpleMountPath,
-			},
-		},
+		EngineDeprecated: model.EngineDocker,
+		EngineSpec:       model.NewDockerEngineSpec("ubuntu:latest", []string{"bash", simpleMountPath}, nil, ""),
 	},
 }
 
@@ -75,15 +65,8 @@ var GrepFile = Scenario{
 		2,
 	),
 	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"grep",
-				"kiwi",
-				simpleMountPath,
-			},
-		},
+		EngineDeprecated: model.EngineDocker,
+		EngineSpec:       model.NewDockerEngineSpec("ubuntu:latest", []string{"grep", "kiwi", simpleMountPath}, nil, ""),
 	},
 }
 
@@ -98,16 +81,13 @@ var SedFile = Scenario{
 		5, //nolint:gomnd // magic number ok for testing
 	),
 	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"sed",
-				"-n",
-				"/38.7[2-4]..,-9.1[3-7]../p",
-				simpleMountPath,
-			},
-		},
+		EngineDeprecated: model.EngineDocker,
+		EngineSpec: model.NewDockerEngineSpec("ubuntu:latest", []string{
+			"sed",
+			"-n",
+			"/38.7[2-4]..,-9.1[3-7]../p",
+			simpleMountPath,
+		}, nil, ""),
 	},
 }
 
@@ -122,16 +102,13 @@ var AwkFile = Scenario{
 		501, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"awk",
-				"-F,",
-				"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
-				simpleMountPath,
-			},
-		},
+		EngineDeprecated: model.EngineDocker,
+		EngineSpec: model.NewDockerEngineSpec("ubuntu:latest", []string{
+			"awk",
+			"-F,",
+			"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
+			simpleMountPath,
+		}, nil, ""),
 	},
 }
 
@@ -141,12 +118,8 @@ var WasmHelloWorld = Scenario{
 		"Hello, world!\n",
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(noop.Program()),
-			Parameters:  []string{},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(noop.Program()), "_start", []string{}, nil, nil),
 	},
 }
 
@@ -156,13 +129,8 @@ var WasmExitCode = Scenario{
 		"5",
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:           "_start",
-			EntryModule:          InlineData(exit_code.Program()),
-			Parameters:           []string{},
-			EnvironmentVariables: map[string]string{"EXIT_CODE": "5"},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(exit_code.Program()), "_start", []string{}, map[string]string{"EXIT_CODE": "5"}, nil),
 	},
 }
 
@@ -173,15 +141,8 @@ var WasmEnvVars = Scenario{
 		3, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(env.Program()),
-			EnvironmentVariables: map[string]string{
-				"TEST":    "yes",
-				"AWESOME": "definitely",
-			},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(env.Program()), "_start", nil, map[string]string{"TEST": "yes", "AWESOME": "definitely"}, nil),
 	},
 }
 
@@ -196,15 +157,8 @@ var WasmCsvTransform = Scenario{
 		269, //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(csv.Program()),
-			Parameters: []string{
-				"inputs/horses.csv",
-				"outputs/parents-children.csv",
-			},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(csv.Program()), "_start", []string{"inputs/horses.csv", "outputs/parents-children.csv"}, nil, nil),
 	},
 	Outputs: []model.StorageSpec{
 		{
@@ -224,11 +178,8 @@ var WasmDynamicLink = Scenario{
 		"17\n",
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(dynamic.Program()),
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(dynamic.Program()), "_start", nil, nil, nil),
 	},
 }
 
@@ -243,15 +194,8 @@ var WasmLogTest = Scenario{
 		-1,                                    //nolint:gomnd // magic number appropriate for test
 	),
 	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint:  "_start",
-			EntryModule: InlineData(logtest.Program()),
-			Parameters: []string{
-				"inputs/cosmic_computer.txt",
-				"--fast",
-			},
-		},
+		EngineDeprecated: model.EngineWasm,
+		EngineSpec:       model.NewWasmEngineSpec(InlineData(logtest.Program()), "_start", []string{"inputs/cosmic_computer.txt", "--fast"}, nil, nil),
 	},
 }
 

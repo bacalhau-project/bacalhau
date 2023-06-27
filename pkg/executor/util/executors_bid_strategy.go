@@ -18,7 +18,7 @@ func NewExecutorSpecificBidStrategy(provider executor.ExecutorProvider) bidstrat
 		bidstrategy.WithSemantics(
 			semantic.NewProviderInstalledStrategy[model.Engine, executor.Executor](
 				provider,
-				func(j *model.Job) model.Engine { return j.Spec.Engine },
+				func(j *model.Job) model.Engine { return j.Spec.EngineDeprecated },
 			),
 			&bidStrategyFromExecutor{
 				provider: provider,
@@ -37,7 +37,7 @@ func (p *bidStrategyFromExecutor) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	executor, err := p.provider.Get(ctx, request.Job.Spec.Engine)
+	executor, err := p.provider.Get(ctx, request.Job.Spec.EngineDeprecated)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}
@@ -56,7 +56,7 @@ func (p *bidStrategyFromExecutor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	resourceUsage model.ResourceUsageData,
 ) (bidstrategy.BidStrategyResponse, error) {
-	executor, err := p.provider.Get(ctx, request.Job.Spec.Engine)
+	executor, err := p.provider.Get(ctx, request.Job.Spec.EngineDeprecated)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}

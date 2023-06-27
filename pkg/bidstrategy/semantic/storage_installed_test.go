@@ -26,7 +26,7 @@ var (
 	EmptySpec       = model.Spec{}
 	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
 	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	SpecWithWasm    = model.Spec{EngineSpec: model.NewWasmEngineSpec(OneStorageSpec[0], "", nil, nil, nil)}
 )
 
 func TestStorageBidStrategy(t *testing.T) {

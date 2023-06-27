@@ -39,8 +39,8 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return err
 	}
 
-	if !model.IsValidEngine(j.Spec.Engine) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
+	if !model.IsValidEngine(j.Spec.EngineDeprecated) {
+		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.EngineDeprecated.String()))
 	}
 
 	if !model.IsValidVerifier(j.Spec.Verifier) {

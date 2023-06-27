@@ -16,27 +16,18 @@ type DockerInputs struct {
 
 var _ JobType = (*DockerInputs)(nil)
 
-func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineDocker
-	spec.Docker = JobSpecDocker{
-		Image:            with,
-		Entrypoint:       docker.Entrypoint,
-		WorkingDirectory: docker.Workdir,
-	}
+func (i DockerInputs) UnmarshalInto(with string, spec *Spec) error {
+	spec.EngineSpec = NewDockerEngineSpec(with, i.Entrypoint, i.Env.ToStringSlice(), i.Workdir)
+	spec.EngineDeprecated = EngineDocker
 
-	spec.Docker.EnvironmentVariables = []string{}
-	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
-	}
-
-	inputData, err := parseInputs(docker.Mounts)
+	inputData, err := parseInputs(i.Mounts)
 	if err != nil {
 		return err
 	}
 	spec.Inputs = inputData
 
 	spec.Outputs = []StorageSpec{}
-	for path := range docker.Outputs.Values {
+	for path := range i.Outputs.Values {
 		spec.Outputs = append(spec.Outputs, StorageSpec{
 			Path: path,
 			Name: strings.Trim(path, "/"),

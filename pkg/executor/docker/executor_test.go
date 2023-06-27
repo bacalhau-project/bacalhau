@@ -14,14 +14,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 const (
@@ -99,8 +100,8 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
-	return model.JobSpecDocker{
+func (s *ExecutorTestSuite) curlTask() model.DockerEngine {
+	return model.DockerEngine{
 		Image:      CurlDockerImage,
 		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
@@ -135,15 +136,12 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 	result, err := s.runJobGetStdout(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu",
-			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
-		},
+		EngineSpec: NewEngineSpec("ubuntu", []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"}, nil, ""),
 	})
 	require.NoError(s.T(), err)
 
@@ -173,15 +171,12 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 	result, err := s.runJobGetStdout(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu",
-			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
-		},
+		EngineSpec: NewEngineSpec("ubuntu", []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"}, nil, ""),
 	})
 	require.NoError(s.T(), err)
 
@@ -192,9 +187,9 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	result, err := s.runJob(model.Spec{
-		Engine:  model.EngineDocker,
-		Network: model.NetworkConfig{Type: model.NetworkFull},
-		Docker:  s.curlTask(),
+		EngineDeprecated: model.EngineDocker,
+		Network:          model.NetworkConfig{Type: model.NetworkFull},
+		EngineSpec:       s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -203,9 +198,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 	result, err := s.runJob(model.Spec{
-		Engine:  model.EngineDocker,
-		Network: model.NetworkConfig{Type: model.NetworkNone},
-		Docker:  s.curlTask(),
+		EngineDeprecated: model.EngineDocker,
+		Network:          model.NetworkConfig{Type: model.NetworkNone},
+		EngineSpec:       s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err)
 	require.Empty(s.T(), result.STDOUT)
@@ -215,12 +210,12 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: s.curlTask(),
+		EngineSpec: s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -229,7 +224,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type: model.NetworkHTTP,
 			Domains: []string{
@@ -237,7 +232,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 				"bacalhau.org",
 			},
 		},
-		Docker: s.curlTask(),
+		EngineSpec: s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -249,12 +244,12 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 	hostroot := strings.Join(strings.SplitN(hostname, ".", 2)[:1], ".")
 
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{hostname, hostroot},
 		},
-		Docker: s.curlTask(),
+		EngineSpec: s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
@@ -263,12 +258,12 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{"bacalhau.org"},
 		},
-		Docker: s.curlTask(),
+		EngineSpec: s.curlTask().AsEngineSpec(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -278,15 +273,15 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: model.DockerEngine{
 			Image:      CurlDockerImage,
 			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
-		},
+		}.AsEngineSpec(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -300,12 +295,12 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 		s.Require().NoError(err)
 	})
 	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Network: model.NetworkConfig{
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: s.curlTask(),
+		EngineSpec: s.curlTask().AsEngineSpec(),
 	})
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), "test", result.STDOUT, result.STDOUT)
@@ -317,11 +312,11 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	defer cancel()
 
 	result, err := s.runJobWithContext(ctx, model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+		EngineDeprecated: model.EngineDocker,
+		EngineSpec: model.DockerEngine{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
-		},
+		}.AsEngineSpec(),
 	}, "timeout")
 	// The Docker client has changed so that it prioritizes container error message
 	// and not the error message from the context. It does error upon timeout, but not
@@ -337,15 +332,15 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	defer cancel()
 
 	spec := model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: model.DockerEngine{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
-		},
+		}.AsEngineSpec(),
 	}
 
 	go func() {
@@ -367,15 +362,15 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	defer cancel()
 
 	spec := model.Spec{
-		Engine: model.EngineDocker,
+		EngineDeprecated: model.EngineDocker,
 		Resources: model.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		EngineSpec: model.DockerEngine{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
-		},
+		}.AsEngineSpec(),
 	}
 
 	go func() {

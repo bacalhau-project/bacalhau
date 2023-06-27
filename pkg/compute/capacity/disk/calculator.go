@@ -26,7 +26,7 @@ func (c *DiskUsageCalculator) Calculate(
 	ctx context.Context, job model.Job, parsedUsage model.ResourceUsageData) (model.ResourceUsageData, error) {
 	requirements := model.ResourceUsageData{}
 
-	e, err := c.executors.Get(ctx, job.Spec.Engine)
+	e, err := c.executors.Get(ctx, job.Spec.EngineDeprecated)
 	if err != nil {
 		return model.ResourceUsageData{}, fmt.Errorf("error getting job disk space requirements: %w", err)
 	}

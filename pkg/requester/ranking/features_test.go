@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type FeatureNodeRankerSuite struct {
@@ -72,7 +73,7 @@ func TestEnginesNodeRankerSuite(t *testing.T) {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineDocker() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineDocker}}
+	job := model.Job{Spec: model.Spec{EngineDeprecated: model.EngineDocker, EngineSpec: model.NewDockerEngineSpec("", nil, nil, "")}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -82,7 +83,7 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineWasm}}
+	job := model.Job{Spec: model.Spec{EngineDeprecated: model.EngineWasm, EngineSpec: model.NewWasmEngineSpec(model.StorageSpec{}, "", nil, nil, nil)}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -93,7 +94,7 @@ func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineNoop() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineNoop}}
+	job := model.Job{Spec: model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}}}
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))

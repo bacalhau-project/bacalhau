@@ -94,13 +94,8 @@ func WithDockerEngine(image, workdir string, entrypoint, envvar []string) SpecOp
 		if err := system.ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
 		}
-		s.Engine = model.EngineDocker
-		s.Docker = model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypoint,
-			EnvironmentVariables: envvar,
-			WorkingDirectory:     workdir,
-		}
+		s.EngineDeprecated = model.EngineDocker
+		s.EngineSpec = model.NewDockerEngineSpec(image, entrypoint, envvar, workdir)
 		return nil
 	}
 }
@@ -134,14 +129,8 @@ func WithWasmEngine(
 				}
 			}
 		}
-		s.Engine = model.EngineWasm
-		s.Wasm = model.JobSpecWasm{
-			EntryModule:          entryModule,
-			EntryPoint:           entrypoint,
-			Parameters:           parameters,
-			EnvironmentVariables: envvar,
-			ImportModules:        importModules,
-		}
+		s.EngineDeprecated = model.EngineWasm
+		s.EngineSpec = model.NewWasmEngineSpec(entryModule, entrypoint, parameters, envvar, importModules)
 		return nil
 	}
 }
@@ -161,7 +150,10 @@ const DefaultTimeout = 30 * time.Minute
 
 func MakeSpec(opts ...SpecOpt) (model.Spec, error) {
 	spec := &model.Spec{
-		Engine:    model.EngineNoop,
+		EngineDeprecated: model.EngineNoop,
+		EngineSpec: model.EngineSpec{
+			Type: model.EngineNoop.String(),
+		},
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
 		PublisherSpec: model.PublisherSpec{

@@ -15,7 +15,10 @@ func getBidStrategyRequest() bidstrategy.BidStrategyRequest {
 				ID: "job-id",
 			},
 			Spec: model.Spec{
-				Engine: model.EngineNoop,
+				EngineDeprecated: model.EngineNoop,
+				EngineSpec: model.EngineSpec{
+					Type: model.EngineNoop.String(),
+				},
 			},
 		},
 	}

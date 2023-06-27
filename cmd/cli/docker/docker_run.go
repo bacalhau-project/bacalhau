@@ -127,9 +127,14 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return fmt.Errorf("creating job: %w", err)
 	}
 
+	dockerEngine, err := model.DockerEngineFromEngineSpec(j.Spec.EngineSpec)
+	if err != nil {
+		return fmt.Errorf("impossible error, engine spec must be docker, developer error: %w", err)
+	}
+
 	if err := jobutils.VerifyJob(ctx, j); err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
+			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", dockerEngine.Image)
 		} else {
 			return fmt.Errorf("verifying job: %s", err)
 		}
@@ -137,7 +142,7 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 
 	quiet := opts.RunTimeSettings.PrintJobIDOnly
 	if !quiet {
-		containsTag := dockerImageContainsTag(j.Spec.Docker.Image)
+		containsTag := dockerImageContainsTag(dockerEngine.Image)
 		if !containsTag {
 			cmd.Printf("Using default tag: latest. Please specify a tag/digest for better reproducibility.\n")
 		}

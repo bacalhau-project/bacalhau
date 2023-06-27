@@ -11,12 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type URLTestSuite struct {
@@ -45,6 +46,8 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
+	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	suite.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -65,19 +68,19 @@ func runURLTest(
 			job.WaitForSuccessfulCompletion(),
 		},
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			EngineDeprecated: model.EngineWasm,
+			Verifier:         model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
+			EngineSpec: model.WasmEngine{
+				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
+				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{
 					testCase.mount1,
 					testCase.mount2,
 				},
-			},
+			}.AsEngineSpec(),
 		},
 	}
 
@@ -212,6 +215,8 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
+	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	s.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -225,19 +230,19 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			EngineDeprecated: model.EngineWasm,
+			Verifier:         model.VerifierNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			Wasm: model.JobSpecWasm{
-				EntryPoint:  scenario.CatFileToStdout.Spec.Wasm.EntryPoint,
-				EntryModule: scenario.CatFileToStdout.Spec.Wasm.EntryModule,
+			EngineSpec: model.WasmEngine{
+				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
+				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{
 					urlmount,
 					path.Join(ipfsmount, ipfsfile),
 				},
-			},
+			}.AsEngineSpec(),
 		},
 		ResultsChecker: scenario.FileEquals(model.DownloadFilenameStdout, URLContent+IPFSContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),

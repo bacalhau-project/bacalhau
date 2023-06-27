@@ -51,8 +51,9 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for k := 0; k < n.numOfJobs; k++ {
+						// TODO(forrest): [correctness] were making a noop job and assigning a docker entry point, which ought to be ignored?
 						j := testutils.MakeNoopJob()
-						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+						j.Spec.EngineSpec = model.NewDockerEngineSpec("", []string{"Entrypoint-Unique-Array", uuid.NewString()}, nil, "")
 						job, err := s.Client.Submit(ctx, j)
 						require.NoError(s.T(), err)
 						submittedJob = job // Default to the last job submitted, should be fine?
@@ -79,10 +80,16 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
-					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+
+				// TODO(forrest): [correctness] this is going to fail, see my above TODO regarding noop job with docker params (line 54-ish).
+				require.Equal(s.T(), submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec)
+				// TODO(forrest): [correctness] this comparison no longer makes sense, I've attempted to adjust its intent with the above.
+				/*
+					require.Equal(s.T(),
+						submittedJob.Spec.Docker.Entrypoint[0],
+						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+						fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				*/
 
 				// Job Id in the middle
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
@@ -95,10 +102,15 @@ func (s *DescribeSuite) TestDescribeJob() {
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
-					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				// TODO(forrest): [correctness] this is going to fail, see my above TODO regarding noop job with docker params (line 54-ish).
+				require.Equal(s.T(), submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec)
+				// TODO(forrest): [correctness] this comparison no longer makes sense, I've attempted to adjust its intent with the above.
+				/*
+					require.Equal(s.T(),
+						submittedJob.Spec.Docker.Entrypoint[0],
+						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+						fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				*/
 
 				// Short job id
 				_, out, err = cmdtesting.ExecuteTestCobraCommand("describe",
@@ -111,10 +123,15 @@ func (s *DescribeSuite) TestDescribeJob() {
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
-					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				// TODO(forrest): [correctness] this is going to fail, see my above TODO regarding noop job with docker params (line 54-ish).
+				require.Equal(s.T(), submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec)
+				// TODO(forrest): [correctness] this comparison no longer makes sense, I've attempted to adjust its intent with the above.
+				/*
+					require.Equal(s.T(),
+						submittedJob.Spec.Docker.Entrypoint[0],
+						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+						fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				*/
 
 			}()
 		}
@@ -192,8 +209,9 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				ctx := context.Background()
 
 				for i := 0; i < n.numOfJobs; i++ {
+					// TODO(forrest): [correctness] were making a noop job and assigning a docker entry point, which ought to be ignored?
 					j := testutils.MakeNoopJob()
-					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+					j.Spec.EngineSpec = model.NewDockerEngineSpec("", []string{"Entrypoint-Unique-Array", uuid.NewString()}, nil, "")
 					jj, err := s.Client.Submit(ctx, j)
 					require.Nil(s.T(), err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
@@ -222,10 +240,16 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-					require.Equal(s.T(),
-						submittedJob.Spec.Docker.Entrypoint[0],
-						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
-						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
+					// TODO(forrest): [correctness] this is going to fail, see my above TODO regarding noop job with docker params (line 212-ish).
+					require.Equal(s.T(), submittedJob.Spec.EngineSpec, returnedJobDescription.Job.Spec.EngineSpec)
+					// TODO(forrest): [correctness] this comparison no longer makes sense, I've attempted to adjust its intent with the above.
+					/*
+						require.Equal(s.T(),
+							submittedJob.Spec.Docker.Entrypoint[0],
+							returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+							fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
+
+					*/
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}
 					s.NoError(model.JSONUnmarshalWithMax([]byte(out), &c))

@@ -8,13 +8,14 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type TargetAllSuite struct {
@@ -32,7 +33,7 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   0,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(0),
@@ -48,7 +49,7 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   1,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(1),
@@ -64,7 +65,7 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfRequesterOnlyNodes: 1,
 			NumberOfComputeOnlyNodes:   5,
 		}},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers:   scenario.WaitUntilSuccessful(5),
@@ -91,7 +92,7 @@ func (suite *TargetAllSuite) TestCanRetryOnNodes() {
 				},
 			},
 		},
-		Spec:          model.Spec{Engine: model.EngineNoop},
+		Spec:          model.Spec{EngineDeprecated: model.EngineNoop, EngineSpec: model.EngineSpec{Type: model.EngineNoop.String()}},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{

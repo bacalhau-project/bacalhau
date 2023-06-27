@@ -74,7 +74,7 @@ type Fixture struct {
 }
 
 func (f *Fixture) RequiresDocker() bool {
-	return f.Job.Spec.Engine == model.EngineDocker
+	return f.Job.Spec.EngineDeprecated == model.EngineDocker
 }
 
 func (f *Fixture) RequiresS3() bool {

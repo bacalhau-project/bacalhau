@@ -71,26 +71,14 @@ func newTestExecution(name string, job model.Job) store.Execution {
 		})
 }
 
-func newWasmJob(id string, spec model.JobSpecWasm) model.Job {
+func newDockerJob(id string, spec model.DockerEngine) model.Job {
 	return model.Job{
 		Metadata: model.Metadata{
 			ID: id,
 		},
 		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			Wasm:   spec,
-		},
-	}
-}
-
-func newDockerJob(id string, spec model.JobSpecDocker) model.Job {
-	return model.Job{
-		Metadata: model.Metadata{
-			ID: id,
-		},
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: spec,
+			EngineDeprecated: model.EngineDocker,
+			EngineSpec:       spec.AsEngineSpec(),
 		},
 	}
 

@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"reflect"
 
 	"github.com/ipld/go-ipld-prime"
@@ -92,4 +93,17 @@ func Reinterpret[T any](node datamodel.Node, schema *Schema) (*T, error) {
 type IPLDMap[K comparable, V any] struct {
 	Keys   []K
 	Values map[K]V
+}
+
+func (m IPLDMap[K, V]) ToStringSlice() []string {
+	var result []string
+	for _, key := range m.Keys {
+		value, exists := m.Values[key]
+		if exists {
+			result = append(result, fmt.Sprintf("%v", key), fmt.Sprintf("%v", value))
+		} else {
+			panic(fmt.Sprintf("invalid IPLD map: key '%v' missing value", key))
+		}
+	}
+	return result
 }

@@ -213,7 +213,12 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
+			// TODO(forrest): [fixme] the below error ought to be impossible.
+			dockerEngine, err := model.DockerEngineFromEngineSpec(j.Spec.EngineSpec)
+			if err != nil {
+				return fmt.Errorf("impossible error, engine spec must be docker, developer error: %w", err)
+			}
+			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", dockerEngine.Image)
 		} else {
 			return fmt.Errorf("error verifying job: %w", err)
 		}

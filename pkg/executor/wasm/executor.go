@@ -213,11 +213,16 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("logmanager being removed")
 	}()
 
+	wasmEngine, err := AsEngine(job.Spec.EngineSpec)
+	if err != nil {
+		return nil, err
+	}
+
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
 
-	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
+	args := append([]string{wasmEngine.EntryModule.Name}, wasmEngine.Parameters...)
 
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
@@ -229,22 +234,22 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		WithSysWalltime().
 		WithFS(rootFs)
 
-	keys := maps.Keys(job.Spec.Wasm.EnvironmentVariables)
+	keys := maps.Keys(wasmEngine.EnvironmentVariables)
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, job.Spec.Wasm.EnvironmentVariables[key])
+		config = config.WithEnv(key, wasmEngine.EnvironmentVariables[key])
 	}
 
 	// Load and instantiate imported modules
 	loader := NewModuleLoader(engine, config, e.StorageProvider)
-	for _, importModule := range job.Spec.Wasm.ImportModules {
+	for _, importModule := range wasmEngine.ImportModules {
 		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
 		err = multierr.Append(err, ierr)
 	}
 
 	// Load and instantiate the entry module.
-	instance, err := loader.InstantiateRemoteModule(ctx, job.Spec.Wasm.EntryModule)
+	instance, err := loader.InstantiateRemoteModule(ctx, wasmEngine.EntryModule)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -254,11 +259,11 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	log.Ctx(ctx).Debug().
-		Str("entryPoint", job.Spec.Wasm.EntryPoint).
+		Str("entryPoint", wasmEngine.Entrypoint).
 		Str("job", job.ID()).
 		Str("execution", executionID).
 		Msg("Running WASM job")
-	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
+	entryFunc := instance.ExportedFunction(wasmEngine.Entrypoint)
 	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 

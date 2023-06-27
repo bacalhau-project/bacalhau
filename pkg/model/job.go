@@ -59,13 +59,14 @@ func NewJob() *Job {
 	}
 }
 
+// TODO this must return a Noop EngineDeprecated.
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
-			Verifier: VerifierNoop,
+			EngineDeprecated: EngineDocker,
+			Verifier:         VerifierNoop,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
@@ -220,11 +221,17 @@ type PublisherSpec struct {
 	Params map[string]interface{} `json:"Params,omitempty"`
 }
 
+type EngineSpec struct {
+	Type   string                 `json:"Type,omitempty"`
+	Params map[string]interface{} `json:"Params,omitempty"`
+}
+
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// e.g. docker or language
-	Engine Engine `json:"Engine,omitempty"`
+	// deprecated: user EngineSpec instead.
+	EngineDeprecated Engine `json:"Engine,omitempty"`
+	EngineSpec       EngineSpec
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 
@@ -232,10 +239,6 @@ type Spec struct {
 	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
-
-	// executor specific data
-	Docker JobSpecDocker `json:"Docker,omitempty"`
-	Wasm   JobSpecWasm   `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -275,8 +278,13 @@ func (s *Spec) GetTimeout() time.Duration {
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Wasm.EntryModule,
+	storages := []*StorageSpec{}
+	if s.EngineSpec.Type == EngineTypeWasm {
+		wasmEngine, err := WasmEngineFromEngineSpec(s.EngineSpec)
+		if err != nil {
+			panic("TODO FORREST")
+		}
+		storages = append(storages, &wasmEngine.EntryModule)
 	}
 
 	for _, collection := range [][]StorageSpec{
@@ -289,40 +297,6 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	}
 
 	return storages
-}
-
-// for VM style executors
-type JobSpecDocker struct {
-	// this should be pullable by docker
-	Image string `json:"Image,omitempty"`
-	// optionally override the default entrypoint
-	Entrypoint []string `json:"Entrypoint,omitempty"`
-	// a map of env to run the container with
-	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
-	// working directory inside the container
-	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
-// Describes a raw WASM job
-type JobSpecWasm struct {
-	// The module that contains the WASM code to start running.
-	EntryModule StorageSpec `json:"EntryModule,omitempty"`
-
-	// The name of the function in the EntryModule to call to run the job. For
-	// WASI jobs, this will always be `_start`, but jobs can choose to call
-	// other WASM functions instead. The EntryPoint must be a zero-parameter
-	// zero-result function.
-	EntryPoint string `json:"EntryPoint,omitempty"`
-
-	// The arguments supplied to the program (i.e. as ARGV).
-	Parameters []string `json:"Parameters,omitempty"`
-
-	// The variables available in the environment of the running program.
-	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
-
-	// TODO #880: Other WASM modules whose exports will be available as imports
-	// to the EntryModule.
-	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
 // we need to use a struct for the result because:

@@ -59,7 +59,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	require.Error(suite.T(), missingSpecError)
 
 	j = &model.Job{}
-	j.Spec = model.Spec{Engine: model.EngineDocker}
+	j.Spec = model.Spec{EngineDeprecated: model.EngineDocker, EngineSpec: model.NewDockerEngineSpec("", nil, nil, "")}
 	_, missingDealError := apiClient.Submit(ctx, j)
 	require.Error(suite.T(), missingDealError)
 }

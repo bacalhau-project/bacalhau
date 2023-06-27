@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
@@ -16,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
 )
 
 type ScenarioTestSuite interface {
@@ -101,7 +102,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.MaybeNeedDocker(s.T(), spec.EngineDeprecated == model.EngineDocker && spec.EngineSpec.Type == model.EngineTypeDocker)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
@@ -117,7 +118,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	s.Require().True(model.IsValidEngine(j.Spec.EngineDeprecated))
 	if !model.IsValidVerifier(j.Spec.Verifier) {
 		j.Spec.Verifier = model.VerifierNoop
 	}

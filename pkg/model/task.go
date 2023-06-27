@@ -56,7 +56,7 @@ type JobType interface {
 type NoopTask struct{}
 
 func (n NoopTask) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineNoop
+	spec.EngineDeprecated = EngineNoop
 	return nil
 }
 
@@ -129,6 +129,7 @@ func parseStorageSource(path string, resource *Resource) StorageSpec {
 
 func parseInputs(mounts IPLDMap[string, Resource]) ([]StorageSpec, error) {
 	inputs := []StorageSpec{}
+	// TODO(forrest): [correctness] this is correct but easily bug prone: https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable
 	for path, resource := range mounts.Values {
 		resource := resource
 		inputs = append(inputs, parseStorageSource(path, &resource))

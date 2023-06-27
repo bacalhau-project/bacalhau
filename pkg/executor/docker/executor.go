@@ -198,10 +198,15 @@ func (e *Executor) Run(
 		})
 	}
 
+	dockerEngine, err := AsEngine(job.Spec.EngineSpec)
+	if err != nil {
+		return nil, err
+	}
+
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
+		if pullErr := e.client.PullImage(ctx, dockerEngine.Image, dockerCreds); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, dockerEngine.Image)
 			return executor.FailResult(pullErr)
 		}
 	}
@@ -216,17 +221,17 @@ func (e *Executor) Run(
 	}
 	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(job.Spec.Docker.EnvironmentVariables,
+	useEnv := append(dockerEngine.EnvironmentVariables,
 		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
 	)
 
 	containerConfig := &container.Config{
-		Image:      job.Spec.Docker.Image,
+		Image:      dockerEngine.Image,
 		Tty:        false,
 		Env:        useEnv,
-		Entrypoint: job.Spec.Docker.Entrypoint,
+		Entrypoint: dockerEngine.Entrypoint,
 		Labels:     e.containerLabels(executionID, job),
-		WorkingDir: job.Spec.Docker.WorkingDirectory,
+		WorkingDir: dockerEngine.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
