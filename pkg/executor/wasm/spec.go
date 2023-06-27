@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -78,8 +79,29 @@ func AsEngine(e model.EngineSpec) (Engine, error) {
 		return Engine{}, fmt.Errorf("engine params uninitialized")
 	}
 	var out Engine
-	if err := mapstructure.Decode(e.Params, &out); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: StorageSpecUnmarshalledHookFunc(),
+		Result:     &out,
+	})
+	if err != nil {
 		return Engine{}, err
 	}
+	if err := decoder.Decode(e.Params); err != nil {
+		return Engine{}, err
+	}
+
 	return out, nil
+}
+
+func StorageSpecUnmarshalledHookFunc() mapstructure.DecodeHookFuncType {
+	return func(
+		from reflect.Type,
+		to reflect.Type,
+		data interface{}) (interface{}, error) {
+		// TODO(forrest): [hack] this is unsafe, but I am unsure how else to handle this case.
+		if to.String() != "model.StorageSourceType" {
+			return data, nil
+		}
+		return model.ParseStorageSourceType(data.(string))
+	}
 }

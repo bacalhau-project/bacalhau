@@ -2,6 +2,9 @@ package model
 
 import (
 	"fmt"
+	"reflect"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -73,11 +76,29 @@ func WasmEngineFromEngineSpec(e EngineSpec) (WasmEngine, error) {
 	if e.Params == nil {
 		return WasmEngine{}, fmt.Errorf("engine params uninitialized")
 	}
-	return WasmEngine{
-		EntryModule:          e.Params[EngineKeyEntryModuleWasm].(StorageSpec),
-		Entrypoint:           e.Params[EngineKeyEntrypointWasm].(string),
-		Parameters:           e.Params[EngineKeyParametersWasm].([]string),
-		EnvironmentVariables: e.Params[EngineKeyEnvironmentVariablesWasm].(map[string]string),
-		ImportModules:        e.Params[EngineKeyImportModulesWasm].([]StorageSpec),
-	}, nil
+	var out WasmEngine
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: StorageSpecUnmarshalledHookFunc(),
+		Result:     &out,
+	})
+	if err != nil {
+		return WasmEngine{}, err
+	}
+	if err := decoder.Decode(e.Params); err != nil {
+		return WasmEngine{}, err
+	}
+	return out, nil
+}
+
+func StorageSpecUnmarshalledHookFunc() mapstructure.DecodeHookFuncType {
+	return func(
+		from reflect.Type,
+		to reflect.Type,
+		data interface{}) (interface{}, error) {
+		// TODO(forrest): [hack] this is unsafe, but I am unsure how else to handle this case.
+		if to.String() != "model.StorageSourceType" {
+			return data, nil
+		}
+		return ParseStorageSourceType(data.(string))
+	}
 }

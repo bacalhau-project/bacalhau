@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -55,10 +57,9 @@ func DockerEngineFromEngineSpec(e EngineSpec) (DockerEngine, error) {
 	if e.Params == nil {
 		return DockerEngine{}, fmt.Errorf("engine params uninitialized")
 	}
-	return DockerEngine{
-		Image:                e.Params[EngineKeyImageDocker].(string),
-		Entrypoint:           e.Params[EngineKeyEntrypointDocker].([]string),
-		EnvironmentVariables: e.Params[EngineKeyEnvironmentVariablesDocker].([]string),
-		WorkingDirectory:     e.Params[EngineKeyWorkingDirectoryDocker].(string),
-	}, nil
+	var out DockerEngine
+	if err := mapstructure.Decode(e.Params, &out); err != nil {
+		return DockerEngine{}, err
+	}
+	return out, nil
 }

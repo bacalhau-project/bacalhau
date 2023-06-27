@@ -282,7 +282,7 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	if s.EngineSpec.Type == EngineTypeWasm {
 		wasmEngine, err := WasmEngineFromEngineSpec(s.EngineSpec)
 		if err != nil {
-			panic("TODO FORREST")
+			panic(err)
 		}
 		storages = append(storages, &wasmEngine.EntryModule)
 	}

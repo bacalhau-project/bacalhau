@@ -64,10 +64,4 @@ func AsEngine(e model.EngineSpec) (Engine, error) {
 		return Engine{}, err
 	}
 	return out, nil
-	return Engine{
-		Image:                e.Params[EngineKeyImage].(string),
-		Entrypoint:           e.Params[EngineKeyEntrypoint].([]string),
-		EnvironmentVariables: e.Params[EngineKeyEnvironmentVariables].([]string),
-		WorkingDirectory:     e.Params[EngineKeyWorkingDirectory].(string),
-	}, nil
 }
