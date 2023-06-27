@@ -68,6 +68,7 @@ from bacalhau_apiclient.models.job_spec_language import JobSpecLanguage
 from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
 from bacalhau_apiclient.models.job_sharding_config import JobShardingConfig
 from bacalhau_apiclient.models.job_execution_plan import JobExecutionPlan
+from bacalhau_apiclient.models.publisher_spec import PublisherSpec
 from bacalhau_apiclient.models.deal import Deal
 
 
@@ -77,7 +78,7 @@ data = dict(
     Spec=Spec(
         engine="Docker",
         verifier="Noop",
-        publisher="Estuary",
+        publisher_spec=PublisherSpec(type="Estuary"),
         docker=JobSpecDocker(
             image="ubuntu",
             entrypoint=["echo", "Hello World!"],
