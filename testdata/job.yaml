@@ -1,14 +1,16 @@
-APIVersion: v1beta1
+APIVersion: v1beta2
 Spec:
   Engine: Docker
+  EngineSpec:
+    Type: docker
+    Params:
+      Image: ubuntu:latest
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - echo 15
   Verifier: Noop
   Publisher: Estuary
-  Docker:
-    Image: ubuntu:latest
-    Entrypoint:
-      - /bin/bash
-      - -c
-      - echo 15
   Outputs:
     - StorageSource: IPFS
       Name: output_custom

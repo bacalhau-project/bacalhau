@@ -1,18 +1,20 @@
 {
-    "APIVersion": "v1beta1",
+    "APIVersion": "v1beta2",
     "Spec": {
         "Engine": "docker",
+        "EngineSpec":{
+            "Type": "docker",
+            "Params": {
+                "Image": "ubuntu:latest",
+                "Entrypoint": [
+                    "/bin/bash",
+                    "-c",
+                    "sleep 1000"
+                ]
+            }
+        },
         "Verifier": "noop",
         "Publisher": "noop",
-        "Docker": {
-            "Image": "ubuntu:latest",
-            "Entrypoint": [
-                "/bin/bash",
-                "-c",
-                "sleep 1000"
-            ],
-            "EnvironmentVariables": []
-        },
         "Resources": {
             "CPU": "",
             "GPU": "",

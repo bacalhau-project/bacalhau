@@ -1,6 +1,14 @@
-APIVersion: v1beta1
+APIVersion: v1beta2
 Spec:
   Engine: Docker
+  EngineSpec:
+    Type: docker
+    Params:
+      Image: ubuntu:latest
+      Entrypoint:
+        - /bin/bash
+        - -c
+        - ls /input_custom
   Verifier: Noop
   PublisherSpec:
     Type: S3
@@ -8,12 +16,6 @@ Spec:
       Bucket: bacalhau-test-datasets
       Key: integration-tests-published-result/job-{jobID}
       Region: eu-west-1
-  Docker:
-    Image: ubuntu:latest
-    Entrypoint:
-      - /bin/bash
-      - -c
-      - ls /input_custom
   Inputs:
     - StorageSource: S3
       S3:

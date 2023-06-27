@@ -1,18 +1,20 @@
 {
-    "APIVersion": "v1beta1",
+    "APIVersion": "v1beta2",
     "Spec": {
         "Engine": "docker",
+        "EngineSpec": {
+            "Type": "docker",
+            "Params": {
+                "Image": "ubuntu:latest",
+                "Entrypoint": [
+                    "/bin/bash",
+                    "-c",
+                    "echo 15"
+                ]
+            }
+        },
         "Verifier": "noop",
         "Publisher": "ipfs",
-        "Docker": {
-            "Image": "ubuntu:latest",
-            "Entrypoint": [
-                "/bin/bash",
-                "-c",
-                "echo 15"
-            ],
-            "EnvironmentVariables": []
-        },
         "Resources": {
             "CPU": "",
             "GPU": "",

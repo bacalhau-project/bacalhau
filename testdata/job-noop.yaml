@@ -1,6 +1,8 @@
-APIVersion: v1beta1
+APIVersion: v1beta2
 Spec:
   Engine: Noop
+  EngineSpec:
+    Type: noop
   Verifier: Noop
   Publisher: Noop
   Outputs:
