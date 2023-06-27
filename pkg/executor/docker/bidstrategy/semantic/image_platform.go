@@ -38,7 +38,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 	// TODO(forrest): [correctness] keep same (probably incorrect) behavior as before.
-	if request.Job.Spec.EngineSpec.Type == model.EngineTypeDocker {
+	if request.Job.Spec.EngineSpec.Type != model.EngineTypeDocker {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
