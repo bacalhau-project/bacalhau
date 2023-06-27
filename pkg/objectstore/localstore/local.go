@@ -147,7 +147,8 @@ func (s *LocalStore) Update(ctx context.Context, prefix string, key string, op f
 
 	return s.database.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
-		bytes, err := op(bucket.Get(k))
+		data := bucket.Get(k)
+		bytes, err := op(data)
 		if err != nil {
 			return err
 		}

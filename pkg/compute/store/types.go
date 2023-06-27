@@ -32,8 +32,8 @@ func NewExecution(
 		ResourceUsage:   resourceUsage,
 		State:           ExecutionStateCreated,
 		Version:         1,
-		CreateTime:      time.Now(),
-		UpdateTime:      time.Now(),
+		CreateTime:      time.Now().UTC(),
+		UpdateTime:      time.Now().UTC(),
 	}
 }
 
