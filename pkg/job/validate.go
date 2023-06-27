@@ -61,8 +61,10 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		}
 	}
 
-	// TODO(forrest): shouldn't we verify the outputs? Currently if we do now the tests fail as outputs don't have a storage type when specified via a file
-	// test such as TestCancelTerminalJob will fail if this is uncommented because the job doesn't have a valid output type (if sourceUnknown)
+	// TODO(forrest): shouldn't we verify the outputs? Currently if we do now the
+	// tests fail as outputs don't have a storage type when specified via a file test
+	// such as TestCancelTerminalJob will fail if this is uncommented because the job
+	// doesn't have a valid output type (if sourceUnknown)
 	/*
 		for _, outputVolume := range j.Spec.Outputs {
 			if !model.IsValidStorageSourceType(outputVolume.StorageSource) {

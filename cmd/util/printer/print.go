@@ -156,7 +156,6 @@ func PrintJobExecution(
 		}
 	}
 	return nil
-
 }
 
 // WaitForJobAndPrintResultsToUser uses events to decide what to output to the terminal

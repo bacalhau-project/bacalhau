@@ -159,10 +159,12 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
 	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
 	if ODs.NumberOfBadComputeActors > totalComputeNodes {
-		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)", ODs.NumberOfBadComputeActors, totalComputeNodes)
+		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)",
+			ODs.NumberOfBadComputeActors, totalComputeNodes)
 	}
 	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
-		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)", ODs.NumberOfBadRequesterActors, totalRequesterNodes)
+		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
+			ODs.NumberOfBadRequesterActors, totalRequesterNodes)
 	}
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")

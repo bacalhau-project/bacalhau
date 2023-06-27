@@ -101,11 +101,10 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	j, foundJob, err := util.GetAPIClient(ctx).Get(ctx, inputJobID)
 
 	if err != nil {
-		if err, ok := err.(*bacerrors.ErrorResponse); ok {
-			return err
-		} else {
-			return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, err)
+		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
+			return errResp
 		}
+		return fmt.Errorf("unknown error trying to get job (ID: %s): %w", inputJobID, err)
 	}
 
 	if !foundJob {
