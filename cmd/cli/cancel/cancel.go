@@ -141,10 +141,10 @@ func cancel(cmd *cobra.Command, cmdArgs []string, options *CancelOptions) error 
 	if err != nil {
 		spinner.Done(printer.StopFailed)
 
-		if err, ok := err.(*bacerrors.ErrorResponse); ok {
-			return err
+		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
+			return errResp
 		} else {
-			return fmt.Errorf("unknown error trying to cancel job (ID: %s): %+v", requestedJobID, err)
+			return fmt.Errorf("unknown error trying to cancel job (ID: %s): %+v", requestedJobID, errResp)
 		}
 	}
 

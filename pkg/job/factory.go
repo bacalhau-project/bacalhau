@@ -118,7 +118,13 @@ func MakeDockerSpec(
 
 const null rune = 0
 
-func WithWasmEngine(entryModule model.StorageSpec, entrypoint string, parameters []string, envvar map[string]string, importModules []model.StorageSpec) SpecOpt {
+func WithWasmEngine(
+	entryModule model.StorageSpec,
+	entrypoint string,
+	parameters []string,
+	envvar map[string]string,
+	importModules []model.StorageSpec,
+) SpecOpt {
 	return func(s *model.Spec) error {
 		// See wazero.ModuleConfig.WithEnv
 		for key, value := range envvar {

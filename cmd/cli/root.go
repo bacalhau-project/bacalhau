@@ -134,13 +134,17 @@ func NewRootCmd() *cobra.Command {
 		`The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 	)
-	viper.BindPFlag("api-host", RootCmd.PersistentFlags().Lookup("api-host"))
+	if err := viper.BindPFlag("api-host", RootCmd.PersistentFlags().Lookup("api-host")); err != nil {
+		panic(err)
+	}
 	RootCmd.PersistentFlags().Uint16Var(
 		&apiPort, "api-port", defaultAPIPort,
 		`The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
-	viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port"))
+	if err := viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port")); err != nil {
+		panic(err)
+	}
 	RootCmd.PersistentFlags().Var(
 		flags.LoggingFlag(&util.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,

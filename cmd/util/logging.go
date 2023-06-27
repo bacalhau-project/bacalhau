@@ -67,10 +67,10 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	// any dataframes that are logged from the requested execution/job.
 	conn, err := apiClient.Logs(ctx, jobID, executionID, history, follow)
 	if err != nil {
-		if err, ok := err.(*bacerrors.ErrorResponse); ok {
-			return err
+		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
+			return errResp
 		} else {
-			return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, err)
+			return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, errResp)
 		}
 	}
 	defer conn.Close()

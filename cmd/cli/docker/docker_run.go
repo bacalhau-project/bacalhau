@@ -213,6 +213,9 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 			opts.DealSettings.MinBids,
 		),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return &model.Job{
 		APIVersion: model.APIVersionLatest().String(),

@@ -42,8 +42,6 @@ var (
 		`))
 )
 
-const null rune = 0
-
 type WasmRunOptions struct {
 	// parameters and entry modules are arguments
 	ImportModules []model.StorageSpec
@@ -149,7 +147,6 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		}
 		cmd.Print(string(yamlBytes))
 		return nil
-
 	}
 
 	executingJob, err := util.ExecuteJob(ctx, j, opts.RunTimeSettings)
@@ -219,12 +216,14 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 			opts.DealSettings.MinBids,
 		),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 		Spec:       spec,
 	}, nil
-
 }
 
 func parseArrayAsMap(inputArray []string) (map[string]string, error) {
