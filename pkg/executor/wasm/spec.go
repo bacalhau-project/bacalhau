@@ -3,6 +3,8 @@ package wasm
 import (
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -75,11 +77,9 @@ func AsEngine(e model.EngineSpec) (Engine, error) {
 	if e.Params == nil {
 		return Engine{}, fmt.Errorf("engine params uninitialized")
 	}
-	return Engine{
-		EntryModule:          e.Params[EngineKeyEntryModule].(model.StorageSpec),
-		Entrypoint:           e.Params[EngineKeyEntrypoint].(string),
-		Parameters:           e.Params[EngineKeyParameters].([]string),
-		EnvironmentVariables: e.Params[EngineKeyEnvironmentVariables].(map[string]string),
-		ImportModules:        e.Params[EngineKeyImportModules].([]model.StorageSpec),
-	}, nil
+	var out Engine
+	if err := mapstructure.Decode(e.Params, &out); err != nil {
+		return Engine{}, err
+	}
+	return out, nil
 }

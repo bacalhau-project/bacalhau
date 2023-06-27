@@ -3,6 +3,8 @@ package docker
 import (
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -57,6 +59,11 @@ func AsEngine(e model.EngineSpec) (Engine, error) {
 	if e.Params == nil {
 		return Engine{}, fmt.Errorf("engine params uninitialized")
 	}
+	var out Engine
+	if err := mapstructure.Decode(e.Params, &out); err != nil {
+		return Engine{}, err
+	}
+	return out, nil
 	return Engine{
 		Image:                e.Params[EngineKeyImage].(string),
 		Entrypoint:           e.Params[EngineKeyEntrypoint].([]string),
