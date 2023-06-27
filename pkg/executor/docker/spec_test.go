@@ -3,7 +3,6 @@
 package docker_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,28 +100,51 @@ func TestLocalRoundTrip(t *testing.T) {
 	})
 }
 
+type MarshallerTestCase[T any] struct {
+	Name        string
+	Marshaller  func(t T) ([]byte, error)
+	Unmarshaler func(b []byte, t *T) error
+}
+
+var marshallers = []MarshallerTestCase[model.EngineSpec]{
+	{
+		Name:        "yaml",
+		Marshaller:  model.YAMLMarshalWithMax[model.EngineSpec],
+		Unmarshaler: model.YAMLUnmarshalWithMax[model.EngineSpec],
+	},
+	{
+		Name:        "json",
+		Marshaller:  model.JSONMarshalWithMax[model.EngineSpec],
+		Unmarshaler: model.JSONUnmarshalWithMax[model.EngineSpec],
+	},
+}
+
 func TestRemoteRoundTrip(t *testing.T) {
 	image := "image"
 	entrypoint := []string{"entry", "point"}
 	envvars := []string{"FOO", "BAR"}
 	workdir := "work"
 	t.Run("happy path", func(t *testing.T) {
-		clientEngineSpec := docker.NewEngineSpec(image, entrypoint, envvars, workdir)
+		for _, er := range marshallers {
+			t.Run(er.Name, func(t *testing.T) {
+				clientEngineSpec := docker.NewEngineSpec(image, entrypoint, envvars, workdir)
 
-		// simulate an API call from client to server.
-		engineBytes, err := json.Marshal(clientEngineSpec)
-		require.NoError(t, err)
+				// simulate an API call from client to server.
+				engineBytes, err := er.Marshaller(clientEngineSpec)
+				require.NoError(t, err)
 
-		var serverEngineSpec model.EngineSpec
-		err = json.Unmarshal(engineBytes, &serverEngineSpec)
-		require.NoError(t, err)
+				var serverEngineSpec model.EngineSpec
+				err = er.Unmarshaler(engineBytes, &serverEngineSpec)
+				require.NoError(t, err)
 
-		dockerEngine, err := docker.AsEngine(serverEngineSpec)
-		require.NoError(t, err)
+				dockerEngine, err := docker.AsEngine(serverEngineSpec)
+				require.NoError(t, err)
 
-		assert.Equal(t, image, dockerEngine.Image)
-		assert.Equal(t, entrypoint, dockerEngine.Entrypoint)
-		assert.Equal(t, envvars, dockerEngine.EnvironmentVariables)
-		assert.Equal(t, workdir, dockerEngine.WorkingDirectory)
+				assert.Equal(t, image, dockerEngine.Image)
+				assert.Equal(t, entrypoint, dockerEngine.Entrypoint)
+				assert.Equal(t, envvars, dockerEngine.EnvironmentVariables)
+				assert.Equal(t, workdir, dockerEngine.WorkingDirectory)
+			})
+		}
 	})
 }
