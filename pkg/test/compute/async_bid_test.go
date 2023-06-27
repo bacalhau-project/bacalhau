@@ -13,7 +13,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
 )
 
 type AsyncBidSuite struct {
@@ -21,6 +22,7 @@ type AsyncBidSuite struct {
 
 	strategy *bidstrategy.CallbackBidStrategy
 
+	database      *localstore.LocalStore
 	store         store.ExecutionStore
 	callbackStore *CallbackStore
 }
@@ -35,7 +37,11 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.config.BidSemanticStrategy = s.strategy
 	s.config.BidResourceStrategy = s.strategy
 
-	s.store = inmemory.NewStore()
+	s.database, _ = localstore.NewLocalStore(
+		localstore.WithTestLocation(),
+		localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
+	)
+	s.store = kvstore.NewStore(context.Background(), s.database)
 	s.callbackStore = &CallbackStore{}
 	s.callbackStore.GetExecutionFn = s.store.GetExecution
 	s.callbackStore.GetExecutionsFn = s.store.GetExecutions
@@ -45,6 +51,10 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.DeleteExecutionFn = s.store.DeleteExecution
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
 	s.config.ExecutionStore = s.callbackStore
+}
+
+func (s *AsyncBidSuite) TearDownSuite() {
+	s.database.Close(context.Background())
 }
 
 func (s *AsyncBidSuite) TestAsyncApproval() {

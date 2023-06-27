@@ -20,6 +20,8 @@ const (
 	PrefixHistory    = "history"
 )
 
+var ExecutionPrefixes = []string{PrefixJobs, PrefixExecutions, PrefixHistory}
+
 type Store struct {
 	executions *localstore.Client[ExecutionEnvelope]
 	history    *localstore.Client[ExecutionHistoryEnvelope]
@@ -64,7 +66,7 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 	}
 
 	sort.Slice(executions, func(i, j int) bool {
-		return executions[i].CreateTime.Before(executions[j].CreateTime)
+		return executions[i].UpdateTime.Before(executions[j].UpdateTime)
 	})
 
 	return executions, nil

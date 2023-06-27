@@ -7,21 +7,34 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
 type Suite struct {
 	suite.Suite
+
+	ctx            context.Context
+	database       *localstore.LocalStore
 	executionStore store.ExecutionStore
 	execution      store.Execution
 }
 
 func (s *Suite) SetupTest() {
-	s.executionStore = inmemory.NewStore()
+	s.ctx = context.Background()
+	s.database, _ = localstore.NewLocalStore(
+		localstore.WithTestLocation(),
+		localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
+	)
+	s.executionStore = kvstore.NewStore(s.ctx, s.database)
 	s.execution = newExecution()
+}
+
+func (s *Suite) TearDownTest() {
+	s.database.Close(s.ctx)
 }
 
 func TestSuite(t *testing.T) {
@@ -39,21 +52,19 @@ func (s *Suite) TestGetActiveExecution_Single() {
 }
 
 func (s *Suite) TestGetActiveExecution_Multiple() {
-	ctx := context.Background()
-
 	// create a newer execution with same job as the previous one
 	newerExecution := s.execution
 	newerExecution.ID = uuid.NewString()
 	newerExecution.Job = s.execution.Job
 	newerExecution.UpdateTime = s.execution.UpdateTime.Add(1)
 
-	err := s.executionStore.CreateExecution(ctx, s.execution)
+	err := s.executionStore.CreateExecution(s.ctx, s.execution)
 	s.NoError(err)
 
-	err = s.executionStore.CreateExecution(ctx, newerExecution)
+	err = s.executionStore.CreateExecution(s.ctx, newerExecution)
 	s.NoError(err)
 
-	active, err := store.GetActiveExecution(ctx, s.executionStore, s.execution.Job.ID())
+	active, err := store.GetActiveExecution(s.ctx, s.executionStore, s.execution.Job.ID())
 	s.NoError(err)
 	s.Equal(newerExecution, active)
 }

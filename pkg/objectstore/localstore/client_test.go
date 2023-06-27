@@ -58,7 +58,7 @@ func (s *LocalClientTestSuite) TestSimpleMissingKey() {
 }
 
 func (s *LocalClientTestSuite) TestSimplePut() {
-	t := TestData{Name: "Bob", Age: 30}
+	t := TestData{ID: "1", ContainerID: "100", Name: "Bob", Age: 30}
 
 	c := localstore.NewClient[TestData](s.ctx, "tests", s.store)
 	err := c.Put("bob", t)
