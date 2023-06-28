@@ -480,6 +480,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/requester/nodes": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Displays the nodes that this requester knows about",
+                "operationId": "pkg/requester/publicapi/nodes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.NodeInfo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/requester/results": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
@@ -1334,7 +1363,7 @@ const docTemplate = `{
                 1
             ],
             "x-enum-varnames": [
-                "nodeTypeUnknown",
+                "NodeTypeRequester",
                 "NodeTypeCompute"
             ]
         },
