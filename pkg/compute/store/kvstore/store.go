@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -29,6 +30,8 @@ type Store struct {
 }
 
 func NewStore(ctx context.Context, database *localstore.LocalStore) *Store {
+	log.Ctx(ctx).Info().Msg("creating new kvstore")
+
 	return &Store{
 		executions: localstore.NewClient[ExecutionEnvelope](ctx, PrefixExecutions, database),
 		history:    localstore.NewClient[ExecutionHistoryEnvelope](ctx, PrefixHistory, database),
@@ -37,6 +40,10 @@ func NewStore(ctx context.Context, database *localstore.LocalStore) *Store {
 }
 
 func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, error) {
+	log.Ctx(ctx).Debug().
+		Str("ExecutionID", id).
+		Msg("kvstore.GetExecution")
+
 	envelope, err := s.executions.Get(id)
 	if err != nil {
 		if errors.Is(err, objectstore.NewErrNotFound(id)) {
@@ -48,6 +55,10 @@ func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, e
 }
 
 func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
+	log.Ctx(ctx).Debug().
+		Str("JobID", jobID).
+		Msg("kvstore.GetExecutions")
+
 	identifiers, err := s.jobs.Get(jobID)
 
 	if err != nil || len(identifiers) == 0 {
@@ -73,6 +84,10 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 }
 
 func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]store.ExecutionHistory, error) {
+	log.Ctx(ctx).Debug().
+		Str("ExecutionID", executionID).
+		Msg("kvstore.GetExecutionHistory")
+
 	envelope, err := s.history.Get(executionID)
 	if err != nil {
 		return nil, store.NewErrExecutionHistoryNotFound(executionID)
@@ -82,6 +97,10 @@ func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]
 }
 
 func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) error {
+	log.Ctx(ctx).Debug().
+		Str("ExecutionID", execution.ID).
+		Msg("kvstore.CreateExecution")
+
 	_, err := s.executions.Get(execution.ID)
 	if err == nil {
 		return store.NewErrExecutionAlreadyExists(execution.ID)
@@ -102,6 +121,10 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 }
 
 func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
+	log.Ctx(ctx).Debug().
+		Str("ExecutionID", request.ExecutionID).
+		Msg("kvstore.UpdateExecutionState")
+
 	envelope, err := s.executions.Get(request.ExecutionID)
 	if err != nil {
 		return store.NewErrExecutionNotFound(request.ExecutionID)
@@ -161,6 +184,10 @@ func (s *Store) appendHistory(
 }
 
 func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
+	log.Ctx(ctx).Debug().
+		Str("ExecutionID", executionID).
+		Msg("kvstore.DeleteExecution")
+
 	envelope, err := s.executions.Get(executionID)
 	if err != nil {
 		return store.NewErrExecutionNotFound(executionID)
@@ -184,6 +211,12 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 }
 
 func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
+	log.Ctx(ctx).Debug().
+		Msg("kvstore.GetExecutionCount")
+
+	// TODO(ross) So, counting based on execution state .... seems like
+	// maintaining a prefix for a counter is excessive
+
 	// var counter uint
 	// for _, execution := range s.executionMap {
 	// 	if execution.State == store.ExecutionStateCompleted {

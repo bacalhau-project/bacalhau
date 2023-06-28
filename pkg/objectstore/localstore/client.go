@@ -3,8 +3,10 @@ package localstore
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
+	"github.com/rs/zerolog/log"
 )
 
 type indexable = objectstore.Indexable
@@ -20,6 +22,10 @@ type Client[T indexable] struct {
 // It is constrained to a single type, within a single prefix, but is still able to use
 // other prefixes where they originate with an indexer.
 func NewClient[T indexable](ctx context.Context, prefix string, store *LocalStore) *Client[T] {
+	log.Ctx(ctx).Debug().
+		Str("Type", fmt.Sprintf("%T", *new(T))).
+		Msg("creating new localstore client")
+
 	return &Client[T]{
 		ctx:    ctx,
 		newT:   func() T { return *new(T) },
@@ -32,6 +38,10 @@ func NewClient[T indexable](ctx context.Context, prefix string, store *LocalStor
 // an ErrNotFound error.
 func (c *Client[T]) Get(key string) (T, error) {
 	t := c.newT()
+
+	log.Ctx(c.ctx).Debug().
+		Str("Key", key).
+		Msg("localstore.client.Get")
 
 	bytes, err := c.store.Get(c.ctx, c.prefix, key)
 	if err != nil {
@@ -51,6 +61,10 @@ func (c *Client[T]) Get(key string) (T, error) {
 // method will ask the object for its indexers which will be executed
 // in sequence.
 func (c *Client[T]) Put(key string, object T) error {
+	log.Ctx(c.ctx).Debug().
+		Str("Key", key).
+		Msg("localstore.client.Put")
+
 	bytes, err := json.Marshal(object)
 	if err != nil {
 		return err
@@ -63,6 +77,11 @@ func (c *Client[T]) Put(key string, object T) error {
 
 	indexers := object.OnUpdate()
 	for _, indexer := range indexers {
+		log.Ctx(c.ctx).Debug().
+			Str("IndexKey", indexer.IndexKey).
+			Str("IndexPrefix", indexer.IndexPrefix).
+			Msg("localstore.client running update indexer")
+
 		err := c.runIndexer(indexer)
 		if err != nil {
 			return err
@@ -76,6 +95,10 @@ func (c *Client[T]) Put(key string, object T) error {
 // the object will be asked for any indexers which can be executed to clean
 // up any pointers to this object.
 func (c *Client[T]) Delete(key string, object T) error {
+	log.Ctx(c.ctx).Debug().
+		Str("Key", key).
+		Msg("localstore.client.Delete")
+
 	err := c.store.Delete(c.ctx, c.prefix, key)
 	if err != nil {
 		return err
@@ -83,6 +106,11 @@ func (c *Client[T]) Delete(key string, object T) error {
 
 	indexers := object.OnDelete()
 	for _, indexer := range indexers {
+		log.Ctx(c.ctx).Debug().
+			Str("IndexKey", indexer.IndexKey).
+			Str("IndexPrefix", indexer.IndexPrefix).
+			Msg("localstore.client running delete indexer")
+
 		err := c.runIndexer(indexer)
 		if err != nil {
 			return err

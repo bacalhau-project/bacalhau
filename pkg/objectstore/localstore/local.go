@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/objectstore"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 )
@@ -44,6 +46,11 @@ func NewLocalStore(ctx context.Context, options ...Option) (*LocalStore, error) 
 		return nil, errors.New("no prefixes were provided ahead of time for the database")
 	}
 
+	log.Ctx(ctx).Info().
+		Str("File", store.filepath).
+		Str("Prefixes", strings.Join(store.prefixes, ",")).
+		Msg("opening localstore database")
+
 	store.database, err = bolt.Open(store.filepath, DefaultDatabasePermissions, &bolt.Options{Timeout: 2 * time.Second})
 	if err != nil {
 		return nil, err
@@ -77,6 +84,11 @@ func (s *LocalStore) Get(ctx context.Context, prefix string, key string) ([]byte
 		return nil, objectstore.NewErrInvalidPrefix(prefix)
 	}
 
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("Key", key).
+		Msg("database.Get()")
+
 	err := s.database.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
 		bytesValue = bucket.Get([]byte(key))
@@ -97,8 +109,12 @@ func (s *LocalStore) GetBatch(ctx context.Context, prefix string, keys []string)
 		return nil, objectstore.NewErrInvalidPrefix(prefix)
 	}
 
-	results := make(map[string][]byte)
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("Key", strings.Join(keys, ",")).
+		Msg("database.GetBatch()")
 
+	results := make(map[string][]byte)
 	err := s.database.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(prefix))
 
@@ -121,9 +137,13 @@ func (s *LocalStore) List(ctx context.Context, prefix string, keyPrefix string) 
 		return nil, objectstore.NewErrInvalidPrefix(prefix)
 	}
 
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("KeyPrefix", keyPrefix).
+		Msg("database.List()")
+
 	// Assume we've got a few
 	keys := make([]string, DefaultKeyListCapacity)
-
 	err := s.database.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket([]byte(prefix)).Cursor()
 
@@ -143,8 +163,12 @@ func (s *LocalStore) Update(ctx context.Context, prefix string, key string, op f
 		return objectstore.NewErrInvalidPrefix(prefix)
 	}
 
-	k := []byte(key)
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("Key", key).
+		Msg("database.Update()")
 
+	k := []byte(key)
 	return s.database.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
 		data := bucket.Get(k)
@@ -165,6 +189,11 @@ func (s *LocalStore) Delete(ctx context.Context, prefix string, key string) erro
 		return objectstore.NewErrInvalidPrefix(prefix)
 	}
 
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("Key", key).
+		Msg("database.Delete()")
+
 	err := s.database.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
 		return bucket.Delete([]byte(key))
@@ -181,6 +210,11 @@ func (s *LocalStore) Put(ctx context.Context, prefix string, key string, value [
 		return objectstore.NewErrInvalidPrefix(prefix)
 	}
 
+	log.Ctx(ctx).Debug().
+		Str("Prefix", prefix).
+		Str("Key", key).
+		Msg("database.Put()")
+
 	err := s.database.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(prefix))
 		return bucket.Put([]byte(key), value)
@@ -193,8 +227,10 @@ func (s *LocalStore) Put(ctx context.Context, prefix string, key string, value [
 }
 
 // Close will close the database, after which it should not be usable
-func (s *LocalStore) Close(context.Context) error {
+func (s *LocalStore) Close(ctx context.Context) error {
 	err := s.database.Close()
+
+	log.Ctx(ctx).Info().Msg("closing localstore database")
 
 	if s.testmode {
 		os.Remove(s.filepath)
