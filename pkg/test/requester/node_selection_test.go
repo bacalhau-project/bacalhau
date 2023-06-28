@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -165,7 +166,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 			ctx := context.Background()
 			j := testutils.MakeNoopJob()
 			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
-			j.Spec.Deal.Concurrency = system.Max(1, len(tc.expectedNodes))
+			j.Spec.Deal.Concurrency = math.Max(1, len(tc.expectedNodes))
 
 			submittedJob, err := s.client.Submit(ctx, j)
 			if len(tc.expectedNodes) == 0 {

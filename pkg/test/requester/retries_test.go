@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
 
@@ -351,7 +352,7 @@ func (s *RetriesSuite) TestRetry() {
 			if !model.IsValidVerifier(j.Spec.Verifier) {
 				j.Spec.Verifier = model.VerifierNoop
 			}
-			j.Spec.Deal.Concurrency = system.Max(1, tc.concurrency)
+			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
 			j.Spec.Deal.Confidence = tc.confidence
 			j.Spec.Deal.MinBids = tc.minBids
 			submittedJob, err := s.client.Submit(ctx, j)

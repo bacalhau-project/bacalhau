@@ -4,9 +4,9 @@ import (
 	"context"
 	"sort"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 )
@@ -31,7 +31,7 @@ func NewAnyNodeSelector(params AnyNodeSelectorParams) requester.NodeSelector {
 	return &anyNodeSelector{
 		nodeDiscoverer:       params.NodeDiscoverer,
 		nodeRanker:           params.NodeRanker,
-		overAskForBidsFactor: system.Max(1, params.OverAskForBidsFactor),
+		overAskForBidsFactor: math.Max(1, params.OverAskForBidsFactor),
 	}
 }
 
@@ -67,13 +67,13 @@ func (s *anyNodeSelector) Select(ctx context.Context, job *model.Job, minCount, 
 		return filteredNodes[i].Rank > filteredNodes[j].Rank
 	})
 
-	selectedNodes := filteredNodes[:system.Min(len(filteredNodes), desiredCount)]
+	selectedNodes := filteredNodes[:math.Min(len(filteredNodes), desiredCount)]
 	selectedInfos := generic.Map(selectedNodes, func(nr requester.NodeRank) model.NodeInfo { return nr.NodeInfo })
 	return selectedInfos, nil
 }
 
 func (s *anyNodeSelector) SelectNodes(ctx context.Context, job *model.Job) ([]model.NodeInfo, error) {
-	minCount := system.Max(job.Spec.Deal.MinBids, job.Spec.Deal.Concurrency)
+	minCount := math.Max(job.Spec.Deal.MinBids, job.Spec.Deal.Concurrency)
 	desiredCount := minCount * int(s.overAskForBidsFactor)
 	return s.Select(ctx, job, minCount, desiredCount)
 }
@@ -83,7 +83,7 @@ func (s *anyNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 	var minExecutions int
 	if job.Spec.Deal.MinBids > 0 && jobState.ReceivedBidCount() < job.Spec.Deal.MinBids {
 		// if we are still queuing bids, then we need at least MinBids to start accepting bids
-		minExecutions = system.Max(job.Spec.Deal.GetConcurrency(), job.Spec.Deal.MinBids)
+		minExecutions = math.Max(job.Spec.Deal.GetConcurrency(), job.Spec.Deal.MinBids)
 	} else if jobState.PublishedOrPublishingCount() > 0 {
 		// if at least a single execution was published or still publishing, then we don't need to retry in case some executions failed to publish
 		minExecutions = 1
@@ -110,7 +110,7 @@ func (*anyNodeSelector) SelectBids(ctx context.Context, job *model.Job, jobState
 	}
 
 	executionsWaiting := jobState.GroupExecutionsByState()[model.ExecutionStateAskForBidAccepted]
-	requiredNewExecutions := system.Min(len(executionsWaiting), system.Max(0, job.Spec.Deal.GetConcurrency()-jobState.ActiveCount()))
+	requiredNewExecutions := math.Min(len(executionsWaiting), math.Max(0, job.Spec.Deal.GetConcurrency()-jobState.ActiveCount()))
 	return executionsWaiting[:requiredNewExecutions], executionsWaiting[requiredNewExecutions:]
 }
 

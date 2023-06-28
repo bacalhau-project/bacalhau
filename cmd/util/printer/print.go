@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -203,7 +204,7 @@ To cancel the job, run:
 
 	widestString := len(startMessage)
 	for _, v := range eventsWorthPrinting {
-		widestString = system.Max(widestString, len(v.Message))
+		widestString = math.Max(widestString, len(v.Message))
 	}
 
 	spinner, err := NewSpinner(ctx, writer, widestString, false)

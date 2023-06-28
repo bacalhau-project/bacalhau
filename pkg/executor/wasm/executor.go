@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
@@ -166,7 +167,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 		}
 
 		const pageSize = 65536
-		pageLimit := memoryLimit.Bytes()/pageSize + system.Min(memoryLimit.Bytes()%pageSize, 1)
+		pageLimit := memoryLimit.Bytes()/pageSize + math.Min(memoryLimit.Bytes()%pageSize, 1)
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(pageLimit))
 	}
 

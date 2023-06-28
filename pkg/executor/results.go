@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -42,7 +43,7 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 		return err
 	}
 
-	available := system.Min(summaryRead, int(output.summaryLimit))
+	available := math.Min(summaryRead, int(output.summaryLimit))
 
 	if output.summary != nil {
 		*(output.summary) = string(summary[:available])
@@ -62,7 +63,7 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 
 	// First write the bytes we have already read, and then write whatever
 	// is left in the buffer, but only up to the maximum file limit.
-	available = system.Min(summaryRead, int(output.fileLimit))
+	available = math.Min(summaryRead, int(output.fileLimit))
 	fileWritten, err := file.Write(summary[:available])
 	if err != nil && err != io.EOF {
 		return err
