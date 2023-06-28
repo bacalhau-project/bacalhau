@@ -34,12 +34,12 @@ type Msg struct {
 //	@Tags					Job
 //	@Accept					json
 //	@Produce				json
-//	@Param					logRequest  	body		logRequest	true	" "
-//	@Success				200				{object}	string
-//	@Failure				400				{object}	string
-//	@Failure				401				{object}	string
-//	@Failure				403				{object}	string
-//	@Failure				500				{object}	string
+//	@Param					logRequest	body		logRequest	true	" "
+//	@Success				200			{object}	string
+//	@Failure				400			{object}	string
+//	@Failure				401			{object}	string
+//	@Failure				403			{object}	string
+//	@Failure				500			{object}	string
 //	@Router					/requester/logs [post]
 //
 //nolint:funlen,gocyclo

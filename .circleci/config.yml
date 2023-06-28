@@ -510,8 +510,8 @@ jobs:
             - run:
                 name: Git commit
                 command: |
-                  git config user.email "enrico.rotundo@gmail.com"
-                  git config user.name "enricorotundo"
+                  git config user.email "$(git log --format='format:%ae' -n1)"
+                  git config user.name "$(git log --format='format:%an' -n1)"
                   # Note: we delete this branch after the PR is merged
                   GH_BRANCH_NAME=(ci-build-swagger-docs_$(humanid-gen --words 3 | grep -oE "^([^-]*-){1}[^-]*")-$(((RANDOM % $((100 - 1))) + 1)))
                   git checkout -b $GH_BRANCH_NAME
@@ -680,6 +680,16 @@ workflows:
       - build_canary:
           name: Check canary build
           filters:
+            tags:
+              ignore: /.*/
+
+  build_swagger_spec:
+    jobs:
+    - build_swagger:
+          name: build-swagger-spec
+          filters:
+            branches:
+              ignore: main
             tags:
               ignore: /.*/
 
