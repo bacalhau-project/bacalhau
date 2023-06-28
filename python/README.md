@@ -86,11 +86,6 @@ data = dict(
                 path="/outputs",
             )
         ],
-        sharding=JobShardingConfig(
-            batch_size=1,
-            glob_pattern_base_path="/inputs",
-        ),
-        execution_plan=JobExecutionPlan(shards_total=0),
         deal=Deal(concurrency=1, confidence=0, min_bids=0),
         do_not_track=False,
     ),
