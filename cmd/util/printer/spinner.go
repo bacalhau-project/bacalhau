@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/rs/zerolog/log"
 	"github.com/theckman/yacspin"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const (
@@ -323,7 +323,7 @@ func formatLineMessage(widths []uint8, parts ...string) string {
 	for i, part := range parts {
 		amountToPad := 0
 		if i < len(widths) { // Don't pad last column
-			amountToPad = system.Max(int(widths[i])-len(part), 0)
+			amountToPad = math.Max(int(widths[i])-len(part), 0)
 		}
 		paddedParts = append(paddedParts, strings.Repeat(" ", amountToPad)+part)
 	}

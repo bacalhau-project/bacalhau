@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
@@ -162,7 +163,7 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 				jobDesc = append(jobDesc, j.Job.Spec.Docker.Entrypoint...)
 			}
 			finalStr := strings.Join(jobDesc, " ")
-			return finalStr[:system.Min(len(finalStr), maxDescLines*maxDescWidth)]
+			return finalStr[:math.Min(len(finalStr), maxDescLines*maxDescWidth)]
 		},
 	},
 	{
