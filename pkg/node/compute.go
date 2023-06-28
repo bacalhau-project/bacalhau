@@ -322,6 +322,9 @@ func createExecutionStore(ctx context.Context, host host.Host, cm *system.Cleanu
 			return nil, err
 		}
 		store = kvstore.NewStore(ctx, database)
+
+		// Ensure the database underlying the store is closed at shutdown
+		cm.RegisterCallbackWithContext(database.Close)
 	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
 		store = inmemory.NewStore()
 	}
