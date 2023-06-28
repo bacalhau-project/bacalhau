@@ -7,6 +7,7 @@ yarn-error.log
 build
 public
 lib
+!pkg/lib
 .DS_Store
 dist/*.sha256
 dist/*.tar.gz
