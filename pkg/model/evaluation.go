@@ -34,6 +34,7 @@ type Evaluation struct {
 	TriggeredBy string
 
 	// Priority is the priority of the evaluation.
+	// e.g. 50 is higher priority than 10, and so will be evaluated first.
 	Priority int
 
 	// Type is the type of the job that needs to be evaluated.
@@ -55,14 +56,6 @@ type Evaluation struct {
 
 	CreateTime int64
 	ModifyTime int64
-}
-
-// GetID implements the IDGetter interface, required for pagination.
-func (e *Evaluation) GetID() string {
-	if e == nil {
-		return ""
-	}
-	return e.ID
 }
 
 // TerminalStatus returns if the current status is terminal and

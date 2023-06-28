@@ -4,23 +4,27 @@ import (
 	"container/heap"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
+
+// compile-time assertion that evalWrapper satisfies the ScheduledTask interface
+var _ collections.ScheduledTask[*model.Evaluation] = &evalWrapper{}
 
 // evalWrapper satisfies the ScheduledTask interface
 type evalWrapper struct {
 	eval *model.Evaluation
 }
 
-func (d *evalWrapper) GetData() *model.Evaluation {
+func (d *evalWrapper) Data() *model.Evaluation {
 	return d.eval
 }
 
-func (d *evalWrapper) GetID() string {
+func (d *evalWrapper) ID() string {
 	return d.eval.ID
 }
 
-func (d *evalWrapper) GetWaitUntil() time.Time {
+func (d *evalWrapper) WaitUntil() time.Time {
 	return d.eval.WaitUntil
 }
 
@@ -101,10 +105,10 @@ func (r *ReadyEvaluations) Push(e interface{}) {
 
 // Pop is used to remove an evaluation from the slice
 func (r *ReadyEvaluations) Pop() interface{} {
-	n := len(*r)
-	e := (*r)[n-1]
-	(*r)[n-1] = nil
-	*r = (*r)[:n-1]
+	old := *r
+	n := len(old)
+	e := old[n-1]
+	*r = old[:n-1]
 	return e
 }
 
@@ -148,10 +152,10 @@ func (p *PendingEvaluations) Push(e interface{}) {
 
 // Pop implements the heap interface and is used to remove an evaluation from the slice
 func (p *PendingEvaluations) Pop() interface{} {
-	n := len(*p)
-	e := (*p)[n-1]
-	(*p)[n-1] = nil
-	*p = (*p)[:n-1]
+	old := *p
+	n := len(old)
+	e := old[n-1]
+	*p = old[:n-1]
 	return e
 }
 

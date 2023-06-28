@@ -15,9 +15,9 @@ type ScheduledTaskHeap[T any] struct {
 
 // ScheduledTask is an interface type implemented by objects stored in the ScheduledTaskHeap
 type ScheduledTask[T any] interface {
-	GetData() T              // The data object
-	GetID() string           // ID of the object
-	GetWaitUntil() time.Time // Time to wait until
+	Data() T              // The data object
+	ID() string           // ID of the object
+	WaitUntil() time.Time // Time to wait until
 }
 
 func NewScheduledTaskHeap[T any]() *ScheduledTaskHeap[T] {
@@ -28,12 +28,12 @@ func NewScheduledTaskHeap[T any]() *ScheduledTaskHeap[T] {
 }
 
 func (h *ScheduledTaskHeap[T]) Push(task ScheduledTask[T]) error {
-	if _, ok := h.index[task.GetID()]; ok {
-		return fmt.Errorf("task %s already exists", task.GetID())
+	if _, ok := h.index[task.ID()]; ok {
+		return fmt.Errorf("task %s already exists", task.ID())
 	}
 
 	node := &scheduledHeapNode[T]{Task: task}
-	h.index[task.GetID()] = node
+	h.index[task.ID()] = node
 	heap.Push(&h.heap, node)
 	return nil
 }
@@ -44,7 +44,7 @@ func (h *ScheduledTaskHeap[T]) Pop() ScheduledTask[T] {
 	}
 
 	node := heap.Pop(&h.heap).(*scheduledHeapNode[T])
-	delete(h.index, node.Task.GetID())
+	delete(h.index, node.Task.ID())
 	return node.Task
 }
 
@@ -57,24 +57,24 @@ func (h *ScheduledTaskHeap[T]) Peek() ScheduledTask[T] {
 }
 
 func (h *ScheduledTaskHeap[T]) Contains(task ScheduledTask[T]) bool {
-	_, ok := h.index[task.GetID()]
+	_, ok := h.index[task.ID()]
 	return ok
 }
 
 func (h *ScheduledTaskHeap[T]) Update(task ScheduledTask[T]) error {
-	if existingNode, ok := h.index[task.GetID()]; ok {
+	if existingNode, ok := h.index[task.ID()]; ok {
 		existingNode.Task = task
 		heap.Fix(&h.heap, existingNode.index)
 		return nil
 	}
 
-	return fmt.Errorf("heap doesn't contain task with ID %q", task.GetID())
+	return fmt.Errorf("heap doesn't contain task with ID %q", task.ID())
 }
 
 func (h *ScheduledTaskHeap[T]) Remove(task ScheduledTask[T]) {
-	if node, ok := h.index[task.GetID()]; ok {
+	if node, ok := h.index[task.ID()]; ok {
 		heap.Remove(&h.heap, node.index)
-		delete(h.index, task.GetID())
+		delete(h.index, task.ID())
 	}
 }
 
@@ -100,15 +100,15 @@ func (h scheduledHeapImpl[T]) Len() int {
 // Less sorts zero WaitUntil times at the end of the list, and normally
 // otherwise
 func (h scheduledHeapImpl[T]) Less(i, j int) bool {
-	if h[i].Task.GetWaitUntil().IsZero() {
+	if h[i].Task.WaitUntil().IsZero() {
 		return false
 	}
 
-	if h[j].Task.GetWaitUntil().IsZero() {
+	if h[j].Task.WaitUntil().IsZero() {
 		return true
 	}
 
-	return h[i].Task.GetWaitUntil().Before(h[j].Task.GetWaitUntil())
+	return h[i].Task.WaitUntil().Before(h[j].Task.WaitUntil())
 }
 
 func (h scheduledHeapImpl[T]) Swap(i, j int) {

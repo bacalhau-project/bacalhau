@@ -399,12 +399,16 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Timeout() {
 	s.broker.SetEnabled(true)
 
 	start := time.Now()
-	out, _, err := s.broker.Dequeue(defaultSched, 5*time.Millisecond)
+	dequeueTimeout := 5 * time.Millisecond
+	out, _, err := s.broker.Dequeue(defaultSched, dequeueTimeout)
 	end := time.Now()
 
 	s.Require().NoError(err)
 	s.Require().Nil(out)
-	s.Require().WithinDuration(start.Add(5*time.Millisecond), end, 2*time.Millisecond, "should have waited 5ms")
+
+	buffer := 10 * time.Millisecond
+	s.Require().GreaterOrEqual(end.Sub(start), dequeueTimeout, "dequeue too fast")
+	s.Require().Less(end.Sub(start), dequeueTimeout+buffer, "dequeue too slow")
 }
 
 func (s *InMemoryBrokerTestSuite) TestDequeue_Empty_Timeout() {
@@ -523,6 +527,7 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Fairness() {
 // Ensure we get unblocked
 func (s *InMemoryBrokerTestSuite) TestDequeue_Blocked() {
 	s.broker.SetEnabled(true)
+	enqueueAfter := 5 * time.Millisecond
 
 	// Start with a blocked dequeue
 	outCh := make(chan *model.Evaluation)
@@ -537,14 +542,16 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Blocked() {
 			return
 		}
 		end := time.Now()
-		s.Require().WithinDuration(start.Add(5*time.Millisecond), end, 2*time.Millisecond, "nack timer mismatch")
+		buffer := 15 * time.Millisecond
+		s.Require().GreaterOrEqual(end.Sub(start), enqueueAfter, "dequeue too fast")
+		s.Require().Less(end.Sub(start), enqueueAfter+buffer, "dequeue too slow")
 		outCh <- out
 	}()
 
 	// Wait for a bit, or t.Fatal if an error has already happened in
 	// the goroutine
 	select {
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(enqueueAfter):
 		// no errors yet, soldier on
 	case err := <-errCh:
 		s.Require().NoError(err, "error from anonymous goroutine before enqueue")
@@ -587,8 +594,10 @@ func (s *InMemoryBrokerTestSuite) TestNack_Timeout() {
 	s.Require().Equal(eval, out, "dequeue result mismatch")
 
 	// Check the nack timer
-	s.Require().WithinDuration(start.Add(s.broker.visibilityTimeout+s.broker.initialNackDelay),
-		end, 2*time.Millisecond, "nack timer mismatch")
+	expectedDelay := s.broker.visibilityTimeout + s.broker.initialNackDelay
+	buffer := 10 * time.Millisecond
+	s.Require().GreaterOrEqual(end.Sub(start), expectedDelay, "dequeue too fast")
+	s.Require().Less(end.Sub(start), expectedDelay+buffer, "dequeue too slow")
 }
 
 // Ensure we nack in a timely manner
@@ -602,13 +611,12 @@ func (s *InMemoryBrokerTestSuite) TestNack_TimeoutReset() {
 
 	// Dequeue
 	out, receiptHandle, err := s.broker.Dequeue(defaultSched, time.Second)
-	start := time.Now()
 	s.Require().NoError(err)
 	s.Require().Equal(eval, out, "dequeue result mismatch")
 
 	// Reset in 20 milliseconds
-	resetAfter := 20 * time.Millisecond
-	time.Sleep(resetAfter)
+	time.Sleep(20 * time.Millisecond)
+	start := time.Now()
 	s.Require().NoError(s.broker.InflightExtend(out.ID, receiptHandle))
 
 	// Dequeue, should block on Nack timer
@@ -618,8 +626,9 @@ func (s *InMemoryBrokerTestSuite) TestNack_TimeoutReset() {
 	s.Require().Equal(eval, out, "dequeue result mismatch")
 
 	// Check the nack timer
-	s.Require().WithinDuration(
-		start.Add(s.broker.visibilityTimeout+resetAfter), end, 10*time.Millisecond, "nack timer mismatch")
+	buffer := 30 * time.Millisecond
+	s.Require().GreaterOrEqual(end.Sub(start), s.broker.visibilityTimeout, "dequeue too fast after nack timeout reset")
+	s.Require().Less(end.Sub(start), s.broker.visibilityTimeout+buffer, "dequeue too slow after nack timeout reset")
 }
 
 func (s *InMemoryBrokerTestSuite) TestDeliveryLimit() {

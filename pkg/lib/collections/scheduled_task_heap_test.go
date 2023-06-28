@@ -16,15 +16,15 @@ type mockTask struct {
 	waitUntil time.Time
 }
 
-func (t *mockTask) GetData() string {
+func (t *mockTask) Data() string {
 	return t.data
 }
 
-func (t *mockTask) GetID() string {
+func (t *mockTask) ID() string {
 	return t.id
 }
 
-func (t *mockTask) GetWaitUntil() time.Time {
+func (t *mockTask) WaitUntil() time.Time {
 	return t.waitUntil
 }
 

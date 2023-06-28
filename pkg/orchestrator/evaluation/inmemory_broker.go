@@ -110,13 +110,14 @@ type InMemoryBroker struct {
 	l sync.RWMutex
 }
 
-// NewInMemoryBroker creates a new evaluation broker. This is parameterized
-// with the timeout used for messages that are not acknowledged before we
-// assume a Nack and attempt to redeliver as well as the deliveryLimit
-// which prevents a failing eval from being endlessly delivered. The
-// initialNackDelay is the delay before making a Nacked evaluation available
-// again for the first Nack and subsequentNackDelay is the compounding delay
-// after the first Nack.
+// NewInMemoryBroker creates a new evaluation broker. This is parameterized with:
+//   - VisibilityTimeout used for messages. If not acknowledged before this time we
+//     assume a Nack and attempt to redeliver.
+//   - MaxReceiveCount which prevents a failing eval from being endlessly delivered.
+//   - InitialNackDelay which is the delay before making a first-time Nacked
+//     evaluation available again
+//   - SubsequentNackDelay is the compounding delay before making evaluations
+//     available again, after the first Nack.
 func NewInMemoryBroker(params InMemoryBrokerParams) (*InMemoryBroker, error) {
 	if params.VisibilityTimeout < 0 {
 		return nil, fmt.Errorf("timeout cannot be negative")
@@ -708,7 +709,8 @@ func (b *InMemoryBroker) runDelayedEvalsWatcher(ctx context.Context, updateCh <-
 }
 
 // nextDelayedEval returns the next delayed eval to launch and when it should be enqueued.
-// This peeks at the heap to return the top. If the heap is empty, this returns nil and zero time.
+// This peeks at the heap to return the top, where the top is the item with the shortest wait.
+// If the heap is empty, this returns nil and zero time.
 func (b *InMemoryBroker) nextDelayedEval() (*model.Evaluation, time.Time) {
 	b.l.RLock()
 	defer b.l.RUnlock()
@@ -721,8 +723,8 @@ func (b *InMemoryBroker) nextDelayedEval() (*model.Evaluation, time.Time) {
 	if nextEval == nil {
 		return nil, time.Time{}
 	}
-	eval := nextEval.GetData()
-	return eval, nextEval.GetWaitUntil()
+	eval := nextEval.Data()
+	return eval, nextEval.WaitUntil()
 }
 
 // Stats is used to query the state of the broker
