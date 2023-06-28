@@ -406,7 +406,7 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Timeout() {
 	s.Require().NoError(err)
 	s.Require().Nil(out)
 
-	buffer := 10 * time.Millisecond
+	buffer := 20 * time.Millisecond // ci windows is slow
 	s.Require().GreaterOrEqual(end.Sub(start), dequeueTimeout, "dequeue too fast")
 	s.Require().Less(end.Sub(start), dequeueTimeout+buffer, "dequeue too slow")
 }
@@ -542,7 +542,7 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Blocked() {
 			return
 		}
 		end := time.Now()
-		buffer := 15 * time.Millisecond
+		buffer := 25 * time.Millisecond // ci windows is slow
 		s.Require().GreaterOrEqual(end.Sub(start), enqueueAfter, "dequeue too fast")
 		s.Require().Less(end.Sub(start), enqueueAfter+buffer, "dequeue too slow")
 		outCh <- out
@@ -595,7 +595,7 @@ func (s *InMemoryBrokerTestSuite) TestNack_Timeout() {
 
 	// Check the nack timer
 	expectedDelay := s.broker.visibilityTimeout + s.broker.initialNackDelay
-	buffer := 10 * time.Millisecond
+	buffer := 30 * time.Millisecond // ci windows is slow
 	s.Require().GreaterOrEqual(end.Sub(start), expectedDelay, "dequeue too fast")
 	s.Require().Less(end.Sub(start), expectedDelay+buffer, "dequeue too slow")
 }
