@@ -43,7 +43,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	}
 
 	// TODO(forrest): [correctness] keep same (probably incorrect) behavior as before.
-	dockerEngine, engineErr := model.DockerEngineFromEngineSpec(request.Job.Spec.EngineSpec)
+	dockerEngine, engineErr := model.DockerEngineSpecFromEngineSpec(request.Job.Spec.EngineSpec)
 	if engineErr != nil {
 		return bidstrategy.NewShouldBidResponse(), engineErr
 	}

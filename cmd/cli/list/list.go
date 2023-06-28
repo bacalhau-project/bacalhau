@@ -158,7 +158,7 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 			jobDesc := []string{j.Job.Spec.EngineDeprecated.String()}
 			// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
 			if j.Job.Spec.EngineDeprecated == model.EngineDocker {
-				dockerEngine, err := model.DockerEngineFromEngineSpec(j.Job.Spec.EngineSpec)
+				dockerEngine, err := model.DockerEngineSpecFromEngineSpec(j.Job.Spec.EngineSpec)
 				if err != nil {
 					// TODO(forrest): [correctness] we should instead return an error.
 					panic(err)

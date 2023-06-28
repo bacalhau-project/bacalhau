@@ -19,7 +19,7 @@ func TestUnmarshalDocker(t *testing.T) {
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
 	require.Equal(t, EngineDocker, spec.EngineDeprecated)
-	dockerEngine, err := DockerEngineFromEngineSpec(spec.EngineSpec)
+	dockerEngine, err := DockerEngineSpecFromEngineSpec(spec.EngineSpec)
 	require.NoError(t, err)
 	require.Equal(t, "ubuntu", dockerEngine.Image)
 	require.Equal(t, []string{"date"}, dockerEngine.Entrypoint)

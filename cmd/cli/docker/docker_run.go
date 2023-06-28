@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -127,9 +128,12 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 		return fmt.Errorf("creating job: %w", err)
 	}
 
-	dockerEngine, err := model.DockerEngineFromEngineSpec(j.Spec.EngineSpec)
+	dockerEngine, err := model.DockerEngineSpecFromEngineSpec(j.Spec.EngineSpec)
 	if err != nil {
-		return fmt.Errorf("impossible error, engine spec must be docker, developer error: %w", err)
+		// NB(forrest): if this happens we (the developers) have introduced a logic error and need to address it with a code change.
+		// It indicates the CreateJob method above is returning incorrect values for the engine type.
+		log.Ctx(ctx).Err(err).Msg("developer error, engine spec must be docker")
+		return fmt.Errorf("failed to decode DockerEngineSpec from an EngineSpec known to be docker. Contact a developer: %w", err)
 	}
 
 	if err := jobutils.VerifyJob(ctx, j); err != nil {

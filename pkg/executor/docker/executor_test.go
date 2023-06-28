@@ -100,8 +100,8 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (s *ExecutorTestSuite) curlTask() model.DockerEngine {
-	return model.DockerEngine{
+func (s *ExecutorTestSuite) curlTask() model.DockerEngineSpec {
+	return model.DockerEngineSpec{
 		Image:      CurlDockerImage,
 		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
@@ -278,7 +278,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 			Type:    model.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		EngineSpec: model.DockerEngine{
+		EngineSpec: model.DockerEngineSpec{
 			Image:      CurlDockerImage,
 			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
 		}.AsEngineSpec(),
@@ -313,7 +313,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 
 	result, err := s.runJobWithContext(ctx, model.Spec{
 		EngineDeprecated: model.EngineDocker,
-		EngineSpec: model.DockerEngine{
+		EngineSpec: model.DockerEngineSpec{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		}.AsEngineSpec(),
@@ -337,7 +337,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		EngineSpec: model.DockerEngine{
+		EngineSpec: model.DockerEngineSpec{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		}.AsEngineSpec(),
@@ -367,7 +367,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		EngineSpec: model.DockerEngine{
+		EngineSpec: model.DockerEngineSpec{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
 		}.AsEngineSpec(),

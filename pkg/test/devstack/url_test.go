@@ -46,7 +46,7 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	catFileToStdOutWasmEngine, err := model.WasmEngineSpecFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
 	suite.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
@@ -73,7 +73,7 @@ func runURLTest(
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			EngineSpec: model.WasmEngine{
+			EngineSpec: model.WasmEngineSpec{
 				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
 				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{
@@ -215,7 +215,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
-	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	catFileToStdOutWasmEngine, err := model.WasmEngineSpecFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
 	s.Require().NoError(err)
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
@@ -235,7 +235,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			EngineSpec: model.WasmEngine{
+			EngineSpec: model.WasmEngineSpec{
 				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
 				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{

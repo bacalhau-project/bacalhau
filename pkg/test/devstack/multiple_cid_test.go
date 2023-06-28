@@ -32,7 +32,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	fileName1 := "hello-cid-1.txt"
 	fileName2 := "hello-cid-2.txt"
 
-	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	catFileToStdOutWasmEngine, err := model.WasmEngineSpecFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
 	require.NoError(s.T(), err)
 	testCase := scenario.Scenario{
 		Inputs: scenario.ManyStores(
@@ -45,7 +45,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			EngineSpec: model.WasmEngine{
+			EngineSpec: model.WasmEngineSpec{
 				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
 				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{

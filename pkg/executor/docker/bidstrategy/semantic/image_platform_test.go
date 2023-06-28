@@ -20,7 +20,7 @@ func jobForDockerImage(imageID string) model.Job {
 	return model.Job{
 		Spec: model.Spec{
 			EngineDeprecated: model.EngineDocker,
-			EngineSpec: model.DockerEngine{
+			EngineSpec: model.DockerEngineSpec{
 				Image: imageID,
 			}.AsEngineSpec(),
 		},

@@ -16,7 +16,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.DockerEngine{
+	job := newDockerJob("address-test", model.DockerEngineSpec{
 		Image:      "bash",
 		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
 	})

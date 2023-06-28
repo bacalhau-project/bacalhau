@@ -71,7 +71,7 @@ func newTestExecution(name string, job model.Job) store.Execution {
 		})
 }
 
-func newDockerJob(id string, spec model.DockerEngine) model.Job {
+func newDockerJob(id string, spec model.DockerEngineSpec) model.Job {
 	return model.Job{
 		Metadata: model.Metadata{
 			ID: id,

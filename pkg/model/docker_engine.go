@@ -1,20 +1,25 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
-
-	"github.com/mitchellh/mapstructure"
 )
 
 const (
 	EngineTypeDocker                    = "docker"
-	EngineKeyImageDocker                = "Image"
-	EngineKeyEntrypointDocker           = "Entrypoint"
-	EngineKeyEnvironmentVariablesDocker = "EnvironmentVariables"
-	EngineKeyWorkingDirectoryDocker     = "WorkingDirectory"
+	EngineKeyImageDocker                = "image"
+	EngineKeyEntrypointDocker           = "entrypoint"
+	EngineKeyEnvironmentVariablesDocker = "environmentVariables"
+	EngineKeyWorkingDirectoryDocker     = "workingDirectory"
 )
 
-func NewDockerEngineSpec(image string, entrypoint []string, environmentVariables []string, workingDirectory string) EngineSpec {
+// NewDockerEngineSpec returns an EngineSpec of type EngineTypeDocker with the provided arguments as EngineSpec.Params.
+func NewDockerEngineSpec(
+	image string,
+	entrypoint []string,
+	environmentVariables []string,
+	workingDirectory string,
+) EngineSpec {
 	return EngineSpec{
 		Type: EngineTypeDocker,
 		Params: map[string]interface{}{
@@ -26,19 +31,20 @@ func NewDockerEngineSpec(image string, entrypoint []string, environmentVariables
 	}
 }
 
-// for VM style executors
-type DockerEngine struct {
-	// this should be pullable by docker
+// DockerEngineSpec contains necessary parameters to execute a docker job.
+type DockerEngineSpec struct {
+	// Image this should be pullable by docker
 	Image string `json:"Image,omitempty"`
-	// optionally override the default entrypoint
+	// Entrypoint optionally override the default entrypoint
 	Entrypoint []string `json:"Entrypoint,omitempty"`
-	// a map of env to run the container with
+	// EnvironmentVariables is a slice of env to run the container with
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
-	// working directory inside the container
+	// WorkingDirectory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
-func (e DockerEngine) AsEngineSpec() EngineSpec {
+// AsEngineSpec returns a DockerEngineSpec as an EngineSpec.
+func (e DockerEngineSpec) AsEngineSpec() EngineSpec {
 	return EngineSpec{
 		Type: EngineTypeDocker,
 		Params: map[string]interface{}{
@@ -50,16 +56,28 @@ func (e DockerEngine) AsEngineSpec() EngineSpec {
 	}
 }
 
-func DockerEngineFromEngineSpec(e EngineSpec) (DockerEngine, error) {
+// DockerEngineSpecFromEngineSpec decodes a DockerEngineSpec from an EngineSpec.
+// This method will return an error if:
+// - The EngineSpec argument is not of type EngineTypeDocker.
+// - The EngineSpec.Params are nil.
+// - The EngineSpec.Params cannot be marshaled to json bytes.
+// - The EngineSpec.Params cannot be unmarshalled to a DockerEngineSpec.
+func DockerEngineSpecFromEngineSpec(e EngineSpec) (DockerEngineSpec, error) {
 	if e.Type != EngineTypeDocker {
-		return DockerEngine{}, fmt.Errorf("expected type %s got %s", EngineTypeDocker, e.Type)
+		return DockerEngineSpec{}, fmt.Errorf("expected type %s got %s", EngineTypeDocker, e.Type)
 	}
 	if e.Params == nil {
-		return DockerEngine{}, fmt.Errorf("engine params uninitialized")
+		return DockerEngineSpec{}, fmt.Errorf("engine params uninitialized")
 	}
-	var out DockerEngine
-	if err := mapstructure.Decode(e.Params, &out); err != nil {
-		return DockerEngine{}, err
+	// NB(forrest): we rely on go's json marshaller to handle the conversion of e.Params map[string]interface{} to the
+	// typed structure DockerEngineSpec.
+	eb, err := json.Marshal(e.Params)
+	if err != nil {
+		return DockerEngineSpec{}, nil
+	}
+	var out DockerEngineSpec
+	if err := json.Unmarshal(eb, &out); err != nil {
+		return DockerEngineSpec{}, err
 	}
 	return out, nil
 }

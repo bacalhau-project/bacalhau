@@ -214,7 +214,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 	if err != nil {
 		if _, ok := err.(*bacerrors.ImageNotFound); ok {
 			// TODO(forrest): [fixme] the below error ought to be impossible.
-			dockerEngine, err := model.DockerEngineFromEngineSpec(j.Spec.EngineSpec)
+			dockerEngine, err := model.DockerEngineSpecFromEngineSpec(j.Spec.EngineSpec)
 			if err != nil {
 				return fmt.Errorf("impossible error, engine spec must be docker, developer error: %w", err)
 			}

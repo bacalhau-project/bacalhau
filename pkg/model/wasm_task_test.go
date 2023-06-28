@@ -19,7 +19,7 @@ func TestUnmarshalWasm(t *testing.T) {
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
 	require.Equal(t, EngineWasm, spec.EngineDeprecated)
-	wasmEngine, err := WasmEngineFromEngineSpec(spec.EngineSpec)
+	wasmEngine, err := WasmEngineSpecFromEngineSpec(spec.EngineSpec)
 	require.NoError(t, err)
 	require.Equal(t, "_start", wasmEngine.Entrypoint)
 	require.Equal(t, []string{"/inputs/data.tar.gz"}, wasmEngine.Parameters)

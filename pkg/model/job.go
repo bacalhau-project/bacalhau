@@ -280,7 +280,7 @@ func (s *Spec) GetTimeout() time.Duration {
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	storages := []*StorageSpec{}
 	if s.EngineSpec.Type == EngineTypeWasm {
-		wasmEngine, err := WasmEngineFromEngineSpec(s.EngineSpec)
+		wasmEngine, err := WasmEngineSpecFromEngineSpec(s.EngineSpec)
 		if err != nil {
 			panic(err)
 		}

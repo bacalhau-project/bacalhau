@@ -1,10 +1,8 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
-	"reflect"
-
-	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -16,6 +14,7 @@ const (
 	EngineKeyImportModulesWasm        = "importmodules"
 )
 
+// NewWasmEngineSpec returns an EngineSpec of type EngineTypeWasm with the provided arguments as EngineSpec.Params.
 func NewWasmEngineSpec(
 	entryModule StorageSpec,
 	entrypoint string,
@@ -34,29 +33,29 @@ func NewWasmEngineSpec(
 	}
 }
 
-// Describes a raw WASM job
-type WasmEngine struct {
-	// The module that contains the WASM code to start running.
+// WasmEngineSpec contains necessary parameters to execute a wasm job.
+type WasmEngineSpec struct {
+	// EntryModule is a Spec containing the WASM code to start running.
 	EntryModule StorageSpec `json:"EntryModule,omitempty"`
 
-	// The name of the function in the EntryModule to call to run the job. For
-	// WASI jobs, this will always be `_start`, but jobs can choose to call
-	// other WASM functions instead. The EntryPoint must be a zero-parameter
-	// zero-result function.
+	// Entrypoint is the name of the function in the EntryModule to call to run the job.
+	// For WASI jobs, this will should be `_start`, but jobs can choose to call other WASM functions instead.
+	// Entrypoint must be a zero-parameter zero-result function.
 	Entrypoint string `json:"EntryPoint,omitempty"`
 
-	// The arguments supplied to the program (i.e. as ARGV).
+	// Parameters contains arguments supplied to the program (i.e. as ARGV).
 	Parameters []string `json:"Parameters,omitempty"`
 
-	// The variables available in the environment of the running program.
+	// EnvironmentVariables contains variables available in the environment of the running program.
 	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
 
-	// TODO #880: Other WASM modules whose exports will be available as imports
+	// ImportModules is a slice of StorageSpec's containing WASM modules whose exports will be available as imports
 	// to the EntryModule.
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
-func (e WasmEngine) AsEngineSpec() EngineSpec {
+// AsEngineSpec returns a WasmEngineSpec as an EngineSpec.
+func (e WasmEngineSpec) AsEngineSpec() EngineSpec {
 	return EngineSpec{
 		Type: EngineTypeWasm,
 		Params: map[string]interface{}{
@@ -69,36 +68,28 @@ func (e WasmEngine) AsEngineSpec() EngineSpec {
 	}
 }
 
-func WasmEngineFromEngineSpec(e EngineSpec) (WasmEngine, error) {
+// WasmEngineSpecFromEngineSpec decodes a WasmEngineSpec from an EngineSpec.
+// This method will return an error if:
+// - The EngineSpec argument is not of type EngineTypeWasm.
+// - The EngineSpec.Params are nil.
+// - The EngineSpec.Params cannot be marshaled to json bytes.
+// - The EngineSpec.Params cannot be unmarshalled to a WasmEngineSpec.
+func WasmEngineSpecFromEngineSpec(e EngineSpec) (WasmEngineSpec, error) {
 	if e.Type != EngineTypeWasm {
-		return WasmEngine{}, fmt.Errorf("expected type %s got %s", EngineTypeWasm, e.Type)
+		return WasmEngineSpec{}, fmt.Errorf("expected type %s got %s", EngineTypeWasm, e.Type)
 	}
 	if e.Params == nil {
-		return WasmEngine{}, fmt.Errorf("engine params uninitialized")
+		return WasmEngineSpec{}, fmt.Errorf("engine params uninitialized")
 	}
-	var out WasmEngine
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		DecodeHook: StorageSpecUnmarshalledHookFunc(),
-		Result:     &out,
-	})
+	// NB(forrest): we rely on go's json marshaller to handle the conversion of e.Params map[string]interface{} to the
+	// typed structure WasmEngineSpec.
+	eb, err := json.Marshal(e.Params)
 	if err != nil {
-		return WasmEngine{}, err
+		return WasmEngineSpec{}, nil
 	}
-	if err := decoder.Decode(e.Params); err != nil {
-		return WasmEngine{}, err
+	var out WasmEngineSpec
+	if err := json.Unmarshal(eb, &out); err != nil {
+		return WasmEngineSpec{}, err
 	}
 	return out, nil
-}
-
-func StorageSpecUnmarshalledHookFunc() mapstructure.DecodeHookFuncType {
-	return func(
-		from reflect.Type,
-		to reflect.Type,
-		data interface{}) (interface{}, error) {
-		// TODO(forrest): [hack] this is unsafe, but I am unsure how else to handle this case.
-		if to.String() != "model.StorageSourceType" {
-			return data, nil
-		}
-		return ParseStorageSourceType(data.(string))
-	}
 }

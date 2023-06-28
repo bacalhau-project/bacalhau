@@ -27,7 +27,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	// TODO(forrest): [feels] stay positive!
 	stdoutText := "I am a miserable failure\n"
 
-	catFileToStdOutWasmEngine, err := model.WasmEngineFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
+	catFileToStdOutWasmEngine, err := model.WasmEngineSpecFromEngineSpec(scenario.CatFileToStdout.Spec.EngineSpec)
 	s.Require().NoError(err)
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
@@ -37,7 +37,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
-			EngineSpec: model.WasmEngine{
+			EngineSpec: model.WasmEngineSpec{
 				Entrypoint:  catFileToStdOutWasmEngine.Entrypoint,
 				EntryModule: catFileToStdOutWasmEngine.EntryModule,
 				Parameters: []string{
