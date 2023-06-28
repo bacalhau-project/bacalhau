@@ -38,6 +38,7 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.config.BidResourceStrategy = s.strategy
 
 	s.database, _ = localstore.NewLocalStore(
+		context.Background(),
 		localstore.WithTestLocation(),
 		localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
 	)

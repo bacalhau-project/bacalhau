@@ -19,9 +19,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
@@ -41,6 +44,7 @@ type Compute struct {
 	Executors           executor.ExecutorProvider
 	LogServer           *logstream.LogStreamServer
 	Bidder              compute.Bidder
+	Database            *localstore.LocalStore
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
 	computeInfoProvider model.ComputeNodeInfoProvider
@@ -63,7 +67,7 @@ func NewComputeNode(
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(host)
+		executionStore, err = createExecutionStore(ctx, host, cleanupManager)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +297,7 @@ func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
 }
 
-func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
+func createExecutionStore(ctx context.Context, host host.Host, cm *system.CleanupManager) (store.ExecutionStore, error) {
 	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
 	// e.g. when running tests or when running devstack
 	configDir, err := system.EnsureConfigDir()
@@ -306,8 +310,24 @@ func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
 		return nil, err
 	}
 
+	var store store.ExecutionStore
+	storageConfig := config.GetComputeStorageConfig(host.ID().Pretty())
+	if storageConfig.StoreType == config.ExecutionStoreKVStore {
+		database, err := localstore.NewLocalStore(
+			ctx,
+			localstore.WithLocation(storageConfig.Location),
+			localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
+		)
+		if err != nil {
+			return nil, err
+		}
+		store = kvstore.NewStore(ctx, database)
+	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
+		store = inmemory.NewStore()
+	}
+
 	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   inmemory.NewStore(),
+		Store:   store,
 		RootDir: stateRootDir,
 	})
 }

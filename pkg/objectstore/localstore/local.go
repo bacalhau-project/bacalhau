@@ -28,7 +28,7 @@ type LocalStore struct {
 // an error if there is a problem during its construction.  Once the store
 // has been configured any prefixes provided to this function will be created
 // if they do not already exist.
-func NewLocalStore(options ...Option) (*LocalStore, error) {
+func NewLocalStore(ctx context.Context, options ...Option) (*LocalStore, error) {
 	var err error
 
 	store := &LocalStore{}

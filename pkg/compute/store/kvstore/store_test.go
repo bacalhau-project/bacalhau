@@ -25,6 +25,7 @@ func (s *Suite) SetupTest() {
 	s.ctx = context.Background()
 
 	local, _ := localstore.NewLocalStore(
+		s.ctx,
 		localstore.WithTestLocation(),
 		localstore.WithPrefixes(PrefixExecutions, PrefixHistory, PrefixJobs),
 	)

@@ -26,7 +26,7 @@ func TestLocalTestSuite(t *testing.T) {
 
 func (s *LocalTestSuite) SetupTest() {
 	s.ctx = context.TODO()
-	s.store, _ = localstore.NewLocalStore(localstore.WithTestLocation(), localstore.WithPrefixes("tests", "containers"))
+	s.store, _ = localstore.NewLocalStore(s.ctx, localstore.WithTestLocation(), localstore.WithPrefixes("tests", "containers"))
 }
 
 func (s *LocalTestSuite) TearDownTest() {
@@ -146,7 +146,7 @@ func (s *LocalTestSuite) TestList() {
 
 func BenchmarkWrite(b *testing.B) {
 	ctx := context.Background()
-	store, _ := localstore.NewLocalStore(localstore.WithTestLocation(), localstore.WithPrefixes("test"))
+	store, _ := localstore.NewLocalStore(ctx, localstore.WithTestLocation(), localstore.WithPrefixes("test"))
 
 	bytes := []byte(`{"name": "bob", "age": 100}`)
 
@@ -161,7 +161,7 @@ func BenchmarkWrite(b *testing.B) {
 
 func BenchmarkRead(b *testing.B) {
 	ctx := context.Background()
-	store, _ := localstore.NewLocalStore(localstore.WithTestLocation(), localstore.WithPrefixes("test"))
+	store, _ := localstore.NewLocalStore(ctx, localstore.WithTestLocation(), localstore.WithPrefixes("test"))
 
 	bytes := []byte(`{"name": "bob", "age": 100}`)
 	for n := 0; n < 100; n++ {

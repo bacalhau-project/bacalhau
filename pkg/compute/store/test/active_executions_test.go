@@ -26,6 +26,7 @@ type Suite struct {
 func (s *Suite) SetupTest() {
 	s.ctx = context.Background()
 	s.database, _ = localstore.NewLocalStore(
+		s.ctx,
 		localstore.WithTestLocation(),
 		localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
 	)

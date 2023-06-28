@@ -24,7 +24,7 @@ func TestLocalClientTestSuite(t *testing.T) {
 }
 
 func (s *LocalClientTestSuite) SetupTest() {
-	s.store, _ = localstore.NewLocalStore(localstore.WithTestLocation(), localstore.WithPrefixes("tests", "containers"))
+	s.store, _ = localstore.NewLocalStore(s.ctx, localstore.WithTestLocation(), localstore.WithPrefixes("tests", "containers"))
 }
 
 func (s *LocalClientTestSuite) TearDownTest() {
