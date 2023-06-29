@@ -17,23 +17,23 @@ var _ api.Module = tracedModule{}
 
 // tracedRuntime wraps a 'real' wazero.Runtime so that important events like compiling modules can be easily traced.
 type tracedRuntime struct {
-	delegate wazero.Runtime
+	wazero.Runtime
 }
 
 // tracedModule wraps a 'real' wazero api.Module so that function calls made to the module can be easily traced.
 type tracedModule struct {
-	delegate api.Module
+	api.Module
 }
 
 // tracedFunction wraps a 'real' wazero api.Function so that calls to the function can be easily traced.
 type tracedFunction struct {
-	delegate api.Function
+	api.Function
 }
 
 func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.Instantiate")
 	defer span.End()
-	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.delegate.Instantiate(ctx, source))
+	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.Instantiate(ctx, source))
 	if module != nil {
 		module = tracedModule{module}
 	}
@@ -43,7 +43,7 @@ func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Modu
 func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte, config wazero.ModuleConfig) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateWithConfig")
 	defer span.End()
-	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.delegate.InstantiateWithConfig(ctx, source, config))
+	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateWithConfig(ctx, source, config))
 	if module != nil {
 		module = tracedModule{module}
 	}
@@ -53,7 +53,7 @@ func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte,
 func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero.CompiledModule, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.CompileModule")
 	defer span.End()
-	module, err := telemetry.RecordErrorOnSpanTwo[wazero.CompiledModule](span)(t.delegate.CompileModule(ctx, binary))
+	module, err := telemetry.RecordErrorOnSpanTwo[wazero.CompiledModule](span)(t.Runtime.CompileModule(ctx, binary))
 	if module != nil {
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
@@ -69,7 +69,7 @@ func (t tracedRuntime) InstantiateModule(
 ) (api.Module, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateModule")
 	defer span.End()
-	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.delegate.InstantiateModule(ctx, compiled, config))
+	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateModule(ctx, compiled, config))
 	if err == nil && module != nil {
 		if name := module.Name(); name != "" {
 			span.SetAttributes(semconv.CodeNamespace(name))
@@ -80,7 +80,7 @@ func (t tracedRuntime) InstantiateModule(
 }
 
 func (t tracedModule) ExportedFunction(name string) api.Function {
-	return tracedFunction{t.delegate.ExportedFunction(name)}
+	return tracedFunction{t.Module.ExportedFunction(name)}
 }
 
 func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, error) {
@@ -88,67 +88,79 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 		ctx,
 		system.GetTracer(),
 		"pkg/executor/wasm.tracedFunction.Call",
-		trace.WithAttributes(semconv.CodeFunction(t.delegate.Definition().Name())),
+		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.delegate.Call(ctx, params...))
+	return telemetry.RecordErrorOnSpanTwo[[]uint64](span)(t.Function.Call(ctx, params...))
+}
+
+func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error {
+	ctx, span := system.NewSpan(
+		ctx,
+		system.GetTracer(),
+		"pkg/executor/wasm.tracedFunction.CallWithStack",
+		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
+	)
+	defer span.End()
+
+	return telemetry.RecordErrorOnSpan(span)(t.Function.CallWithStack(ctx, stack))
 }
 
 // Functions below this line just forward straight to the delegate
 
 func (t tracedRuntime) NewHostModuleBuilder(moduleName string) wazero.HostModuleBuilder {
-	return t.delegate.NewHostModuleBuilder(moduleName)
+	return t.Runtime.NewHostModuleBuilder(moduleName)
 }
 
 func (t tracedRuntime) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
-	return t.delegate.CloseWithExitCode(ctx, exitCode)
+	return t.Runtime.CloseWithExitCode(ctx, exitCode)
 }
 
 func (t tracedRuntime) Module(moduleName string) api.Module {
-	return t.delegate.Module(moduleName)
+	return t.Runtime.Module(moduleName)
 }
 
 func (t tracedRuntime) Close(ctx context.Context) error {
-	return t.delegate.Close(ctx)
+	return t.Runtime.Close(ctx)
 }
 
 func (t tracedFunction) Definition() api.FunctionDefinition {
-	return t.delegate.Definition()
+	return t.Function.Definition()
 }
 
 func (t tracedModule) String() string {
-	return t.delegate.String()
+	return t.Module.String()
 }
 
 func (t tracedModule) Name() string {
-	return t.delegate.Name()
+	return t.Module.Name()
 }
 
 func (t tracedModule) Memory() api.Memory {
-	return t.delegate.Memory()
+	return t.Module.Memory()
 }
 
 func (t tracedModule) ExportedFunctionDefinitions() map[string]api.FunctionDefinition {
-	return t.delegate.ExportedFunctionDefinitions()
+	return t.Module.ExportedFunctionDefinitions()
 }
 
 func (t tracedModule) ExportedMemory(name string) api.Memory {
-	return t.delegate.ExportedMemory(name)
+	return t.Module.ExportedMemory(name)
 }
 
 func (t tracedModule) ExportedMemoryDefinitions() map[string]api.MemoryDefinition {
-	return t.delegate.ExportedMemoryDefinitions()
+	return t.Module.ExportedMemoryDefinitions()
 }
 
 func (t tracedModule) ExportedGlobal(name string) api.Global {
-	return t.delegate.ExportedGlobal(name)
+	return t.Module.ExportedGlobal(name)
 }
 
 func (t tracedModule) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
-	return t.delegate.CloseWithExitCode(ctx, exitCode)
+	return t.Module.CloseWithExitCode(ctx, exitCode)
 }
 
 func (t tracedModule) Close(ctx context.Context) error {
-	return t.delegate.Close(ctx)
+	return t.Module.Close(ctx)
 }
