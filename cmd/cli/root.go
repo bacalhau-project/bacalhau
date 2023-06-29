@@ -193,8 +193,7 @@ func Execute() {
 	// Use stdout, not stderr for cmd.Print output, so that
 	// e.g. ID=$(bacalhau run) works
 	rootCmd.SetOut(system.Stdout)
-	// TODO this is from fixing a deprecation warning for SetOutput. Shouldn't this be system.Stderr?
-	rootCmd.SetErr(system.Stdout)
+	rootCmd.SetErr(system.Stderr)
 
 	if err := rootCmd.Execute(); err != nil {
 		util.Fatal(rootCmd, err, 1)
