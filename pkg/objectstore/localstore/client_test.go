@@ -24,6 +24,7 @@ func TestLocalClientTestSuite(t *testing.T) {
 }
 
 func (s *LocalClientTestSuite) SetupTest() {
+	s.ctx = context.Background()
 	s.store, _ = localstore.NewLocalStore(s.ctx, localstore.WithTestLocation(), localstore.WithPrefixes("tests", "containers"))
 }
 
