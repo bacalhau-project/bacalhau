@@ -8,10 +8,12 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -24,12 +26,15 @@ import (
 )
 
 const bucket = "bacalhau-test-datasets"
-const prefix = "integration-tests-publisher/"
 const region = "eu-west-1"
 const endpoint = "https://s3-eu-west-1.amazonaws.com"
 
 var jobID = uuid.NewString()
 var executionID = uuid.NewString()
+
+// Ensure unique prefix
+var timestamp = time.Now().UTC().Format("20060102T150405") // yyyyMMddThhmmss
+var prefix = fmt.Sprintf("integration-tests-publisher-%s/%s/", timestamp, executionID)
 
 type PublisherTestSuite struct {
 	suite.Suite
