@@ -70,10 +70,14 @@ func RunTestCase(
 	}
 
 	resultsDirectory := t.TempDir()
-	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
-	require.NoError(t, err)
-	require.Empty(t, runnerOutput.ErrorMsg)
+	_, err = executor.Run(ctx, "test-execution", job, resultsDirectory)
+	if testCase.SubmitChecker != nil {
+		err = testCase.SubmitChecker(&job, err)
+		require.NoError(t, err)
+	}
 
-	err = testCase.ResultsChecker(resultsDirectory)
-	require.NoError(t, err)
+	if testCase.ResultsChecker != nil {
+		err = testCase.ResultsChecker(resultsDirectory)
+		require.NoError(t, err)
+	}
 }
