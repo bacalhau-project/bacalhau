@@ -52,8 +52,13 @@ func (s *SchedulerProviderTestSuite) TestGetScheduler() {
 
 	for _, tc := range testCases {
 		s.Run(tc.description, func() {
-			scheduler := s.schedulerProvider.Scheduler(tc.jobType)
+			scheduler, err := s.schedulerProvider.Scheduler(tc.jobType)
 			s.Equal(tc.expected, scheduler)
+			if tc.expected == nil {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
 		})
 	}
 }

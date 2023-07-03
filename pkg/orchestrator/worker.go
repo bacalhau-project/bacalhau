@@ -139,12 +139,12 @@ func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evalua
 	}
 
 	// Schedule the evaluation
-	scheduler := w.schedulerProvider.Scheduler(evaluation.Type)
-	if scheduler == nil {
-		log.Error().Msgf("Failed to retrieve scheduler for evaluation %s of type %s", evaluation.ID, evaluation.Type)
+	scheduler, err := w.schedulerProvider.Scheduler(evaluation.Type)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to retrieve scheduler for evaluation %s", evaluation.ID)
 		return
 	}
-	if err := scheduler.Process(evaluation); err != nil {
+	if err = scheduler.Process(evaluation); err != nil {
 		log.Error().Err(err).Msgf("Failed to process evaluation %s", evaluation.ID)
 		return
 	}

@@ -74,7 +74,7 @@ type Scheduler interface {
 // jobs requiring scheduling.
 type SchedulerProvider interface {
 	// Scheduler returns a scheduler for the given job type
-	Scheduler(jobType string) Scheduler
+	Scheduler(jobType string) (Scheduler, error)
 
 	// EnabledSchedulers returns a list of enabled schedulers (job types)
 	EnabledSchedulers() []string

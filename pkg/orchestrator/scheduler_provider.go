@@ -14,8 +14,12 @@ func NewMappedSchedulerProvider(schedulers map[string]Scheduler) *MappedSchedule
 	}
 }
 
-func (p *MappedSchedulerProvider) Scheduler(jobType string) Scheduler {
-	return p.schedulers[jobType]
+func (p *MappedSchedulerProvider) Scheduler(jobType string) (Scheduler, error) {
+	scheduler := p.schedulers[jobType]
+	if scheduler == nil {
+		return nil, NewErrSchedulerNotFound(jobType)
+	}
+	return scheduler, nil
 }
 
 func (p *MappedSchedulerProvider) EnabledSchedulers() []string {
