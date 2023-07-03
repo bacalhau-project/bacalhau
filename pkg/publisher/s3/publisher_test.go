@@ -34,7 +34,7 @@ var executionID = uuid.NewString()
 
 // Ensure unique prefix
 var timestamp = time.Now().UTC().Format("20060102T150405") // yyyyMMddThhmmss
-var prefix = fmt.Sprintf("integration-tests-publisher-%s/%s/", timestamp, executionID)
+var prefix = fmt.Sprintf("integration-tests-publisher/%s-%s/", timestamp, executionID)
 
 type PublisherTestSuite struct {
 	suite.Suite
