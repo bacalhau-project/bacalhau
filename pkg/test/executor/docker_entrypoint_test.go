@@ -182,7 +182,7 @@ func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint
 	}
 	if expectError == true {
 		testScenario.SubmitChecker = scenario.SubmitJobErrorContains(`"media": executable file not found in $PATH`)
-		testScenario.ResultsChecker = scenario.ManyChecks(nil)
+		testScenario.ResultsChecker = scenario.ManyChecks()
 	}
 	return testScenario
 }
