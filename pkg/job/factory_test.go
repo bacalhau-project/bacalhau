@@ -51,47 +51,12 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 
 		for _, tcids := range testCids {
 			func() {
-<<<<<<< HEAD
 				spec, err := MakeSpec(
 					WithDockerEngine("", "", []string{}, []string{}, []string{}),
 					WithResources("1", "1", "0", "0"),
 					WithOutputs(tcids.outputVolumes...),
 					WithTimeout(300),
 					WithDeal(model.TargetAny, 1, 0, 0),
-=======
-				var outputVolumes []string
-				for _, tcidOV := range tcids.outputVolumes {
-					outputVolumes = append(outputVolumes, strings.Join([]string{tcidOV.name, tcidOV.path}, ":"))
-				}
-
-				j, err := ConstructDockerJob( //nolint:funlen
-					context.Background(),
-					model.APIVersionLatest(),
-					model.EngineNoop,
-					model.VerifierNoop,
-					model.PublisherSpec{Type: model.PublisherNoop},
-					"1",                   // cpu
-					"1",                   // memory
-					"0",                   // gpu
-					model.NetworkNone,     // networking
-					[]string{},            // domains
-					[]model.StorageSpec{}, // inputs
-					outputVolumes,
-					[]string{}, // env
-					"",         // entrypoint
-					[]string{}, // cmd
-					"",         // image
-					model.Deal{
-						TargetingMode: model.TargetAny,
-						Concurrency:   1,
-						Confidence:    0,
-						MinBids:       0,
-					},
-					300,        // timeout
-					[]string{}, // annotations
-					"",         // node selector
-					"",         // working dir
->>>>>>> b84ce822 (WIP)
 				)
 				j := model.Job{
 					APIVersion: model.APIVersionLatest().String(),
