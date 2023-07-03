@@ -67,7 +67,7 @@ type DockerRunOptions struct {
 
 	Image      string   // Image to execute
 	Entrypoint string   // Entrypoint to the docker image
-	Parameters []string //Command arguments for Entrypoint
+	Parameters []string // Command arguments for Entrypoint
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
 

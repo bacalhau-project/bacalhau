@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -71,20 +70,10 @@ func RunTestCase(
 	}
 
 	resultsDirectory := t.TempDir()
-	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
-	if err != nil {
-		if strings.Contains(err.Error(), `"media": executable file not found in $PATH`) {
-			t.Log("Expected error occured for no entrypoint", err)
-			//skip rest of test if correct error occurs
-			return
-		} else {
-			require.NoError(t, err)
-		}
-	} else {
-		require.Empty(t, runnerOutput.ErrorMsg)
-	}
+	_, err = executor.Run(ctx, "test-execution", job, resultsDirectory)
+	err = testCase.SubmitChecker(&job, err)
+	require.NoError(t, err)
 
 	err = testCase.ResultsChecker(resultsDirectory)
-
 	require.NoError(t, err)
 }

@@ -161,9 +161,10 @@ type tests []struct {
 	image          string
 	entrypoint     []string
 	parameters     []string
+	expectError    bool
 }
 
-func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint, parameters []string) scenario.Scenario {
+func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint, parameters []string, expectError bool) scenario.Scenario {
 	testScenario := scenario.Scenario{
 		ResultsChecker: scenario.ManyChecks(
 			scenario.FileEquals(model.DownloadFilenameStderr, expectedStderr),
@@ -177,6 +178,11 @@ func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint
 				Parameters: parameters,
 			},
 		},
+		SubmitChecker: scenario.SubmitJobSuccess(),
+	}
+	if expectError == true {
+		testScenario.SubmitChecker = scenario.SubmitJobErrorContains(`"media": executable file not found in $PATH`)
+		testScenario.ResultsChecker = scenario.ManyChecks(nil)
 	}
 	return testScenario
 }
@@ -188,14 +194,14 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueTrue() {
 	stderr := ""
 	newTests := tests{
 
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd},
-		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd},
+		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
+		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd, false},
 		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil},
-		{stderr, "echo This is from CMD\n", image, nil, nil},
+			image, defaultUserOverwrites.entrypoint, nil, false},
+		{stderr, "echo This is from CMD\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters)
+		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 
@@ -208,14 +214,14 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueFalse() {
 	image := suite.testName + "-image-true-false"
 	stderr := ""
 	newTests := tests{
-		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd},
+		{stderr, "media\n", image, nil, defaultUserOverwrites.cmd, false},
+		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
 		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil},
-		{stderr, "\n", image, nil, nil},
+			image, defaultUserOverwrites.entrypoint, nil, false},
+		{stderr, "\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters)
+		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 }
@@ -227,15 +233,14 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseTrue() {
 	stderr := ""
 	newTests := tests{
 		//override Cmd expect: error.
-		{stderr, "", image, nil, defaultUserOverwrites.cmd},
-		//override Entrypoint to /bin/ls should throw an error
+		{stderr, "", image, nil, defaultUserOverwrites.cmd, true},
 		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd},
-		{stderr, "This is from CMD\n", image, nil, nil},
+			image, defaultUserOverwrites.entrypoint, nil, false},
+		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
+		{stderr, "This is from CMD\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters)
+		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 
@@ -247,14 +252,14 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
 	stderr := ""
 	newTests := tests{
 		//override Cmd expect: error.
-		{stderr, "", image, nil, defaultUserOverwrites.cmd},
+		{stderr, "", image, nil, defaultUserOverwrites.cmd, true},
 		{stderr, "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
-			image, defaultUserOverwrites.entrypoint, nil},
-		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd},
-		{stderr, "", image, nil, nil},
+			image, defaultUserOverwrites.entrypoint, nil, false},
+		{stderr, "cdrom\nfloppy\nusb\n", image, defaultUserOverwrites.entrypoint, defaultUserOverwrites.cmd, false},
+		{stderr, "", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters)
+		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 }
