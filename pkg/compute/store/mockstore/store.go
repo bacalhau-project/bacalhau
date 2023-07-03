@@ -46,3 +46,8 @@ func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution stor
 	args := m.Called(ctx, execution)
 	return args.Error(0)
 }
+
+func (m *MockExecutionStore) Close(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

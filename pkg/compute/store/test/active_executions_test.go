@@ -4,12 +4,13 @@ package test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/kvstore"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,24 +19,23 @@ type Suite struct {
 	suite.Suite
 
 	ctx            context.Context
-	database       *localstore.LocalStore
+	dbFile         string
 	executionStore store.ExecutionStore
 	execution      store.Execution
 }
 
 func (s *Suite) SetupTest() {
 	s.ctx = context.Background()
-	s.database, _ = localstore.NewLocalStore(
-		s.ctx,
-		localstore.WithTestLocation(),
-		localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
-	)
-	s.executionStore = kvstore.NewStore(s.ctx, s.database)
+
+	dir, _ := os.MkdirTemp("", "bacalhau-test")
+	s.dbFile = filepath.Join(dir, "test.boltdb")
+
+	s.executionStore, _ = boltdb.NewStore(s.ctx, s.dbFile)
 	s.execution = newExecution()
 }
 
 func (s *Suite) TearDownTest() {
-	s.database.Close(s.ctx)
+	os.Remove(s.dbFile)
 }
 
 func TestSuite(t *testing.T) {

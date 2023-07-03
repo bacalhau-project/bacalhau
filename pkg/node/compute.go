@@ -17,9 +17,9 @@ import (
 	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
@@ -276,7 +276,7 @@ func NewComputeNode(
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		// pass
+		executionStore.Close(ctx)
 	}
 
 	return &Compute{
@@ -312,19 +312,11 @@ func createExecutionStore(ctx context.Context, host host.Host, cm *system.Cleanu
 
 	var store store.ExecutionStore
 	storageConfig := config.GetComputeStorageConfig(host.ID().Pretty())
-	if storageConfig.StoreType == config.ExecutionStoreKVStore {
-		database, err := localstore.NewLocalStore(
-			ctx,
-			localstore.WithLocation(storageConfig.Location),
-			localstore.WithPrefixes(kvstore.ExecutionPrefixes...),
-		)
+	if storageConfig.StoreType == config.ExecutionStoreBoltDB {
+		store, err = boltdb.NewStore(ctx, storageConfig.Location)
 		if err != nil {
 			return nil, err
 		}
-		store = kvstore.NewStore(ctx, database)
-
-		// Ensure the database underlying the store is closed at shutdown
-		cm.RegisterCallbackWithContext(database.Close)
 	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
 		store = inmemory.NewStore()
 	}

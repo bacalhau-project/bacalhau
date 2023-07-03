@@ -3,7 +3,6 @@
 package store
 
 import (
-	"context"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -13,21 +12,21 @@ import (
 
 func TestValidateNewExecution(t *testing.T) {
 	execution := newExecution()
-	err := ValidateNewExecution(context.Background(), execution)
+	err := ValidateNewExecution(execution)
 	assert.NoError(t, err)
 }
 
 func TestValidateNewExecution_InvalidState(t *testing.T) {
 	execution := newExecution()
 	execution.State = ExecutionStateBidAccepted
-	err := ValidateNewExecution(context.Background(), execution)
+	err := ValidateNewExecution(execution)
 	assert.ErrorAs(t, err, &ErrInvalidExecutionState{})
 }
 
 func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 	execution := newExecution()
 	execution.Version = 2
-	err := ValidateNewExecution(context.Background(), execution)
+	err := ValidateNewExecution(execution)
 	assert.ErrorAs(t, err, &ErrInvalidExecutionVersion{})
 }
 

@@ -94,4 +94,7 @@ type ExecutionStore interface {
 	// GetExecutionCount returns a count of all executions that completed
 	// successfully on this compute node
 	GetExecutionCount(ctx context.Context) (uint, error)
+	// Close provides the opportunity for the underlying store to cleanup
+	// any resources as the compute node is shutting down
+	Close(ctx context.Context) error
 }

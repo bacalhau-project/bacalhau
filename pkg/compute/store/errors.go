@@ -39,6 +39,19 @@ func (e ErrExecutionsNotFoundForJob) Error() string {
 	return "no executions found for job: " + e.JobID
 }
 
+// ErrJobNotFound is returned when the a job isn't found when trying to get its executions
+type ErrJobNotFound struct {
+	JobID string
+}
+
+func NewErrJobNotFound(id string) ErrJobNotFound {
+	return ErrJobNotFound{JobID: id}
+}
+
+func (e ErrJobNotFound) Error() string {
+	return "job not found: " + e.JobID
+}
+
 // ErrExecutionHistoryNotFound is returned when the execution is not found
 type ErrExecutionHistoryNotFound struct {
 	ExecutionID string

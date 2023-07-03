@@ -33,7 +33,7 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (Ex
 	return activeExecution, nil
 }
 
-func ValidateNewExecution(_ context.Context, execution Execution) error {
+func ValidateNewExecution(execution Execution) error {
 	if execution.State != ExecutionStateCreated {
 		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated)
 	}

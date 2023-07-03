@@ -301,7 +301,7 @@ type ExecutionStoreType = int
 
 const (
 	ExecutionStoreInMemory = iota
-	ExecutionStoreKVStore
+	ExecutionStoreBoltDB
 )
 
 type ComputeStorageConfig struct {
@@ -313,18 +313,21 @@ func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
 	c := ComputeStorageConfig{}
 
 	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE"))
-	if computeStore == "kvstore" {
-		c.StoreType = ExecutionStoreKVStore
+	if computeStore == "boltdb" {
+		c.StoreType = ExecutionStoreBoltDB
 	} else {
 		c.StoreType = ExecutionStoreInMemory
 	}
 
-	f := fmt.Sprintf("%s-compute.db", nodeID)
+	// Either, the user has specified the full path to the file in
+	// an environment variable, or we will derive the filename ourselves
+	// from the node id.
 	path := os.Getenv("BACALHAU_COMPUTE_STORE_PATH")
 	if path == "" {
-		path = GetConfigPath()
+		f := fmt.Sprintf("%s-compute.db", nodeID)
+		path = filepath.Join(GetConfigPath(), f)
 	}
-	c.Location = filepath.Join(path, f)
+	c.Location = path
 
 	return c
 }

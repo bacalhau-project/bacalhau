@@ -122,6 +122,10 @@ func (proxy *PersistentExecutionStore) UpdateExecutionState(ctx context.Context,
 	return err
 }
 
+func (proxy *PersistentExecutionStore) Close(ctx context.Context) error {
+	return nil
+}
+
 func writeCounter(filepath string, count uint) error {
 	var jobStore JobStats
 	jobStore.JobsCompleted += count

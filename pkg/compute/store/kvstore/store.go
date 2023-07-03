@@ -106,7 +106,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 		return store.NewErrExecutionAlreadyExists(execution.ID)
 	}
 
-	if err := store.ValidateNewExecution(ctx, execution); err != nil {
+	if err := store.ValidateNewExecution(execution); err != nil {
 		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
@@ -207,6 +207,10 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *Store) Close(ctx context.Context) error {
 	return nil
 }
 
