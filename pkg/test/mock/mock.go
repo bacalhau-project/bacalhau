@@ -13,7 +13,7 @@ func Eval() *model.Evaluation {
 		ID:         uuid.NewString(),
 		Namespace:  model.DefaultNamespace,
 		Priority:   50,
-		Type:       model.JobTypeService,
+		Type:       model.JobTypeBatch,
 		JobID:      uuid.NewString(),
 		Status:     model.EvalStatusPending,
 		CreateTime: now,

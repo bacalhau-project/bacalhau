@@ -342,7 +342,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.12.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.7.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/atomic v1.10.0
 	go.uber.org/dig v1.16.1 // indirect
 	go.uber.org/fx v1.19.2 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
