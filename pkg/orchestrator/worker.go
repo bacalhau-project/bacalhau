@@ -42,32 +42,28 @@ type Worker struct {
 	dequeueTimeout        time.Duration
 	dequeueFailureBackoff backoff.Backoff
 
-	status          atomic.String
-	startOnce       sync.Once
-	shutdownOnce    sync.Once
-	shuttingDownCtx context.Context
-	shuttingDownFn  context.CancelFunc
+	status       atomic.String
+	startOnce    sync.Once
+	shutdownOnce sync.Once
 }
 
 // NewWorker returns a new Worker instance.
-func NewWorker(ctx context.Context, params *WorkerParams) *Worker {
-	w := &Worker{
+func NewWorker(params *WorkerParams) *Worker {
+	return &Worker{
 		schedulerProvider:     params.SchedulerProvider,
 		evaluationBroker:      params.EvaluationBroker,
 		dequeueTimeout:        params.DequeueTimeout,
 		dequeueFailureBackoff: params.DequeueFailureBackoff,
 		status:                *atomic.NewString(WorkerStatusInit),
 	}
-	w.shuttingDownCtx, w.shuttingDownFn = context.WithCancel(ctx)
-	return w
 }
 
 // Start triggers the worker to start processing evaluations.
 // The worker can only start once, and subsequent calls to Start will be ignored.
-func (w *Worker) Start() {
+func (w *Worker) Start(ctx context.Context) {
 	w.startOnce.Do(func() {
 		w.setStatus(WorkerStatusStarting)
-		go w.run()
+		go w.run(ctx)
 	})
 }
 
@@ -76,7 +72,6 @@ func (w *Worker) Start() {
 func (w *Worker) Stop() {
 	w.shutdownOnce.Do(func() {
 		w.setStatus(WorkerStatusStopping)
-		w.shuttingDownFn()
 	})
 }
 
@@ -85,17 +80,17 @@ func (w *Worker) Status() string {
 	return w.status.Load()
 }
 
-func (w *Worker) run() {
+func (w *Worker) run(ctx context.Context) {
 	defer w.setStatus(WorkerStatusStopped)
 	w.setStatus(WorkerStatusRunning)
 
 	var dequeueFailures int
-	for !w.isShuttingDown() {
+	for !w.isShuttingDown(ctx) {
 		// Dequeue an evaluation and apply backoff if dequeueing fails
 		evaluationReceipt, err := w.dequeueEvaluation()
 		if err != nil {
 			dequeueFailures++
-			w.dequeueFailureBackoff.Backoff(w.shuttingDownCtx, dequeueFailures)
+			w.dequeueFailureBackoff.Backoff(ctx, dequeueFailures)
 			continue
 		}
 		// Reset dequeue failures if dequeueing is successful, even if no evaluation is received.
@@ -107,7 +102,7 @@ func (w *Worker) run() {
 		}
 
 		// Process the evaluation
-		ack := w.processEvaluation(evaluationReceipt.Evaluation)
+		ack := w.processEvaluation(ctx, evaluationReceipt.Evaluation)
 
 		// ack/nack the evaluation
 		w.ackEvaluation(evaluationReceipt, ack)
@@ -135,10 +130,10 @@ func (w *Worker) dequeueEvaluation() (*model.EvaluationReceipt, error) {
 }
 
 // processEvaluation processes an evaluation and returns true if it was processed successfully, false otherwise.
-func (w *Worker) processEvaluation(evaluation *model.Evaluation) (ack bool) {
+func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evaluation) (ack bool) {
 	defer metrics.MeasureSince([]string{"bacalhau", "worker", "process"}, time.Now())
 	// Check if worker is shutting down while dequeueing
-	if w.isShuttingDown() {
+	if w.isShuttingDown(ctx) {
 		log.Warn().Msgf("Worker is shutting down, not scheduling evaluation %s", evaluation.ID)
 		return
 	}
@@ -146,7 +141,7 @@ func (w *Worker) processEvaluation(evaluation *model.Evaluation) (ack bool) {
 	// Schedule the evaluation
 	scheduler := w.schedulerProvider.Scheduler(evaluation.Type)
 	if scheduler == nil {
-		log.Error().Msgf("Failed to retrieve scheduler for evaluation %s", evaluation.ID)
+		log.Error().Msgf("Failed to retrieve scheduler for evaluation %s of type %s", evaluation.ID, evaluation.Type)
 		return
 	}
 	if err := scheduler.Process(evaluation); err != nil {
@@ -187,11 +182,11 @@ func (w *Worker) setStatus(newStatus string) {
 }
 
 // isShuttingDown returns true if the worker is in the process of shutting down or has already shut down.
-func (w *Worker) isShuttingDown() bool {
+func (w *Worker) isShuttingDown(ctx context.Context) bool {
 	select {
-	case <-w.shuttingDownCtx.Done():
+	case <-ctx.Done():
 		return true
 	default:
-		return false
+		return w.Status() == WorkerStatusStopping || w.Status() == WorkerStatusStopped
 	}
 }

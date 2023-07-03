@@ -34,9 +34,7 @@ type WorkerTestSuite struct {
 }
 
 func (s *WorkerTestSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
 	ctrl := gomock.NewController(s.T())
-	s.cancelFn = cancel
 	s.schedulerBatchJobs = NewMockScheduler(ctrl)
 	s.schedulerServiceJobs = NewMockScheduler(ctrl)
 	s.broker = NewMockEvaluationBroker(ctrl)
@@ -48,7 +46,7 @@ func (s *WorkerTestSuite) SetupTest() {
 
 	s.eval = mock.Eval()
 	s.receiptHandle = uuid.NewString()
-	s.worker = NewWorker(ctx, &WorkerParams{
+	s.worker = NewWorker(&WorkerParams{
 		SchedulerProvider:     s.schedulerProvider,
 		EvaluationBroker:      s.broker,
 		DequeueTimeout:        testDequeueTimeout,
@@ -70,7 +68,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Successful() {
 	s.schedulerBatchJobs.EXPECT().Process(s.eval).Return(nil)
 	s.broker.EXPECT().Ack(s.eval.ID, s.receiptHandle)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 	s.waitUntilStopped()
 }
 
@@ -86,7 +84,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Shutdown_WhileDequeueing() {
 	// The evaluation should be nacked and not processed
 	s.broker.EXPECT().Nack(s.eval.ID, s.receiptHandle)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 	s.waitUntilStopped()
 }
 
@@ -104,18 +102,19 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Shutdown_WhileScheduling() {
 	// The evaluation should be acked even if the worker is stopped
 	s.broker.EXPECT().Ack(s.eval.ID, s.receiptHandle)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 	s.waitUntilStopped()
 }
 
 func (s *WorkerTestSuite) TestProcessEvaluation_Shutdown_ByCancelCtx() {
 	s.onDequeue().Return(nil, "", nil).AnyTimes()
 
-	s.worker.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.worker.Start(ctx)
 
 	// cancel the context should stop the worker
-	s.cancelFn()
-	s.True(s.worker.isShuttingDown())
+	cancel()
+	s.True(s.worker.isShuttingDown(ctx))
 
 	s.Eventually(func() bool {
 		return s.worker.Status() == WorkerStatusStopped
@@ -134,7 +133,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_SchedulerError() {
 	// Expect the evaluationBroker's Nack method to return no error
 	s.broker.EXPECT().Nack(s.eval.ID, s.receiptHandle)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 	s.waitUntilStopped()
 }
 
@@ -147,7 +146,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_SchedulerMissing() {
 	// Expect the evaluationBroker's Nack method to return no error
 	s.broker.EXPECT().Nack(s.eval.ID, s.receiptHandle)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 	s.waitUntilStopped()
 }
 
@@ -157,12 +156,13 @@ func (s *WorkerTestSuite) TestProcessEvaluation_BrokerError() {
 	s.onDequeue().Return(nil, "", expectedError).Times(5)
 	s.onDequeue().DoAndReturn(s.stopAfterDequeue()) // no more evaluations to dequeue
 
+	ctx := context.Background()
 	// assert backoff was triggered
 	for i := 1; i <= 5; i++ {
-		s.backoff.EXPECT().Backoff(s.worker.shuttingDownCtx, i)
+		s.backoff.EXPECT().Backoff(ctx, i)
 	}
 
-	s.worker.Start()
+	s.worker.Start(ctx)
 	s.waitUntilStopped()
 }
 
@@ -174,7 +174,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_NoEvaluations() {
 		return nil, "", nil
 	}).MinTimes(3)
 
-	s.worker.Start()
+	s.worker.Start(context.Background())
 
 	// wait for at least 3 dequeue calls
 	s.Eventually(func() bool {
@@ -186,6 +186,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_NoEvaluations() {
 }
 
 func (s *WorkerTestSuite) TestProcessEvaluation_MultiCalls() {
+	ctx := context.Background()
 	eval1 := mock.Eval()
 	eval2 := mock.Eval()
 	eval3 := mock.Eval()
@@ -230,13 +231,13 @@ func (s *WorkerTestSuite) TestProcessEvaluation_MultiCalls() {
 	// assert backoff was triggered as expected
 	gomock.InOrder(
 		// backoff was triggered for the first error
-		s.backoff.EXPECT().Backoff(s.worker.shuttingDownCtx, 1),
+		s.backoff.EXPECT().Backoff(ctx, 1),
 		// back off was reset since evaluations were dequeued after the first error
-		s.backoff.EXPECT().Backoff(s.worker.shuttingDownCtx, 1),
-		s.backoff.EXPECT().Backoff(s.worker.shuttingDownCtx, 2),
+		s.backoff.EXPECT().Backoff(ctx, 1),
+		s.backoff.EXPECT().Backoff(ctx, 2),
 	)
 
-	s.worker.Start()
+	s.worker.Start(ctx)
 	s.waitUntilStopped()
 }
 
