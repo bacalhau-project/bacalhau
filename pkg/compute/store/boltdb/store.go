@@ -3,7 +3,6 @@ package boltdb
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -397,18 +396,16 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 }
 
 func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
-	var errorList error
-
 	execution, err := s.getExecution(tx, executionID)
 	if err != nil {
-		errorList = errors.Join(errorList, store.NewErrExecutionNotFound(executionID))
+		return err
 	}
 
 	// Delete single execution entry
 	executionsBucket := s.getExecutionsBucket(tx)
 	err = executionsBucket.Delete([]byte(executionID))
 	if err != nil {
-		errorList = errors.Join(errorList, err)
+		return err
 	}
 
 	// Delete from job index
@@ -425,10 +422,10 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 	historyBucket := s.getHistoryBucket(tx)
 	err = historyBucket.DeleteBucket([]byte(executionID))
 	if err != nil {
-		errorList = errors.Join(errorList, err)
+		return err
 	}
 
-	return errorList
+	return nil
 }
 
 // Close ensures the database is closed cleanly
