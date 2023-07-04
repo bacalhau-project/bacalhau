@@ -177,6 +177,7 @@ func ConvertV1beta2JobCreatePayload(p v1beta2.JobCreatePayload) JobCreatePayload
 
 func ConvertJobToV1beta2(j Job) v1beta2.Job {
 	return v1beta2.Job{
+		APIVersion: j.APIVersion,
 		Metadata: v1beta2.Metadata{
 			ID:        j.Metadata.ID,
 			CreatedAt: j.Metadata.CreatedAt,
