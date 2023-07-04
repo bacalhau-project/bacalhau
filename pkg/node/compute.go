@@ -65,7 +65,7 @@ func NewComputeNode(
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(ctx, host, cleanupManager)
+		executionStore, err = createExecutionStore(ctx, host)
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +295,7 @@ func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
 }
 
-func createExecutionStore(ctx context.Context, host host.Host, cm *system.CleanupManager) (store.ExecutionStore, error) {
+func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
 	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
 	// e.g. when running tests or when running devstack
 	configDir, err := system.EnsureConfigDir()
