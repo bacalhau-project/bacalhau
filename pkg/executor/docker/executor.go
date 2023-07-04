@@ -225,6 +225,7 @@ func (e *Executor) Run(
 		Tty:        false,
 		Env:        useEnv,
 		Entrypoint: job.Spec.Docker.Entrypoint,
+		Cmd:        job.Spec.Docker.Parameters,
 		Labels:     e.containerLabels(executionID, job),
 		WorkingDir: job.Spec.Docker.WorkingDirectory,
 	}
