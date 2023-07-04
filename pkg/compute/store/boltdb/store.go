@@ -18,8 +18,8 @@ const (
 
 	DefaultSliceRetrievalCapacity = 10
 
-	BucketExecutionsName = "executions"
-	BucketHistoryName    = "history"
+	BucketExecutionsName = "execution"
+	BucketHistoryName    = "execution-history"
 	BucketJobIndexName   = "execution-index"
 )
 
@@ -33,7 +33,7 @@ const (
 // * Executions are stored in a bucket called `executions` where each key is
 // an execution ID and the value is the JSON representation.
 //
-// executions
+// execution
 //     |--> <execution-id> -> {store.Execution}
 //
 // * Execution history is stored in a bucket called `history`. Each execution
@@ -41,7 +41,7 @@ const (
 // Within the execution id bucket, each key is a sequential value for the
 // history item being written so they are returned in write-order
 //
-// history
+// execution-history
 //     |--> execution-id
 //               |-> <seqnum> -> {store.ExecutionHistory}
 //
@@ -104,6 +104,24 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	return store, nil
 }
 
+// getExecutionsBucket helper gets a reference to the executions bucket within
+// the supplied transaction.
+func (s *Store) getExecutionsBucket(tx *bolt.Tx) *bolt.Bucket {
+	return tx.Bucket([]byte(BucketExecutionsName))
+}
+
+// getHistoryBucket helper gets a reference to the execution history bucket
+// within the supplied transaction.
+func (s *Store) getHistoryBucket(tx *bolt.Tx) *bolt.Bucket {
+	return tx.Bucket([]byte(BucketHistoryName))
+}
+
+// getJobIndexBucket helper gets a reference to the job index bucket within
+// the supplied transaction.
+func (s *Store) getJobIndexBucket(tx *bolt.Tx) *bolt.Bucket {
+	return tx.Bucket([]byte(BucketJobIndexName))
+}
+
 // GetExecution returns the stored Execution structure for the provided execution ID.
 func (s *Store) GetExecution(ctx context.Context, executionID string) (store.Execution, error) {
 	log.Ctx(ctx).Trace().
@@ -156,7 +174,7 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 }
 
 func (s *Store) getExecutions(tx *bolt.Tx, jobID string) ([]store.Execution, error) {
-	jobIndexBucket := tx.Bucket([]byte(BucketJobIndexName))
+	jobIndexBucket := s.getJobIndexBucket(tx)
 	jobBucket := jobIndexBucket.Bucket([]byte(jobID))
 	if jobBucket == nil {
 		return nil, store.NewErrJobNotFound(jobID)
@@ -200,7 +218,7 @@ func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]
 }
 
 func (s *Store) getExecutionHistory(tx *bolt.Tx, executionID string) ([]store.ExecutionHistory, error) {
-	historyBucket := tx.Bucket([]byte(BucketHistoryName))
+	historyBucket := s.getHistoryBucket(tx)
 
 	executionBucket := historyBucket.Bucket([]byte(executionID))
 	if executionBucket == nil {
@@ -255,14 +273,14 @@ func (s *Store) createExecution(tx *bolt.Tx, execution store.Execution) error {
 		return err
 	}
 
-	executionsBucket := tx.Bucket([]byte(BucketExecutionsName))
+	executionsBucket := s.getExecutionsBucket(tx)
 	err = executionsBucket.Put([]byte(execution.ID), executionData)
 	if err != nil {
 		return err
 	}
 
 	// Create the job bucket in the job index if it does not already exist
-	jobIndexBucket := tx.Bucket([]byte(BucketJobIndexName))
+	jobIndexBucket := s.getJobIndexBucket(tx)
 	jobBucket, err := jobIndexBucket.CreateBucketIfNotExists([]byte(execution.Job.ID()))
 	if err != nil {
 		return err
@@ -318,7 +336,7 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 		return err
 	}
 
-	executionsBucket := tx.Bucket([]byte(BucketExecutionsName))
+	executionsBucket := s.getExecutionsBucket(tx)
 	err = executionsBucket.Put([]byte(execution.ID), data)
 	if err != nil {
 		return err
@@ -336,7 +354,7 @@ func (s *Store) appendHistory(
 	tx *bolt.Tx,
 	updatedExecution store.Execution,
 	previousState store.ExecutionState, comment string) error {
-	historyBucket := tx.Bucket([]byte(BucketHistoryName))
+	historyBucket := s.getHistoryBucket(tx)
 	executionHistoryBucket, err := historyBucket.CreateBucketIfNotExists([]byte(updatedExecution.ID))
 	if err != nil {
 		return err
@@ -387,14 +405,14 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 	}
 
 	// Delete single execution entry
-	executionsBucket := tx.Bucket([]byte(BucketExecutionsName))
+	executionsBucket := s.getExecutionsBucket(tx)
 	err = executionsBucket.Delete([]byte(executionID))
 	if err != nil {
 		errorList = errors.Join(errorList, err)
 	}
 
 	// Delete from job index
-	jobIndexBucket := tx.Bucket([]byte(BucketJobIndexName))
+	jobIndexBucket := s.getJobIndexBucket(tx)
 	jobBucket := jobIndexBucket.Bucket([]byte(execution.Job.ID()))
 	if jobBucket != nil {
 		err = jobBucket.Delete([]byte(executionID))
@@ -404,7 +422,7 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 	}
 
 	// Delete the bucket with the execution-id within the history bucket
-	historyBucket := tx.Bucket([]byte(BucketHistoryName))
+	historyBucket := s.getHistoryBucket(tx)
 	err = historyBucket.DeleteBucket([]byte(executionID))
 	if err != nil {
 		errorList = errors.Join(errorList, err)
