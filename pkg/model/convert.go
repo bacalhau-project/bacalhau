@@ -81,6 +81,7 @@ func ConvertV1beta2Spec(s v1beta2.Spec) Spec {
 		Docker: JobSpecDocker{
 			Image:                s.Docker.Image,
 			Entrypoint:           s.Docker.Entrypoint,
+			Parameters:           s.Docker.Parameters,
 			EnvironmentVariables: s.Docker.EnvironmentVariables,
 			WorkingDirectory:     s.Docker.WorkingDirectory,
 		},
@@ -198,6 +199,7 @@ func ConvertJobToV1beta2(j Job) v1beta2.Job {
 			Docker: v1beta2.JobSpecDocker{
 				Image:                j.Spec.Docker.Image,
 				Entrypoint:           j.Spec.Docker.Entrypoint,
+				Parameters:           j.Spec.Docker.Parameters,
 				EnvironmentVariables: j.Spec.Docker.EnvironmentVariables,
 				WorkingDirectory:     j.Spec.Docker.WorkingDirectory,
 			},

@@ -43,6 +43,7 @@ type Metadata struct {
 
 	Requester JobRequester `json:"Requester,omitempty"`
 }
+
 type JobRequester struct {
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"RequesterNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
