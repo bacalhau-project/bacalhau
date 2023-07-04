@@ -105,7 +105,9 @@ func (w *RequesterAPIClientWrapper) Submit(ctx context.Context, j *model.Job) (*
 	in := model.ConvertJobToV1beta2(*j)
 	res, err := w.Client.Submit(ctx, &in)
 	if err != nil {
-		return nil, err
+		// TODO(forrest): [fixme] we return the passed job because callers of this method want to look at it's ID
+		// Submit could just return the ID of a job rather than a mutated version of the submitted job.
+		return j, err
 	}
 
 	out := model.ConvertV1beta2Job(*res)
