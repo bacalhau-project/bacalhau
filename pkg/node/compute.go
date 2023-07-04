@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/objectstore/localstore"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/simulator"
@@ -44,7 +43,6 @@ type Compute struct {
 	Executors           executor.ExecutorProvider
 	LogServer           *logstream.LogStreamServer
 	Bidder              compute.Bidder
-	Database            *localstore.LocalStore
 	computeCallback     *bprotocol.CallbackProxy
 	cleanupFunc         func(ctx context.Context)
 	computeInfoProvider model.ComputeNodeInfoProvider
