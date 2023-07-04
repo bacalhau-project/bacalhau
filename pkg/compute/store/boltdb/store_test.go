@@ -153,6 +153,86 @@ func (s *Suite) TestUpdateExecution_ConditionsPass() {
 	s.Equal(s.execution.Version+1, readExecution.Version)
 }
 
+func (s *Suite) TestGetExecutionCount() {
+	ctx := context.Background()
+
+	states := []store.ExecutionState{
+		store.ExecutionStateBidAccepted,
+		store.ExecutionStateBidAccepted,
+		store.ExecutionStateBidAccepted,
+		store.ExecutionStateCompleted,
+		store.ExecutionStateCompleted,
+	}
+
+	for _, state := range states {
+		execution := newExecution()
+		err := s.executionStore.CreateExecution(ctx, execution)
+		s.NoError(err)
+
+		request := store.UpdateExecutionStateRequest{
+			ExecutionID:     execution.ID,
+			ExpectedState:   execution.State,
+			ExpectedVersion: execution.Version,
+			NewState:        state,
+			Comment:         "Hello There!",
+		}
+
+		err = s.executionStore.UpdateExecutionState(ctx, request)
+		s.NoError(err)
+	}
+
+	// Close and re-open the execution store so we can
+	// re-populate the counter
+	s.executionStore.Close(s.ctx)
+	s.executionStore, _ = NewStore(s.ctx, s.dbFile)
+
+	c, err := s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
+	s.NoError(err)
+	s.Equal(uint(2), c)
+}
+
+func (s *Suite) TestStateCounterChange() {
+	ctx := context.Background()
+
+	err := s.executionStore.CreateExecution(ctx, s.execution)
+	s.NoError(err)
+
+	request := store.UpdateExecutionStateRequest{
+		ExecutionID:     s.execution.ID,
+		ExpectedState:   s.execution.State,
+		ExpectedVersion: s.execution.Version,
+		NewState:        store.ExecutionStateBidAccepted,
+		Comment:         "Starting",
+	}
+	err = s.executionStore.UpdateExecutionState(ctx, request)
+	s.NoError(err)
+
+	accepted, err := s.executionStore.GetExecutionCount(ctx, store.ExecutionStateBidAccepted)
+	s.NoError(err)
+	completed, err := s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
+	s.NoError(err)
+	s.Equal(uint(1), accepted)
+	s.Equal(uint(0), completed)
+
+	request = store.UpdateExecutionStateRequest{
+		ExecutionID:     s.execution.ID,
+		ExpectedState:   store.ExecutionStateBidAccepted,
+		ExpectedVersion: s.execution.Version + 1,
+		NewState:        store.ExecutionStateCompleted,
+		Comment:         "Completed",
+	}
+	err = s.executionStore.UpdateExecutionState(ctx, request)
+	s.NoError(err)
+
+	accepted, err = s.executionStore.GetExecutionCount(ctx, store.ExecutionStateBidAccepted)
+	s.NoError(err)
+	completed, err = s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
+	s.NoError(err)
+	s.Equal(uint(0), accepted)
+	s.Equal(uint(1), completed)
+
+}
+
 func (s *Suite) TestUpdateExecution_ConditionsStateFail() {
 	ctx := context.Background()
 	err := s.executionStore.CreateExecution(ctx, s.execution)

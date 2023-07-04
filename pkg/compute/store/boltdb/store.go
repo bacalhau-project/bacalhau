@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -56,6 +57,9 @@ const (
 
 type Store struct {
 	database *bolt.DB
+
+	starting     sync.WaitGroup
+	stateCounter *StateCounter
 }
 
 // NewStore creates a new store backed by a boltdb database at the
@@ -65,7 +69,10 @@ type Store struct {
 // it would mean later transactions will fail unless they obtain their
 // own reference to the bucket.
 func NewStore(ctx context.Context, dbPath string) (*Store, error) {
-	store := &Store{}
+	store := &Store{
+		starting:     sync.WaitGroup{},
+		stateCounter: NewStateCounter(),
+	}
 	log.Ctx(ctx).Info().Msg("creating new bbolt database")
 
 	database, err := GetDatabase(dbPath)
@@ -99,6 +106,10 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating database structure: %s", err)
 	}
+
+	// Populate the state counter for the
+	store.starting.Add(1)
+	go store.populateStateCounter(ctx)
 
 	return store, nil
 }
@@ -256,7 +267,13 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 	}
 
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
-		return s.createExecution(tx, execution)
+		err = s.createExecution(tx, execution)
+		if err == nil {
+			// If we are confident that the value was written without error
+			// and we won't rollback
+			s.stateCounter.IncrementState(execution.State, 1)
+		}
+		return
 	})
 }
 
@@ -300,7 +317,15 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		Msg("boltdb.UpdateExecutionState")
 
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
-		return s.updateExecutionState(tx, request)
+		err = s.updateExecutionState(tx, request)
+		if err == nil {
+			// If we are confident that the value was written without error
+			// and we won't rollback then decrement the counter for the old
+			// state and increment the new one
+			s.stateCounter.DecrementState(request.ExpectedState, 1)
+			s.stateCounter.IncrementState(request.NewState, 1)
+		}
+		return err
 	})
 }
 
@@ -433,21 +458,50 @@ func (s *Store) Close(ctx context.Context) error {
 	return s.database.Close()
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
+func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint, error) {
 	log.Ctx(ctx).Trace().
 		Msg("boltdb.GetExecutionCount")
 
-	// TODO(ross) So, counting based on execution state .... seems like
-	// maintaining a prefix for a counter is excessive
+	// We have to wait here to ensure the counter has been populated,
+	// so we will wait until we know it has finished
+	s.starting.Wait()
+	return uint(s.stateCounter.Get(state)), nil
+}
 
-	// var counter uint
-	// for _, execution := range s.executionMap {
-	// 	if execution.State == store.ExecutionStateCompleted {
-	// 		counter++
-	// 	}
-	// }
-	// return counter, nil
-	return 0, nil
+func (s *Store) populateStateCounter(ctx context.Context) {
+	acc := NewStateCounter()
+
+	err := s.database.View(func(tx *bolt.Tx) (err error) {
+		bucket := s.getExecutionsBucket(tx)
+		cursor := bucket.Cursor()
+
+		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
+			if v == nil { // We can't do much with empty values
+				continue
+			}
+
+			var entry store.Execution
+			err = json.Unmarshal(v, &entry)
+			if err != nil {
+				return
+			}
+
+			acc.IncrementState(entry.State, 1)
+		}
+
+		return err
+	})
+
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to generate state counter for execution store")
+	}
+
+	// As more items may have been added whilst we were running, merge the
+	// statecounter we have generated into the existing one for the store
+	s.stateCounter.Include(acc)
+
+	log.Ctx(ctx).Trace().Msg("finished populating state counter")
+	s.starting.Done()
 }
 
 // compile-time check that we implement the interface ExecutionStore

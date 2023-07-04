@@ -13,7 +13,7 @@ type CallbackStore struct {
 	CreateExecutionFn      func(ctx context.Context, execution store.Execution) error
 	UpdateExecutionStateFn func(ctx context.Context, request store.UpdateExecutionStateRequest) error
 	DeleteExecutionFn      func(ctx context.Context, id string) error
-	GetExecutionCountFn    func(ctx context.Context) (uint, error)
+	GetExecutionCountFn    func(ctx context.Context, state store.ExecutionState) (uint, error)
 	CloseFn                func(ctx context.Context) error
 }
 
@@ -41,8 +41,8 @@ func (m *CallbackStore) DeleteExecution(ctx context.Context, id string) error {
 	return m.DeleteExecutionFn(ctx, id)
 }
 
-func (m *CallbackStore) GetExecutionCount(ctx context.Context) (uint, error) {
-	return m.GetExecutionCountFn(ctx)
+func (m *CallbackStore) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint, error) {
+	return m.GetExecutionCountFn(ctx, state)
 }
 
 func (m *CallbackStore) Close(ctx context.Context) error {

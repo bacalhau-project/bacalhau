@@ -31,7 +31,7 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *Suite) TestZeroExecutionsReturnsZeroCount() {
-	count, err := s.proxy.GetExecutionCount(context.Background())
+	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
 	s.Equal(uint(0), count)
 
@@ -39,7 +39,7 @@ func (s *Suite) TestZeroExecutionsReturnsZeroCount() {
 
 func (s *Suite) TestOneExecutionReturnsOneCount() {
 	//check jobStore is initialised to zero
-	count, err := s.proxy.GetExecutionCount(context.Background())
+	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
 	s.Equal(uint(0), count)
 	//create execution
@@ -57,7 +57,7 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 		ExecutionID: execution.ID,
 		NewState:    store.ExecutionStateCompleted})
 	s.NoError(err)
-	count, err = s.proxy.GetExecutionCount(context.Background())
+	count, err = s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
 	s.Equal(uint(1), count)
 }
@@ -68,7 +68,7 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 	s.NoError(err)
 	// 3 executions
 	for index, id := range idList {
-		count, err := s.proxy.GetExecutionCount(context.Background())
+		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 		s.NoError(err)
 		s.Equal(uint(index), count)
 
@@ -104,7 +104,7 @@ func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
 			ExecutionID: execution.ID,
 			NewState:    store.ExecutionState(executionState)})
 		s.NoError(err)
-		count, err := s.proxy.GetExecutionCount(context.Background())
+		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 		s.NoError(err)
 		s.Equal(uint(0), count)
 	}

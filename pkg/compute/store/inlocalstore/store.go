@@ -85,7 +85,7 @@ func (proxy *PersistentExecutionStore) GetExecution(ctx context.Context, id stri
 }
 
 // GetExecutionCount implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context) (uint, error) {
+func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context, _ store.ExecutionState) (uint, error) {
 	proxy.mu.RLock()
 	defer proxy.mu.RUnlock()
 	return readCounter(proxy.stateFile)

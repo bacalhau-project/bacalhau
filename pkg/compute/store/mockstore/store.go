@@ -37,8 +37,8 @@ func (m *MockExecutionStore) DeleteExecution(ctx context.Context, id string) err
 	return args.Error(0)
 }
 
-func (m *MockExecutionStore) GetExecutionCount(ctx context.Context) (uint, error) {
-	args := m.Called(ctx)
+func (m *MockExecutionStore) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint, error) {
+	args := m.Called(ctx, state)
 	return uint(args.Int(0)), args.Error(1)
 }
 
