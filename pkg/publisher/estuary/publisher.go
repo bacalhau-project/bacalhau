@@ -35,7 +35,10 @@ func NewEstuaryPublisher(config EstuaryPublisherConfig) publisher.Publisher {
 
 // IsInstalled implements publisher.Publisher
 func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	_, response, err := e.client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
+	c, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	_, response, err := e.client.CollectionsApi.CollectionsGet(c) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if response != nil {
 		defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", response.Body)
 		return response.StatusCode == http.StatusOK, nil

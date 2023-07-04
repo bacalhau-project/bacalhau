@@ -100,3 +100,10 @@ func (e *Evaluation) Copy() *Evaluation {
 	*ne = *e
 	return ne
 }
+
+// EvaluationReceipt is a pair of an Evaluation and its ReceiptHandle.
+type EvaluationReceipt struct {
+	Evaluation *Evaluation
+	// ReceiptHandle is a unique identifier when dequeue an Evaluation from a broker.
+	ReceiptHandle string
+}

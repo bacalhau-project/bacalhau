@@ -1,3 +1,4 @@
+//go:generate mockgen --source interfaces.go --destination mocks.go --package orchestrator
 package orchestrator
 
 import (
@@ -57,4 +58,24 @@ type EvaluationBroker interface {
 	// The evaluation can be re-enqueued to be processed again
 	// without having to wait for the dequeue visibility timeout.
 	Nack(evalID string, receiptHandle string) error
+}
+
+// Scheduler encapsulates the business logic of a scheduler. It processes
+// evaluations one at a time, generating task placements based on the provided
+// evaluation. The scheduler focuses on business logic, while other components handles
+// the underlying infrastructure and coordination between the orchestrator and compute nodes.
+type Scheduler interface {
+	// Process handles a new evaluation. It applies the necessary logic to determine
+	// task placements based on the provided evaluation.
+	Process(*model.Evaluation) error
+}
+
+// SchedulerProvider returns a scheduler instance that is capable of handling
+// jobs requiring scheduling.
+type SchedulerProvider interface {
+	// Scheduler returns a scheduler for the given job type
+	Scheduler(jobType string) (Scheduler, error)
+
+	// EnabledSchedulers returns a list of enabled schedulers (job types)
+	EnabledSchedulers() []string
 }

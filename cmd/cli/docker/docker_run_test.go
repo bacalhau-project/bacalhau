@@ -91,7 +91,6 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 	}{
 		{numberOfJobs: 1}, // Test for one
 	}
-
 	for i, tc := range tests {
 		func() {
 			randomUUID := uuid.New()
@@ -111,7 +110,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			var j *model.Job
 			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
+			s.Require().Equal(j.Spec.Docker.Parameters[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }

@@ -212,6 +212,21 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 }
 
 func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
+	info, _, err := c.ImageInspectWithRaw(ctx, image)
+	if err == nil {
+		return []v1.Platform{
+			{
+				Architecture: info.Architecture,
+				OS:           info.Os,
+				OSVersion:    info.OsVersion,
+			},
+		}, nil
+	} else if !dockerclient.IsErrNotFound(err) {
+		// The only error we wanted to see was a not found error which means we don't have
+		// the image being requested.
+		return nil, err
+	}
+
 	authToken := getAuthToken(ctx, image, dockerCreds)
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
