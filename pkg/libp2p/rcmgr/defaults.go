@@ -4,8 +4,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	"github.com/libp2p/go-libp2p"
 	libp2p_rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 func setDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
@@ -43,7 +43,7 @@ func setDefaultServiceLimits(config *libp2p_rcmgr.ScalingLimitConfig) {
 }
 
 func DefaultResourceManager(cfg *libp2p.Config) error {
-	return resourceManagerWithMetricsProvider(global.MeterProvider())(cfg)
+	return resourceManagerWithMetricsProvider(otel.GetMeterProvider())(cfg)
 }
 
 func resourceManagerWithMetricsProvider(provider metric.MeterProvider) func(cfg *libp2p.Config) error {

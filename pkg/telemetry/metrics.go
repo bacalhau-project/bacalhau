@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/metric/global"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -36,7 +36,7 @@ func newMeterProvider() {
 		sdkmetric.WithReader(reader),
 	)
 
-	global.SetMeterProvider(meterProvider)
+	otel.SetMeterProvider(meterProvider)
 }
 
 func isMetricsEnabled() bool {

@@ -7,7 +7,6 @@ import (
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // metricsReporter will build create a rcmgr.TraceReporter similar to the obs.StatsTraceReporter but with OpenTelemetry
@@ -17,21 +16,21 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 
 	connections, err := meter.Float64Counter(
 		"rcmgr_connections",
-		instrument.WithDescription("Number of Connections"),
+		metric.WithDescription("Number of Connections"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	peerConnections, err := meter.Float64Histogram(
 		"rcmgr_peer_connections",
-		instrument.WithDescription("Number of connections this peer has"),
+		metric.WithDescription("Number of connections this peer has"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	previousPeerConnections, err := meter.Float64Histogram(
 		"rcmgr_previous_peer_connections",
-		instrument.WithDescription("Number of connections this peer previously had. "+
+		metric.WithDescription("Number of connections this peer previously had. "+
 			"This is used to get the current connection number per peer histogram by subtracting this from the peer_connections histogram"),
 	)
 	if err != nil {
@@ -40,21 +39,21 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 
 	streams, err := meter.Float64Counter(
 		"rcmgr_streams",
-		instrument.WithDescription("Number of Streams"),
+		metric.WithDescription("Number of Streams"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	peerStreams, err := meter.Float64Histogram(
 		"rcmgr_peer_streams",
-		instrument.WithDescription("Number of streams this peer has"),
+		metric.WithDescription("Number of streams this peer has"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	previousPeerStreams, err := meter.Float64Histogram(
 		"rcmgr_previous_peer_streams",
-		instrument.WithDescription("Number of streams this peer has"),
+		metric.WithDescription("Number of streams this peer has"),
 	)
 	if err != nil {
 		return nil, err
@@ -62,21 +61,21 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 
 	memory, err := meter.Float64Counter(
 		"rcmgr_memory",
-		instrument.WithDescription("Amount of memory reserved as reported to the Resource Manager"),
+		metric.WithDescription("Amount of memory reserved as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	peerMemory, err := meter.Float64Histogram(
 		"rcmgr_peer_memory",
-		instrument.WithDescription("How many peers have reserved this bucket of memory, as reported to the Resource Manager"),
+		metric.WithDescription("How many peers have reserved this bucket of memory, as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	previousPeerMemory, err := meter.Float64Histogram(
 		"rcmgr_previous_peer_memory",
-		instrument.WithDescription("How many peers have previously reserved this bucket of memory, as reported to the Resource Manager"),
+		metric.WithDescription("How many peers have previously reserved this bucket of memory, as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
@@ -84,14 +83,14 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 
 	connectionMemory, err := meter.Float64Histogram(
 		"rcmgr_connection_memory",
-		instrument.WithDescription("How many connections have reserved this bucket of memory, as reported to the Resource Manager"),
+		metric.WithDescription("How many connections have reserved this bucket of memory, as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	previousConnectionMemory, err := meter.Float64Histogram(
 		"rcmgr_previous_connection_memory",
-		instrument.WithDescription("How many connections have previously reserved this bucket of memory, as reported to the Resource Manager"),
+		metric.WithDescription("How many connections have previously reserved this bucket of memory, as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
@@ -99,14 +98,14 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 
 	fileDescriptors, err := meter.Float64Counter(
 		"rcmgr_fds",
-		instrument.WithDescription("Number of file descriptors reserved as reported to the Resource Manager"),
+		metric.WithDescription("Number of file descriptors reserved as reported to the Resource Manager"),
 	)
 	if err != nil {
 		return nil, err
 	}
 	blocked, err := meter.Float64Counter(
 		"rcmgr_blocked_resources",
-		instrument.WithDescription("Number of blocked resources"),
+		metric.WithDescription("Number of blocked resources"),
 	)
 	if err != nil {
 		return nil, err
@@ -132,23 +131,23 @@ func metricsReporter(meterProvider metric.MeterProvider) (rcmgr.TraceReporter, e
 var _ rcmgr.TraceReporter = reporter{}
 
 type reporter struct {
-	connections             instrument.Float64Counter
-	peerConnections         instrument.Float64Histogram
-	previousPeerConnections instrument.Float64Histogram
+	connections             metric.Float64Counter
+	peerConnections         metric.Float64Histogram
+	previousPeerConnections metric.Float64Histogram
 
-	streams             instrument.Float64Counter
-	peerStreams         instrument.Float64Histogram
-	previousPeerStreams instrument.Float64Histogram
+	streams             metric.Float64Counter
+	peerStreams         metric.Float64Histogram
+	previousPeerStreams metric.Float64Histogram
 
-	memory             instrument.Float64Counter
-	peerMemory         instrument.Float64Histogram
-	previousPeerMemory instrument.Float64Histogram
+	memory             metric.Float64Counter
+	peerMemory         metric.Float64Histogram
+	previousPeerMemory metric.Float64Histogram
 
-	connectionMemory         instrument.Float64Histogram
-	previousConnectionMemory instrument.Float64Histogram
+	connectionMemory         metric.Float64Histogram
+	previousConnectionMemory metric.Float64Histogram
 
-	fileDescriptors  instrument.Float64Counter
-	blockedResources instrument.Float64Counter
+	fileDescriptors  metric.Float64Counter
+	blockedResources metric.Float64Counter
 }
 
 // ConsumeEvent is a reimplementation of consumeEventWithLabelSlice in obs.StatsTraceReporter but using OTEL rather
@@ -170,10 +169,12 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			peerStreamsOut := int64(evt.StreamsOut)
 			if oldStreamsOut != peerStreamsOut {
 				if oldStreamsOut != 0 {
-					r.previousPeerStreams.Record(ctx, float64(oldStreamsOut), attribute.String("dir", "inbound"))
+					r.previousPeerStreams.Record(ctx, float64(oldStreamsOut),
+						metric.WithAttributes(attribute.String("dir", "inbound")))
 				}
 				if peerStreamsOut != 0 {
-					r.peerStreams.Record(ctx, float64(peerStreamsOut), attribute.String("dir", "outbound"))
+					r.peerStreams.Record(ctx, float64(peerStreamsOut),
+						metric.WithAttributes(attribute.String("dir", "outbound")))
 				}
 			}
 
@@ -181,26 +182,28 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			peerStreamsIn := int64(evt.StreamsIn)
 			if oldStreamsIn != peerStreamsIn {
 				if oldStreamsIn != 0 {
-					r.previousPeerStreams.Record(ctx, float64(peerStreamsIn), attribute.String("dir", "inbound"))
+					r.previousPeerStreams.Record(ctx, float64(peerStreamsIn),
+						metric.WithAttributes(attribute.String("dir", "inbound")))
 				}
 				if peerStreamsIn != 0 {
-					r.peerStreams.Record(ctx, float64(peerStreamsIn), attribute.String("dir", "inbound"))
+					r.peerStreams.Record(ctx, float64(peerStreamsIn),
+						metric.WithAttributes(attribute.String("dir", "inbound")))
 				}
 			}
 		} else {
 			if evt.DeltaOut != 0 {
 				if rcmgr.IsSystemScope(evt.Name) || rcmgr.IsTransientScope(evt.Name) {
-					r.streams.Add(ctx, float64(evt.StreamsOut),
+					r.streams.Add(ctx, float64(evt.StreamsOut), metric.WithAttributes(
 						attribute.String("dir", "outbound"),
 						attribute.String("scope", evt.Name),
 						attribute.String("protocol", ""),
-					)
+					))
 				} else if proto := rcmgr.ParseProtocolScopeName(evt.Name); proto != "" {
-					r.streams.Add(ctx, float64(evt.StreamsOut),
+					r.streams.Add(ctx, float64(evt.StreamsOut), metric.WithAttributes(
 						attribute.String("dir", "outbound"),
 						attribute.String("scope", "protocol"),
 						attribute.String("protocol", proto),
-					)
+					))
 				} else {
 					// Not measuring service scope, connscope, servicepeer and protocolpeer. Lots of data, and
 					// you can use aggregated peer stats + service stats to infer
@@ -211,17 +214,17 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 
 			if evt.DeltaIn != 0 {
 				if rcmgr.IsSystemScope(evt.Name) || rcmgr.IsTransientScope(evt.Name) {
-					r.streams.Add(ctx, float64(evt.StreamsIn),
+					r.streams.Add(ctx, float64(evt.StreamsIn), metric.WithAttributes(
 						attribute.String("dir", "inbound"),
 						attribute.String("scope", evt.Name),
 						attribute.String("protocol", ""),
-					)
+					))
 				} else if proto := rcmgr.ParseProtocolScopeName(evt.Name); proto != "" {
-					r.streams.Add(ctx, float64(evt.StreamsIn),
+					r.streams.Add(ctx, float64(evt.StreamsIn), metric.WithAttributes(
 						attribute.String("dir", "inbound"),
 						attribute.String("scope", "protocol"),
 						attribute.String("protocol", proto),
-					)
+					))
 				} else {
 					// Not measuring service scope, connscope, servicepeer and protocolpeer. Lots of data, and
 					// you can use aggregated peer stats + service stats to infer
@@ -242,10 +245,12 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			connsOut := int64(evt.ConnsOut)
 			if oldConnsOut != connsOut {
 				if oldConnsOut != 0 {
-					r.previousPeerConnections.Record(ctx, float64(oldConnsOut), attribute.String("dir", "outbound"))
+					r.previousPeerConnections.Record(ctx, float64(oldConnsOut),
+						metric.WithAttributes(attribute.String("dir", "outbound")))
 				}
 				if connsOut != 0 {
-					r.peerConnections.Record(ctx, float64(oldConnsOut), attribute.String("dir", "outbound"))
+					r.peerConnections.Record(ctx, float64(oldConnsOut),
+						metric.WithAttributes(attribute.String("dir", "outbound")))
 				}
 			}
 
@@ -253,10 +258,12 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			connsIn := int64(evt.ConnsIn)
 			if oldConnsIn != connsIn {
 				if oldConnsIn != 0 {
-					r.previousPeerConnections.Record(ctx, float64(oldConnsIn), attribute.String("dir", "inbound"))
+					r.previousPeerConnections.Record(ctx, float64(oldConnsIn),
+						metric.WithAttributes(attribute.String("dir", "inbound")))
 				}
 				if connsIn != 0 {
-					r.peerConnections.Record(ctx, float64(connsIn), attribute.String("dir", "inbound"))
+					r.peerConnections.Record(ctx, float64(connsIn),
+						metric.WithAttributes(attribute.String("dir", "inbound")))
 				}
 			}
 		} else {
@@ -266,19 +273,23 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			}
 
 			if rcmgr.IsSystemScope(evt.Name) {
-				r.connections.Add(ctx, float64(evt.ConnsIn), attribute.String("dir", "inbound"), attribute.String("scope", "system"))
-				r.connections.Add(ctx, float64(evt.ConnsOut), attribute.String("dir", "outbound"), attribute.String("scope", "system"))
+				r.connections.Add(ctx, float64(evt.ConnsIn),
+					metric.WithAttributes(attribute.String("dir", "inbound"), attribute.String("scope", "system")))
+				r.connections.Add(ctx, float64(evt.ConnsOut),
+					metric.WithAttributes(attribute.String("dir", "outbound"), attribute.String("scope", "system")))
 			} else if rcmgr.IsTransientScope(evt.Name) {
-				r.connections.Add(ctx, float64(evt.ConnsIn), attribute.String("dir", "inbound"), attribute.String("scope", "transient"))
-				r.connections.Add(ctx, float64(evt.ConnsOut), attribute.String("dir", "outbound"), attribute.String("scope", "transient"))
+				r.connections.Add(ctx, float64(evt.ConnsIn),
+					metric.WithAttributes(attribute.String("dir", "inbound"), attribute.String("scope", "transient")))
+				r.connections.Add(ctx, float64(evt.ConnsOut),
+					metric.WithAttributes(attribute.String("dir", "outbound"), attribute.String("scope", "transient")))
 			}
 
 			// Represents the delta in fds
 			if evt.Delta != 0 {
 				if rcmgr.IsSystemScope(evt.Name) {
-					r.fileDescriptors.Add(ctx, float64(evt.FD), attribute.String("scope", "system"))
+					r.fileDescriptors.Add(ctx, float64(evt.FD), metric.WithAttributes(attribute.String("scope", "system")))
 				} else if rcmgr.IsTransientScope(evt.Name) {
-					r.fileDescriptors.Add(ctx, float64(evt.FD), attribute.String("scope", "transient"))
+					r.fileDescriptors.Add(ctx, float64(evt.FD), metric.WithAttributes(attribute.String("scope", "transient")))
 				}
 			}
 		}
@@ -305,9 +316,11 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 			}
 		} else {
 			if rcmgr.IsSystemScope(evt.Name) || rcmgr.IsTransientScope(evt.Name) {
-				r.memory.Add(ctx, float64(evt.Memory), attribute.String("scope", evt.Name), attribute.String("protocol", ""))
+				r.memory.Add(ctx, float64(evt.Memory),
+					metric.WithAttributes(attribute.String("scope", evt.Name), attribute.String("protocol", "")))
 			} else if proto := rcmgr.ParseProtocolScopeName(evt.Name); proto != "" {
-				r.memory.Add(ctx, float64(evt.Memory), attribute.String("scope", "protocol"), attribute.String("protocol", proto))
+				r.memory.Add(ctx, float64(evt.Memory),
+					metric.WithAttributes(attribute.String("scope", "protocol"), attribute.String("protocol", proto)))
 			} else {
 				// Not measuring connscope, servicepeer and protocolpeer. Lots of data, and
 				// you can use aggregated peer stats + service stats to infer
@@ -340,34 +353,34 @@ func (r reporter) ConsumeEvent(evt rcmgr.TraceEvt) { //nolint:funlen,gocyclo
 		}
 
 		if evt.DeltaIn != 0 {
-			r.blockedResources.Add(ctx, float64(evt.DeltaIn),
+			r.blockedResources.Add(ctx, float64(evt.DeltaIn), metric.WithAttributes(
 				attribute.String("dir", "inbound"),
 				attribute.String("scope", scopeName),
 				attribute.String("resource", resource),
-			)
+			))
 		}
 
 		if evt.DeltaOut != 0 {
-			r.blockedResources.Add(ctx, float64(evt.DeltaOut),
+			r.blockedResources.Add(ctx, float64(evt.DeltaOut), metric.WithAttributes(
 				attribute.String("dir", "outbound"),
 				attribute.String("scope", scopeName),
 				attribute.String("resource", resource),
-			)
+			))
 		}
 
 		if evt.Delta != 0 && resource == "connection" {
 			// This represents fds blocked
-			r.blockedResources.Add(ctx, float64(evt.Delta),
+			r.blockedResources.Add(ctx, float64(evt.Delta), metric.WithAttributes(
 				attribute.String("dir", ""),
 				attribute.String("scope", scopeName),
 				attribute.String("resource", "fd"),
-			)
+			))
 		} else if evt.Delta != 0 {
-			r.blockedResources.Add(ctx, float64(evt.Delta),
+			r.blockedResources.Add(ctx, float64(evt.Delta), metric.WithAttributes(
 				attribute.String("dir", ""),
 				attribute.String("scope", scopeName),
 				attribute.String("resource", resource),
-			)
+			))
 		}
 	}
 }
