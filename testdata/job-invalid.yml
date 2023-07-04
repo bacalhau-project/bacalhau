@@ -1,5 +1,5 @@
 # Missing API Version
-# APIVersion: v1beta1
+# APIVersion: v1beta2
 Spec:
   Engine: Docker
   Verifier: Noop
