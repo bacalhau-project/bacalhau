@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -17,8 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 type NodeSelectionSuite struct {
@@ -28,7 +29,7 @@ type NodeSelectionSuite struct {
 	compute2      *node.Node
 	compute3      *node.Node
 	computeNodes  []*node.Node
-	client        *publicapi.RequesterAPIClient
+	client        *publicapi.RequesterAPIClientWrapper
 	stateResolver *job.StateResolver
 }
 
@@ -80,7 +81,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = publicapi.NewRequesterAPIClientWrapper(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = job.NewStateResolver(
 		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)

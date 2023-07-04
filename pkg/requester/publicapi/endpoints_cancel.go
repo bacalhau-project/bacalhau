@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pkg/errors"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/pkg/errors"
 )
 
-type cancelRequest = publicapi.SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
+type cancelRequest = publicapi.SignedRequest[v1beta2.JobCancelPayload] //nolint:unused // Swagger wants this
 
 type cancelResponse struct {
-	State *model.JobState `json:"state"`
+	State *v1beta2.JobState `json:"state"`
 }
 
 // cancel godoc
@@ -37,7 +39,7 @@ type cancelResponse struct {
 //	@Router					/requester/cancel [post]
 func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	jobCancelPayload, err := publicapi.UnmarshalSigned[model.JobCancelPayload](ctx, req.Body)
+	jobCancelPayload, err := publicapi.UnmarshalSigned[v1beta2.JobCancelPayload](ctx, req.Body)
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
@@ -91,6 +93,18 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	}
 }
 
-func getJobStateFromJobID(ctx context.Context, apiServer *RequesterAPIServer, jobID string) (model.JobState, error) {
-	return apiServer.jobStore.GetJobState(ctx, jobID)
+func getJobStateFromJobID(ctx context.Context, apiServer *RequesterAPIServer, jobID string) (v1beta2.JobState, error) {
+	state, err := apiServer.jobStore.GetJobState(ctx, jobID)
+	if err != nil {
+		return v1beta2.JobState{}, err
+	}
+	return v1beta2.JobState{
+		JobID:      state.JobID,
+		Executions: model.ConvertExecutionStateToV1beta2List(state.Executions...),
+		State:      v1beta2.JobStateType(state.State),
+		Version:    state.Version,
+		CreateTime: state.CreateTime,
+		UpdateTime: state.UpdateTime,
+		TimeoutAt:  state.TimeoutAt,
+	}, nil
 }

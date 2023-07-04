@@ -36,7 +36,7 @@ func Logs(cmd *cobra.Command, jobID string, follow, history bool) error {
 	// may be smarter about handling multiple executions, but in the short term
 	// this will handle the most common case of wanting output from a single running
 	// job.
-	apiClient := GetAPIClient(ctx)
+	apiClient := GetWrappedAPIClient(ctx)
 	job, jobFound, err := apiClient.Get(ctx, requestedJobID)
 	if err != nil {
 		return err

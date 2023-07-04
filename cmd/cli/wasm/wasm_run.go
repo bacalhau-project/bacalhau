@@ -154,7 +154,7 @@ func runWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
 		return fmt.Errorf("executing job: %w", err)
 	}
 
-	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetAPIClient(ctx))
+	return printer.PrintJobExecution(ctx, executingJob, cmd, opts.DownloadSettings, opts.RunTimeSettings, util.GetWrappedAPIClient(ctx))
 }
 
 func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*model.Job, error) {

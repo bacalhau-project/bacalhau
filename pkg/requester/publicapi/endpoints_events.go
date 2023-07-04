@@ -6,6 +6,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 )
 
@@ -16,7 +17,7 @@ type eventsRequest struct {
 }
 
 type eventsResponse struct {
-	Events []model.JobHistory `json:"events"`
+	Events []v1beta2.JobHistory `json:"events"`
 }
 
 type EventFilterOptions = jobstore.JobHistoryFilterOptions
@@ -55,7 +56,7 @@ func (s *RequesterAPIServer) events(res http.ResponseWriter, req *http.Request) 
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(eventsResponse{
-		Events: events,
+		Events: model.ConvertJobHistoryListToV1beta2List(events...),
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

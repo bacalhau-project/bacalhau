@@ -17,7 +17,7 @@ import (
 type BaseSuite struct {
 	suite.Suite
 	Node   *node.Node
-	Client *publicapi.RequesterAPIClient
+	Client *publicapi.RequesterAPIClientWrapper
 	Host   string
 	Port   uint16
 }
@@ -41,7 +41,7 @@ func (s *BaseSuite) SetupTest() {
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client = publicapi.NewRequesterAPIClient(s.Host, s.Port)
+	s.Client = publicapi.NewRequesterAPIClientWrapper(s.Host, s.Port)
 }
 
 // After each test

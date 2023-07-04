@@ -10,7 +10,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
-func GetAPIClient(ctx context.Context) *publicapi.RequesterAPIClient {
+func GetWrappedAPIClient(ctx context.Context) *publicapi.RequesterAPIClientWrapper {
+	return getAPIClient(ctx)
+}
+
+func getAPIClient(ctx context.Context) *publicapi.RequesterAPIClientWrapper {
 	var apiHost string
 	var apiPort uint16
 	if envAPIHost := viper.GetString("api-host"); envAPIHost != "" {
@@ -27,7 +31,7 @@ func GetAPIClient(ctx context.Context) *publicapi.RequesterAPIClient {
 		}
 	}
 
-	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
+	return publicapi.NewRequesterAPIClientWrapper(apiHost, apiPort)
 }
 
 func GetAPIPort(ctx context.Context) uint16 {

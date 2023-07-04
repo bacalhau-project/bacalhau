@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -35,7 +36,7 @@ type RetriesSuite struct {
 	suite.Suite
 	requester     *node.Node
 	computeNodes  []*node.Node
-	client        *publicapi.RequesterAPIClient
+	client        *publicapi.RequesterAPIClientWrapper
 	stateResolver *job.StateResolver
 }
 
@@ -155,7 +156,7 @@ func (s *RetriesSuite) SetupSuite() {
 	)
 
 	s.requester = stack.Nodes[0]
-	s.client = publicapi.NewRequesterAPIClient(s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.client = publicapi.NewRequesterAPIClientWrapper(s.requester.APIServer.Address, s.requester.APIServer.Port)
 	s.stateResolver = job.NewStateResolver(
 		func(ctx context.Context, id string) (model.Job, error) {
 			return s.requester.RequesterNode.JobStore.GetJob(ctx, id)

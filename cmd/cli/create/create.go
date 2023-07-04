@@ -237,7 +237,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 		return fmt.Errorf("error executing job: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetAPIClient(ctx)); err != nil {
+	if err := printer.PrintJobExecution(ctx, executingJob, cmd, OC.DownloadFlags, OC.RunTimeSettings, util.GetWrappedAPIClient(ctx)); err != nil {
 		return err
 	}
 

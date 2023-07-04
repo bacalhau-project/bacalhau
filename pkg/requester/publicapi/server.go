@@ -3,13 +3,14 @@ package publicapi
 import (
 	"net/http"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/gorilla/websocket"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 type RequesterAPIServerParams struct {
 	APIServer          *publicapi.APIServer
 	Requester          requester.Endpoint
-	DebugInfoProviders []model.DebugInfoProvider
+	DebugInfoProviders []v1beta2.DebugInfoProvider
 	JobStore           jobstore.Store
 	StorageProviders   storage.StorageProvider
 	NodeDiscoverer     requester.NodeDiscoverer
@@ -30,7 +31,7 @@ type RequesterAPIServerParams struct {
 type RequesterAPIServer struct {
 	apiServer          *publicapi.APIServer
 	requester          requester.Endpoint
-	debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders []v1beta2.DebugInfoProvider
 	jobStore           jobstore.Store
 	storageProviders   storage.StorageProvider
 	nodeDiscoverer     requester.NodeDiscoverer

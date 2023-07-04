@@ -117,7 +117,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClient, submittedJob *model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *publicapi.RequesterAPIClientWrapper, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	return resolver.Wait(
 		ctx,
@@ -136,7 +136,7 @@ func compareOutput(output []byte, expectedOutput string) error {
 	return nil
 }
 
-func getClient() *publicapi.RequesterAPIClient {
+func getClient() *publicapi.RequesterAPIClientWrapper {
 	apiHost := config.GetAPIHost()
 	apiPort := config.GetAPIPort()
 	if apiHost == "" {
@@ -146,7 +146,7 @@ func getClient() *publicapi.RequesterAPIClient {
 		defaultPort := system.Envs[system.GetEnvironment()].APIPort
 		apiPort = &defaultPort
 	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+	return publicapi.NewRequesterAPIClientWrapper(apiHost, *apiPort)
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {

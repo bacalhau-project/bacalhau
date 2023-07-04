@@ -98,7 +98,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 		}
 		inputJobID = string(byteResult)
 	}
-	j, foundJob, err := util.GetAPIClient(ctx).Get(ctx, inputJobID)
+	j, foundJob, err := util.GetWrappedAPIClient(ctx).Get(ctx, inputJobID)
 
 	if err != nil {
 		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
@@ -114,7 +114,7 @@ func describe(cmd *cobra.Command, cmdArgs []string, OD *DescribeOptions) error {
 	jobDesc := j
 
 	if OD.IncludeEvents {
-		jobEvents, err := util.GetAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
+		jobEvents, err := util.GetWrappedAPIClient(ctx).GetEvents(ctx, j.Job.Metadata.ID, publicapi.EventFilterOptions{})
 		if err != nil {
 			return fmt.Errorf("failure retrieving job events '%s': %w", j.Job.Metadata.ID, err)
 		}

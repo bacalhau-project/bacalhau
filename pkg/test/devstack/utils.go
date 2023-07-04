@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -19,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
@@ -47,7 +48,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	ctx context.Context,
 	t *testing.T,
 	submitJob func(
-		apiClient *publicapi.RequesterAPIClient,
+		apiClient *publicapi.RequesterAPIClientWrapper,
 		args DeterministicVerifierTestArgs,
 	) (string, error),
 	args DeterministicVerifierTestArgs,
@@ -113,7 +114,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	// wait for other nodes to catch up
 	time.Sleep(time.Second * 1)
 	apiServer := stack.Nodes[0].APIServer
-	apiClient := publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+	apiClient := publicapi.NewRequesterAPIClientWrapper(apiServer.Address, apiServer.Port)
 
 	jobID, err := submitJob(apiClient, args)
 	require.NoError(t, err)

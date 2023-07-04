@@ -6,14 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -22,7 +23,7 @@ import (
 type ServerSuite struct {
 	suite.Suite
 	node   *node.Node
-	client *requester_publicapi.RequesterAPIClient
+	client *requester_publicapi.RequesterAPIClientWrapper
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -69,7 +70,7 @@ func (s *ServerSuite) TestSubmitRejectsJobWithSigilHeader() {
 	jobID, err := uuid.NewRandom()
 	require.NoError(s.T(), err)
 
-	s.client.DefaultHeaders["X-Bacalhau-Job-ID"] = jobID.String()
+	s.client.Client.DefaultHeaders["X-Bacalhau-Job-ID"] = jobID.String()
 	_, err = s.client.Submit(context.Background(), j)
 	require.Error(s.T(), err)
 }

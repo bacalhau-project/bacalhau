@@ -652,10 +652,10 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	ctx := context.Background()
 
 	apiSubmitJob := func(
-		apiClient *publicapi.RequesterAPIClient,
+		apiClient *publicapi.RequesterAPIClientWrapper,
 		args devstack_tests.DeterministicVerifierTestArgs,
 	) (string, error) {
-		host, port, _ := net.SplitHostPort(apiClient.BaseURI.Host)
+		host, port, _ := net.SplitHostPort(apiClient.Client.BaseURI.Host)
 
 		_, out, err := cmdtesting.ExecuteTestCobraCommand(
 			"docker", "run",

@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type resultsRequest struct {
@@ -17,7 +19,7 @@ type resultsRequest struct {
 }
 
 type resultsResponse struct {
-	Results []model.PublishedResult `json:"results"`
+	Results []v1beta2.PublishedResult `json:"results"`
 }
 
 // results godoc
@@ -55,7 +57,7 @@ func (s *RequesterAPIServer) results(res http.ResponseWriter, req *http.Request)
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(resultsResponse{
-		Results: results,
+		Results: model.ConvertPublishedResultListToV1beta2List(results...),
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

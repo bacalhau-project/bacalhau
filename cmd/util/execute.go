@@ -18,7 +18,7 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings *flags.RunTimeSettings,
 ) (*model.Job, error) {
-	var apiClient *publicapi.RequesterAPIClient
+	var apiClient *publicapi.RequesterAPIClientWrapper
 
 	cm := GetCleanupManager(ctx)
 
@@ -29,9 +29,9 @@ func ExecuteJob(ctx context.Context,
 		}
 
 		apiServer := stack.Nodes[0].APIServer
-		apiClient = publicapi.NewRequesterAPIClient(apiServer.Address, apiServer.Port)
+		apiClient = publicapi.NewRequesterAPIClientWrapper(apiServer.Address, apiServer.Port)
 	} else {
-		apiClient = GetAPIClient(ctx)
+		apiClient = GetWrappedAPIClient(ctx)
 	}
 
 	err := job.VerifyJob(ctx, j)

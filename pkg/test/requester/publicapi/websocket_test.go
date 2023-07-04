@@ -10,14 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -26,7 +27,7 @@ import (
 type WebsocketSuite struct {
 	suite.Suite
 	node   *node.Node
-	client *publicapi.RequesterAPIClient
+	client *publicapi.RequesterAPIClientWrapper
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -51,7 +52,7 @@ func (s *WebsocketSuite) TearDownTest() {
 func (s *WebsocketSuite) TestWebsocketEverything() {
 	ctx := context.Background()
 	// string.Replace http with ws in c.BaseURI
-	url := *s.client.BaseURI
+	url := *s.client.Client.BaseURI
 	url.Scheme = "ws"
 	wurl := url.JoinPath("requester", "websocket", "events")
 
@@ -96,7 +97,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	j, err := s.client.Submit(ctx, genericJob)
 	require.NoError(s.T(), err)
 
-	url := *s.client.BaseURI
+	url := *s.client.Client.BaseURI
 	url.Scheme = "ws"
 	wurl := url.JoinPath("websocket", "events")
 	wurl.RawQuery = fmt.Sprintf("job_id=%s", j.Metadata.ID)

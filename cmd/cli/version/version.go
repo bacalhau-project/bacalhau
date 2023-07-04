@@ -20,11 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
@@ -101,7 +102,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	columns = append(columns, clientVersionColumn)
 
 	if !oV.ClientOnly {
-		serverVersion, err := util.GetAPIClient(ctx).Version(ctx)
+		serverVersion, err := util.GetWrappedAPIClient(ctx).Version(ctx)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("could not get server version")
 			return err

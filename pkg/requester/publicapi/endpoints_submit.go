@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"net/http"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-type submitRequest = publicapi.SignedRequest[model.JobCreatePayload] //nolint:unused // Swagger wants this
+type submitRequest = publicapi.SignedRequest[v1beta2.JobCreatePayload] //nolint:unused // Swagger wants this
 
 type submitResponse struct {
-	Job *model.Job `json:"job"`
+	Job *v1beta2.Job `json:"job"`
 }
 
 // submit godoc
@@ -40,18 +42,20 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	jobCreatePayload, err := publicapi.UnmarshalSigned[model.JobCreatePayload](ctx, req.Body)
+	jobCreatePayload, err := publicapi.UnmarshalSigned[v1beta2.JobCreatePayload](ctx, req.Body)
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
-	if err := job.VerifyJobCreatePayload(ctx, &jobCreatePayload); err != nil {
+	payload := model.ConvertV1beta2JobCreatePayload(jobCreatePayload)
+
+	if err := job.VerifyJobCreatePayload(ctx, &payload); err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
-	j, err := s.requester.SubmitJob(ctx, jobCreatePayload)
+	j, err := s.requester.SubmitJob(ctx, payload)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
 	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))
@@ -61,8 +65,10 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	betaJob := model.ConvertJobToV1beta2(*j)
+
 	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(submitResponse{Job: j})
+	err = json.NewEncoder(res).Encode(submitResponse{Job: &betaJob})
 	if err != nil {
 		publicapi.HTTPError(ctx, res, err, http.StatusInternalServerError)
 		return

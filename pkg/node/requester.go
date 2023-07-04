@@ -4,16 +4,17 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
@@ -198,8 +199,8 @@ func NewRequesterNode(
 	}
 
 	// register debug info providers for the /debug endpoint
-	debugInfoProviders := []model.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeDiscoveryChain),
+	debugInfoProviders := []v1beta2.DebugInfoProvider{
+		&requester_publicapi.DebugInfoProviderWrapper{Provider: discovery.NewDebugInfoProvider(nodeDiscoveryChain)},
 	}
 
 	// register requester public http apis
@@ -232,7 +233,7 @@ func NewRequesterNode(
 		// record the event in a log
 		eventTracer,
 		// dispatches events to listening websockets
-		requesterAPIServer,
+		&requester_publicapi.HandleJobEventWrapper{Server: requesterAPIServer},
 		// publish job events to the network
 		jobInfoPublisher,
 	)

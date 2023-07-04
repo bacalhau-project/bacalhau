@@ -25,7 +25,8 @@ func DownloadResultsHandler(
 ) error {
 	cmd.PrintErrf("Fetching results of job '%s'...\n", jobID)
 	cm := GetCleanupManager(ctx)
-	j, _, err := GetAPIClient(ctx).Get(ctx, jobID)
+	client := GetWrappedAPIClient(ctx)
+	j, _, err := client.Get(ctx, jobID)
 	if err != nil {
 		if _, ok := err.(*bacerrors.JobNotFound); ok {
 			return err
@@ -34,7 +35,7 @@ func DownloadResultsHandler(
 		}
 	}
 
-	results, err := GetAPIClient(ctx).GetResults(ctx, j.Job.Metadata.ID)
+	results, err := client.GetResults(ctx, j.Job.Metadata.ID)
 	if err != nil {
 		return err
 	}

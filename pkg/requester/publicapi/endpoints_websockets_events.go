@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
+
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 )
@@ -66,7 +67,7 @@ func (s *RequesterAPIServer) websocketJobEvents(res http.ResponseWriter, req *ht
 	}
 }
 
-func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
+func (s *RequesterAPIServer) HandleJobEvent(ctx context.Context, event v1beta2.JobEvent) (err error) {
 	s.websocketsMutex.Lock()
 	defer s.websocketsMutex.Unlock()
 

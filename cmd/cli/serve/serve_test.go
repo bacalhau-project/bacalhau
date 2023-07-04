@@ -171,7 +171,7 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 
 func (s *ServeSuite) TestCanSubmitJob() {
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
-	client := publicapi.NewRequesterAPIClient("localhost", port)
+	client := publicapi.NewRequesterAPIClientWrapper("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
@@ -184,7 +184,7 @@ func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
 	// Networking is disabled by default so we try to submit a networked job and
 	// expect it to be rejected.
 	port, _ := s.serve("--node-type", "requester")
-	client := publicapi.NewRequesterAPIClient("localhost", port)
+	client := publicapi.NewRequesterAPIClientWrapper("localhost", port)
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)

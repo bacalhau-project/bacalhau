@@ -10,25 +10,26 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
 //nolint:unused // used in tests
-func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterAPIClient) {
+func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterAPIClientWrapper) {
 	// blank config should result in using defaults in node.Node constructor
 	return setupNodeForTestWithConfig(t, publicapi.APIServerConfig{})
 }
 
 //nolint:unused // used in tests
-func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
+func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClientWrapper) {
 	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
@@ -59,13 +60,13 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	err = n.Start(ctx)
 	require.NoError(t, err)
 
-	client := requester_publicapi.NewRequesterAPIClient(n.APIServer.Address, n.APIServer.Port)
+	client := requester_publicapi.NewRequesterAPIClientWrapper(n.APIServer.Address, n.APIServer.Port)
 	require.NoError(t, waitForHealthy(ctx, client))
 	return n, client
 }
 
 //nolint:unused // used in tests
-func waitForHealthy(ctx context.Context, c *requester_publicapi.RequesterAPIClient) error {
+func waitForHealthy(ctx context.Context, c *requester_publicapi.RequesterAPIClientWrapper) error {
 	ch := make(chan bool)
 	go func() {
 		for {

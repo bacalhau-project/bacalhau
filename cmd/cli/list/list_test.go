@@ -118,7 +118,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	var firstItem model.Job
 	for _, v := range response.Jobs {
-		firstItem = v.Job
+		firstItem = model.ConvertV1beta2Job(v.Job)
 		break
 	}
 

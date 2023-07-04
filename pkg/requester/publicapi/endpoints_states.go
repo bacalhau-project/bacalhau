@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -16,7 +17,7 @@ type stateRequest struct {
 }
 
 type stateResponse struct {
-	State model.JobState `json:"state"`
+	State v1beta2.JobState `json:"state"`
 }
 
 // states godoc
@@ -59,6 +60,10 @@ func (s *RequesterAPIServer) states(res http.ResponseWriter, req *http.Request) 
 	}
 }
 
-func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (model.JobState, error) {
-	return apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
+func getJobStateFromRequest(ctx context.Context, apiServer *RequesterAPIServer, stateReq stateRequest) (v1beta2.JobState, error) {
+	state, err := apiServer.jobStore.GetJobState(ctx, stateReq.JobID)
+	if err != nil {
+		return v1beta2.JobState{}, err
+	}
+	return model.ConvertJobStateToV1beta2(state), nil
 }

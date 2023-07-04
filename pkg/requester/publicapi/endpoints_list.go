@@ -5,28 +5,30 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/rs/zerolog/log"
 )
 
 type listRequest struct {
-	JobID       string              `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	ClientID    string              `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	IncludeTags []model.IncludedTag `json:"include_tags" example:"['any-tag']"`
-	ExcludeTags []model.ExcludedTag `json:"exclude_tags" example:"['any-tag']"`
-	MaxJobs     int                 `json:"max_jobs" example:"10"`
-	ReturnAll   bool                `json:"return_all" `
-	SortBy      string              `json:"sort_by" example:"created_at"`
-	SortReverse bool                `json:"sort_reverse"`
+	JobID       string                `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ClientID    string                `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	IncludeTags []v1beta2.IncludedTag `json:"include_tags" example:"['any-tag']"`
+	ExcludeTags []v1beta2.ExcludedTag `json:"exclude_tags" example:"['any-tag']"`
+	MaxJobs     int                   `json:"max_jobs" example:"10"`
+	ReturnAll   bool                  `json:"return_all" `
+	SortBy      string                `json:"sort_by" example:"created_at"`
+	SortReverse bool                  `json:"sort_reverse"`
 }
 
 type ListRequest = listRequest
 
 type listResponse struct {
-	Jobs []*model.JobWithInfo `json:"jobs"`
+	Jobs []*v1beta2.JobWithInfo `json:"jobs"`
 }
 
 type ListResponse = listResponse
@@ -65,7 +67,7 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	jobWithInfos := make([]*model.JobWithInfo, len(jobList))
+	jobWithInfos := make([]*v1beta2.JobWithInfo, len(jobList))
 	for i, job := range jobList {
 		jobState, innerErr := s.jobStore.GetJobState(ctx, job.Metadata.ID)
 		if innerErr != nil {
@@ -73,9 +75,9 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		jobWithInfos[i] = &model.JobWithInfo{
+		jobWithInfos[i] = &v1beta2.JobWithInfo{
 			Job:   job,
-			State: jobState,
+			State: model.ConvertJobStateToV1beta2(jobState),
 		}
 	}
 	res.WriteHeader(http.StatusOK)
@@ -88,13 +90,13 @@ func (s *RequesterAPIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]model.Job, error) {
+func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListRequest) ([]v1beta2.Job, error) {
 	list, err := s.jobStore.GetJobs(ctx, jobstore.JobQuery{
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
-		IncludeTags: listReq.IncludeTags,
-		ExcludeTags: listReq.ExcludeTags,
+		IncludeTags: model.ConvertV1beta2IncludeTagList(listReq.IncludeTags...),
+		ExcludeTags: model.ConvertV1beta2ExcludeTagList(listReq.ExcludeTags...),
 		ReturnAll:   listReq.ReturnAll,
 		SortBy:      listReq.SortBy,
 		SortReverse: listReq.SortReverse,
@@ -102,5 +104,5 @@ func (s *RequesterAPIServer) getJobsList(ctx context.Context, listReq ListReques
 	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	return model.ConvertJobListToV1beta2List(list...), nil
 }

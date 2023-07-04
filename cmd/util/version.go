@@ -13,7 +13,7 @@ import (
 )
 
 func CheckVersion(cmd *cobra.Command, args []string) error {
-	client := GetAPIClient(cmd.Context())
+	client := GetWrappedAPIClient(cmd.Context())
 	ctx := cmd.Context()
 
 	// corba doesn't do PersistentPreRun{,E} chaining yet

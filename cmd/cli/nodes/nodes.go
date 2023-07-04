@@ -4,11 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -17,6 +12,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func NewCmd() *cobra.Command {
@@ -164,7 +165,7 @@ var toggleColumns = map[string][]output.TableColumn[model.NodeInfo]{
 func nodes(cmd *cobra.Command, columnGroups []string, outputOpts output.OutputOptions) error {
 	ctx := cmd.Context()
 
-	nodes, err := util.GetAPIClient(ctx).Nodes(ctx)
+	nodes, err := util.GetWrappedAPIClient(ctx).Nodes(ctx)
 	if err != nil {
 		util.Fatal(cmd, errors.Wrap(err, "error listing jobs"), 1)
 		return err

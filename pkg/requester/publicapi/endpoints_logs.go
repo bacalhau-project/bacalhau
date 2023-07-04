@@ -7,19 +7,20 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-type logRequest = publicapi.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
+type logRequest = publicapi.SignedRequest[v1beta2.LogsPayload] //nolint:unused // Swagger wants this
 
 type Msg struct {
 	Tag  uint8
@@ -70,7 +71,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	// websocket connection isn't an io.Reader and so we can't ask it to
 	// process the signature.
 	buffer := bytes.NewReader(srequest)
-	payload, err := publicapi.UnmarshalSigned[model.LogsPayload](ctx, buffer)
+	payload, err := publicapi.UnmarshalSigned[v1beta2.LogsPayload](ctx, buffer)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, "failed to decode request"))
 		return
