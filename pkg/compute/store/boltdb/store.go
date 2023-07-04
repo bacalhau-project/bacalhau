@@ -251,6 +251,10 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 		Str("ExecutionID", execution.ID).
 		Msg("boltdb.CreateExecution")
 
+	if err := store.ValidateNewExecution(execution); err != nil {
+		return fmt.Errorf("CreateExecution failure: %w", err)
+	}
+
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
 		return s.createExecution(tx, execution)
 	})
@@ -260,10 +264,6 @@ func (s *Store) createExecution(tx *bolt.Tx, execution store.Execution) error {
 	_, err := s.getExecution(tx, execution.ID)
 	if err == nil { // deliberate, we require an err to continue
 		return store.NewErrExecutionAlreadyExists(execution.ID)
-	}
-
-	if err := store.ValidateNewExecution(execution); err != nil {
-		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
 	// Write the execution to the executions bucket
