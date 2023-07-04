@@ -22,6 +22,7 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -152,10 +153,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				},
 			}
 
-			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID:   "123",
-				APIVersion: j.APIVersion,
-				Spec:       &j.Spec,
+			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, requester.SubmitJobRequest{
+				ClientID: "123",
+				Job:      *j,
 			})
 			require.NoError(suite.T(), err)
 
@@ -350,10 +350,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	for i := 0; i < nodeCount; i++ {
 		for j := 0; j < jobsPerNode; j++ {
-			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID:   "123",
-				APIVersion: jobConfig.APIVersion,
-				Spec:       &jobConfig.Spec,
+			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, requester.SubmitJobRequest{
+				ClientID: "123",
+				Job:      *jobConfig,
 			})
 			require.NoError(suite.T(), err)
 			jobIds = append(jobIds, submittedJob.Metadata.ID)

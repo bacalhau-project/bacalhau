@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -17,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	"github.com/stretchr/testify/require"
 )
 
 type mockBidStrategy struct {
@@ -82,10 +83,12 @@ func TestEndpointAppliesJobSelectionPolicy(t *testing.T) {
 		}
 
 		endpoint, store := getTestEndpoint(t, &strategy)
-		job, err := endpoint.SubmitJob(context.Background(), model.JobCreatePayload{
-			Spec: &model.Spec{
-				Network: model.NetworkConfig{
-					Type: model.NetworkFull,
+		job, err := endpoint.SubmitJob(context.Background(), SubmitJobRequest{
+			Job: model.Job{
+				Spec: model.Spec{
+					Network: model.NetworkConfig{
+						Type: model.NetworkFull,
+					},
 				},
 			},
 		})
@@ -118,8 +121,8 @@ func TestEndpointAcceptsApprovals(t *testing.T) {
 		}
 		endpoint, store := getTestEndpoint(t, &strategy)
 
-		job, err := endpoint.SubmitJob(context.Background(), model.JobCreatePayload{
-			Spec: &model.Spec{},
+		job, err := endpoint.SubmitJob(context.Background(), SubmitJobRequest{
+			Job: model.Job{Spec: model.Spec{}},
 		})
 		require.NotNil(t, job)
 		require.NoError(t, err)

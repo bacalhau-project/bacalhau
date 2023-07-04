@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/http"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model/v1beta2"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type submitRequest = publicapi.SignedRequest[model.JobCreatePayload] //nolint:unused // Swagger wants this
@@ -46,12 +49,58 @@ func (s *RequesterAPIServer) submit(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	if err := job.VerifyJobCreatePayload(ctx, &jobCreatePayload); err != nil {
+	if jobCreatePayload.ClientID == "" {
+		err := fmt.Errorf("ClientID is empty")
 		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
 		return
 	}
 
-	j, err := s.requester.SubmitJob(ctx, jobCreatePayload)
+	if jobCreatePayload.APIVersion == "" {
+		err := fmt.Errorf("APIVersion is empty")
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
+		return
+	}
+
+	apiVersion, err := model.ParseAPIVersion(jobCreatePayload.APIVersion)
+	if err != nil {
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
+		return
+	}
+
+	var spec model.Spec
+	switch apiVersion {
+	case model.V1beta2:
+		var oldSpec v1beta2.Spec
+		if err := json.Unmarshal(jobCreatePayload.Spec, &oldSpec); err != nil {
+			publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
+			return
+		}
+		spec = model.ConvertV1beta2Spec(oldSpec)
+	case model.V1beta3:
+		if err := json.Unmarshal(jobCreatePayload.Spec, &spec); err != nil {
+			publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
+			return
+		}
+	default:
+		publicapi.HTTPError(ctx, res, fmt.Errorf("unhandled api version: %s", apiVersion), http.StatusInternalServerError)
+		return
+	}
+
+	// the job has been migrated to the latest version
+	submittedJob := model.Job{
+		APIVersion: model.V1beta3.String(),
+		Spec:       spec,
+	}
+
+	if err := job.VerifyJob(ctx, &submittedJob); err != nil {
+		publicapi.HTTPError(ctx, res, err, http.StatusBadRequest)
+		return
+	}
+
+	j, err := s.requester.SubmitJob(ctx, requester.SubmitJobRequest{
+		ClientID: jobCreatePayload.ClientID,
+		Job:      submittedJob,
+	})
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.Metadata.ID)
 	ctx = system.AddJobIDToBaggage(ctx, j.Metadata.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, oteltrace.SpanFromContext(ctx))

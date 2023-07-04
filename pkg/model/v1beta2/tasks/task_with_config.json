@@ -1,0 +1,20 @@
+{
+    "with": "",
+    "do": "noop",
+    "inputs": {},
+    "meta": {
+        "bacalhau/config": {
+            "verifier": 1,
+            "publisher": 2,
+            "annotations": ["hello"],
+            "resources": {
+                "cpu": 1,
+                "disk": 1073741824,
+                "memory": 1073741824,
+                "gpu": 0
+            },
+            "timeout": 300E9,
+            "dnt": false
+        }
+    }
+}

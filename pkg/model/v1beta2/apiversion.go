@@ -1,4 +1,4 @@
-package model
+package v1beta2
 
 import (
 	"fmt"
@@ -13,10 +13,8 @@ const (
 	V1alpha1
 	// V1beta1 is Deprecated but left here to preserve enum ordering
 	V1beta1
-	// V1beta2 is the previous API version
+	// V1beta2 is the current API version
 	V1beta2
-	// V1beta3 is the current API version
-	V1beta3
 	apiVersionDone // must be last
 )
 

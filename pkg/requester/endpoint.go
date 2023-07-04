@@ -69,7 +69,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	}
 }
 
-func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayload) (*model.Job, error) {
+func (node *BaseEndpoint) SubmitJob(ctx context.Context, request SubmitJobRequest) (*model.Job, error) {
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
 		return &model.Job{}, fmt.Errorf("error creating job id: %w", err)
@@ -96,14 +96,11 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	// ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/controller.SubmitJob")
 	// defer span.End()
 
-	job := &model.Job{
-		APIVersion: data.APIVersion,
-		Metadata: model.Metadata{
-			ID:        jobID,
-			ClientID:  data.ClientID,
-			CreatedAt: time.Now(),
-		},
-		Spec: *data.Spec,
+	job := &request.Job
+	job.Metadata = model.Metadata{
+		ID:        jobID,
+		CreatedAt: time.Now(),
+		ClientID:  request.ClientID,
 	}
 
 	for _, transform := range node.transforms {

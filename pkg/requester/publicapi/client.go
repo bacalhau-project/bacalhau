@@ -2,10 +2,14 @@ package publicapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -13,8 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 )
 
 // APIRetryCount - for some queries (like read events and read state)
@@ -260,16 +262,19 @@ func (apiClient *RequesterAPIClient) Submit(
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Submit")
 	defer span.End()
 
+	specbytes, err := json.Marshal(j.Spec)
+	if err != nil {
+		return nil, err
+	}
 	data := model.JobCreatePayload{
 		ClientID:   system.GetClientID(),
 		APIVersion: j.APIVersion,
-		Spec:       &j.Spec,
+		Spec:       specbytes,
 	}
 
 	var res submitResponse
-	err := apiClient.PostSigned(ctx, APIPrefix+"submit", data, &res)
-	if err != nil {
-		return &model.Job{}, err
+	if err := apiClient.PostSigned(ctx, APIPrefix+"submit", data, &res); err != nil {
+		return nil, err
 	}
 
 	return res.Job, nil

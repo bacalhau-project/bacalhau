@@ -3,17 +3,18 @@ package requester
 import (
 	"context"
 
+	"github.com/rs/zerolog"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
-	"github.com/rs/zerolog"
 )
 
 // Endpoint is the frontend and entry point to the requester node for the end users to submit, update and cancel jobs.
 type Endpoint interface {
 	// SubmitJob submits a new job to the network.
-	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
+	SubmitJob(context.Context, SubmitJobRequest) (*model.Job, error)
 	// ApproveJob approves or rejects the running of a job.
 	ApproveJob(context.Context, bidstrategy.ModerateJobRequest) error
 	// CancelJob cancels an existing job.
@@ -101,6 +102,11 @@ func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
 // StartJobRequest triggers the scheduling of a job.
 type StartJobRequest struct {
 	Job model.Job
+}
+
+type SubmitJobRequest struct {
+	ClientID string
+	Job      model.Job
 }
 
 type CancelJobRequest struct {
