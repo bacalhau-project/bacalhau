@@ -1093,6 +1093,13 @@ const docTemplate = `{
                     "description": "this should be pullable by docker",
                     "type": "string"
                 },
+                "Parameters": {
+                    "description": "Parameters holds additional commandline arguments",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "WorkingDirectory": {
                     "description": "working directory inside the container",
                     "type": "string"
