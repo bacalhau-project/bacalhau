@@ -7,7 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/hashicorp/go-metrics"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 )
@@ -87,7 +87,7 @@ func (w *Worker) run(ctx context.Context) {
 	var dequeueFailures int
 	for !w.isShuttingDown(ctx) {
 		// Dequeue an evaluation and apply backoff if dequeueing fails
-		evaluationReceipt, err := w.dequeueEvaluation()
+		evaluationReceipt, err := w.dequeueEvaluation(ctx)
 		if err != nil {
 			dequeueFailures++
 			w.dequeueFailureBackoff.Backoff(ctx, dequeueFailures)
@@ -105,13 +105,18 @@ func (w *Worker) run(ctx context.Context) {
 		ack := w.processEvaluation(ctx, evaluationReceipt.Evaluation)
 
 		// ack/nack the evaluation
-		w.ackEvaluation(evaluationReceipt, ack)
+		if ack {
+			w.ackEvaluation(ctx, evaluationReceipt, ack)
+		} else {
+			w.nackEvaluation(ctx, evaluationReceipt, ack)
+		}
 	}
 }
 
 // dequeueEvaluation dequeues an evaluation.
-func (w *Worker) dequeueEvaluation() (*model.EvaluationReceipt, error) {
-	defer metrics.MeasureSince([]string{"bacalhau", "worker", "dequeue"}, time.Now())
+func (w *Worker) dequeueEvaluation(ctx context.Context) (*model.EvaluationReceipt, error) {
+	recorder := telemetry.NewMetricRecorder()
+	defer recorder.RecordFault(ctx, WorkerDequeueFaults)
 
 	evaluation, receiptHandle, err :=
 		w.evaluationBroker.Dequeue(w.schedulerProvider.EnabledSchedulers(), w.dequeueTimeout)
@@ -119,6 +124,7 @@ func (w *Worker) dequeueEvaluation() (*model.EvaluationReceipt, error) {
 	if err != nil {
 		return nil, err
 	}
+	recorder.Success()
 	if evaluation == nil {
 		return nil, nil
 	}
@@ -131,10 +137,13 @@ func (w *Worker) dequeueEvaluation() (*model.EvaluationReceipt, error) {
 
 // processEvaluation processes an evaluation and returns true if it was processed successfully, false otherwise.
 func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evaluation) (ack bool) {
-	defer metrics.MeasureSince([]string{"bacalhau", "worker", "process"}, time.Now())
+	tracker := telemetry.NewMetricRecorder()
+	defer tracker.RecordFault(ctx, WorkerProcessFaults, EvalTypeAttribute(evaluation.Type))
+
 	// Check if worker is shutting down while dequeueing
 	if w.isShuttingDown(ctx) {
 		log.Warn().Msgf("Worker is shutting down, not scheduling evaluation %s", evaluation.ID)
+		tracker.Success() // don't treat this as a failure
 		return
 	}
 
@@ -149,28 +158,31 @@ func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evalua
 		return
 	}
 	ack = true
+	tracker.Success()
 	return
 }
 
-// ackEvaluation acks or nacks an evaluation back to the broker.
-func (w *Worker) ackEvaluation(evalReceipt *model.EvaluationReceipt, ack bool) {
-	operation := "nack"
-	if ack {
-		operation = "ack"
-	}
-	defer metrics.MeasureSince([]string{"bacalhau", "worker", operation}, time.Now())
+func (w *Worker) ackEvaluation(ctx context.Context, evalReceipt *model.EvaluationReceipt, ack bool) {
+	recorder := telemetry.NewMetricRecorder()
+	defer recorder.RecordFault(ctx, WorkerAckFaults)
 
-	var err error
-	if ack {
-		err = w.evaluationBroker.Ack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
-	} else {
-		err = w.evaluationBroker.Nack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
-	}
-
+	err := w.evaluationBroker.Ack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to %s evaluation %s", operation, evalReceipt.Evaluation.ID)
+		log.Error().Err(err).Msgf("Failed to ack evaluation %s", evalReceipt.Evaluation.ID)
 	} else {
-		log.Debug().Msgf("%sed evaluation %s", operation, evalReceipt.Evaluation.ID)
+		recorder.Success()
+	}
+}
+
+func (w *Worker) nackEvaluation(ctx context.Context, evalReceipt *model.EvaluationReceipt, ack bool) {
+	recorder := telemetry.NewMetricRecorder()
+	defer recorder.RecordFault(ctx, WorkerNackFaults)
+
+	err := w.evaluationBroker.Nack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to nack evaluation %s", evalReceipt.Evaluation.ID)
+	} else {
+		recorder.Success()
 	}
 }
 
