@@ -230,8 +230,8 @@ type EngineSpec struct {
 // execution provider.
 type Spec struct {
 	// deprecated: user EngineSpec instead.
-	EngineDeprecated Engine `json:"Engine,omitempty"`
-	EngineSpec       EngineSpec
+	EngineDeprecated Engine     `json:"Engine,omitempty"`
+	EngineSpec       EngineSpec `json:"EngineSpec,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
 
