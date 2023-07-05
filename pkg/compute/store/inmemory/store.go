@@ -141,8 +141,8 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint, error) {
-	var counter uint
+func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint64, error) {
+	var counter uint64
 	for _, execution := range s.executionMap {
 		if execution.State == state {
 			counter++

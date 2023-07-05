@@ -33,7 +33,7 @@ func TestSuite(t *testing.T) {
 func (s *Suite) TestZeroExecutionsReturnsZeroCount() {
 	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(0), count)
+	s.Equal(uint64(0), count)
 
 }
 
@@ -41,7 +41,7 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 	//check jobStore is initialised to zero
 	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(0), count)
+	s.Equal(uint64(0), count)
 	//create execution
 	defaultJob, err := model.NewJobWithSaneProductionDefaults()
 	s.NoError(err)
@@ -59,7 +59,7 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 	s.NoError(err)
 	count, err = s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(1), count)
+	s.Equal(uint64(1), count)
 }
 
 func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
@@ -70,7 +70,7 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 	for index, id := range idList {
 		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 		s.NoError(err)
-		s.Equal(uint(index), count)
+		s.Equal(uint64(index), count)
 
 		execution := store.NewExecution(
 			id,
@@ -106,6 +106,6 @@ func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
 		s.NoError(err)
 		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 		s.NoError(err)
-		s.Equal(uint(0), count)
+		s.Equal(uint64(0), count)
 	}
 }

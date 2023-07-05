@@ -188,7 +188,7 @@ func (s *Suite) TestGetExecutionCount() {
 
 	c, err := s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(2), c)
+	s.Equal(uint64(2), c)
 }
 
 func (s *Suite) TestStateCounterChange() {
@@ -211,8 +211,8 @@ func (s *Suite) TestStateCounterChange() {
 	s.NoError(err)
 	completed, err := s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(1), accepted)
-	s.Equal(uint(0), completed)
+	s.Equal(uint64(1), accepted)
+	s.Equal(uint64(0), completed)
 
 	request = store.UpdateExecutionStateRequest{
 		ExecutionID:     s.execution.ID,
@@ -228,8 +228,8 @@ func (s *Suite) TestStateCounterChange() {
 	s.NoError(err)
 	completed, err = s.executionStore.GetExecutionCount(ctx, store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(0), accepted)
-	s.Equal(uint(1), completed)
+	s.Equal(uint64(0), accepted)
+	s.Equal(uint64(1), completed)
 
 }
 

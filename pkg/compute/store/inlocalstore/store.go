@@ -25,7 +25,7 @@ type PersistentExecutionStore struct {
 }
 
 type JobStats struct {
-	JobsCompleted uint
+	JobsCompleted uint64
 }
 
 // Check if the json file exists, and create it if it doesn't.
@@ -85,7 +85,7 @@ func (proxy *PersistentExecutionStore) GetExecution(ctx context.Context, id stri
 }
 
 // GetExecutionCount implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context, _ store.ExecutionState) (uint, error) {
+func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context, _ store.ExecutionState) (uint64, error) {
 	proxy.mu.RLock()
 	defer proxy.mu.RUnlock()
 	return readCounter(proxy.stateFile)
@@ -126,7 +126,7 @@ func (proxy *PersistentExecutionStore) Close(ctx context.Context) error {
 	return nil
 }
 
-func writeCounter(filepath string, count uint) error {
+func writeCounter(filepath string, count uint64) error {
 	var jobStore JobStats
 	jobStore.JobsCompleted += count
 	bs, err := json.Marshal(jobStore)
@@ -140,7 +140,7 @@ func writeCounter(filepath string, count uint) error {
 	return err
 }
 
-func readCounter(filepath string) (uint, error) {
+func readCounter(filepath string) (uint64, error) {
 	jsonbs, err := os.ReadFile(filepath)
 	var jobStore JobStats
 	if err != nil {

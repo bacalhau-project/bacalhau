@@ -317,34 +317,33 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		Msg("boltdb.UpdateExecutionState")
 
 	return s.database.Update(func(tx *bolt.Tx) (err error) {
-		err = s.updateExecutionState(tx, request)
+		previousState, err := s.updateExecutionState(tx, request)
 		if err == nil {
-			// If we are confident that the value was written without error
-			// and we won't rollback then decrement the counter for the old
-			// state and increment the new one
-			s.stateCounter.DecrementState(request.ExpectedState, 1)
+			s.stateCounter.DecrementState(previousState, 1)
 			s.stateCounter.IncrementState(request.NewState, 1)
 		}
 		return err
 	})
 }
 
-func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) error {
+func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionStateRequest) (store.ExecutionState, error) {
+	emptyState := store.ExecutionStateUndefined
+
 	execution, err := s.getExecution(tx, request.ExecutionID)
 	if err != nil {
-		return store.NewErrExecutionNotFound(request.ExecutionID)
+		return emptyState, store.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
 	if request.ExpectedState != store.ExecutionStateUndefined && execution.State != request.ExpectedState {
-		return store.NewErrInvalidExecutionState(request.ExecutionID, execution.State, request.ExpectedState)
+		return emptyState, store.NewErrInvalidExecutionState(request.ExecutionID, execution.State, request.ExpectedState)
 	}
 
 	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
-		return store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
+		return emptyState, store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
 	}
 
 	if execution.State.IsTerminal() {
-		return store.NewErrExecutionAlreadyTerminal(request.ExecutionID, execution.State, request.NewState)
+		return emptyState, store.NewErrExecutionAlreadyTerminal(request.ExecutionID, execution.State, request.NewState)
 	}
 
 	previousState := execution.State
@@ -357,16 +356,16 @@ func (s *Store) updateExecutionState(tx *bolt.Tx, request store.UpdateExecutionS
 
 	data, err := json.Marshal(execution)
 	if err != nil {
-		return err
+		return emptyState, err
 	}
 
 	executionsBucket := s.getExecutionsBucket(tx)
 	err = executionsBucket.Put([]byte(execution.ID), data)
 	if err != nil {
-		return err
+		return emptyState, err
 	}
 
-	return s.appendHistory(tx, execution, previousState, request.Comment)
+	return previousState, s.appendHistory(tx, execution, previousState, request.Comment)
 }
 
 // Must be called where tx is a write transaction and adds a new history entry
@@ -458,14 +457,14 @@ func (s *Store) Close(ctx context.Context) error {
 	return s.database.Close()
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint, error) {
+func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint64, error) {
 	log.Ctx(ctx).Trace().
 		Msg("boltdb.GetExecutionCount")
 
 	// We have to wait here to ensure the counter has been populated,
 	// so we will wait until we know it has finished
 	s.starting.Wait()
-	return uint(s.stateCounter.Get(state)), nil
+	return s.stateCounter.Get(state), nil
 }
 
 func (s *Store) populateStateCounter(ctx context.Context) {

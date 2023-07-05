@@ -93,7 +93,7 @@ type ExecutionStore interface {
 	DeleteExecution(ctx context.Context, id string) error
 	// GetExecutionCount returns a count of all executions that are in the specified
 	// state
-	GetExecutionCount(ctx context.Context, state ExecutionState) (uint, error)
+	GetExecutionCount(ctx context.Context, state ExecutionState) (uint64, error)
 	// Close provides the opportunity for the underlying store to cleanup
 	// any resources as the compute node is shutting down
 	Close(ctx context.Context) error
