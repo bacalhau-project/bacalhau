@@ -13,8 +13,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-metrics"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/metric"
 )
 
 const (
@@ -105,6 +105,8 @@ type InMemoryBroker struct {
 	// compounding after the first Nack.
 	subsequentNackDelay time.Duration
 
+	metricRegistration metric.Registration
+
 	stats *BrokerStats
 
 	l sync.RWMutex
@@ -165,6 +167,13 @@ func (b *InMemoryBroker) SetEnabled(enabled bool) {
 		ctx, cancel := context.WithCancel(context.Background())
 		b.delayedEvalCancelFunc = cancel
 		go b.runDelayedEvalsWatcher(ctx, b.delayedEvalsUpdateCh)
+
+		metricRegistration, err := b.registerMetrics()
+		if err != nil {
+			log.Error().Err(err).Msg("failed to register metrics. Evaluation metrics will not be available")
+		} else {
+			b.metricRegistration = metricRegistration
+		}
 	}
 
 	if !enabled {
@@ -650,6 +659,11 @@ func (b *InMemoryBroker) flush() {
 		b.delayedEvalCancelFunc()
 	}
 
+	if b.metricRegistration != nil {
+		_ = b.metricRegistration.Unregister()
+		b.metricRegistration = nil
+	}
+
 	// Clear out the update channel for delayed evaluations
 	b.delayedEvalsUpdateCh = make(chan struct{}, 1)
 
@@ -772,40 +786,21 @@ func (b *InMemoryBroker) Cancelable(batchSize int) []*model.Evaluation {
 	return cancelable
 }
 
-// EmitStats is used to export metrics about the broker while enabled
-func (b *InMemoryBroker) EmitStats(period time.Duration, stopCh <-chan struct{}) {
-	timer := time.NewTimer(period)
-	defer func() {
-		timer.Stop()
-	}()
-
-	for {
-		timer.Reset(period)
-
-		select {
-		case <-timer.C:
-			stats := b.Stats()
-			metrics.SetGauge([]string{"bacalhau", "eval_broker", "total_ready"}, float32(stats.TotalReady))
-			metrics.SetGauge([]string{"bacalhau", "eval_broker", "total_inflight"}, float32(stats.TotalInflight))
-			metrics.SetGauge([]string{"bacalhau", "eval_broker", "total_pending"}, float32(stats.TotalPending))
-			metrics.SetGauge([]string{"bacalhau", "eval_broker", "total_waiting"}, float32(stats.TotalWaiting))
-			metrics.SetGauge([]string{"bacalhau", "eval_broker", "total_cancelable"}, float32(stats.TotalCancelable))
-			for _, eval := range stats.DelayedEvals {
-				metrics.SetGaugeWithLabels([]string{"bacalhau", "eval_broker", "eval_waiting"},
-					float32(time.Until(eval.WaitUntil).Seconds()),
-					[]metrics.Label{
-						{Name: "eval_id", Value: eval.ID},
-						{Name: "job", Value: eval.JobID},
-						{Name: "namespace", Value: eval.Namespace},
-					})
-			}
-			for sched, schedStats := range stats.ByScheduler {
-				metrics.SetGauge([]string{"bacalhau", "eval_broker", sched, "ready"}, float32(schedStats.Ready))
-				metrics.SetGauge([]string{"bacalhau", "eval_broker", sched, "inflight"}, float32(schedStats.Inflight))
-			}
-
-		case <-stopCh:
-			return
+// registerMetrics registers the broker metrics with the meter. This meter collector will periodically
+// collect the metrics and send them to the configured metrics backend.
+// TODO: evaluate using UpDownCounter instead of collecting our own stats
+func (b *InMemoryBroker) registerMetrics() (metric.Registration, error) {
+	return orchestrator.Meter.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+		stats := b.Stats()
+		o.ObserveInt64(orchestrator.EvalBrokerPending, int64(stats.TotalPending))
+		o.ObserveInt64(orchestrator.EvalBrokerWaiting, int64(stats.TotalWaiting))
+		o.ObserveInt64(orchestrator.EvalBrokerCancelable, int64(stats.TotalCancelable))
+		for sched, schedStats := range stats.ByScheduler {
+			attr := orchestrator.EvalTypeAttribute(sched)
+			o.ObserveInt64(orchestrator.EvalBrokerReady, int64(schedStats.Ready), attr)
+			o.ObserveInt64(orchestrator.EvalBrokerInflight, int64(schedStats.Inflight), attr)
 		}
-	}
+		return nil
+	}, orchestrator.EvalBrokerReady, orchestrator.EvalBrokerInflight, orchestrator.EvalBrokerPending,
+		orchestrator.EvalBrokerWaiting, orchestrator.EvalBrokerCancelable)
 }
