@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -294,4 +295,39 @@ func GetDockerCredentials() DockerCredentials {
 // using 0.0.0.0
 func PreferredAddress() string {
 	return os.Getenv("BACALHAU_PREFERRED_ADDRESS")
+}
+
+type ExecutionStoreType = int
+
+const (
+	ExecutionStoreInMemory = iota
+	ExecutionStoreBoltDB
+)
+
+type ComputeStorageConfig struct {
+	StoreType ExecutionStoreType
+	Location  string
+}
+
+func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
+	c := ComputeStorageConfig{}
+
+	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE"))
+	if computeStore == "boltdb" {
+		c.StoreType = ExecutionStoreBoltDB
+	} else {
+		c.StoreType = ExecutionStoreInMemory
+	}
+
+	// Either, the user has specified the full path to the file in
+	// an environment variable, or we will derive the filename ourselves
+	// from the node id.
+	path := os.Getenv("BACALHAU_COMPUTE_STORE_PATH")
+	if path == "" {
+		f := fmt.Sprintf("%s-compute.db", nodeID)
+		path = filepath.Join(GetConfigPath(), f)
+	}
+	c.Location = path
+
+	return c
 }

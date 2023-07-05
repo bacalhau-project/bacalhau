@@ -4,6 +4,8 @@ package compute
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 )
 
 type AsyncBidSuite struct {
@@ -21,6 +23,7 @@ type AsyncBidSuite struct {
 
 	strategy *bidstrategy.CallbackBidStrategy
 
+	ctx           context.Context
 	store         store.ExecutionStore
 	callbackStore *CallbackStore
 }
@@ -30,12 +33,16 @@ func TestAsyncBidSuite(t *testing.T) {
 }
 
 func (s *AsyncBidSuite) SetupSuite() {
+	s.ctx = context.Background()
 	s.ComputeSuite.SetupSuite()
 	s.strategy = bidstrategy.NewFixedBidStrategy(true, true)
 	s.config.BidSemanticStrategy = s.strategy
 	s.config.BidResourceStrategy = s.strategy
 
-	s.store = inmemory.NewStore()
+	dir, _ := os.MkdirTemp("", "bacalhau-test")
+	tempFile := filepath.Join(dir, "test.boltdb")
+
+	s.store, _ = boltdb.NewStore(s.ctx, tempFile)
 	s.callbackStore = &CallbackStore{}
 	s.callbackStore.GetExecutionFn = s.store.GetExecution
 	s.callbackStore.GetExecutionsFn = s.store.GetExecutions
@@ -44,7 +51,12 @@ func (s *AsyncBidSuite) SetupSuite() {
 	s.callbackStore.UpdateExecutionStateFn = s.store.UpdateExecutionState
 	s.callbackStore.DeleteExecutionFn = s.store.DeleteExecution
 	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
+	s.callbackStore.CloseFn = s.store.Close
 	s.config.ExecutionStore = s.callbackStore
+}
+
+func (s *AsyncBidSuite) TearDownSuite() {
+	s.store.Close(s.ctx)
 }
 
 func (s *AsyncBidSuite) TestAsyncApproval() {

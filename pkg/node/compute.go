@@ -17,8 +17,10 @@ import (
 	compute_publicapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -63,7 +65,7 @@ func NewComputeNode(
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(host)
+		executionStore, err = createExecutionStore(ctx, host)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +274,7 @@ func NewComputeNode(
 
 	// A single cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		// pass
+		executionStore.Close(ctx)
 	}
 
 	return &Compute{
@@ -293,7 +295,7 @@ func (c *Compute) RegisterLocalComputeCallback(callback compute.Callback) {
 	c.computeCallback.RegisterLocalComputeCallback(callback)
 }
 
-func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
+func createExecutionStore(ctx context.Context, host host.Host) (store.ExecutionStore, error) {
 	// include the host id in the state root dir to avoid conflicts when running multiple nodes on the same machine,
 	// e.g. when running tests or when running devstack
 	configDir, err := system.EnsureConfigDir()
@@ -306,8 +308,19 @@ func createExecutionStore(host host.Host) (store.ExecutionStore, error) {
 		return nil, err
 	}
 
+	var store store.ExecutionStore
+	storageConfig := config.GetComputeStorageConfig(host.ID().Pretty())
+	if storageConfig.StoreType == config.ExecutionStoreBoltDB {
+		store, err = boltdb.NewStore(ctx, storageConfig.Location)
+		if err != nil {
+			return nil, err
+		}
+	} else if storageConfig.StoreType == config.ExecutionStoreInMemory {
+		store = inmemory.NewStore()
+	}
+
 	return inlocalstore.NewPersistentExecutionStore(inlocalstore.PersistentJobStoreParams{
-		Store:   inmemory.NewStore(),
+		Store:   store,
 		RootDir: stateRootDir,
 	})
 }
