@@ -321,6 +321,54 @@ func ConvertV1beta2EngineList(ee ...v1beta2.Engine) []Engine {
 // Backwards current -> v1beta2
 //
 
+func ConvertEngineToV1beta2(e Engine) v1beta2.Engine {
+	return v1beta2.Engine(e)
+}
+
+func ConvertEngineListToV1beta2(ee ...Engine) []v1beta2.Engine {
+	out := make([]v1beta2.Engine, len(ee))
+	for i, e := range ee {
+		out[i] = ConvertEngineToV1beta2(e)
+	}
+	return out
+}
+
+func ConvertPublisherToV1beta2(e Publisher) v1beta2.Publisher {
+	return v1beta2.Publisher(e)
+}
+
+func ConvertPublisherListToV1beta2(ee ...Publisher) []v1beta2.Publisher {
+	out := make([]v1beta2.Publisher, len(ee))
+	for i, e := range ee {
+		out[i] = ConvertPublisherToV1beta2(e)
+	}
+	return out
+}
+
+func ConvertVerifierToV1beta2(e Verifier) v1beta2.Verifier {
+	return v1beta2.Verifier(e)
+}
+
+func ConvertVerifierListToV1beta2(ee ...Verifier) []v1beta2.Verifier {
+	out := make([]v1beta2.Verifier, len(ee))
+	for i, e := range ee {
+		out[i] = ConvertVerifierToV1beta2(e)
+	}
+	return out
+}
+
+func ConvertStorageSourceTypeToV1beta2(st StorageSourceType) v1beta2.StorageSourceType {
+	return v1beta2.StorageSourceType(st)
+}
+
+func ConvertStorageSourceTypeToV1beta2List(sts ...StorageSourceType) []v1beta2.StorageSourceType {
+	out := make([]v1beta2.StorageSourceType, len(sts))
+	for i, s := range sts {
+		out[i] = ConvertStorageSourceTypeToV1beta2(s)
+	}
+	return out
+}
+
 func ConvertJobToV1beta2(j Job) v1beta2.Job {
 	return v1beta2.Job{ //nolint:govet
 		j.APIVersion,

@@ -7,10 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/cmd/v1beta2/util/parse"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -77,7 +79,7 @@ func (s *JobUtilSuite) TestRun_URLs() {
 		for _, testURL := range testURLs {
 			func() {
 				// Test all URLs against the validator
-				spec, err := ParseStorageString(testURL.submittedURL, "/inputs", map[string]string{})
+				spec, err := parse.ParseStorageString(testURL.submittedURL, "/inputs", map[string]string{})
 				originalURLTrimmed := strings.Trim(testURL.submittedURL, `"' `)
 				convertedTrimmed := strings.Trim(testURL.convertedURL, `"' `)
 				if testURL.valid {

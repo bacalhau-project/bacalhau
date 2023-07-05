@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli"
+	"github.com/bacalhau-project/bacalhau/cmd/v1beta2/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
+	"github.com/bacalhau-project/bacalhau/cmd/v1beta2/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
