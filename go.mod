@@ -48,7 +48,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.9.0
 	github.com/multiformats/go-multicodec v0.9.0
-	github.com/multiformats/go-multihash v0.2.2
+	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
