@@ -28,6 +28,7 @@ type NodeInfo struct {
 	NodeType        NodeType          `json:"NodeType"`
 	Labels          map[string]string `json:"Labels"`
 	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo"`
+	PublicKey       []byte            `json:"PublicKey"`
 }
 
 // IsComputeNode returns true if the node is a compute node

@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -319,12 +320,20 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	for key, value := range OS.Labels {
 		combinedMap[key] = value
 	}
+
+	_, publicKey, err := secrets.GetSecretsKeyPair(config.GetConfigPath(), fmt.Sprintf("%d", OS.SwarmPort))
+	if err != nil {
+		return err
+	}
+	publicKeyBytes := secrets.PublicKeyToBytes(publicKey)
+
 	// Create node config from cmd arguments
 	nodeConfig := node.NodeConfig{
 		IPFSClient:            ipfsClient,
 		CleanupManager:        cm,
 		JobStore:              datastore,
 		Host:                  libp2pHost,
+		HostPort:              OS.SwarmPort,
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
@@ -336,6 +345,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		Labels:                combinedMap,
 		AllowListedLocalPaths: OS.AllowListedLocalPaths,
 	}
+	nodeConfig.PublicKey = append(nodeConfig.PublicKey, publicKeyBytes...)
 
 	// Create node
 	standardNode, err := node.NewNode(ctx, nodeConfig)

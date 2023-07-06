@@ -23,7 +23,7 @@ const continuouslyConnectPeersLoopDelay = 10 * time.Second
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
 func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
-	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
+	prvKey, err := config.GetP2PPrivateKey(fmt.Sprintf("private_key.%d", port))
 	if err != nil {
 		return nil, err
 	}

@@ -211,9 +211,11 @@ func GetConfigPath() string {
 	return d
 }
 
-const BitsForKeyPair = 2048
+const BitsForP2PKeyPair = 2048
 
-func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
+// Gets the private key for connecting to the P2P network where it is used
+// solely for specifying the identity when creating a new Host.
+func GetP2PPrivateKey(keyName string) (crypto.PrivKey, error) {
 	configPath := GetConfigPath()
 
 	// We include the port in the filename so that in devstack multiple nodes
@@ -224,7 +226,7 @@ func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
 		// Private key does not exist - create and write it
 
 		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
+		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForP2PKeyPair, rand.Reader)
 		if err != nil {
 			log.Error().Err(err)
 			return nil, err

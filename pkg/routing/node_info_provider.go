@@ -15,6 +15,7 @@ type NodeInfoProviderParams struct {
 	Labels              map[string]string
 	ComputeInfoProvider model.ComputeNodeInfoProvider
 	BacalhauVersion     model.BuildVersionInfo
+	PublicKey           model.PublicKey
 }
 
 type NodeInfoProvider struct {
@@ -23,6 +24,7 @@ type NodeInfoProvider struct {
 	labels              map[string]string
 	computeInfoProvider model.ComputeNodeInfoProvider
 	bacalhauVersion     model.BuildVersionInfo
+	publicKey           model.PublicKey
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
@@ -32,6 +34,7 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 		labels:              params.Labels,
 		computeInfoProvider: params.ComputeInfoProvider,
 		bacalhauVersion:     params.BacalhauVersion,
+		publicKey:           params.PublicKey,
 	}
 }
 
@@ -47,8 +50,9 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) model.NodeInfo {
 			ID:    n.h.ID(),
 			Addrs: n.identityService.OwnObservedAddrs(),
 		},
-		Labels:   n.labels,
-		NodeType: model.NodeTypeRequester,
+		Labels:    n.labels,
+		NodeType:  model.NodeTypeRequester,
+		PublicKey: n.publicKey,
 	}
 	if n.computeInfoProvider != nil {
 		info := n.computeInfoProvider.GetComputeInfo(ctx)

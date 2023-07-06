@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -47,6 +47,7 @@ type NodeConfig struct {
 	CleanupManager            *system.CleanupManager
 	JobStore                  jobstore.Store
 	Host                      host.Host
+	HostPort                  int
 	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   uint16
@@ -61,6 +62,7 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval time.Duration
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
+	PublicKey                 []byte
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -170,6 +172,7 @@ func NewNode(
 		IdentityService: basicHost.IDService(),
 		Labels:          config.Labels,
 		BacalhauVersion: *version.Get(),
+		PublicKey:       config.PublicKey,
 	})
 
 	// node info publisher
@@ -329,8 +332,8 @@ func (n *Node) IsComputeNode() bool {
 	return n.ComputeNode != nil
 }
 
-func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+func newLibp2pPubSub(ctx context.Context, config NodeConfig) (*libp2p_pubsub.PubSub, error) {
+	tracer, err := libp2p_pubsub.NewJSONTracer(cfg.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +346,7 @@ func newLibp2pPubSub(ctx context.Context, nodeConfig NodeConfig) (*libp2p_pubsub
 
 	return libp2p_pubsub.NewGossipSub(
 		ctx,
-		nodeConfig.Host,
+		config.Host,
 		libp2p_pubsub.WithPeerExchange(true),
 		libp2p_pubsub.WithPeerGater(pgParams),
 		libp2p_pubsub.WithEventTracer(tracer),
