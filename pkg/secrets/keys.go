@@ -11,7 +11,8 @@ import (
 	"path/filepath"
 )
 
-const BitsForSecretsKeyPair = 4096
+// This is a compromise between secure enough and reasonable length outputs
+const BitsForSecretsKeyPair = 2048
 
 func GetSecretsKeyPair(folder string, suffix string) (*rsa.PrivateKey, *rsa.PublicKey, error) {
 	privateKeyPath := KeyPath(folder, "priv", suffix)

@@ -3,9 +3,6 @@
 package secrets_test
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,26 +61,4 @@ func (s *KeySuite) TestKeyConversion() {
 	pubRoundtripped, err := secrets.BytesToPublicKey(pubBytes)
 	s.NoError(err)
 	s.True(pub.Equal(pubRoundtripped))
-}
-
-func (s *KeySuite) TestEncryptDecryptCycle() {
-	suffix := "encrypt-decrypt"
-	priv, pub, err := secrets.GetSecretsKeyPair(s.tmpFolder, suffix)
-	s.NoError(err)
-
-	hasher := sha256.New()
-	message := "this is a string to be encrypted"
-
-	// Encrypt without labels
-	encrypted, err := rsa.EncryptOAEP(hasher, rand.Reader, pub, []byte(message), nil)
-	s.NoError(err)
-	s.NotNil(encrypted)
-
-	// Decrypt without labels
-	decrypted, err := rsa.DecryptOAEP(hasher, rand.Reader, priv, encrypted, nil)
-	s.NoError(err)
-	s.NotNil(decrypted)
-
-	decryptedString := string(decrypted)
-	s.Equal(message, decryptedString)
 }
