@@ -114,3 +114,14 @@ func (s *JobState) CompletedCount() int {
 func (s *JobState) ActiveCount() int {
 	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State.IsActive() })
 }
+
+// NonTerminalExecutions returns the executions that are not in a terminal state.
+func (s *JobState) NonTerminalExecutions() []*ExecutionState {
+	executionStates := make([]*ExecutionState, 0, len(s.Executions))
+	for i := range s.Executions {
+		if !s.Executions[i].State.IsTerminal() {
+			executionStates = append(executionStates, &s.Executions[i])
+		}
+	}
+	return executionStates
+}
