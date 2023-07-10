@@ -14,4 +14,3 @@ Spec:
   Deal:
     Concurrency: 1
     Confidence: 0
-    MinBids: 0

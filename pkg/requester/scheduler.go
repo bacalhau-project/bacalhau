@@ -404,9 +404,8 @@ func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidR
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			AcceptedAskForBid: response.Accepted,
-			State:             newState,
-			Status:            response.Reason,
+			State:  newState,
+			Status: response.Reason,
 		},
 	})
 	if err != nil {
@@ -414,8 +413,6 @@ func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidR
 		return
 	}
 
-	// decide if we should notify compute node of the bid decision
-	// we only notify if we've already received more than MinBids
 	if response.Accepted {
 		s.eventEmitter.EmitBidReceived(ctx, response)
 	}

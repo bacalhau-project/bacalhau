@@ -217,7 +217,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 			opts.DealSettings.Confidence,
-			opts.DealSettings.MinBids,
 		),
 	)
 	if err != nil {

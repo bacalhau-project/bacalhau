@@ -72,7 +72,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 			Deal: Deal{
 				Concurrency: 1,
 				Confidence:  0,
-				MinBids:     0, // 0 means no minimum before bidding
 			},
 		},
 	})
@@ -132,13 +131,6 @@ type Deal struct {
 	// deterministic verifier requires the winning group size
 	// to be at least this size
 	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the Requester
-	// node will randomly accept concurrency-many of them (when
-	// TargetAll=false). This allows the Requester node to get some level of
-	// guarantee that the execution of the jobs will be spread evenly across the
-	// network (assuming that this value is some large proportion of the size of
-	// the network).
-	MinBids int `json:"MinBids,omitempty"`
 }
 
 // GetConcurrency returns the concurrency value from the deal
@@ -170,10 +162,6 @@ func (d Deal) IsValid() error {
 		if d.Confidence != 0 {
 			err = multierr.Append(err, fmt.Errorf("confidence ignored for target all mode, must be == 0"))
 		}
-
-		if d.MinBids != 0 {
-			err = multierr.Append(err, fmt.Errorf("min bids ignored for target all mode, must be == 0"))
-		}
 	case TargetAny:
 		if d.Concurrency <= 0 {
 			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
@@ -181,10 +169,6 @@ func (d Deal) IsValid() error {
 
 		if d.Confidence < 0 {
 			err = multierr.Append(err, fmt.Errorf("confidence must be >= 1"))
-		}
-
-		if d.MinBids < 0 {
-			err = multierr.Append(err, fmt.Errorf("min bids must be >= 1"))
 		}
 
 		if d.Confidence > d.Concurrency {
