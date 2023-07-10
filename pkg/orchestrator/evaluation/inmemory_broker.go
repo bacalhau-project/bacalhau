@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -38,7 +39,7 @@ var (
 	ErrNackTimeoutReached = errors.New("evaluation visibility timeout reached")
 )
 
-// compile-time check to ensure type implements the model.EvaluationBroker interface
+// compile-time check to ensure type implements the models.EvaluationBroker interface
 var _ orchestrator.EvaluationBroker = &InMemoryBroker{}
 
 type InMemoryBrokerParams struct {
@@ -67,7 +68,7 @@ type InMemoryBroker struct {
 
 	// cancelable tracks previously pending evaluations (for any job) that are
 	// now safe for the Eval.Ack RPC to cancel in batches
-	cancelable []*model.Evaluation
+	cancelable []*models.Evaluation
 
 	// ready tracks the ready jobs by scheduler in a priority queue
 	ready map[string]ReadyEvaluations
@@ -82,7 +83,7 @@ type InMemoryBroker struct {
 	// evaluation finishes by receiptHandle. If the receiptHandle is Nacked or rejected the
 	// evaluation is dropped but if Acked successfully, the evaluation is
 	// queued.
-	requeue map[string]*model.Evaluation
+	requeue map[string]*models.Evaluation
 
 	// delayedEvalCancelFunc is used to stop the long running go routine
 	// that processes delayed evaluations
@@ -90,7 +91,7 @@ type InMemoryBroker struct {
 
 	// delayHeap is a heap used to track incoming evaluations that are
 	// not eligible to enqueue until their WaitTime
-	delayHeap *collections.ScheduledTaskHeap[*model.Evaluation]
+	delayHeap *collections.ScheduledTaskHeap[*models.Evaluation]
 
 	// delayedEvalsUpdateCh is used to trigger notifications for updates
 	// to the delayHeap
@@ -132,18 +133,18 @@ func NewInMemoryBroker(params InMemoryBrokerParams) (*InMemoryBroker, error) {
 		evals:                make(map[string]int),
 		jobEvals:             make(map[model.NamespacedID]string),
 		pending:              make(map[model.NamespacedID]PendingEvaluations),
-		cancelable:           []*model.Evaluation{},
+		cancelable:           []*models.Evaluation{},
 		ready:                make(map[string]ReadyEvaluations),
 		inflight:             make(map[string]*inflightEval),
 		waiting:              make(map[string]chan struct{}),
-		requeue:              make(map[string]*model.Evaluation),
+		requeue:              make(map[string]*models.Evaluation),
 		initialNackDelay:     params.InitialRetryDelay,
 		subsequentNackDelay:  params.SubsequentRetryDelay,
-		delayHeap:            collections.NewScheduledTaskHeap[*model.Evaluation](),
+		delayHeap:            collections.NewScheduledTaskHeap[*models.Evaluation](),
 		delayedEvalsUpdateCh: make(chan struct{}, 1),
 	}
 	b.stats.ByScheduler = make(map[string]*SchedulerStats)
-	b.stats.DelayedEvals = make(map[string]*model.Evaluation)
+	b.stats.DelayedEvals = make(map[string]*models.Evaluation)
 
 	return b, nil
 }
@@ -181,13 +182,13 @@ func (b *InMemoryBroker) SetEnabled(enabled bool) {
 	}
 }
 
-func (b *InMemoryBroker) Enqueue(evaluation *model.Evaluation) error {
+func (b *InMemoryBroker) Enqueue(evaluation *models.Evaluation) error {
 	b.l.Lock()
 	defer b.l.Unlock()
 	return b.processEnqueue(evaluation, "")
 }
 
-func (b *InMemoryBroker) EnqueueAll(evals map[*model.Evaluation]string) error {
+func (b *InMemoryBroker) EnqueueAll(evals map[*models.Evaluation]string) error {
 	// The lock needs to be held until all evaluations are enqueued. This is so
 	// that when Dequeue operations are unblocked they will pick the highest
 	// priority evaluations.
@@ -206,7 +207,7 @@ func (b *InMemoryBroker) EnqueueAll(evals map[*model.Evaluation]string) error {
 // the evals wait time. If the receiptHandle is passed, and the evaluation ID is
 // outstanding, the evaluation is blocked until an Ack/Nack is received.
 // processEnqueue must be called with the lock held.
-func (b *InMemoryBroker) processEnqueue(eval *model.Evaluation, receiptHandle string) error {
+func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle string) error {
 	// If we're not enabled, don't enable more queuing.
 	if !b.enabled {
 		return nil
@@ -233,7 +234,7 @@ func (b *InMemoryBroker) processEnqueue(eval *model.Evaluation, receiptHandle st
 }
 
 // enqueueLocked is used to enqueue with the lock held
-func (b *InMemoryBroker) enqueueLocked(eval *model.Evaluation, queueName string) (err error) {
+func (b *InMemoryBroker) enqueueLocked(eval *models.Evaluation, queueName string) (err error) {
 	// Do nothing if not enabled
 	if !b.enabled {
 		return
@@ -246,7 +247,7 @@ func (b *InMemoryBroker) enqueueLocked(eval *model.Evaluation, queueName string)
 	return err
 }
 
-func (b *InMemoryBroker) enqueueWaiting(eval *model.Evaluation) error {
+func (b *InMemoryBroker) enqueueWaiting(eval *models.Evaluation) error {
 	err := b.delayHeap.Push(&evalWrapper{eval})
 	if err != nil {
 		return err
@@ -262,7 +263,7 @@ func (b *InMemoryBroker) enqueueWaiting(eval *model.Evaluation) error {
 }
 
 // enqueueReady is used to enqueue with the lock held
-func (b *InMemoryBroker) enqueueReady(eval *model.Evaluation, queueName string) {
+func (b *InMemoryBroker) enqueueReady(eval *models.Evaluation, queueName string) {
 	// Check if there is a ready evaluation for this JobID
 	namespacedID := model.NamespacedID{
 		ID:        eval.JobID,
@@ -282,7 +283,7 @@ func (b *InMemoryBroker) enqueueReady(eval *model.Evaluation, queueName string) 
 	// Find the next ready eval by scheduler class
 	readyQueue, ok := b.ready[queueName]
 	if !ok {
-		readyQueue = make([]*model.Evaluation, 0, initialCapacity)
+		readyQueue = make([]*models.Evaluation, 0, initialCapacity)
 		if _, exist := b.waiting[queueName]; !exist {
 			b.waiting[queueName] = make(chan struct{}, 1)
 		}
@@ -308,7 +309,7 @@ func (b *InMemoryBroker) enqueueReady(eval *model.Evaluation, queueName string) 
 	}
 }
 
-func (b *InMemoryBroker) Dequeue(types []string, timeout time.Duration) (*model.Evaluation, string, error) {
+func (b *InMemoryBroker) Dequeue(types []string, timeout time.Duration) (*models.Evaluation, string, error) {
 	var timeoutTimer *time.Timer
 	var timeoutCh <-chan time.Time
 SCAN:
@@ -345,7 +346,7 @@ SCAN:
 
 // scanForSchedulers scans for work on any of the schedulers. The highest priority work
 // is dequeued first. This may return nothing if there is no work waiting.
-func (b *InMemoryBroker) scanForSchedulers(types []string) (*model.Evaluation, string, error) {
+func (b *InMemoryBroker) scanForSchedulers(types []string) (*models.Evaluation, string, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
@@ -401,11 +402,11 @@ func (b *InMemoryBroker) scanForSchedulers(types []string) (*model.Evaluation, s
 
 // dequeueForSched is used to dequeue the next work item for a given scheduler.
 // This assumes locks are held and that this scheduler has work
-func (b *InMemoryBroker) dequeueForSched(jobType string) (*model.Evaluation, string, error) {
+func (b *InMemoryBroker) dequeueForSched(jobType string) (*models.Evaluation, string, error) {
 	readyQueue := b.ready[jobType]
 	raw := heap.Pop(&readyQueue)
 	b.ready[jobType] = readyQueue
-	eval := raw.(*model.Evaluation)
+	eval := raw.(*models.Evaluation)
 
 	// Generate a UUID for the receipt handle
 	receiptHandle := uuid.NewString()
@@ -557,7 +558,7 @@ func (b *InMemoryBroker) Ack(evalID, receiptHandle string) error {
 
 		// If any remain, enqueue an eval
 		if len(pending) > 0 {
-			eval := heap.Pop(&pending).(*model.Evaluation)
+			eval := heap.Pop(&pending).(*models.Evaluation)
 			b.stats.TotalPending -= 1
 			err := b.enqueueLocked(eval, eval.Type)
 			if err != nil {
@@ -629,7 +630,7 @@ func (b *InMemoryBroker) Nack(evalID, receiptHandle string) error {
 
 // nackReenqueueDelay is used to determine the delay that should be applied on
 // the evaluation given the number of previous attempts
-func (b *InMemoryBroker) nackReenqueueDelay(eval *model.Evaluation, prevDequeues int) time.Duration {
+func (b *InMemoryBroker) nackReenqueueDelay(eval *models.Evaluation, prevDequeues int) time.Duration {
 	switch {
 	case prevDequeues <= 0:
 		return 0
@@ -673,16 +674,16 @@ func (b *InMemoryBroker) flush() {
 	b.stats.TotalPending = 0
 	b.stats.TotalWaiting = 0
 	b.stats.TotalCancelable = 0
-	b.stats.DelayedEvals = make(map[string]*model.Evaluation)
+	b.stats.DelayedEvals = make(map[string]*models.Evaluation)
 	b.stats.ByScheduler = make(map[string]*SchedulerStats)
 	b.evals = make(map[string]int)
 	b.jobEvals = make(map[model.NamespacedID]string)
 	b.pending = make(map[model.NamespacedID]PendingEvaluations)
-	b.cancelable = []*model.Evaluation{}
+	b.cancelable = []*models.Evaluation{}
 	b.ready = make(map[string]ReadyEvaluations)
 	b.inflight = make(map[string]*inflightEval)
 	b.waiting = make(map[string]chan struct{})
-	b.delayHeap = collections.NewScheduledTaskHeap[*model.Evaluation]()
+	b.delayHeap = collections.NewScheduledTaskHeap[*models.Evaluation]()
 }
 
 // runDelayedEvalsWatcher is a long-lived function that waits till a time
@@ -725,7 +726,7 @@ func (b *InMemoryBroker) runDelayedEvalsWatcher(ctx context.Context, updateCh <-
 // nextDelayedEval returns the next delayed eval to launch and when it should be enqueued.
 // This peeks at the heap to return the top, where the top is the item with the shortest wait.
 // If the heap is empty, this returns nil and zero time.
-func (b *InMemoryBroker) nextDelayedEval() (*model.Evaluation, time.Time) {
+func (b *InMemoryBroker) nextDelayedEval() (*models.Evaluation, time.Time) {
 	b.l.RLock()
 	defer b.l.RUnlock()
 
@@ -745,7 +746,7 @@ func (b *InMemoryBroker) nextDelayedEval() (*model.Evaluation, time.Time) {
 func (b *InMemoryBroker) Stats() *BrokerStats {
 	// Allocate a new stats struct
 	stats := new(BrokerStats)
-	stats.DelayedEvals = make(map[string]*model.Evaluation)
+	stats.DelayedEvals = make(map[string]*models.Evaluation)
 	stats.ByScheduler = make(map[string]*SchedulerStats)
 
 	b.l.RLock()
@@ -771,7 +772,7 @@ func (b *InMemoryBroker) Stats() *BrokerStats {
 // Cancelable retrieves a batch of previously-pending evaluations that are now
 // stale and ready to mark for canceling. The eval RPC will call this with a
 // batch size set to avoid sending overly large raft messages.
-func (b *InMemoryBroker) Cancelable(batchSize int) []*model.Evaluation {
+func (b *InMemoryBroker) Cancelable(batchSize int) []*models.Evaluation {
 	b.l.Lock()
 	defer b.l.Unlock()
 

@@ -3,6 +3,7 @@
 package math
 
 import (
+	real_math "math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,4 +63,49 @@ func TestMax(t *testing.T) {
 	// Test scenario 6
 	resultString := Max("apricot", "banana", "apple", "date")
 	assert.Equal("date", resultString, "Max(\"apricot\", \"banana\", \"apple\", \"date\") should be \"apple\"")
+}
+func TestAbs(t *testing.T) {
+	// Test cases for integers
+	t.Run("Integer - Positive", func(t *testing.T) {
+		result := Abs(5)
+		expected := 5
+		assert.Equal(t, expected, result, "Abs(5) result mismatch")
+	})
+
+	t.Run("Integer - Negative", func(t *testing.T) {
+		result := Abs(-5)
+		expected := 5
+		assert.Equal(t, expected, result, "Abs(-5) result mismatch")
+	})
+
+	t.Run("Integer - Zero", func(t *testing.T) {
+		result := Abs(0)
+		expected := 0
+		assert.Equal(t, expected, result, "Abs(0) result mismatch")
+	})
+
+	// Test cases for floats
+	t.Run("Float - Positive", func(t *testing.T) {
+		result := Abs(3.14)
+		expected := 3.14
+		assert.Equal(t, expected, result, "Abs(3.14) result mismatch")
+	})
+
+	t.Run("Float - Negative", func(t *testing.T) {
+		result := Abs(-3.14)
+		expected := 3.14
+		assert.Equal(t, expected, result, "Abs(-3.14) result mismatch")
+	})
+
+	t.Run("Float - Zero", func(t *testing.T) {
+		result := Abs(0.0)
+		expected := 0.0
+		assert.Equal(t, expected, result, "Abs(0.0) result mismatch")
+	})
+
+	t.Run("Float - MaxValue", func(t *testing.T) {
+		result := Abs(real_math.MaxFloat64)
+		expected := real_math.MaxFloat64
+		assert.Equal(t, expected, result, "Abs(math.MaxFloat64) result mismatch")
+	})
 }

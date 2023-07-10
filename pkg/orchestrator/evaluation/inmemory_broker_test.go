@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/pkg/test/wait"
 	"github.com/stretchr/testify/suite"
@@ -263,7 +264,7 @@ func (s *InMemoryBrokerTestSuite) TestSerialize_DuplicateJobID() {
 	ns2 := "namespace-two"
 	jobID := "example"
 
-	newEval := func(idx uint64, ns string) *model.Evaluation {
+	newEval := func(idx uint64, ns string) *models.Evaluation {
 		eval := mock.Eval()
 		eval.ID = fmt.Sprintf("eval:%d", idx)
 		eval.JobID = jobID
@@ -530,7 +531,7 @@ func (s *InMemoryBrokerTestSuite) TestDequeue_Blocked() {
 	enqueueAfter := 5 * time.Millisecond
 
 	// Start with a blocked dequeue
-	outCh := make(chan *model.Evaluation)
+	outCh := make(chan *models.Evaluation)
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
@@ -748,7 +749,7 @@ func (s *InMemoryBrokerTestSuite) TestEnqueueAll_Dequeue_Fair() {
 	s.broker.SetEnabled(true)
 
 	// Start with a blocked dequeue
-	outCh := make(chan *model.Evaluation)
+	outCh := make(chan *models.Evaluation)
 	errCh := make(chan error)
 	go func() {
 		defer close(errCh)
@@ -777,7 +778,7 @@ func (s *InMemoryBrokerTestSuite) TestEnqueueAll_Dequeue_Fair() {
 	}
 
 	// Enqueue
-	evals := make(map[*model.Evaluation]string, 8)
+	evals := make(map[*models.Evaluation]string, 8)
 	expectedPriority := 90
 	for i := 10; i <= expectedPriority; i += 10 {
 		eval := mock.Eval()
@@ -810,7 +811,7 @@ func (s *InMemoryBrokerTestSuite) TestEnqueueAll_Requeue_Ack() {
 	s.Require().Equal(eval, out)
 
 	// Requeue the same evaluation.
-	s.Require().NoError(s.broker.EnqueueAll(map[*model.Evaluation]string{eval: receiptHandle}))
+	s.Require().NoError(s.broker.EnqueueAll(map[*models.Evaluation]string{eval: receiptHandle}))
 
 	// The stats should show one unacked
 	stats := s.broker.Stats()
@@ -845,7 +846,7 @@ func (s *InMemoryBrokerTestSuite) TestEnqueueAll_Requeue_Nack() {
 	s.Require().Equal(eval, out)
 
 	// Requeue the same evaluation.
-	s.Require().NoError(s.broker.EnqueueAll(map[*model.Evaluation]string{eval: receiptHandle}))
+	s.Require().NoError(s.broker.EnqueueAll(map[*models.Evaluation]string{eval: receiptHandle}))
 
 	// The stats should show one unacked
 	stats := s.broker.Stats()
@@ -914,7 +915,7 @@ func (s *InMemoryBrokerTestSuite) TestNamespacedJobs() {
 func (s *InMemoryBrokerTestSuite) TestCancelable() {
 	s.broker.visibilityTimeout = time.Minute
 
-	var evals []*model.Evaluation
+	var evals []*models.Evaluation
 	for i := 0; i < 20; i++ {
 		eval := mock.Eval()
 		evals = append(evals, eval)
