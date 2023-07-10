@@ -237,7 +237,7 @@ func NewDevStack(
 		nodeConfig := node.NodeConfig{
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			JobStore:            inmemory.NewJobStore(),
+			JobStore:            inmemory.NewInMemoryJobStore(),
 			Host:                libp2pHost,
 			EstuaryAPIKey:       options.EstuaryAPIKey,
 			HostAddress:         "0.0.0.0",

@@ -18,7 +18,7 @@ import (
 
 const newJobComment = "Job created"
 
-type JobStore struct {
+type InMemoryJobStore struct {
 	// we keep pointers to these things because we will update them partially
 	jobs       map[string]model.Job
 	states     map[string]model.JobState
@@ -27,8 +27,8 @@ type JobStore struct {
 	mtx        sync.RWMutex
 }
 
-func NewJobStore() *JobStore {
-	res := &JobStore{
+func NewInMemoryJobStore() *InMemoryJobStore {
+	res := &InMemoryJobStore{
 		jobs:       make(map[string]model.Job),
 		states:     make(map[string]model.JobState),
 		history:    make(map[string][]model.JobHistory),
@@ -46,13 +46,13 @@ func NewJobStore() *JobStore {
 // Errors:
 //
 //   - error-job-not-found        		  -- if the job is not found
-func (d *JobStore) GetJob(_ context.Context, id string) (model.Job, error) {
+func (d *InMemoryJobStore) GetJob(_ context.Context, id string) (model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	return d.getJob(id)
 }
 
-func (d *JobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]model.Job, error) {
+func (d *InMemoryJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	var result []model.Job
@@ -119,7 +119,7 @@ func (d *JobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) ([]mode
 	return result, nil
 }
 
-func (d *JobStore) GetJobState(_ context.Context, jobID string) (model.JobState, error) {
+func (d *InMemoryJobStore) GetJobState(_ context.Context, jobID string) (model.JobState, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	state, ok := d.states[jobID]
@@ -129,7 +129,7 @@ func (d *JobStore) GetJobState(_ context.Context, jobID string) (model.JobState,
 	return state, nil
 }
 
-func (d *JobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
+func (d *InMemoryJobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	var result []model.JobWithInfo
@@ -142,7 +142,8 @@ func (d *JobStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, 
 	return result, nil
 }
 
-func (d *JobStore) GetJobHistory(_ context.Context, jobID string, options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
+func (d *InMemoryJobStore) GetJobHistory(_ context.Context, jobID string,
+	options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	history, ok := d.history[jobID]
@@ -173,18 +174,7 @@ func (d *JobStore) GetJobHistory(_ context.Context, jobID string, options jobsto
 	return history, nil
 }
 
-func (d *JobStore) GetJobsCount(ctx context.Context, query jobstore.JobQuery) (int, error) {
-	useQuery := query
-	useQuery.Limit = 0
-	useQuery.Offset = 0
-	jobs, err := d.GetJobs(ctx, useQuery)
-	if err != nil {
-		return 0, err
-	}
-	return len(jobs), nil
-}
-
-func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
+func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	existingJob, ok := d.jobs[job.Metadata.ID]
@@ -210,7 +200,7 @@ func (d *JobStore) CreateJob(_ context.Context, job model.Job) error {
 // helper method to read a single job from memory. This is used by both GetJob and GetJobs.
 // It is important that we don't attempt to acquire a lock inside this method to avoid deadlocks since
 // the callers are expected to be holding a lock, and golang doesn't support reentrant locks.
-func (d *JobStore) getJob(id string) (model.Job, error) {
+func (d *InMemoryJobStore) getJob(id string) (model.Job, error) {
 	if len(id) < model.ShortIDLength {
 		return model.Job{}, bacerrors.NewJobNotFound(id)
 	}
@@ -235,7 +225,7 @@ func (d *JobStore) getJob(id string) (model.Job, error) {
 	return j, nil
 }
 
-func (d *JobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobStateRequest) error {
+func (d *InMemoryJobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobStateRequest) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -266,7 +256,7 @@ func (d *JobStore) UpdateJobState(_ context.Context, request jobstore.UpdateJobS
 	return nil
 }
 
-func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionState) error {
+func (d *InMemoryJobStore) CreateExecution(_ context.Context, execution model.ExecutionState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	jobState, ok := d.states[execution.JobID]
@@ -293,7 +283,7 @@ func (d *JobStore) CreateExecution(_ context.Context, execution model.ExecutionS
 	return nil
 }
 
-func (d *JobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExecutionRequest) error {
+func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExecutionRequest) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -348,7 +338,11 @@ func (d *JobStore) UpdateExecution(_ context.Context, request jobstore.UpdateExe
 	return nil
 }
 
-func (d *JobStore) appendJobHistory(updateJob model.JobState, previousState model.JobStateType, comment string) {
+func (d *InMemoryJobStore) Close(_ context.Context) error {
+	return nil
+}
+
+func (d *InMemoryJobStore) appendJobHistory(updateJob model.JobState, previousState model.JobStateType, comment string) {
 	historyEntry := model.JobHistory{
 		Type:  model.JobHistoryTypeJobLevel,
 		JobID: updateJob.JobID,
@@ -363,7 +357,8 @@ func (d *JobStore) appendJobHistory(updateJob model.JobState, previousState mode
 	d.history[updateJob.JobID] = append(d.history[updateJob.JobID], historyEntry)
 }
 
-func (d *JobStore) appendExecutionHistory(updatedExecution model.ExecutionState, previousState model.ExecutionStateType, comment string) {
+func (d *InMemoryJobStore) appendExecutionHistory(updatedExecution model.ExecutionState,
+	previousState model.ExecutionStateType, comment string) {
 	historyEntry := model.JobHistory{
 		Type:             model.JobHistoryTypeExecutionLevel,
 		JobID:            updatedExecution.JobID,
@@ -381,4 +376,4 @@ func (d *JobStore) appendExecutionHistory(updatedExecution model.ExecutionState,
 }
 
 // Static check to ensure that Transport implements Transport:
-var _ jobstore.Store = (*JobStore)(nil)
+var _ jobstore.Store = (*InMemoryJobStore)(nil)

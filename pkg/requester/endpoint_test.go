@@ -44,7 +44,7 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 	require.NoError(t, err)
 	storage_mock := noop_storage.NewNoopStorage()
 	require.NoError(t, err)
-	store := inmemory.NewJobStore()
+	store := inmemory.NewInMemoryJobStore()
 	scheduler := &mockScheduler{
 		handleStartJob: func(ctx context.Context, sjr StartJobRequest) error {
 			store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{

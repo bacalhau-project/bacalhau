@@ -35,6 +35,20 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockStore) Close(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockStoreMockRecorder) Close(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStore)(nil).Close), ctx)
+}
+
 // CreateExecution mocks base method.
 func (m *MockStore) CreateExecution(ctx context.Context, execution model.ExecutionState) error {
 	m.ctrl.T.Helper()
@@ -136,21 +150,6 @@ func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) ([]model.Job, e
 func (mr *MockStoreMockRecorder) GetJobs(ctx, query interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobs", reflect.TypeOf((*MockStore)(nil).GetJobs), ctx, query)
-}
-
-// GetJobsCount mocks base method.
-func (m *MockStore) GetJobsCount(ctx context.Context, query JobQuery) (int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetJobsCount", ctx, query)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetJobsCount indicates an expected call of GetJobsCount.
-func (mr *MockStoreMockRecorder) GetJobsCount(ctx, query interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobsCount", reflect.TypeOf((*MockStore)(nil).GetJobsCount), ctx, query)
 }
 
 // UpdateExecution mocks base method.

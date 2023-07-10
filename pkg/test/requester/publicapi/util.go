@@ -32,7 +32,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
-	datastore := inmemory.NewJobStore()
+	datastore := inmemory.NewInMemoryJobStore()
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 

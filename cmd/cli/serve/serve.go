@@ -306,7 +306,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return err
 	}
 
-	datastore := inmemory.NewJobStore()
+	datastore := inmemory.NewInMemoryJobStore()
 	if err != nil {
 		return fmt.Errorf("error creating in memory datastore: %w", err)
 	}

@@ -30,7 +30,7 @@ func runSimulator(cmd *cobra.Command) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 	//Cleanup manager ensures that resources are freed before exiting:
-	datastore := inmemory.NewJobStore()
+	datastore := inmemory.NewInMemoryJobStore()
 	libp2pHost, err := libp2p.NewHost(9075) //nolint:gomnd
 	if err != nil {
 		return fmt.Errorf("error creating libp2p host: %w", err)

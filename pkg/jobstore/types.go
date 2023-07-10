@@ -27,7 +27,6 @@ type Store interface {
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
 	GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error)
 	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error)
-	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
 	CreateJob(ctx context.Context, j model.Job) error
 	// UpdateJobState updates the Job state
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
@@ -35,6 +34,9 @@ type Store interface {
 	CreateExecution(ctx context.Context, execution model.ExecutionState) error
 	// UpdateExecution updates the Job state
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+	// Close provides an interface to cleanup any resources in use when the
+	// store is no longer required
+	Close(ctx context.Context) error
 }
 
 type UpdateJobStateRequest struct {
