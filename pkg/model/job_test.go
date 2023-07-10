@@ -10,23 +10,20 @@ import (
 )
 
 var validDeals = []Deal{
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 0, MinBids: 0},
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 0, MinBids: 3},
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 1, MinBids: 0},
-	{TargetingMode: TargetAny, Concurrency: 5, Confidence: 0, MinBids: 0},
-	{TargetingMode: TargetAll, Concurrency: 0, Confidence: 0, MinBids: 0},
-	{TargetingMode: TargetAll, Concurrency: 1, Confidence: 0, MinBids: 0},
+	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 0},
+	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 1},
+	{TargetingMode: TargetAny, Concurrency: 5, Confidence: 0},
+	{TargetingMode: TargetAll, Concurrency: 0, Confidence: 0},
+	{TargetingMode: TargetAll, Concurrency: 1, Confidence: 0},
 }
 
 var invalidDeals = []Deal{
 	{},
-	{TargetingMode: TargetAll, Concurrency: 2, Confidence: 0, MinBids: 0},
-	{TargetingMode: TargetAll, Concurrency: 0, Confidence: 1, MinBids: 0},
-	{TargetingMode: TargetAll, Concurrency: 0, Confidence: 0, MinBids: 1},
-	{TargetingMode: TargetAny, Concurrency: -1, Confidence: 0, MinBids: 0},
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: -1, MinBids: 0},
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 0, MinBids: -1},
-	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 2, MinBids: 0},
+	{TargetingMode: TargetAll, Concurrency: 2, Confidence: 0},
+	{TargetingMode: TargetAll, Concurrency: 0, Confidence: 1},
+	{TargetingMode: TargetAny, Concurrency: -1, Confidence: 0},
+	{TargetingMode: TargetAny, Concurrency: 1, Confidence: -1},
+	{TargetingMode: TargetAny, Concurrency: 1, Confidence: 2},
 }
 
 func TestDealValidity(t *testing.T) {

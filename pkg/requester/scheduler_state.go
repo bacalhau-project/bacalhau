@@ -78,7 +78,7 @@ func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.
 	}
 }
 
-// checkForPendingBids checks if any bid is still pending a response, if minBids criteria is met, and accept/reject bids accordingly.
+// checkForPendingBids checks if any bid is still pending a response
 func (s *BaseScheduler) checkForPendingBids(ctx context.Context, job model.Job, jobState model.JobState) {
 	acceptBids, rejectBids := s.nodeSelector.SelectBids(ctx, &job, &jobState)
 	for _, bid := range acceptBids {

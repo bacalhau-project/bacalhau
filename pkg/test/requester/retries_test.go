@@ -187,7 +187,6 @@ func (s *RetriesSuite) TestRetry() {
 		verifier                model.Verifier
 		concurrency             int
 		confidence              int
-		minBids                 int
 		failed                  bool // whether the job should fail
 		expectedJobState        model.JobStateType
 		expectedExecutionStates map[model.ExecutionStateType]int
@@ -313,21 +312,6 @@ func (s *RetriesSuite) TestRetry() {
 			},
 		},
 		{
-			name:    "min-bids-succeed",
-			nodes:   []string{"good-guy1", "good-guy2"},
-			minBids: 2,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted:   1,
-				model.ExecutionStateBidRejected: 1,
-			},
-		},
-		{
-			name:    "min-bids-fail",
-			nodes:   []string{"good-guy1"},
-			minBids: 2,
-			failed:  true,
-		},
-		{
 			name:        "multiple-failures-succeed-with-retry-on-good-nodes",
 			nodes:       []string{"bid-rejector", "bad-executor", "bad-result", "bad-result2", "good-guy1", "good-guy2"},
 			verifier:    model.VerifierDeterministic,
@@ -354,7 +338,6 @@ func (s *RetriesSuite) TestRetry() {
 			}
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
 			j.Spec.Deal.Confidence = tc.confidence
-			j.Spec.Deal.MinBids = tc.minBids
 			submittedJob, err := s.client.Submit(ctx, j)
 			if tc.failed {
 				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))

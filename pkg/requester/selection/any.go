@@ -73,7 +73,7 @@ func (s *anyNodeSelector) Select(ctx context.Context, job *model.Job, minCount, 
 }
 
 func (s *anyNodeSelector) SelectNodes(ctx context.Context, job *model.Job) ([]model.NodeInfo, error) {
-	minCount := math.Max(job.Spec.Deal.MinBids, job.Spec.Deal.Concurrency)
+	minCount := job.Spec.Deal.GetConcurrency()
 	desiredCount := minCount * int(s.overAskForBidsFactor)
 	return s.Select(ctx, job, minCount, desiredCount)
 }
@@ -81,10 +81,7 @@ func (s *anyNodeSelector) SelectNodes(ctx context.Context, job *model.Job) ([]mo
 func (s *anyNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Job, jobState *model.JobState) ([]model.NodeInfo, error) {
 	// calculate how many executions we still need, and evaluate if we can ask more nodes to bid
 	var minExecutions int
-	if job.Spec.Deal.MinBids > 0 && jobState.ReceivedBidCount() < job.Spec.Deal.MinBids {
-		// if we are still queuing bids, then we need at least MinBids to start accepting bids
-		minExecutions = math.Max(job.Spec.Deal.GetConcurrency(), job.Spec.Deal.MinBids)
-	} else if jobState.PublishedOrPublishingCount() > 0 {
+	if jobState.PublishedOrPublishingCount() > 0 {
 		// if at least a single execution was published or still publishing, then we don't need to retry in case some executions failed to publish
 		minExecutions = 1
 	} else {
@@ -105,10 +102,6 @@ func (s *anyNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 // We have over-asked for bids, so now only select the number of nodes we
 // actually need.
 func (*anyNodeSelector) SelectBids(ctx context.Context, job *model.Job, jobState *model.JobState) (accept, reject []model.ExecutionState) {
-	if jobState.ReceivedBidCount() < job.Spec.Deal.MinBids {
-		return nil, nil
-	}
-
 	executionsWaiting := jobState.GroupExecutionsByState()[model.ExecutionStateAskForBidAccepted]
 	requiredNewExecutions := math.Min(len(executionsWaiting), math.Max(0, job.Spec.Deal.GetConcurrency()-jobState.ActiveCount()))
 	return executionsWaiting[:requiredNewExecutions], executionsWaiting[requiredNewExecutions:]

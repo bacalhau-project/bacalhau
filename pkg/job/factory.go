@@ -51,12 +51,11 @@ func WithTimeout(t float64) SpecOpt {
 	}
 }
 
-func WithDeal(targeting model.TargetingMode, concurrency, confidence, minbids int) SpecOpt {
+func WithDeal(targeting model.TargetingMode, concurrency, confidence int) SpecOpt {
 	return func(s *model.Spec) error {
 		s.Deal.TargetingMode = targeting
 		s.Deal.Concurrency = concurrency
 		s.Deal.Confidence = confidence
-		s.Deal.MinBids = minbids
 		return nil
 	}
 }
