@@ -1,7 +1,6 @@
 APIVersion: v1beta1
 Spec:
   Engine: Docker
-  Verifier: Noop
   PublisherSpec:
     Type: S3
     Params:
@@ -27,4 +26,3 @@ Spec:
       Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0

@@ -56,12 +56,6 @@ func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunRes
 	})
 }
 
-func (p *CallbackProxy) OnPublishComplete(ctx context.Context, result compute.PublishResult) {
-	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnPublishComplete, result, func(ctx2 context.Context) {
-		p.localCallback.OnPublishComplete(ctx2, result)
-	})
-}
-
 func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result compute.CancelResult) {
 	proxyCallbackRequest(ctx, p, result.RoutingMetadata, bprotocol.OnCancelComplete, result, func(ctx2 context.Context) {
 		p.localCallback.OnCancelComplete(ctx2, result)

@@ -27,7 +27,7 @@ func (s *BidAcceptedSuite) TestBidAccepted() {
 
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateWaitingVerification))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCompleted))
 	s.NoError(err)
 }
 
@@ -42,7 +42,6 @@ func (s *BidAcceptedSuite) TestWrongState() {
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
 	for _, state := range []store.ExecutionState{
-		store.ExecutionStateWaitingVerification,
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,

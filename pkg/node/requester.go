@@ -27,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type Requester struct {
@@ -51,7 +50,6 @@ func NewRequesterNode(
 	jobStore jobstore.Store,
 	simulatorNodeID string,
 	simulatorRequestHandler *simulator.RequestHandler,
-	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
 	jobInfoPublisher *jobinfo.Publisher,
 	nodeInfoStore routing.NodeInfoStore,
@@ -99,7 +97,6 @@ func NewRequesterNode(
 	nodeRankerChain.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
 		ranking.NewEnginesNodeRanker(),
-		ranking.NewVerifiersNodeRanker(),
 		ranking.NewPublishersNodeRanker(),
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
@@ -143,7 +140,6 @@ func NewRequesterNode(
 		NodeSelector:     nodeSelector,
 		RetryStrategy:    retryStrategy,
 		ComputeEndpoint:  computeProxy,
-		Verifiers:        verifiers,
 		StorageProviders: storageProviders,
 		EventEmitter:     emitter,
 		GetVerifyCallback: func() *url.URL {
@@ -167,7 +163,6 @@ func NewRequesterNode(
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
 		Queue:                      queue,
-		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,

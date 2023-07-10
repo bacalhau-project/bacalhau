@@ -58,7 +58,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	// early exit if the job is stopped
 	if jobState.State.IsTerminal() {
 		for _, execution := range nonTerminalExecutions {
-			plan.AppendStoppedExecution(execution, model.ExecutionStateCanceled, execNotNeeded)
+			plan.AppendStoppedExecution(execution, model.ExecutionStateCancelled, execNotNeeded)
 		}
 		return b.planner.Process(ctx, plan)
 	}
@@ -114,7 +114,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 			return candidateExecutions[i].Version < candidateExecutions[j].Version
 		})
 		for i := 0; i < math.Abs(desiredExecutionCount); i++ {
-			plan.AppendStoppedExecution(candidateExecutions[i], model.ExecutionStateCanceled, execNotNeeded)
+			plan.AppendStoppedExecution(candidateExecutions[i], model.ExecutionStateCancelled, execNotNeeded)
 		}
 	}
 

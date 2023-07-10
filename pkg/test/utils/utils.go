@@ -41,14 +41,14 @@ func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerCo
 }
 
 func MakeGenericJob() *model.Job {
-	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
+	return MakeJob(model.EngineDocker, model.PublisherNoop, []string{
 		"echo",
 		"$(date +%s)",
 	})
 }
 
 func MakeNoopJob() *model.Job {
-	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
+	return MakeJob(model.EngineNoop, model.PublisherNoop, []string{
 		"echo",
 		"$(date +%s)",
 	})
@@ -56,14 +56,12 @@ func MakeNoopJob() *model.Job {
 
 func MakeJob(
 	engineType model.Engine,
-	verifierType model.Verifier,
 	publisherType model.Publisher,
 	entrypointArray []string) *model.Job {
 	j := model.NewJob()
 
 	j.Spec = model.Spec{
-		Engine:   engineType,
-		Verifier: verifierType,
+		Engine: engineType,
 		PublisherSpec: model.PublisherSpec{
 			Type: publisherType,
 		},

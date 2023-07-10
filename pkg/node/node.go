@@ -36,7 +36,6 @@ const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
 type FeatureConfig struct {
 	Engines    []model.Engine
-	Verifiers  []model.Verifier
 	Publishers []model.Publisher
 	Storages   []model.StorageSourceType
 }
@@ -68,7 +67,6 @@ type NodeConfig struct {
 type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
-	VerifiersFactory        VerifiersFactory
 	PublishersFactory       PublishersFactory
 }
 
@@ -76,7 +74,6 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
-		VerifiersFactory:        NewStandardVerifiersFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
 	}
 }
@@ -122,11 +119,6 @@ func NewNode(
 	}
 
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
-	if err != nil {
-		return nil, err
-	}
-
-	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config, publishers)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +234,6 @@ func NewNode(
 			config.JobStore,
 			config.SimulatorNodeID,
 			simulatorRequestHandler,
-			verifiers,
 			storageProviders,
 			jobInfoPublisher,
 			nodeInfoStore,
@@ -264,7 +255,6 @@ func NewNode(
 			simulatorRequestHandler,
 			storageProviders,
 			executors,
-			verifiers,
 			publishers,
 		)
 		if err != nil {
@@ -356,9 +346,6 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.ExecutorsFactory == nil {
 		injector.ExecutorsFactory = defaultInjector.ExecutorsFactory
-	}
-	if injector.VerifiersFactory == nil {
-		injector.VerifiersFactory = defaultInjector.VerifiersFactory
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory

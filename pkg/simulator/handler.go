@@ -71,32 +71,6 @@ func (e *RequestHandler) BidRejected(ctx context.Context, request compute.BidRej
 	return e.computeProxy.BidRejected(ctx, request)
 }
 
-func (e *RequestHandler) ResultAccepted(
-	ctx context.Context, request compute.ResultAcceptedRequest) (compute.ResultAcceptedResponse, error) {
-	event, err := e.constructEventFromExecution(request.RoutingMetadata, request.ExecutionID, model.JobEventResultsAccepted)
-	if err != nil {
-		return compute.ResultAcceptedResponse{}, err
-	}
-	err = e.wallets.addEvent(event)
-	if err != nil {
-		return compute.ResultAcceptedResponse{}, err
-	}
-	return e.computeProxy.ResultAccepted(ctx, request)
-}
-
-func (e *RequestHandler) ResultRejected(
-	ctx context.Context, request compute.ResultRejectedRequest) (compute.ResultRejectedResponse, error) {
-	event, err := e.constructEventFromExecution(request.RoutingMetadata, request.ExecutionID, model.JobEventResultsRejected)
-	if err != nil {
-		return compute.ResultRejectedResponse{}, err
-	}
-	err = e.wallets.addEvent(event)
-	if err != nil {
-		return compute.ResultRejectedResponse{}, err
-	}
-	return e.computeProxy.ResultRejected(ctx, request)
-}
-
 func (e *RequestHandler) CancelExecution(
 	ctx context.Context, request compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
 	return e.computeProxy.CancelExecution(ctx, request)
@@ -132,18 +106,6 @@ func (e *RequestHandler) OnRunComplete(ctx context.Context, result compute.RunRe
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsProposed, result.ExecutionID)
 	}
 	e.requesterProxy.OnRunComplete(ctx, result)
-}
-
-func (e *RequestHandler) OnPublishComplete(ctx context.Context, result compute.PublishResult) {
-	event, err := e.constructEventFromExecution(result.RoutingMetadata, result.ExecutionID, model.JobEventResultsPublished)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to construct event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
-	}
-	err = e.wallets.addEvent(event)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to add event %s from execution %s", model.JobEventResultsPublished, result.ExecutionID)
-	}
-	e.requesterProxy.OnPublishComplete(ctx, result)
 }
 
 func (e *RequestHandler) OnCancelComplete(ctx context.Context, result compute.CancelResult) {

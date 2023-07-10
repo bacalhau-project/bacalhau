@@ -25,7 +25,6 @@ type WasmInputs struct {
 
 type BacalhauConfig struct {
     publisher Publisher
-    verifier Verifier
     timeout Duration
     resources ResourceSpec
     annotations [String]
@@ -36,11 +35,6 @@ type Publisher enum {
     | Noop ("1")
     | IPFS ("2")
     | Estuary ("3")
-} representation int
-
-type Verifier enum {
-    | Noop ("1")
-    | Deterministic ("2")
 } representation int
 
 type ResourceSpec struct {

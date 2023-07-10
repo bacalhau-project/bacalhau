@@ -4,7 +4,6 @@
     "inputs": {},
     "meta": {
         "bacalhau/config": {
-            "verifier": 1,
             "publisher": 2,
             "annotations": ["hello"],
             "resources": {

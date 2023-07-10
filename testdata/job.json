@@ -2,7 +2,6 @@
     "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "docker",
-        "Verifier": "noop",
         "Publisher": "ipfs",
         "Docker": {
             "Image": "ubuntu:latest",

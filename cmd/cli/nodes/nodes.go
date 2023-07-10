@@ -115,12 +115,6 @@ var toggleColumns = map[string][]output.TableColumn[model.NodeInfo]{
 			}),
 		},
 		{
-			ColumnConfig: table.ColumnConfig{Name: "verifiers", WidthMax: maxLen(model.VerifierNames()), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *model.ComputeNodeInfo) string {
-				return stringerizeEnum(cni.Verifiers)
-			}),
-		},
-		{
 			ColumnConfig: table.ColumnConfig{Name: "inputs from", WidthMax: maxLen(model.StorageSourceNames()), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni *model.ComputeNodeInfo) string {
 				return stringerizeEnum(cni.StorageSources)

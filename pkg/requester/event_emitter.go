@@ -65,22 +65,8 @@ func (e EventEmitter) EmitBidRejected(
 	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventBidRejected))
 }
 
-func (e EventEmitter) EmitResultAccepted(
-	ctx context.Context, request compute.ResultAcceptedRequest, response compute.ResultAcceptedResponse) {
-	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsAccepted))
-}
-
-func (e EventEmitter) EmitResultRejected(
-	ctx context.Context, request compute.ResultRejectedRequest, response compute.ResultRejectedResponse) {
-	e.EmitEventSilently(ctx, e.constructEvent(request.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsRejected))
-}
-
 func (e EventEmitter) EmitRunComplete(ctx context.Context, response compute.RunResult) {
 	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsProposed))
-}
-
-func (e EventEmitter) EmitPublishComplete(ctx context.Context, response compute.PublishResult) {
-	e.EmitEventSilently(ctx, e.constructEvent(response.RoutingMetadata, response.ExecutionMetadata, model.JobEventResultsPublished))
 }
 
 func (e EventEmitter) EmitComputeFailure(ctx context.Context, executionID model.ExecutionID, err error) {

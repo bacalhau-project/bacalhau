@@ -66,7 +66,7 @@ func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T]
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.Publish")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
 	defer span.End()
 
 	payload, err := model.JSONMarshalWithMax(message)

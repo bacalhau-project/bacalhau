@@ -120,7 +120,7 @@ func (s *SchedulerTestSuite) TestProcess_TooManyExecutions() {
 
 	s.planner.EXPECT().Process(gomock.Any(), gomock.Any()).Return(nil).Do(func(ctx context.Context, plan *models.Plan) {
 		assertPlan(s.T(), plan, evaluation.ID, 0, 1)
-		assertPlanStoppedExecution(s.T(), plan, 0, jobState.Executions[execAskForBid].ID(), model.ExecutionStateCanceled)
+		assertPlanStoppedExecution(s.T(), plan, 0, jobState.Executions[execAskForBid].ID(), model.ExecutionStateCancelled)
 	})
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
@@ -157,8 +157,8 @@ func (s *SchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalE
 
 			s.planner.EXPECT().Process(gomock.Any(), gomock.Any()).Return(nil).Do(func(ctx context.Context, plan *models.Plan) {
 				assertPlan(s.T(), plan, evaluation.ID, 0, 2)
-				assertPlanStoppedExecution(s.T(), plan, 0, jobState.Executions[execAskForBid].ID(), model.ExecutionStateCanceled)
-				assertPlanStoppedExecution(s.T(), plan, 1, jobState.Executions[execBidAccepted].ID(), model.ExecutionStateCanceled)
+				assertPlanStoppedExecution(s.T(), plan, 0, jobState.Executions[execAskForBid].ID(), model.ExecutionStateCancelled)
+				assertPlanStoppedExecution(s.T(), plan, 1, jobState.Executions[execBidAccepted].ID(), model.ExecutionStateCancelled)
 			})
 
 			s.Require().NoError(s.scheduler.Process(ctx, evaluation))
@@ -214,7 +214,7 @@ func mockJob() (*model.Job, *model.JobState, *models.Evaluation) {
 	jobState.Executions[execAskForBid].State = model.ExecutionStateAskForBid
 	jobState.Executions[execBidAccepted].State = model.ExecutionStateBidAccepted
 	jobState.Executions[execCompleted].State = model.ExecutionStateCompleted
-	jobState.Executions[execCanceled].State = model.ExecutionStateCanceled
+	jobState.Executions[execCanceled].State = model.ExecutionStateCancelled
 	jobState.Executions[execFailed].State = model.ExecutionStateFailed
 
 	evaluation := &models.Evaluation{
