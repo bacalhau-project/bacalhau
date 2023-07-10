@@ -129,3 +129,6 @@ filecoin.public-rpc.com
 
 # Ethereum related API
 api.etherscan.io
+
+# FB AI Publicfiles
+dl.fbaipublicfiles.com
