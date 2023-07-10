@@ -9,6 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ type WorkerTestSuite struct {
 	broker               *MockEvaluationBroker
 	backoff              *backoff.MockBackoff
 	worker               *Worker
-	eval                 *model.Evaluation
+	eval                 *models.Evaluation
 	receiptHandle        string
 	cancelFn             context.CancelFunc
 }
@@ -65,7 +66,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Successful() {
 	s.onDequeue().Return(s.eval, s.receiptHandle, nil)
 	s.onDequeue().DoAndReturn(s.stopAfterDequeue())
 
-	s.schedulerBatchJobs.EXPECT().Process(s.eval).Return(nil)
+	s.schedulerBatchJobs.EXPECT().Process(context.Background(), s.eval).Return(nil)
 	s.broker.EXPECT().Ack(s.eval.ID, s.receiptHandle)
 
 	s.worker.Start(context.Background())
@@ -75,7 +76,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Successful() {
 func (s *WorkerTestSuite) TestProcessEvaluation_Shutdown_WhileDequeueing() {
 	// Mock the dequeueEvaluation to block until the worker is stopped, and
 	// then return a sample evaluation
-	s.onDequeue().DoAndReturn(func(schedulers []string, timeout time.Duration) (*model.Evaluation, string, error) {
+	s.onDequeue().DoAndReturn(func(schedulers []string, timeout time.Duration) (*models.Evaluation, string, error) {
 		// stop while dequeueing
 		s.worker.Stop()
 		return s.eval, s.receiptHandle, nil
@@ -93,7 +94,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_Shutdown_WhileScheduling() {
 	s.onDequeue().Return(s.eval, s.receiptHandle, nil)
 
 	// Mock the scheduler's Process method to return no error
-	s.schedulerBatchJobs.EXPECT().Process(s.eval).DoAndReturn(func(*model.Evaluation) error {
+	s.schedulerBatchJobs.EXPECT().Process(context.Background(), s.eval).DoAndReturn(func(_ context.Context, _ *models.Evaluation) error {
 		// stop while scheduling
 		s.worker.Stop()
 		return nil
@@ -128,7 +129,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_SchedulerError() {
 
 	// Mock the scheduler's Process method to return an error
 	expectedError := assert.AnError
-	s.schedulerBatchJobs.EXPECT().Process(s.eval).Return(expectedError)
+	s.schedulerBatchJobs.EXPECT().Process(context.Background(), s.eval).Return(expectedError)
 
 	// Expect the evaluationBroker's Nack method to return no error
 	s.broker.EXPECT().Nack(s.eval.ID, s.receiptHandle)
@@ -169,7 +170,7 @@ func (s *WorkerTestSuite) TestProcessEvaluation_BrokerError() {
 func (s *WorkerTestSuite) TestProcessEvaluation_NoEvaluations() {
 	// expect the worker to continue polling even after no evaluations are returned
 	dequeueCount := 0
-	s.onDequeue().DoAndReturn(func(schedulers []string, timeout time.Duration) (*model.Evaluation, string, error) {
+	s.onDequeue().DoAndReturn(func(schedulers []string, timeout time.Duration) (*models.Evaluation, string, error) {
 		dequeueCount++
 		return nil, "", nil
 	}).MinTimes(3)
@@ -216,9 +217,9 @@ func (s *WorkerTestSuite) TestProcessEvaluation_MultiCalls() {
 	s.onDequeue().DoAndReturn(s.stopAfterDequeue())
 
 	// mock scheduler to fail the first eval, and that scheduler is not called for the third eval
-	s.schedulerBatchJobs.EXPECT().Process(eval1).Return(expectedError)
-	s.schedulerServiceJobs.EXPECT().Process(eval2)
-	s.schedulerBatchJobs.EXPECT().Process(eval4)
+	s.schedulerBatchJobs.EXPECT().Process(context.Background(), eval1).Return(expectedError)
+	s.schedulerServiceJobs.EXPECT().Process(context.Background(), eval2)
+	s.schedulerBatchJobs.EXPECT().Process(context.Background(), eval4)
 
 	// expect acks for the second and fourth evals
 	s.broker.EXPECT().Ack(eval2.ID, receiptHandle2)
@@ -252,8 +253,8 @@ func (s *WorkerTestSuite) waitUntilStopped() {
 	}, 100*time.Millisecond, 10*time.Millisecond)
 }
 
-func (s *WorkerTestSuite) stopAfterDequeue() func(schedulers []string, timeout time.Duration) (*model.Evaluation, string, error) {
-	return func(schedulers []string, timeout time.Duration) (*model.Evaluation, string, error) {
+func (s *WorkerTestSuite) stopAfterDequeue() func(schedulers []string, timeout time.Duration) (*models.Evaluation, string, error) {
+	return func(schedulers []string, timeout time.Duration) (*models.Evaluation, string, error) {
 		s.worker.Stop()
 		return nil, "", nil
 	}

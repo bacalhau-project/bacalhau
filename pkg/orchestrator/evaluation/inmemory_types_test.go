@@ -6,7 +6,7 @@ import (
 	"container/heap"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ func TestReadyEvals_Ordering(t *testing.T) {
 
 	ready := ReadyEvaluations{}
 
-	newEval := func(jobID, evalID string, priority int, index uint64) *model.Evaluation {
+	newEval := func(jobID, evalID string, priority int, index uint64) *models.Evaluation {
 		eval := mock.Eval()
 		eval.JobID = jobID
 		eval.ID = evalID
@@ -30,17 +30,17 @@ func TestReadyEvals_Ordering(t *testing.T) {
 	heap.Push(&ready, newEval("example3", "eval03", 70, 3))
 	heap.Push(&ready, newEval("example2", "eval02", 50, 2))
 
-	next := heap.Pop(&ready).(*model.Evaluation)
+	next := heap.Pop(&ready).(*models.Evaluation)
 	require.Equal(t, "eval03", next.ID,
 		"expected highest Priority to be next ready")
 
-	next = heap.Pop(&ready).(*model.Evaluation)
+	next = heap.Pop(&ready).(*models.Evaluation)
 	require.Equal(t, "eval01", next.ID,
 		"expected oldest CreateIndex to be next ready")
 
 	heap.Push(&ready, newEval("example4", "eval04", 50, 4))
 
-	next = heap.Pop(&ready).(*model.Evaluation)
+	next = heap.Pop(&ready).(*models.Evaluation)
 	require.Equal(t, "eval02", next.ID,
 		"expected oldest CreateIndex to be next ready")
 
@@ -49,7 +49,7 @@ func TestReadyEvals_Ordering(t *testing.T) {
 func TestPendingEval_Ordering(t *testing.T) {
 	pending := PendingEvaluations{}
 
-	newEval := func(evalID string, priority int, index uint64) *model.Evaluation {
+	newEval := func(evalID string, priority int, index uint64) *models.Evaluation {
 		eval := mock.Eval()
 		eval.ID = evalID
 		eval.Priority = priority
@@ -63,16 +63,16 @@ func TestPendingEval_Ordering(t *testing.T) {
 	heap.Push(&pending, newEval("eval02", 100, 2))
 	heap.Push(&pending, newEval("eval01", 50, 1))
 
-	next := heap.Pop(&pending).(*model.Evaluation)
+	next := heap.Pop(&pending).(*models.Evaluation)
 	require.Equal(t, "eval02", next.ID,
 		"expected eval with highest priority to be next")
 
-	next = heap.Pop(&pending).(*model.Evaluation)
+	next = heap.Pop(&pending).(*models.Evaluation)
 	require.Equal(t, "eval03", next.ID,
 		t, "expected eval with highest modify index to be next")
 
 	heap.Push(&pending, newEval("eval04", 30, 4))
-	next = heap.Pop(&pending).(*model.Evaluation)
+	next = heap.Pop(&pending).(*models.Evaluation)
 	require.Equal(t, "eval01", next.ID,
 		"expected eval with highest priority to be next")
 
@@ -97,6 +97,6 @@ func TestPendingEvals_MarkForCancel(t *testing.T) {
 
 	raw := heap.Pop(&pending)
 	require.NotNil(t, raw)
-	eval := raw.(*model.Evaluation)
+	eval := raw.(*models.Evaluation)
 	require.EqualValues(t, 100, eval.ModifyIndex)
 }
