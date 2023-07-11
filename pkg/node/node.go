@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -53,7 +52,6 @@ type NodeConfig struct {
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
-	SimulatorNodeID           string
 	IsRequesterNode           bool
 	IsComputeNode             bool
 	Labels                    map[string]string
@@ -121,12 +119,6 @@ func NewNode(
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
 	if err != nil {
 		return nil, err
-	}
-
-	var simulatorRequestHandler *simulator.RequestHandler
-	if config.SimulatorNodeID == config.Host.ID().String() {
-		log.Ctx(ctx).Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
-		simulatorRequestHandler = simulator.NewRequestHandler()
 	}
 
 	// A single gossipSub instance that will be used by all topics
@@ -232,8 +224,6 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			config.JobStore,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
 			storageProviders,
 			jobInfoPublisher,
 			nodeInfoStore,
@@ -251,8 +241,6 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
 			storageProviders,
 			executors,
 			publishers,

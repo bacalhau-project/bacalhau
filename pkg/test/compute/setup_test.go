@@ -80,8 +80,6 @@ func (s *ComputeSuite) setupNode() {
 		host,
 		apiServer,
 		s.config,
-		"",
-		nil,
 		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
 		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
 		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
