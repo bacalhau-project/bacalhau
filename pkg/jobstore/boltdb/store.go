@@ -169,8 +169,7 @@ func (b *BoltJobStore) GetJob(ctx context.Context, id string) (model.Job, error)
 func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (model.Job, error) {
 	var job model.Job
 
-	bucket := tx.Bucket(BucketJobs)
-	data := bucket.Get([]byte(id))
+	data := GetBucketData(tx, string(BucketJobs), []byte(id))
 	if data == nil {
 		return job, bacerrors.NewJobNotFound(id)
 	}
@@ -311,7 +310,6 @@ func (b *BoltJobStore) getListSorter(jobs []model.Job, query jobstore.JobQuery) 
 
 // GetJobState returns the current job state for the provided job id
 func (b *BoltJobStore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-
 	var state model.JobState
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		state, err = b.getJobState(tx, jobID)
@@ -324,8 +322,10 @@ func (b *BoltJobStore) GetJobState(ctx context.Context, jobID string) (model.Job
 func (b *BoltJobStore) getJobState(tx *bolt.Tx, jobID string) (model.JobState, error) {
 	var state model.JobState
 
-	bkt := tx.Bucket(BucketJobsState)
-	data := bkt.Get([]byte(jobID))
+	data := GetBucketData(tx, string(BucketJobsState), []byte(jobID))
+	if data == nil {
+		return state, bacerrors.NewJobNotFound(jobID)
+	}
 
 	err := json.Unmarshal(data, &state)
 	return state, err
@@ -394,7 +394,6 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, erro
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
 	options jobstore.JobHistoryFilterOptions) ([]model.JobHistory, error) {
-
 	var history []model.JobHistory
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
@@ -785,5 +784,3 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.Executi
 func (b *BoltJobStore) Close(ctx context.Context) error {
 	return b.database.Close()
 }
-
-//nolint:unused

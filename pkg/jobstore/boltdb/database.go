@@ -20,6 +20,14 @@ func GetDatabase(path string) (*bolt.DB, error) {
 	return database, nil
 }
 
+func GetBucketData(tx *bolt.Tx, bucketPath string, key []byte) []byte {
+	b, err := GetBucketByPath(tx, bucketPath, false)
+	if err != nil {
+		return nil
+	}
+	return b.Get(key)
+}
+
 // GetSubBucket accepts a bucket path which is a . separated string showing a path
 // from the first item (the top level bucket) to the last item, the final bucket
 // which will be returned. If at any time a bucket isn't found then an error will
