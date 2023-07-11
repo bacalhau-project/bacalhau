@@ -27,7 +27,7 @@ import (
 
 var executionErr = errors.New("I am a bad executor")
 var publishErr = errors.New("I am a bad publisher")
-var slowExecutorSleep = 2 * time.Second
+var slowExecutorSleep = 5 * time.Second
 
 type RetriesSuite struct {
 	suite.Suite
