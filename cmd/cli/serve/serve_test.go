@@ -172,6 +172,7 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 func (s *ServeSuite) TestCanSubmitJob() {
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := publicapi.NewRequesterAPIClient("localhost", port)
+	s.Require().NoError(publicapi.WaitForHealthy(s.ctx, client))
 
 	job, err := model.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)

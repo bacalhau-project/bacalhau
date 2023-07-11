@@ -24,6 +24,7 @@ type BaseSuite struct {
 
 // before each test
 func (s *BaseSuite) SetupTest() {
+
 	logger.ConfigureTestLogging(s.T())
 	util.Fatal = util.FakeFatalErrorHandler
 

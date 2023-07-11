@@ -104,9 +104,6 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 		},
 	}
-	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 10 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
-	}
 	ctx := context.Background()
 	devstackOptions := devstack.DevStackOptions{
 		NumberOfRequesterOnlyNodes: 1,

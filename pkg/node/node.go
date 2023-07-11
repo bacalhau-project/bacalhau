@@ -5,18 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/imdario/mergo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
-	"github.com/rs/zerolog/log"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -27,11 +18,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 )
 
 const JobInfoTopic = "bacalhau-job-info"
 const NodeInfoTopic = "bacalhau-node-info"
-const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
 type FeatureConfig struct {
 	Engines    []model.Engine
@@ -55,7 +51,7 @@ type NodeConfig struct {
 	IsRequesterNode           bool
 	IsComputeNode             bool
 	Labels                    map[string]string
-	NodeInfoPublisherInterval time.Duration
+	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
 }
@@ -135,7 +131,7 @@ func NewNode(
 	}
 
 	// PubSub to publish node info to the network
-	nodeInfoPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
+	nodeInfoLibp2pPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
 		Host:      config.Host,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
@@ -158,13 +154,13 @@ func NewNode(
 
 	// node info publisher
 	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval == 0 {
-		nodeInfoPublisherInterval = DefaultNodeInfoPublisherInterval
+	if nodeInfoPublisherInterval.IsZero() {
+		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
 	}
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           nodeInfoPubSub,
+		PubSub:           nodeInfoLibp2pPubSub,
 		NodeInfoProvider: nodeInfoProvider,
-		Interval:         nodeInfoPublisherInterval,
+		IntervalConfig:   nodeInfoPublisherInterval,
 	})
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
@@ -176,7 +172,7 @@ func NewNode(
 	// register consumers of node info published over gossipSub
 	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
 	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
-	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
+	err = nodeInfoLibp2pPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +256,7 @@ func NewNode(
 			requesterNode.cleanup(ctx)
 		}
 		nodeInfoPublisher.Stop(ctx)
-		cleanupErr := nodeInfoPubSub.Close(ctx)
+		cleanupErr := nodeInfoLibp2pPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
 		cleanupErr = jobInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job info pub sub")
@@ -276,13 +272,6 @@ func NewNode(
 		computeNode.RegisterLocalComputeCallback(requesterNode.localCallback)
 		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
 	}
-
-	// Eagerly publish node info to the network. Do this in a goroutine so that
-	// slow plugins don't slow down the node from booting.
-	go func() {
-		err = nodeInfoPublisher.Publish(ctx)
-		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Eagerly published node info")
-	}()
 
 	node := &Node{
 		CleanupManager: config.CleanupManager,
