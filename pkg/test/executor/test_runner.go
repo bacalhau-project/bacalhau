@@ -23,7 +23,7 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack, _ := testutils.SetupTest(ctx, t, testNodeCount, 0,
+	stack, _ := testutils.SetupTest(ctx, t, testNodeCount,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)

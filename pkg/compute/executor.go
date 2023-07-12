@@ -14,37 +14,37 @@ import (
 )
 
 type BaseExecutorParams struct {
-	ID              string
-	Callback        Callback
-	Store           store.ExecutionStore
-	Executors       executor.ExecutorProvider
-	ResultsPath     ResultsPath
-	Publishers      publisher.PublisherProvider
-	SimulatorConfig model.SimulatorConfigCompute
+	ID                     string
+	Callback               Callback
+	Store                  store.ExecutionStore
+	Executors              executor.ExecutorProvider
+	ResultsPath            ResultsPath
+	Publishers             publisher.PublisherProvider
+	FailureInjectionConfig model.FailureInjectionComputeConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID              string
-	callback        Callback
-	store           store.ExecutionStore
-	cancellers      generic.SyncMap[string, context.CancelFunc]
-	executors       executor.ExecutorProvider
-	publishers      publisher.PublisherProvider
-	resultsPath     ResultsPath
-	simulatorConfig model.SimulatorConfigCompute
+	ID               string
+	callback         Callback
+	store            store.ExecutionStore
+	cancellers       generic.SyncMap[string, context.CancelFunc]
+	executors        executor.ExecutorProvider
+	publishers       publisher.PublisherProvider
+	resultsPath      ResultsPath
+	failureInjection model.FailureInjectionComputeConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:              params.ID,
-		callback:        params.Callback,
-		store:           params.Store,
-		executors:       params.Executors,
-		publishers:      params.Publishers,
-		simulatorConfig: params.SimulatorConfig,
-		resultsPath:     params.ResultsPath,
+		ID:               params.ID,
+		callback:         params.Callback,
+		store:            params.Store,
+		executors:        params.Executors,
+		publishers:       params.Publishers,
+		failureInjection: params.FailureInjectionConfig,
+		resultsPath:      params.ResultsPath,
 	}
 }
 
@@ -93,20 +93,23 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
+	if e.failureInjection.IsBadActor {
+		err = fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
+		return
+	}
+
 	var runCommandResult *model.RunCommandResult
 
-	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
-		if err != nil {
-			jobsFailed.Add(ctx, 1)
-		} else {
-			jobsCompleted.Add(ctx, 1)
-		}
+	runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
+	if err != nil {
+		jobsFailed.Add(ctx, 1)
+	} else {
+		jobsCompleted.Add(ctx, 1)
+	}
 
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
-			return
-		}
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
+		return
 	}
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{

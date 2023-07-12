@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/nodes"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/simulate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
@@ -129,7 +128,6 @@ func NewRootCmd() *cobra.Command {
 
 	// Serve commands
 	RootCmd.AddCommand(serve.NewCmd())
-	RootCmd.AddCommand(simulate.NewCmd())
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
 

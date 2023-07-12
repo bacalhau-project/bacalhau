@@ -19,7 +19,7 @@ type RequesterConfigParams struct {
 	OverAskForBidsFactor               uint
 	JobSelectionPolicy                 model.JobSelectionPolicy
 	ExternalValidatorWebhook           *url.URL
-	SimulatorConfig                    model.SimulatorConfigRequester
+	FailureInjectionConfig             model.FailureInjectionRequesterConfig
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion model.BuildVersionInfo
@@ -42,7 +42,7 @@ type RequesterConfig struct {
 	OverAskForBidsFactor     uint
 	JobSelectionPolicy       model.JobSelectionPolicy
 	ExternalValidatorWebhook *url.URL
-	SimulatorConfig          model.SimulatorConfigRequester
+	FailureInjectionConfig   model.FailureInjectionRequesterConfig
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion model.BuildVersionInfo
@@ -90,7 +90,7 @@ func NewRequesterConfigWith(params RequesterConfigParams) (config RequesterConfi
 		NodeRankRandomnessRange:            params.NodeRankRandomnessRange,
 		OverAskForBidsFactor:               params.OverAskForBidsFactor,
 		ExternalValidatorWebhook:           params.ExternalValidatorWebhook,
-		SimulatorConfig:                    params.SimulatorConfig,
+		FailureInjectionConfig:             params.FailureInjectionConfig,
 		MinBacalhauVersion:                 params.MinBacalhauVersion,
 		RetryStrategy:                      params.RetryStrategy,
 	}

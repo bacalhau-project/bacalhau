@@ -26,11 +26,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
 )
 
 type Compute struct {
@@ -54,8 +52,6 @@ func NewComputeNode(
 	host host.Host,
 	apiServer *publicapi.APIServer,
 	config ComputeConfig,
-	simulatorNodeID string,
-	simulatorRequestHandler *simulator.RequestHandler,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
@@ -80,39 +76,22 @@ func NewComputeNode(
 	})
 
 	// Callback to send compute events (i.e. requester endpoint)
-	var computeCallback compute.Callback
-	standardComputeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
+	computeCallback := bprotocol.NewCallbackProxy(bprotocol.CallbackProxyParams{
 		Host: host,
 	})
-	if simulatorNodeID != "" {
-		simulatorProxy := simulator_protocol.NewCallbackProxy(simulator_protocol.CallbackProxyParams{
-			SimulatorNodeID: simulatorNodeID,
-			Host:            host,
-		})
-		if simulatorRequestHandler != nil {
-			// if this node is the simulator node, we need to register a local callback to allow self dialing
-			simulatorProxy.RegisterLocalComputeCallback(simulatorRequestHandler)
-			// set standard callback implementation so that the simulator can forward requests to the correct endpoints
-			// after it finishes its validation and processing of the request
-			simulatorRequestHandler.SetRequesterProxy(standardComputeCallback)
-		}
-		computeCallback = simulatorProxy
-	} else {
-		computeCallback = standardComputeCallback
-	}
 
 	resultsPath, err := compute.NewResultsPath()
 	if err != nil {
 		return nil, err
 	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
-		ID:              host.ID().String(),
-		Callback:        computeCallback,
-		Store:           executionStore,
-		Executors:       executors,
-		Publishers:      publishers,
-		SimulatorConfig: config.SimulatorConfig,
-		ResultsPath:     *resultsPath,
+		ID:                     host.ID().String(),
+		Callback:               computeCallback,
+		Store:                  executionStore,
+		Executors:              executors,
+		Publishers:             publishers,
+		FailureInjectionConfig: config.FailureInjectionConfig,
+		ResultsPath:            *resultsPath,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -238,18 +217,10 @@ func NewComputeNode(
 		LogServer:       *logserver,
 	})
 
-	// if this node is the simulator, then we set the simulator request handler as the stream handler
-	if simulatorRequestHandler != nil {
-		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
-			Host:            host,
-			ComputeEndpoint: simulatorRequestHandler,
-		})
-	} else {
-		bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
-			Host:            host,
-			ComputeEndpoint: baseEndpoint,
-		})
-	}
+	bprotocol.NewComputeHandler(bprotocol.ComputeHandlerParams{
+		Host:            host,
+		ComputeEndpoint: baseEndpoint,
+	})
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
@@ -283,7 +254,7 @@ func NewComputeNode(
 		Executors:           executors,
 		Bidder:              bidder,
 		LogServer:           logserver,
-		computeCallback:     standardComputeCallback,
+		computeCallback:     computeCallback,
 		cleanupFunc:         cleanupFunc,
 		computeInfoProvider: nodeInfoProvider,
 	}, nil

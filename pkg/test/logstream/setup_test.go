@@ -35,7 +35,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1, 0)
+	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1)
 }
 
 func (s *LogStreamTestSuite) TearDownSuite() {
