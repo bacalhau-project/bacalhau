@@ -426,9 +426,15 @@ coverage/:
 	mkdir -p $@
 
 .PHONY: generate
-generate:
+generate: generate-tools
 	${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
-	echo "[OK] Files added to pipeline template directory!"
+	@echo "[OK] Files added to pipeline template directory!"
+
+.PHONY: generate-tools
+generate-tools:
+	@which mockgen > /dev/null || echo "Installing 'mockgen'" && ${GO} install go.uber.org/mock/mockgen@latest
+	@which stringer > /dev/null  || echo "Installing 'stringer'" && ${GO} install golang.org/x/tools/cmd/stringer
+
 
 .PHONY: security
 security:
