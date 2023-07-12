@@ -20,7 +20,6 @@ require (
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/felixge/httpsnoop v1.0.3
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -50,7 +49,7 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
-	github.com/rs/zerolog v1.29.0
+	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
@@ -75,10 +74,10 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.39.0
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.ptx.dk/multierrgroup v0.0.2
+	go.uber.org/mock v0.2.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
-	golang.org/x/mod v0.10.0
 	k8s.io/apimachinery v0.27.2
 	k8s.io/kubectl v0.27.0
 	sigs.k8s.io/yaml v1.3.0
@@ -106,6 +105,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.0 // indirect
@@ -122,6 +122,7 @@ require (
 	github.com/skeema/knownhosts v1.1.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/mod v0.10.0 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect

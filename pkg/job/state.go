@@ -168,7 +168,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		return results, err
 	}
 
-	for _, executionState := range GetCompletedVerifiedExecutionStates(jobState) {
+	for _, executionState := range GetCompletedExecutionStates(jobState) {
 		results = append(results, model.PublishedResult{
 			NodeID: executionState.NodeID,
 			Data:   executionState.PublishedResult,
@@ -192,29 +192,8 @@ func GetFilteredExecutionStates(jobState model.JobState, filterState model.Execu
 	return ret
 }
 
-func CountVerifiedExecutionStates(jobState model.JobState) int {
-	count := 0
-	for _, executionState := range jobState.Executions {
-		if executionState.VerificationResult.Result {
-			count++
-		}
-	}
-	return count
-}
-
 func GetCompletedExecutionStates(jobState model.JobState) []model.ExecutionState {
 	return GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted)
-}
-
-// return only execution states that are both complete and verified
-func GetCompletedVerifiedExecutionStates(jobState model.JobState) []model.ExecutionState {
-	var ret []model.ExecutionState
-	for _, executionState := range GetFilteredExecutionStates(jobState, model.ExecutionStateCompleted) { //nolint:gocritic
-		if executionState.VerificationResult.Complete && executionState.VerificationResult.Result {
-			ret = append(ret, executionState)
-		}
-	}
-	return ret
 }
 
 func GetExecutionStateTotals(executionStates []model.ExecutionState) map[model.ExecutionStateType]int {
@@ -265,7 +244,7 @@ func WaitForExecutionStates(requiredStateCounts map[model.ExecutionStateType]int
 }
 
 // WaitForTerminalStates it is possible that a job is in a terminal state, but some executions are still running,
-// such as when one node publishes the result before others, or when confidence factor is lower than concurrency.
+// such as when one node publishes the result before others.
 // for that reason, we consider a job to be in a terminal state when:
 // - all executions are in a terminal state
 // - the job is in a terminal state to account for possible retries
@@ -284,7 +263,7 @@ func WaitForTerminalStates() CheckStatesFunction {
 func WaitForSuccessfulCompletion() CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
 		if jobState.State.IsTerminal() {
-			if jobState.State != model.JobStateCompleted && jobState.State != model.JobStateCompletedPartially {
+			if jobState.State != model.JobStateCompleted {
 				return false, fmt.Errorf("job did not complete successfully")
 			}
 			return true, nil

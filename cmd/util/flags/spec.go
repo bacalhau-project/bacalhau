@@ -22,7 +22,6 @@ Examples:
 
 func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 	return &SpecFlagSettings{
-		Verifier: model.VerifierNoop.String(),
 		// TODO most users would probably prefer IPFS
 		Publisher:     opts.NewPublisherOptFromSpec(model.PublisherSpec{Type: model.PublisherEstuary}),
 		Inputs:        opts.StorageOpt{},
@@ -36,7 +35,6 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 }
 
 type SpecFlagSettings struct {
-	Verifier      string            // Verifier - verifier.Verifier
 	Publisher     opts.PublisherOpt // Publisher - publisher.Publisher
 	Inputs        opts.StorageOpt   // Array of inputs
 	OutputVolumes []string          // Array of output volumes in 'name:mount point' form
@@ -49,13 +47,6 @@ type SpecFlagSettings struct {
 
 func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Spec settings", pflag.ContinueOnError)
-	flags.StringVarP(
-		&settings.Verifier,
-		"verifier",
-		"v",
-		settings.Verifier,
-		`What verification engine to use to run the job`,
-	)
 	flags.VarP(
 		&settings.Publisher,
 		"publisher",

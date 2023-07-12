@@ -41,7 +41,7 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context, job model.
 			if !execution.State.IsDiscarded() {
 				toFilterOut[execution.NodeID] = true
 			}
-			if execution.State == model.ExecutionStateAskForBidRejected || execution.State == model.ExecutionStateResultRejected {
+			if execution.State == model.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true
 			}
 		}

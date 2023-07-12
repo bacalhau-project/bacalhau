@@ -325,8 +325,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	jobConfig := &model.Job{
 		Spec: model.Spec{
-			Engine:   model.EngineNoop,
-			Verifier: model.VerifierNoop,
+			Engine: model.EngineNoop,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,
 			},

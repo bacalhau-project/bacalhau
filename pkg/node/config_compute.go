@@ -36,7 +36,7 @@ type ComputeConfigParams struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
-	SimulatorConfig model.SimulatorConfigCompute
+	FailureInjectionConfig model.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 
@@ -76,7 +76,7 @@ type ComputeConfig struct {
 	// logging running executions
 	LogRunningExecutionsInterval time.Duration
 
-	SimulatorConfig model.SimulatorConfigCompute
+	FailureInjectionConfig model.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 
@@ -163,7 +163,7 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
-		SimulatorConfig:              params.SimulatorConfig,
+		FailureInjectionConfig:       params.FailureInjectionConfig,
 		BidSemanticStrategy:          params.BidSemanticStrategy,
 		BidResourceStrategy:          params.BidResourceStrategy,
 	}

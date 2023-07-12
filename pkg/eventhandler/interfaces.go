@@ -1,5 +1,7 @@
 package eventhandler
 
+//go:generate mockgen --source interfaces.go --destination mock_eventhandler/mock_handlers.go --package mock_eventhandler
+
 import (
 	"context"
 

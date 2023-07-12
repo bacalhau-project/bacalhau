@@ -14,10 +14,6 @@ func (m *MockCallback) OnRunComplete(ctx context.Context, result RunResult) {
 	m.Called(ctx, result)
 }
 
-func (m *MockCallback) OnPublishComplete(ctx context.Context, result PublishResult) {
-	m.Called(ctx, result)
-}
-
 func (m *MockCallback) OnCancelComplete(ctx context.Context, result CancelResult) {
 	m.Called(ctx, result)
 }

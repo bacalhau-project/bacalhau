@@ -12,9 +12,6 @@ import (
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
-	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Noop implementations of node factories used to mock certain components, which is useful for testing.
@@ -22,7 +19,6 @@ func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 	return node.NodeDependencyInjector{
 		StorageProvidersFactory: NewNoopStorageProvidersFactory(),
 		ExecutorsFactory:        NewNoopExecutorsFactory(),
-		VerifiersFactory:        NewNoopVerifiersFactory(),
 		PublishersFactory:       NewNoopPublishersFactory(),
 	}
 }
@@ -46,19 +42,6 @@ func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) node
 	return node.ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig node.NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
 			return executor_util.NewNoopExecutors(config), nil
-		})
-}
-
-func NewNoopVerifiersFactory() node.VerifiersFactory {
-	return NewNoopVerifiersFactoryWithConfig(noop_verifier.VerifierConfig{})
-}
-
-func NewNoopVerifiersFactoryWithConfig(config noop_verifier.VerifierConfig) node.VerifiersFactory {
-	return node.VerifiersFactoryFunc(
-		func(
-			ctx context.Context,
-			nodeConfig node.NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error) {
-			return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, config)
 		})
 }
 

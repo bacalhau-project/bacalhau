@@ -43,10 +43,6 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
 	}
 
-	if !model.IsValidVerifier(j.Spec.Verifier) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid verifier type: %s", j.Spec.Verifier.String()))
-	}
-
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))
 	}

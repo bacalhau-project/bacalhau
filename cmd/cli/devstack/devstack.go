@@ -47,8 +47,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:                       "",
 		PublicIPFSMode:             false,
 		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
-		SimulatorAddr:              "",
-		SimulatorMode:              false,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 	}
@@ -98,19 +96,11 @@ func NewCmd() *cobra.Command {
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&IsNoop, "noop", false,
-		`Use the noop executor and verifier for all jobs`,
+		`Use the noop executor for all jobs`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
-	)
-	devstackCmd.PersistentFlags().StringVar(
-		&ODs.SimulatorAddr, "simulator-addr", ODs.SimulatorAddr,
-		`Use the simulator transport at the given node multi addr`,
-	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.SimulatorMode, "simulator-mode", false,
-		`If set, one of the nodes will act as a simulator and will proxy all requests to the other nodes`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.PublicIPFSMode, "public-ipfs", ODs.PublicIPFSMode,
@@ -127,11 +117,6 @@ func NewCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().StringSliceVar(
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs",
-	)
-	devstackCmd.PersistentFlags().Var(
-		flags.URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
-		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
-			"The 'external' verifier will not be enabled if this is unset.",
 	)
 
 	devstackCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))

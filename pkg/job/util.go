@@ -64,18 +64,6 @@ func ComputeResultsSummary(j *model.JobWithInfo) string {
 	return resultSummary
 }
 
-func ComputeVerifiedSummary(j *model.JobWithInfo) string {
-	var verifiedSummary string
-	if j.Job.Spec.Verifier == model.VerifierNoop {
-		verifiedSummary = ""
-	} else {
-		desiredExecutionCount := len(j.State.Executions)
-		verifiedExecutionCount := CountVerifiedExecutionStates(j.State)
-		verifiedSummary = fmt.Sprintf("%d/%d", verifiedExecutionCount, desiredExecutionCount)
-	}
-	return verifiedSummary
-}
-
 func GetIPFSPublishedStorageSpec(executionID string, job model.Job, storageType model.StorageSourceType, cid string) model.StorageSpec {
 	return model.StorageSpec{
 		Name:          "ipfs://" + cid,

@@ -36,7 +36,6 @@ func NewCallbackHandler(params CallbackHandlerParams) *CallbackHandler {
 	host := handler.host
 	host.SetStreamHandler(OnBidComplete, handleCallback(host, handler.callback.OnBidComplete))
 	host.SetStreamHandler(OnRunComplete, handleCallback(host, handler.callback.OnRunComplete))
-	host.SetStreamHandler(OnPublishComplete, handleCallback(host, handler.callback.OnPublishComplete))
 	host.SetStreamHandler(OnCancelComplete, handleCallback(host, handler.callback.OnCancelComplete))
 	host.SetStreamHandler(OnComputeFailure, handleCallback(host, handler.callback.OnComputeFailure))
 	return handler

@@ -12,17 +12,15 @@ func _() {
 	_ = x[ExecutionStateCreated-1]
 	_ = x[ExecutionStateBidAccepted-2]
 	_ = x[ExecutionStateRunning-3]
-	_ = x[ExecutionStateWaitingVerification-4]
-	_ = x[ExecutionStateResultAccepted-5]
-	_ = x[ExecutionStatePublishing-6]
-	_ = x[ExecutionStateCompleted-7]
-	_ = x[ExecutionStateFailed-8]
-	_ = x[ExecutionStateCancelled-9]
+	_ = x[ExecutionStatePublishing-4]
+	_ = x[ExecutionStateCompleted-5]
+	_ = x[ExecutionStateFailed-6]
+	_ = x[ExecutionStateCancelled-7]
 }
 
-const _ExecutionState_name = "UndefinedCreatedBidAcceptedRunningWaitingVerificationResultAcceptedPublishingCompletedFailedCancelled"
+const _ExecutionState_name = "UndefinedCreatedBidAcceptedRunningPublishingCompletedFailedCancelled"
 
-var _ExecutionState_index = [...]uint8{0, 9, 16, 27, 34, 53, 67, 77, 86, 92, 101}
+var _ExecutionState_index = [...]uint8{0, 9, 16, 27, 34, 44, 53, 59, 68}
 
 func (i ExecutionState) String() string {
 	if i < 0 || i >= ExecutionState(len(_ExecutionState_index)-1) {

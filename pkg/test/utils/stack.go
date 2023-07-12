@@ -23,13 +23,13 @@ import (
 func SetupTestWithDefaultConfigs(
 	ctx context.Context,
 	t *testing.T,
-	nodes int, badActors int,
+	nodes int,
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	return SetupTest(
 		ctx,
 		t,
-		nodes, badActors,
+		nodes,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...,
@@ -39,7 +39,7 @@ func SetupTestWithDefaultConfigs(
 func SetupTest(
 	ctx context.Context,
 	t *testing.T,
-	nodes int, badActors int,
+	nodes int,
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
 	nodeOverrides ...node.NodeConfig,
@@ -50,8 +50,7 @@ func SetupTest(
 	})
 
 	options := devstack.DevStackOptions{
-		NumberOfHybridNodes:      nodes,
-		NumberOfBadComputeActors: badActors,
+		NumberOfHybridNodes: nodes,
 	}
 	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{}, nodeOverrides...)
 	return stack, cm
@@ -113,7 +112,6 @@ func SetupTestWithNoopExecutor(
 	injector := node.NodeDependencyInjector{
 		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        executorFactory,
-		VerifiersFactory:        node.NewStandardVerifiersFactory(),
 		PublishersFactory:       node.NewStandardPublishersFactory(),
 	}
 

@@ -1,3 +1,4 @@
+//go:generate stringer -type=ExecutionStateType --trimprefix=ExecutionState --output execution_state_string.go
 package model
 
 import (
@@ -22,23 +23,17 @@ const (
 	ExecutionStateBidAccepted // aka running
 	// ExecutionStateBidRejected requester has rejected the bid.
 	ExecutionStateBidRejected
-	// ExecutionStateResultProposed The execution is done, and is waiting for verification.
-	ExecutionStateResultProposed
-	// ExecutionStateResultAccepted The execution result has been accepted by the requester, and publishing of the result is in progress.
-	ExecutionStateResultAccepted // aka publishing
-	// ExecutionStateResultRejected The execution result has been rejected by the requester.
-	ExecutionStateResultRejected
 	// ExecutionStateCompleted The execution has been completed, and the result has been published.
 	ExecutionStateCompleted
 	// ExecutionStateFailed The execution has failed.
 	ExecutionStateFailed
-	// ExecutionStateCanceled The execution has been canceled by the user
-	ExecutionStateCanceled
+	// ExecutionStateCancelled The execution has been canceled by the user
+	ExecutionStateCancelled
 )
 
 func ExecutionStateTypes() []ExecutionStateType {
 	var res []ExecutionStateType
-	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
 		res = append(res, typ)
 	}
 	return res
@@ -46,14 +41,13 @@ func ExecutionStateTypes() []ExecutionStateType {
 
 // IsDiscarded returns true if the execution has been discarded due to a failure, rejection or cancellation
 func (s ExecutionStateType) IsDiscarded() bool {
-	return s == ExecutionStateAskForBidRejected || s == ExecutionStateBidRejected || s == ExecutionStateResultRejected ||
-		s == ExecutionStateCanceled || s == ExecutionStateFailed
+	return s == ExecutionStateAskForBidRejected || s == ExecutionStateBidRejected ||
+		s == ExecutionStateCancelled || s == ExecutionStateFailed
 }
 
 // IsActive returns true if the execution is running or has completed
 func (s ExecutionStateType) IsActive() bool {
-	return s == ExecutionStateBidAccepted || s == ExecutionStateResultProposed ||
-		s == ExecutionStateResultAccepted || s == ExecutionStateCompleted
+	return s == ExecutionStateBidAccepted || s == ExecutionStateCompleted
 }
 
 // IsTerminal returns true if the execution is in a terminal state where no further state changes are possible
@@ -67,7 +61,7 @@ func (s ExecutionStateType) MarshalText() ([]byte, error) {
 
 func (s *ExecutionStateType) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	for typ := ExecutionStateNew; typ <= ExecutionStateCanceled; typ++ {
+	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
 		if equal(typ.String(), name) {
 			*s = typ
 			return
@@ -99,11 +93,8 @@ type ExecutionState struct {
 	State ExecutionStateType `json:"State"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
-	// the proposed results for this execution
-	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
+	// the published results for this execution
+	PublishedResult StorageSpec `json:"PublishedResults,omitempty"`
 
 	// RunOutput of the job
 	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`

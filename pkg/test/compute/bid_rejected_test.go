@@ -42,7 +42,6 @@ func (s *BidRejectedSuite) TestWrongState() {
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
 	for _, state := range []store.ExecutionState{
-		store.ExecutionStateWaitingVerification,
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,

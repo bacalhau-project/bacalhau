@@ -41,7 +41,6 @@ var (
 type CreateOptions struct {
 	Filename        string                    // Filename for job (can be .json or .yaml)
 	Concurrency     int                       // Number of concurrent jobs to run
-	Confidence      int                       // Minimum number of nodes that must agree on a verification result
 	RunTimeSettings *flags.RunTimeSettings    // Run time settings for execution (e.g. wait, get, etc after submission)
 	DownloadFlags   *flags.DownloaderSettings // Settings for running Download
 }
@@ -50,7 +49,6 @@ func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
 		Filename:        "",
 		Concurrency:     1,
-		Confidence:      0,
 		DownloadFlags:   flags.NewDefaultDownloaderSettings(),
 		RunTimeSettings: flags.NewDefaultRunTimeSettings(),
 	}

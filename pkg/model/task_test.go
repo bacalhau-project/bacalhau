@@ -42,7 +42,6 @@ func TestConfig(t *testing.T) {
 	spec, err := task.ToSpec()
 	require.NoError(t, err)
 
-	require.Equal(t, VerifierNoop, spec.Verifier)
 	require.Equal(t, PublisherIpfs, spec.Publisher)
 	require.Equal(t, []string{"hello"}, spec.Annotations)
 	require.Equal(t, "1m", spec.Resources.CPU)

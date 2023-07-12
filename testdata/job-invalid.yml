@@ -2,7 +2,6 @@
 # APIVersion: v1beta1
 Spec:
   Engine: Docker
-  Verifier: Noop
   Publisher: Estuary
   Docker:
     Image: gromacs/gromacs
@@ -16,4 +15,3 @@ Spec:
       Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0

@@ -17,7 +17,6 @@ data = dict(
     ClientID=get_client_id(),
     Spec=Spec(
         engine="Docker",
-        verifier="Noop",
         publisher_spec=PublisherSpec(type="ipfs"),
         docker=JobSpecDocker(
             image="ubuntu",
@@ -34,7 +33,7 @@ data = dict(
                 path="/outputs",
             )
         ],
-        deal=Deal(concurrency=1, confidence=0, min_bids=0),
+        deal=Deal(concurrency=1),
         do_not_track=False,
     ),
 )

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	model "github.com/bacalhau-project/bacalhau/pkg/model"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockStore is a mock of Store interface.

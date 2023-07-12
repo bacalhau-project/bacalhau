@@ -192,19 +192,6 @@ func (s *ExecutorBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Publish(_ context.Context, execution store.Execution) error {
-	// TODO: Enqueue publish tasks
-	go func() {
-		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Job.Metadata.ID)
-		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
-		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Publish")
-		defer span.End()
-		_ = s.delegateService.Publish(ctx, execution)
-	}()
-	return nil
-}
-
 func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) error {
 	// TODO: Enqueue cancel tasks
 	go func() {

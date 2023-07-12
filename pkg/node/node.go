@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -36,7 +35,6 @@ const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
 type FeatureConfig struct {
 	Engines    []model.Engine
-	Verifiers  []model.Verifier
 	Publishers []model.Publisher
 	Storages   []model.StorageSourceType
 }
@@ -54,7 +52,6 @@ type NodeConfig struct {
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
-	SimulatorNodeID           string
 	IsRequesterNode           bool
 	IsComputeNode             bool
 	Labels                    map[string]string
@@ -68,7 +65,6 @@ type NodeConfig struct {
 type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
-	VerifiersFactory        VerifiersFactory
 	PublishersFactory       PublishersFactory
 }
 
@@ -76,7 +72,6 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
-		VerifiersFactory:        NewStandardVerifiersFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
 	}
 }
@@ -124,17 +119,6 @@ func NewNode(
 	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
 	if err != nil {
 		return nil, err
-	}
-
-	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config, publishers)
-	if err != nil {
-		return nil, err
-	}
-
-	var simulatorRequestHandler *simulator.RequestHandler
-	if config.SimulatorNodeID == config.Host.ID().String() {
-		log.Ctx(ctx).Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
-		simulatorRequestHandler = simulator.NewRequestHandler()
 	}
 
 	// A single gossipSub instance that will be used by all topics
@@ -240,9 +224,6 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			config.JobStore,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
-			verifiers,
 			storageProviders,
 			jobInfoPublisher,
 			nodeInfoStore,
@@ -260,11 +241,8 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
 			storageProviders,
 			executors,
-			verifiers,
 			publishers,
 		)
 		if err != nil {
@@ -356,9 +334,6 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.ExecutorsFactory == nil {
 		injector.ExecutorsFactory = defaultInjector.ExecutorsFactory
-	}
-	if injector.VerifiersFactory == nil {
-		injector.VerifiersFactory = defaultInjector.VerifiersFactory
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory

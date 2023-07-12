@@ -36,12 +36,6 @@ var eventsWorthPrinting = map[model.JobStateType]eventStruct{
 	model.JobStateError:      {Message: "Error while executing the job", PrintDownload: false, IsTerminal: true, IsError: true},
 	model.JobStateCancelled:  {Message: "Job canceled", PrintDownload: false, IsTerminal: true, IsError: false},
 	model.JobStateCompleted:  {Message: "Job finished", PrintDownload: false, IsTerminal: true, IsError: false},
-	model.JobStateCompletedPartially: {
-		Message:       "Job partially complete",
-		PrintDownload: false,
-		IsTerminal:    true,
-		IsError:       true,
-	},
 }
 
 type eventStruct struct {

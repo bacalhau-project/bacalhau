@@ -80,17 +80,8 @@ func (s *anyNodeSelector) SelectNodes(ctx context.Context, job *model.Job) ([]mo
 
 func (s *anyNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Job, jobState *model.JobState) ([]model.NodeInfo, error) {
 	// calculate how many executions we still need, and evaluate if we can ask more nodes to bid
-	var minExecutions int
-	if jobState.PublishedOrPublishingCount() > 0 {
-		// if at least a single execution was published or still publishing, then we don't need to retry in case some executions failed to publish
-		minExecutions = 1
-	} else {
-		// by default, we need executions as many as the job concurrency
-		minExecutions = job.Spec.Deal.GetConcurrency()
-	}
-
-	enoughExecutions := jobState.NonDiscardedCount() >= minExecutions
-	if enoughExecutions {
+	minExecutions := job.Spec.Deal.GetConcurrency()
+	if jobState.NonDiscardedCount() >= minExecutions {
 		// There are enough running executions, so no action to take right now.
 		return []model.NodeInfo{}, nil
 	}
@@ -107,25 +98,9 @@ func (*anyNodeSelector) SelectBids(ctx context.Context, job *model.Job, jobState
 	return executionsWaiting[:requiredNewExecutions], executionsWaiting[requiredNewExecutions:]
 }
 
-// We can verify the job when all the executions we are expecting have completed.
-func (*anyNodeSelector) CanVerifyJob(ctx context.Context, job *model.Job, jobState *model.JobState) bool {
-	awaitingVerification := len(jobState.GroupExecutionsByState()[model.ExecutionStateResultProposed])
-	if awaitingVerification < 1 {
-		return false
-	}
-
-	return awaitingVerification >= job.Spec.Deal.GetConcurrency()
-}
-
-// We can mark a job as partially complete if we have a single complete
-// execution, and fully complete once we are over the user's required confidence.
 func (*anyNodeSelector) CanCompleteJob(ctx context.Context, job *model.Job, jobState *model.JobState) (bool, model.JobStateType) {
-	completedCount := jobState.CompletedCount()
-	if completedCount < 1 {
-		return false, jobState.State
-	} else if completedCount < job.Spec.Deal.GetConfidence() {
-		return true, model.JobStateCompletedPartially
-	} else {
+	if jobState.CompletedCount() >= job.Spec.Deal.GetConcurrency() {
 		return true, model.JobStateCompleted
 	}
+	return false, jobState.State
 }
