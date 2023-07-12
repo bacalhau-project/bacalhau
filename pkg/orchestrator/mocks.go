@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEvaluationBroker is a mock of EvaluationBroker interface.
