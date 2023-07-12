@@ -55,7 +55,13 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 			}
 		}
 	} else {
-		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store", nodeInfo.PeerInfo.ID)
+		var engines []model.Engine
+		if nodeInfo.ComputeNodeInfo != nil {
+			for _, engine := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
+				engines = append(engines, engine)
+			}
+		}
+		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store with engines %v", nodeInfo.PeerInfo.ID, engines)
 	}
 
 	// TODO: use data structure that maintains nodes in descending order based on available capacity.
