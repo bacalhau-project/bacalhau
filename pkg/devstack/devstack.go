@@ -453,12 +453,12 @@ func (stack *DevStack) IPFSClients() []ipfs.Client {
 	return clients
 }
 
-func (stack *DevStack) GetNodeIds() ([]string, error) {
+func (stack *DevStack) GetNodeIds() []string {
 	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Host.ID().String())
 	}
-	return ids, nil
+	return ids
 }
 
 func boolToInt(b bool) int {
