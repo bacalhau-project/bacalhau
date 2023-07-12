@@ -113,7 +113,6 @@ func SetupTestWithNoopExecutor(
 	injector := node.NodeDependencyInjector{
 		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        executorFactory,
-		VerifiersFactory:        node.NewStandardVerifiersFactory(),
 		PublishersFactory:       node.NewStandardPublishersFactory(),
 	}
 

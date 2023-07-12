@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,7 +18,7 @@ type BaseExecutorParams struct {
 	Callback        Callback
 	Store           store.ExecutionStore
 	Executors       executor.ExecutorProvider
-	Verifiers       verifier.VerifierProvider
+	ResultsPath     ResultsPath
 	Publishers      publisher.PublisherProvider
 	SimulatorConfig model.SimulatorConfigCompute
 }
@@ -32,8 +31,8 @@ type BaseExecutor struct {
 	store           store.ExecutionStore
 	cancellers      generic.SyncMap[string, context.CancelFunc]
 	executors       executor.ExecutorProvider
-	verifiers       verifier.VerifierProvider
 	publishers      publisher.PublisherProvider
+	resultsPath     ResultsPath
 	simulatorConfig model.SimulatorConfigCompute
 }
 
@@ -43,9 +42,9 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		callback:        params.Callback,
 		store:           params.Store,
 		executors:       params.Executors,
-		verifiers:       params.Verifiers,
 		publishers:      params.Publishers,
 		simulatorConfig: params.SimulatorConfig,
+		resultsPath:     params.ResultsPath,
 	}
 }
 
@@ -65,9 +64,10 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		}
 	}()
 
+	operation := "Running"
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, execution, err, "Running")
+			e.handleFailure(ctx, execution, err, operation)
 		}
 	}()
 
@@ -81,13 +81,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
-	if err != nil {
-		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
-		return
-	}
-
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
+	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
@@ -115,59 +109,24 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		}
 	}
 
-	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, execution.ID, resultFolder)
-	if err != nil {
-		err = fmt.Errorf("failed to get proposal: %w", err)
-		return
-	}
-
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateRunning,
-		NewState:      store.ExecutionStateWaitingVerification,
-	})
-	if err != nil {
-		return
-	}
-
-	e.callback.OnRunComplete(ctx, RunResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
-			SourcePeerID: e.ID,
-			TargetPeerID: execution.RequesterNodeID,
-		},
-		ResultProposal:   proposal,
-		RunCommandResult: runCommandResult,
-	})
-	return err
-}
-
-// Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, execution, err, "Publishing")
-		}
-	}()
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateResultAccepted,
 		NewState:      store.ExecutionStatePublishing,
 	})
 	if err != nil {
 		return
 	}
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
-	if err != nil {
-		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
-		return
-	}
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
-	if err != nil {
-		err = fmt.Errorf("failed to get result path: %w", err)
-		return
-	}
+
+	operation = "Publishing"
+	return e.publish(ctx, execution, resultFolder, runCommandResult)
+}
+
+// Publish the result of an execution after it has been verified.
+func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
+	resultFolder string, result *model.RunCommandResult) (err error) {
+	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
 	if err != nil {
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
@@ -199,13 +158,14 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
 	}
 
-	e.callback.OnPublishComplete(ctx, PublishResult{
+	e.callback.OnRunComplete(ctx, RunResult{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.RequesterNodeID,
 		},
-		PublishResult: publishedResult,
+		PublishResult:    publishedResult,
+		RunCommandResult: result,
 	})
 	return err
 }

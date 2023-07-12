@@ -801,10 +801,6 @@
                     "description": "The maximum number of concurrent compute node bids that will be\naccepted by the requester node on behalf of the client.",
                     "type": "integer"
                 },
-                "Confidence": {
-                    "description": "The number of nodes that must agree on a verification result\nthis is used by the different verifiers - for example the\ndeterministic verifier requires the winning group size\nto be at least this size",
-                    "type": "integer"
-                },
                 "TargetingMode": {
                     "description": "Whether the job should be run on any matching node (false) or all\nmatching nodes (true). If true, other fields in this struct are ignored.",
                     "type": "boolean"

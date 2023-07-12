@@ -77,28 +77,6 @@ func (p *ComputeProxy) BidRejected(ctx context.Context, request compute.BidRejec
 		ctx, p.host, p.simulatorNodeID, bprotocol.BidRejectedProtocolID, request)
 }
 
-func (p *ComputeProxy) ResultAccepted(ctx context.Context, request compute.ResultAcceptedRequest) (compute.ResultAcceptedResponse, error) {
-	if p.simulatorNodeID == p.host.ID().String() {
-		if p.localEndpoint == nil {
-			return compute.ResultAcceptedResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
-		}
-		return p.localEndpoint.ResultAccepted(ctx, request)
-	}
-	return proxyRequest[compute.ResultAcceptedRequest, compute.ResultAcceptedResponse](
-		ctx, p.host, p.simulatorNodeID, bprotocol.ResultAcceptedProtocolID, request)
-}
-
-func (p *ComputeProxy) ResultRejected(ctx context.Context, request compute.ResultRejectedRequest) (compute.ResultRejectedResponse, error) {
-	if p.simulatorNodeID == p.host.ID().String() {
-		if p.localEndpoint == nil {
-			return compute.ResultRejectedResponse{}, fmt.Errorf("unable to dial to self, unless a local compute endpoint is provided")
-		}
-		return p.localEndpoint.ResultRejected(ctx, request)
-	}
-	return proxyRequest[compute.ResultRejectedRequest, compute.ResultRejectedResponse](
-		ctx, p.host, p.simulatorNodeID, bprotocol.ResultRejectedProtocolID, request)
-}
-
 func (p *ComputeProxy) CancelExecution(
 	ctx context.Context, request compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
 	if p.simulatorNodeID == p.host.ID().String() {

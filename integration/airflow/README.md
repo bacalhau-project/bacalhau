@@ -116,13 +116,12 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
         api_version="V1beta1",
         job_spec=dict(
             engine="Docker",
-            verifier="Noop",
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["echo", "Hello World"],
             ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
+            deal=dict(concurrency=1),
         ),
     )
 
@@ -134,13 +133,12 @@ with DAG("bacalhau-helloworld-dag", start_date=datetime(2023, 3, 1)) as dag:
         ],
         job_spec=dict(
             engine="Docker",
-            verifier="Noop",
             publisher="IPFS",
             docker=dict(
                 image="ubuntu",
                 entrypoint=["cat", "/task_1_output/stdout"],
             ),
-            deal=dict(concurrency=1, confidence=0, min_bids=0),
+            deal=dict(concurrency=1),
         ),
     )
 

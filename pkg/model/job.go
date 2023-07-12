@@ -64,14 +64,12 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
-			Verifier: VerifierNoop,
+			Engine: EngineDocker,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
 			Deal: Deal{
 				Concurrency: 1,
-				Confidence:  0,
 			},
 		},
 	})
@@ -126,11 +124,6 @@ type Deal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
-	// The number of nodes that must agree on a verification result
-	// this is used by the different verifiers - for example the
-	// deterministic verifier requires the winning group size
-	// to be at least this size
-	Confidence int `json:"Confidence,omitempty"`
 }
 
 // GetConcurrency returns the concurrency value from the deal
@@ -139,14 +132,6 @@ func (d Deal) GetConcurrency() int {
 		return 1
 	}
 	return d.Concurrency
-}
-
-// GetConfidence returns the confidence value from the deal
-func (d Deal) GetConfidence() int {
-	if d.Confidence == 0 {
-		return d.GetConcurrency()
-	}
-	return d.Confidence
 }
 
 func (d Deal) IsValid() error {
@@ -158,21 +143,9 @@ func (d Deal) IsValid() error {
 			// 1, so we just ignore both 1 or 0 for convenience.
 			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
 		}
-
-		if d.Confidence != 0 {
-			err = multierr.Append(err, fmt.Errorf("confidence ignored for target all mode, must be == 0"))
-		}
 	case TargetAny:
 		if d.Concurrency <= 0 {
 			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
-		}
-
-		if d.Confidence < 0 {
-			err = multierr.Append(err, fmt.Errorf("confidence must be >= 1"))
-		}
-
-		if d.Confidence > d.Concurrency {
-			err = multierr.Append(err, fmt.Errorf("the deal confidence cannot be higher than the concurrency"))
 		}
 	}
 
@@ -209,8 +182,6 @@ type PublisherSpec struct {
 type Spec struct {
 	// e.g. docker or language
 	Engine Engine `json:"Engine,omitempty"`
-
-	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
 	// deprecated: use PublisherSpec instead

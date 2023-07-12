@@ -1,7 +1,6 @@
 APIVersion: v1beta1
 Spec:
   Engine: Noop
-  Verifier: Noop
   Publisher: Noop
   Outputs:
     - StorageSource: IPFS
@@ -9,4 +8,3 @@ Spec:
       Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0

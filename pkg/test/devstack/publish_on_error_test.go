@@ -28,8 +28,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	testcase := scenario.Scenario{
 		Inputs: scenario.StoredText(stdoutText, "data/hello.txt"),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			Engine: model.EngineWasm,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},

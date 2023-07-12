@@ -20,8 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	noop_verifier "github.com/bacalhau-project/bacalhau/pkg/verifier/noop"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
@@ -33,7 +31,6 @@ type ComputeSuite struct {
 	config        node.ComputeConfig
 	cm            *system.CleanupManager
 	executor      *noop_executor.NoopExecutor
-	verifier      *noop_verifier.NoopVerifier
 	publisher     *noop_publisher.NoopPublisher
 	stateResolver resolver.StateResolver
 	bidChannel    chan compute.BidResult
@@ -54,7 +51,6 @@ func (s *ComputeSuite) SetupTest() {
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
 	s.executor = noop_executor.NewNoopExecutor()
-	s.verifier, err = noop_verifier.NewNoopVerifier(ctx, s.cm)
 	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.bidChannel = make(chan compute.BidResult)
@@ -88,7 +84,6 @@ func (s *ComputeSuite) setupNode() {
 		nil,
 		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
 		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
-		model.NewNoopProvider[model.Verifier, verifier.Verifier](s.verifier),
 		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
 	)
 	s.NoError(err)
@@ -139,7 +134,7 @@ func (s *ComputeSuite) prepareAndRun(ctx context.Context, job model.Job) string 
 	// run the job
 	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateWaitingVerification))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCompleted))
 	s.NoError(err)
 	return executionID
 }

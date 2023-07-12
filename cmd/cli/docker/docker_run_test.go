@@ -9,10 +9,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,9 +30,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	devstack_tests "github.com/bacalhau-project/bacalhau/pkg/test/devstack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -645,88 +641,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	_, _, submitErr := cmdtesting.ExecuteTestCobraCommand(allArgs...)
 	s.Require().NoError(submitErr)
-}
-
-func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
-	ctx := context.Background()
-
-	apiSubmitJob := func(
-		apiClient *publicapi.RequesterAPIClient,
-		args devstack_tests.DeterministicVerifierTestArgs,
-	) (string, error) {
-		host, port, _ := net.SplitHostPort(apiClient.BaseURI.Host)
-
-		_, out, err := cmdtesting.ExecuteTestCobraCommand(
-			"docker", "run",
-			"--api-host", host,
-			"--api-port", port,
-			"--verifier", "deterministic",
-			"--concurrency", strconv.Itoa(args.NodeCount),
-			"--confidence", strconv.Itoa(args.Confidence),
-			"ubuntu", "echo", "hello",
-		)
-
-		if err != nil {
-			return "", err
-		}
-		j := testutils.GetJobFromTestOutput(ctx, s.T(), apiClient, out)
-		return j.Metadata.ID, nil
-	}
-
-	// test that we must have more than one node to run the job
-	s.T().Run("more-than-one-node-to-run-the-job", func(t *testing.T) {
-		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
-			NodeCount:      1,
-			BadActors:      0,
-			Confidence:     0,
-			ExpectedPassed: 0,
-			ExpectedFailed: 1,
-		})
-	})
-
-	// test that if all nodes agree then all are verified
-	s.T().Run("all-nodes-agree-then-all-are-verified", func(t *testing.T) {
-		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
-			NodeCount:      3,
-			BadActors:      0,
-			Confidence:     0,
-			ExpectedPassed: 3,
-			ExpectedFailed: 0,
-		})
-	})
-
-	// test that if one node mis-behaves we catch it but the others are verified
-	s.T().Run("one-node-misbehaves-but-others-are-verified", func(t *testing.T) {
-		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
-			NodeCount:      3,
-			BadActors:      1,
-			Confidence:     0,
-			ExpectedPassed: 2,
-			ExpectedFailed: 1,
-		})
-	})
-
-	// test that is there is a draw between good and bad actors then none are verified
-	s.T().Run("draw-between-good-and-bad-actors-then-none-are-verified", func(t *testing.T) {
-		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
-			NodeCount:      2,
-			BadActors:      1,
-			Confidence:     0,
-			ExpectedPassed: 0,
-			ExpectedFailed: 2,
-		})
-	})
-
-	// test that with a larger group the confidence setting gives us a lower threshold
-	s.T().Run("larger-group-with-confidence-gives-lower-threshold", func(t *testing.T) {
-		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
-			NodeCount:      5,
-			BadActors:      2,
-			Confidence:     4,
-			ExpectedPassed: 0,
-			ExpectedFailed: 5,
-		})
-	})
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {

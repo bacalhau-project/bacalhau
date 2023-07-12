@@ -8,10 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	bidstrategy "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	model "github.com/bacalhau-project/bacalhau/pkg/model"
-	verifier "github.com/bacalhau-project/bacalhau/pkg/verifier"
-	external "github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -36,20 +33,6 @@ func NewMockEndpoint(ctrl *gomock.Controller) *MockEndpoint {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockEndpoint) EXPECT() *MockEndpointMockRecorder {
 	return m.recorder
-}
-
-// ApproveJob mocks base method.
-func (m *MockEndpoint) ApproveJob(arg0 context.Context, arg1 bidstrategy.ModerateJobRequest) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ApproveJob", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ApproveJob indicates an expected call of ApproveJob.
-func (mr *MockEndpointMockRecorder) ApproveJob(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApproveJob", reflect.TypeOf((*MockEndpoint)(nil).ApproveJob), arg0, arg1)
 }
 
 // CancelJob mocks base method.
@@ -95,20 +78,6 @@ func (m *MockEndpoint) SubmitJob(arg0 context.Context, arg1 model.JobCreatePaylo
 func (mr *MockEndpointMockRecorder) SubmitJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJob", reflect.TypeOf((*MockEndpoint)(nil).SubmitJob), arg0, arg1)
-}
-
-// VerifyExecutions mocks base method.
-func (m *MockEndpoint) VerifyExecutions(arg0 context.Context, arg1 external.ExternalVerificationResponse) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyExecutions", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// VerifyExecutions indicates an expected call of VerifyExecutions.
-func (mr *MockEndpointMockRecorder) VerifyExecutions(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyExecutions", reflect.TypeOf((*MockEndpoint)(nil).VerifyExecutions), arg0, arg1)
 }
 
 // MockScheduler is a mock of Scheduler interface.
@@ -161,21 +130,6 @@ func (m *MockScheduler) StartJob(arg0 context.Context, arg1 StartJobRequest) err
 func (mr *MockSchedulerMockRecorder) StartJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartJob", reflect.TypeOf((*MockScheduler)(nil).StartJob), arg0, arg1)
-}
-
-// VerifyExecutions mocks base method.
-func (m *MockScheduler) VerifyExecutions(arg0 context.Context, arg1 []verifier.VerifierResult) ([]verifier.VerifierResult, []verifier.VerifierResult) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyExecutions", arg0, arg1)
-	ret0, _ := ret[0].([]verifier.VerifierResult)
-	ret1, _ := ret[1].([]verifier.VerifierResult)
-	return ret0, ret1
-}
-
-// VerifyExecutions indicates an expected call of VerifyExecutions.
-func (mr *MockSchedulerMockRecorder) VerifyExecutions(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyExecutions", reflect.TypeOf((*MockScheduler)(nil).VerifyExecutions), arg0, arg1)
 }
 
 // MockQueue is a mock of Queue interface.
@@ -242,21 +196,6 @@ func (m *MockQueue) StartJob(arg0 context.Context, arg1 StartJobRequest) error {
 func (mr *MockQueueMockRecorder) StartJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartJob", reflect.TypeOf((*MockQueue)(nil).StartJob), arg0, arg1)
-}
-
-// VerifyExecutions mocks base method.
-func (m *MockQueue) VerifyExecutions(arg0 context.Context, arg1 []verifier.VerifierResult) ([]verifier.VerifierResult, []verifier.VerifierResult) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyExecutions", arg0, arg1)
-	ret0, _ := ret[0].([]verifier.VerifierResult)
-	ret1, _ := ret[1].([]verifier.VerifierResult)
-	return ret0, ret1
-}
-
-// VerifyExecutions indicates an expected call of VerifyExecutions.
-func (mr *MockQueueMockRecorder) VerifyExecutions(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyExecutions", reflect.TypeOf((*MockQueue)(nil).VerifyExecutions), arg0, arg1)
 }
 
 // MockNodeDiscoverer is a mock of NodeDiscoverer interface.
@@ -386,20 +325,6 @@ func (m *MockNodeSelector) CanCompleteJob(arg0 context.Context, arg1 *model.Job,
 func (mr *MockNodeSelectorMockRecorder) CanCompleteJob(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanCompleteJob", reflect.TypeOf((*MockNodeSelector)(nil).CanCompleteJob), arg0, arg1, arg2)
-}
-
-// CanVerifyJob mocks base method.
-func (m *MockNodeSelector) CanVerifyJob(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CanVerifyJob", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// CanVerifyJob indicates an expected call of CanVerifyJob.
-func (mr *MockNodeSelectorMockRecorder) CanVerifyJob(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanVerifyJob", reflect.TypeOf((*MockNodeSelector)(nil).CanVerifyJob), arg0, arg1, arg2)
 }
 
 // SelectBids mocks base method.

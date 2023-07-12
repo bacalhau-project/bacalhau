@@ -21,7 +21,7 @@ type PublisherParams struct {
 	ClientProvider *s3helper.ClientProvider
 }
 
-// Compile-time check that Verifier implements the correct interface:
+// Compile-time check that publisher implements the correct interface:
 var _ publisher.Publisher = (*Publisher)(nil)
 
 type Publisher struct {

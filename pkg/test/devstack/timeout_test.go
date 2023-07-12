@@ -73,8 +73,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 			},
 			Spec: model.Spec{
-				Engine:   model.EngineNoop,
-				Verifier: model.VerifierNoop,
+				Engine: model.EngineNoop,
 				PublisherSpec: model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},

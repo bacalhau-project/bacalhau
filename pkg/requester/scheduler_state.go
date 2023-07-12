@@ -44,7 +44,6 @@ func (s *BaseScheduler) transitionJobStateLockFree(ctx context.Context, jobID st
 
 	s.checkForFailedExecutions(ctx, job, jobState)
 	s.checkForPendingBids(ctx, job, jobState)
-	s.checkForPendingResults(ctx, job, jobState)
 	s.checkForCompletedExecutions(ctx, job, jobState)
 }
 
@@ -89,29 +88,8 @@ func (s *BaseScheduler) checkForPendingBids(ctx context.Context, job model.Job, 
 	}
 }
 
-// checkForPendingResults checks if enough executions proposed a result, verify the results, and accept/reject results accordingly.
-func (s *BaseScheduler) checkForPendingResults(ctx context.Context, job model.Job, jobState model.JobState) {
-	if s.nodeSelector.CanVerifyJob(ctx, &job, &jobState) {
-		executionsByState := jobState.GroupExecutionsByState()
-		succeeded, failed, err := s.verifyResult(ctx, job, executionsByState[model.ExecutionStateResultProposed])
-		log.Ctx(ctx).Debug().Err(err).Int("Succeeded", len(succeeded)).Int("Failed", len(failed)).Msg("Attempted to verify results")
-		if err != nil {
-			s.stopJob(ctx, job.ID(), fmt.Sprintf("failed to verify job %s: %s", job.ID(), err), false)
-			return
-		}
-		if len(failed) > 0 {
-			s.transitionJobStateLockFree(ctx, job.ID())
-		}
-	}
-}
-
 // checkForPendingPublishing checks if all verified executions have published, and if so, transition the job to a completed state.
 func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job model.Job, jobState model.JobState) {
-	if len(jobState.GroupExecutionsByState()[model.ExecutionStateResultAccepted]) > 0 {
-		// Some executions are still publishing – come back later.
-		return
-	}
-
 	shouldUpdate, newState := s.nodeSelector.CanCompleteJob(ctx, &job, &jobState)
 	if shouldUpdate {
 		err := s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
@@ -128,14 +106,7 @@ func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job mod
 				EventName:    model.JobEventCompleted,
 				EventTime:    time.Now(),
 			})
-
-			msg := fmt.Sprintf("job %s completed", job.ID())
-			if newState == model.JobStateCompletedPartially {
-				msg += " partially; some executions failed to publish results"
-			} else {
-				msg += " successfully"
-			}
-			log.Ctx(ctx).Info().Msg(msg)
+			log.Ctx(ctx).Info().Msgf("job %s successfully completed", job.ID())
 		}
 	}
 }
