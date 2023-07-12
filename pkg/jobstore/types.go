@@ -34,6 +34,8 @@ type Store interface {
 	CreateExecution(ctx context.Context, execution model.ExecutionState) error
 	// UpdateExecution updates the Job state
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+	// DeleteJob removes all trace of the provided job from storage
+	DeleteJob(ctx context.Context, jobID string) error
 	// Close provides an interface to cleanup any resources in use when the
 	// store is no longer required
 	Close(ctx context.Context) error

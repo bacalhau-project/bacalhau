@@ -20,6 +20,8 @@ func GetDatabase(path string) (*bolt.DB, error) {
 	return database, nil
 }
 
+// GetBucketData is a helper that will use the provided details to find
+// a key in a specific bucket and return its data.
 func GetBucketData(tx *bolt.Tx, bucketPath string, key []byte) []byte {
 	b, err := GetBucketByPath(tx, bucketPath, false)
 	if err != nil {

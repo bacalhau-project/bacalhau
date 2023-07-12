@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
@@ -24,6 +24,7 @@ const (
 	BucketPathJobHistory       = "jobs.history"
 	BucketPathInProgress       = "jobs.inprogress"
 	BucketPathClients          = "jobs.clients"
+	BucketPathExecutions       = "executions"
 	BucketPathExecutionHistory = "executions.history"
 
 	newJobComment = "Job created"
@@ -39,6 +40,15 @@ var BucketExecutions = []byte("executions")
 
 type BoltJobStore struct {
 	database *bolt.DB
+	clock    clock.Clock
+}
+
+type Option func(store *BoltJobStore)
+
+func WithClock(clock clock.Clock) Option {
+	return func(store *BoltJobStore) {
+		store.clock = clock
+	}
 }
 
 // NewBoltJobStore creates is a boltdb-backed JobStore implementation, storing
@@ -107,10 +117,19 @@ type BoltJobStore struct {
 //			|--- history # execution history
 //	              |---  <job-id>
 //			                |--- key:nnn -> value:{ExecutionHistory}
-func NewBoltJobStore(dbPath string) (*BoltJobStore, error) {
+func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	db, err := GetDatabase(dbPath)
 	if err != nil {
 		return nil, err
+	}
+
+	store := &BoltJobStore{
+		database: db,
+		clock:    clock.New(),
+	}
+
+	for _, opt := range options {
+		opt(store)
 	}
 
 	// Create the top level buckets ready for use as they
@@ -150,9 +169,7 @@ func NewBoltJobStore(dbPath string) (*BoltJobStore, error) {
 		return nil
 	})
 
-	return &BoltJobStore{
-		database: db,
-	}, err
+	return store, err
 }
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
@@ -178,15 +195,20 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (model.Job, error) {
 	return job, err
 }
 
-func (b *BoltJobStore) getExecution(_ *bolt.Tx, bucket *bolt.Bucket, executionID model.ExecutionID) (model.ExecutionState, error) {
+func (b *BoltJobStore) getExecution(tx *bolt.Tx, executionID model.ExecutionID) (model.ExecutionState, error) {
 	var exec model.ExecutionState
 
-	data := bucket.Get([]byte(executionID.String()))
-	if data != nil {
-		return exec, jobstore.NewErrExecutionAlreadyExists(executionID)
+	bucket, err := GetBucketByPath(tx, BucketPathExecutions, false)
+	if err != nil {
+		return exec, err
 	}
 
-	err := json.Unmarshal(data, &exec)
+	data := bucket.Get([]byte(executionID.String()))
+	if data == nil {
+		return exec, jobstore.NewErrExecutionNotFound(executionID)
+	}
+
+	err = json.Unmarshal(data, &exec)
 	return exec, err
 }
 
@@ -482,8 +504,8 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		JobID:      job.Metadata.ID,
 		State:      model.JobStateNew,
 		Version:    1,
-		CreateTime: time.Now().UTC(),
-		UpdateTime: time.Now().UTC(),
+		CreateTime: b.clock.Now().UTC(),
+		UpdateTime: b.clock.Now().UTC(),
 	}
 	data, err := json.Marshal(jobState)
 	if err != nil {
@@ -513,12 +535,8 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 	}
 
 	// Add a sentinel to the inprogress bucket
-	if bkt, err := GetBucketByPath(tx, BucketPathInProgress, false); err != nil {
-		return err
-	} else {
-		if err = bkt.Put(jobIDKey, nil); err != nil {
-			return err
-		}
+	if err = PutBucketSentinel(tx, BucketPathInProgress, jobIDKey); err != nil {
+		return nil
 	}
 
 	// Add sentinel for jobs client id
@@ -538,6 +556,73 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 	}
 
 	return b.appendJobHistory(tx, jobState, model.JobStateNew, newJobComment)
+}
+
+// DeleteJob removes the specified job from the system entirely
+func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) error {
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		return b.deleteJob(tx, jobID)
+	})
+}
+
+func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
+	jobIDKey := []byte(jobID)
+
+	job, err := b.getJob(tx, jobID)
+	if err != nil {
+		return bacerrors.NewJobNotFound(jobID)
+	}
+
+	// Write the JobState to the state bucket
+	if bkt, err := GetBucketByPath(tx, BucketPathState, false); err != nil {
+		return err
+	} else {
+		if err = bkt.Delete(jobIDKey); err != nil {
+			return err
+		}
+	}
+
+	if bkt, err := GetBucketByPath(tx, BucketPathJobs, false); err != nil {
+		return err
+	} else {
+		if err = bkt.Delete(jobIDKey); err != nil {
+			return err
+		}
+	}
+
+	// Add a sentinel to the inprogress bucket
+	if bkt, err := GetBucketByPath(tx, BucketPathInProgress, false); err != nil {
+		return err
+	} else {
+		if err = bkt.Delete(jobIDKey); err != nil {
+			return err
+		}
+	}
+
+	// Delete the sentinel marker for this job/clientid pair.
+	path := fmt.Sprintf("%s.%s", BucketPathClients, job.Metadata.ClientID)
+	if clients, err := GetBucketByPath(tx, path, false); err != nil {
+		return err
+	} else {
+		if err = clients.Delete(jobIDKey); err != nil {
+			return err
+		}
+	}
+
+	// Delete sentinels keys for specific tags
+	for _, tag := range job.Spec.Annotations {
+		path := fmt.Sprintf("%s.%s", BucketPathTags, strings.ToLower(tag))
+		if bkt, err := GetBucketByPath(tx, path, false); err != nil {
+			return err
+		} else {
+			err = bkt.Delete(jobIDKey)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // UpdateJobState updates the current state for a single Job, appending an entry to
@@ -583,7 +668,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	previousState := jobState.State
 	jobState.State = request.NewState
 	jobState.Version++
-	jobState.UpdateTime = time.Now().UTC()
+	jobState.UpdateTime = b.clock.Now().UTC()
 
 	data, err = json.Marshal(jobState)
 	if err != nil {
@@ -651,7 +736,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 	execID := []byte(execution.ID().String())
 
 	if execution.CreateTime.IsZero() {
-		execution.CreateTime = time.Now().UTC()
+		execution.CreateTime = b.clock.Now().UTC()
 	}
 	if execution.UpdateTime.IsZero() {
 		execution.UpdateTime = execution.CreateTime
@@ -662,11 +747,11 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 
 	// Check for the existence of this ID and if it doesn't already exist, then create
 	// it
-	if bucket, err := GetBucketByPath(tx, string(BucketExecutions), false); err != nil {
+	if bucket, err := GetBucketByPath(tx, BucketPathExecutions, false); err != nil {
 		return err
 	} else {
-		_, err := b.getExecution(tx, bucket, execution.ID())
-		if err != nil {
+		_, err := b.getExecution(tx, execution.ID())
+		if err == nil {
 			return jobstore.NewErrExecutionAlreadyExists(execution.ID())
 		}
 
@@ -696,15 +781,9 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		return jobstore.NewErrJobNotFound(request.ExecutionID.JobID)
 	}
 
-	var existingExecution model.ExecutionState
-	bucket, err := GetBucketByPath(tx, string(BucketExecutions), false)
+	existingExecution, err := b.getExecution(tx, request.ExecutionID)
 	if err != nil {
-		return err
-	} else {
-		existingExecution, err = b.getExecution(tx, bucket, request.ExecutionID)
-		if err != nil {
-			return jobstore.NewErrExecutionNotFound(request.ExecutionID)
-		}
+		return jobstore.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
 	// check the expected state
@@ -718,7 +797,7 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	// populate default values
 	newExecution := request.NewValues
 	if newExecution.CreateTime.IsZero() {
-		newExecution.CreateTime = time.Now().UTC()
+		newExecution.CreateTime = b.clock.Now().UTC()
 	}
 	if newExecution.UpdateTime.IsZero() {
 		newExecution.UpdateTime = existingExecution.CreateTime
@@ -737,9 +816,14 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		return err
 	}
 
-	err = bucket.Put([]byte(newExecution.ID().String()), data)
+	bucket, err := GetBucketByPath(tx, BucketPathExecutions, false)
 	if err != nil {
 		return err
+	} else {
+		err = bucket.Put([]byte(newExecution.ID().String()), data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return b.appendExecutionHistory(tx, newExecution, existingExecution.State, request.Comment)

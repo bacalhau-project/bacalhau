@@ -188,12 +188,21 @@ func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
 		JobID:      job.Metadata.ID,
 		State:      model.JobStateNew,
 		Version:    1,
-		CreateTime: time.Now(),
-		UpdateTime: time.Now(),
+		CreateTime: time.Now().UTC(),
+		UpdateTime: time.Now().UTC(),
 	}
 	d.states[job.Metadata.ID] = jobState
 	d.inprogress[job.Metadata.ID] = struct{}{}
 	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
+	return nil
+}
+
+// DeleteJob removes a job from storage
+func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
+	delete(d.jobs, jobID)
+	delete(d.states, jobID)
+	delete(d.inprogress, jobID)
+	delete(d.history, jobID)
 	return nil
 }
 
