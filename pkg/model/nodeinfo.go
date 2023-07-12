@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -33,6 +34,11 @@ type NodeInfo struct {
 // IsComputeNode returns true if the node is a compute node
 func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
+}
+
+func (n NodeInfo) String() string {
+	bytes, _ := json.Marshal(n)
+	return string(bytes)
 }
 
 type ComputeNodeInfo struct {
