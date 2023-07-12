@@ -12,7 +12,7 @@ import (
 	model "github.com/bacalhau-project/bacalhau/pkg/model"
 	verifier "github.com/bacalhau-project/bacalhau/pkg/verifier"
 	external "github.com/bacalhau-project/bacalhau/pkg/verifier/external"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEndpoint is a mock of Endpoint interface.
