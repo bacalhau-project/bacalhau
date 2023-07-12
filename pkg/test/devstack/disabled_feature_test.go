@@ -49,15 +49,6 @@ func (s *DisabledFeatureTestSuite) TestDisabledEngine() {
 	testCase := disabledTestSpec()
 	testCase.Stack.DevStackOptions.DisabledFeatures.Engines = []model.Engine{model.EngineWasm}
 
-	// TODO: This is a hack – because we are doing engine filtering at the node
-	// selection rather than node ranking stage (see store.ListForEngine) the
-	// StoreNodeDiscoverer returns nothing but the IdentityNodeDiscoverer
-	// returns the node we didn't want to see, because it doesn't know any
-	// better. Really we either need to push *all* filtering down into the store
-	// or allow the store to tell us what nodes it discarded.
-	testCase.SubmitChecker = scenario.SubmitJobSuccess()
-	testCase.JobCheckers = []job.CheckStatesFunction{waitForError}
-
 	s.RunScenario(testCase)
 }
 

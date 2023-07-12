@@ -292,12 +292,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		seenJobs++
 		return &model.RunCommandResult{}, nil
 	}
-	nodeOverrides := make([]node.NodeConfig, nodeCount)
-	for i := 0; i < nodeCount; i++ {
-		nodeOverrides[i] = node.NodeConfig{
-			NodeInfoPublisherInterval: 100 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
-		}
-	}
 	stack := testutils.SetupTestWithNoopExecutor(
 		ctx,
 		suite.T(),
@@ -318,7 +312,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				JobHandler: jobHandler,
 			},
 		},
-		nodeOverrides...,
 	)
 	// for the requester node to pick up the nodeInfo messages
 	testutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
