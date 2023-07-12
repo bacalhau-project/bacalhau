@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -170,6 +171,7 @@ func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {
+	docker.MustHaveDocker(s.T())
 	port, _ := s.serve("--node-type", "requester", "--node-type", "compute")
 	client := publicapi.NewRequesterAPIClient("localhost", port)
 	s.Require().NoError(publicapi.WaitForHealthy(s.ctx, client))
@@ -182,6 +184,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 }
 
 func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
+	docker.MustHaveDocker(s.T())
 	// Networking is disabled by default so we try to submit a networked job and
 	// expect it to be rejected.
 	port, _ := s.serve("--node-type", "requester")
