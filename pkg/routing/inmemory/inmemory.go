@@ -55,7 +55,7 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 			}
 		}
 	} else {
-		log.Ctx(ctx).Debug().Msgf("Adding new node to in-memory nodeInfo store: %v", nodeInfo)
+		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store", nodeInfo.PeerInfo.ID)
 	}
 
 	// TODO: use data structure that maintains nodes in descending order based on available capacity.

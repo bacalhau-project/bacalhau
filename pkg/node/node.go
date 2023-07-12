@@ -131,7 +131,7 @@ func NewNode(
 	}
 
 	// PubSub to publish node info to the network
-	nodeInfoLibp2pPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
+	nodeInfoPubSub, err := libp2p.NewPubSub[model.NodeInfo](libp2p.PubSubParams{
 		Host:      config.Host,
 		TopicName: NodeInfoTopic,
 		PubSub:    gossipSub,
@@ -158,7 +158,7 @@ func NewNode(
 		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
 	}
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           nodeInfoLibp2pPubSub,
+		PubSub:           nodeInfoPubSub,
 		NodeInfoProvider: nodeInfoProvider,
 		IntervalConfig:   nodeInfoPublisherInterval,
 	})
@@ -172,7 +172,7 @@ func NewNode(
 	// register consumers of node info published over gossipSub
 	nodeInfoSubscriber := pubsub.NewChainedSubscriber[model.NodeInfo](true)
 	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[model.NodeInfo](nodeInfoStore.Add))
-	err = nodeInfoLibp2pPubSub.Subscribe(ctx, nodeInfoSubscriber)
+	err = nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func NewNode(
 			requesterNode.cleanup(ctx)
 		}
 		nodeInfoPublisher.Stop(ctx)
-		cleanupErr := nodeInfoLibp2pPubSub.Close(ctx)
+		cleanupErr := nodeInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
 		cleanupErr = jobInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job info pub sub")
