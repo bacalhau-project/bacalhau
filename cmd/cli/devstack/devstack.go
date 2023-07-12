@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -49,6 +50,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
+		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
 	}
 }
 

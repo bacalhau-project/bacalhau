@@ -65,9 +65,6 @@ func NewRequesterNode(
 		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
 			Store: nodeInfoStore,
 		}),
-		discovery.NewIdentityNodeDiscoverer(discovery.IdentityNodeDiscovererParams{
-			Host: host,
-		}),
 	)
 
 	// compute node ranker

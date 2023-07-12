@@ -2,9 +2,11 @@ package testdata
 
 import (
 	_ "embed"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -46,9 +48,9 @@ var (
 	YamlJobNoopInvalid *Fixture
 	YamlJobNoopUrl     *Fixture
 
-	TaskDockerJson     *Fixture
-	TaskWasmJson       *Fixture
-	TaskWithConfigJson *Fixture
+	IPVMTaskDocker     *Fixture
+	IPVMTaskWasm       *Fixture
+	IPVMTaskWithConfig *Fixture
 )
 
 func init() {
@@ -62,9 +64,9 @@ func init() {
 
 	YamlJobNoopUrl = NewSpecFixture(jobNoopURLYAML)
 
-	TaskDockerJson = NewSpecFixture(dockerTaskJSON)
-	TaskWasmJson = NewSpecFixture(wasmTaskJSON)
-	TaskWithConfigJson = NewSpecFixture(taskWithConfigJSON)
+	IPVMTaskDocker = NewIPVMFixture(dockerTaskJSON)
+	IPVMTaskWasm = NewIPVMFixture(wasmTaskJSON)
+	IPVMTaskWithConfig = NewIPVMFixture(taskWithConfigJSON)
 
 }
 
@@ -86,6 +88,15 @@ func (f *Fixture) RequiresS3() bool {
 	return false
 }
 
+// validate validates the fixture.
+func (f *Fixture) validate() {
+	// validate the job spec was deserialized correctly and not empty
+	// checking for valid engine seems like a good enough check
+	if !model.IsValidEngine(f.Job.Spec.Engine) {
+		panic(fmt.Errorf("spec is empty/invalid: %s", string(f.Data)))
+	}
+}
+
 func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
 	tmpfile, err := os.CreateTemp("", pattern)
 	require.NoError(t, err)
@@ -105,8 +116,34 @@ func NewSpecFixture(data []byte) *Fixture {
 		panic(err)
 	}
 
-	return &Fixture{
+	f := &Fixture{
 		Job:  out,
 		Data: data,
 	}
+	f.validate()
+	return f
+}
+
+func NewIPVMFixture(data []byte) *Fixture {
+	task, err := model.UnmarshalIPLD[model.Task](data, json.Decode, model.UCANTaskSchema)
+	if err != nil {
+		panic(err)
+	}
+	spec, err := task.ToSpec()
+	if err != nil {
+		panic(err)
+	}
+
+	job, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		panic(err)
+	}
+	job.Spec = *spec
+
+	f := &Fixture{
+		Job:  *job,
+		Data: data,
+	}
+	f.validate()
+	return f
 }

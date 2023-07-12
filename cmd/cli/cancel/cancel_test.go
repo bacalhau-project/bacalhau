@@ -34,7 +34,7 @@ func TestCancelSuite(t *testing.T) {
 
 func (suite *CancelSuite) TestCancelTerminalJob() {
 	ctx := context.Background()
-	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.TaskDockerJson.Data, "create",
+	_, stdout, err := cmdtesting.ExecuteTestCobraCommandWithStdinBytes(testdata.IPVMTaskDocker.Data, "create",
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)

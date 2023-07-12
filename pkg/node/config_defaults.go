@@ -3,12 +3,14 @@ package node
 import (
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 var DefaultComputeConfig = ComputeConfigParams{
-	PhysicalResourcesProvider: system.NewPhysicalCapacityProvider(),
+	PhysicalResourcesProvider: compute_system.NewPhysicalCapacityProvider(),
 	DefaultJobResourceLimits: model.ResourceUsageData{
 		CPU:    0.1,               // 100m
 		Memory: 100 * 1024 * 1024, // 100Mi
@@ -34,4 +36,24 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	MinBacalhauVersion: model.BuildVersionInfo{
 		Major: "0", Minor: "3", GitVersion: "v0.3.26",
 	},
+}
+
+var DefaultNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
+	Interval:             30 * time.Second,
+	EagerPublishInterval: 5 * time.Second,
+	EagerPublishDuration: 30 * time.Second,
+}
+
+// speed up node announcements for tests
+var TestNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
+	Interval:             30 * time.Second,
+	EagerPublishInterval: 10 * time.Millisecond,
+	EagerPublishDuration: 5 * time.Second,
+}
+
+func GetNodeInfoPublishConfig() routing.NodeInfoPublisherIntervalConfig {
+	if system.GetEnvironment() == system.EnvironmentTest {
+		return TestNodeInfoPublishConfig
+	}
+	return DefaultNodeInfoPublishConfig
 }
