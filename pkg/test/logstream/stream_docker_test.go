@@ -29,7 +29,6 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 
 	job := testutils.MakeJob(
 		model.EngineDocker,
-		model.VerifierNoop,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"})
 	job.Metadata.ID = "logstreamtest-docker"

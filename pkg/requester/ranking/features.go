@@ -10,7 +10,7 @@ import (
 )
 
 // featureNodeRanker is a generic ranker that can rank nodes based on what
-// features (engines, publishers, verifiers, storage sources) are installed.
+// features (engines, publishers, storage sources) are installed.
 type featureNodeRanker[Key model.ProviderKey] struct {
 	getJobRequirement   func(model.Job) []Key
 	getNodeProvidedKeys func(model.ComputeNodeInfo) []Key
@@ -20,13 +20,6 @@ func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
 	return &featureNodeRanker[model.Engine]{
 		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
 		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
-	}
-}
-
-func NewVerifiersNodeRanker() *featureNodeRanker[model.Verifier] {
-	return &featureNodeRanker[model.Verifier]{
-		getJobRequirement:   func(j model.Job) []model.Verifier { return []model.Verifier{j.Spec.Verifier} },
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Verifier { return ni.Verifiers },
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -89,23 +90,28 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 }
 
 func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
-	defaultJob, err := model.NewJobWithSaneProductionDefaults()
-	s.NoError(err)
-	execution := store.NewExecution(
-		"defaultID",
-		*defaultJob,
-		"defaultRequestorNodeID",
-		model.ResourceUsageData{},
-	)
-	err = s.proxy.CreateExecution(context.Background(), *execution)
-	s.NoError(err)
-	for executionState := 0; executionState < 7; executionState++ {
-		err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
-			ExecutionID: execution.ID,
-			NewState:    store.ExecutionState(executionState)})
-		s.NoError(err)
-		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
-		s.NoError(err)
-		s.Equal(uint64(0), count)
+	for _, executionState := range store.ExecutionStateTypes() {
+		if executionState == store.ExecutionStateCompleted {
+			continue
+		}
+		s.Run(executionState.String(), func() {
+			defaultJob, err := model.NewJobWithSaneProductionDefaults()
+			s.NoError(err)
+			execution := store.NewExecution(
+				uuid.NewString(),
+				*defaultJob,
+				"defaultRequestorNodeID",
+				model.ResourceUsageData{},
+			)
+			err = s.proxy.CreateExecution(context.Background(), *execution)
+			s.NoError(err)
+			err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
+				ExecutionID: execution.ID,
+				NewState:    store.ExecutionState(executionState)})
+			s.NoError(err)
+			count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
+			s.NoError(err)
+			s.Equal(uint64(0), count)
+		})
 	}
 }

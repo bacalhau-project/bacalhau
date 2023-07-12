@@ -56,7 +56,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					WithResources("1", "1", "0", "0"),
 					WithOutputs(tcids.outputVolumes...),
 					WithTimeout(300),
-					WithDeal(model.TargetAny, 1, 0, 0),
+					WithDeal(model.TargetAny, 1),
 				)
 				j := model.Job{
 					APIVersion: model.APIVersionLatest().String(),

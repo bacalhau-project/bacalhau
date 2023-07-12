@@ -801,14 +801,6 @@
                     "description": "The maximum number of concurrent compute node bids that will be\naccepted by the requester node on behalf of the client.",
                     "type": "integer"
                 },
-                "Confidence": {
-                    "description": "The number of nodes that must agree on a verification result\nthis is used by the different verifiers - for example the\ndeterministic verifier requires the winning group size\nto be at least this size",
-                    "type": "integer"
-                },
-                "MinBids": {
-                    "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them (when\nTargetAll=false). This allows the Requester node to get some level of\nguarantee that the execution of the jobs will be spread evenly across the\nnetwork (assuming that this value is some large proportion of the size of\nthe network).",
-                    "type": "integer"
-                },
                 "TargetingMode": {
                     "description": "Whether the job should be run on any matching node (false) or all\nmatching nodes (true). If true, other fields in this struct are ignored.",
                     "type": "boolean"
@@ -839,10 +831,6 @@
         "model.ExecutionState": {
             "type": "object",
             "properties": {
-                "AcceptedAskForBid": {
-                    "description": "Set to true iff the compute node accepted the ask for a bid, and intends\nto run the job if the bid is accepted by the requester.",
-                    "type": "boolean"
-                },
                 "ComputeReference": {
                     "description": "Compute node reference for this job execution",
                     "type": "string"

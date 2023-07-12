@@ -28,8 +28,7 @@ func getSampleDockerJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
+		Engine: model.EngineDocker,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
@@ -59,8 +58,7 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
+		Engine: model.EngineDocker,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},

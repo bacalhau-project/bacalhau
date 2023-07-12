@@ -132,7 +132,7 @@ func (s *JobUtilSuite) TestStateSummary() {
 		{
 			name: "Canceled wins out against Bid Accepted and Rejected",
 			states: []model.ExecutionStateType{
-				model.ExecutionStateCanceled,
+				model.ExecutionStateCancelled,
 				model.ExecutionStateAskForBidAccepted,
 				model.ExecutionStateAskForBidRejected,
 			},

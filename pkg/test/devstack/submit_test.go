@@ -41,10 +41,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	stack, _ := testutils.SetupTest(
 		ctx,
 		suite.T(),
-
 		1,
-		0,
-
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)

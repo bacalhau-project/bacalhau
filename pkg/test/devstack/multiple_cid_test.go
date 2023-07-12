@@ -36,8 +36,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			Engine: model.EngineWasm,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},

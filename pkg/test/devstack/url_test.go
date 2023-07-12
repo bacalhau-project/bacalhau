@@ -65,8 +65,7 @@ func runURLTest(
 			job.WaitForSuccessfulCompletion(),
 		},
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			Engine: model.EngineWasm,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},
@@ -225,8 +224,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
 		Spec: model.Spec{
-			Engine:   model.EngineWasm,
-			Verifier: model.VerifierNoop,
+			Engine: model.EngineWasm,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherIpfs,
 			},

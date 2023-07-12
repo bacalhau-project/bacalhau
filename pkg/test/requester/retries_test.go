@@ -5,7 +5,6 @@ package requester
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -29,7 +27,7 @@ import (
 
 var executionErr = errors.New("I am a bad executor")
 var publishErr = errors.New("I am a bad publisher")
-var slowExecutorSleep = 2 * time.Second
+var slowExecutorSleep = 5 * time.Second
 
 type RetriesSuite struct {
 	suite.Suite
@@ -48,9 +46,7 @@ func (s *RetriesSuite) SetupSuite() {
 			Labels: map[string]string{
 				"name": "requester-node",
 			},
-			DependencyInjector: node.NodeDependencyInjector{
-				VerifiersFactory: node.NewStandardVerifiersFactory(),
-			},
+			DependencyInjector: node.NodeDependencyInjector{},
 		},
 		{
 			Labels: map[string]string{
@@ -69,34 +65,6 @@ func (s *RetriesSuite) SetupSuite() {
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
 					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 						JobHandler: noop_executor.ErrorJobHandler(executionErr),
-					},
-				}),
-			},
-		},
-		{
-			Labels: map[string]string{
-				"name": "bad-result",
-			},
-			DependencyInjector: node.NodeDependencyInjector{
-				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
-							return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader(""), 0, nil)
-						},
-					},
-				}),
-			},
-		},
-		{
-			Labels: map[string]string{
-				"name": "bad-result2",
-			},
-			DependencyInjector: node.NodeDependencyInjector{
-				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
-							return executor.WriteJobResults(resultsDir, strings.NewReader("oranges"), strings.NewReader(""), 0, nil)
-						},
 					},
 				}),
 			},
@@ -184,10 +152,7 @@ func (s *RetriesSuite) TestRetry() {
 	testCases := []struct {
 		name                    string
 		nodes                   []string // nodes to constrain the job to
-		verifier                model.Verifier
 		concurrency             int
-		confidence              int
-		minBids                 int
 		failed                  bool // whether the job should fail
 		expectedJobState        model.JobStateType
 		expectedExecutionStates map[model.ExecutionStateType]int
@@ -232,37 +197,6 @@ func (s *RetriesSuite) TestRetry() {
 			},
 		},
 		{
-			name:        "verification-failure-succeed-with-retry-on-good-nodes",
-			nodes:       []string{"bad-result", "bad-result2", "good-guy1", "good-guy2"},
-			verifier:    model.VerifierDeterministic,
-			concurrency: 2,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted:      2,
-				model.ExecutionStateResultRejected: 2,
-			},
-		},
-		{
-			name:        "verification-failure-succeed-with-enough-confidence",
-			nodes:       []string{"bad-result", "good-guy1", "good-guy2"},
-			verifier:    model.VerifierDeterministic,
-			concurrency: 3,
-			confidence:  2,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted:      2,
-				model.ExecutionStateResultRejected: 1,
-			},
-		},
-		{
-			name:        "verification-failure-no-good-nodes",
-			nodes:       []string{"bad-result", "bad-result2", "good-guy1"},
-			verifier:    model.VerifierDeterministic,
-			concurrency: 2,
-			failed:      true,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateResultRejected: 2,
-			},
-		},
-		{
 			name:  "publish-failure-succeed-with-retry-on-good-nodes",
 			nodes: []string{"bad-publisher", "good-guy1"},
 			expectedExecutionStates: map[model.ExecutionStateType]int{
@@ -288,10 +222,11 @@ func (s *RetriesSuite) TestRetry() {
 			name:             "publish-partial-failure",
 			nodes:            []string{"bad-publisher", "good-guy1"},
 			concurrency:      2,
-			expectedJobState: model.JobStateCompletedPartially,
+			failed:           true,
+			expectedJobState: model.JobStateError,
 			expectedExecutionStates: map[model.ExecutionStateType]int{
 				model.ExecutionStateCompleted: 1,
-				model.ExecutionStateFailed:    1,
+				model.ExecutionStateFailed:    2, // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed: publishErr.Error(),
@@ -304,43 +239,26 @@ func (s *RetriesSuite) TestRetry() {
 			failed:           true,
 			expectedJobState: model.JobStateError,
 			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateFailed:   2, // we retry up to two times on the same node
-				model.ExecutionStateCanceled: 1,
+				model.ExecutionStateFailed:    2, // we retry up to two times on the same node
+				model.ExecutionStateCancelled: 1,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed:   executionErr.Error(),
-				model.ExecutionStateCanceled: executionErr.Error(),
+				model.ExecutionStateFailed:    executionErr.Error(),
+				model.ExecutionStateCancelled: executionErr.Error(),
 			},
-		},
-		{
-			name:    "min-bids-succeed",
-			nodes:   []string{"good-guy1", "good-guy2"},
-			minBids: 2,
-			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted:   1,
-				model.ExecutionStateBidRejected: 1,
-			},
-		},
-		{
-			name:    "min-bids-fail",
-			nodes:   []string{"good-guy1"},
-			minBids: 2,
-			failed:  true,
 		},
 		{
 			name:        "multiple-failures-succeed-with-retry-on-good-nodes",
-			nodes:       []string{"bid-rejector", "bad-executor", "bad-result", "bad-result2", "good-guy1", "good-guy2"},
-			verifier:    model.VerifierDeterministic,
+			nodes:       []string{"bid-rejector", "bad-executor", "good-guy1", "good-guy2"},
 			concurrency: 2,
 			expectedExecutionStates: map[model.ExecutionStateType]int{
 				model.ExecutionStateAskForBidRejected: 1,
 				model.ExecutionStateFailed:            1,
-				model.ExecutionStateResultRejected:    2,
 				model.ExecutionStateCompleted:         2,
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
-				model.ExecutionStateFailed:   executionErr.Error(),
-				model.ExecutionStateCanceled: executionErr.Error(),
+				model.ExecutionStateFailed:    executionErr.Error(),
+				model.ExecutionStateCancelled: executionErr.Error(),
 			},
 		},
 	}
@@ -348,13 +266,7 @@ func (s *RetriesSuite) TestRetry() {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
 			j := makeBadTargetingJob(tc.nodes)
-			j.Spec.Verifier = tc.verifier
-			if !model.IsValidVerifier(j.Spec.Verifier) {
-				j.Spec.Verifier = model.VerifierNoop
-			}
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
-			j.Spec.Deal.Confidence = tc.confidence
-			j.Spec.Deal.MinBids = tc.minBids
 			submittedJob, err := s.client.Submit(ctx, j)
 			if tc.failed {
 				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
@@ -380,7 +292,7 @@ func (s *RetriesSuite) TestRetry() {
 				}
 			}
 			s.Equal(tc.expectedJobState, jobState.State,
-				"Expected job in state %s, found %s", tc.expectedJobState, jobState.State)
+				"Expected job in state %s, found %s", tc.expectedJobState.String(), jobState.State.String())
 
 			// verify execution states
 			executionStates := jobState.GroupExecutionsByState()
@@ -401,7 +313,7 @@ func (s *RetriesSuite) TestRetry() {
 }
 
 func makeBadTargetingJob(restrictedNodes []string) *model.Job {
-	j := testutils.MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{"echo", "hello"})
+	j := testutils.MakeJob(model.EngineNoop, model.PublisherNoop, []string{"echo", "hello"})
 	req := []model.LabelSelectorRequirement{
 		{
 			Key:      "favour_name",

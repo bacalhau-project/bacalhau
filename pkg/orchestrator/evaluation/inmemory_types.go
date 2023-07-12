@@ -5,18 +5,18 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // compile-time assertion that evalWrapper satisfies the ScheduledTask interface
-var _ collections.ScheduledTask[*model.Evaluation] = &evalWrapper{}
+var _ collections.ScheduledTask[*models.Evaluation] = &evalWrapper{}
 
 // evalWrapper satisfies the ScheduledTask interface
 type evalWrapper struct {
-	eval *model.Evaluation
+	eval *models.Evaluation
 }
 
-func (d *evalWrapper) Data() *model.Evaluation {
+func (d *evalWrapper) Data() *models.Evaluation {
 	return d.eval
 }
 
@@ -30,7 +30,7 @@ func (d *evalWrapper) WaitUntil() time.Time {
 
 // inflightEval tracks an unacknowledged evaluation along with the visibility timeout timer
 type inflightEval struct {
-	Eval            *model.Evaluation
+	Eval            *models.Evaluation
 	ReceiptHandle   string
 	VisibilityTimer *time.Timer
 }
@@ -42,7 +42,7 @@ type BrokerStats struct {
 	TotalPending    int
 	TotalWaiting    int
 	TotalCancelable int
-	DelayedEvals    map[string]*model.Evaluation
+	DelayedEvals    map[string]*models.Evaluation
 	ByScheduler     map[string]*SchedulerStats
 }
 
@@ -76,7 +76,7 @@ func (s *SchedulerStats) IsEmpty() bool {
 
 // ReadyEvaluations is a list of ready Evaluations across multiple jobs. We
 // implement the container/heap interface so that this is a priority queue.
-type ReadyEvaluations []*model.Evaluation
+type ReadyEvaluations []*models.Evaluation
 
 // Len is for the sorting interface
 func (r ReadyEvaluations) Len() int {
@@ -100,7 +100,7 @@ func (r ReadyEvaluations) Swap(i, j int) {
 
 // Push is used to add a new evaluation to the slice
 func (r *ReadyEvaluations) Push(e interface{}) {
-	*r = append(*r, e.(*model.Evaluation))
+	*r = append(*r, e.(*models.Evaluation))
 }
 
 // Pop is used to remove an evaluation from the slice
@@ -113,7 +113,7 @@ func (r *ReadyEvaluations) Pop() interface{} {
 }
 
 // Peek is used to peek at the next element that would be popped
-func (r ReadyEvaluations) Peek() *model.Evaluation {
+func (r ReadyEvaluations) Peek() *models.Evaluation {
 	n := len(r)
 	if n == 0 {
 		return nil
@@ -123,7 +123,7 @@ func (r ReadyEvaluations) Peek() *model.Evaluation {
 
 // PendingEvaluations is a list of pending Evaluations for a given job. We
 // implement the container/heap interface so that this is a priority queue.
-type PendingEvaluations []*model.Evaluation
+type PendingEvaluations []*models.Evaluation
 
 // Len is for the sorting interface
 func (p PendingEvaluations) Len() int {
@@ -147,7 +147,7 @@ func (p PendingEvaluations) Swap(i, j int) {
 
 // Push implements the heap interface and is used to add a new evaluation to the slice
 func (p *PendingEvaluations) Push(e interface{}) {
-	*p = append(*p, e.(*model.Evaluation))
+	*p = append(*p, e.(*models.Evaluation))
 }
 
 // Pop implements the heap interface and is used to remove an evaluation from the slice
@@ -163,14 +163,14 @@ func (p *PendingEvaluations) Pop() interface{} {
 // highest modify index and highest priority. It returns a slice of cancelable
 // evals so that Eval.Ack RPCs can write batched raft entries to cancel
 // them. This must be called inside the broker's lock.
-func (p *PendingEvaluations) MarkForCancel() []*model.Evaluation {
+func (p *PendingEvaluations) MarkForCancel() []*models.Evaluation {
 	// In pathological cases, we can have a large number of pending evals but
 	// will want to cancel most of them. Using heap.Remove requires we re-sort
 	// for each eval we remove. Because we expect to have at most one remaining,
 	// we'll just create a new heap.
-	retain := PendingEvaluations{(heap.Pop(p)).(*model.Evaluation)}
+	retain := PendingEvaluations{(heap.Pop(p)).(*models.Evaluation)}
 
-	cancelable := make([]*model.Evaluation, len(*p))
+	cancelable := make([]*models.Evaluation, len(*p))
 	copy(cancelable, *p)
 
 	*p = retain

@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/pkg/errors"
 )
 
@@ -64,8 +63,4 @@ func (q *queue) CancelJob(ctx context.Context, req CancelJobRequest) (CancelJobR
 	}
 	defer q.emitter.EmitJobCanceled(ctx, req)
 	return CancelJobResult{}, err
-}
-
-func (q *queue) VerifyExecutions(ctx context.Context, results []verifier.VerifierResult) (succeeded, failed []verifier.VerifierResult) {
-	return q.scheduler.VerifyExecutions(ctx, results)
 }

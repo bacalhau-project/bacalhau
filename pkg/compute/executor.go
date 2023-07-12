@@ -10,42 +10,41 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
 type BaseExecutorParams struct {
-	ID              string
-	Callback        Callback
-	Store           store.ExecutionStore
-	Executors       executor.ExecutorProvider
-	Verifiers       verifier.VerifierProvider
-	Publishers      publisher.PublisherProvider
-	SimulatorConfig model.SimulatorConfigCompute
+	ID                     string
+	Callback               Callback
+	Store                  store.ExecutionStore
+	Executors              executor.ExecutorProvider
+	ResultsPath            ResultsPath
+	Publishers             publisher.PublisherProvider
+	FailureInjectionConfig model.FailureInjectionComputeConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID              string
-	callback        Callback
-	store           store.ExecutionStore
-	cancellers      generic.SyncMap[string, context.CancelFunc]
-	executors       executor.ExecutorProvider
-	verifiers       verifier.VerifierProvider
-	publishers      publisher.PublisherProvider
-	simulatorConfig model.SimulatorConfigCompute
+	ID               string
+	callback         Callback
+	store            store.ExecutionStore
+	cancellers       generic.SyncMap[string, context.CancelFunc]
+	executors        executor.ExecutorProvider
+	publishers       publisher.PublisherProvider
+	resultsPath      ResultsPath
+	failureInjection model.FailureInjectionComputeConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:              params.ID,
-		callback:        params.Callback,
-		store:           params.Store,
-		executors:       params.Executors,
-		verifiers:       params.Verifiers,
-		publishers:      params.Publishers,
-		simulatorConfig: params.SimulatorConfig,
+		ID:               params.ID,
+		callback:         params.Callback,
+		store:            params.Store,
+		executors:        params.Executors,
+		publishers:       params.Publishers,
+		failureInjection: params.FailureInjectionConfig,
+		resultsPath:      params.ResultsPath,
 	}
 }
 
@@ -65,9 +64,10 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		}
 	}()
 
+	operation := "Running"
 	defer func() {
 		if err != nil {
-			e.handleFailure(ctx, execution, err, "Running")
+			e.handleFailure(ctx, execution, err, operation)
 		}
 	}()
 
@@ -81,13 +81,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
-	if err != nil {
-		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
-		return
-	}
-
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
+	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
 		err = fmt.Errorf("failed to get result path: %w", err)
 		return
@@ -99,75 +93,43 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return
 	}
 
-	var runCommandResult *model.RunCommandResult
-
-	if !e.simulatorConfig.IsBadActor {
-		runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
-		if err != nil {
-			jobsFailed.Add(ctx, 1)
-		} else {
-			jobsCompleted.Add(ctx, 1)
-		}
-
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
-			return
-		}
+	if e.failureInjection.IsBadActor {
+		err = fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
+		return
 	}
 
-	proposal, err := jobVerifier.GetProposal(ctx, execution.Job, execution.ID, resultFolder)
+	var runCommandResult *model.RunCommandResult
+
+	runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
 	if err != nil {
-		err = fmt.Errorf("failed to get proposal: %w", err)
+		jobsFailed.Add(ctx, 1)
+	} else {
+		jobsCompleted.Add(ctx, 1)
+	}
+
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
 		return
 	}
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateRunning,
-		NewState:      store.ExecutionStateWaitingVerification,
-	})
-	if err != nil {
-		return
-	}
-
-	e.callback.OnRunComplete(ctx, RunResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
-			SourcePeerID: e.ID,
-			TargetPeerID: execution.RequesterNodeID,
-		},
-		ResultProposal:   proposal,
-		RunCommandResult: runCommandResult,
-	})
-	return err
-}
-
-// Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (err error) {
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, execution, err, "Publishing")
-		}
-	}()
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   execution.ID,
-		ExpectedState: store.ExecutionStateResultAccepted,
 		NewState:      store.ExecutionStatePublishing,
 	})
 	if err != nil {
 		return
 	}
-	jobVerifier, err := e.verifiers.Get(ctx, execution.Job.Spec.Verifier)
-	if err != nil {
-		err = fmt.Errorf("failed to get verifier %s: %w", execution.Job.Spec.Verifier, err)
-		return
-	}
-	resultFolder, err := jobVerifier.GetResultPath(ctx, execution.ID, execution.Job)
-	if err != nil {
-		err = fmt.Errorf("failed to get result path: %w", err)
-		return
-	}
+
+	operation = "Publishing"
+	return e.publish(ctx, execution, resultFolder, runCommandResult)
+}
+
+// Publish the result of an execution after it has been verified.
+func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
+	resultFolder string, result *model.RunCommandResult) (err error) {
+	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
 	if err != nil {
 		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Spec.PublisherSpec.Type, err)
@@ -199,13 +161,14 @@ func (e *BaseExecutor) Publish(ctx context.Context, execution store.Execution) (
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultFolder)
 	}
 
-	e.callback.OnPublishComplete(ctx, PublishResult{
+	e.callback.OnRunComplete(ctx, RunResult{
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.RequesterNodeID,
 		},
-		PublishResult: publishedResult,
+		PublishResult:    publishedResult,
+		RunCommandResult: result,
 	})
 	return err
 }

@@ -31,11 +31,6 @@ func (s *switcher) CanCompleteJob(ctx context.Context, job *model.Job, jobState 
 	return s.SelectorForJob(job).CanCompleteJob(ctx, job, jobState)
 }
 
-// CanVerifyJob implements requester.NodeSelector.
-func (s *switcher) CanVerifyJob(ctx context.Context, job *model.Job, jobState *model.JobState) bool {
-	return s.SelectorForJob(job).CanVerifyJob(ctx, job, jobState)
-}
-
 // SelectBids implements requester.NodeSelector.
 func (s *switcher) SelectBids(ctx context.Context, job *model.Job, jobState *model.JobState) (accept, reject []model.ExecutionState) {
 	return s.SelectorForJob(job).SelectBids(ctx, job, jobState)

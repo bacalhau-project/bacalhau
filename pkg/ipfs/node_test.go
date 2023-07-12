@@ -11,7 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
+	icorepath "github.com/ipfs/boxo/coreiface/path"
 	"github.com/stretchr/testify/suite"
 )
 

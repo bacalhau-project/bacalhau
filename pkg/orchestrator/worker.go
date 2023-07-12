@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
@@ -114,7 +114,7 @@ func (w *Worker) run(ctx context.Context) {
 }
 
 // dequeueEvaluation dequeues an evaluation.
-func (w *Worker) dequeueEvaluation(ctx context.Context) (*model.EvaluationReceipt, error) {
+func (w *Worker) dequeueEvaluation(ctx context.Context) (*models.EvaluationReceipt, error) {
 	recorder := telemetry.NewMetricRecorder()
 	defer recorder.RecordFault(ctx, WorkerDequeueFaults)
 
@@ -129,14 +129,14 @@ func (w *Worker) dequeueEvaluation(ctx context.Context) (*model.EvaluationReceip
 		return nil, nil
 	}
 
-	return &model.EvaluationReceipt{
+	return &models.EvaluationReceipt{
 		Evaluation:    evaluation,
 		ReceiptHandle: receiptHandle,
 	}, nil
 }
 
 // processEvaluation processes an evaluation and returns true if it was processed successfully, false otherwise.
-func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evaluation) (ack bool) {
+func (w *Worker) processEvaluation(ctx context.Context, evaluation *models.Evaluation) (ack bool) {
 	tracker := telemetry.NewMetricRecorder()
 	defer tracker.RecordFault(ctx, WorkerProcessFaults, EvalTypeAttribute(evaluation.Type))
 
@@ -153,7 +153,7 @@ func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evalua
 		log.Error().Err(err).Msgf("Failed to retrieve scheduler for evaluation %s", evaluation.ID)
 		return
 	}
-	if err = scheduler.Process(evaluation); err != nil {
+	if err = scheduler.Process(ctx, evaluation); err != nil {
 		log.Error().Err(err).Msgf("Failed to process evaluation %s", evaluation.ID)
 		return
 	}
@@ -162,7 +162,7 @@ func (w *Worker) processEvaluation(ctx context.Context, evaluation *model.Evalua
 	return
 }
 
-func (w *Worker) ackEvaluation(ctx context.Context, evalReceipt *model.EvaluationReceipt, ack bool) {
+func (w *Worker) ackEvaluation(ctx context.Context, evalReceipt *models.EvaluationReceipt, ack bool) {
 	recorder := telemetry.NewMetricRecorder()
 	defer recorder.RecordFault(ctx, WorkerAckFaults)
 
@@ -174,7 +174,7 @@ func (w *Worker) ackEvaluation(ctx context.Context, evalReceipt *model.Evaluatio
 	}
 }
 
-func (w *Worker) nackEvaluation(ctx context.Context, evalReceipt *model.EvaluationReceipt, ack bool) {
+func (w *Worker) nackEvaluation(ctx context.Context, evalReceipt *models.EvaluationReceipt, ack bool) {
 	recorder := telemetry.NewMetricRecorder()
 	defer recorder.RecordFault(ctx, WorkerNackFaults)
 

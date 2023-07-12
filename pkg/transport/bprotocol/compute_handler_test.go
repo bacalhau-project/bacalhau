@@ -53,12 +53,6 @@ func (t *TestEndpoint) BidAccepted(context.Context, compute.BidAcceptedRequest) 
 func (t *TestEndpoint) BidRejected(context.Context, compute.BidRejectedRequest) (compute.BidRejectedResponse, error) {
 	return compute.BidRejectedResponse{}, errors.New("No test implemenation")
 }
-func (t *TestEndpoint) ResultAccepted(context.Context, compute.ResultAcceptedRequest) (compute.ResultAcceptedResponse, error) {
-	return compute.ResultAcceptedResponse{}, errors.New("No test implemenation")
-}
-func (t *TestEndpoint) ResultRejected(context.Context, compute.ResultRejectedRequest) (compute.ResultRejectedResponse, error) {
-	return compute.ResultRejectedResponse{}, errors.New("No test implemenation")
-}
 func (t *TestEndpoint) CancelExecution(context.Context, compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
 	return compute.CancelExecutionResponse{}, errors.New("No test implemenation")
 }

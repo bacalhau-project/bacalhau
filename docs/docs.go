@@ -789,12 +789,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.StorageSourceType"
                     }
-                },
-                "Verifiers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.Verifier"
-                    }
                 }
             }
         },
@@ -803,14 +797,6 @@ const docTemplate = `{
             "properties": {
                 "Concurrency": {
                     "description": "The maximum number of concurrent compute node bids that will be\naccepted by the requester node on behalf of the client.",
-                    "type": "integer"
-                },
-                "Confidence": {
-                    "description": "The number of nodes that must agree on a verification result\nthis is used by the different verifiers - for example the\ndeterministic verifier requires the winning group size\nto be at least this size",
-                    "type": "integer"
-                },
-                "MinBids": {
-                    "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them (when\nTargetAll=false). This allows the Requester node to get some level of\nguarantee that the execution of the jobs will be spread evenly across the\nnetwork (assuming that this value is some large proportion of the size of\nthe network).",
                     "type": "integer"
                 },
                 "TargetingMode": {
@@ -843,10 +829,6 @@ const docTemplate = `{
         "model.ExecutionState": {
             "type": "object",
             "properties": {
-                "AcceptedAskForBid": {
-                    "description": "Set to true iff the compute node accepted the ask for a bid, and intends\nto run the job if the bid is accepted by the requester.",
-                    "type": "boolean"
-                },
                 "ComputeReference": {
                     "description": "Compute node reference for this job execution",
                     "type": "string"
@@ -889,16 +871,6 @@ const docTemplate = `{
                 "UpdateTime": {
                     "description": "UpdateTime is the time when the job state was last updated.",
                     "type": "string"
-                },
-                "VerificationProposal": {
-                    "description": "the proposed results for this execution\nthis will be resolved by the verifier somehow",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "VerificationResult": {
-                    "$ref": "#/definitions/model.VerificationResult"
                 },
                 "Version": {
                     "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
@@ -1606,9 +1578,6 @@ const docTemplate = `{
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
-                "Verifier": {
-                    "$ref": "#/definitions/model.Verifier"
-                },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
                 }
@@ -1730,27 +1699,6 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
-        },
-        "model.Verifier": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4
-            ],
-            "x-enum-comments": {
-                "verifierDone": "must be last",
-                "verifierUnknown": "must be first"
-            },
-            "x-enum-varnames": [
-                "verifierUnknown",
-                "VerifierNoop",
-                "VerifierDeterministic",
-                "VerifierExternal",
-                "verifierDone"
-            ]
         },
         "peer.AddrInfo": {
             "type": "object",

@@ -118,9 +118,6 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 
 	j.Spec = spec
 	s.Require().True(model.IsValidEngine(j.Spec.Engine))
-	if !model.IsValidVerifier(j.Spec.Verifier) {
-		j.Spec.Verifier = model.VerifierNoop
-	}
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
 			Type: model.PublisherIpfs,

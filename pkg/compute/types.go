@@ -18,11 +18,6 @@ type Endpoint interface {
 	BidAccepted(context.Context, BidAcceptedRequest) (BidAcceptedResponse, error)
 	// BidRejected rejects a bid for a given executionID.
 	BidRejected(context.Context, BidRejectedRequest) (BidRejectedResponse, error)
-	// ResultAccepted accepts a result for a given executionID, which will trigger publishing the result to the
-	// destination specified in the job.
-	ResultAccepted(context.Context, ResultAcceptedRequest) (ResultAcceptedResponse, error)
-	// ResultRejected rejects a result for a given executionID.
-	ResultRejected(context.Context, ResultRejectedRequest) (ResultRejectedResponse, error)
 	// CancelExecution cancels a job for a given executionID.
 	CancelExecution(context.Context, CancelExecutionRequest) (CancelExecutionResponse, error)
 	// ExecutionLogs returns the address of a suitable log server
@@ -34,8 +29,6 @@ type Endpoint interface {
 type Executor interface {
 	// Run triggers the execution of a job.
 	Run(ctx context.Context, execution store.Execution) error
-	// Publish publishes the result of a job execution.
-	Publish(ctx context.Context, execution store.Execution) error
 	// Cancel cancels the execution of a job.
 	Cancel(ctx context.Context, execution store.Execution) error
 }
@@ -44,7 +37,6 @@ type Executor interface {
 type Callback interface {
 	OnBidComplete(ctx context.Context, result BidResult)
 	OnRunComplete(ctx context.Context, result RunResult)
-	OnPublishComplete(ctx context.Context, result PublishResult)
 	OnCancelComplete(ctx context.Context, result CancelResult)
 	OnComputeFailure(ctx context.Context, err ComputeError)
 }
@@ -102,25 +94,6 @@ type BidRejectedResponse struct {
 	ExecutionMetadata
 }
 
-type ResultAcceptedRequest struct {
-	RoutingMetadata
-	ExecutionID string
-}
-
-type ResultAcceptedResponse struct {
-	ExecutionMetadata
-}
-
-type ResultRejectedRequest struct {
-	RoutingMetadata
-	ExecutionID   string
-	Justification string
-}
-
-type ResultRejectedResponse struct {
-	ExecutionMetadata
-}
-
 type CancelExecutionRequest struct {
 	RoutingMetadata
 	ExecutionID   string
@@ -160,15 +133,8 @@ type BidResult struct {
 type RunResult struct {
 	RoutingMetadata
 	ExecutionMetadata
-	ResultProposal   []byte
+	PublishResult    model.StorageSpec
 	RunCommandResult *model.RunCommandResult
-}
-
-// PublishResult Result of a job publish that is returned to the caller through a Callback.
-type PublishResult struct {
-	RoutingMetadata
-	ExecutionMetadata
-	PublishResult model.StorageSpec
 }
 
 // CancelResult Result of a job cancel that is returned to the caller through a Callback.

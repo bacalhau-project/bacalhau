@@ -228,15 +228,6 @@ func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
 	}
 }
 
-func VerifierFlag(value *model.Verifier) *ValueFlag[model.Verifier] {
-	return &ValueFlag[model.Verifier]{
-		value:    value,
-		parser:   model.ParseVerifier,
-		stringer: func(v *model.Verifier) string { return v.String() },
-		typeStr:  "verifier",
-	}
-}
-
 func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 	return &ValueFlag[model.Publisher]{
 		value:    value,
@@ -257,7 +248,6 @@ func StorageSourceFlag(value *model.StorageSourceType) *ValueFlag[model.StorageS
 
 var (
 	EnginesFlag        = ArrayValueFlagFrom(EngineFlag)
-	VerifiersFlag      = ArrayValueFlagFrom(VerifierFlag)
 	PublishersFlag     = ArrayValueFlagFrom(PublisherFlag)
 	StorageSourcesFlag = ArrayValueFlagFrom(StorageSourceFlag)
 )
@@ -398,7 +388,6 @@ func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
 
 	flags.Var(EnginesFlag(&config.Engines), "disable-engine", "An engine type to disable.")
 	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
-	flags.Var(VerifiersFlag(&config.Verifiers), "disable-verifier", "A verifier to disable.")
 	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
 
 	return flags

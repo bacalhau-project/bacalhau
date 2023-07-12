@@ -41,7 +41,6 @@ func (s *DisabledFeatureTestSuite) TestNothingDisabled() {
 	testCase := disabledTestSpec()
 	testCase.SubmitChecker = scenario.SubmitJobSuccess()
 	testCase.JobCheckers = scenario.WaitUntilSuccessful(1)
-	testCase.Spec.Verifier = model.VerifierNoop
 	testCase.Spec.Publisher = model.PublisherIpfs
 	s.RunScenario(testCase)
 }
@@ -65,14 +64,6 @@ func (s *DisabledFeatureTestSuite) TestDisabledEngine() {
 func (s *DisabledFeatureTestSuite) TestDisabledStorage() {
 	testCase := disabledTestSpec()
 	testCase.Stack.DevStackOptions.DisabledFeatures.Storages = []model.StorageSourceType{model.StorageSourceInline}
-
-	s.RunScenario(testCase)
-}
-
-func (s *DisabledFeatureTestSuite) TestDisabledVerifier() {
-	testCase := disabledTestSpec()
-	testCase.Spec.Verifier = model.VerifierNoop
-	testCase.Stack.DevStackOptions.DisabledFeatures.Verifiers = []model.Verifier{model.VerifierNoop}
 
 	s.RunScenario(testCase)
 }

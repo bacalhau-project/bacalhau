@@ -1,7 +1,6 @@
 APIVersion: v1beta1
 Spec:
   Engine: Docker
-  Verifier: Noop
   Publisher: Estuary
   Docker:
     Image: ubuntu:latest
@@ -15,5 +14,3 @@ Spec:
       Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0
-    MinBids: 0

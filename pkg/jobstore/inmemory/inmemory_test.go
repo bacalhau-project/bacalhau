@@ -38,7 +38,7 @@ func (s *InMemoryTestSuite) SetupTest() {
 		{
 			id:              "1",
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateFailed, model.ExecutionStateCanceled},
+			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateFailed, model.ExecutionStateCancelled},
 		},
 	}
 

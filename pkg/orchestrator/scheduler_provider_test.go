@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 )
 
 type SchedulerProviderTestSuite struct {

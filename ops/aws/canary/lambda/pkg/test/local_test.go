@@ -32,7 +32,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		nodeOverrides[i] = nodeOverride
 	}
 	stack, _ := testutils.SetupTest(context.Background(), t,
-		nodeCount, 0,
+		nodeCount,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...)

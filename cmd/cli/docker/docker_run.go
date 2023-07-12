@@ -174,11 +174,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 	image := cmdArgs[0]
 	parameters := cmdArgs[1:]
 
-	verifierType, err := model.ParseVerifier(opts.SpecSettings.Verifier)
-	if err != nil {
-		return nil, err
-	}
-
 	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
 	if err != nil {
 		return nil, err
@@ -196,7 +191,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 
 	spec, err := jobutils.MakeDockerSpec(
 		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
-		jobutils.WithVerifier(verifierType),
 		jobutils.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		jobutils.WithResources(
 			opts.ResourceSettings.CPU,
@@ -216,8 +210,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 		jobutils.WithDeal(
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
-			opts.DealSettings.Confidence,
-			opts.DealSettings.MinBids,
 		),
 	)
 	if err != nil {

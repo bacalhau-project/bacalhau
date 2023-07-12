@@ -12,7 +12,7 @@ import (
 	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
-	icore "github.com/ipfs/interface-go-ipfs-core"
+	icore "github.com/ipfs/boxo/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -332,7 +332,6 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) (
 	// Options determine which functionality the API should include:
 	var opts = []corehttp.ServeOption{
 		corehttp.VersionOption(),
-		corehttp.GatewayOption(false),
 		corehttp.WebUIOption,
 		corehttp.CommandsOption(cmdContext),
 	}

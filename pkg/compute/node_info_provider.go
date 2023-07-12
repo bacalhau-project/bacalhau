@@ -8,12 +8,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type NodeInfoProviderParams struct {
 	Executors          executor.ExecutorProvider
-	Verifiers          verifier.VerifierProvider
 	Publisher          publisher.PublisherProvider
 	Storages           storage.StorageProvider
 	CapacityTracker    capacity.Tracker
@@ -23,7 +21,6 @@ type NodeInfoProviderParams struct {
 
 type NodeInfoProvider struct {
 	executors          executor.ExecutorProvider
-	verifiers          verifier.VerifierProvider
 	publishers         publisher.PublisherProvider
 	storages           storage.StorageProvider
 	capacityTracker    capacity.Tracker
@@ -34,7 +31,6 @@ type NodeInfoProvider struct {
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	return &NodeInfoProvider{
 		executors:          params.Executors,
-		verifiers:          params.Verifiers,
 		publishers:         params.Publisher,
 		storages:           params.Storages,
 		capacityTracker:    params.CapacityTracker,
@@ -46,7 +42,6 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
 	return model.ComputeNodeInfo{
 		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, model.EngineTypes()),
-		Verifiers:          model.InstalledTypes(ctx, n.verifiers, model.VerifierTypes()),
 		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
 		StorageSources:     model.InstalledTypes(ctx, n.storages, model.StorageSourceTypes()),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),

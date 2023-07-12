@@ -2,7 +2,6 @@
     "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "noop",
-        "Verifier": "noop",
         "Publisher": "noop",
         "Resources": {
             "CPU": "",

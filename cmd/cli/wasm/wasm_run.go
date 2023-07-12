@@ -165,11 +165,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, err
 	}
 
-	verifierType, err := model.ParseVerifier(opts.SpecSettings.Verifier)
-	if err != nil {
-		return nil, err
-	}
-
 	outputs, err := parse.JobOutputs(ctx, opts.SpecSettings.OutputVolumes)
 	if err != nil {
 		return nil, err
@@ -192,7 +187,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 
 	spec, err := job.MakeWasmSpec(
 		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
-		job.WithVerifier(verifierType),
 		job.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		job.WithResources(
 			opts.ResourceSettings.CPU,
@@ -212,8 +206,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		job.WithDeal(
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
-			opts.DealSettings.Confidence,
-			opts.DealSettings.MinBids,
 		),
 	)
 	if err != nil {
