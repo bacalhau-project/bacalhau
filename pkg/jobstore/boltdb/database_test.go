@@ -59,6 +59,32 @@ func (s *DatabaseTestSuite) TestBucketCreation() {
 	s.NoError(err)
 }
 
+func (s *DatabaseTestSuite) TestBucketPartialSearch() {
+	err := s.store.database.Update(func(tx *bolt.Tx) error {
+		_, err := GetBucketByPath(tx, "root.notbucket-000", true)
+		s.NoError(err)
+
+		_, err = GetBucketByPath(tx, "root.bucket-123", true)
+		s.NoError(err)
+
+		_, err = GetBucketByPath(tx, "root.bucket-456", true)
+		s.NoError(err)
+
+		root := tx.Bucket([]byte("root"))
+		s.NotNil(root)
+
+		keys, err := GetBucketsWithPartialName(tx, root, []byte("bucket"))
+		s.NoError(err)
+
+		s.Equal(2, len(keys))
+		s.Equal("bucket-123", string(keys[0]))
+		s.Equal("bucket-456", string(keys[1]))
+
+		return nil
+	})
+	s.NoError(err)
+}
+
 func (s *DatabaseTestSuite) TestBucketCreationOne() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
 		final, err := GetBucketByPath(tx, "root", true)

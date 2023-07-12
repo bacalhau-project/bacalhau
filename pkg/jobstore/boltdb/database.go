@@ -1,6 +1,7 @@
 package boltjobstore
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"time"
@@ -9,7 +10,8 @@ import (
 )
 
 const (
-	DefaultDatabasePermissions = 0600
+	DefaultDatabasePermissions   = 0600
+	DefaultBucketSearchSliceSize = 16
 )
 
 func GetDatabase(path string) (*bolt.DB, error) {
@@ -18,6 +20,25 @@ func GetDatabase(path string) (*bolt.DB, error) {
 		return nil, err
 	}
 	return database, nil
+}
+
+// GetBucketsWithPartialName will search through the provided bucket to find other buckets with
+// a name that starts with the partialname that is provided.
+func GetBucketsWithPartialName(tx *bolt.Tx, bucket *bolt.Bucket, partialName []byte) ([][]byte, error) {
+	bucketNames := make([][]byte, 0, DefaultBucketSearchSliceSize)
+
+	err := bucket.ForEachBucket(func(k []byte) error {
+		if bytes.HasPrefix(k, partialName) {
+			bucketNames = append(bucketNames, k)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return bucketNames, nil
 }
 
 // GetBucketData is a helper that will use the provided details to find
