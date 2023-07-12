@@ -128,12 +128,6 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
 	resultFolder string, result *model.RunCommandResult) (err error) {
-
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, execution, err, "Publishing")
-		}
-	}()
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
