@@ -143,8 +143,8 @@ func (b *BatchJobScheduler) existingNodeInfos(ctx context.Context, existingExecu
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
 	}
-	for _, node := range discoveredNodes {
-		nodesMap[string(node.PeerInfo.ID)] = &node
+	for i, node := range discoveredNodes {
+		nodesMap[string(node.PeerInfo.ID)] = &discoveredNodes[i]
 	}
 
 	for _, execution := range existingExecutions {
