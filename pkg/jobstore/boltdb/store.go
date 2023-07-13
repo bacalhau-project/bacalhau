@@ -3,7 +3,6 @@ package boltjobstore
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -41,6 +40,10 @@ var BucketExecutions = []byte("executions")
 type BoltJobStore struct {
 	database *bolt.DB
 	clock    clock.Clock
+
+	inProgressIndex *Index
+	clientsIndex    *Index
+	tagsIndex       *Index
 }
 
 type Option func(store *BoltJobStore)
@@ -56,12 +59,12 @@ func WithClock(clock clock.Clock) Option {
 // lookup by ID, and slightly slower lookup by other criteria that are encoded
 // in buckets.
 //
-// * In progress jobs are marked by a sentinel key (with a nil value)
-// within the inprogress bucket within the job bucket.
+// * In progress jobs are kept in an Index within the inprogress bucket,
+// within the job bucket.
 //
 //	jobs
 //	 |---> inprogress
-//	           |----> key:JobID -> value:nil
+//	           |----> JOBID
 //
 // * Job state are stored in a jobs sub-bucket called state and this maps the
 // job id against the current state of the job.
@@ -79,23 +82,22 @@ func WithClock(clock clock.Clock) Option {
 //		           |----> JobID
 //	                     |----> key:sequence, value:history
 //
-// * Within the jobs bucket, the clients bucket contains a bucket for
-// each client id that has created a job.  Each key within that bucket
-// is a job id with a nil value.
+// * Within the jobs bucket, the clients bucket is an index where the label
+// is the client ID, and the identified bucket is the job ID.
 //
 //	jobs
 //	  |---- clients # Contains marker keys for client jobs
 //		          |---- <client-id> # A specific client ID
-//		                       |---- key:JobID -> value:nil
+//		                       |---- JOBID
 //
-// * Tags are stored in a tags bucket that is within the top level jobs
-// bucket. Each bucket within the tags bucket is itself a tag, and
-// contains a list of keys showing the jobs that possess that tag.
+// * Tags are stored in a tags index bucket that is within the top level
+// jobs bucket. Each bucket within the tags bucket is itself a tag, and
+// contains a list of keys (also bucket).
 //
 //	   jobs
 //		|---- tags # Tags used in jobs for inclusion/exclusion search
 //		        |---- <tag> # A specific tag name
-//		                |---- key:JobID -> value:nil
+//		                |---- JOBID
 //
 // * The actual job data is available within the jobs bucket directly
 // where the key is the job id and the value the JSON encoded object.
@@ -169,6 +171,10 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		return nil
 	})
 
+	store.inProgressIndex = NewIndex(BucketPathJobs)
+	store.clientsIndex = NewIndex(BucketPathClients)
+	store.tagsIndex = NewIndex(BucketPathTags)
+
 	return store, err
 }
 
@@ -198,7 +204,7 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, id string) (model.Job, error) {
 func (b *BoltJobStore) getExecution(tx *bolt.Tx, executionID model.ExecutionID) (model.ExecutionState, error) {
 	var exec model.ExecutionState
 
-	bucket, err := GetBucketByPath(tx, BucketPathExecutions, false)
+	bucket, err := NewBucketPath(BucketPathExecutions).Get(tx, false)
 	if err != nil {
 		return exec, err
 	}
@@ -236,18 +242,21 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 	jobSet := make(map[string]struct{})
 
 	if query.ReturnAll {
-		keys, err := GetBucketSentinels(tx, BucketPathJobs)
+		bkt, err := NewBucketPath(BucketPathJobs).Get(tx, false)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, k := range keys {
+		err = bkt.ForEach(func(k []byte, _ []byte) error {
 			jobSet[string(k)] = struct{}{}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		if query.ClientID != "" {
-			path := fmt.Sprintf("%s.%s", BucketPathClients, query.ClientID)
-			ids, err := GetBucketSentinels(tx, path)
+			ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
 			if err != nil {
 				return nil, err
 			}
@@ -258,8 +267,8 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 		}
 
 		for _, tag := range query.IncludeTags {
-			path := fmt.Sprintf("%s.%s", BucketPathTags, strings.ToLower(string(tag)))
-			ids, err := GetBucketSentinels(tx, path)
+			tagLabel := []byte(strings.ToLower(string(tag)))
+			ids, err := b.tagsIndex.List(tx, tagLabel)
 			if err != nil {
 				return nil, err
 			}
@@ -271,8 +280,8 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 	}
 
 	for _, tag := range query.ExcludeTags {
-		path := fmt.Sprintf("%s.%s", BucketPathTags, strings.ToLower(string(tag)))
-		ids, err := GetBucketSentinels(tx, path)
+		tagLabel := []byte(strings.ToLower(string(tag)))
+		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
 			return nil, err
 		}
@@ -367,21 +376,13 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, erro
 	var infos []model.JobWithInfo
 	var keys [][]byte
 
-	if bkt, err := GetBucketByPath(tx, BucketPathInProgress, false); err != nil {
+	keys, err := b.inProgressIndex.List(tx, BucketJobsInProgress)
+	if err != nil {
 		return nil, err
-	} else {
-		err = bkt.ForEach(func(k []byte, _ []byte) error {
-			keys = append(keys, k)
-			return nil
-		})
-
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	bktJobs := tx.Bucket(BucketJobs)
-	bktState, err := GetBucketByPath(tx, BucketPathState, false)
+	bktState, err := NewBucketPath(BucketPathState).Get(tx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -430,8 +431,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	var history []model.JobHistory
 
 	if !options.ExcludeJobLevel {
-		bucketPath := fmt.Sprintf("%s.%s", BucketPathJobHistory, jobID)
-		if bkt, err := GetBucketByPath(tx, bucketPath, false); err != nil {
+		if bkt, err := NewBucketPath(BucketPathJobHistory, jobID).Get(tx, false); err != nil {
 			return nil, err
 		} else {
 			err = bkt.ForEach(func(key []byte, data []byte) error {
@@ -454,8 +454,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	if !options.ExcludeExecutionLevel {
 		// 	// Get the executions for this JobID
-		bucketPath := fmt.Sprintf("%s.%s", BucketPathExecutionHistory, jobID)
-		if bkt, err := GetBucketByPath(tx, bucketPath, false); err != nil {
+		if bkt, err := NewBucketPath(BucketPathExecutionHistory, jobID).Get(tx, false); err != nil {
 			return nil, err
 		} else {
 			err = bkt.ForEach(func(key []byte, data []byte) error {
@@ -513,7 +512,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 	}
 
 	// Write the JobState to the state bucket
-	if bkt, err := GetBucketByPath(tx, BucketPathState, false); err != nil {
+	if bkt, err := NewBucketPath(BucketPathState).Get(tx, false); err != nil {
 		return err
 	} else {
 		if err = bkt.Put(jobIDKey, data); err != nil {
@@ -526,7 +525,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 	if err != nil {
 		return err
 	}
-	if bkt, err := GetBucketByPath(tx, BucketPathJobs, false); err != nil {
+	if bkt, err := NewBucketPath(BucketPathJobs).Get(tx, false); err != nil {
 		return err
 	} else {
 		if err = bkt.Put(jobIDKey, data); err != nil {
@@ -534,23 +533,18 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		}
 	}
 
-	// Add a sentinel to the inprogress bucket
-	if err = PutBucketSentinel(tx, BucketPathInProgress, jobIDKey); err != nil {
-		return nil
+	if err = b.inProgressIndex.Add(tx, BucketJobsInProgress, jobIDKey); err != nil {
+		return err
 	}
 
-	// Add sentinel for jobs client id
-	path := fmt.Sprintf("%s.%s", BucketPathClients, job.Metadata.ClientID)
-	err = PutBucketSentinel(tx, path, jobIDKey)
-	if err != nil {
+	if err = b.clientsIndex.Add(tx, []byte(job.Metadata.ClientID), jobIDKey); err != nil {
 		return err
 	}
 
 	// Write sentinels keys for specific tags
 	for _, tag := range job.Spec.Annotations {
-		path := fmt.Sprintf("%s.%s", BucketPathTags, strings.ToLower(tag))
-		err = PutBucketSentinel(tx, path, jobIDKey)
-		if err != nil {
+		tagBytes := []byte(strings.ToLower(tag))
+		if err = b.tagsIndex.Add(tx, tagBytes, jobIDKey); err != nil {
 			return err
 		}
 	}
@@ -573,8 +567,8 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		return bacerrors.NewJobNotFound(jobID)
 	}
 
-	// Write the JobState to the state bucket
-	if bkt, err := GetBucketByPath(tx, BucketPathState, false); err != nil {
+	// Delete the JobState from the state bucket
+	if bkt, err := NewBucketPath(BucketPathState).Get(tx, false); err != nil {
 		return err
 	} else {
 		if err = bkt.Delete(jobIDKey); err != nil {
@@ -582,7 +576,8 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		}
 	}
 
-	if bkt, err := GetBucketByPath(tx, BucketPathJobs, false); err != nil {
+	// Delete the actual job
+	if bkt, err := NewBucketPath(BucketPathJobs).Get(tx, false); err != nil {
 		return err
 	} else {
 		if err = bkt.Delete(jobIDKey); err != nil {
@@ -590,35 +585,19 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		}
 	}
 
-	// Add a sentinel to the inprogress bucket
-	if bkt, err := GetBucketByPath(tx, BucketPathInProgress, false); err != nil {
+	if err = b.inProgressIndex.Remove(tx, BucketJobsInProgress, jobIDKey); err != nil {
 		return err
-	} else {
-		if err = bkt.Delete(jobIDKey); err != nil {
-			return err
-		}
 	}
 
-	// Delete the sentinel marker for this job/clientid pair.
-	path := fmt.Sprintf("%s.%s", BucketPathClients, job.Metadata.ClientID)
-	if clients, err := GetBucketByPath(tx, path, false); err != nil {
+	if err = b.clientsIndex.Remove(tx, []byte(job.Metadata.ClientID), jobIDKey); err != nil {
 		return err
-	} else {
-		if err = clients.Delete(jobIDKey); err != nil {
-			return err
-		}
 	}
 
 	// Delete sentinels keys for specific tags
 	for _, tag := range job.Spec.Annotations {
-		path := fmt.Sprintf("%s.%s", BucketPathTags, strings.ToLower(tag))
-		if bkt, err := GetBucketByPath(tx, path, false); err != nil {
+		tagBytes := []byte(strings.ToLower(tag))
+		if err = b.tagsIndex.Remove(tx, tagBytes, jobIDKey); err != nil {
 			return err
-		} else {
-			err = bkt.Delete(jobIDKey)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -639,7 +618,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		return jobstore.NewErrJobNotFound(request.JobID)
 	}
 
-	bucket, err := GetBucketByPath(tx, BucketPathState, false)
+	bucket, err := NewBucketPath(BucketPathState).Get(tx, false)
 	if err != nil {
 		return err
 	}
@@ -681,7 +660,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if request.NewState.IsTerminal() {
-		if bkt, err := GetBucketByPath(tx, BucketPathInProgress, false); err == nil {
+		if bkt, err := NewBucketPath(BucketPathInProgress).Get(tx, false); err == nil {
 			_ = bkt.Delete([]byte(request.JobID))
 		}
 	}
@@ -708,8 +687,7 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob model.JobState, p
 
 	// Get the history bucket for this job ID, which involves potentially
 	// creating the bucket (jobs.history.JOBID)
-	bucketPath := fmt.Sprintf("%s.%s", BucketPathJobHistory, updateJob.JobID)
-	if bkt, err := GetBucketByPath(tx, bucketPath, true); err != nil {
+	if bkt, err := NewBucketPath(BucketPathJobHistory, updateJob.JobID).Get(tx, true); err != nil {
 		return err
 	} else {
 		seq := BucketSequenceString(tx, bkt)
@@ -747,7 +725,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 
 	// Check for the existence of this ID and if it doesn't already exist, then create
 	// it
-	if bucket, err := GetBucketByPath(tx, BucketPathExecutions, false); err != nil {
+	if bucket, err := NewBucketPath(BucketPathExecutions).Get(tx, false); err != nil {
 		return err
 	} else {
 		_, err := b.getExecution(tx, execution.ID())
@@ -816,7 +794,7 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		return err
 	}
 
-	bucket, err := GetBucketByPath(tx, BucketPathExecutions, false)
+	bucket, err := NewBucketPath(BucketPathExecutions).Get(tx, false)
 	if err != nil {
 		return err
 	} else {
@@ -852,8 +830,7 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.Executi
 
 	// Get the history bucket for this job ID, which involves potentially
 	// creating the bucket (executions.history.<jobid>)
-	bucketPath := fmt.Sprintf("%s.%s", BucketPathExecutionHistory, updated.JobID)
-	if bkt, err := GetBucketByPath(tx, bucketPath, true); err != nil {
+	if bkt, err := NewBucketPath(BucketPathExecutionHistory, updated.JobID).Get(tx, true); err != nil {
 		return err
 	} else {
 		seq := BucketSequenceString(tx, bkt)

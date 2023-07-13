@@ -33,13 +33,13 @@ func (s *DatabaseTestSuite) SetupTest() {
 }
 
 func (s *DatabaseTestSuite) TearDownTest() {
-	//s.store.Close(s.ctx)
+	s.store.Close(s.ctx)
 	os.Remove(s.dbFile)
 }
 
 func (s *DatabaseTestSuite) TestBucketCreation() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		final, err := GetBucketByPath(tx, "root.bucket.final", true)
+		final, err := NewBucketPath("root.bucket.final").Get(tx, true)
 		s.NoError(err)
 		s.NotNil(final)
 
@@ -61,13 +61,13 @@ func (s *DatabaseTestSuite) TestBucketCreation() {
 
 func (s *DatabaseTestSuite) TestBucketPartialSearch() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		_, err := GetBucketByPath(tx, "root.notbucket-000", true)
+		_, err := NewBucketPath("root.notbucket-000").Get(tx, true)
 		s.NoError(err)
 
-		_, err = GetBucketByPath(tx, "root.bucket-123", true)
+		_, err = NewBucketPath("root.bucket-123").Get(tx, true)
 		s.NoError(err)
 
-		_, err = GetBucketByPath(tx, "root.bucket-456", true)
+		_, err = NewBucketPath("root.bucket-456").Get(tx, true)
 		s.NoError(err)
 
 		root := tx.Bucket([]byte("root"))
@@ -87,7 +87,7 @@ func (s *DatabaseTestSuite) TestBucketPartialSearch() {
 
 func (s *DatabaseTestSuite) TestBucketCreationOne() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		final, err := GetBucketByPath(tx, "root", true)
+		final, err := NewBucketPath("root").Get(tx, true)
 		s.NoError(err)
 		s.NotNil(final)
 		return nil
@@ -99,7 +99,7 @@ func (s *DatabaseTestSuite) TestBucketCreationError() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
 		_ = tx.Bucket([]byte("root"))
 
-		final, err := GetBucketByPath(tx, "root.missing.bucket", false)
+		final, err := NewBucketPath("root.missing.bucket").Get(tx, false)
 		s.Error(err)
 		s.Nil(final)
 		return nil
