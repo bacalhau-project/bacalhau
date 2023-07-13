@@ -34,7 +34,7 @@ func (i *Index) Add(tx *bolt.Tx, label []byte, identifier []byte) error {
 }
 
 func (i *Index) List(tx *bolt.Tx, label []byte) ([][]byte, error) {
-	bkt, err := i.rootBucketPath.Get(tx, true)
+	bkt, err := i.rootBucketPath.Get(tx, false)
 	if err != nil {
 		return nil, err
 	}

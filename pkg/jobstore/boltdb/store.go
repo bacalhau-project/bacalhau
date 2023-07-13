@@ -247,8 +247,11 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 			return nil, err
 		}
 
-		err = bkt.ForEach(func(k []byte, _ []byte) error {
-			jobSet[string(k)] = struct{}{}
+		err = bkt.ForEach(func(k []byte, v []byte) error {
+			if v != nil { // If not a bucket
+				jobSet[string(k)] = struct{}{}
+			}
+
 			return nil
 		})
 		if err != nil {

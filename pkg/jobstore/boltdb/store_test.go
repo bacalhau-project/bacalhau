@@ -42,12 +42,22 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 
 	jobFixtures := []struct {
 		id              string
-		totalEntries    int
+		client          string
+		tags            []string
 		jobStates       []model.JobStateType
 		executionStates []model.ExecutionStateType
 	}{
 		{
 			id:              "1",
+			client:          "client1",
+			tags:            []string{"gpu", "fast"},
+			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
+			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
+		},
+		{
+			id:              "2",
+			client:          "client2",
+			tags:            []string{},
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
 			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
 		},
@@ -59,8 +69,9 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			model.EngineDocker,
 			model.PublisherNoop,
 			[]string{"bash", "-c", "echo hello"})
+		job.Spec.Annotations = fixture.tags
 		job.Metadata.ID = fixture.id
-		job.Metadata.ClientID = "client"
+		job.Metadata.ClientID = fixture.client
 		err := s.store.CreateJob(s.ctx, *job)
 		s.NoError(err)
 
@@ -197,13 +208,68 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	s.Equal(count, 4)
 }
 
+func (s *BoltJobstoreTestSuite) TestSearchJobs() {
+	s.T().Run("by client ID", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ClientID: "client1",
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
+	})
+
+	s.T().Run("everything", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, len(jobs))
+	})
+
+	s.T().Run("include tags", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			IncludeTags: []model.IncludedTag{"gpu"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, "1", jobs[0].ID())
+	})
+
+	s.T().Run("all but exclude tags", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll:   true,
+			ExcludeTags: []model.ExcludedTag{"fast"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, "2", jobs[0].ID())
+	})
+
+	s.T().Run("include/exclude same tag", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			IncludeTags: []model.IncludedTag{"gpu"},
+			ExcludeTags: []model.ExcludedTag{"fast"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, 0, len(jobs))
+	})
+
+	s.T().Run("by id", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ID: "1",
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, "1", jobs[0].ID())
+	})
+}
+
 func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job := testutils.MakeJob(
 		model.EngineDocker,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
 	job.Metadata.ID = "deleteme"
-	job.Metadata.ClientID = "client"
+	job.Metadata.ClientID = "client1"
 	err := s.store.CreateJob(s.ctx, *job)
 	s.NoError(err)
 
