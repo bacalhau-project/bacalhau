@@ -53,11 +53,11 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 		},
 		{
 			Name:    "docker task json",
-			Fixture: testdata.TaskDockerJson,
+			Fixture: testdata.IPVMTaskDocker,
 		},
 		{
 			Name:    "task with config json",
-			Fixture: testdata.TaskWithConfigJson,
+			Fixture: testdata.IPVMTaskWithConfig,
 		},
 		//"TODO: re-enable wasm job which is currently broken as it relies on pulling data from the public IPFS network")
 		/*

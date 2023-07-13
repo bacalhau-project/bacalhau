@@ -846,7 +846,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "PublishedResults": {
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "description": "the published results for this execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
@@ -889,14 +894,10 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8,
-                9,
-                10,
-                11
+                8
             ],
             "x-enum-comments": {
-                "ExecutionStateBidAccepted": "aka running",
-                "ExecutionStateResultAccepted": "aka publishing"
+                "ExecutionStateBidAccepted": "aka running"
             },
             "x-enum-varnames": [
                 "ExecutionStateNew",
@@ -905,12 +906,9 @@ const docTemplate = `{
                 "ExecutionStateAskForBidRejected",
                 "ExecutionStateBidAccepted",
                 "ExecutionStateBidRejected",
-                "ExecutionStateResultProposed",
-                "ExecutionStateResultAccepted",
-                "ExecutionStateResultRejected",
                 "ExecutionStateCompleted",
                 "ExecutionStateFailed",
-                "ExecutionStateCanceled"
+                "ExecutionStateCancelled"
             ]
         },
         "model.Job": {
@@ -1164,8 +1162,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "JobStateNew": "must be first"
@@ -1176,7 +1173,6 @@ const docTemplate = `{
                 "JobStateCancelled",
                 "JobStateError",
                 "JobStateCompleted",
-                "JobStateCompletedPartially",
                 "JobStateQueued"
             ]
         },
@@ -1686,17 +1682,6 @@ const docTemplate = `{
                 "URL": {
                     "description": "Source URL of the data",
                     "type": "string"
-                }
-            }
-        },
-        "model.VerificationResult": {
-            "type": "object",
-            "properties": {
-                "Complete": {
-                    "type": "boolean"
-                },
-                "Result": {
-                    "type": "boolean"
                 }
             }
         },

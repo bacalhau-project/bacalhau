@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/imdario/mergo"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
@@ -36,7 +37,9 @@ type DevStackOptions struct {
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
+	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 }
+
 type DevStack struct {
 	Nodes          []*node.Node
 	PublicIPFSMode bool
@@ -204,6 +207,11 @@ func NewDevStack(
 			requesterNodeConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
 		}
 
+		nodeInfoPublisherInterval := options.NodeInfoPublisherInterval
+		if nodeInfoPublisherInterval.IsZero() {
+			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
+		}
+
 		nodeConfig := node.NodeConfig{
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
@@ -221,9 +229,10 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
-			DependencyInjector:    injector,
-			DisabledFeatures:      options.DisabledFeatures,
-			AllowListedLocalPaths: options.AllowListedLocalPaths,
+			DependencyInjector:        injector,
+			DisabledFeatures:          options.DisabledFeatures,
+			AllowListedLocalPaths:     options.AllowListedLocalPaths,
+			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
 
 		// allow overriding configs of some nodes
@@ -444,12 +453,12 @@ func (stack *DevStack) IPFSClients() []ipfs.Client {
 	return clients
 }
 
-func (stack *DevStack) GetNodeIds() ([]string, error) {
+func (stack *DevStack) GetNodeIds() []string {
 	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Host.ID().String())
 	}
-	return ids, nil
+	return ids
 }
 
 func boolToInt(b bool) int {

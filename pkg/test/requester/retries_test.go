@@ -28,6 +28,7 @@ import (
 var executionErr = errors.New("I am a bad executor")
 var publishErr = errors.New("I am a bad publisher")
 var slowExecutorSleep = 5 * time.Second
+var goodExecutorSleep = 250 * time.Millisecond // force bad executors to finish first to have more predictable tests
 
 type RetriesSuite struct {
 	suite.Suite
@@ -97,15 +98,26 @@ func (s *RetriesSuite) SetupSuite() {
 			Labels: map[string]string{
 				"name": "good-guy1",
 			},
+			DependencyInjector: node.NodeDependencyInjector{
+				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+						JobHandler: noop_executor.DelayedJobHandler(goodExecutorSleep),
+					},
+				}),
+			},
 		},
 		{
 			Labels: map[string]string{
 				"name": "good-guy2",
 			},
+			DependencyInjector: node.NodeDependencyInjector{
+				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+						JobHandler: noop_executor.DelayedJobHandler(goodExecutorSleep),
+					},
+				}),
+			},
 		},
-	}
-	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 10 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
 	}
 	ctx := context.Background()
 	devstackOptions := devstack.DevStackOptions{
@@ -225,7 +237,7 @@ func (s *RetriesSuite) TestRetry() {
 			failed:           true,
 			expectedJobState: model.JobStateError,
 			expectedExecutionStates: map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 1,
+				model.ExecutionStateCancelled: 1, // we cancel the good-guy1 if the two attempts on bad-publisher fail
 				model.ExecutionStateFailed:    2, // we retry up to two times on the same node
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{

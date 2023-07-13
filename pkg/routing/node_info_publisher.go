@@ -11,30 +11,58 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type NodeInfoPublisherIntervalConfig struct {
+	// Interval is the interval between publishing node info
+	Interval time.Duration
+
+	// During node startup, we can publish node info more frequently to speed up the discovery process.
+	// EagerPublishInterval is the interval between publishing node info during startup.
+	EagerPublishInterval time.Duration
+	// EagerPublishDuration is the duration of the eager publish period. After this period, the node will publish node info
+	// with the standard interval.
+	EagerPublishDuration time.Duration
+}
+
+// IsZero returns true if the interval config is zero
+func (n NodeInfoPublisherIntervalConfig) IsZero() bool {
+	return n.Interval == 0 && n.EagerPublishInterval == 0 && n.EagerPublishDuration == 0
+}
+
+// IsEagerPublishEnabled returns true if eager publish is enabled
+func (n NodeInfoPublisherIntervalConfig) IsEagerPublishEnabled() bool {
+	return n.EagerPublishInterval > 0 && n.EagerPublishDuration > 0
+}
+
 type NodeInfoPublisherParams struct {
-	PubSub           pubsub.PubSub[model.NodeInfo]
+	PubSub           pubsub.Publisher[model.NodeInfo]
 	NodeInfoProvider model.NodeInfoProvider
-	Interval         time.Duration
+	IntervalConfig   NodeInfoPublisherIntervalConfig
 }
 
 type NodeInfoPublisher struct {
-	pubSub           pubsub.PubSub[model.NodeInfo]
+	pubSub           pubsub.Publisher[model.NodeInfo]
 	nodeInfoProvider model.NodeInfoProvider
-	interval         time.Duration
-
-	stopChannel chan struct{}
-	stopOnce    sync.Once
+	intervalConfig   NodeInfoPublisherIntervalConfig
+	stopped          bool
+	stopChannel      chan struct{}
+	stopOnce         sync.Once
 }
 
 func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 	p := &NodeInfoPublisher{
 		pubSub:           params.PubSub,
 		nodeInfoProvider: params.NodeInfoProvider,
-		interval:         params.Interval,
+		intervalConfig:   params.IntervalConfig,
 		stopChannel:      make(chan struct{}),
 	}
 
-	go p.publishBackgroundTask()
+	go func() {
+		if p.intervalConfig.IsEagerPublishEnabled() {
+			p.eagerPublishBackgroundTask()
+		} else {
+			p.standardPublishBackgroundTask()
+		}
+	}()
 	return p
 }
 
@@ -46,9 +74,26 @@ func (n *NodeInfoPublisher) Publish(ctx context.Context) error {
 	return n.pubSub.Publish(ctx, n.nodeInfoProvider.GetNodeInfo(ctx))
 }
 
-func (n *NodeInfoPublisher) publishBackgroundTask() {
-	ctx := context.Background()
-	ticker := time.NewTicker(n.interval)
+func (n *NodeInfoPublisher) eagerPublishBackgroundTask() {
+	ctx, cancel := context.WithTimeout(context.Background(), n.intervalConfig.EagerPublishDuration)
+	log.Ctx(ctx).Debug().Msgf("Starting eager publish background task with interval %v for %v",
+		n.intervalConfig.EagerPublishInterval, n.intervalConfig.EagerPublishDuration)
+	n.publishBackgroundTask(ctx, n.intervalConfig.EagerPublishInterval)
+	cancel()
+
+	// start standard publish background task after eager publish if it wasn't stopped
+	if !n.stopped {
+		log.Ctx(ctx).Debug().Msgf("Starting standard publish background task with interval %v", n.intervalConfig.Interval)
+		n.standardPublishBackgroundTask()
+	}
+}
+
+func (n *NodeInfoPublisher) standardPublishBackgroundTask() {
+	n.publishBackgroundTask(context.Background(), n.intervalConfig.Interval)
+}
+
+func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	for {
 		select {
 		case <-ticker.C:
@@ -65,6 +110,8 @@ func (n *NodeInfoPublisher) publishBackgroundTask() {
 			log.Ctx(ctx).Debug().Msg("stopped publishing node info")
 			ticker.Stop()
 			return
+		case <-ctx.Done():
+			return
 		}
 	}
 }
@@ -72,7 +119,7 @@ func (n *NodeInfoPublisher) publishBackgroundTask() {
 // Stop stops the background task that publishes the node info periodically
 func (n *NodeInfoPublisher) Stop(ctx context.Context) {
 	n.stopOnce.Do(func() {
+		n.stopped = true
 		n.stopChannel <- struct{}{}
 	})
-	log.Ctx(ctx).Debug().Msg("done stopping compute node info publisher")
 }
