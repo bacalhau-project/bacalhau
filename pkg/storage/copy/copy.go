@@ -110,5 +110,8 @@ func Copy(
 	if err != nil {
 		err = errors.Wrapf(err, "failed to save %s spec to %s", spec.StorageSource, destination)
 	}
+
+	newSpec.Name = spec.Name
+	newSpec.Path = spec.Path
 	return newSpec, err
 }
