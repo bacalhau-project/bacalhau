@@ -234,7 +234,8 @@ module.exports = {
       collapsed: true,
       items: [
         'integration/apache-airflow',
-        'integration/amplify'
+        'integration/amplify',
+        'integration/lilypad'
       ],
     },
     {
