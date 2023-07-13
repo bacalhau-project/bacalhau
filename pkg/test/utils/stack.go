@@ -123,6 +123,7 @@ func SetupTestWithNoopExecutor(
 	require.NoError(t, err)
 
 	// Wait for nodes to have announced their presence.
+	//nolint:gomnd
 	assert.Eventually(t, func() bool {
 		return allNodesDiscovered(t, stack)
 	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")

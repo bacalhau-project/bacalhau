@@ -49,7 +49,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "1",
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
-			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCanceled},
+			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
 		},
 	}
 
@@ -57,7 +57,6 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		s.clock.Add(1 * time.Second)
 		job := testutils.MakeJob(
 			model.EngineDocker,
-			model.VerifierNoop,
 			model.PublisherNoop,
 			[]string{"bash", "-c", "echo hello"})
 		job.Metadata.ID = fixture.id
@@ -201,7 +200,6 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job := testutils.MakeJob(
 		model.EngineDocker,
-		model.VerifierNoop,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
 	job.Metadata.ID = "deleteme"

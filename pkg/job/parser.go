@@ -14,6 +14,7 @@ import (
 
 const defaultStoragePath = "/inputs"
 
+//nolint:gocyclo
 func ParseStorageString(sourceURI, destinationPath string, options map[string]string) (model.StorageSpec, error) {
 	sourceURI = strings.Trim(sourceURI, " '\"")
 	destinationPath = strings.Trim(destinationPath, " '\"")
