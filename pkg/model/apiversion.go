@@ -9,8 +9,12 @@ type APIVersion int
 
 const (
 	apiVersionUnknown APIVersion = iota // must be first
+	// V1alpha1 Deprecated but left here to preserve enum ordering
 	V1alpha1
+	// V1beta1 is Deprecated but left here to preserve enum ordering
 	V1beta1
+	// V1beta2 is the current API version
+	V1beta2
 	apiVersionDone // must be last
 )
 

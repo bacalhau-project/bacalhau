@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/c2h5oh/datasize"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -64,7 +64,7 @@ func CopyOversize(
 	remainingSpace := maxTotal
 	for _, spec := range specsizes {
 		exactFit := spec.size == remainingSpace
-		remainingSpace -= system.Min(spec.size, remainingSpace)
+		remainingSpace -= math.Min(spec.size, remainingSpace)
 		if (!exactFit && remainingSpace <= 0) || maxTotal == 0 || spec.size > maxSingle {
 			newSpec, rerr := Copy(ctx, provider, *spec.spec, dstType)
 			if rerr != nil {
@@ -110,5 +110,8 @@ func Copy(
 	if err != nil {
 		err = errors.Wrapf(err, "failed to save %s spec to %s", spec.StorageSource, destination)
 	}
+
+	newSpec.Name = spec.Name
+	newSpec.Path = spec.Path
 	return newSpec, err
 }

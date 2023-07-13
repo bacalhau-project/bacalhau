@@ -37,8 +37,6 @@ func NewComputeHandler(params ComputeHandlerParams) *ComputeHandler {
 	host.SetStreamHandler(AskForBidProtocolID, handleWith(host, handler.computeEndpoint.AskForBid))
 	host.SetStreamHandler(BidAcceptedProtocolID, handleWith(host, handler.computeEndpoint.BidAccepted))
 	host.SetStreamHandler(BidRejectedProtocolID, handleWith(host, handler.computeEndpoint.BidRejected))
-	host.SetStreamHandler(ResultAcceptedProtocolID, handleWith(host, handler.computeEndpoint.ResultAccepted))
-	host.SetStreamHandler(ResultRejectedProtocolID, handleWith(host, handler.computeEndpoint.ResultRejected))
 	host.SetStreamHandler(CancelProtocolID, handleWith(host, handler.computeEndpoint.CancelExecution))
 	host.SetStreamHandler(ExecutionLogsID, handleWith(host, handler.computeEndpoint.ExecutionLogs))
 	log.Debug().Msgf("ComputeHandler started on host %s", handler.host.ID().String())

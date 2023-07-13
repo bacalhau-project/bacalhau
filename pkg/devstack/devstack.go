@@ -3,10 +3,15 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/imdario/mergo"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/phayes/freeport"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -15,13 +20,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	filecoinlotus "github.com/bacalhau-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
-	"github.com/imdario/mergo"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
-	"github.com/rs/zerolog/log"
 )
 
 type DevStackOptions struct {
@@ -32,19 +32,16 @@ type DevStackOptions struct {
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
 	PublicIPFSMode             bool   // Use public IPFS nodes
-	LocalNetworkLotus          bool
-	FilecoinUnsealedPath       string
 	EstuaryAPIKey              string
-	SimulatorAddr              string // if this is set, we will use the simulator transport
-	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
+	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 }
+
 type DevStack struct {
 	Nodes          []*node.Node
-	Lotus          *LotusNode
 	PublicIPFSMode bool
 }
 
@@ -110,34 +107,6 @@ func NewDevStack(
 	defer span.End()
 
 	var nodes []*node.Node
-	var lotus *LotusNode
-	var err error
-	var simulatorAddr multiaddr.Multiaddr
-	var simulatorNodeID string
-
-	if options.SimulatorAddr != "" {
-		simulatorAddr, err = multiaddr.NewMultiaddr(options.SimulatorAddr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse simulator address: %w", err)
-		}
-		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract p2p protocol from simulator address: %w", err)
-		}
-	}
-
-	if options.LocalNetworkLotus {
-		lotus, err = newLotusNode(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		cm.RegisterCallbackWithContext(lotus.Close)
-
-		if err := lotus.start(ctx); err != nil {
-			return nil, err
-		}
-	}
 
 	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
 	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
@@ -172,14 +141,10 @@ func NewDevStack(
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		var libp2pPeer []multiaddr.Multiaddr
-		if simulatorAddr != nil {
-			libp2pPeer = append(libp2pPeer, simulatorAddr)
-		}
-
 		//////////////////////////////////////
 		// libp2p
 		//////////////////////////////////////
+		var libp2pPeer []multiaddr.Multiaddr
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -230,61 +195,44 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// here is where we can parse string based CLI options
-		// into more meaningful model.SimulatorConfig values
+		// into more meaningful model.FailureInjectionConfig values
 		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
 		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
 
 		if isBadComputeActor {
-			computeConfig.SimulatorConfig.IsBadActor = isBadComputeActor
+			computeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
 		}
 
 		if isBadRequesterActor {
-			requesterNodeConfig.SimulatorConfig.IsBadActor = isBadRequesterActor
+			requesterNodeConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
 		}
 
-		// If we are running in a simulator mode, and didn't pass in a node ID, then the first node will be the simulator node
-		if options.SimulatorMode && simulatorAddr == nil {
-			p2pAddr, addrError := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
-			if err != nil {
-				return nil, addrError
-			}
-			simulatorAddr = libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
-			simulatorNodeID = libp2pHost.ID().String()
+		nodeInfoPublisherInterval := options.NodeInfoPublisherInterval
+		if nodeInfoPublisherInterval.IsZero() {
+			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
 		nodeConfig := node.NodeConfig{
-			IPFSClient:           ipfsNode.Client(),
-			CleanupManager:       cm,
-			JobStore:             inmemory.NewJobStore(),
-			Host:                 libp2pHost,
-			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
-			EstuaryAPIKey:        options.EstuaryAPIKey,
-			HostAddress:          "0.0.0.0",
-			APIPort:              apiPort,
-			ComputeConfig:        computeConfig,
-			RequesterNodeConfig:  requesterNodeConfig,
-			SimulatorNodeID:      simulatorNodeID,
-			IsComputeNode:        isComputeNode,
-			IsRequesterNode:      isRequesterNode,
+			IPFSClient:          ipfsNode.Client(),
+			CleanupManager:      cm,
+			JobStore:            inmemory.NewJobStore(),
+			Host:                libp2pHost,
+			EstuaryAPIKey:       options.EstuaryAPIKey,
+			HostAddress:         "0.0.0.0",
+			APIPort:             apiPort,
+			ComputeConfig:       computeConfig,
+			RequesterNodeConfig: requesterNodeConfig,
+			IsComputeNode:       isComputeNode,
+			IsRequesterNode:     isRequesterNode,
 			Labels: map[string]string{
 				"name": fmt.Sprintf("node-%d", i),
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
-			DependencyInjector:    injector,
-			DisabledFeatures:      options.DisabledFeatures,
-			AllowListedLocalPaths: options.AllowListedLocalPaths,
-		}
-
-		if lotus != nil {
-			nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
-				StorageDuration: 24 * 24 * time.Hour,
-				PathDir:         lotus.PathDir,
-				UploadDir:       lotus.UploadDir,
-				// devstack will only be talking to a single node, so don't bother filtering based on ping
-				// as the ping may be quite large while it is trying to run everything
-				MaximumPing: time.Duration(math.MaxInt64),
-			}
+			DependencyInjector:        injector,
+			DisabledFeatures:          options.DisabledFeatures,
+			AllowListedLocalPaths:     options.AllowListedLocalPaths,
+			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
 
 		// allow overriding configs of some nodes
@@ -326,7 +274,6 @@ func NewDevStack(
 
 	return &DevStack{
 		Nodes:          nodes,
-		Lotus:          lotus,
 		PublicIPFSMode: options.PublicIPFSMode,
 	}, nil
 }
@@ -454,12 +401,6 @@ export BACALHAU_PEER_CONNECT=%s`,
 		strings.Join(devstackPeerAddrs, ","),
 	)
 
-	if stack.Lotus != nil {
-		summaryShellVariablesString += fmt.Sprintf(`
-export LOTUS_PATH=%s
-export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
-	}
-
 	err := config.WriteRunInfoFile(ctx, summaryShellVariablesString)
 	if err != nil {
 		return "", err
@@ -512,12 +453,12 @@ func (stack *DevStack) IPFSClients() []ipfs.Client {
 	return clients
 }
 
-func (stack *DevStack) GetNodeIds() ([]string, error) {
+func (stack *DevStack) GetNodeIds() []string {
 	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Host.ID().String())
 	}
-	return ids, nil
+	return ids
 }
 
 func boolToInt(b bool) int {

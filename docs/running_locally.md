@@ -44,8 +44,6 @@ If you would like to make it a bit more predictable and/or ignore errors (such a
 IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1
 ```
 
-If you wish to also have a [Lotus](https://lotus.filecoin.io/) node to test against, then you can include the `--lotus-node` flag. This will start a Docker container running Lotus against a [local network](https://lotus.filecoin.io/lotus/developers/local-network/), making it easy to test the functionality without any cost concerns.
-
 Once everything has started up - you will see output like the following:
 
 ```bash

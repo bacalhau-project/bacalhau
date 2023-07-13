@@ -29,12 +29,6 @@ func (c ChainedCallback) OnRunComplete(ctx context.Context, result RunResult) {
 	}
 }
 
-func (c ChainedCallback) OnPublishComplete(ctx context.Context, result PublishResult) {
-	for _, callback := range c.callbacks {
-		callback.OnPublishComplete(ctx, result)
-	}
-}
-
 func (c ChainedCallback) OnCancelComplete(ctx context.Context, result CancelResult) {
 	for _, callback := range c.callbacks {
 		callback.OnCancelComplete(ctx, result)

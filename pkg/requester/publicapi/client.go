@@ -76,6 +76,19 @@ func (apiClient *RequesterAPIClient) List(
 	return res.Jobs, nil
 }
 
+func (apiClient *RequesterAPIClient) Nodes(ctx context.Context) ([]model.NodeInfo, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Nodes")
+	defer span.End()
+
+	var nodes []model.NodeInfo
+	err := apiClient.APIClient.Get(ctx, APIPrefix+"nodes", &nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
+}
+
 // Cancel will request that the job with the specified ID is stopped. The JobInfo will be returned if the cancel
 // was submitted. If no match is found, Cancel returns false with a nil error.
 func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, reason string) (*model.JobState, error) {

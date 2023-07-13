@@ -8,16 +8,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	pythonwasm "github.com/bacalhau-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/combo"
-	filecoinunsealed "github.com/bacalhau-project/bacalhau/pkg/storage/filecoin_unsealed"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
@@ -31,7 +27,6 @@ import (
 
 type StandardStorageProviderOptions struct {
 	API                   ipfs.Client
-	FilecoinUnsealedPath  string
 	DownloadPath          string
 	EstuaryAPIKey         string
 	AllowListedLocalPaths []string
@@ -52,11 +47,6 @@ func NewStandardStorageProvider(
 	}
 
 	urlDownloadStorage, err := urldownload.NewStorage(cm)
-	if err != nil {
-		return nil, err
-	}
-
-	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -82,50 +72,14 @@ func NewStandardStorageProvider(
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	// if we are using a FilecoinUnsealedPath then construct a combo
-	// driver that will give preference to the filecoin unsealed driver
-	// if the cid is deemed to be local
-	if options.FilecoinUnsealedPath != "" {
-		comboDriver, err := combo.NewStorage(
-			cm,
-			func(ctx context.Context) ([]storage.Storage, error) {
-				return []storage.Storage{
-					filecoinUnsealedStorage,
-					ipfsAPICopyStorage,
-				}, nil
-			},
-			func(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {
-				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, spec)
-				if err != nil {
-					return ipfsAPICopyStorage, err
-				}
-				if filecoinUnsealedHasCid {
-					return filecoinUnsealedStorage, nil
-				} else {
-					return ipfsAPICopyStorage, nil
-				}
-			},
-			func(ctx context.Context) (storage.Storage, error) {
-				return ipfsAPICopyStorage, nil
-			},
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		useIPFSDriver = comboDriver
-	}
-
 	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:             tracing.Wrap(useIPFSDriver),
-		model.StorageSourceURLDownload:      tracing.Wrap(urlDownloadStorage),
-		model.StorageSourceFilecoinUnsealed: tracing.Wrap(filecoinUnsealedStorage),
-		model.StorageSourceInline:           tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:        tracing.Wrap(repoCloneStorage),
-		model.StorageSourceRepoCloneLFS:     tracing.Wrap(repoCloneStorage),
-		model.StorageSourceS3:               tracing.Wrap(s3Storage),
-		model.StorageSourceLocalDirectory:   tracing.Wrap(localDirectoryStorage),
+		model.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+		model.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
+		model.StorageSourceInline:         tracing.Wrap(inlineStorage),
+		model.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
+		model.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
+		model.StorageSourceS3:             tracing.Wrap(s3Storage),
+		model.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
 	}), nil
 }
 
@@ -181,26 +135,10 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	executors := model.NewMappedProvider(map[model.Engine]executor.Executor{
+	return model.NewMappedProvider(map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
 		model.EngineWasm:   wasmExecutor,
-	})
-
-	// language executors wrap other executors, so pass them a reference to all
-	// the executors so they can look up the ones they need
-	exLang, err := language.NewExecutor(ctx, cm, executors)
-	if err != nil {
-		return nil, err
-	}
-	executors.Add(model.EngineLanguage, exLang)
-
-	exPythonWasm, err := pythonwasm.NewExecutor(executors)
-	if err != nil {
-		return nil, err
-	}
-	executors.Add(model.EnginePythonWasm, exPythonWasm)
-
-	return executors, nil
+	}), nil
 }
 
 // return noop executors for all engines

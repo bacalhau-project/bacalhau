@@ -1,13 +1,14 @@
+//go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 package model
 
 import (
 	"time"
+
+	"github.com/samber/lo"
 )
 
 // JobStateType The state of a job across the whole network that represents an aggregate view across
 // the executions and nodes.
-//
-//go:generate stringer -type=JobStateType --trimprefix=JobState --output job_state_string.go
 type JobStateType int
 
 // these are the states a job can be in against a single node
@@ -25,9 +26,6 @@ const (
 	// Job completed successfully
 	JobStateCompleted
 
-	// Some executions completed successfully, but others failed to publish their results.
-	JobStateCompletedPartially
-
 	// Job is waiting to be scheduled.
 	JobStateQueued
 )
@@ -35,7 +33,7 @@ const (
 // IsTerminal returns true if the given job type signals the end of the lifecycle of
 // that job and that no change in the state can be expected.
 func (s JobStateType) IsTerminal() bool {
-	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled || s == JobStateCompletedPartially
+	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled
 }
 
 func (s JobStateType) MarshalText() ([]byte, error) {
@@ -89,4 +87,27 @@ func (s *JobState) GroupExecutionsByState() map[ExecutionStateType][]ExecutionSt
 		result[execution.State] = append(result[execution.State], execution)
 	}
 	return result
+}
+
+func (s *JobState) NonDiscardedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return !item.State.IsDiscarded() })
+}
+
+func (s *JobState) CompletedCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State == ExecutionStateCompleted })
+}
+
+func (s *JobState) ActiveCount() int {
+	return lo.CountBy(s.Executions, func(item ExecutionState) bool { return item.State.IsActive() })
+}
+
+// NonTerminalExecutions returns the executions that are not in a terminal state.
+func (s *JobState) NonTerminalExecutions() []*ExecutionState {
+	executionStates := make([]*ExecutionState, 0, len(s.Executions))
+	for i := range s.Executions {
+		if !s.Executions[i].State.IsTerminal() {
+			executionStates = append(executionStates, &s.Executions[i])
+		}
+	}
+	return executionStates
 }

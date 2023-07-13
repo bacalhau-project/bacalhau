@@ -3,10 +3,10 @@ package requester
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
@@ -44,140 +44,54 @@ func (s *BaseScheduler) transitionJobStateLockFree(ctx context.Context, jobID st
 
 	s.checkForFailedExecutions(ctx, job, jobState)
 	s.checkForPendingBids(ctx, job, jobState)
-	s.checkForPendingResults(ctx, job, jobState)
 	s.checkForCompletedExecutions(ctx, job, jobState)
 }
 
 // checkForFailedExecutions checks if any execution has failed and if so, check if executions can be retried,
 // or transitions the job to a failed state.
 func (s *BaseScheduler) checkForFailedExecutions(ctx context.Context, job model.Job, jobState model.JobState) {
-	var receivedBidsCount int
-	var publishedOrPublishingCount int
-	var nonDiscardedExecutionsCount int
-	var lastFailedExecution model.ExecutionState
-	for _, execution := range jobState.Executions {
-		if execution.HasAcceptedAskForBid() {
-			receivedBidsCount++
-		}
-		if execution.State == model.ExecutionStateCompleted || execution.State == model.ExecutionStateResultAccepted {
-			publishedOrPublishingCount++
-		}
-		if !execution.State.IsDiscarded() {
-			nonDiscardedExecutionsCount++
-		}
-		if execution.State == model.ExecutionStateFailed && lastFailedExecution.UpdateTime.Before(execution.UpdateTime) {
-			lastFailedExecution = execution
-		}
-	}
+	nodesToRetry, err := s.nodeSelector.SelectNodesForRetry(ctx, &job, &jobState)
+	if err != nil || (len(nodesToRetry) > 0 && !s.retryStrategy.ShouldRetry(ctx, RetryRequest{JobID: job.ID()})) {
+		// There was an error selecting nodes, or we need to retry some but retry strategy says no.
+		log.Ctx(ctx).Debug().Err(err).Int("NodesToRetry", len(nodesToRetry)).Msg("Failing job")
 
-	// calculate how many executions we still need, and evaluate if we can ask more nodes to bid
-	var minExecutions int
-	if job.Spec.Deal.MinBids > 0 && receivedBidsCount < job.Spec.Deal.MinBids {
-		// if we are still queuing bids, then we need at least MinBids to start accepting bids
-		minExecutions = system.Max(job.Spec.Deal.GetConcurrency(), job.Spec.Deal.MinBids)
-	} else if publishedOrPublishingCount > 0 {
-		// if at least a single execution was published or still publishing, then we don't need to retry in case some executions failed to publish
-		minExecutions = 1
-	} else {
-		// by default, we need executions as many as the job concurrency
-		minExecutions = job.Spec.Deal.GetConcurrency()
-	}
+		var finalErr error
+		var errMsg string
 
-	if nonDiscardedExecutionsCount < minExecutions {
-		var finalErr error = nil
-		retried := false
-		defer func() {
-			if !retried {
-				if lastFailedExecution.NodeID != "" {
-					finalErr = multierr.Append(
-						finalErr,
-						fmt.Errorf("node %s failed due to: %s", lastFailedExecution.NodeID, lastFailedExecution.Status),
-					)
-				}
-
-				errMsg := ""
-				if finalErr != nil {
-					errMsg = finalErr.Error()
-				}
-				s.stopJob(ctx, job.ID(), errMsg, false)
+		var lastFailedExecution model.ExecutionState
+		for _, execution := range jobState.Executions {
+			if execution.State == model.ExecutionStateFailed && lastFailedExecution.UpdateTime.Before(execution.UpdateTime) {
+				lastFailedExecution = execution
+				finalErr = multierr.Append(
+					finalErr,
+					fmt.Errorf("node %s failed due to: %s", lastFailedExecution.NodeID, lastFailedExecution.Status),
+				)
+				errMsg = finalErr.Error()
 			}
-		}()
-		if s.retryStrategy.ShouldRetry(ctx, RetryRequest{JobID: job.ID()}) {
-			desiredNodeCount := minExecutions - nonDiscardedExecutionsCount
-			rankedNodes, err := s.nodeSelector.SelectNodes(ctx, job, desiredNodeCount, desiredNodeCount)
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg("[transitionJobState] failed to find enough nodes to retry")
-				finalErr = err // So the deferred function can use it for the jobstate
-				return
-			}
-			s.notifyAskForBid(ctx, trace.LinkFromContext(ctx), job, rankedNodes[:desiredNodeCount])
-			retried = true
-			return
 		}
+
+		s.stopJob(ctx, job.ID(), errMsg, false)
+	} else if len(nodesToRetry) > 0 {
+		// There was no error and retry strategy said yes.
+		s.notifyAskForBid(ctx, trace.LinkFromContext(ctx), job, nodesToRetry)
 	}
 }
 
-// checkForPendingBids checks if any bid is still pending a response, if minBids criteria is met, and accept/reject bids accordingly.
+// checkForPendingBids checks if any bid is still pending a response
 func (s *BaseScheduler) checkForPendingBids(ctx context.Context, job model.Job, jobState model.JobState) {
-	executionsByState := jobState.GroupExecutionsByState()
-	var receivedBidsCount int
-	var activeExecutionsCount int
-	for _, execution := range jobState.Executions {
-		if execution.HasAcceptedAskForBid() {
-			receivedBidsCount++
-		}
-		if execution.State.IsActive() {
-			activeExecutionsCount++
-		}
+	acceptBids, rejectBids := s.nodeSelector.SelectBids(ctx, &job, &jobState)
+	for _, bid := range acceptBids {
+		s.updateAndNotifyBidAccepted(ctx, bid)
 	}
-
-	if receivedBidsCount >= job.Spec.Deal.MinBids {
-		// TODO: we should verify a bid acceptance was received by the compute node before rejecting other bids
-		for _, candidate := range executionsByState[model.ExecutionStateAskForBidAccepted] {
-			if activeExecutionsCount < job.Spec.Deal.Concurrency {
-				s.updateAndNotifyBidAccepted(ctx, candidate)
-				activeExecutionsCount++
-			} else {
-				s.updateAndNotifyBidRejected(ctx, candidate)
-			}
-		}
-	}
-}
-
-// checkForPendingResults checks if enough executions proposed a result, verify the results, and accept/reject results accordingly.
-func (s *BaseScheduler) checkForPendingResults(ctx context.Context, job model.Job, jobState model.JobState) {
-	executionsByState := jobState.GroupExecutionsByState()
-	awaitingVerification := len(executionsByState[model.ExecutionStateResultProposed])
-	if awaitingVerification >= job.Spec.Deal.Concurrency {
-		succeeded, failed, err := s.verifyResult(ctx, job, executionsByState[model.ExecutionStateResultProposed])
-		log.Ctx(ctx).Debug().Err(err).Int("Succeeded", len(succeeded)).Int("Failed", len(failed)).Msg("Attempted to verify results")
-		if err != nil {
-			s.stopJob(ctx, job.ID(), fmt.Sprintf("failed to verify job %s: %s", job.ID(), err), false)
-			return
-		}
-		if len(failed) > 0 {
-			s.transitionJobStateLockFree(ctx, job.ID())
-		}
+	for _, bid := range rejectBids {
+		s.updateAndNotifyBidRejected(ctx, bid)
 	}
 }
 
 // checkForPendingPublishing checks if all verified executions have published, and if so, transition the job to a completed state.
 func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job model.Job, jobState model.JobState) {
-	var completedCount int
-	for _, execution := range jobState.Executions {
-		if execution.State == model.ExecutionStateCompleted {
-			completedCount++
-		}
-		if !execution.State.IsTerminal() {
-			// no action to take if we have not published all verified results yet
-			return
-		}
-	}
-	if completedCount > 0 {
-		newState := model.JobStateCompleted
-		if completedCount < job.Spec.Deal.GetConfidence() {
-			newState = model.JobStateCompletedPartially
-		}
+	shouldUpdate, newState := s.nodeSelector.CanCompleteJob(ctx, &job, &jobState)
+	if shouldUpdate {
 		err := s.jobStore.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 			JobID:    job.ID(),
 			NewState: newState,
@@ -186,11 +100,13 @@ func (s *BaseScheduler) checkForCompletedExecutions(ctx context.Context, job mod
 			log.Ctx(ctx).Error().Err(err).Msgf("[checkForCompletedExecutions] failed to update job state")
 			return
 		} else {
-			msg := fmt.Sprintf("job %s completed successfully", job.ID())
-			if newState == model.JobStateCompletedPartially {
-				msg += " partially with some failed executions"
-			}
-			log.Ctx(ctx).Info().Msg(msg)
+			s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
+				SourceNodeID: s.id,
+				JobID:        job.ID(),
+				EventName:    model.JobEventCompleted,
+				EventTime:    time.Now(),
+			})
+			log.Ctx(ctx).Info().Msgf("job %s successfully completed", job.ID())
 		}
 	}
 }

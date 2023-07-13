@@ -32,8 +32,8 @@ func NewExecution(
 		ResourceUsage:   resourceUsage,
 		State:           ExecutionStateCreated,
 		Version:         1,
-		CreateTime:      time.Now(),
-		UpdateTime:      time.Now(),
+		CreateTime:      time.Now().UTC(),
+		UpdateTime:      time.Now().UTC(),
 	}
 }
 
@@ -91,7 +91,10 @@ type ExecutionStore interface {
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error
 	// DeleteExecution deletes an execution
 	DeleteExecution(ctx context.Context, id string) error
-	// GetExecutionCount returns a count of all executions that completed
-	// successfully on this compute node
-	GetExecutionCount(ctx context.Context) (uint, error)
+	// GetExecutionCount returns a count of all executions that are in the specified
+	// state
+	GetExecutionCount(ctx context.Context, state ExecutionState) (uint64, error)
+	// Close provides the opportunity for the underlying store to cleanup
+	// any resources as the compute node is shutting down
+	Close(ctx context.Context) error
 }

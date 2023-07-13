@@ -324,12 +324,6 @@ test-devstack:
 test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/bacalhau-project/bacalhau/cmd/bacalhau/
 
-# .PHONY: test-pythonwasm
-# test-pythonwasm:
-# # TestSimplestPythonWasmDashC
-# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
-# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/bacalhau-project/bacalhau/pkg/test/devstack/
-
 ################################################################################
 # Target: devstack
 ################################################################################
@@ -412,7 +406,7 @@ ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
 		--format testname \
 		-- \
 			-p ${TEST_PARALLEL_PACKAGES} \
-			./pkg/... ./cmd/... ./dashboard/... \
+			./pkg/... ./cmd/... \
 			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}
 
@@ -432,9 +426,15 @@ coverage/:
 	mkdir -p $@
 
 .PHONY: generate
-generate:
+generate: generate-tools
 	${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
-	echo "[OK] Files added to pipeline template directory!"
+	@echo "[OK] Files added to pipeline template directory!"
+
+.PHONY: generate-tools
+generate-tools:
+	@which mockgen > /dev/null || echo "Installing 'mockgen'" && ${GO} install go.uber.org/mock/mockgen@latest
+	@which stringer > /dev/null  || echo "Installing 'stringer'" && ${GO} install golang.org/x/tools/cmd/stringer
+
 
 .PHONY: security
 security:

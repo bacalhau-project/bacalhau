@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.4
-FROM cgr.dev/chainguard/go:1.20 as build
+# Pinned to 1.20
+FROM cgr.dev/chainguard/go@sha256:8ed3fdc8f6375a3fd84b4b8b696a2366c3a639931aab492d6f92ca917e726ad6 as build
 WORKDIR /work
 COPY Makefile .
 COPY go.mod .

@@ -21,8 +21,8 @@ type RandomNodeRanker struct {
 }
 
 func NewRandomNodeRanker(params RandomNodeRankerParams) *RandomNodeRanker {
-	if params.RandomnessRange <= 0 {
-		panic(fmt.Sprintf("randomness range must be >= 0: %d", params.RandomnessRange))
+	if params.RandomnessRange <= requester.RankPossible {
+		panic(fmt.Sprintf("randomness range must be >= %d: %d", requester.RankPossible, params.RandomnessRange))
 	}
 	return &RandomNodeRanker{
 		randomnessRange: big.NewInt(int64(params.RandomnessRange)),

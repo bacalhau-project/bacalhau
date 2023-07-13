@@ -1,8 +1,9 @@
 package model
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 //go:generate stringer -type=Engine --trimprefix=Engine
@@ -13,9 +14,7 @@ const (
 	EngineNoop
 	EngineDocker
 	EngineWasm
-	EngineLanguage   // wraps python_wasm
-	EnginePythonWasm // wraps docker
-	engineDone       // must be last
+	engineDone // must be last
 )
 
 func IsValidEngine(e Engine) bool {
@@ -29,8 +28,9 @@ func ParseEngine(str string) (Engine, error) {
 		}
 	}
 
-	return engineUnknown, fmt.Errorf(
-		"executor: unknown engine type '%s'", str)
+	// NB: change introduced in #2552 due to remove of language and pythonwasm engine types.
+	log.Warn().Msgf("executor: unknown engine type: '%s'", str)
+	return engineUnknown, nil
 }
 
 func EngineTypes() []Engine {

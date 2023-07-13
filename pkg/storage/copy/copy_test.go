@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/c2h5oh/datasize"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,6 +38,7 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 		name: "small specs are unchanged",
 		specs: []*model.StorageSpec{{
 			StorageSource: srcType,
+			Path:          "/inputs",
 			URL:           strings.Repeat("a", int(maxSingle)),
 		}},
 		modified: false,
@@ -45,6 +47,7 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 		name: "large specs are changed",
 		specs: []*model.StorageSpec{{
 			StorageSource: srcType,
+			Path:          "/inputs",
 			URL:           strings.Repeat("a", int(maxSingle)+1),
 		}},
 		modified: true,
@@ -53,9 +56,11 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 		name: "multiple small specs below threshold are unchanged",
 		specs: []*model.StorageSpec{{
 			StorageSource: srcType,
+			Path:          "/inputs1",
 			URL:           strings.Repeat("a", int(maxTotal/2)),
 		}, {
 			StorageSource: srcType,
+			Path:          "/inputs2",
 			URL:           strings.Repeat("a", int(maxTotal/2)),
 		}},
 		modified: false,
@@ -64,9 +69,11 @@ var copyOversizeTestCases = []copyOversizeTestCase{
 		name: "multiple small specs above threshold are changed",
 		specs: []*model.StorageSpec{{
 			StorageSource: srcType,
+			Path:          "/inputs1",
 			URL:           strings.Repeat("a", int(maxTotal/2)+1),
 		}, {
 			StorageSource: srcType,
+			Path:          "/inputs2",
 			URL:           strings.Repeat("a", int(maxTotal/2)),
 		}},
 		modified: true,
@@ -121,6 +128,14 @@ func TestCopyOversize(t *testing.T) {
 				require.Subset(t, originals, newSpecs)
 				require.Subset(t, newSpecs, originals)
 			}
+
+			oldPaths := lo.Map(originals, func(s model.StorageSpec, _ int) string { return s.Path })
+			newPaths := lo.Map(newSpecs, func(s model.StorageSpec, _ int) string { return s.Path })
+			require.ElementsMatch(t, oldPaths, newPaths)
+
+			oldNames := lo.Map(originals, func(s model.StorageSpec, _ int) string { return s.Name })
+			newNames := lo.Map(newSpecs, func(s model.StorageSpec, _ int) string { return s.Name })
+			require.ElementsMatch(t, oldNames, newNames)
 		})
 	}
 

@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -25,19 +26,27 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes
 	jobResourceUsage := capacity.ParseResourceUsageConfig(job.Spec.Resources)
 	jobResourceUsageSet := !jobResourceUsage.IsZero()
 	for i, node := range nodes {
-		rank := 0
+		rank := requester.RankPossible
+		reason := "max job resource requirements not set or unknown"
 		if jobResourceUsageSet && node.ComputeNodeInfo != nil {
 			if jobResourceUsage.LessThanEq(node.ComputeNodeInfo.MaxJobRequirements) {
-				rank = 10
+				rank = requester.RankPreferred
+				reason = "job requires less resources than are available"
 			} else {
-				log.Ctx(ctx).Trace().Msgf("filtering node %s doesn't accept MaxJobRequirements %s", node.PeerInfo.ID, jobResourceUsage)
-				rank = -1
+				rank = requester.RankUnsuitable
+				reason = fmt.Sprintf(
+					"job requires more resources %s than are available per job %s",
+					jobResourceUsage,
+					node.ComputeNodeInfo.MaxJobRequirements,
+				)
 			}
 		}
 		ranks[i] = requester.NodeRank{
 			NodeInfo: node,
 			Rank:     rank,
+			Reason:   reason,
 		}
+		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
 	return ranks, nil
 }

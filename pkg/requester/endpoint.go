@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,8 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 )
 
 type BaseEndpointParams struct {
@@ -30,7 +26,6 @@ type BaseEndpointParams struct {
 	Selector                   bidstrategy.SemanticBidStrategy
 	Store                      jobstore.Store
 	ComputeEndpoint            compute.Endpoint
-	Verifiers                  verifier.VerifierProvider
 	StorageProviders           storage.StorageProvider
 	MinJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
@@ -134,36 +129,6 @@ func (node *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePay
 	}
 
 	return job, node.handleBidResponse(ctx, *job, response)
-}
-
-func (node *BaseEndpoint) ApproveJob(ctx context.Context, approval bidstrategy.ModerateJobRequest) error {
-	// We deliberately expect this to be the empty string if unset. This is so
-	// that if this env variable is (accidentally) left unset, no jobs can be
-	// approved because an empty ClientID is invalid.
-	approvingClient := os.Getenv("BACALHAU_JOB_APPROVER")
-	if approval.ClientID != approvingClient {
-		return errors.New("approval submitted by unknown client")
-	}
-
-	job, err := node.store.GetJob(ctx, approval.JobID)
-	if err != nil {
-		return err
-	}
-
-	return node.handleBidResponse(ctx, job, approval.Response)
-}
-
-func (node *BaseEndpoint) VerifyExecutions(ctx context.Context, results external.ExternalVerificationResponse) error {
-	// We deliberately expect this to be the empty string if unset. This is so
-	// that if this env variable is (accidentally) left unset, no jobs can be
-	// approved because an empty ClientID is invalid.
-	approvingClient := os.Getenv("BACALHAU_JOB_APPROVER")
-	if results.ClientID != approvingClient {
-		return errors.New("verification submitted by unknown client")
-	}
-
-	node.queue.VerifyExecutions(ctx, results.Verifications)
-	return nil
 }
 
 func (node *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {

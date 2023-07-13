@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -27,8 +28,7 @@ func getSampleDockerJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
+		Engine: model.EngineDocker,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
@@ -58,8 +58,7 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 		APIVersion: model.APIVersionLatest().String(),
 	}
 	j.Spec = model.Spec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
+		Engine: model.EngineDocker,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		},
@@ -151,7 +150,7 @@ func getClient() *publicapi.RequesterAPIClient {
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
 	nodeSelectors := os.Getenv("BACALHAU_NODE_SELECTORS")
 	if nodeSelectors != "" {
-		return job.ParseNodeSelector(nodeSelectors)
+		return parse.NodeSelector(nodeSelectors)
 	}
 	return nil, nil
 }

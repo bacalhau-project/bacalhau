@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,17 +32,17 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *Suite) TestZeroExecutionsReturnsZeroCount() {
-	count, err := s.proxy.GetExecutionCount(context.Background())
+	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(0), count)
+	s.Equal(uint64(0), count)
 
 }
 
 func (s *Suite) TestOneExecutionReturnsOneCount() {
 	//check jobStore is initialised to zero
-	count, err := s.proxy.GetExecutionCount(context.Background())
+	count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(0), count)
+	s.Equal(uint64(0), count)
 	//create execution
 	defaultJob, err := model.NewJobWithSaneProductionDefaults()
 	s.NoError(err)
@@ -57,9 +58,9 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 		ExecutionID: execution.ID,
 		NewState:    store.ExecutionStateCompleted})
 	s.NoError(err)
-	count, err = s.proxy.GetExecutionCount(context.Background())
+	count, err = s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 	s.NoError(err)
-	s.Equal(uint(1), count)
+	s.Equal(uint64(1), count)
 }
 
 func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
@@ -68,9 +69,9 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 	s.NoError(err)
 	// 3 executions
 	for index, id := range idList {
-		count, err := s.proxy.GetExecutionCount(context.Background())
+		count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 		s.NoError(err)
-		s.Equal(uint(index), count)
+		s.Equal(uint64(index), count)
 
 		execution := store.NewExecution(
 			id,
@@ -89,23 +90,28 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 }
 
 func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
-	defaultJob, err := model.NewJobWithSaneProductionDefaults()
-	s.NoError(err)
-	execution := store.NewExecution(
-		"defaultID",
-		*defaultJob,
-		"defaultRequestorNodeID",
-		model.ResourceUsageData{},
-	)
-	err = s.proxy.CreateExecution(context.Background(), *execution)
-	s.NoError(err)
-	for executionState := 0; executionState < 7; executionState++ {
-		err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
-			ExecutionID: execution.ID,
-			NewState:    store.ExecutionState(executionState)})
-		s.NoError(err)
-		count, err := s.proxy.GetExecutionCount(context.Background())
-		s.NoError(err)
-		s.Equal(uint(0), count)
+	for _, executionState := range store.ExecutionStateTypes() {
+		if executionState == store.ExecutionStateCompleted {
+			continue
+		}
+		s.Run(executionState.String(), func() {
+			defaultJob, err := model.NewJobWithSaneProductionDefaults()
+			s.NoError(err)
+			execution := store.NewExecution(
+				uuid.NewString(),
+				*defaultJob,
+				"defaultRequestorNodeID",
+				model.ResourceUsageData{},
+			)
+			err = s.proxy.CreateExecution(context.Background(), *execution)
+			s.NoError(err)
+			err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
+				ExecutionID: execution.ID,
+				NewState:    store.ExecutionState(executionState)})
+			s.NoError(err)
+			count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
+			s.NoError(err)
+			s.Equal(uint64(0), count)
+		})
 	}
 }

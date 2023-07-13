@@ -109,50 +109,6 @@ func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedReques
 	}, nil
 }
 
-func (s BaseEndpoint) ResultAccepted(ctx context.Context, request ResultAcceptedRequest) (ResultAcceptedResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("results accepted: %s", request.ExecutionID)
-	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateWaitingVerification,
-		NewState:      store.ExecutionStateResultAccepted,
-	})
-	if err != nil {
-		return ResultAcceptedResponse{}, err
-	}
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
-	if err != nil {
-		return ResultAcceptedResponse{}, err
-	}
-
-	err = s.executor.Publish(ctx, execution)
-	if err != nil {
-		return ResultAcceptedResponse{}, err
-	}
-	return ResultAcceptedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-	}, nil
-}
-
-func (s BaseEndpoint) ResultRejected(ctx context.Context, request ResultRejectedRequest) (ResultRejectedResponse, error) {
-	log.Ctx(ctx).Debug().Msgf("results rejected: %s", request.ExecutionID)
-	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:   request.ExecutionID,
-		ExpectedState: store.ExecutionStateWaitingVerification,
-		NewState:      store.ExecutionStateFailed,
-		Comment:       "result rejected due to: " + request.Justification,
-	})
-	if err != nil {
-		return ResultRejectedResponse{}, err
-	}
-	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
-	if err != nil {
-		return ResultRejectedResponse{}, err
-	}
-	return ResultRejectedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-	}, nil
-}
-
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)

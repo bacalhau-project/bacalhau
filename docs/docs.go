@@ -480,6 +480,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/requester/nodes": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Displays the nodes that this requester knows about",
+                "operationId": "pkg/requester/publicapi/nodes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.NodeInfo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/requester/results": {
             "post": {
                 "description": "Example response:\n\n` + "`" + `` + "`" + `` + "`" + `json\n{\n  \"results\": [\n    {\n      \"NodeID\": \"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n      \"Data\": {\n        \"StorageSource\": \"IPFS\",\n        \"Name\": \"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL\",\n        \"CID\": \"QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe\"\n      }\n    }\n  ]\n}\n` + "`" + `` + "`" + `` + "`" + `",
@@ -760,12 +789,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.StorageSourceType"
                     }
-                },
-                "Verifiers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.Verifier"
-                    }
                 }
             }
         },
@@ -776,13 +799,9 @@ const docTemplate = `{
                     "description": "The maximum number of concurrent compute node bids that will be\naccepted by the requester node on behalf of the client.",
                     "type": "integer"
                 },
-                "Confidence": {
-                    "description": "The number of nodes that must agree on a verification result\nthis is used by the different verifiers - for example the\ndeterministic verifier requires the winning group size\nto be at least this size",
-                    "type": "integer"
-                },
-                "MinBids": {
-                    "description": "The minimum number of bids that must be received before the Requester\nnode will randomly accept concurrency-many of them. This allows the\nRequester node to get some level of guarantee that the execution of the\njobs will be spread evenly across the network (assuming that this value\nis some large proportion of the size of the network).",
-                    "type": "integer"
+                "TargetingMode": {
+                    "description": "Whether the job should be run on any matching node (false) or all\nmatching nodes (true). If true, other fields in this struct are ignored.",
+                    "type": "boolean"
                 }
             }
         },
@@ -793,13 +812,9 @@ const docTemplate = `{
                 1,
                 2,
                 3,
-                4,
-                5,
-                6
+                4
             ],
             "x-enum-comments": {
-                "EngineLanguage": "wraps python_wasm",
-                "EnginePythonWasm": "wraps docker",
                 "engineDone": "must be last",
                 "engineUnknown": "must be first"
             },
@@ -808,18 +823,12 @@ const docTemplate = `{
                 "EngineNoop",
                 "EngineDocker",
                 "EngineWasm",
-                "EngineLanguage",
-                "EnginePythonWasm",
                 "engineDone"
             ]
         },
         "model.ExecutionState": {
             "type": "object",
             "properties": {
-                "AcceptedAskForBid": {
-                    "description": "Set to true iff the compute node accepted the ask for a bid, and intends\nto run the job if the bid is accepted by the requester.",
-                    "type": "boolean"
-                },
                 "ComputeReference": {
                     "description": "Compute node reference for this job execution",
                     "type": "string"
@@ -837,7 +846,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "PublishedResults": {
-                    "$ref": "#/definitions/model.StorageSpec"
+                    "description": "the published results for this execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.StorageSpec"
+                        }
+                    ]
                 },
                 "RunOutput": {
                     "description": "RunOutput of the job",
@@ -863,16 +877,6 @@ const docTemplate = `{
                     "description": "UpdateTime is the time when the job state was last updated.",
                     "type": "string"
                 },
-                "VerificationProposal": {
-                    "description": "the proposed results for this execution\nthis will be resolved by the verifier somehow",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "VerificationResult": {
-                    "$ref": "#/definitions/model.VerificationResult"
-                },
                 "Version": {
                     "description": "Version is the version of the job state. It is incremented every time the job state is updated.",
                     "type": "integer"
@@ -890,14 +894,10 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8,
-                9,
-                10,
-                11
+                8
             ],
             "x-enum-comments": {
-                "ExecutionStateBidAccepted": "aka running",
-                "ExecutionStateResultAccepted": "aka publishing"
+                "ExecutionStateBidAccepted": "aka running"
             },
             "x-enum-varnames": [
                 "ExecutionStateNew",
@@ -906,12 +906,9 @@ const docTemplate = `{
                 "ExecutionStateAskForBidRejected",
                 "ExecutionStateBidAccepted",
                 "ExecutionStateBidRejected",
-                "ExecutionStateResultProposed",
-                "ExecutionStateResultAccepted",
-                "ExecutionStateResultRejected",
                 "ExecutionStateCompleted",
                 "ExecutionStateFailed",
-                "ExecutionStateCanceled"
+                "ExecutionStateCancelled"
             ]
         },
         "model.Job": {
@@ -922,7 +919,12 @@ const docTemplate = `{
                     "example": "V1beta1"
                 },
                 "Metadata": {
-                    "$ref": "#/definitions/model.Metadata"
+                    "description": "TODO this doesn't seem like it should be a part of the job as it cannot be known by a client ahead of time.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Metadata"
+                        }
+                    ]
                 },
                 "Spec": {
                     "description": "The specification of this job.",
@@ -1061,45 +1063,15 @@ const docTemplate = `{
                     "description": "this should be pullable by docker",
                     "type": "string"
                 },
+                "Parameters": {
+                    "description": "Parameters holds additional commandline arguments",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "WorkingDirectory": {
                     "description": "working directory inside the container",
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobSpecLanguage": {
-            "type": "object",
-            "properties": {
-                "Command": {
-                    "description": "optional program specified on commandline, like python -c \"print(1+1)\"",
-                    "type": "string"
-                },
-                "DeterministicExecution": {
-                    "description": "must this job be run in a deterministic context?",
-                    "type": "boolean"
-                },
-                "JobContext": {
-                    "description": "context is a tar file stored in ipfs, containing e.g. source code and requirements",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.StorageSpec"
-                        }
-                    ]
-                },
-                "Language": {
-                    "description": "e.g. python",
-                    "type": "string"
-                },
-                "LanguageVersion": {
-                    "description": "e.g. 3.8",
-                    "type": "string"
-                },
-                "ProgramPath": {
-                    "description": "optional program path relative to the context dir. one of Command or ProgramPath must be specified",
-                    "type": "string"
-                },
-                "RequirementsPath": {
-                    "description": "optional requirements.txt (or equivalent) path relative to the context dir",
                     "type": "string"
                 }
             }
@@ -1190,8 +1162,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "JobStateNew": "must be first"
@@ -1202,7 +1173,6 @@ const docTemplate = `{
                 "JobStateCancelled",
                 "JobStateError",
                 "JobStateCompleted",
-                "JobStateCompletedPartially",
                 "JobStateQueued"
             ]
         },
@@ -1368,7 +1338,7 @@ const docTemplate = `{
                 1
             ],
             "x-enum-varnames": [
-                "nodeTypeUnknown",
+                "NodeTypeRequester",
                 "NodeTypeCompute"
             ]
         },
@@ -1391,8 +1361,7 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5,
-                6
+                5
             ],
             "x-enum-comments": {
                 "publisherDone": "must be last",
@@ -1402,7 +1371,6 @@ const docTemplate = `{
                 "publisherUnknown",
                 "PublisherNoop",
                 "PublisherIpfs",
-                "PublisherFilecoin",
                 "PublisherEstuary",
                 "PublisherS3",
                 "publisherDone"
@@ -1554,8 +1522,12 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "Language": {
-                    "$ref": "#/definitions/model.JobSpecLanguage"
+                "Inputs": {
+                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
+                    }
                 },
                 "Network": {
                     "description": "The type of networking access that the job needs",
@@ -1570,6 +1542,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.LabelSelectorRequirement"
+                    }
+                },
+                "Outputs": {
+                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StorageSpec"
                     }
                 },
                 "Publisher": {
@@ -1595,25 +1574,8 @@ const docTemplate = `{
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
                     "type": "number"
                 },
-                "Verifier": {
-                    "$ref": "#/definitions/model.Verifier"
-                },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"
-                },
-                "inputs": {
-                    "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"\nTODO: #667 Replace with \"Inputs\", \"Outputs\" (note the caps) for yaml/json when we update the n.js file",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
-                },
-                "outputs": {
-                    "description": "the data volumes we will write in the job\nfor example \"write the results to ipfs\"",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.StorageSpec"
-                    }
                 }
             }
         },
@@ -1651,9 +1613,7 @@ const docTemplate = `{
                 6,
                 7,
                 8,
-                9,
-                10,
-                11
+                9
             ],
             "x-enum-comments": {
                 "storageSourceDone": "must be last",
@@ -1665,8 +1625,6 @@ const docTemplate = `{
                 "StorageSourceRepoClone",
                 "StorageSourceRepoCloneLFS",
                 "StorageSourceURLDownload",
-                "StorageSourceFilecoinUnsealed",
-                "StorageSourceFilecoin",
                 "StorageSourceEstuary",
                 "StorageSourceInline",
                 "StorageSourceLocalDirectory",
@@ -1694,6 +1652,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "job-9304c616-291f-41ad-b862-54e133c0149e-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
                 },
+                "Path": {
+                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).",
+                    "type": "string"
+                },
                 "ReadWrite": {
                     "description": "Allow write access for locally mounted inputs",
                     "type": "boolean"
@@ -1720,44 +1682,8 @@ const docTemplate = `{
                 "URL": {
                     "description": "Source URL of the data",
                     "type": "string"
-                },
-                "path": {
-                    "description": "The path that the spec's data should be mounted on, where it makes\nsense (for example, in a Docker storage spec this will be a filesystem\npath).\nTODO: #668 Replace with \"Path\" (note the caps) for yaml/json when we update the n.js file",
-                    "type": "string"
                 }
             }
-        },
-        "model.VerificationResult": {
-            "type": "object",
-            "properties": {
-                "Complete": {
-                    "type": "boolean"
-                },
-                "Result": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "model.Verifier": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2,
-                3,
-                4
-            ],
-            "x-enum-comments": {
-                "verifierDone": "must be last",
-                "verifierUnknown": "must be first"
-            },
-            "x-enum-varnames": [
-                "verifierUnknown",
-                "VerifierNoop",
-                "VerifierDeterministic",
-                "VerifierExternal",
-                "verifierDone"
-            ]
         },
         "peer.AddrInfo": {
             "type": "object",

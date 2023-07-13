@@ -15,3 +15,12 @@ func GetEnvAs[T any](envVar string, deflt T, parser EnvParserFunc[T]) T {
 
 	return deflt
 }
+
+func GetEnv(envVar string, deflt string) string {
+	v := os.Getenv(envVar)
+	if v != "" {
+		return v
+	}
+
+	return deflt
+}

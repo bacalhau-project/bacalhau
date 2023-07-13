@@ -1,9 +1,12 @@
 package model
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
+	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -11,6 +14,7 @@ import (
 type Job struct {
 	APIVersion string `json:"APIVersion" example:"V1beta1"`
 
+	// TODO this doesn't seem like it should be a part of the job as it cannot be known by a client ahead of time.
 	Metadata Metadata `json:"Metadata,omitempty"`
 
 	// The specification of this job.
@@ -60,15 +64,12 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
-			Verifier: VerifierNoop,
+			Engine: EngineDocker,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
 			Deal: Deal{
 				Concurrency: 1,
-				Confidence:  0,
-				MinBids:     0, // 0 means no minimum before bidding
 			},
 		},
 	})
@@ -88,23 +89,41 @@ type JobWithInfo struct {
 	History []JobHistory `json:"History,omitempty"`
 }
 
+type TargetingMode bool
+
+const (
+	TargetAny TargetingMode = false
+	TargetAll TargetingMode = true
+)
+
+func (t TargetingMode) String() string {
+	if bool(t) {
+		return "all"
+	} else {
+		return "any"
+	}
+}
+
+func ParseTargetingMode(s string) (TargetingMode, error) {
+	switch s {
+	case "any":
+		return TargetAny, nil
+	case "all":
+		return TargetAll, nil
+	default:
+		return TargetAny, fmt.Errorf(`expecting "any" or "all", not %q`, s)
+	}
+}
+
 // The deal the client has made with the bacalhau network.
 // This is updateable by the client who submitted the job
 type Deal struct {
+	// Whether the job should be run on any matching node (false) or all
+	// matching nodes (true). If true, other fields in this struct are ignored.
+	TargetingMode TargetingMode `json:"TargetingMode,omitempty"`
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
-	// The number of nodes that must agree on a verification result
-	// this is used by the different verifiers - for example the
-	// deterministic verifier requires the winning group size
-	// to be at least this size
-	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the Requester
-	// node will randomly accept concurrency-many of them. This allows the
-	// Requester node to get some level of guarantee that the execution of the
-	// jobs will be spread evenly across the network (assuming that this value
-	// is some large proportion of the size of the network).
-	MinBids int `json:"MinBids,omitempty"`
 }
 
 // GetConcurrency returns the concurrency value from the deal
@@ -115,12 +134,22 @@ func (d Deal) GetConcurrency() int {
 	return d.Concurrency
 }
 
-// GetConfidence returns the confidence value from the deal
-func (d Deal) GetConfidence() int {
-	if d.Confidence == 0 {
-		return d.GetConcurrency()
+func (d Deal) IsValid() error {
+	var err error
+	switch d.TargetingMode {
+	case TargetAll:
+		if d.Concurrency > 1 {
+			// Although the requirement is stated as == 0, the default value is
+			// 1, so we just ignore both 1 or 0 for convenience.
+			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
+		}
+	case TargetAny:
+		if d.Concurrency <= 0 {
+			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
+		}
 	}
-	return d.Confidence
+
+	return err
 }
 
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
@@ -139,6 +168,10 @@ type LabelSelectorRequirement struct {
 	Values []string `json:"Values,omitempty"`
 }
 
+func (r LabelSelectorRequirement) String() string {
+	return fmt.Sprintf("%s %s %s", r.Key, r.Operator, strings.Join(r.Values, "|"))
+}
+
 type PublisherSpec struct {
 	Type   Publisher              `json:"Type,omitempty"`
 	Params map[string]interface{} `json:"Params,omitempty"`
@@ -150,17 +183,14 @@ type Spec struct {
 	// e.g. docker or language
 	Engine Engine `json:"Engine,omitempty"`
 
-	Verifier Verifier `json:"Verifier,omitempty"`
-
 	// there can be multiple publishers for the job
 	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty"`
-	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
+	Docker JobSpecDocker `json:"Docker,omitempty"`
+	Wasm   JobSpecWasm   `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -174,12 +204,11 @@ type Spec struct {
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty"`
+	Inputs []StorageSpec `json:"Inputs,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty"`
+	Outputs []StorageSpec `json:"Outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
@@ -202,7 +231,6 @@ func (s *Spec) GetTimeout() time.Duration {
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	storages := []*StorageSpec{
-		&s.Language.Context,
 		&s.Wasm.EntryModule,
 	}
 
@@ -224,26 +252,12 @@ type JobSpecDocker struct {
 	Image string `json:"Image,omitempty"`
 	// optionally override the default entrypoint
 	Entrypoint []string `json:"Entrypoint,omitempty"`
+	// Parameters holds additional commandline arguments
+	Parameters []string `json:"Parameters,omitempty"`
 	// a map of env to run the container with
 	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// working directory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
-}
-
-// for language style executors (can target docker or wasm)
-type JobSpecLanguage struct {
-	Language        string `json:"Language,omitempty"`        // e.g. python
-	LanguageVersion string `json:"LanguageVersion,omitempty"` // e.g. 3.8
-	// must this job be run in a deterministic context?
-	Deterministic bool `json:"DeterministicExecution,omitempty"`
-	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context StorageSpec `json:"JobContext,omitempty"`
-	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"Command,omitempty"`
-	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"ProgramPath,omitempty"`
-	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"RequirementsPath,omitempty"`
 }
 
 // Describes a raw WASM job
@@ -266,39 +280,6 @@ type JobSpecWasm struct {
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
-}
-
-// we emit these to other nodes so they update their
-// state locally and can emit events locally
-type JobEvent struct {
-	// APIVersion of the Job
-	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
-
-	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// compute execution identifier
-	ExecutionID string `json:"ExecutionID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
-	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
-	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
-	// the node that this event is for
-	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
-	EventName    JobEventType `json:"EventName,omitempty"`
-	// this is only defined in "create" events
-	Spec Spec `json:"Spec,omitempty"`
-	// this is only defined in "update_deal" events
-	Deal                 Deal               `json:"Deal,omitempty"`
-	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
-
-	EventTime       time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
-	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`
-
-	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
 }
 
 // we need to use a struct for the result because:

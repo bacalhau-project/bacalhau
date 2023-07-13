@@ -11,7 +11,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
-	"golang.org/x/exp/constraints"
 )
 
 // Making these variable to allow for testing
@@ -46,20 +45,6 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-func Min[T constraints.Ordered](a, b T) T {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func Max[T constraints.Ordered](a, b T) T {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func ReverseList(s []string) []string {

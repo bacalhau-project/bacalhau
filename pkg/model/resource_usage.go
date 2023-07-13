@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 )
 
@@ -125,7 +126,10 @@ func (r ResourceUsageData) IsZero() bool {
 
 // return string representation of ResourceUsageData
 func (r ResourceUsageData) String() string {
-	return fmt.Sprintf("{CPU: %f, Memory: %d, Disk: %d, GPU: %d}", r.CPU, r.Memory, r.Disk, r.GPU)
+	cpu := Millicores(r.CPU * float64(Core))
+	mem := datasize.ByteSize(r.Memory)
+	disk := datasize.ByteSize(r.Disk)
+	return fmt.Sprintf("{CPU: %s, Memory: %s, Disk: %s, GPU: %d}", cpu, mem.HR(), disk.HR(), r.GPU)
 }
 
 type ResourceUsageProfile struct {

@@ -135,7 +135,6 @@ def test_sign_for_client():
         client_id=get_client_id(),
         spec=Spec(
             engine="Docker",
-            verifier="Noop",
             publisher=PublisherSpec(type="Estuary"),
             docker=JobSpecDocker(
                 image="ubuntu",
@@ -152,7 +151,7 @@ def test_sign_for_client():
                     path="/outputs",
                 )
             ],
-            deal=Deal(concurrency=1, confidence=0, min_bids=0),
+            deal=Deal(concurrency=1),
             do_not_track=False,
         ),
     )

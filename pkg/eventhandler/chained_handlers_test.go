@@ -12,9 +12,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler/mock_eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -46,8 +46,6 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 		EventName:    model.JobEventCreated,
 		JobID:        uuid.NewString(),
 		SourceNodeID: "nodeA",
-		TargetNodeID: "nodeB",
-		ClientID:     "clientX",
 		Status:       "this is a test event",
 	}
 	logger.ConfigureTestLogging(suite.T())

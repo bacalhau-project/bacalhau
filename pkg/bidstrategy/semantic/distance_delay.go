@@ -3,9 +3,9 @@ package semantic
 import (
 	"context"
 	"hash/fnv"
-	"math"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -70,7 +70,7 @@ func (s DistanceDelayStrategy) calculateJobNodeDistanceDelay(ctx context.Context
 	// If concurrency=3 and network size=3, there'll only be one piece and
 	// everyone will bid. If concurrency=1 and network size=1 million, there
 	// will be a million slices of the hash space.
-	concurrency := max(1, request.Job.Spec.Deal.Concurrency, request.Job.Spec.Deal.MinBids)
+	concurrency := math.Max(1, request.Job.Spec.Deal.Concurrency)
 	chunk := int((float32(concurrency) / float32(s.networkSize)) * 4294967295) //nolint:gomnd
 	// wait 1 second per chunk distance. So, if we land in exactly the same
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
@@ -104,15 +104,4 @@ func diff(a, b int) int {
 		return b - a
 	}
 	return a - b
-}
-
-func max(vars ...int) int {
-	res := math.MinInt
-
-	for _, i := range vars {
-		if res < i {
-			res = i
-		}
-	}
-	return res
 }

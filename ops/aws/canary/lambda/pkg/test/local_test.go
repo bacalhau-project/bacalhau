@@ -8,14 +8,14 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestScenariosAgainstDevstack(t *testing.T) {
@@ -23,7 +23,6 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		Labels: map[string]string{
 			"owner": "bacalhau",
 		},
-		NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 	}
 	nodeCount := 3
 	nodeOverrides := make([]node.NodeConfig, nodeCount)
@@ -31,7 +30,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		nodeOverrides[i] = nodeOverride
 	}
 	stack, _ := testutils.SetupTest(context.Background(), t,
-		nodeCount, 0, false,
+		nodeCount,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...)

@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
 )
 
 const testNodeCount = 1
@@ -22,7 +23,7 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack, _ := testutils.SetupTest(ctx, t, testNodeCount, 0, false,
+	stack, _ := testutils.SetupTest(ctx, t, testNodeCount,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 	)
@@ -69,10 +70,14 @@ func RunTestCase(
 	}
 
 	resultsDirectory := t.TempDir()
-	runnerOutput, err := executor.Run(ctx, "test-execution", job, resultsDirectory)
-	require.NoError(t, err)
-	require.Empty(t, runnerOutput.ErrorMsg)
+	_, err = executor.Run(ctx, "test-execution", job, resultsDirectory)
+	if testCase.SubmitChecker != nil {
+		err = testCase.SubmitChecker(&job, err)
+		require.NoError(t, err)
+	}
 
-	err = testCase.ResultsChecker(resultsDirectory)
-	require.NoError(t, err)
+	if testCase.ResultsChecker != nil {
+		err = testCase.ResultsChecker(resultsDirectory)
+		require.NoError(t, err)
+	}
 }

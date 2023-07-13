@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
@@ -9,7 +10,7 @@ import (
 )
 
 // featureNodeRanker is a generic ranker that can rank nodes based on what
-// features (engines, publishers, verifiers, storage sources) are installed.
+// features (engines, publishers, storage sources) are installed.
 type featureNodeRanker[Key model.ProviderKey] struct {
 	getJobRequirement   func(model.Job) []Key
 	getNodeProvidedKeys func(model.ComputeNodeInfo) []Key
@@ -19,13 +20,6 @@ func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
 	return &featureNodeRanker[model.Engine]{
 		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
 		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
-	}
-}
-
-func NewVerifiersNodeRanker() *featureNodeRanker[model.Verifier] {
-	return &featureNodeRanker[model.Verifier]{
-		getJobRequirement:   func(j model.Job) []model.Verifier { return []model.Verifier{j.Spec.Verifier} },
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Verifier { return ni.Verifiers },
 	}
 }
 
@@ -56,12 +50,12 @@ func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
 // - Rank 10: Node is supporting the type(s) the job is requiring.
 // - Rank 0: We don't have information on what the node supports.
 // - Rank -1: Node is not supporting a type the job is requiring.
-func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeInfo, requiredKeys []Key) int {
+func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeInfo, requiredKeys []Key) (rank int, reason string) {
 	if node.ComputeNodeInfo == nil {
 		// Node supported types are not set, or the node was discovered not
 		// through nodeInfoPublisher (e.g. identity protocol). We will give the
 		// node the benefit of the doubt and ask it to bid.
-		return 0
+		return requester.RankPossible, "supported types are not known"
 	}
 
 	providedKeys := s.getNodeProvidedKeys(*node.ComputeNodeInfo)
@@ -74,15 +68,14 @@ func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeIn
 			}
 		}
 
-		log.Ctx(ctx).Trace().Stringer("Requirement", requiredKey).Bool("Supported", found).Send()
 		if !found {
 			// Target wasn't found – we can end early as we won't use this node.
-			return -1
+			return requester.RankUnsuitable, fmt.Sprintf("does not support %T %s, only %s", requiredKey, requiredKey, providedKeys)
 		}
 	}
 
 	// Node provides all the specified required types.
-	return 10 //nolint:gomnd
+	return requester.RankPreferred, "provides all the specified required types"
 }
 
 func (s *featureNodeRanker[Key]) RankNodes(
@@ -94,14 +87,13 @@ func (s *featureNodeRanker[Key]) RankNodes(
 	requiredKeys := s.getJobRequirement(job)
 
 	for i, node := range nodes {
-		ctx := log.Ctx(ctx).With().Stringer("TargetNode", node.PeerInfo).Logger().WithContext(ctx) //nolint:govet
-		rank := s.rankNode(ctx, node, requiredKeys)
-
-		log.Ctx(ctx).Trace().Int("Rank", rank).Msg("Rank completed")
+		rank, reason := s.rankNode(ctx, node, requiredKeys)
 		ranks[i] = requester.NodeRank{
 			NodeInfo: node,
 			Rank:     rank,
+			Reason:   reason,
 		}
+		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
 	return ranks, nil
 }

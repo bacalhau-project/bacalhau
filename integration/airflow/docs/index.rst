@@ -17,7 +17,7 @@ This package contains the python Bacalhau Airflow Provider named `bacalhau_airfl
 
 .. code-block:: python
    :caption: Example DAG showing two chained tasks (see the `input_volumes` parameter of the second task).
-   
+
    from datetime import datetime
 
    from airflow import DAG
@@ -29,13 +29,12 @@ This package contains the python Bacalhau Airflow Provider named `bacalhau_airfl
          api_version="V1beta1",
          job_spec=dict(
                engine="Docker",
-               verifier="Noop",
                publisher="Estuary",
                docker=dict(
                   image="ubuntu",
                   entrypoint=["echo", "Hello"],
                ),
-               deal=dict(concurrency=1, confidence=0, min_bids=0),
+               deal=dict(concurrency=1),
          ),
       )
 
@@ -44,13 +43,12 @@ This package contains the python Bacalhau Airflow Provider named `bacalhau_airfl
          api_version="V1beta1",
          job_spec=dict(
                engine="Docker",
-               verifier="Noop",
                publisher="Estuary",
                docker=dict(
                   image="ubuntu",
                   entrypoint=["echo", "World"],
                ),
-               deal=dict(concurrency=1, confidence=0, min_bids=0),
+               deal=dict(concurrency=1),
                inputs=[
                   dict(
                      cid="QmWG3ZCXTbdMUh6GWq2Pb1n7MMNxPQFa9NMswdZXuVKFUX",

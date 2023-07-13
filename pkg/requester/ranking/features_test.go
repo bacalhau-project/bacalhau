@@ -14,7 +14,6 @@ import (
 type FeatureNodeRankerSuite struct {
 	suite.Suite
 	EnginesNodeRanker   *featureNodeRanker[model.Engine]
-	VerifiersNodeRanker *featureNodeRanker[model.Verifier]
 	PublisherNodeRanker *featureNodeRanker[model.Publisher]
 	StorageNodeRanker   *featureNodeRanker[model.StorageSourceType]
 }
@@ -38,10 +37,6 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 			ComputeNodeInfo: &model.ComputeNodeInfo{StorageSources: []model.StorageSourceType{model.StorageSourceURLDownload}},
 		},
 		{
-			PeerInfo:        peer.AddrInfo{ID: peer.ID("deterministic")},
-			ComputeNodeInfo: &model.ComputeNodeInfo{Verifiers: []model.Verifier{model.VerifierDeterministic}},
-		},
-		{
 			PeerInfo:        peer.AddrInfo{ID: peer.ID("estuary")},
 			ComputeNodeInfo: &model.ComputeNodeInfo{Publishers: []model.Publisher{model.PublisherEstuary}},
 		},
@@ -49,7 +44,6 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 			PeerInfo: peer.AddrInfo{ID: peer.ID("combo")},
 			ComputeNodeInfo: &model.ComputeNodeInfo{
 				ExecutionEngines: []model.Engine{model.EngineDocker, model.EngineWasm},
-				Verifiers:        []model.Verifier{model.VerifierNoop, model.VerifierDeterministic},
 				Publishers:       []model.Publisher{model.PublisherIpfs, model.PublisherEstuary},
 				StorageSources:   []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceURLDownload},
 			},
@@ -63,7 +57,6 @@ func (s *FeatureNodeRankerSuite) Nodes() []model.NodeInfo {
 func (s *FeatureNodeRankerSuite) SetupSuite() {
 	s.EnginesNodeRanker = NewEnginesNodeRanker()
 	s.StorageNodeRanker = NewStoragesNodeRanker()
-	s.VerifiersNodeRanker = NewVerifiersNodeRanker()
 	s.PublisherNodeRanker = NewPublishersNodeRanker()
 }
 
@@ -100,16 +93,6 @@ func (s *FeatureNodeRankerSuite) TestEngineNoop() {
 	assertEquals(s.T(), ranks, "docker", -1)
 	assertEquals(s.T(), ranks, "wasm", -1)
 	assertEquals(s.T(), ranks, "combo", -1)
-	assertEquals(s.T(), ranks, "unknown", 0)
-}
-
-func (s *FeatureNodeRankerSuite) TestVerifierDeterministic() {
-	job := model.Job{Spec: model.Spec{Verifier: model.VerifierDeterministic}}
-	ranks, err := s.VerifiersNodeRanker.RankNodes(context.Background(), job, s.Nodes())
-	s.NoError(err)
-	s.Equal(len(s.Nodes()), len(ranks))
-	assertEquals(s.T(), ranks, "deterministic", 10)
-	assertEquals(s.T(), ranks, "combo", 10)
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 

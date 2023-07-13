@@ -18,8 +18,6 @@ const (
 	StorageSourceRepoClone
 	StorageSourceRepoCloneLFS
 	StorageSourceURLDownload
-	StorageSourceFilecoinUnsealed
-	StorageSourceFilecoin
 	StorageSourceEstuary
 	StorageSourceInline
 	StorageSourceLocalDirectory

@@ -35,7 +35,7 @@
     <a href="https://www.bacalhau.org/">
     <img alt="Bacalhau website" src="https://img.shields.io/badge/website-bacalhau.org-red">
   </a>
-      <a href="https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ" alt="Slack">
+      <a href="https://bit.ly/bacalhau-project-slack" alt="Slack">
         <img src="https://img.shields.io/badge/slack-join_community-red.svg?color=0052FF&labelColor=090422&logo=slack" />
         </a>
     <a href="https://twitter.com/intent/follow?screen_name=BacalhauProject">

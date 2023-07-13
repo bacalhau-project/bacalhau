@@ -71,7 +71,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 	if _, ok := s.executionMap[execution.ID]; ok {
 		return store.NewErrExecutionAlreadyExists(execution.ID)
 	}
-	if err := store.ValidateNewExecution(ctx, execution); err != nil {
+	if err := store.ValidateNewExecution(execution); err != nil {
 		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
@@ -141,14 +141,18 @@ func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) GetExecutionCount(ctx context.Context) (uint, error) {
-	var counter uint
+func (s *Store) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint64, error) {
+	var counter uint64
 	for _, execution := range s.executionMap {
-		if execution.State == store.ExecutionStateCompleted {
+		if execution.State == state {
 			counter++
 		}
 	}
 	return counter, nil
+}
+
+func (s *Store) Close(ctx context.Context) error {
+	return nil
 }
 
 // compile-time check that we implement the interface ExecutionStore

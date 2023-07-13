@@ -11,7 +11,6 @@ const (
 	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
 	PublisherIpfs
-	PublisherFilecoin
 	PublisherEstuary
 	PublisherS3
 	publisherDone // must be last
@@ -24,7 +23,7 @@ func ParsePublisher(str string) (Publisher, error) {
 		}
 	}
 
-	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
+	return publisherUnknown, fmt.Errorf("publisher: unknown type '%s'", str)
 }
 
 func IsValidPublisher(publisherType Publisher) bool {

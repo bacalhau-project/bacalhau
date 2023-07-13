@@ -2,7 +2,6 @@
 # APIVersion: v1beta1
 Spec:
   Engine: Docker
-  Verifier: Noop
   Publisher: Estuary
   Docker:
     Image: gromacs/gromacs
@@ -10,11 +9,9 @@ Spec:
       - /bin/bash
       - -c
       - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
-  outputs:
+  Outputs:
     - StorageSource: IPFS
       Name: output_custom
-      path: /output_custom
+      Path: /output_custom
   Deal:
     Concurrency: 1
-    Confidence: 0
-    MinBids: 0

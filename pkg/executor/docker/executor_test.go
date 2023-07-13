@@ -24,6 +24,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	CurlDockerImageName string = "curlimages/curl"
+	CurlDockerImageTag  string = "8.1.0"
+	CurlDockerImage     string = CurlDockerImageName + ":" + CurlDockerImageTag
+)
+
 type ExecutorTestSuite struct {
 	suite.Suite
 	executor *Executor
@@ -95,7 +101,7 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 
 func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
 	return model.JobSpecDocker{
-		Image:      "curlimages/curl",
+		Image:      CurlDockerImage,
 		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
 }
@@ -278,7 +284,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
 		Docker: model.JobSpecDocker{
-			Image:      "curlimages/curl",
+			Image:      CurlDockerImage,
 			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
 		},
 	})

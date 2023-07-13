@@ -57,7 +57,7 @@ func StopJob(ctx context.Context, db Store, jobID string, reason string, userReq
 					},
 				},
 				NewValues: model.ExecutionState{
-					State:  model.ExecutionStateCanceled,
+					State:  model.ExecutionStateCancelled,
 					Status: reason,
 				},
 			})

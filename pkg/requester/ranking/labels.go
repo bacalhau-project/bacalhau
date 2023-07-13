@@ -2,6 +2,7 @@ package ranking
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -51,26 +52,30 @@ func (s *LabelsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes [
 		}
 	}
 	for i, node := range nodes {
-		rank := 0
+		rank := requester.RankPossible
+		reason := "selectors not set or unknown"
 		if !mustSelector.Empty() {
 			if mustSelector.Matches(labels.Set(node.Labels)) {
-				rank = 10
+				rank = requester.RankPreferred
+				reason = "match for required selector"
 			} else {
-				log.Ctx(ctx).Trace().Msgf("filtering node %s with labels %s doesn't match selectors %+v",
-					node.PeerInfo.ID, node.Labels, job.Spec.NodeSelectors)
-				rank = -1
+				rank = requester.RankUnsuitable
+				reason = fmt.Sprintf("labels %s don't match required selectors %s", node.Labels, job.Spec.NodeSelectors)
 			}
 		}
 		ranks[i] = requester.NodeRank{
 			NodeInfo: node,
 			Rank:     rank,
+			Reason:   reason,
 		}
+		log.Ctx(ctx).Trace().Object("Rank", ranks[i]).Msg("Ranked node")
 	}
 
 	if !favourSelector.Empty() {
 		for i, rank := range ranks {
-			if rank.Rank != -1 && favourSelector.Matches(labels.Set(rank.NodeInfo.Labels)) {
-				ranks[i].Rank += 10
+			if rank.MeetsRequirement() && favourSelector.Matches(labels.Set(rank.NodeInfo.Labels)) {
+				ranks[i].Rank += requester.RankPreferred
+				ranks[i].Reason = "match for preferred selector"
 			}
 		}
 	}
