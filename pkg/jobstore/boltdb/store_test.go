@@ -61,6 +61,13 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
 			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
 		},
+		{
+			id:              "3",
+			client:          "client3",
+			tags:            []string{},
+			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress},
+			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted},
+		},
 	}
 
 	for _, fixture := range jobFixtures {
@@ -217,12 +224,66 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		require.Equal(t, 1, len(jobs))
 	})
 
+	s.T().Run("everything sorted by id", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			SortBy:    "id",
+		})
+		require.NoError(t, err)
+		require.Equal(t, 3, len(jobs))
+		ids := lo.Map(jobs, func(item model.Job, _ int) string {
+			return item.ID()
+		})
+		require.EqualValues(t, []string{"1", "2", "3"}, ids)
+
+		jobs, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll:   true,
+			SortBy:      "id",
+			SortReverse: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 3, len(jobs))
+
+		ids = lo.Map(jobs, func(item model.Job, _ int) string {
+			return item.ID()
+		})
+		require.EqualValues(t, []string{"3", "2", "1"}, ids)
+	})
+
 	s.T().Run("everything", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
+		require.Equal(t, 3, len(jobs))
+	})
+
+	s.T().Run("everything offset", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			Offset:    1,
+		})
+		require.NoError(t, err)
 		require.Equal(t, 2, len(jobs))
+	})
+
+	s.T().Run("everything limit", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			Limit:     2,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, len(jobs))
+	})
+
+	s.T().Run("everything offset/limit", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			Offset:    1,
+			Limit:     1,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
 	})
 
 	s.T().Run("include tags", func(t *testing.T) {
@@ -240,7 +301,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ExcludeTags: []model.ExcludedTag{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(jobs))
+		require.Equal(t, 2, len(jobs))
 		require.Equal(t, "2", jobs[0].ID())
 	})
 
@@ -268,6 +329,7 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 		model.EngineDocker,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
+	job.Spec.Annotations = []string{"tag"}
 	job.Metadata.ID = "deleteme"
 	job.Metadata.ClientID = "client1"
 	err := s.store.CreateJob(s.ctx, *job)
@@ -275,4 +337,29 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 
 	err = s.store.DeleteJob(s.ctx, job.Metadata.ID)
 	s.NoError(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestGetJob() {
+	job, err := s.store.GetJob(s.ctx, "1")
+	s.NoError(err)
+	s.NotNil(job)
+
+	_, err = s.store.GetJob(s.ctx, "100")
+	s.Error(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestGetJobState() {
+	state, err := s.store.GetJobState(s.ctx, "1")
+	s.NoError(err)
+	s.NotNil(state)
+
+	_, err = s.store.GetJobState(s.ctx, "100")
+	s.Error(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
+	infos, err := s.store.GetInProgressJobs(s.ctx)
+	s.NoError(err)
+	s.Equal(1, len(infos))
+	s.Equal("3", infos[0].Job.ID())
 }

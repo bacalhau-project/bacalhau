@@ -345,6 +345,7 @@ func (b *BoltJobStore) getListSorter(jobs []model.Job, query jobstore.JobQuery) 
 // GetJobState returns the current job state for the provided job id
 func (b *BoltJobStore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
 	var state model.JobState
+
 	err := b.database.View(func(tx *bolt.Tx) (err error) {
 		state, err = b.getJobState(tx, jobID)
 		return
@@ -356,7 +357,7 @@ func (b *BoltJobStore) GetJobState(ctx context.Context, jobID string) (model.Job
 func (b *BoltJobStore) getJobState(tx *bolt.Tx, jobID string) (model.JobState, error) {
 	var state model.JobState
 
-	data := GetBucketData(tx, string(BucketJobsState), []byte(jobID))
+	data := GetBucketData(tx, BucketPathState, []byte(jobID))
 	if data == nil {
 		return state, bacerrors.NewJobNotFound(jobID)
 	}
@@ -664,7 +665,10 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 
 	if request.NewState.IsTerminal() {
 		if bkt, err := NewBucketPath(BucketPathInProgress).Get(tx, false); err == nil {
-			_ = bkt.Delete([]byte(request.JobID))
+			err = bkt.DeleteBucket([]byte(request.JobID))
+			if err != nil {
+				return err
+			}
 		}
 	}
 

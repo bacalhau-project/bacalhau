@@ -37,6 +37,19 @@ func (s *DatabaseTestSuite) TearDownTest() {
 	os.Remove(s.dbFile)
 }
 
+func (s *DatabaseTestSuite) TestGetDatabaseBad() {
+	_, err := GetDatabase("")
+	s.Error(err)
+}
+
+func (s *DatabaseTestSuite) TestGetBucketDataErr() {
+	_ = s.store.database.View(func(tx *bolt.Tx) (err error) {
+		data := GetBucketData(tx, "non-existent", []byte("nope"))
+		s.Nil(data)
+		return nil
+	})
+}
+
 func (s *DatabaseTestSuite) TestBucketCreation() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
 		final, err := NewBucketPath("root.bucket.final").Get(tx, true)
