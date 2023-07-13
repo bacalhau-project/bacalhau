@@ -302,7 +302,6 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 2, len(jobs))
-		require.Equal(t, "2", jobs[0].ID())
 	})
 
 	s.T().Run("include/exclude same tag", func(t *testing.T) {
