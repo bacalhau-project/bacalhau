@@ -9,15 +9,17 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 > _Note: You only need to create a CLI release if you want to release new Bacalhau functionality. You don't need to cut a release if you are only updating the infrastructure, like altering VM sizes, for example._
 
 1. [Draft a new release](https://github.com/bacalhau-project/bacalhau/releases/new)
-2. Create a new tag using semantic versioning, prefixed with a v. E.g. `v0.1.37`
+2. Create a new tag using semantic versioning, prefixed with a v, postfixed with a `-anything`. E.g. `v0.1.37-alpha1`. The `-xxx` is important because it prevents Docker and Go "latest" issues.
 3. Make the title of the release the same as the tag
 4. Click on the `Generate Release Notes` button to auto-populate the notes. Add anything else.
 5. Tick the "This is a pre-release" checkbox. This prevents this version from being installed by the `https://get.bacalhau.org/install.sh` script.
 6. Click on the publish release button. **The [CI scripts](../.circleci) will automatically build and attach binaries.**
 7. Download the binaries and test that they do what you expect. Use the pre-release option to download the newest pre-release version. `(export PRE_RELEASE=true ; curl -sL https://get.bacalhau.org/install.sh | bash)` If you are testing against a dev/staging cluster, you **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
-8. Edit the release and de-select the "This is a pre-release" checkbox. You must also re-tick the `Set as the latest release` checkbox. Otherwise the get.bacalhau script will not see it as "latest".
-9. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
-10. Inform the head of DevRel (Iryna) so we can write a blog post!
+8. Let the pre-release soak for a week. [Update the Bacalhau Staging servers -- see below](#updating-the-bacalhau-networks). If no issues are found, proceed to the next step.
+9. Go back and repeat these steps from step 1, but this time specify a final version number. E.g. `v0.1.37`.
+10. Edit the release and de-select the "This is a pre-release" checkbox. You must also re-tick the `Set as the latest release` checkbox. Otherwise the get.bacalhau script will not see it as "latest".
+11. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
+12. Inform the head of DevRel (Iryna) so we can write a blog post!
 
 ## Updating the Bacalhau Networks
 
@@ -56,3 +58,7 @@ You can see the server logs with:
 ```bash
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -f
 ```
+
+## Further Information
+
+* [Go recommendations for pre-release](https://go.dev/blog/publishing-go-modules#semantic-versions-and-modules)
