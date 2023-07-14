@@ -22,8 +22,9 @@ import (
 type logRequest = publicapi.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
 
 type Msg struct {
-	Tag  uint8
-	Data string
+	Tag          uint8
+	Data         string
+	ErrorMessage string
 }
 
 // logs godoc
@@ -61,7 +62,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	err = conn.ReadJSON(&srequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("error reading signed request: %s", err))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -72,7 +73,8 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	buffer := bytes.NewReader(srequest)
 	payload, err := publicapi.UnmarshalSigned[model.LogsPayload](ctx, buffer)
 	if err != nil {
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, "failed to decode request"))
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.New("failed to decode request"))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -81,8 +83,8 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	// Get the job, check it exists and check it belongs to the same client
 	job, err := s.jobStore.GetJob(ctx, payload.JobID)
 	if err != nil {
-		log.Ctx(ctx).Debug().Msgf("Missing job: %s", err)
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, err.Error()))
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("failed to find job: %s", payload.JobID))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -93,8 +95,8 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		log.Ctx(ctx).Debug().Msgf("Mismatched ClientIDs for logs, existing job: %s and log request: %s",
 			job.Metadata.ClientID, payload.ClientID)
 
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("mismatched client id: %s", payload.ClientID))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
+		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("invalid client id: %s", payload.ClientID))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -107,7 +109,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	response, err := s.requester.ReadLogs(ctx, logRequest)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("read logs failure: %s", err))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, errorResponse))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -119,7 +121,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	client, err := logstream.NewLogStreamClient(ctx, response.Address)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream client create failure: %s", err))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 	defer client.Close()
@@ -127,7 +129,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	err = client.Connect(ctx, payload.ExecutionID, payload.WithHistory, payload.Follow)
 	if err != nil {
 		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("logstream connect failure: %s", err))
-		_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorResponse))
+		s.writeErrorMessage(ctx, conn, errorResponse)
 		return
 	}
 
@@ -138,8 +140,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 			break
 		}
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("Stream read failure: %s", err)
-			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			log.Ctx(ctx).Error().Err(err).Msgf("Stream read failure. May be reset?: %s", err)
 			break
 		}
 
@@ -151,6 +152,17 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 	}
 
 	_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+}
+
+func (s *RequesterAPIServer) writeErrorMessage(ctx context.Context, conn *websocket.Conn, errorMsg string) {
+	msg := Msg{
+		ErrorMessage: errorMsg,
+	}
+
+	err := conn.WriteJSON(msg)
+	if err != nil {
+		log.Ctx(ctx).Error().Msgf("websocket write failure sending error: %s", err)
+	}
 }
 
 func (s *RequesterAPIServer) writeDataFrame(ctx context.Context, conn *websocket.Conn, frame logger.DataFrame) error {
