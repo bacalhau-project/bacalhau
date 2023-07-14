@@ -2,6 +2,8 @@ package util
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -88,8 +90,9 @@ func ApplyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
 }
 
 type Msg struct {
-	Tag  uint8
-	Data string
+	Tag          uint8
+	Data         string
+	ErrorMessage string
 }
 
 func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn) error {
@@ -112,10 +115,27 @@ func readLogoutput(ctx context.Context, cmd *cobra.Command, conn *websocket.Conn
 			if err != nil {
 				// If the error is NOT a CloseNormal then log the error
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-					cmd.PrintErrf("failed to read: %s", err)
+					cmd.PrintErrf("Error: failed to read message: %s", err)
 				}
 
 				exiting = true
+				continue
+			}
+
+			if msg.ErrorMessage != "" {
+				var errResponse bacerrors.ErrorResponse
+				err := json.Unmarshal([]byte(msg.ErrorMessage), &errResponse)
+				if err != nil {
+					Fatal(cmd, fmt.Errorf("failed decoding error message from server: %s", err), 1)
+				}
+
+				e := fmt.Sprintf("Error: %s", &errResponse)
+				Fatal(cmd, errors.New(e), 1)
+
+				_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+				conn.Close()
+
+				return
 			}
 
 			if msg.Tag == 1 {
