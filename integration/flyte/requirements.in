@@ -1,4 +1,7 @@
-# -e file:.#egg=flytekit
+## use the publised version of flytekit instead of the local one
+#-e file:.#egg=flytekit
+flytekit
+
 attrs<21
 # We need to restrict constrain the versions of both jsonschema and pyyaml because of docker-compose (which is
 # used to run integration tests) pins those two libraries. We are in the process of removing docker-compose in
@@ -8,5 +11,13 @@ jsonschema<4
 pyyaml<6
 # This is required by docker-compose and otherwise clashes with docker-py
 websocket-client<1.0.0
+
 # TODO: Remove after buf migration is done and packages updated
-packaging<22.0
+# packaging<22.0
+
+## TODO(@enricorotundo) - Remove this once we have a new version of flytekit
+## Cannot install bacalhau-sdk and packaging<22.0 because these package versions have conflicting dependencies.
+## The user requested packaging<22.0, tox 4.6.4 depends on packaging>=23.1
+packaging
+
+bacalhau-sdk

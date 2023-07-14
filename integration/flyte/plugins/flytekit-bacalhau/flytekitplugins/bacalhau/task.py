@@ -3,8 +3,9 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable
 from typing import Any
+from typing import Any, Dict, Optional, Type
 
-from flytekit import PythonFunctionTask
+
 from flytekit.extend import PythonTask
 from flytekit.extend import Interface, PythonTask, context_manager
 
@@ -16,10 +17,18 @@ from bacalhau_sdk.config import get_client_id
 class BacalhauConfig(object):
     """
     BacalhauConfig should be used to configure a Bacalhau Task.
-    e.g. point to a Bacalhau API endpoint, or set a timeout.
+    i.e., point to a Bacalhau API endpoint, port, or a Bacalhau directory.
     """
-    pass
+    BacalhauApiHost: Optional[str] = None
+    BacalhauApiPort: Optional[str] = None
+    BacalhauDir: Optional[str] = None
 
+    if BacalhauApiHost is not None:
+        os.environ["BACALHAU_API_HOST"] = BacalhauApiHost
+    if BacalhauApiPort is not None:
+        os.environ["BACALHAU_API_PORT"] = BacalhauApiPort
+    if BacalhauDir is not None:
+        os.environ["BACALHAU_DIR"] = BacalhauDir
 
 class BacalhauTask(PythonTask):
     """
