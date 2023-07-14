@@ -23,29 +23,34 @@ class BacalhauConfig(object):
     BacalhauApiPort: Optional[str] = None
     BacalhauDir: Optional[str] = None
 
-    if BacalhauApiHost is not None:
-        os.environ["BACALHAU_API_HOST"] = BacalhauApiHost
-    if BacalhauApiPort is not None:
-        os.environ["BACALHAU_API_PORT"] = BacalhauApiPort
-    if BacalhauDir is not None:
-        os.environ["BACALHAU_DIR"] = BacalhauDir
+    def __post_init__(self):
+        print("BacalhauConfig __post_init__")
+        if self.BacalhauApiHost is not None:
+            os.environ["BACALHAU_API_HOST"] = self.BacalhauApiHost
+        if self.BacalhauApiPort is not None:
+            os.environ["BACALHAU_API_PORT"] = self.BacalhauApiPort
+        if self.BacalhauDir is not None:
+            os.environ["BACALHAU_DIR"] = self.BacalhauDir
 
 class BacalhauTask(PythonTask):
     """
-    BacalhauTask is a Flyte task that submits a job to the Bacalhau API.
+    This task submits a job to the Bacalhau API.
+    Can be used even for tasks that do not produce any output.
 
     https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.core.python_function_task.PythonFunctionTask.html#flytekit-core-python-function-task-pythonfunctiontask
     """
     
     _TASK_TYPE = "bacalhau"
+
     job_spec: dict
-    myinput: str = "myinput"
-    myoutput: str = "myoutput"
     api_version: str
     client_id: str
+    
+    myinput: str = "myinput"
+    myoutput: str = "myoutput"
 
     def __init__(
-        self, 
+        self,
         name: str,
         job_spec: dict, # TODO: make this a BacalhauConfig
         api_version: str = "V1beta1",
