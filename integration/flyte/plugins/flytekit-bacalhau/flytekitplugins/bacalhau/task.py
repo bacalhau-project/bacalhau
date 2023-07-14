@@ -77,7 +77,7 @@ class BacalhauTask(PythonTask):
         # No need to check for existence, as that is guaranteed.
         ctx = context_manager.FlyteContext.current_context()
         user_context = ctx.user_space_params
-        user_context.logging.info("Calling Bac API...")
+        user_context.logging.info("Calling Bacalhau API...")
 
         if "annotations" in self.job_spec:
             self.job_spec["annotations"] = self.job_spec["annotations"].append("flyte")
