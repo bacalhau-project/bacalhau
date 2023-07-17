@@ -26,7 +26,6 @@ func NewPlan(eval *Evaluation) *Plan {
 		NewExecutions:     []*model.ExecutionState{},
 		StoppedExecutions: []*jobstore.UpdateExecutionRequest{},
 	}
-
 }
 
 // AppendExecution appends the execution to the plan executions.

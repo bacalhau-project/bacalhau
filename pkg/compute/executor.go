@@ -94,7 +94,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	}
 
 	if e.failureInjection.IsBadActor {
-		err = fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
+		err = fmt.Errorf("i am a baaad node. I failed execution %s", execution.ID)
 		return
 	}
 

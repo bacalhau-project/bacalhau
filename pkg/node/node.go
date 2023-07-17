@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -302,7 +300,7 @@ func (n *Node) IsComputeNode() bool {
 }
 
 func newLibp2pPubSub(ctx context.Context, config NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	tracer, err := libp2p_pubsub.NewJSONTracer(cfg.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}

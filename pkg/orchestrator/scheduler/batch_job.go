@@ -133,7 +133,8 @@ func (b *BatchJobScheduler) failUnhealthyExecs(
 }
 
 // existingNodeInfos returns a map of nodeID to NodeInfo for all the nodes that have executions for this job
-func (b *BatchJobScheduler) existingNodeInfos(ctx context.Context, existingExecutions []*model.ExecutionState) (map[string]*model.NodeInfo, error) {
+func (b *BatchJobScheduler) existingNodeInfos(ctx context.Context,
+	existingExecutions []*model.ExecutionState) (map[string]*model.NodeInfo, error) {
 	out := make(map[string]*model.NodeInfo)
 	checked := make(map[string]struct{})
 
