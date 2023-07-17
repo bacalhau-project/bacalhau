@@ -5,12 +5,14 @@ package requester
 import (
 	"context"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
@@ -39,7 +41,15 @@ func getTestEndpoint(t *testing.T, strategy bidstrategy.BidStrategy) (Endpoint, 
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
 	storage_mock := noop_storage.NewNoopStorage()
-	store := inmemory.NewInMemoryJobStore()
+
+	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
+	dbFile := filepath.Join(dir, "endpoint_test.db")
+	cm.RegisterCallback(func() error {
+		os.Remove(dbFile)
+		return nil
+	})
+	store, _ := boltjobstore.NewBoltJobStore(dbFile)
+
 	scheduler := &mockScheduler{
 		handleStartJob: func(ctx context.Context, sjr StartJobRequest) error {
 			store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
@@ -77,6 +87,7 @@ func TestEndpointAppliesJobSelectionPolicy(t *testing.T) {
 
 		endpoint, store := getTestEndpoint(t, &strategy)
 		job, err := endpoint.SubmitJob(context.Background(), model.JobCreatePayload{
+			ClientID: "clientid",
 			Spec: &model.Spec{
 				Network: model.NetworkConfig{
 					Type: model.NetworkFull,

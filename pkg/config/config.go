@@ -331,3 +331,38 @@ func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
 
 	return c
 }
+
+type JobStoreType = int
+
+const (
+	JobStoreInMemory = iota
+	JobStoreBoltDB
+)
+
+type JobStoreConfig struct {
+	StoreType JobStoreType
+	Location  string
+}
+
+func GetJobStoreConfig(nodeID string) JobStoreConfig {
+	c := JobStoreConfig{}
+
+	jobStore := strings.ToLower(os.Getenv("BACALHAU_JOB_STORE"))
+	if jobStore == "boltdb" {
+		c.StoreType = JobStoreBoltDB
+	} else {
+		c.StoreType = JobStoreInMemory
+	}
+
+	// Either, the user has specified the full path to the file in
+	// an environment variable, or we will derive the filename ourselves
+	// from the node id.
+	path := os.Getenv("BACALHAU_JOB_STORE_PATH")
+	if path == "" {
+		f := fmt.Sprintf("%s-requester.db", nodeID)
+		path = filepath.Join(GetConfigPath(), f)
+	}
+	c.Location = path
+
+	return c
+}

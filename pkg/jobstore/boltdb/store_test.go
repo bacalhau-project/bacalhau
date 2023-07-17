@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/benbjohnson/clock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -72,7 +71,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 
 	for _, fixture := range jobFixtures {
 		s.clock.Add(1 * time.Second)
-		job := testutils.MakeJob(
+		job := makeJob(
 			model.EngineDocker,
 			model.PublisherNoop,
 			[]string{"bash", "-c", "echo hello"})
@@ -324,7 +323,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestDeleteJob() {
-	job := testutils.MakeJob(
+	job := makeJob(
 		model.EngineDocker,
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
@@ -361,4 +360,28 @@ func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	s.NoError(err)
 	s.Equal(1, len(infos))
 	s.Equal("3", infos[0].Job.ID())
+}
+
+func makeJob(
+	engineType model.Engine,
+	publisherType model.Publisher,
+	entrypointArray []string) *model.Job {
+	j := model.NewJob()
+
+	j.Spec = model.Spec{
+		Engine: engineType,
+		PublisherSpec: model.PublisherSpec{
+			Type: publisherType,
+		},
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu:latest",
+			Entrypoint: entrypointArray,
+		},
+	}
+
+	j.Spec.Deal = model.Deal{
+		Concurrency: 1,
+	}
+
+	return j
 }

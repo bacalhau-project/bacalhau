@@ -26,7 +26,7 @@ func TestDatabaseTestSuite(t *testing.T) {
 func (s *DatabaseTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
-	dir, _ := os.MkdirTemp("", "bacalhau-jobstore")
+	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
 	s.dbFile = filepath.Join(dir, "testing.db")
 
 	s.store, _ = NewBoltJobStore(s.dbFile)

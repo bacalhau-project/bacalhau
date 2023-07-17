@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/imdario/mergo"
 	"github.com/multiformats/go-multiaddr"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -212,10 +214,21 @@ func NewDevStack(
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
+		var datastore jobstore.Store
+		jobStoreConf := config.GetJobStoreConfig(libp2pHost.ID().String())
+		if jobStoreConf.StoreType == config.JobStoreBoltDB {
+			datastore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
+			if err != nil {
+				return nil, fmt.Errorf("error creating datastore: %w", err)
+			}
+		} else {
+			datastore = inmemory.NewInMemoryJobStore()
+		}
+
 		nodeConfig := node.NodeConfig{
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			JobStore:            inmemory.NewInMemoryJobStore(),
+			JobStore:            datastore,
 			Host:                libp2pHost,
 			EstuaryAPIKey:       options.EstuaryAPIKey,
 			HostAddress:         "0.0.0.0",

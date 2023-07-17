@@ -18,6 +18,8 @@ import (
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
@@ -301,10 +303,17 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return err
 	}
 
-	datastore := inmemory.NewInMemoryJobStore()
-	if err != nil {
-		return fmt.Errorf("error creating in memory datastore: %w", err)
+	var datastore jobstore.Store
+	jobStoreConf := config.GetJobStoreConfig(libp2pHost.ID().String())
+	if jobStoreConf.StoreType == config.JobStoreBoltDB {
+		datastore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
+		if err != nil {
+			return fmt.Errorf("error creating datastore: %w", err)
+		}
+	} else {
+		datastore = inmemory.NewInMemoryJobStore()
 	}
+
 	AutoLabels := AutoOutputLabels()
 	combinedMap := make(map[string]string)
 	for key, value := range AutoLabels {

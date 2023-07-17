@@ -26,8 +26,8 @@ func TestIndexTestSuite(t *testing.T) {
 func (s *IndexTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
-	dir, _ := os.MkdirTemp("", "bacalhau-jobstore")
-	s.dbFile = filepath.Join(dir, "testing.db")
+	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
+	s.dbFile = filepath.Join(dir, "index-testing.db")
 
 	s.store, _ = NewBoltJobStore(s.dbFile)
 	s.store.database.Update(func(tx *bolt.Tx) (err error) {

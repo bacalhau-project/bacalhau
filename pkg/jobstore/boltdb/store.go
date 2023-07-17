@@ -3,6 +3,8 @@ package boltjobstore
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -539,6 +541,11 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 
 	if err = b.inProgressIndex.Add(tx, BucketJobsInProgress, jobIDKey); err != nil {
 		return err
+	}
+
+	if job.Metadata.ClientID == "" {
+		fmt.Println("TEST missing clientID in job")
+		return errors.New("job is missing a client id")
 	}
 
 	if err = b.clientsIndex.Add(tx, []byte(job.Metadata.ClientID), jobIDKey); err != nil {
