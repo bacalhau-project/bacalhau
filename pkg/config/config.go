@@ -312,7 +312,7 @@ type ComputeStorageConfig struct {
 func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
 	c := ComputeStorageConfig{}
 
-	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE"))
+	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE_TYPE"))
 	if computeStore == "boltdb" {
 		c.StoreType = ExecutionStoreBoltDB
 	} else {
@@ -347,7 +347,7 @@ type JobStoreConfig struct {
 func GetJobStoreConfig(nodeID string) JobStoreConfig {
 	c := JobStoreConfig{}
 
-	jobStore := strings.ToLower(os.Getenv("BACALHAU_JOB_STORE"))
+	jobStore := strings.ToLower(os.Getenv("BACALHAU_JOB_STORE_TYPE"))
 	if jobStore == "boltdb" {
 		c.StoreType = JobStoreBoltDB
 	} else {

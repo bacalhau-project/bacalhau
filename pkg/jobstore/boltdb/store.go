@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 )
@@ -172,6 +173,8 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 
 		return nil
 	})
+
+	log.Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
 
 	store.inProgressIndex = NewIndex(BucketPathJobs)
 	store.clientsIndex = NewIndex(BucketPathClients)
@@ -857,5 +860,6 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.Executi
 }
 
 func (b *BoltJobStore) Close(ctx context.Context) error {
+	log.Ctx(ctx).Debug().Msg("closing bolt-backed job store")
 	return b.database.Close()
 }

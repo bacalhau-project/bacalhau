@@ -221,6 +221,7 @@ func NewDevStack(
 			if err != nil {
 				return nil, fmt.Errorf("error creating datastore: %w", err)
 			}
+			cm.RegisterCallbackWithContext(datastore.Close)
 		} else {
 			datastore = inmemory.NewInMemoryJobStore()
 		}
