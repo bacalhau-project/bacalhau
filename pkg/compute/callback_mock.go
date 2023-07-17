@@ -3,11 +3,10 @@ package compute
 import "context"
 
 type CallbackMock struct {
-	OnBidCompleteHandler     func(ctx context.Context, result BidResult)
-	OnCancelCompleteHandler  func(ctx context.Context, result CancelResult)
-	OnComputeFailureHandler  func(ctx context.Context, err ComputeError)
-	OnPublishCompleteHandler func(ctx context.Context, result PublishResult)
-	OnRunCompleteHandler     func(ctx context.Context, result RunResult)
+	OnBidCompleteHandler    func(ctx context.Context, result BidResult)
+	OnCancelCompleteHandler func(ctx context.Context, result CancelResult)
+	OnComputeFailureHandler func(ctx context.Context, err ComputeError)
+	OnRunCompleteHandler    func(ctx context.Context, result RunResult)
 }
 
 // OnBidComplete implements Callback
@@ -28,13 +27,6 @@ func (c CallbackMock) OnCancelComplete(ctx context.Context, result CancelResult)
 func (c CallbackMock) OnComputeFailure(ctx context.Context, err ComputeError) {
 	if c.OnComputeFailureHandler != nil {
 		c.OnComputeFailureHandler(ctx, err)
-	}
-}
-
-// OnPublishComplete implements Callback
-func (c CallbackMock) OnPublishComplete(ctx context.Context, result PublishResult) {
-	if c.OnPublishCompleteHandler != nil {
-		c.OnPublishCompleteHandler(ctx, result)
 	}
 }
 

@@ -5,11 +5,12 @@
 package orchestrator
 
 import (
+	context "context"
 	reflect "reflect"
 	time "time"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
-	gomock "github.com/golang/mock/gomock"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockEvaluationBroker is a mock of EvaluationBroker interface.
@@ -50,10 +51,10 @@ func (mr *MockEvaluationBrokerMockRecorder) Ack(evalID, receiptHandle interface{
 }
 
 // Dequeue mocks base method.
-func (m *MockEvaluationBroker) Dequeue(types []string, timeout time.Duration) (*model.Evaluation, string, error) {
+func (m *MockEvaluationBroker) Dequeue(types []string, timeout time.Duration) (*models.Evaluation, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Dequeue", types, timeout)
-	ret0, _ := ret[0].(*model.Evaluation)
+	ret0, _ := ret[0].(*models.Evaluation)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -66,7 +67,7 @@ func (mr *MockEvaluationBrokerMockRecorder) Dequeue(types, timeout interface{}) 
 }
 
 // Enqueue mocks base method.
-func (m *MockEvaluationBroker) Enqueue(evaluation *model.Evaluation) error {
+func (m *MockEvaluationBroker) Enqueue(evaluation *models.Evaluation) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Enqueue", evaluation)
 	ret0, _ := ret[0].(error)
@@ -80,7 +81,7 @@ func (mr *MockEvaluationBrokerMockRecorder) Enqueue(evaluation interface{}) *gom
 }
 
 // EnqueueAll mocks base method.
-func (m *MockEvaluationBroker) EnqueueAll(evaluation map[*model.Evaluation]string) error {
+func (m *MockEvaluationBroker) EnqueueAll(evaluation map[*models.Evaluation]string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnqueueAll", evaluation)
 	ret0, _ := ret[0].(error)
@@ -160,17 +161,17 @@ func (m *MockScheduler) EXPECT() *MockSchedulerMockRecorder {
 }
 
 // Process mocks base method.
-func (m *MockScheduler) Process(arg0 *model.Evaluation) error {
+func (m *MockScheduler) Process(ctx context.Context, eval *models.Evaluation) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Process", arg0)
+	ret := m.ctrl.Call(m, "Process", ctx, eval)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Process indicates an expected call of Process.
-func (mr *MockSchedulerMockRecorder) Process(arg0 interface{}) *gomock.Call {
+func (mr *MockSchedulerMockRecorder) Process(ctx, eval interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockScheduler)(nil).Process), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockScheduler)(nil).Process), ctx, eval)
 }
 
 // MockSchedulerProvider is a mock of SchedulerProvider interface.
@@ -211,15 +212,53 @@ func (mr *MockSchedulerProviderMockRecorder) EnabledSchedulers() *gomock.Call {
 }
 
 // Scheduler mocks base method.
-func (m *MockSchedulerProvider) Scheduler(jobType string) Scheduler {
+func (m *MockSchedulerProvider) Scheduler(jobType string) (Scheduler, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Scheduler", jobType)
 	ret0, _ := ret[0].(Scheduler)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Scheduler indicates an expected call of Scheduler.
 func (mr *MockSchedulerProviderMockRecorder) Scheduler(jobType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Scheduler", reflect.TypeOf((*MockSchedulerProvider)(nil).Scheduler), jobType)
+}
+
+// MockPlanner is a mock of Planner interface.
+type MockPlanner struct {
+	ctrl     *gomock.Controller
+	recorder *MockPlannerMockRecorder
+}
+
+// MockPlannerMockRecorder is the mock recorder for MockPlanner.
+type MockPlannerMockRecorder struct {
+	mock *MockPlanner
+}
+
+// NewMockPlanner creates a new mock instance.
+func NewMockPlanner(ctrl *gomock.Controller) *MockPlanner {
+	mock := &MockPlanner{ctrl: ctrl}
+	mock.recorder = &MockPlannerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPlanner) EXPECT() *MockPlannerMockRecorder {
+	return m.recorder
+}
+
+// Process mocks base method.
+func (m *MockPlanner) Process(ctx context.Context, plan *models.Plan) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Process", ctx, plan)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Process indicates an expected call of Process.
+func (mr *MockPlannerMockRecorder) Process(ctx, plan interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockPlanner)(nil).Process), ctx, plan)
 }

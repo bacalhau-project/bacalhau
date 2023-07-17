@@ -1,12 +1,10 @@
+//go:generate mockgen --source types.go --destination mocks.go --package requester
 package requester
 
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier/external"
 	"github.com/rs/zerolog"
 )
 
@@ -14,12 +12,8 @@ import (
 type Endpoint interface {
 	// SubmitJob submits a new job to the network.
 	SubmitJob(context.Context, model.JobCreatePayload) (*model.Job, error)
-	// ApproveJob approves or rejects the running of a job.
-	ApproveJob(context.Context, bidstrategy.ModerateJobRequest) error
 	// CancelJob cancels an existing job.
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
-	// VerifyExecutions approves or rejects the publishing of an execution.
-	VerifyExecutions(context.Context, external.ExternalVerificationResponse) error
 	// ReadLogs retrieves the logs for an execution
 	ReadLogs(context.Context, ReadLogsRequest) (ReadLogsResponse, error)
 }
@@ -28,7 +22,6 @@ type Endpoint interface {
 type Scheduler interface {
 	StartJob(context.Context, StartJobRequest) error
 	CancelJob(context.Context, CancelJobRequest) (CancelJobResult, error)
-	VerifyExecutions(context.Context, []verifier.VerifierResult) (succeeded, failed []verifier.VerifierResult)
 }
 
 type Queue interface {
@@ -59,9 +52,6 @@ type NodeSelector interface {
 	// SelectBids returns the pending bids on the passed job that should be
 	// accepted or rejected.
 	SelectBids(context.Context, *model.Job, *model.JobState) (accept, reject []model.ExecutionState)
-	// CanVerifyJob returns whether the passed job is ready to be verified.
-	// Verifiers expect *all* executions to have been completed.
-	CanVerifyJob(context.Context, *model.Job, *model.JobState) bool
 	// CanCompleteJob returns whether the passed job is ready to be declared
 	// complete. The returned job state should be used to update the state of
 	// the job, and may be JobStateCompleted or JobStateCompletedPartially.

@@ -55,5 +55,5 @@ func (publisher *IPFSPublisher) PublishResult(
 	return job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceIPFS, cid), nil
 }
 
-// Compile-time check that Verifier implements the correct interface:
+// Compile-time check that publisher implements the correct interface:
 var _ publisher.Publisher = (*IPFSPublisher)(nil)

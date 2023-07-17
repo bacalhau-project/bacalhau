@@ -64,15 +64,12 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine:   EngineDocker,
-			Verifier: VerifierNoop,
+			Engine: EngineDocker,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
 			Deal: Deal{
 				Concurrency: 1,
-				Confidence:  0,
-				MinBids:     0, // 0 means no minimum before bidding
 			},
 		},
 	})
@@ -127,18 +124,6 @@ type Deal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty"`
-	// The number of nodes that must agree on a verification result
-	// this is used by the different verifiers - for example the
-	// deterministic verifier requires the winning group size
-	// to be at least this size
-	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the Requester
-	// node will randomly accept concurrency-many of them (when
-	// TargetAll=false). This allows the Requester node to get some level of
-	// guarantee that the execution of the jobs will be spread evenly across the
-	// network (assuming that this value is some large proportion of the size of
-	// the network).
-	MinBids int `json:"MinBids,omitempty"`
 }
 
 // GetConcurrency returns the concurrency value from the deal
@@ -147,14 +132,6 @@ func (d Deal) GetConcurrency() int {
 		return 1
 	}
 	return d.Concurrency
-}
-
-// GetConfidence returns the confidence value from the deal
-func (d Deal) GetConfidence() int {
-	if d.Confidence == 0 {
-		return d.GetConcurrency()
-	}
-	return d.Confidence
 }
 
 func (d Deal) IsValid() error {
@@ -166,29 +143,9 @@ func (d Deal) IsValid() error {
 			// 1, so we just ignore both 1 or 0 for convenience.
 			err = multierr.Append(err, fmt.Errorf("concurrency ignored for target all mode, must be == 0"))
 		}
-
-		if d.Confidence != 0 {
-			err = multierr.Append(err, fmt.Errorf("confidence ignored for target all mode, must be == 0"))
-		}
-
-		if d.MinBids != 0 {
-			err = multierr.Append(err, fmt.Errorf("min bids ignored for target all mode, must be == 0"))
-		}
 	case TargetAny:
 		if d.Concurrency <= 0 {
 			err = multierr.Append(err, fmt.Errorf("concurrency must be >= 1"))
-		}
-
-		if d.Confidence < 0 {
-			err = multierr.Append(err, fmt.Errorf("confidence must be >= 1"))
-		}
-
-		if d.MinBids < 0 {
-			err = multierr.Append(err, fmt.Errorf("min bids must be >= 1"))
-		}
-
-		if d.Confidence > d.Concurrency {
-			err = multierr.Append(err, fmt.Errorf("the deal confidence cannot be higher than the concurrency"))
 		}
 	}
 
@@ -225,8 +182,6 @@ type PublisherSpec struct {
 type Spec struct {
 	// e.g. docker or language
 	Engine Engine `json:"Engine,omitempty"`
-
-	Verifier Verifier `json:"Verifier,omitempty"`
 
 	// there can be multiple publishers for the job
 	// deprecated: use PublisherSpec instead

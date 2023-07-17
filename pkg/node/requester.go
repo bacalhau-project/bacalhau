@@ -22,12 +22,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/selection"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
-	simulator_protocol "github.com/bacalhau-project/bacalhau/pkg/transport/simulator"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 )
 
 type Requester struct {
@@ -49,9 +46,6 @@ func NewRequesterNode(
 	apiServer *publicapi.APIServer,
 	config RequesterConfig,
 	jobStore jobstore.Store,
-	simulatorNodeID string,
-	simulatorRequestHandler *simulator.RequestHandler,
-	verifiers verifier.VerifierProvider,
 	storageProviders storage.StorageProvider,
 	jobInfoPublisher *jobinfo.Publisher,
 	nodeInfoStore routing.NodeInfoStore,
@@ -61,36 +55,15 @@ func NewRequesterNode(
 	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
 
 	// compute proxy
-	var computeProxy compute.Endpoint
-	standardComputeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
+	computeProxy := bprotocol.NewComputeProxy(bprotocol.ComputeProxyParams{
 		Host: host,
 	})
-	// if we are running in simulator mode, then we use the simulator proxy to forward all requests to th simulator node.
-	if simulatorNodeID != "" {
-		simulatorProxy := simulator_protocol.NewComputeProxy(simulator_protocol.ComputeProxyParams{
-			SimulatorNodeID: simulatorNodeID,
-			Host:            host,
-		})
-		if simulatorRequestHandler != nil {
-			// if this node is the simulator node, we need to register a local endpoint to allow self dialing
-			simulatorProxy.RegisterLocalComputeEndpoint(simulatorRequestHandler)
-			// set standard endpoint implementation so that the simulator can forward requests to the correct endpoints
-			// after it finishes its validation and processing of the request
-			simulatorRequestHandler.SetComputeProxy(standardComputeProxy)
-		}
-		computeProxy = simulatorProxy
-	} else {
-		computeProxy = standardComputeProxy
-	}
 
 	// compute node discoverer
 	nodeDiscoveryChain := discovery.NewChain(true)
 	nodeDiscoveryChain.Add(
 		discovery.NewStoreNodeDiscoverer(discovery.StoreNodeDiscovererParams{
 			Store: nodeInfoStore,
-		}),
-		discovery.NewIdentityNodeDiscoverer(discovery.IdentityNodeDiscovererParams{
-			Host: host,
 		}),
 	)
 
@@ -99,7 +72,6 @@ func NewRequesterNode(
 	nodeRankerChain.Add(
 		// rankers that act as filters and give a -1 score to nodes that do not match the filter
 		ranking.NewEnginesNodeRanker(),
-		ranking.NewVerifiersNodeRanker(),
 		ranking.NewPublishersNodeRanker(),
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
@@ -143,7 +115,6 @@ func NewRequesterNode(
 		NodeSelector:     nodeSelector,
 		RetryStrategy:    retryStrategy,
 		ComputeEndpoint:  computeProxy,
-		Verifiers:        verifiers,
 		StorageProviders: storageProviders,
 		EventEmitter:     emitter,
 		GetVerifyCallback: func() *url.URL {
@@ -167,7 +138,6 @@ func NewRequesterNode(
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
 		Queue:                      queue,
-		Verifiers:                  verifiers,
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
@@ -183,19 +153,11 @@ func NewRequesterNode(
 		Interval: config.HousekeepingBackgroundTaskInterval,
 	})
 
-	// if this node is the simulator, then we pass incoming requests to the simulator before passing them to the endpoint
-	if simulatorRequestHandler != nil {
-		bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
-			Host:     host,
-			Callback: simulatorRequestHandler,
-		})
-	} else {
-		// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
-		bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
-			Host:     host,
-			Callback: scheduler,
-		})
-	}
+	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
+	bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
+		Host:     host,
+		Callback: scheduler,
+	})
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []model.DebugInfoProvider{
@@ -257,7 +219,7 @@ func NewRequesterNode(
 		localCallback:      scheduler,
 		NodeDiscoverer:     nodeDiscoveryChain,
 		JobStore:           jobStore,
-		computeProxy:       standardComputeProxy,
+		computeProxy:       computeProxy,
 		cleanupFunc:        cleanupFunc,
 		requesterAPIServer: requesterAPIServer,
 	}, nil

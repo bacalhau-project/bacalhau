@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +23,6 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		Labels: map[string]string{
 			"owner": "bacalhau",
 		},
-		NodeInfoPublisherInterval: 10 * time.Millisecond, // publish node info quickly for requester node to be aware of compute node infos
 	}
 	nodeCount := 3
 	nodeOverrides := make([]node.NodeConfig, nodeCount)
@@ -32,7 +30,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		nodeOverrides[i] = nodeOverride
 	}
 	stack, _ := testutils.SetupTest(context.Background(), t,
-		nodeCount, 0,
+		nodeCount,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...)

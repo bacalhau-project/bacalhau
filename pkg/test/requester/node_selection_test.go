@@ -5,7 +5,6 @@ package requester
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -62,9 +61,6 @@ func (s *NodeSelectionSuite) SetupSuite() {
 				"env":  "test",
 			},
 		},
-	}
-	for i := 0; i < len(nodeOverrides); i++ {
-		nodeOverrides[i].NodeInfoPublisherInterval = 100 * time.Millisecond // publish node info quickly for requester node to be aware of compute node infos
 	}
 	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
 		node.NewComputeConfigWithDefaults(),

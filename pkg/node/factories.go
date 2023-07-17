@@ -10,8 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/bacalhau-project/bacalhau/pkg/verifier/util"
 )
 
 // Interfaces to inject dependencies into the stack
@@ -21,10 +19,6 @@ type StorageProvidersFactory interface {
 
 type ExecutorsFactory interface {
 	Get(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error)
-}
-
-type VerifiersFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error)
 }
 
 type PublishersFactory interface {
@@ -50,20 +44,6 @@ func (f ExecutorsFactoryFunc) Get(
 	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error) {
 	return f(ctx, nodeConfig, storages)
-}
-
-type VerifiersFactoryFunc func(
-	ctx context.Context,
-	nodeConfig NodeConfig,
-	publishers publisher.PublisherProvider,
-) (verifier.VerifierProvider, error)
-
-func (f VerifiersFactoryFunc) Get(
-	ctx context.Context,
-	nodeConfig NodeConfig,
-	publishers publisher.PublisherProvider,
-) (verifier.VerifierProvider, error) {
-	return f(ctx, nodeConfig, publishers)
 }
 
 type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
@@ -109,25 +89,6 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 				return nil, err
 			}
 			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
-		})
-}
-
-func NewStandardVerifiersFactory() VerifiersFactory {
-	return VerifiersFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig, publishers publisher.PublisherProvider) (verifier.VerifierProvider, error) {
-			encrypter := verifier.NewEncrypter(nodeConfig.Host.Peerstore().PrivKey(nodeConfig.Host.ID()))
-			provider, err := verifier_util.NewStandardVerifiers(
-				ctx,
-				nodeConfig.CleanupManager,
-				publishers,
-				nodeConfig.RequesterNodeConfig.ExternalValidatorWebhook,
-				encrypter.Encrypt,
-				encrypter.Decrypt,
-			)
-			if err != nil {
-				return nil, err
-			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Verifiers), err
 		})
 }
 

@@ -14,7 +14,7 @@ func fatalError(cmd *cobra.Command, err error, code int) {
 		if !strings.HasSuffix(msg, "\n") {
 			msg += "\n"
 		}
-		cmd.Print(msg)
+		cmd.PrintErr(msg)
 	}
 	os.Exit(code)
 }

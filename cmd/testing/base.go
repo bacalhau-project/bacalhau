@@ -28,7 +28,7 @@ func (s *BaseSuite) SetupTest() {
 	util.Fatal = util.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1,
 		node.NewComputeConfigWith(node.ComputeConfigParams{
 			JobSelectionPolicy: model.JobSelectionPolicy{
 				Locality: model.Anywhere,

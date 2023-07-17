@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
-
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -18,18 +15,20 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func SetupTestWithDefaultConfigs(
 	ctx context.Context,
 	t *testing.T,
-	nodes int, badActors int,
+	nodes int,
 	nodeOverrides ...node.NodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	return SetupTest(
 		ctx,
 		t,
-		nodes, badActors,
+		nodes,
 		node.NewComputeConfigWithDefaults(),
 		node.NewRequesterConfigWithDefaults(),
 		nodeOverrides...,
@@ -39,7 +38,7 @@ func SetupTestWithDefaultConfigs(
 func SetupTest(
 	ctx context.Context,
 	t *testing.T,
-	nodes int, badActors int,
+	nodes int,
 	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterConfig node.RequesterConfig,
 	nodeOverrides ...node.NodeConfig,
@@ -50,8 +49,7 @@ func SetupTest(
 	})
 
 	options := devstack.DevStackOptions{
-		NumberOfHybridNodes:      nodes,
-		NumberOfBadComputeActors: badActors,
+		NumberOfHybridNodes: nodes,
 	}
 	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{}, nodeOverrides...)
 	return stack, cm
@@ -113,7 +111,6 @@ func SetupTestWithNoopExecutor(
 	injector := node.NodeDependencyInjector{
 		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        executorFactory,
-		VerifiersFactory:        node.NewStandardVerifiersFactory(),
 		PublishersFactory:       node.NewStandardPublishersFactory(),
 	}
 
@@ -126,9 +123,9 @@ func SetupTestWithNoopExecutor(
 	require.NoError(t, err)
 
 	// Wait for nodes to have announced their presence.
-	for !allNodesDiscovered(t, stack) {
-		time.Sleep(time.Second)
-	}
+	assert.Eventually(t, func() bool {
+		return allNodesDiscovered(t, stack)
+	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
 
 	return stack
 }
@@ -136,7 +133,6 @@ func SetupTestWithNoopExecutor(
 // Returns whether the requester node(s) in the stack have discovered all of the
 // other nodes in the stack and have complete information for them (i.e. each
 // node has actually announced itself.)
-// TODO(forrest): this is a major source of slowness in our testing, if we can speed up the discovery of nodes we will save a lot of time
 func allNodesDiscovered(t *testing.T, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
@@ -145,28 +141,20 @@ func allNodesDiscovered(t *testing.T, stack *devstack.DevStack) bool {
 			continue
 		}
 
-		ids, err := stack.GetNodeIds()
-		require.NoError(t, err)
-
+		expectedNodes := stack.GetNodeIds()
 		discoveredNodes, err := node.RequesterNode.NodeDiscoverer.ListNodes(ctx)
 		require.NoError(t, err)
 
-		for _, discoveredNode := range discoveredNodes {
-			if discoveredNode.NodeType == model.NodeTypeCompute && discoveredNode.ComputeNodeInfo == nil {
-				t.Logf("Node %s seen but without required compute node info", discoveredNode.PeerInfo.ID)
-				return false
-			}
-
-			idx := slices.Index(ids, discoveredNode.PeerInfo.ID.String())
-			require.GreaterOrEqualf(t, idx, 0, "Discovered a node not in the devstack?")
-
-			ids = slices.Delete(ids, idx, idx+1)
-		}
-
-		if len(ids) > 0 {
-			t.Logf("Did not see nodes %v", ids)
+		if len(discoveredNodes) < len(expectedNodes) {
+			t.Logf("Only discovered %d nodes, expected %d. Retrying", len(discoveredNodes), len(expectedNodes))
 			return false
 		}
+
+		discoveredNodeIDs := make([]string, len(discoveredNodes))
+		for i, discoveredNode := range discoveredNodes {
+			discoveredNodeIDs[i] = discoveredNode.PeerInfo.ID.String()
+		}
+		require.ElementsMatch(t, expectedNodes, discoveredNodeIDs)
 	}
 
 	return true

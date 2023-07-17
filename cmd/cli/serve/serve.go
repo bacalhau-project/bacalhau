@@ -240,11 +240,6 @@ func NewCmd() *cobra.Command {
 		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs",
 	)
-	serveCmd.PersistentFlags().Var(
-		flags.URLFlag(&OS.ExternalVerifierHook, "http"), "external-verifier-http",
-		"An HTTP URL to which the verification request should be posted for jobs using the 'external' verifier. "+
-			"The 'external' verifier will not be enabled if this is unset.",
-	)
 	serveCmd.PersistentFlags().BoolVar(
 		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
 		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+

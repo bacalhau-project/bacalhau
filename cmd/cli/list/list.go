@@ -171,10 +171,6 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 		Value:        func(jwi *model.JobWithInfo) string { return job.ComputeStateSummary(jwi.State) },
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "verified"},
-		Value:        job.ComputeVerifiedSummary,
-	},
-	{
 		ColumnConfig: table.ColumnConfig{Name: "published"},
 		Value:        job.ComputeResultsSummary,
 	},

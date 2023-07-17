@@ -11,13 +11,6 @@ import (
 
 type SpecOpt func(s *model.Spec) error
 
-func WithVerifier(v model.Verifier) SpecOpt {
-	return func(s *model.Spec) error {
-		s.Verifier = v
-		return nil
-	}
-}
-
 func WithPublisher(p model.PublisherSpec) SpecOpt {
 	return func(s *model.Spec) error {
 		s.Publisher = p.Type
@@ -51,12 +44,10 @@ func WithTimeout(t float64) SpecOpt {
 	}
 }
 
-func WithDeal(targeting model.TargetingMode, concurrency, confidence, minbids int) SpecOpt {
+func WithDeal(targeting model.TargetingMode, concurrency int) SpecOpt {
 	return func(s *model.Spec) error {
 		s.Deal.TargetingMode = targeting
 		s.Deal.Concurrency = concurrency
-		s.Deal.Confidence = confidence
-		s.Deal.MinBids = minbids
 		return nil
 	}
 }
@@ -163,7 +154,6 @@ const DefaultTimeout = 30 * time.Minute
 func MakeSpec(opts ...SpecOpt) (model.Spec, error) {
 	spec := &model.Spec{
 		Engine:    model.EngineNoop,
-		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherNoop,

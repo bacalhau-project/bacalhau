@@ -49,10 +49,5 @@ func NewCmd() *cobra.Command {
 		`Follow the logs in real-time after retrieving the current logs.`,
 	)
 
-	logsCmd.PersistentFlags().BoolVarP(
-		&options.Follow, "history", "h", false,
-		`Show all logs with history. TODO better definition`,
-	)
-
 	return logsCmd
 }

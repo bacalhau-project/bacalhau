@@ -38,7 +38,6 @@ func (n NodeInfo) IsComputeNode() bool {
 
 type ComputeNodeInfo struct {
 	ExecutionEngines   []Engine            `json:"ExecutionEngines"`
-	Verifiers          []Verifier          `json:"Verifiers"`
 	Publishers         []Publisher         `json:"Publishers"`
 	StorageSources     []StorageSourceType `json:"StorageSources"`
 	MaxCapacity        ResourceUsageData   `json:"MaxCapacity"`

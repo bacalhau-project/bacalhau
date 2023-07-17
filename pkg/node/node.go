@@ -5,18 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/imdario/mergo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 	"github.com/rs/zerolog/log"
 
-	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
@@ -24,19 +17,22 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/simulator"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 )
 
 const JobInfoTopic = "bacalhau-job-info"
 const NodeInfoTopic = "bacalhau-node-info"
-const DefaultNodeInfoPublisherInterval = 30 * time.Second
 
 type FeatureConfig struct {
 	Engines    []model.Engine
-	Verifiers  []model.Verifier
 	Publishers []model.Publisher
 	Storages   []model.StorageSourceType
 }
@@ -55,11 +51,10 @@ type NodeConfig struct {
 	ComputeConfig             ComputeConfig
 	RequesterNodeConfig       RequesterConfig
 	APIServerConfig           publicapi.APIServerConfig
-	SimulatorNodeID           string
 	IsRequesterNode           bool
 	IsComputeNode             bool
 	Labels                    map[string]string
-	NodeInfoPublisherInterval time.Duration
+	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
 	PublicKey                 []byte
@@ -70,7 +65,6 @@ type NodeConfig struct {
 type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
-	VerifiersFactory        VerifiersFactory
 	PublishersFactory       PublishersFactory
 }
 
@@ -78,7 +72,6 @@ func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
 		ExecutorsFactory:        NewStandardExecutorsFactory(),
-		VerifiersFactory:        NewStandardVerifiersFactory(),
 		PublishersFactory:       NewStandardPublishersFactory(),
 	}
 }
@@ -128,17 +121,6 @@ func NewNode(
 		return nil, err
 	}
 
-	verifiers, err := config.DependencyInjector.VerifiersFactory.Get(ctx, config, publishers)
-	if err != nil {
-		return nil, err
-	}
-
-	var simulatorRequestHandler *simulator.RequestHandler
-	if config.SimulatorNodeID == config.Host.ID().String() {
-		log.Ctx(ctx).Info().Msgf("Node %s is the simulator node. Setting proper event handlers", config.Host.ID().String())
-		simulatorRequestHandler = simulator.NewRequestHandler()
-	}
-
 	// A single gossipSub instance that will be used by all topics
 	gossipSubCtx, gossipSubCancel := context.WithCancel(ctx)
 	gossipSub, err := newLibp2pPubSub(gossipSubCtx, config)
@@ -177,13 +159,13 @@ func NewNode(
 
 	// node info publisher
 	nodeInfoPublisherInterval := config.NodeInfoPublisherInterval
-	if nodeInfoPublisherInterval == 0 {
-		nodeInfoPublisherInterval = DefaultNodeInfoPublisherInterval
+	if nodeInfoPublisherInterval.IsZero() {
+		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
 	}
 	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
 		PubSub:           nodeInfoPubSub,
 		NodeInfoProvider: nodeInfoProvider,
-		Interval:         nodeInfoPublisherInterval,
+		IntervalConfig:   nodeInfoPublisherInterval,
 	})
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
@@ -243,9 +225,6 @@ func NewNode(
 			apiServer,
 			config.RequesterNodeConfig,
 			config.JobStore,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
-			verifiers,
 			storageProviders,
 			jobInfoPublisher,
 			nodeInfoStore,
@@ -263,11 +242,8 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.ComputeConfig,
-			config.SimulatorNodeID,
-			simulatorRequestHandler,
 			storageProviders,
 			executors,
-			verifiers,
 			publishers,
 		)
 		if err != nil {
@@ -302,13 +278,6 @@ func NewNode(
 		requesterNode.RegisterLocalComputeEndpoint(computeNode.LocalEndpoint)
 	}
 
-	// Eagerly publish node info to the network. Do this in a goroutine so that
-	// slow plugins don't slow down the node from booting.
-	go func() {
-		err = nodeInfoPublisher.Publish(ctx)
-		log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Eagerly published node info")
-	}()
-
 	node := &Node{
 		CleanupManager: config.CleanupManager,
 		APIServer:      apiServer,
@@ -333,7 +302,7 @@ func (n *Node) IsComputeNode() bool {
 }
 
 func newLibp2pPubSub(ctx context.Context, config NodeConfig) (*libp2p_pubsub.PubSub, error) {
-	tracer, err := libp2p_pubsub.NewJSONTracer(cfg.GetLibp2pTracerPath())
+	tracer, err := libp2p_pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
 	if err != nil {
 		return nil, err
 	}
@@ -359,9 +328,6 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.ExecutorsFactory == nil {
 		injector.ExecutorsFactory = defaultInjector.ExecutorsFactory
-	}
-	if injector.VerifiersFactory == nil {
-		injector.VerifiersFactory = defaultInjector.VerifiersFactory
 	}
 	if injector.PublishersFactory == nil {
 		injector.PublishersFactory = defaultInjector.PublishersFactory

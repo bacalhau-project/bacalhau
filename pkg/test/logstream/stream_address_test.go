@@ -42,11 +42,10 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
-		State:             model.ExecutionStateBidAccepted,
-		JobID:             job.ID(),
-		ComputeReference:  execution.ID,
-		AcceptedAskForBid: true,
-		NodeID:            node.Host.ID().Pretty(),
+		State:            model.ExecutionStateBidAccepted,
+		JobID:            job.ID(),
+		ComputeReference: execution.ID,
+		NodeID:           node.Host.ID().Pretty(),
 	})
 	require.NoError(s.T(), err)
 

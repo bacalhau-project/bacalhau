@@ -133,17 +133,6 @@ func (s *allNodeSelector) SelectNodesForRetry(ctx context.Context, job *model.Jo
 	return retryNodes, nil
 }
 
-// We can verify the job when all the executions we are expecting have completed.
-func (*allNodeSelector) CanVerifyJob(ctx context.Context, job *model.Job, jobState *model.JobState) bool {
-	awaitingVerification := len(jobState.GroupExecutionsByState()[model.ExecutionStateResultProposed])
-	if awaitingVerification < 1 {
-		return false
-	}
-
-	uniqueNodes := lo.UniqBy(jobState.Executions, func(state model.ExecutionState) string { return state.NodeID })
-	return awaitingVerification >= len(uniqueNodes)
-}
-
 // We can complete the job if all the nodes completed successfully. We can
 // partially complete the job if at least one did.
 func (*allNodeSelector) CanCompleteJob(ctx context.Context, job *model.Job, jobState *model.JobState) (bool, model.JobStateType) {
@@ -153,11 +142,11 @@ func (*allNodeSelector) CanCompleteJob(ctx context.Context, job *model.Job, jobS
 	}
 
 	uniqueNodes := lo.UniqBy(jobState.Executions, func(state model.ExecutionState) string { return state.NodeID })
-	if completedJobs < len(uniqueNodes) {
-		return true, model.JobStateCompletedPartially
+	if completedJobs >= len(uniqueNodes) {
+		return true, model.JobStateCompleted
 	}
 
-	return true, model.JobStateCompleted
+	return false, jobState.State
 }
 
 // An execution is ready to be retried if it is not currently executing or
@@ -176,12 +165,7 @@ func inRetryableState(ctx context.Context, executionState model.ExecutionState) 
 	case model.ExecutionStateFailed:
 		// Something hopefully transient went wrong at the node – so try again.
 		return true
-	case model.ExecutionStateResultRejected:
-		// The verification stage has failed – the node has executed the job
-		// and come back with some unsuitable result – not clear why executiing
-		// it again would produce something suitable.
-		return false
-	case model.ExecutionStateCanceled:
+	case model.ExecutionStateCancelled:
 		// Presumably we don't want to retry if the job is canceled.
 		return false
 	default:

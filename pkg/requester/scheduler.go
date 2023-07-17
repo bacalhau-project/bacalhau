@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/bacalhau-project/bacalhau/pkg/verifier"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -29,7 +28,6 @@ type BaseSchedulerParams struct {
 	NodeSelector      NodeSelector
 	RetryStrategy     RetryStrategy
 	ComputeEndpoint   compute.Endpoint
-	Verifiers         verifier.VerifierProvider
 	StorageProviders  storage.StorageProvider
 	EventEmitter      EventEmitter
 	GetVerifyCallback func() *url.URL
@@ -42,7 +40,6 @@ type BaseScheduler struct {
 	nodeSelector      NodeSelector
 	retryStrategy     RetryStrategy
 	computeService    compute.Endpoint
-	verifiers         verifier.VerifierProvider
 	storageProviders  storage.StorageProvider
 	eventEmitter      EventEmitter
 	getVerifyCallback func() *url.URL
@@ -57,7 +54,6 @@ func NewBaseScheduler(params BaseSchedulerParams) *BaseScheduler {
 		nodeSelector:      params.NodeSelector,
 		retryStrategy:     params.RetryStrategy,
 		computeService:    params.ComputeEndpoint,
-		verifiers:         params.Verifiers,
 		storageProviders:  params.StorageProviders,
 		eventEmitter:      params.EventEmitter,
 		getVerifyCallback: params.GetVerifyCallback,
@@ -242,77 +238,6 @@ func (s *BaseScheduler) updateAndNotifyBidRejected(ctx context.Context, executio
 	}
 }
 
-func (s *BaseScheduler) updateAndNotifyResultAccepted(ctx context.Context, result verifier.VerifierResult) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with ResultAccepted for bid: %s", s.id, result.ExecutionID)
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: result.ExecutionID,
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateResultProposed,
-		},
-		NewValues: model.ExecutionState{
-			VerificationResult: model.VerificationResult{
-				Complete: true,
-				Result:   true,
-			},
-			State: model.ExecutionStateResultAccepted,
-		},
-	})
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to ResultAccepted. %s", result.ExecutionID)
-	} else {
-		go func(ctx context.Context) {
-			request := compute.ResultAcceptedRequest{
-				ExecutionID: result.ExecutionID.ExecutionID,
-				RoutingMetadata: compute.RoutingMetadata{
-					SourcePeerID: s.id,
-					TargetPeerID: result.ExecutionID.NodeID,
-				},
-			}
-			response, notifyErr := s.computeService.ResultAccepted(ctx, request)
-			if notifyErr != nil {
-				s.handleExecutionFailure(ctx, result.ExecutionID, notifyErr)
-			} else {
-				s.eventEmitter.EmitResultAccepted(ctx, request, response)
-			}
-		}(util.NewDetachedContext(ctx))
-	}
-}
-
-func (s *BaseScheduler) updateAndNotifyResultRejected(ctx context.Context, result verifier.VerifierResult) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with ResultRejected for bid: %s", s.id, result.ExecutionID)
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: result.ExecutionID,
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateResultProposed,
-		},
-		NewValues: model.ExecutionState{
-			VerificationResult: model.VerificationResult{
-				Complete: true,
-				Result:   false,
-			},
-			State: model.ExecutionStateResultRejected,
-		},
-	})
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to update execution state to ResultRejected. %s", result.ExecutionID)
-	} else {
-		go func(ctx context.Context) {
-			request := compute.ResultRejectedRequest{
-				ExecutionID: result.ExecutionID.ExecutionID,
-				RoutingMetadata: compute.RoutingMetadata{
-					SourcePeerID: s.id,
-					TargetPeerID: result.ExecutionID.NodeID,
-				},
-			}
-			response, notifyErr := s.computeService.ResultRejected(ctx, request)
-			if notifyErr != nil {
-				log.Ctx(ctx).Error().Err(notifyErr).Msgf("failed to notify ResultRejected for execution: %s", result.ExecutionID)
-			}
-			s.eventEmitter.EmitResultRejected(ctx, request, response)
-		}(util.NewDetachedContext(ctx))
-	}
-}
-
 // notifyCancel only notifies compute nodes and doesn't update the execution state in the job store. This is because
 // the execution state is updated when stopping/failing the job itself.
 func (s *BaseScheduler) notifyCancel(ctx context.Context, message string, execution model.ExecutionState) {
@@ -332,52 +257,6 @@ func (s *BaseScheduler) notifyCancel(ctx context.Context, message string, execut
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to notify cancellation for execution: %s", execution.ComputeReference)
 		}
 	}(util.NewDetachedContext(ctx))
-}
-
-// we ask the verifier "IsExecutionComplete" to decide if we can start
-// verifying the results - each verifier might have a different
-// answer for IsExecutionComplete so we pass off to it to decide
-// we mark the job as "verifying" to prevent duplicate verification
-func (s *BaseScheduler) verifyResult(
-	ctx context.Context,
-	job model.Job,
-	executionStates []model.ExecutionState,
-) (succeeded, failed []verifier.VerifierResult, err error) {
-	jobVerifier, err := s.verifiers.Get(ctx, job.Spec.Verifier)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	request := verifier.VerifierRequest{
-		JobID:      job.ID(),
-		Executions: executionStates,
-		Deal:       job.Spec.Deal,
-		Callback:   s.getVerifyCallback(),
-	}
-	verificationResults, err := jobVerifier.Verify(ctx, request)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	succeeded, failed = s.VerifyExecutions(ctx, verificationResults)
-	return succeeded, failed, nil
-}
-
-func (s *BaseScheduler) VerifyExecutions(
-	ctx context.Context,
-	verificationResults []verifier.VerifierResult,
-) (succeeded, failed []verifier.VerifierResult) {
-	for _, verificationResult := range verificationResults {
-		if verificationResult.Verified {
-			s.updateAndNotifyResultAccepted(ctx, verificationResult)
-			succeeded = append(succeeded, verificationResult)
-		} else {
-			s.updateAndNotifyResultRejected(ctx, verificationResult)
-			failed = append(failed, verificationResult)
-		}
-	}
-
-	return succeeded, failed
 }
 
 // /////////////////////////////
@@ -404,9 +283,8 @@ func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidR
 			ExpectedState: model.ExecutionStateAskForBid,
 		},
 		NewValues: model.ExecutionState{
-			AcceptedAskForBid: response.Accepted,
-			State:             newState,
-			Status:            response.Reason,
+			State:  newState,
+			Status: response.Reason,
 		},
 	})
 	if err != nil {
@@ -414,8 +292,6 @@ func (s *BaseScheduler) OnBidComplete(ctx context.Context, response compute.BidR
 		return
 	}
 
-	// decide if we should notify compute node of the bid decision
-	// we only notify if we've already received more than MinBids
 	if response.Accepted {
 		s.eventEmitter.EmitBidReceived(ctx, response)
 	}
@@ -438,43 +314,13 @@ func (s *BaseScheduler) OnRunComplete(ctx context.Context, result compute.RunRes
 			ExpectedState: model.ExecutionStateBidAccepted,
 		},
 		NewValues: model.ExecutionState{
-			VerificationProposal: result.ResultProposal,
-			RunOutput:            result.RunCommandResult,
-			State:                model.ExecutionStateResultProposed,
-		},
-	})
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to update execution")
-		return
-	}
-
-	s.TransitionJobState(ctx, result.JobID)
-}
-
-func (s *BaseScheduler) OnPublishComplete(ctx context.Context, result compute.PublishResult) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s received PublishComplete for execution: %s from %s",
-		s.id, result.ExecutionID, result.SourcePeerID)
-	s.eventEmitter.EmitPublishComplete(ctx, result)
-	// TODO: #831 verify that the published results are the same as the ones we expect, or let the verifier
-	//  publish the result and not all the compute nodes.
-
-	// update execution state
-	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: model.ExecutionID{
-			JobID:       result.JobID,
-			NodeID:      result.SourcePeerID,
-			ExecutionID: result.ExecutionID,
-		},
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: model.ExecutionStateResultAccepted,
-		},
-		NewValues: model.ExecutionState{
 			PublishedResult: result.PublishResult,
+			RunOutput:       result.RunCommandResult,
 			State:           model.ExecutionStateCompleted,
 		},
 	})
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[OnPublishComplete] failed to update execution")
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to update execution")
 		return
 	}
 
@@ -503,7 +349,7 @@ func (s *BaseScheduler) handleExecutionFailure(ctx context.Context, executionID 
 		Condition: jobstore.UpdateExecutionCondition{
 			UnexpectedStates: []model.ExecutionStateType{
 				model.ExecutionStateCompleted,
-				model.ExecutionStateCanceled,
+				model.ExecutionStateCancelled,
 			},
 		},
 		NewValues: model.ExecutionState{

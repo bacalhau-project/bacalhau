@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/imdario/mergo"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
@@ -33,13 +34,13 @@ type DevStackOptions struct {
 	Peer                       string // Connect node 0 to another network node
 	PublicIPFSMode             bool   // Use public IPFS nodes
 	EstuaryAPIKey              string
-	SimulatorAddr              string // if this is set, we will use the simulator transport
-	SimulatorMode              bool   // if this is set, the first node will be a simulator node and will use the simulator transport
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
+	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 }
+
 type DevStack struct {
 	Nodes          []*node.Node
 	PublicIPFSMode bool
@@ -107,20 +108,6 @@ func NewDevStack(
 	defer span.End()
 
 	var nodes []*node.Node
-	var err error
-	var simulatorAddr multiaddr.Multiaddr
-	var simulatorNodeID string
-
-	if options.SimulatorAddr != "" {
-		simulatorAddr, err = multiaddr.NewMultiaddr(options.SimulatorAddr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse simulator address: %w", err)
-		}
-		simulatorNodeID, err = simulatorAddr.ValueForProtocol(multiaddr.P_P2P)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract p2p protocol from simulator address: %w", err)
-		}
-	}
 
 	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
 	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
@@ -155,14 +142,10 @@ func NewDevStack(
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		var libp2pPeer []multiaddr.Multiaddr
-		if simulatorAddr != nil {
-			libp2pPeer = append(libp2pPeer, simulatorAddr)
-		}
-
 		//////////////////////////////////////
 		// libp2p
 		//////////////////////////////////////
+		var libp2pPeer []multiaddr.Multiaddr
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -213,26 +196,21 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// here is where we can parse string based CLI options
-		// into more meaningful model.SimulatorConfig values
+		// into more meaningful model.FailureInjectionConfig values
 		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
 		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
 
 		if isBadComputeActor {
-			computeConfig.SimulatorConfig.IsBadActor = isBadComputeActor
+			computeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
 		}
 
 		if isBadRequesterActor {
-			requesterNodeConfig.SimulatorConfig.IsBadActor = isBadRequesterActor
+			requesterNodeConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
 		}
 
-		// If we are running in a simulator mode, and didn't pass in a node ID, then the first node will be the simulator node
-		if options.SimulatorMode && simulatorAddr == nil {
-			p2pAddr, addrError := multiaddr.NewMultiaddr("/p2p/" + libp2pHost.ID().String())
-			if err != nil {
-				return nil, addrError
-			}
-			simulatorAddr = libp2pHost.Addrs()[0].Encapsulate(p2pAddr)
-			simulatorNodeID = libp2pHost.ID().String()
+		nodeInfoPublisherInterval := options.NodeInfoPublisherInterval
+		if nodeInfoPublisherInterval.IsZero() {
+			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
 		// Get the public key to share with the node info pubsub
@@ -265,7 +243,6 @@ func NewDevStack(
 			APIPort:             apiPort,
 			ComputeConfig:       computeConfig,
 			RequesterNodeConfig: requesterNodeConfig,
-			SimulatorNodeID:     simulatorNodeID,
 			IsComputeNode:       isComputeNode,
 			IsRequesterNode:     isRequesterNode,
 			Labels: map[string]string{
@@ -273,9 +250,10 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
-			DependencyInjector:    injector,
-			DisabledFeatures:      options.DisabledFeatures,
-			AllowListedLocalPaths: options.AllowListedLocalPaths,
+			DependencyInjector:        injector,
+			DisabledFeatures:          options.DisabledFeatures,
+			AllowListedLocalPaths:     options.AllowListedLocalPaths,
+			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
 		nodeConfig.PublicKey = append([]byte(nil), publicKeyBytes...)
 
@@ -497,12 +475,12 @@ func (stack *DevStack) IPFSClients() []ipfs.Client {
 	return clients
 }
 
-func (stack *DevStack) GetNodeIds() ([]string, error) {
+func (stack *DevStack) GetNodeIds() []string {
 	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Host.ID().String())
 	}
-	return ids, nil
+	return ids
 }
 
 func boolToInt(b bool) int {

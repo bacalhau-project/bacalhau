@@ -23,7 +23,7 @@ func ParsePublisher(str string) (Publisher, error) {
 		}
 	}
 
-	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
+	return publisherUnknown, fmt.Errorf("publisher: unknown type '%s'", str)
 }
 
 func IsValidPublisher(publisherType Publisher) bool {

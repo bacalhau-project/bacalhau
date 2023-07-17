@@ -35,7 +35,6 @@ type HTTPResource string
 
 type BacalhauConfig struct {
 	Publisher   Publisher
-	Verifier    Verifier
 	Timeout     time.Duration
 	Resources   ResourceSpec
 	Annotations []string
@@ -93,7 +92,6 @@ func (task *Task) ToSpec() (*Spec, error) {
 				return nil, err
 			}
 
-			spec.Verifier = config.Verifier
 			spec.Publisher = config.Publisher
 			spec.Annotations = config.Annotations
 			spec.Timeout = config.Timeout.Seconds()
