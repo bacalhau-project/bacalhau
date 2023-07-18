@@ -72,6 +72,10 @@ func encryptDockerEnv(ctx context.Context, apiClient *publicapi.RequesterAPIClie
 	}
 
 	for i, kv := range job.Spec.Docker.EnvironmentVariables {
+		if kv == "" {
+			// Where are these empty values coming from?
+			continue
+		}
 		spl := strings.Split(kv, "=")
 
 		encryptedVal, err := secrets.Encrypt([]byte(spl[1]), publicKey)
