@@ -17,16 +17,16 @@ type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error)
 
 func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+	return func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
 		return nil, err
 	}
 }
 
 func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+	return func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
 		time.Sleep(sleep)
 		return nil, nil
 	}
@@ -45,13 +45,13 @@ type ExecutorConfig struct {
 }
 
 type NoopExecutor struct {
-	Jobs   []model.Job
+	Jobs   []string
 	Config ExecutorConfig
 }
 
 func NewNoopExecutor() *NoopExecutor {
 	Executor := &NoopExecutor{
-		Jobs: []model.Job{},
+		Jobs: []string{},
 	}
 	return Executor
 }
@@ -104,14 +104,12 @@ func (e *NoopExecutor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.
 
 func (e *NoopExecutor) Run(
 	ctx context.Context,
-	executionID string,
-	job model.Job,
-	jobResultsDir string,
+	args *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
-	e.Jobs = append(e.Jobs, job)
+	e.Jobs = append(e.Jobs, args.JobID)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, job, jobResultsDir)
+		return handler(ctx, args.JobID, args.ResultsDir)
 	}
 	return &model.RunCommandResult{}, nil
 }
