@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/gorilla/websocket"
+	"github.com/libp2p/go-libp2p/core/host"
 )
 
 const (
@@ -25,6 +26,7 @@ type RequesterAPIServerParams struct {
 	JobStore           jobstore.Store
 	StorageProviders   storage.StorageProvider
 	NodeDiscoverer     requester.NodeDiscoverer
+	Host               host.Host
 }
 
 type RequesterAPIServer struct {
@@ -37,6 +39,7 @@ type RequesterAPIServer struct {
 	// jobId or "" (for all events) -> connections for that subscription
 	websockets      map[string][]*websocket.Conn
 	websocketsMutex sync.RWMutex
+	host            host.Host
 }
 
 func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer {
@@ -48,6 +51,7 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 		storageProviders:   params.StorageProviders,
 		nodeDiscoverer:     params.NodeDiscoverer,
 		websockets:         make(map[string][]*websocket.Conn),
+		host:               params.Host,
 	}
 }
 
@@ -63,6 +67,7 @@ func (s *RequesterAPIServer) RegisterAllHandlers() error {
 		{Path: "/" + APIPrefix + "websocket/events", Handler: http.HandlerFunc(s.websocketJobEvents), Raw: true},
 		{Path: "/" + APIPrefix + "logs", Handler: http.HandlerFunc(s.logs), Raw: true},
 		{Path: "/" + APIPrefix + "debug", Handler: http.HandlerFunc(s.debug)},
+		{Path: "/.well-known/jwks.json", Handler: http.HandlerFunc(s.jwks)},
 	}
 	// register URIs at root prefix for backward compatibility before migrating to API versioning
 	// we should remove these eventually, or have throttling limits shared across versions

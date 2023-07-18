@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -52,6 +53,23 @@ func (t *MetricRecorder) RecordLatency(ctx context.Context, histogram metric.Int
 func (t *MetricRecorder) RecordTotalLatency(ctx context.Context, histogram metric.Int64Histogram, options ...metric.RecordOption) {
 	latency := time.Since(t.start)
 	histogram.Record(ctx, latency.Milliseconds(), options...)
+}
+
+// RecordEvent records an event
+func (t *MetricRecorder) RecordEvent(ctx context.Context, counter metric.Int64Counter, options ...metric.AddOption) {
+	var fault int64 = 1
+	if t.success {
+		fault = 0
+	}
+
+	m := make(map[string]string)
+
+	var keyvals []attribute.KeyValue
+	for k, v := range m {
+		keyvals = append(keyvals, attribute.String(k, v))
+	}
+
+	counter.Add(ctx, fault, metric.WithAttributes(keyvals...))
 }
 
 // RecordFault records a fault as 1 if success was not reported, 0 otherwise.

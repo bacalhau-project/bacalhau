@@ -3,6 +3,8 @@
 package secrets_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/hex"
 	"os"
 	"testing"
@@ -29,9 +31,24 @@ func TestCryptSuite(t *testing.T) {
 	suite.Run(t, new(CryptSuite))
 }
 
+const BitsForSecretsKeyPair = 2048
+
+func getSecretsKeyPair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
+	var err error
+	var privatekey *rsa.PrivateKey
+	var publickey *rsa.PublicKey
+
+	privatekey, err = rsa.GenerateKey(rand.Reader, BitsForSecretsKeyPair)
+	if err != nil {
+		return nil, nil, err
+	}
+	publickey = &privatekey.PublicKey
+
+	return privatekey, publickey, nil
+}
+
 func (s *CryptSuite) TestEncryptDecryptCycle() {
-	suffix := "encrypt-decrypt"
-	priv, pub, err := secrets.GetSecretsKeyPair(s.tmpFolder, suffix)
+	priv, pub, err := getSecretsKeyPair()
 	s.NoError(err)
 
 	message := "this is a string to be encrypted"
@@ -50,8 +67,7 @@ func (s *CryptSuite) TestEncryptDecryptCycle() {
 }
 
 func (s *CryptSuite) TestEncryptDecryptEnv() {
-	suffix := "encrypt-decrypt-env"
-	priv, pub, err := secrets.GetSecretsKeyPair(s.tmpFolder, suffix)
+	priv, pub, err := getSecretsKeyPair()
 	s.NoError(err)
 
 	env := make(map[string]string)
@@ -68,11 +84,10 @@ func (s *CryptSuite) TestEncryptDecryptEnv() {
 }
 
 func (s *CryptSuite) TestEncryptDecryptEnvFailWrongPrivKey() {
-	suffix := "encrypt-decrypt-env-fail-wrong-priv-key"
-	_, pub, err := secrets.GetSecretsKeyPair(s.tmpFolder, suffix)
+	_, pub, err := getSecretsKeyPair()
 	s.NoError(err)
 
-	wrongPriv, _, err := secrets.GetSecretsKeyPair(s.tmpFolder, "the-wrong-priv-key")
+	wrongPriv, _, err := getSecretsKeyPair()
 	s.NoError(err)
 
 	env := make(map[string]string)
@@ -89,8 +104,7 @@ func (s *CryptSuite) TestEncryptDecryptEnvFailWrongPrivKey() {
 }
 
 func (s *CryptSuite) TestEncryptDecryptEnvFailNotEncrypted() {
-	suffix := "encrypt-decrypt-env-fail-not-encrypted"
-	priv, _, err := secrets.GetSecretsKeyPair(s.tmpFolder, suffix)
+	priv, _, err := getSecretsKeyPair()
 	s.NoError(err)
 
 	env := make(map[string]string)

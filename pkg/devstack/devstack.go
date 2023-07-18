@@ -20,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
@@ -213,26 +212,6 @@ func NewDevStack(
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
 
-		// Get the public key to share with the node info pubsub
-		log.Ctx(ctx).Debug().Msgf("preparing keypair for secrets with suffix %d", libp2pPort)
-		_, publicKey, err := secrets.GetSecretsKeyPair(config.GetConfigPath(), fmt.Sprintf("%d", libp2pPort))
-		if err != nil {
-			return nil, err
-		}
-		cm.RegisterCallback(func() error {
-			// For devstack we will clean up keypairs when we close
-			log.Ctx(ctx).Debug().Msg("cleaning up secrets key pair")
-
-			folder := config.GetConfigPath()
-			pubKeyPath := secrets.KeyPath(folder, "pub", fmt.Sprintf("%d", libp2pPort))
-			privKeyPath := secrets.KeyPath(folder, "priv", fmt.Sprintf("%d", libp2pPort))
-			os.Remove(pubKeyPath)
-			os.Remove(privKeyPath)
-
-			return nil
-		})
-		publicKeyBytes := secrets.PublicKeyToBytes(publicKey)
-
 		nodeConfig := node.NodeConfig{
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
@@ -255,7 +234,6 @@ func NewDevStack(
 			AllowListedLocalPaths:     options.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
-		nodeConfig.PublicKey = append([]byte(nil), publicKeyBytes...)
 
 		// allow overriding configs of some nodes
 		if i < len(nodeOverrides) {

@@ -55,7 +55,6 @@ type NodeConfig struct {
 	NodeInfoPublisherInterval routing.NodeInfoPublisherIntervalConfig
 	DependencyInjector        NodeDependencyInjector
 	AllowListedLocalPaths     []string
-	PublicKey                 []byte
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -152,7 +151,6 @@ func NewNode(
 		IdentityService: basicHost.IDService(),
 		Labels:          config.Labels,
 		BacalhauVersion: *version.Get(),
-		PublicKey:       config.PublicKey,
 	})
 
 	// node info publisher
