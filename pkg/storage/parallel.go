@@ -4,11 +4,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
+
+type PreparedStorage struct {
+	Spec   model.StorageSpec
+	Volume StorageVolume
+}
 
 // ParallelPrepareStorage downloads all of the data necessary for the passed
 // storage specs in parallel, and returns a map of specs to their download
@@ -16,13 +21,14 @@ import (
 func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	specs []model.StorageSpec,
-) (map[*model.StorageSpec]StorageVolume, error) {
-	volumes := generic.SyncMap[*model.StorageSpec, StorageVolume]{}
+	specs ...model.StorageSpec,
+) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
 
-	for _, inputStorageSpec := range specs {
+	out := make([]PreparedStorage, len(specs))
+	for i, inputStorageSpec := range specs {
 		spec := inputStorageSpec // https://golang.org/doc/faq#closures_and_goroutines
+		i := i
 
 		addStorageSpec := func() error {
 			var storageProvider Storage
@@ -37,46 +43,45 @@ func ParallelPrepareStorage(
 				return err
 			}
 
-			volumes.Put(&spec, volumeMount)
+			out[i] = PreparedStorage{
+				Spec:   spec,
+				Volume: volumeMount,
+			}
 			return nil
 		}
 
 		waitgroup.Go(addStorageSpec)
 	}
+	if err := waitgroup.Wait(); err != nil {
+		return nil, err
+	}
 
-	err := waitgroup.Wait()
-
-	returnMap := map[*model.StorageSpec]StorageVolume{}
-	volumes.Iter(func(key *model.StorageSpec, value StorageVolume) bool {
-		returnMap[key] = value
-		return true
-	})
-	return returnMap, err
+	return out, nil
 }
 
 func ParallelCleanStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	volumeMap map[*model.StorageSpec]StorageVolume,
+	storages []PreparedStorage,
 ) error {
 	var rootErr error
 
-	for storageSpec, storageVolume := range volumeMap {
-		storage, err := provider.Get(ctx, storageSpec.StorageSource)
+	for _, s := range storages {
+		storage, err := provider.Get(ctx, s.Spec.StorageSource)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", storageSpec.StorageSource).
+				Stringer("Source", s.Spec.StorageSource).
 				Msg("failed to get storage provider in cleanup")
 			rootErr = errors.Join(rootErr, err)
 			continue
 		}
 
-		err = storage.CleanupStorage(ctx, *storageSpec, storageVolume)
+		err = storage.CleanupStorage(ctx, s.Spec, s.Volume)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", storageSpec.StorageSource).
+				Stringer("Source", s.Spec.StorageSource).
 				Msg("failed to cleanup volume")
 			rootErr = errors.Join(rootErr, err)
 		}

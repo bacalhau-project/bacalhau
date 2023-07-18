@@ -125,7 +125,7 @@ func NewStandardExecutorProvider(
 	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
+	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID)
 	if err != nil {
 		return nil, err
 	}
