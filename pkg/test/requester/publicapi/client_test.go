@@ -34,3 +34,15 @@ func TestGet(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, job2.Job.Metadata.ID, j.Metadata.ID)
 }
+
+func TestGetPublicKey(t *testing.T) {
+	ctx := context.Background()
+
+	logger.ConfigureTestLogging(t)
+	n, c := setupNodeForTest(t)
+	defer n.CleanupManager.Cleanup(ctx)
+
+	key, err := c.GetPublicKey(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, key)
+}

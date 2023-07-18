@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/url"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/gorilla/websocket"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -147,6 +150,34 @@ func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*mo
 	} else {
 		return &model.JobWithInfo{}, false, bacerrors.NewJobNotFound(jobID)
 	}
+}
+
+// GetPublicKey retrieves the public key for the requester node from the JWKS
+func (apiClient *RequesterAPIClient) GetPublicKey(ctx context.Context) (*rsa.PublicKey, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetPublicKey")
+	defer span.End()
+
+	base := apiClient.APIClient.BaseURI
+	jwksURL := fmt.Sprintf("http://%s/.well-known/jwks.json", base.Host)
+
+	set, err := jwk.Fetch(ctx, jwksURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the single key, although we'd ideally do this via the key id.
+	key, found := set.Key(0)
+	if !found {
+		return nil, errors.New("could not find key in keyset")
+	}
+
+	var rsaKey rsa.PublicKey
+	err = key.Raw(&rsaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rsaKey, nil
 }
 
 func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
