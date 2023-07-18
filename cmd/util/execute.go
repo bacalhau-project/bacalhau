@@ -2,6 +2,9 @@ package util
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -11,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 )
 
 //nolint:funlen,gocyclo // Refactor later
@@ -40,5 +44,48 @@ func ExecuteJob(ctx context.Context,
 		return nil, err
 	}
 
+	if j.Spec.Engine == model.EngineDocker {
+		err = encryptDockerEnv(ctx, apiClient, j)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("failed to encrypt docker env")
+			return nil, err
+		}
+	} else if j.Spec.Engine == model.EngineWasm {
+		err = encryptWasmEnv(ctx, apiClient, j)
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("failed to encrypt wasm env")
+			return nil, err
+		}
+	}
+
 	return apiClient.Submit(ctx, j)
+}
+
+func encryptDockerEnv(ctx context.Context, apiClient *publicapi.RequesterAPIClient, job *model.Job) error {
+	if len(job.Spec.Docker.EnvironmentVariables) == 0 {
+		return nil
+	}
+
+	publicKey, err := apiClient.GetPublicKey(ctx)
+	if err != nil {
+		return err
+	}
+
+	for i, kv := range job.Spec.Docker.EnvironmentVariables {
+		spl := strings.Split(kv, "=")
+
+		encryptedVal, err := secrets.Encrypt([]byte(spl[1]), publicKey)
+		if err != nil {
+			return err
+		}
+
+		encryptedString := hex.EncodeToString(encryptedVal)
+		job.Spec.Docker.EnvironmentVariables[i] = fmt.Sprintf("%s=ENC[%s]", spl[0], encryptedString)
+	}
+	return nil
+}
+
+func encryptWasmEnv(ctx context.Context, apiClient *publicapi.RequesterAPIClient, job *model.Job) error {
+	// job.Spec.Docker.EnvironmentVariables
+	return nil
 }

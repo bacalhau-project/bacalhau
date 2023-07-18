@@ -50,9 +50,8 @@ func (n *NodeInfoProvider) GetNodeInfo(ctx context.Context) model.NodeInfo {
 			ID:    n.h.ID(),
 			Addrs: n.identityService.OwnObservedAddrs(),
 		},
-		Labels:    n.labels,
-		NodeType:  model.NodeTypeRequester,
-		PublicKey: n.publicKey,
+		Labels:   n.labels,
+		NodeType: model.NodeTypeRequester,
 	}
 	if n.computeInfoProvider != nil {
 		info := n.computeInfoProvider.GetComputeInfo(ctx)

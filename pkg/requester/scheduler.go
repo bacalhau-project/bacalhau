@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
@@ -148,6 +149,21 @@ func (s *BaseScheduler) notifyAskForBid(ctx context.Context, link trace.Link, jo
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("error creating execution")
 			return
+		}
+
+		// TODO: Move this ...
+		// We need to decode the environment for any env vars where the value begins ENC[hex-encoded-var]
+		if job.Spec.Engine == model.EngineDocker {
+			if len(job.Spec.Docker.EnvironmentVariables) > 0 {
+				newEnv, err := secrets.RecryptEnvString(job.Spec.Docker.EnvironmentVariables,
+					s.host.Peerstore().PrivKey(s.host.ID()),     // Us (requester node)
+					s.host.Peerstore().PubKey(node.PeerInfo.ID), // Compute node's public key
+				)
+				if err != nil {
+					log.Ctx(ctx).Error().Err(err).Msg("failed to re-encrypt secrets")
+				}
+				job.Spec.Docker.EnvironmentVariables = newEnv
+			}
 		}
 
 		newCtx := util.NewDetachedContext(ctx)
