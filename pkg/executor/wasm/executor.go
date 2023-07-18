@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,13 +11,14 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/sys"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -35,42 +37,16 @@ import (
 )
 
 type Executor struct {
-	StorageProvider storage.StorageProvider
-	logManagers     generic.SyncMap[string, *wasmlogs.LogManager]
+	logManagers generic.SyncMap[string, *wasmlogs.LogManager]
 }
 
-func NewExecutor(_ context.Context, storageProvider storage.StorageProvider) (*Executor, error) {
-	return &Executor{
-		StorageProvider: storageProvider,
-	}, nil
+func NewExecutor(_ context.Context, _ storage.StorageProvider) (*Executor, error) {
+	return &Executor{}, nil
 }
 
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
 	// WASM executor runs natively in Go and so is always available
 	return true, nil
-}
-
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.HasStorageLocally")
-	defer span.End()
-
-	s, err := e.StorageProvider.Get(ctx, volume.StorageSource)
-	if err != nil {
-		return false, err
-	}
-
-	return s.HasStorageLocally(ctx, volume)
-}
-
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.GetVolumeSize")
-	defer span.End()
-
-	storageProvider, err := e.StorageProvider.Get(ctx, volume.StorageSource)
-	if err != nil {
-		return 0, err
-	}
-	return storageProvider.GetVolumeSize(ctx, volume)
 }
 
 // GetBidStrategy implements executor.Executor
@@ -91,31 +67,31 @@ func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBi
 func (e *Executor) makeFsFromStorage(
 	ctx context.Context,
 	jobResultsDir string,
-	volumes map[*model.StorageSpec]storage.StorageVolume,
+	volumes []storage.PreparedStorage,
 	outputs []model.StorageSpec) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
-	for input, volume := range volumes {
+	for _, v := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", input.Path).
-			Str("source", volume.Source).
+			Str("input", v.Spec.Path).
+			Str("source", v.Volume.Source).
 			Msg("Using input")
 
 		var stat os.FileInfo
-		stat, err = os.Stat(volume.Source)
+		stat, err = os.Stat(v.Volume.Source)
 		if err != nil {
 			return nil, err
 		}
 
 		var inputFs fs.FS
 		if stat.IsDir() {
-			inputFs = os.DirFS(volume.Source)
+			inputFs = os.DirFS(v.Volume.Source)
 		} else {
-			inputFs = filefs.New(volume.Source)
+			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(input.Path, inputFs)
+		err = rootFs.Mount(v.Spec.Path, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -150,18 +126,42 @@ func (e *Executor) makeFsFromStorage(
 	return rootFs, nil
 }
 
+type Arguments struct {
+	EntryPoint           string
+	Parameters           []string
+	EnvironmentVariables map[string]string
+	EntryModule          storage.PreparedStorage
+	ImportModules        []storage.PreparedStorage
+}
+
+func DecodeArguments(args *executor.Arguments) (*Arguments, error) {
+	out := new(Arguments)
+	if err := json.Unmarshal(args.Params, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 //nolint:funlen
-func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, jobResultsDir string) (*model.RunCommandResult, error) {
+func (e *Executor) Run(
+	ctx context.Context,
+	args *executor.RunCommandRequest,
+) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
+
+	wasmArgs, err := DecodeArguments(args.EngineParams)
+	if err != nil {
+		return nil, fmt.Errorf("decoding wasm arguments: %w", err)
+	}
 
 	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
 
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
-	if job.Spec.Resources.Memory != "" {
-		memoryLimit, err := datasize.ParseString(job.Spec.Resources.Memory)
+	if args.Resources.Memory != "" {
+		memoryLimit, err := datasize.ParseString(args.Resources.Memory)
 		if err != nil {
 			return executor.FailResult(err)
 		}
@@ -174,31 +174,14 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		log.Ctx(ctx).Debug().
-			Str("Execution", executionID).
-			Msg("attempting cleanup of inputs for execution")
-		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
-		if err != nil {
-			log.Ctx(ctx).Error().
-				Err(err).
-				Str("Execution", executionID).
-				Msg("errors occurred when cleaning up inputs")
-		}
-	}()
-
-	rootFs, err := e.makeFsFromStorage(ctx, jobResultsDir, inputVolumes, job.Spec.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, args.ResultsDir, args.Inputs, args.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
 	// configuration
-	logs, err := wasmlogs.NewLogManager(ctx, executionID)
+	logs, err := wasmlogs.NewLogManager(ctx, args.ExecutionID)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -206,46 +189,44 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 
 	// Store the LogManager for the lifetime of the execution, making sure to tidy up
 	// once complete.
-	e.logManagers.Put(executionID, logs)
+	e.logManagers.Put(args.ExecutionID, logs)
 	defer func() {
-		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("cleaning up logmanager for execution")
+		log.Ctx(ctx).Debug().Str("Execution", args.ExecutionID).Msg("cleaning up logmanager for execution")
 		logs.Close()
-		e.logManagers.Delete(executionID)
-		log.Ctx(ctx).Debug().Str("Execution", executionID).Msg("logmanager being removed")
+		e.logManagers.Delete(args.ExecutionID)
+		log.Ctx(ctx).Debug().Str("Execution", args.ExecutionID).Msg("logmanager being removed")
 	}()
 
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
 
-	args := append([]string{job.Spec.Wasm.EntryModule.Name}, job.Spec.Wasm.Parameters...)
-
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
 		WithStderr(stderr).
-		WithArgs(args...).
+		WithArgs(append([]string{wasmArgs.EntryModule.Spec.Name}, wasmArgs.Parameters...)...).
 		WithSysNanosleep().
 		WithSysNanotime().
 		WithSysWalltime().
 		WithFS(rootFs)
 
-	keys := maps.Keys(job.Spec.Wasm.EnvironmentVariables)
+	keys := maps.Keys(wasmArgs.EnvironmentVariables)
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, job.Spec.Wasm.EnvironmentVariables[key])
+		config = config.WithEnv(key, wasmArgs.EnvironmentVariables[key])
 	}
 
 	// Load and instantiate imported modules
-	loader := NewModuleLoader(engine, config, e.StorageProvider)
-	for _, importModule := range job.Spec.Wasm.ImportModules {
+	loader := NewModuleLoader(engine, config, args.Inputs...)
+	for _, importModule := range wasmArgs.ImportModules {
 		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
 		err = multierr.Append(err, ierr)
 	}
 
 	// Load and instantiate the entry module.
-	instance, err := loader.InstantiateRemoteModule(ctx, job.Spec.Wasm.EntryModule)
+	instance, err := loader.InstantiateRemoteModule(ctx, wasmArgs.EntryModule)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -255,11 +236,11 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	log.Ctx(ctx).Debug().
-		Str("entryPoint", job.Spec.Wasm.EntryPoint).
-		Str("job", job.ID()).
-		Str("execution", executionID).
+		Str("entryPoint", wasmArgs.EntryPoint).
+		Str("job", args.JobID).
+		Str("execution", args.ExecutionID).
 		Msg("Running WASM job")
-	entryFunc := instance.ExportedFunction(job.Spec.Wasm.EntryPoint)
+	entryFunc := instance.ExportedFunction(wasmArgs.EntryPoint)
 	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 
@@ -274,7 +255,7 @@ func (e *Executor) Run(ctx context.Context, executionID string, job model.Job, j
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-	return executor.WriteJobResults(jobResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
+	return executor.WriteJobResults(args.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

@@ -5,18 +5,23 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/rs/zerolog/log"
 )
 
 type BaseExecutorParams struct {
 	ID                     string
 	Callback               Callback
 	Store                  store.ExecutionStore
+	Storages               storage.StorageProvider
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
@@ -30,6 +35,7 @@ type BaseExecutor struct {
 	callback         Callback
 	store            store.ExecutionStore
 	cancellers       generic.SyncMap[string, context.CancelFunc]
+	Storages         storage.StorageProvider
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
@@ -41,11 +47,73 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		ID:               params.ID,
 		callback:         params.Callback,
 		store:            params.Store,
+		Storages:         params.Storages,
 		executors:        params.Executors,
 		publishers:       params.Publishers,
 		failureInjection: params.FailureInjectionConfig,
 		resultsPath:      params.ResultsPath,
 	}
+}
+
+func PrepareRunArguments(ctx context.Context, strgprovider storage.StorageProvider, execution store.Execution, resultsDir string, cleanup *system.CleanupManager) (*executor.RunCommandRequest, error) {
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Inputs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
+	}
+
+	cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
+		if err := storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes); err != nil {
+			return fmt.Errorf("cleaning up job inputs: %w", err)
+		}
+		return nil
+	})
+
+	var engineArgs interface{}
+	engineArgs = execution.Job.Spec.Docker
+	if execution.Job.Spec.Engine == model.EngineWasm {
+		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.ImportModules...)
+		if err != nil {
+			return nil, err
+		}
+		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
+			if err := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes); err != nil {
+				return fmt.Errorf("cleaning up wasm import modules: %w", err)
+			}
+			return nil
+		})
+
+		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.EntryModule)
+		if err != nil {
+			return nil, err
+		}
+		cleanup.RegisterCallbackWithContext(func(ctx context.Context) error {
+			if err := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes); err != nil {
+				return fmt.Errorf("cleaning up wasm entry modules: %w", err)
+			}
+			return nil
+		})
+		engineArgs = &wasm.Arguments{
+			EntryPoint:           execution.Job.Spec.Wasm.EntryPoint,
+			Parameters:           execution.Job.Spec.Wasm.Parameters,
+			EnvironmentVariables: execution.Job.Spec.Wasm.EnvironmentVariables,
+			EntryModule:          entryModuleVolumes[0],
+			ImportModules:        importModuleVolumes,
+		}
+	}
+	args, err := executor.EncodeArguments(engineArgs)
+	if err != nil {
+		return nil, err
+	}
+	return &executor.RunCommandRequest{
+		JobID:        execution.Job.ID(),
+		ExecutionID:  execution.ID,
+		Resources:    execution.Job.Spec.Resources,
+		Network:      execution.Job.Spec.Network,
+		Outputs:      execution.Job.Spec.Outputs,
+		Inputs:       inputVolumes,
+		ResultsDir:   resultsDir,
+		EngineParams: args,
+	}, nil
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
@@ -72,53 +140,49 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	}()
 
 	log.Ctx(ctx).Debug().Msg("Running execution")
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateBidAccepted,
 		NewState:      store.ExecutionStateRunning,
-	})
-	if err != nil {
-		return
+	}); err != nil {
+		return err
 	}
 
 	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
-		err = fmt.Errorf("failed to get result path: %w", err)
-		return
+		return fmt.Errorf("failed to get result path: %w", err)
 	}
 
 	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
 	if err != nil {
-		err = fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
-		return
+		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
 	}
 
 	if e.failureInjection.IsBadActor {
-		err = fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
-		return
+		return fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
 	}
 
-	var runCommandResult *model.RunCommandResult
+	runCommandCleanup := system.NewCleanupManager()
+	runCommandArguments, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder, runCommandCleanup)
+	if err != nil {
+		return err
+	}
+	defer runCommandCleanup.Cleanup(ctx)
 
-	runCommandResult, err = jobExecutor.Run(ctx, execution.ID, execution.Job, resultFolder)
+	runCommandResult, err := jobExecutor.Run(ctx, runCommandArguments)
 	if err != nil {
 		jobsFailed.Add(ctx, 1)
-	} else {
-		jobsCompleted.Add(ctx, 1)
-	}
-
-	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
-		return
+		return err
 	}
+	jobsCompleted.Add(ctx, 1)
 
-	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
 		ExpectedState: store.ExecutionStateRunning,
 		NewState:      store.ExecutionStatePublishing,
-	})
-	if err != nil {
-		return
+	}); err != nil {
+		return err
 	}
 
 	operation = "Publishing"
