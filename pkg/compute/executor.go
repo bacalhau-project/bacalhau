@@ -55,7 +55,13 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	}
 }
 
-func PrepareRunArguments(ctx context.Context, strgprovider storage.StorageProvider, execution store.Execution, resultsDir string, cleanup *system.CleanupManager) (*executor.RunCommandRequest, error) {
+func PrepareRunArguments(
+	ctx context.Context,
+	strgprovider storage.StorageProvider,
+	execution store.Execution,
+	resultsDir string,
+	cleanup *system.CleanupManager,
+) (*executor.RunCommandRequest, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Inputs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
@@ -159,7 +165,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 	}
 
 	if e.failureInjection.IsBadActor {
-		return fmt.Errorf("I am a baaad node. I failed execution %s", execution.ID)
+		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
 	}
 
 	runCommandCleanup := system.NewCleanupManager()

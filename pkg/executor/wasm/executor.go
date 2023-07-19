@@ -145,12 +145,12 @@ func DecodeArguments(args *executor.Arguments) (*Arguments, error) {
 //nolint:funlen
 func (e *Executor) Run(
 	ctx context.Context,
-	args *executor.RunCommandRequest,
+	request *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
-	wasmArgs, err := DecodeArguments(args.EngineParams)
+	engineParams, err := DecodeArguments(request.EngineParams)
 	if err != nil {
 		return nil, fmt.Errorf("decoding wasm arguments: %w", err)
 	}
@@ -160,8 +160,8 @@ func (e *Executor) Run(
 	// Apply memory limits to the runtime. We have to do this in multiples of
 	// the WASM page size of 64kb, so round up to the nearest page size if the
 	// limit is not specified as a multiple of that.
-	if args.Resources.Memory != "" {
-		memoryLimit, err := datasize.ParseString(args.Resources.Memory)
+	if request.Resources.Memory != "" {
+		memoryLimit, err := datasize.ParseString(request.Resources.Memory)
 		if err != nil {
 			return executor.FailResult(err)
 		}
@@ -174,14 +174,14 @@ func (e *Executor) Run(
 	engine := tracedRuntime{wazero.NewRuntimeWithConfig(ctx, engineConfig)}
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
-	rootFs, err := e.makeFsFromStorage(ctx, args.ResultsDir, args.Inputs, args.Outputs)
+	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)
 	if err != nil {
 		return executor.FailResult(err)
 	}
 
 	// Create a new log manager and obtain some writers that we can pass to the wasm
 	// configuration
-	logs, err := wasmlogs.NewLogManager(ctx, args.ExecutionID)
+	logs, err := wasmlogs.NewLogManager(ctx, request.ExecutionID)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -189,44 +189,44 @@ func (e *Executor) Run(
 
 	// Store the LogManager for the lifetime of the execution, making sure to tidy up
 	// once complete.
-	e.logManagers.Put(args.ExecutionID, logs)
+	e.logManagers.Put(request.ExecutionID, logs)
 	defer func() {
-		log.Ctx(ctx).Debug().Str("Execution", args.ExecutionID).Msg("cleaning up logmanager for execution")
+		log.Ctx(ctx).Debug().Str("Execution", request.ExecutionID).Msg("cleaning up logmanager for execution")
 		logs.Close()
-		e.logManagers.Delete(args.ExecutionID)
-		log.Ctx(ctx).Debug().Str("Execution", args.ExecutionID).Msg("logmanager being removed")
+		e.logManagers.Delete(request.ExecutionID)
+		log.Ctx(ctx).Debug().Str("Execution", request.ExecutionID).Msg("logmanager being removed")
 	}()
 
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
-
+	args := append([]string{engineParams.EntryModule.Spec.Name}, engineParams.Parameters...)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
 		WithStderr(stderr).
-		WithArgs(append([]string{wasmArgs.EntryModule.Spec.Name}, wasmArgs.Parameters...)...).
+		WithArgs(args...).
 		WithSysNanosleep().
 		WithSysNanotime().
 		WithSysWalltime().
 		WithFS(rootFs)
 
-	keys := maps.Keys(wasmArgs.EnvironmentVariables)
+	keys := maps.Keys(engineParams.EnvironmentVariables)
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, wasmArgs.EnvironmentVariables[key])
+		config = config.WithEnv(key, engineParams.EnvironmentVariables[key])
 	}
 
 	// Load and instantiate imported modules
-	loader := NewModuleLoader(engine, config, args.Inputs...)
-	for _, importModule := range wasmArgs.ImportModules {
+	loader := NewModuleLoader(engine, config, request.Inputs...)
+	for _, importModule := range engineParams.ImportModules {
 		_, ierr := loader.InstantiateRemoteModule(ctx, importModule)
 		err = multierr.Append(err, ierr)
 	}
 
 	// Load and instantiate the entry module.
-	instance, err := loader.InstantiateRemoteModule(ctx, wasmArgs.EntryModule)
+	instance, err := loader.InstantiateRemoteModule(ctx, engineParams.EntryModule)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -236,11 +236,11 @@ func (e *Executor) Run(
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
 	log.Ctx(ctx).Debug().
-		Str("entryPoint", wasmArgs.EntryPoint).
-		Str("job", args.JobID).
-		Str("execution", args.ExecutionID).
+		Str("entryPoint", engineParams.EntryPoint).
+		Str("job", request.JobID).
+		Str("execution", request.ExecutionID).
 		Msg("Running WASM job")
-	entryFunc := instance.ExportedFunction(wasmArgs.EntryPoint)
+	entryFunc := instance.ExportedFunction(engineParams.EntryPoint)
 	exitCode := -1
 	_, wasmErr := entryFunc.Call(ctx)
 
@@ -255,7 +255,7 @@ func (e *Executor) Run(
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-	return executor.WriteJobResults(args.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
+	return executor.WriteJobResults(request.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

@@ -95,24 +95,24 @@ func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
-	args *executor.RunCommandRequest,
+	request *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
-	defer e.cleanupExecution(ctx, args.ExecutionID)
+	defer e.cleanupExecution(ctx, request.ExecutionID)
 
-	dockerArgs, err := DecodeArguments(args.EngineParams)
+	dockerArgs, err := DecodeArguments(request.EngineParams)
 	if err != nil {
 		return nil, err
 	}
 
-	e.activeFlags[args.ExecutionID] = make(chan struct{}, 1)
+	e.activeFlags[request.ExecutionID] = make(chan struct{}, 1)
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
 	var mounts []mount.Mount
-	for _, input := range args.Inputs {
+	for _, input := range request.Inputs {
 		if input.Volume.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Spec, input.Volume)
 
@@ -131,7 +131,7 @@ func (e *Executor) Run(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range args.Outputs {
+	for _, output := range request.Outputs {
 		if output.Name == "" {
 			err = fmt.Errorf("output volume has no name: %+v", output)
 			return executor.FailResult(err)
@@ -142,7 +142,7 @@ func (e *Executor) Run(
 			return executor.FailResult(err)
 		}
 
-		srcd := filepath.Join(args.ResultsDir, output.Name)
+		srcd := filepath.Join(request.ResultsDir, output.Name)
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return executor.FailResult(err)
@@ -173,37 +173,19 @@ func (e *Executor) Run(
 		}
 	}
 
-	// TODO(forrest): [fixme] why are we doing this?
-	//    - was added via https://github.com/bacalhau-project/bacalhau/commit/7da22d9ab4c40ed721f832791b24abf73f14f308#diff-a5b36464e4d1c016e2a94b8fe22fdf2c58853f68d43b373ca42be9c16e2497a7R208-R217
-	// json the job spec and pass it into all containers
-	// TODO: check if this will overwrite a user supplied version of this value
-	// (which is what we actually want to happen)
-	/*
-			log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", job.Spec)
-			jsonJobSpec, err := model.JSONMarshalWithMax(job.Spec)
-			if err != nil {
-				return executor.FailResult(err)
-			}
-			log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
-
-		useEnv := append(job.Spec.Docker.EnvironmentVariables,
-			fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
-		)
-	*/
-
 	containerConfig := &container.Config{
 		Image:      dockerArgs.Image,
 		Tty:        false,
 		Env:        dockerArgs.EnvironmentVariables,
 		Entrypoint: dockerArgs.Entrypoint,
 		Cmd:        dockerArgs.Parameters,
-		Labels:     e.containerLabels(args.ExecutionID, args.JobID),
+		Labels:     e.containerLabels(request.ExecutionID, request.JobID),
 		WorkingDir: dockerArgs.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacity.ParseResourceUsageConfig(args.Resources)
+	resourceRequirements := capacity.ParseResourceUsageConfig(request.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
@@ -227,7 +209,7 @@ func (e *Executor) Run(
 	}
 
 	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, args.JobID, args.ExecutionID, args.Network, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, request.JobID, request.ExecutionID, request.Network, containerConfig, hostConfig)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -238,7 +220,7 @@ func (e *Executor) Run(
 		hostConfig,
 		nil,
 		nil,
-		e.containerName(args.ExecutionID, args.JobID),
+		e.containerName(request.ExecutionID, request.JobID),
 	)
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
@@ -246,7 +228,7 @@ func (e *Executor) Run(
 
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
-	e.activeFlags[args.ExecutionID] <- struct{}{}
+	e.activeFlags[request.ExecutionID] <- struct{}{}
 
 	containerStartError := e.client.ContainerStart(
 		ctx,
@@ -289,7 +271,7 @@ func (e *Executor) Run(
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
 	return executor.WriteJobResults(
-		args.ResultsDir,
+		request.ResultsDir,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),

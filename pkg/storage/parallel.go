@@ -25,32 +25,32 @@ func ParallelPrepareStorage(
 ) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
 
-	out := make([]PreparedStorage, len(specs))
-	for i, inputStorageSpec := range specs {
-		spec := inputStorageSpec // https://golang.org/doc/faq#closures_and_goroutines
-		i := i
-
-		addStorageSpec := func() error {
-			var storageProvider Storage
-			var volumeMount StorageVolume
-			storageProvider, err := provider.Get(ctx, spec.StorageSource)
-			if err != nil {
-				return err
-			}
-
-			volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
-			if err != nil {
-				return err
-			}
-
-			out[i] = PreparedStorage{
-				Spec:   spec,
-				Volume: volumeMount,
-			}
-			return nil
+	addStorageSpec := func(idx int, input model.StorageSpec, output []PreparedStorage) error {
+		storageProvider, err := provider.Get(ctx, input.StorageSource)
+		if err != nil {
+			return err
 		}
 
-		waitgroup.Go(addStorageSpec)
+		volumeMount, err := storageProvider.PrepareStorage(ctx, input)
+		if err != nil {
+			return err
+		}
+
+		output[idx] = PreparedStorage{
+			Spec:   input,
+			Volume: volumeMount,
+		}
+		return nil
+	}
+
+	out := make([]PreparedStorage, len(specs))
+	for i, spec := range specs {
+		// NB: https://golang.org/doc/faq#closures_and_goroutines
+		index := i
+		input := spec
+		waitgroup.Go(func() error {
+			return addStorageSpec(index, input, out)
+		})
 	}
 	if err := waitgroup.Wait(); err != nil {
 		return nil, err

@@ -54,9 +54,9 @@ func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.Compi
 	return module, nil
 }
 
-// LoadRemoteModules loads and compiles all of the modules located by the passed storage specs.
-func (loader *ModuleLoader) LoadRemoteModules(ctx context.Context, m storage.PreparedStorage) (wazero.CompiledModule, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.LoadRemoteModules")
+// loadModule loads and compiles all of the modules located by the passed storage specs.
+func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedStorage) (wazero.CompiledModule, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModule")
 	defer span.End()
 
 	programPath := m.Volume.Source
@@ -114,7 +114,7 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 	}
 
 	// Get the remote module.
-	module, err := loader.LoadRemoteModules(ctx, m)
+	module, err := loader.loadModule(ctx, m)
 	if err != nil {
 		return nil, err
 	}
