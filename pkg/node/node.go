@@ -158,15 +158,6 @@ func NewNode(
 	if nodeInfoPublisherInterval.IsZero() {
 		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
 	}
-	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           nodeInfoPubSub,
-		NodeInfoProvider: nodeInfoProvider,
-		IntervalConfig:   nodeInfoPublisherInterval,
-	})
-	// BUG!!
-	// seems to cause compute node info registration to fail in a weird way
-	// Comment this line out to make tests pass, or move it above NewNodeInfoPublisher constructor
-	time.Sleep(time.Second)
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
@@ -251,6 +242,14 @@ func NewNode(
 		}
 		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
 	}
+
+	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
+	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
+		PubSub:           nodeInfoPubSub,
+		NodeInfoProvider: nodeInfoProvider,
+		IntervalConfig:   nodeInfoPublisherInterval,
+	})
 
 	// cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
