@@ -55,6 +55,7 @@ func NewComputeNode(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
+
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
