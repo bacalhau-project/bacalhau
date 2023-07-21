@@ -10,9 +10,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 type InputLocalityStrategySuite struct {
@@ -102,16 +102,13 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 
 	for _, test := range testCases {
 		s.Run(test.name, func() {
-			noop_executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
-				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
-						return test.hasStorageLocally, nil
-					},
-				},
-			})
+			fakeStorage := noop.NewNoopStorage()
+			fakeStorage.Config.ExternalHooks.HasStorageLocally = func(ctx context.Context, volume model.StorageSpec) (bool, error) {
+				return test.hasStorageLocally, nil
+			}
 			params := semantic.InputLocalityStrategyParams{
-				Locality:  test.policy,
-				Executors: model.NewNoopProvider[model.Engine, executor.Executor](noop_executor),
+				Locality: test.policy,
+				Storages: model.NewNoopProvider[model.StorageSourceType, storage.Storage](fakeStorage),
 			}
 			strategy := semantic.NewInputLocalityStrategy(params)
 			result, err := strategy.ShouldBid(context.Background(), test.request)

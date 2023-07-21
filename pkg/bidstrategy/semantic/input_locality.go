@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type InputLocalityStrategyParams struct {
-	Locality  model.JobSelectionDataLocality
-	Executors executor.ExecutorProvider
+	Locality model.JobSelectionDataLocality
+	Storages storage.StorageProvider
 }
 
 type InputLocalityStrategy struct {
-	locality  model.JobSelectionDataLocality
-	executors executor.ExecutorProvider
+	locality model.JobSelectionDataLocality
+	storages storage.StorageProvider
 }
 
 // Compile-time check of interface implementation
@@ -24,8 +24,8 @@ var _ bidstrategy.SemanticBidStrategy = (*InputLocalityStrategy)(nil)
 
 func NewInputLocalityStrategy(params InputLocalityStrategyParams) *InputLocalityStrategy {
 	return &InputLocalityStrategy{
-		locality:  params.Locality,
-		executors: params.Executors,
+		locality: params.Locality,
+		storages: params.Storages,
 	}
 }
 
@@ -38,18 +38,14 @@ func (s *InputLocalityStrategy) ShouldBid(
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
-	// otherwise we are checking that all the named inputs in the job
-	// are local to us
-	e, err := s.executors.Get(ctx, request.Job.Spec.Engine)
-	if err != nil {
-		return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to get executor %s: %w", request.Job.Spec.Engine, err)
-	}
-
 	foundInputs := 0
-
 	for _, input := range request.Job.Spec.Inputs {
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := e.HasStorageLocally(ctx, input)
+		strg, err := s.storages.Get(ctx, input.StorageSource)
+		if err != nil {
+			return bidstrategy.BidStrategyResponse{}, err
+		}
+		hasStorage, err := strg.HasStorageLocally(ctx, input)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
 		}
