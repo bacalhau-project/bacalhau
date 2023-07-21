@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -44,16 +45,14 @@ type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
 	// the storage providers we can implement for a job
-	StorageProvider storage.StorageProvider
-	activeFlags     map[string]chan struct{}
-	client          *docker.Client
+	activeFlags map[string]chan struct{}
+	client      *docker.Client
 }
 
 func NewExecutor(
 	_ context.Context,
 	cm *system.CleanupManager,
 	id string,
-	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -61,19 +60,14 @@ func NewExecutor(
 	}
 
 	de := &Executor{
-		ID:              id,
-		StorageProvider: storageProvider,
-		client:          dockerClient,
-		activeFlags:     make(map[string]chan struct{}),
+		ID:          id,
+		client:      dockerClient,
+		activeFlags: make(map[string]chan struct{}),
 	}
 
 	cm.RegisterCallbackWithContext(de.cleanupAll)
 
 	return de, nil
-}
-
-func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
-	return e.StorageProvider.Get(ctx, engine)
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -90,73 +84,46 @@ func (e *Executor) GetResourceBidStrategy(context.Context) (bidstrategy.Resource
 	return resource.NewChainedResourceBidStrategy(), nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.HasStorageLocally")
-	defer span.End()
-
-	s, err := e.getStorage(ctx, volume.StorageSource)
-	if err != nil {
-		return false, err
+func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
+	out := model.JobSpecDocker{}
+	if err := json.Unmarshal(args.Params, &out); err != nil {
+		return model.JobSpecDocker{}, err
 	}
-
-	return s.HasStorageLocally(ctx, volume)
-}
-
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	storageProvider, err := e.getStorage(ctx, volume.StorageSource)
-	if err != nil {
-		return 0, err
-	}
-	return storageProvider.GetVolumeSize(ctx, volume)
+	return out, nil
 }
 
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
-	executionID string,
-	job model.Job,
-	jobResultsDir string,
+	request *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
-	defer e.cleanupExecution(ctx, executionID)
+	defer e.cleanupExecution(ctx, request.ExecutionID)
 
-	e.activeFlags[executionID] = make(chan struct{}, 1)
-
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, job.Spec.Inputs)
+	dockerArgs, err := DecodeArguments(request.EngineParams)
 	if err != nil {
-		return executor.FailResult(err)
+		return nil, err
 	}
-	defer func() {
-		log.Ctx(ctx).Debug().
-			Str("Execution", executionID).
-			Msg("attempting cleanup of inputs for execution")
-		err := storage.ParallelCleanStorage(ctx, e.StorageProvider, inputVolumes)
-		if err != nil {
-			log.Ctx(ctx).Error().
-				Err(err).
-				Str("Execution", executionID).
-				Msg("errors occurred when cleaning up inputs")
-		}
-	}()
+
+	e.activeFlags[request.ExecutionID] = make(chan struct{}, 1)
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
 	var mounts []mount.Mount
-	for spec, volumeMount := range inputVolumes {
-		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+	for _, input := range request.Inputs {
+		if input.Volume.Type == storage.StorageVolumeConnectorBind {
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Spec, input.Volume)
 
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,
-				ReadOnly: volumeMount.ReadOnly,
-				Source:   volumeMount.Source,
-				Target:   volumeMount.Target,
+				ReadOnly: input.Volume.ReadOnly,
+				Source:   input.Volume.Source,
+				Target:   input.Volume.Target,
 			})
 		} else {
-			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", volumeMount.Type))
+			return executor.FailResult(fmt.Errorf("unknown storage volume type: %s", input.Volume.Type))
 		}
 	}
 
@@ -164,7 +131,7 @@ func (e *Executor) Run(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range job.Spec.Outputs {
+	for _, output := range request.Outputs {
 		if output.Name == "" {
 			err = fmt.Errorf("output volume has no name: %+v", output)
 			return executor.FailResult(err)
@@ -175,7 +142,7 @@ func (e *Executor) Run(
 			return executor.FailResult(err)
 		}
 
-		srcd := filepath.Join(jobResultsDir, output.Name)
+		srcd := filepath.Join(request.ResultsDir, output.Name)
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return executor.FailResult(err)
@@ -200,39 +167,25 @@ func (e *Executor) Run(
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, job.Spec.Docker.Image, dockerCreds); pullErr != nil {
-			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, job.Spec.Docker.Image)
+		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
+			pullErr = errors.Wrapf(pullErr, docker.ImagePullError, dockerArgs.Image)
 			return executor.FailResult(pullErr)
 		}
 	}
 
-	// json the job spec and pass it into all containers
-	// TODO: check if this will overwrite a user supplied version of this value
-	// (which is what we actually want to happen)
-	log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", job.Spec)
-	jsonJobSpec, err := model.JSONMarshalWithMax(job.Spec)
-	if err != nil {
-		return executor.FailResult(err)
-	}
-	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
-
-	useEnv := append(job.Spec.Docker.EnvironmentVariables,
-		fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)),
-	)
-
 	containerConfig := &container.Config{
-		Image:      job.Spec.Docker.Image,
+		Image:      dockerArgs.Image,
 		Tty:        false,
-		Env:        useEnv,
-		Entrypoint: job.Spec.Docker.Entrypoint,
-		Cmd:        job.Spec.Docker.Parameters,
-		Labels:     e.containerLabels(executionID, job),
-		WorkingDir: job.Spec.Docker.WorkingDirectory,
+		Env:        dockerArgs.EnvironmentVariables,
+		Entrypoint: dockerArgs.Entrypoint,
+		Cmd:        dockerArgs.Parameters,
+		Labels:     e.containerLabels(request.ExecutionID, request.JobID),
+		WorkingDir: dockerArgs.WorkingDirectory,
 	}
 
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := capacity.ParseResourceUsageConfig(job.Spec.Resources)
+	resourceRequirements := capacity.ParseResourceUsageConfig(request.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
@@ -256,7 +209,7 @@ func (e *Executor) Run(
 	}
 
 	// Create a network if the job requests it
-	err = e.setupNetworkForJob(ctx, executionID, job, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, request.JobID, request.ExecutionID, request.Network, containerConfig, hostConfig)
 	if err != nil {
 		return executor.FailResult(err)
 	}
@@ -267,7 +220,7 @@ func (e *Executor) Run(
 		hostConfig,
 		nil,
 		nil,
-		e.containerName(executionID, job),
+		e.containerName(request.ExecutionID, request.JobID),
 	)
 	if err != nil {
 		return executor.FailResult(errors.Wrap(err, "failed to create container"))
@@ -275,7 +228,7 @@ func (e *Executor) Run(
 
 	ctx = log.Ctx(ctx).With().Str("Container", jobContainer.ID).Logger().WithContext(ctx)
 
-	e.activeFlags[executionID] <- struct{}{}
+	e.activeFlags[request.ExecutionID] <- struct{}{}
 
 	containerStartError := e.client.ContainerStart(
 		ctx,
@@ -318,7 +271,7 @@ func (e *Executor) Run(
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
 	return executor.WriteJobResults(
-		jobResultsDir,
+		request.ResultsDir,
 		stdoutPipe,
 		stderrPipe,
 		int(containerExitStatusCode),
@@ -396,26 +349,26 @@ func (e *Executor) cleanupAll(ctx context.Context) error {
 	return nil
 }
 
-func (e *Executor) dockerObjectName(executionID string, job model.Job, parts ...string) string {
-	strs := []string{"bacalhau", e.ID, job.ID(), executionID}
+func (e *Executor) dockerObjectName(executionID string, jobID string, parts ...string) string {
+	strs := []string{"bacalhau", e.ID, jobID, executionID}
 	strs = append(strs, parts...)
 	return strings.Join(strs, "-")
 }
 
-func (e *Executor) containerName(executionID string, job model.Job) string {
-	return e.dockerObjectName(executionID, job, "executor")
+func (e *Executor) containerName(executionID string, jobID string) string {
+	return e.dockerObjectName(executionID, jobID, "executor")
 }
 
-func (e *Executor) containerLabels(executionID string, job model.Job) map[string]string {
+func (e *Executor) containerLabels(executionID string, jobID string) map[string]string {
 	return map[string]string{
 		labelExecutorName: e.ID,
-		labelJobName:      e.labelJobValue(job),
+		labelJobName:      e.labelJobValue(jobID),
 		labelExecutionID:  e.labelExecutionValue(executionID),
 	}
 }
 
-func (e *Executor) labelJobValue(job model.Job) string {
-	return e.ID + job.ID()
+func (e *Executor) labelJobValue(jobID string) string {
+	return e.ID + jobID
 }
 
 func (e *Executor) labelExecutionValue(executionID string) string {

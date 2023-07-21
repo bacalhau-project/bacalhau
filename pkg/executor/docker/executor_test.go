@@ -14,14 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const (
@@ -54,7 +55,6 @@ func (s *ExecutorTestSuite) SetupTest() {
 		context.Background(),
 		s.cm,
 		"bacalhau-executor-unittest",
-		model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{}),
 	)
 	require.NoError(s.T(), err)
 
@@ -113,7 +113,23 @@ func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, er
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
 	result := s.T().TempDir()
 	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
-	return s.executor.Run(ctx, name, j, result)
+	args, err := executor.EncodeArguments(spec.Docker)
+	if err != nil {
+		return nil, err
+	}
+	return s.executor.Run(
+		ctx,
+		&executor.RunCommandRequest{
+			JobID:        j.ID(),
+			ExecutionID:  name,
+			Resources:    spec.Resources,
+			Network:      spec.Network,
+			Outputs:      spec.Outputs,
+			Inputs:       nil,
+			ResultsDir:   result,
+			EngineParams: args,
+		},
+	)
 }
 
 func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {

@@ -21,9 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -304,8 +302,7 @@ func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error
 	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
 
 	config := wazero.NewModuleConfig()
-	storage := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop.NewNoopStorage())
-	loader := wasm.NewModuleLoader(engine, config, storage)
+	loader := wasm.NewModuleLoader(engine, config)
 	module, err := loader.Load(ctx, programPath)
 	if err != nil {
 		return err
