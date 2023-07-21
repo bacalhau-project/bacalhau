@@ -7,9 +7,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -44,8 +47,9 @@ func RunTestCase(
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
-			hasStorage, stErr := executor.HasStorageLocally(
-				ctx, storageSpec)
+			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, storageSpec.StorageSource)
+			require.NoError(t, err)
+			hasStorage, stErr := strger.HasStorageLocally(ctx, storageSpec)
 			require.NoError(t, stErr)
 			require.True(t, hasStorage)
 		}
@@ -70,7 +74,16 @@ func RunTestCase(
 	}
 
 	resultsDirectory := t.TempDir()
-	_, err = executor.Run(ctx, "test-execution", job, resultsDirectory)
+	strgProvider := stack.Nodes[0].ComputeNode.Storages
+	runCommandCleanup := system.NewCleanupManager()
+	execution := store.NewExecution("test-execution", job, "res-requesterID", model.ResourceUsageData{})
+	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, *execution, resultsDirectory, runCommandCleanup)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		runCommandCleanup.Cleanup(ctx)
+	})
+
+	_, err = executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		err = testCase.SubmitChecker(&job, err)
 		require.NoError(t, err)

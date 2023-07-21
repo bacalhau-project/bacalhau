@@ -38,6 +38,7 @@ type Compute struct {
 	Capacity            capacity.Tracker
 	ExecutionStore      store.ExecutionStore
 	Executors           executor.ExecutorProvider
+	Storages            storage.StorageProvider
 	LogServer           *logstream.LogStreamServer
 	Bidder              compute.Bidder
 	computeCallback     *bprotocol.CallbackProxy
@@ -89,6 +90,7 @@ func NewComputeNode(
 		ID:                     host.ID().String(),
 		Callback:               computeCallback,
 		Store:                  executionStore,
+		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
 		FailureInjectionConfig: config.FailureInjectionConfig,
@@ -128,7 +130,7 @@ func NewComputeNode(
 				Defaults: config.DefaultJobResourceLimits,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
-				Executors: executors,
+				Storages: storages,
 			}),
 		},
 	})
@@ -139,8 +141,8 @@ func NewComputeNode(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 			semantic.FromJobSelectionPolicy(config.JobSelectionPolicy),
 			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality:  config.JobSelectionPolicy.Locality,
-				Executors: executors,
+				Locality: config.JobSelectionPolicy.Locality,
+				Storages: storages,
 			}),
 			semantic.NewProviderInstalledStrategy(
 				publishers,
@@ -253,6 +255,7 @@ func NewComputeNode(
 		Capacity:            runningCapacityTracker,
 		ExecutionStore:      executionStore,
 		Executors:           executors,
+		Storages:            storages,
 		Bidder:              bidder,
 		LogServer:           logserver,
 		computeCallback:     computeCallback,

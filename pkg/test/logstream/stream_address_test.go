@@ -3,11 +3,13 @@
 package logstream
 
 import (
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/stretchr/testify/require"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -31,7 +33,31 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		_, _ = exec.Run(s.ctx, execution.ID, job, "/tmp")
+		var args *executor.Arguments
+		if job.Spec.Engine == model.EngineDocker {
+			args, err = executor.EncodeArguments(job.Spec.Docker)
+			require.NoError(s.T(), err)
+		}
+		if job.Spec.Engine == model.EngineWasm {
+			args, err = executor.EncodeArguments(job.Spec.Wasm)
+			require.NoError(s.T(), err)
+		}
+		if job.Spec.Engine == model.EngineNoop {
+			args = &executor.Arguments{Params: []byte{}}
+		}
+		exec.Run(
+			s.ctx,
+			&executor.RunCommandRequest{
+				JobID:        job.ID(),
+				ExecutionID:  execution.ID,
+				Resources:    job.Spec.Resources,
+				Network:      job.Spec.Network,
+				Outputs:      job.Spec.Outputs,
+				Inputs:       nil,
+				ResultsDir:   "/tmp",
+				EngineParams: args,
+			},
+		)
 	}()
 
 	// Wait for the docker container to be running so we know it'll be there when

@@ -10,16 +10,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/maps"
 )
 
 type ParallelStorageSuite struct {
@@ -71,15 +71,15 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 			CID:           s.cid,
 			Path:          "/inputs/test.txt",
 		},
-	})
+	}...)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	files := lo.Map(maps.Values(volumes), func(item storage.StorageVolume, index int) string {
-		return item.Source
-	})
-
+	var files []string
+	for _, v := range volumes {
+		files = append(files, v.Volume.Source)
+	}
 	// IPFS cleanup doesn't actually return an error as it deletes a folder
 	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)
 
@@ -106,14 +106,15 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 			URL:           fmt.Sprintf("%s/test.txt", ts.URL),
 			Path:          "/inputs/test.txt",
 		},
-	})
+	}...)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
-	files := lo.Map(maps.Values(volumes), func(item storage.StorageVolume, index int) string {
-		return item.Source
-	})
+	var files []string
+	for _, v := range volumes {
+		files = append(files, v.Volume.Source)
+	}
 
 	// URL cleanup doesn't actually return an error as it deletes a folder
 	_ = storage.ParallelCleanStorage(s.ctx, s.provider, volumes)

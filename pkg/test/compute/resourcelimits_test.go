@@ -100,13 +100,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(_ context.Context, job model.Job, _ string) (*model.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, jobID string, _ string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          job.ID(),
+				Id:          jobID,
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -144,14 +144,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			// what the job is doesn't matter - it will only end up
 			j := testutils.MakeNoopJob()
 			j.Spec.Resources = jobResources
-			j.Spec.Inputs = []model.StorageSpec{
-				{
-					StorageSource: model.StorageSourceIPFS,
-					CID:           jobResources.Disk,
-					Name:          "testvolumesize",
-				},
-			}
-
 			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID:   "123",
 				APIVersion: j.APIVersion,
@@ -287,7 +279,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(_ context.Context, _ model.Job, _ string) (*model.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ string, _ string) (*model.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil
