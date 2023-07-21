@@ -166,3 +166,65 @@ func TestExecSet_has(t *testing.T) {
 	assert.True(t, set.has("exec2"))
 	assert.False(t, set.has("exec3"))
 }
+
+func TestExecSet_FilterByNodeHealth(t *testing.T) {
+	nodeInfos := map[string]*model.NodeInfo{
+		"node1": {},
+		"node2": {},
+	}
+
+	executions := []*model.ExecutionState{
+		{ComputeReference: "exec1", NodeID: "node1"},
+		{ComputeReference: "exec2", NodeID: "node2"},
+		{ComputeReference: "exec3", NodeID: "node3"},
+	}
+
+	set := execSetFromSlice(executions)
+	healthy, lost := set.filterByNodeHealth(nodeInfos)
+
+	assert.Len(t, healthy, 2)
+	assert.Len(t, lost, 1)
+	assert.ElementsMatch(t, healthy.keys(), []string{"exec1", "exec2"})
+	assert.ElementsMatch(t, lost.keys(), []string{"exec3"})
+}
+
+func TestExecSet_FilterByOverSubscription(t *testing.T) {
+	desiredCount := 3
+	now := time.Now()
+
+	executions := []*model.ExecutionState{
+		{ComputeReference: "exec1", UpdateTime: now},
+		{ComputeReference: "exec2", UpdateTime: now.Add(time.Second)},
+		{ComputeReference: "exec3", UpdateTime: now.Add(2 * time.Second)},
+		{ComputeReference: "exec4", UpdateTime: now.Add(3 * time.Second)},
+		{ComputeReference: "exec5", UpdateTime: now.Add(4 * time.Second)},
+	}
+
+	set := execSetFromSlice(executions)
+	remaining, overSubscriptions := set.filterByOverSubscriptions(desiredCount)
+
+	assert.ElementsMatch(t, remaining.keys(), []string{"exec1", "exec2", "exec3"})
+	assert.ElementsMatch(t, overSubscriptions.keys(), []string{"exec4", "exec5"})
+}
+
+func TestExecSet_FilterByApprovalStatus(t *testing.T) {
+	desiredCount := 3
+	now := time.Now()
+
+	executions := []*model.ExecutionState{
+		{ComputeReference: "exec1", State: model.ExecutionStateAskForBidAccepted, UpdateTime: now},
+		{ComputeReference: "exec2", State: model.ExecutionStateAskForBidAccepted, UpdateTime: now.Add(time.Second)},
+		{ComputeReference: "exec3", State: model.ExecutionStateBidAccepted, UpdateTime: now.Add(2 * time.Second)},
+		{ComputeReference: "exec4", State: model.ExecutionStateBidAccepted, UpdateTime: now.Add(3 * time.Second)},
+		{ComputeReference: "exec5", State: model.ExecutionStateCompleted, UpdateTime: now.Add(4 * time.Second)},
+	}
+
+	set := execSetFromSlice(executions)
+	approvalStatus := set.filterByApprovalStatus(desiredCount)
+
+	assert.ElementsMatch(t, approvalStatus.running.keys(), []string{"exec3", "exec4"})
+	assert.ElementsMatch(t, approvalStatus.toApprove.keys(), []string{"exec1"})
+	assert.ElementsMatch(t, approvalStatus.toReject.keys(), []string{"exec2"})
+	assert.ElementsMatch(t, approvalStatus.pending.keys(), []string{})
+	assert.Equal(t, 3, approvalStatus.activeCount())
+}

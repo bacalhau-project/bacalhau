@@ -145,6 +145,12 @@ func NewRequesterNode(
 			NodeRanker:     nodeRankerChain,
 			RetryStrategy:  retryStrategy,
 		}),
+		model.JobTypeOps: scheduler.NewOpsJobScheduler(scheduler.OpsJobSchedulerParams{
+			JobStore:       jobStore,
+			Planner:        planners,
+			NodeDiscoverer: nodeDiscoveryChain,
+			NodeRanker:     nodeRankerChain,
+		}),
 	})
 
 	workers := make([]*orchestrator.Worker, 0, config.WorkerCount)

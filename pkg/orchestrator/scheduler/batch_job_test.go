@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 )
@@ -36,7 +35,7 @@ var nodeIDs = []string{
 	"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
 }
 
-type SchedulerTestSuite struct {
+type BatchJobSchedulerTestSuite struct {
 	suite.Suite
 	jobStore       *jobstore.MockStore
 	planner        *orchestrator.MockPlanner
@@ -46,7 +45,7 @@ type SchedulerTestSuite struct {
 	scheduler      *BatchJobScheduler
 }
 
-func (s *SchedulerTestSuite) SetupTest() {
+func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	ctrl := gomock.NewController(s.T())
 	s.jobStore = jobstore.NewMockStore(ctrl)
 	s.planner = orchestrator.NewMockPlanner(ctrl)
@@ -64,10 +63,10 @@ func (s *SchedulerTestSuite) SetupTest() {
 }
 
 func TestSchedulerTestSuite(t *testing.T) {
-	suite.Run(t, new(SchedulerTestSuite))
+	suite.Run(t, new(BatchJobSchedulerTestSuite))
 }
 
-func (s *SchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 	jobState.Executions = []model.ExecutionState{} // no executions yet
@@ -96,7 +95,7 @@ func (s *SchedulerTestSuite) TestProcess_ShouldCreateEnoughExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
+func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID()).Return(*job, nil)
@@ -117,7 +116,7 @@ func (s *SchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) TestProcess_RejectExtraExecutions() {
+func (s *BatchJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 
@@ -147,7 +146,7 @@ func (s *SchedulerTestSuite) TestProcess_RejectExtraExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) TestProcess_TooManyExecutions() {
+func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 	job.Spec.Deal.Concurrency = 2
@@ -170,7 +169,7 @@ func (s *SchedulerTestSuite) TestProcess_TooManyExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
+func (s *BatchJobSchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 	jobState.Executions = []model.ExecutionState{} // no executions yet
@@ -192,7 +191,7 @@ func (s *SchedulerTestSuite) TestProcessFail_NotEnoughExecutions() {
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalExecutionsAsStopped() {
+func (s *BatchJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalExecutionsAsStopped() {
 	terminalStates := []model.JobStateType{
 		model.JobStateCancelled,
 		model.JobStateCompleted,
@@ -220,7 +219,7 @@ func (s *SchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTerminalE
 	}
 }
 
-func (s *SchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutionsOnUnhealthyNodesAsFailed() {
+func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutionsOnUnhealthyNodesAsFailed() {
 	ctx := context.Background()
 	job, jobState, evaluation := mockJob()
 	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID()).Return(*job, nil)
@@ -231,6 +230,7 @@ func (s *SchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutionsOnUnheal
 		*mockNodeInfo(s.T(), jobState.Executions[execAskForBid].NodeID),
 		*mockNodeInfo(s.T(), jobState.Executions[execCanceled].NodeID),
 	}
+	s.nodeDiscoverer.EXPECT().ListNodes(gomock.Any()).Return(nodeInfos, nil)
 	s.mockNodeSelection(job, nodeInfos)
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
@@ -244,8 +244,71 @@ func (s *SchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutionsOnUnheal
 	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
 }
 
-func (s *SchedulerTestSuite) mockNodeSelection(job *model.Job, nodeInfos []model.NodeInfo) {
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsCompleted() {
+	ctx := context.Background()
+	job, jobState, evaluation := mockJob()
+	jobState.Executions[execAskForBid].State = model.ExecutionStateCompleted
+	jobState.Executions[execBidAccepted].State = model.ExecutionStateCompleted
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID()).Return(*job, nil)
+	s.jobStore.EXPECT().GetJobState(gomock.Any(), job.ID()).Return(*jobState, nil)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		JobState:   model.JobStateCompleted,
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_OnMoreNodes() {
+	ctx := context.Background()
+	job, jobState, evaluation := mockJob()
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID()).Return(*job, nil)
+	s.jobStore.EXPECT().GetJobState(gomock.Any(), job.ID()).Return(*jobState, nil)
+
+	// mark all nodes as unhealthy so that we don't retry on other nodes
+	s.nodeDiscoverer.EXPECT().ListNodes(gomock.Any()).Return([]model.NodeInfo{}, nil)
+	s.mockNodeSelection(job, []model.NodeInfo{})
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		JobState:   model.JobStateError,
+		StoppedExecutions: []model.ExecutionID{
+			jobState.Executions[execAskForBid].ID(),
+			jobState.Executions[execBidAccepted].ID(),
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_OnNoRetry() {
+	ctx := context.Background()
+	job, jobState, evaluation := mockJob()
+	s.jobStore.EXPECT().GetJob(gomock.Any(), job.ID()).Return(*job, nil)
+	s.jobStore.EXPECT().GetJobState(gomock.Any(), job.ID()).Return(*jobState, nil)
+	s.scheduler.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false})
+
+	// mark askForBid exec as lost so we attempt to retry
+	nodeInfos := []model.NodeInfo{
+		*mockNodeInfo(s.T(), jobState.Executions[execBidAccepted].NodeID),
+		*mockNodeInfo(s.T(), jobState.Executions[execCompleted].NodeID),
+	}
 	s.nodeDiscoverer.EXPECT().ListNodes(gomock.Any()).Return(nodeInfos, nil)
+
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: evaluation,
+		JobState:   model.JobStateError,
+		StoppedExecutions: []model.ExecutionID{
+			jobState.Executions[execAskForBid].ID(),
+			jobState.Executions[execBidAccepted].ID(),
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(ctx, evaluation))
+}
+
+func (s *BatchJobSchedulerTestSuite) mockNodeSelection(job *model.Job, nodeInfos []model.NodeInfo) {
 	s.nodeDiscoverer.EXPECT().FindNodes(gomock.Any(), *job).Return(nodeInfos, nil)
 
 	nodeRanks := make([]orchestrator.NodeRank, len(nodeInfos))
@@ -277,14 +340,4 @@ func mockJob() (*model.Job, *model.JobState, *models.Evaluation) {
 		ID:    uuid.NewString(),
 	}
 	return job, jobState, evaluation
-}
-
-func mockNodeInfo(t *testing.T, nodeID string) *model.NodeInfo {
-	id, err := peer.Decode(nodeID)
-	require.NoError(t, err)
-	return &model.NodeInfo{
-		PeerInfo: peer.AddrInfo{
-			ID: id,
-		},
-	}
 }

@@ -68,6 +68,10 @@ type AskForBidRequest struct {
 	RoutingMetadata
 	// Job specifies the job to be executed.
 	Job model.Job
+	// WaitForApproval specifies whether the compute node should wait for the requester to approve the bid.
+	// if set to true, the compute node will not start the execution until the requester approves the bid.
+	// If set to false, the compute node will automatically start the execution after bidding and when resources are available.
+	WaitForApproval bool
 }
 
 type AskForBidResponse struct {

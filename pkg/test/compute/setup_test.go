@@ -27,13 +27,15 @@ import (
 
 type ComputeSuite struct {
 	suite.Suite
-	node          *node.Compute
-	config        node.ComputeConfig
-	cm            *system.CleanupManager
-	executor      *noop_executor.NoopExecutor
-	publisher     *noop_publisher.NoopPublisher
-	stateResolver resolver.StateResolver
-	bidChannel    chan compute.BidResult
+	node             *node.Compute
+	config           node.ComputeConfig
+	cm               *system.CleanupManager
+	executor         *noop_executor.NoopExecutor
+	publisher        *noop_publisher.NoopPublisher
+	stateResolver    resolver.StateResolver
+	bidChannel       chan compute.BidResult
+	failureChannel   chan compute.ComputeError
+	completedChannel chan compute.RunResult
 }
 
 func (s *ComputeSuite) SetupSuite() {
@@ -54,6 +56,8 @@ func (s *ComputeSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.bidChannel = make(chan compute.BidResult)
+	s.completedChannel = make(chan compute.RunResult)
+	s.failureChannel = make(chan compute.ComputeError)
 	s.setupNode()
 }
 
@@ -93,6 +97,12 @@ func (s *ComputeSuite) setupNode() {
 		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
 			s.bidChannel <- result
 		},
+		OnRunCompleteHandler: func(ctx context.Context, result compute.RunResult) {
+			s.completedChannel <- result
+		},
+		OnComputeFailureHandler: func(ctx context.Context, err compute.ComputeError) {
+			s.failureChannel <- err
+		},
 	})
 	s.T().Cleanup(func() { close(s.bidChannel) })
 }
@@ -107,7 +117,8 @@ func (s *ComputeSuite) askForBid(ctx context.Context, job model.Job) compute.Bid
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},
-		Job: job,
+		Job:             job,
+		WaitForApproval: true,
 	})
 	s.NoError(err)
 

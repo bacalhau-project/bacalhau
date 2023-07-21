@@ -65,7 +65,7 @@ func (s *Suite) TestCreateExecution_AlreadyExists() {
 }
 
 func (s *Suite) TestCreateExecution_InvalidState() {
-	s.execution.State = store.ExecutionStateBidAccepted
+	s.execution.State = store.ExecutionStateRunning
 	err := s.executionStore.CreateExecution(context.Background(), s.execution)
 	s.Error(err)
 }

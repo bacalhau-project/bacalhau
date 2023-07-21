@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/rs/zerolog/log"
 )
 
 // execSet is a set of executions with a series of helper functions defined
@@ -99,6 +101,109 @@ func (set execSet) filterRunning() execSet {
 // filterFailed filters out non-failed executions.
 func (set execSet) filterFailed() execSet {
 	return set.filterByState(model.ExecutionStateFailed)
+}
+
+// filterOverSubscriptions partitions executions based on if they are more than the desired count.
+func (set execSet) filterByOverSubscriptions(desiredCount int) (execSet, execSet) {
+	remaining := make(execSet)
+	overSubscriptions := make(execSet)
+
+	count := 0
+	for _, exec := range set.ordered() {
+		if count >= desiredCount {
+			overSubscriptions[exec.ComputeReference] = exec
+		} else {
+			remaining[exec.ComputeReference] = exec
+		}
+		count++
+	}
+	return remaining, overSubscriptions
+}
+
+// filterByNodeHealth partitions executions based on their node's health status.
+func (set execSet) filterByNodeHealth(nodeInfos map[string]*model.NodeInfo) (execSet, execSet) {
+	healthy := make(execSet)
+	lost := make(execSet)
+
+	for _, exec := range set {
+		if _, ok := nodeInfos[exec.NodeID]; !ok {
+			lost[exec.ComputeReference] = exec
+			log.Debug().Msgf("Execution %s is running on node %s which is not healthy", exec.ComputeReference, exec.NodeID)
+		} else {
+			healthy[exec.ComputeReference] = exec
+		}
+	}
+	return healthy, lost
+}
+
+// executionsByApprovalStatus represents the different sets of executions based on their approval status.
+type executionsByApprovalStatus struct {
+	running   execSet
+	toApprove execSet
+	toReject  execSet
+	pending   execSet
+}
+
+// activeCount returns the number of active executions, excluding rejected ones.
+func (e executionsByApprovalStatus) activeCount() int {
+	return len(e.running) + len(e.toApprove) + len(e.pending)
+}
+
+// filterByApprovalStatus partitions executions based on their approval status.
+func (set execSet) filterByApprovalStatus(desiredCount int) executionsByApprovalStatus {
+	nonTermExecs := set.filterNonTerminal()
+	running := nonTermExecs.filterRunning()
+	toApprove := make(execSet)
+	toReject := make(execSet)
+	pending := make(execSet)
+
+	//TODO: we are approving the oldest executions first, we should probably
+	// approve the ones with highest rank first
+	orderedExecs := nonTermExecs.ordered()
+
+	// Approve/Reject nodes
+	for _, exec := range orderedExecs {
+		// nothing left to approve
+		if (len(running) + len(toApprove)) >= desiredCount {
+			break
+		}
+		if exec.State == model.ExecutionStateAskForBidAccepted {
+			toApprove[exec.ComputeReference] = exec
+		}
+	}
+
+	// reject the rest
+	totalRunningCount := len(running) + len(toApprove)
+	for _, exec := range orderedExecs {
+		if running.has(exec.ComputeReference) || toApprove.has(exec.ComputeReference) {
+			continue
+		}
+		if totalRunningCount >= desiredCount {
+			toReject[exec.ComputeReference] = exec
+		} else {
+			pending[exec.ComputeReference] = exec
+		}
+	}
+	return executionsByApprovalStatus{
+		running:   running,
+		toApprove: toApprove,
+		toReject:  toReject,
+		pending:   pending,
+	}
+}
+
+// markStopped
+func (set execSet) markStopped(comment string, plan *models.Plan) {
+	for _, exec := range set {
+		plan.AppendStoppedExecution(exec, comment)
+	}
+}
+
+// markStopped
+func (set execSet) markApproved(plan *models.Plan) {
+	for _, exec := range set {
+		plan.AppendApprovedExecution(exec)
+	}
 }
 
 // union returns the union of two sets. If there are any duplicates, the `other` will be used.
