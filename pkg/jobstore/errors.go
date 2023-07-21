@@ -111,16 +111,19 @@ func (e ErrExecutionAlreadyExists) Error() string {
 type ErrInvalidExecutionState struct {
 	ExecutionID model.ExecutionID
 	Actual      model.ExecutionStateType
-	Expected    model.ExecutionStateType
+	Expected    []model.ExecutionStateType
 }
 
 func NewErrInvalidExecutionState(
-	id model.ExecutionID, actual model.ExecutionStateType, expected model.ExecutionStateType) ErrInvalidExecutionState {
+	id model.ExecutionID, actual model.ExecutionStateType, expected ...model.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID.String() + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	if len(e.Expected) > 0 {
+		return fmt.Sprintf("execution %s is in unexpted state %s", e.ExecutionID.String(), e.Actual.String())
+	}
+	return fmt.Sprintf("execution %s is in state %s", e.ExecutionID.String(), e.Actual.String())
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.

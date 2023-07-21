@@ -5,9 +5,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/gorilla/websocket"
 )
@@ -23,8 +23,7 @@ type RequesterAPIServerParams struct {
 	Requester          requester.Endpoint
 	DebugInfoProviders []model.DebugInfoProvider
 	JobStore           jobstore.Store
-	StorageProviders   storage.StorageProvider
-	NodeDiscoverer     requester.NodeDiscoverer
+	NodeDiscoverer     orchestrator.NodeDiscoverer
 }
 
 type RequesterAPIServer struct {
@@ -32,8 +31,7 @@ type RequesterAPIServer struct {
 	requester          requester.Endpoint
 	debugInfoProviders []model.DebugInfoProvider
 	jobStore           jobstore.Store
-	storageProviders   storage.StorageProvider
-	nodeDiscoverer     requester.NodeDiscoverer
+	nodeDiscoverer     orchestrator.NodeDiscoverer
 	// jobId or "" (for all events) -> connections for that subscription
 	websockets      map[string][]*websocket.Conn
 	websocketsMutex sync.RWMutex
@@ -45,7 +43,6 @@ func NewRequesterAPIServer(params RequesterAPIServerParams) *RequesterAPIServer 
 		requester:          params.Requester,
 		debugInfoProviders: params.DebugInfoProviders,
 		jobStore:           params.JobStore,
-		storageProviders:   params.StorageProviders,
 		nodeDiscoverer:     params.NodeDiscoverer,
 		websockets:         make(map[string][]*websocket.Conn),
 	}

@@ -47,7 +47,7 @@ func (s *WorkerTestSuite) SetupTest() {
 
 	s.eval = mock.Eval()
 	s.receiptHandle = uuid.NewString()
-	s.worker = NewWorker(&WorkerParams{
+	s.worker = NewWorker(WorkerParams{
 		SchedulerProvider:     s.schedulerProvider,
 		EvaluationBroker:      s.broker,
 		DequeueTimeout:        testDequeueTimeout,

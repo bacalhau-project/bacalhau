@@ -256,7 +256,7 @@ func (s *RetriesSuite) TestRetry() {
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed:    executionErr.Error(),
-				model.ExecutionStateCancelled: executionErr.Error(),
+				model.ExecutionStateCancelled: "overall job has failed",
 			},
 		},
 		{

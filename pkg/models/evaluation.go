@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/google/uuid"
 )
 
 const (
@@ -13,6 +14,13 @@ const (
 	EvalStatusComplete  = "complete"
 	EvalStatusFailed    = "failed"
 	EvalStatusCancelled = "canceled"
+)
+
+const (
+	EvalTriggerJobRegister     = "job-register"
+	EvalTriggerJobCancel       = "job-cancel"
+	EvalTriggerRetryFailedExec = "exec-failure"
+	EvalTriggerExecUpdate      = "exec-update"
 )
 
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
@@ -99,6 +107,22 @@ func (e *Evaluation) Copy() *Evaluation {
 	ne := new(Evaluation)
 	*ne = *e
 	return ne
+}
+
+// CreateFollowUpEval creates a new evaluation based on the current one.
+func (e *Evaluation) CreateFollowUpEval(triggerBy string) *Evaluation {
+	now := time.Now().UTC().UnixNano()
+	return &Evaluation{
+		ID:          uuid.NewString(),
+		Namespace:   e.Namespace,
+		JobID:       e.JobID,
+		TriggeredBy: triggerBy,
+		Priority:    e.Priority,
+		Type:        e.Type,
+		Status:      EvalStatusPending,
+		CreateTime:  now,
+		ModifyTime:  now,
+	}
 }
 
 // EvaluationReceipt is a pair of an Evaluation and its ReceiptHandle.

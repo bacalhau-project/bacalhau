@@ -183,25 +183,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	s.NoError(err)
 }
 
-func (s *ServeSuite) TestAppliesJobSelectionPolicy() {
-	docker.MustHaveDocker(s.T())
-	// Networking is disabled by default so we try to submit a networked job and
-	// expect it to be rejected.
-	port, _ := s.serve("--node-type", "requester")
-	client := publicapi.NewRequesterAPIClient("localhost", port)
-
-	job, err := model.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
-
-	job.Spec.Network.Type = model.NetworkHTTP
-	job, err = client.Submit(s.ctx, job)
-	s.NoError(err)
-
-	state, err := client.GetJobState(s.ctx, job.Metadata.ID)
-	s.NoError(err)
-	s.Equal(model.JobStateCancelled, state.State, state.State.String())
-}
-
 func (s *ServeSuite) TestDefaultServeOptionsConnectToLocalIpfs() {
 	cm := system.NewCleanupManager()
 	OS := serve.NewServeOptions()

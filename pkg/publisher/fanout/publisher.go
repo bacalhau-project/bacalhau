@@ -86,7 +86,7 @@ func fanout[T any, P any](ctx context.Context, publishers []P, method func(P) (T
 		value, err := method(p)
 		if err == nil {
 			valueChannel <- fanoutResult[T, P]{value, p}
-			log.Ctx(ctx).Debug().Str("Publisher", fmt.Sprintf("%T", p)).Interface("Value", value).Send()
+			log.Ctx(ctx).Debug().Str("Publisher", fmt.Sprintf("%T", p)).Interface("Get", value).Send()
 		} else {
 			internalErrorChannel <- err
 			log.Ctx(ctx).Error().Str("Publisher", fmt.Sprintf("%T", p)).Err(err).Send()
