@@ -119,6 +119,7 @@ func (b *BatchJobScheduler) createMissingExecs(
 		execution := &model.ExecutionState{
 			JobID:            job.Metadata.ID,
 			ComputeReference: "e-" + uuid.NewString(),
+			State:            model.ExecutionStateNew,
 			DesiredState:     model.ExecutionDesiredStatePending,
 		}
 		newExecs[execution.ComputeReference] = execution

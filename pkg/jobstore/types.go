@@ -59,7 +59,7 @@ type UpdateJobCondition struct {
 
 // Validate checks if the condition matches the given job
 func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
-	if condition.ExpectedState != model.JobStateNew && condition.ExpectedState != jobState.State {
+	if !condition.ExpectedState.IsUndefined() && condition.ExpectedState != jobState.State {
 		return NewErrInvalidJobState(jobState.JobID, jobState.State, condition.ExpectedState)
 	}
 	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != jobState.Version {
@@ -68,7 +68,7 @@ func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
 			if s == jobState.State {
-				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateNew)
+				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateUndefined)
 			}
 		}
 	}

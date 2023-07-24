@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/optional"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -32,22 +31,20 @@ func NewEventEmitter(params EventEmitterParams) *EventEmitter {
 
 // Process updates the state of the executions in the plan according to the scheduler's desired state.
 func (s *EventEmitter) Process(ctx context.Context, plan *models.Plan) error {
-	var eventName optional.Optional[model.JobEventType]
+	var eventName model.JobEventType
 	switch plan.DesiredJobState {
 	case model.JobStateCompleted:
-		eventName = optional.New(model.JobEventCompleted)
+		eventName = model.JobEventCompleted
 	case model.JobStateError:
-		eventName = optional.New(model.JobEventError)
+		eventName = model.JobEventError
 	default:
-		eventName = optional.Empty[model.JobEventType]()
 	}
-	if eventName.IsPresent() {
-		eventNameValue, _ := eventName.Get()
+	if !eventName.IsUndefined() {
 		s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
 			SourceNodeID: s.id,
 			JobID:        plan.Job.ID(),
 			Status:       plan.Comment,
-			EventName:    eventNameValue,
+			EventName:    eventName,
 			EventTime:    time.Now(),
 		})
 	}

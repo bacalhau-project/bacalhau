@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/optional"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -56,8 +55,8 @@ func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAs
 
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution1)).Times(1)
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution2)).Times(1)
-	suite.assertStateUpdated(execution1, model.ExecutionStateAskForBid, optional.New(model.ExecutionStateNew))
-	suite.assertStateUpdated(execution2, model.ExecutionStateAskForBid, optional.New(model.ExecutionStateNew))
+	suite.assertStateUpdated(execution1, model.ExecutionStateAskForBid, model.ExecutionStateNew)
+	suite.assertStateUpdated(execution2, model.ExecutionStateAskForBid, model.ExecutionStateNew)
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
 	suite.waitUntilSatisfied()
@@ -78,23 +77,22 @@ func (suite *ComputeForwarderSuite) TestProcess_WithUpdatedExecutions_ShouldNoti
 
 	// NotifyAskForBid
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, toAskForBid.Execution)).Times(1)
-	suite.assertStateUpdated(toAskForBid.Execution, model.ExecutionStateAskForBid, optional.New(model.ExecutionStateNew))
-
+	suite.assertStateUpdated(toAskForBid.Execution, model.ExecutionStateAskForBid, model.ExecutionStateNew)
 	// NotifyBidAccepted
 	suite.computeService.EXPECT().BidAccepted(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, bidAccepted.Execution)).Times(1)
-	suite.assertStateUpdated(bidAccepted.Execution, model.ExecutionStateBidAccepted, optional.New(model.ExecutionStateAskForBidAccepted))
+	suite.assertStateUpdated(bidAccepted.Execution, model.ExecutionStateBidAccepted, model.ExecutionStateAskForBidAccepted)
 
 	// NotifyBidRejected
 	suite.computeService.EXPECT().BidRejected(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, bidRejected.Execution)).Times(1)
-	suite.assertStateUpdated(bidRejected.Execution, model.ExecutionStateBidRejected, optional.New(model.ExecutionStateAskForBidAccepted))
+	suite.assertStateUpdated(bidRejected.Execution, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
 
 	// NotifyCancel
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, toCancel1.Execution)).Times(1)
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, toCancel2.Execution)).Times(1)
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, toCancel3.Execution)).Times(1)
-	suite.assertStateUpdated(toCancel1.Execution, model.ExecutionStateCancelled, optional.Empty[model.ExecutionStateType]())
-	suite.assertStateUpdated(toCancel2.Execution, model.ExecutionStateCancelled, optional.Empty[model.ExecutionStateType]())
-	suite.assertStateUpdated(toCancel3.Execution, model.ExecutionStateCancelled, optional.Empty[model.ExecutionStateType]())
+	suite.assertStateUpdated(toCancel1.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
+	suite.assertStateUpdated(toCancel2.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
+	suite.assertStateUpdated(toCancel3.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
 
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
@@ -130,9 +128,9 @@ func (suite *ComputeForwarderSuite) mockUpdateExecution(plan *models.Plan, id st
 	return update
 
 }
-func (suite *ComputeForwarderSuite) assertStateUpdated(execution *model.ExecutionState, newState model.ExecutionStateType, expectedState optional.Optional[model.ExecutionStateType]) {
+func (suite *ComputeForwarderSuite) assertStateUpdated(execution *model.ExecutionState, newState model.ExecutionStateType, expectedState model.ExecutionStateType) {
 	matcher := NewUpdateExecutionMatcher(suite.T(), execution, UpdateExecutionMatcherParams{
-		NewState:      optional.New(newState),
+		NewState:      newState,
 		ExpectedState: expectedState,
 	})
 	suite.jobStore.EXPECT().UpdateExecution(suite.ctx, matcher).Times(1)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/optional"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -98,7 +97,7 @@ func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job,
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateAskForBid, optional.New(model.ExecutionStateNew))
+	s.updateExecutionState(ctx, executionID, model.ExecutionStateAskForBid, model.ExecutionStateNew)
 }
 
 // doNotifyBidAccepted notifies the target node that the bid was accepted.
@@ -119,7 +118,7 @@ func (s *ComputeForwarder) doNotifyBidAccepted(ctx context.Context, executionID 
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidAccepted, optional.New(model.ExecutionStateAskForBidAccepted))
+	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidAccepted, model.ExecutionStateAskForBidAccepted)
 }
 
 // doNotifyBidRejected notifies the target node that the bid was rejected.
@@ -140,7 +139,7 @@ func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, executionID 
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidRejected, optional.New(model.ExecutionStateAskForBidAccepted))
+	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
 }
 
 // notifyCancel notifies the target node that the execution was cancelled.
@@ -163,23 +162,21 @@ func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, exe
 	}
 
 	// Update the execution state even if the notification failed
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateCancelled, optional.Empty[model.ExecutionStateType]())
+	s.updateExecutionState(ctx, executionID, model.ExecutionStateCancelled)
 }
 
 // updateExecutionState updates the execution state in the job store.
 func (s *ComputeForwarder) updateExecutionState(ctx context.Context, executionID model.ExecutionID,
-	newState model.ExecutionStateType, expectedState optional.Optional[model.ExecutionStateType]) {
-	request := jobstore.UpdateExecutionRequest{
+	newState model.ExecutionStateType, expectedStates ...model.ExecutionStateType) {
+	err := s.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
 		ExecutionID: executionID,
 		NewValues: model.ExecutionState{
 			State: newState,
 		},
-	}
-	if expectedState.IsPresent() {
-		expectedStateVal, _ := expectedState.Get()
-		request.Condition.ExpectedStates = []model.ExecutionStateType{expectedStateVal}
-	}
-	err := s.jobStore.UpdateExecution(ctx, request)
+		Condition: jobstore.UpdateExecutionCondition{
+			ExpectedStates: expectedStates,
+		},
+	})
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to update execution %s to state %s", executionID.ExecutionID, newState)
 	}

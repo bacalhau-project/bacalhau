@@ -12,6 +12,8 @@ import (
 type ExecutionStateType int
 
 const (
+	ExecutionStateUndefined ExecutionStateType = iota
+	// ExecutionStateNew The execution has been created, but not pushed to a compute node yet.
 	ExecutionStateNew ExecutionStateType = iota
 	// ExecutionStateAskForBid A node has been selected to execute a job, and is being asked to bid on the job.
 	ExecutionStateAskForBid
@@ -45,6 +47,11 @@ func ExecutionStateTypes() []ExecutionStateType {
 		res = append(res, typ)
 	}
 	return res
+}
+
+// IsUndefined returns true if the execution state is undefined
+func (s ExecutionStateType) IsUndefined() bool {
+	return s == ExecutionStateUndefined
 }
 
 // IsDiscarded returns true if the execution has been discarded due to a failure, rejection or cancellation

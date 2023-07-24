@@ -44,8 +44,8 @@ func NewErrInvalidJobState(id string, actual model.JobStateType, expected model.
 }
 
 func (e ErrInvalidJobState) Error() string {
-	if e.Expected == model.JobStateNew {
-		return "job " + e.JobID + " is in unexpted state " + e.Actual.String() + "."
+	if e.Expected.IsUndefined() {
+		return "job " + e.JobID + " is in unexpected state " + e.Actual.String() + "."
 	}
 	return "job " + e.JobID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
 }

@@ -155,8 +155,12 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		s.Require().NoError(err)
 
 		resultsDir = s.T().TempDir()
-		swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
-		s.Require().NoError(err)
+		var swarmAddresses []string
+		for _, n := range stack.Nodes {
+			addrs, err := n.IPFSClient.SwarmAddresses(s.Ctx)
+			s.Require().NoError(err)
+			swarmAddresses = append(swarmAddresses, addrs...)
+		}
 
 		downloaderSettings := &model.DownloaderSettings{
 			Timeout:        time.Second * 10,

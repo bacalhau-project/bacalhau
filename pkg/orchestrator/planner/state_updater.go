@@ -56,7 +56,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 	}
 
 	// Update job state if necessary
-	if plan.DesiredJobState != model.JobStateNew {
+	if !plan.DesiredJobState.IsUndefined() {
 		err := s.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 			JobID:    plan.Job.ID(),
 			NewState: plan.DesiredJobState,

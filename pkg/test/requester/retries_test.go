@@ -296,7 +296,7 @@ func (s *RetriesSuite) TestRetry() {
 			s.NoError(err)
 
 			// verify job state
-			if tc.expectedJobState == model.JobStateNew {
+			if tc.expectedJobState.IsUndefined() {
 				if tc.failed {
 					tc.expectedJobState = model.JobStateError
 				} else {

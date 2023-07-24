@@ -7,7 +7,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/optional"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -47,31 +46,22 @@ func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate
 type UpdateExecutionMatcher struct {
 	t               *testing.T
 	execution       *model.ExecutionState
-	newState        optional.Optional[model.ExecutionStateType]
-	newDesiredState optional.Optional[model.ExecutionDesiredState]
+	newState        model.ExecutionStateType
+	newDesiredState model.ExecutionDesiredState
 	comment         string
-	expectedState   optional.Optional[model.ExecutionStateType]
+	expectedState   model.ExecutionStateType
 	expectedVersion int
 }
 
 type UpdateExecutionMatcherParams struct {
-	NewState        optional.Optional[model.ExecutionStateType]
-	NewDesiredState optional.Optional[model.ExecutionDesiredState]
+	NewState        model.ExecutionStateType
+	NewDesiredState model.ExecutionDesiredState
 	Comment         string
-	ExpectedState   optional.Optional[model.ExecutionStateType]
+	ExpectedState   model.ExecutionStateType
 	ExpectedVersion int
 }
 
 func NewUpdateExecutionMatcher(t *testing.T, execution *model.ExecutionState, params UpdateExecutionMatcherParams) *UpdateExecutionMatcher {
-	if params.NewState == nil {
-		params.NewState = optional.Empty[model.ExecutionStateType]()
-	}
-	if params.NewDesiredState == nil {
-		params.NewDesiredState = optional.Empty[model.ExecutionDesiredState]()
-	}
-	if params.ExpectedState == nil {
-		params.ExpectedState = optional.Empty[model.ExecutionStateType]()
-	}
 	return &UpdateExecutionMatcher{
 		t:               t,
 		execution:       execution,
@@ -85,7 +75,7 @@ func NewUpdateExecutionMatcher(t *testing.T, execution *model.ExecutionState, pa
 
 func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanExecutionDesiredUpdate) *UpdateExecutionMatcher {
 	return NewUpdateExecutionMatcher(t, update.Execution, UpdateExecutionMatcherParams{
-		NewDesiredState: optional.New(update.DesiredState),
+		NewDesiredState: update.DesiredState,
 		Comment:         update.Comment,
 		ExpectedVersion: update.Execution.Version,
 	})
@@ -100,26 +90,21 @@ func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 	// base expected request
 	expectedRequest := jobstore.UpdateExecutionRequest{
 		ExecutionID: m.execution.ID(),
+		NewValues: model.ExecutionState{
+			State:        m.newState,
+			DesiredState: m.newDesiredState,
+			Status:       m.comment,
+		},
+		Condition: jobstore.UpdateExecutionCondition{
+			ExpectedVersion: m.expectedVersion,
+		},
+		Comment: m.comment,
 	}
-
-	// set new values, if present
-	if m.newState.IsPresent() {
-		value, _ := m.newState.Get()
-		expectedRequest.NewValues.State = value
-	}
-	if m.newDesiredState.IsPresent() {
-		value, _ := m.newDesiredState.Get()
-		expectedRequest.NewValues.DesiredState = value
-	}
-	expectedRequest.NewValues.Status = m.comment
-	expectedRequest.Comment = m.comment
 
 	// set expected state if present
-	if m.expectedState.IsPresent() {
-		value, _ := m.expectedState.Get()
-		expectedRequest.Condition.ExpectedStates = []model.ExecutionStateType{value}
+	if !m.expectedState.IsUndefined() {
+		expectedRequest.Condition.ExpectedStates = []model.ExecutionStateType{m.expectedState}
 	}
-	expectedRequest.Condition.ExpectedVersion = m.expectedVersion
 
 	return reflect.DeepEqual(expectedRequest, req)
 }
@@ -132,21 +117,18 @@ func (m *UpdateExecutionMatcher) String() string {
 type UpdateJobMatcher struct {
 	t               *testing.T
 	job             *model.Job
-	newState        optional.Optional[model.JobStateType]
+	newState        model.JobStateType
 	comment         string
 	expectedVersion int
 }
 
 type UpdateJobMatcherParams struct {
-	NewState        optional.Optional[model.JobStateType]
+	NewState        model.JobStateType
 	Comment         string
 	ExpectedVersion int
 }
 
 func NewUpdateJobMatcher(t *testing.T, job *model.Job, params UpdateJobMatcherParams) *UpdateJobMatcher {
-	if params.NewState == nil {
-		params.NewState = optional.Empty[model.JobStateType]()
-	}
 	return &UpdateJobMatcher{
 		t:               t,
 		job:             job,
@@ -158,7 +140,7 @@ func NewUpdateJobMatcher(t *testing.T, job *model.Job, params UpdateJobMatcherPa
 
 func NewUpdateJobMatcherFromPlanUpdate(t *testing.T, plan *models.Plan) *UpdateJobMatcher {
 	return NewUpdateJobMatcher(t, plan.Job, UpdateJobMatcherParams{
-		NewState:        optional.New(plan.DesiredJobState),
+		NewState:        plan.DesiredJobState,
 		Comment:         plan.Comment,
 		ExpectedVersion: plan.JobVersion,
 	})
@@ -172,19 +154,13 @@ func (m *UpdateJobMatcher) Matches(x interface{}) bool {
 
 	// base expected request
 	expectedRequest := jobstore.UpdateJobStateRequest{
-		JobID: m.job.ID(),
+		JobID:    m.job.ID(),
+		NewState: m.newState,
+		Comment:  m.comment,
+		Condition: jobstore.UpdateJobCondition{
+			ExpectedVersion: m.expectedVersion,
+		},
 	}
-
-	// set new values, if present
-	if m.newState.IsPresent() {
-		value, _ := m.newState.Get()
-		expectedRequest.NewState = value
-	}
-	expectedRequest.Comment = m.comment
-
-	// set expected state if present
-	expectedRequest.Condition.ExpectedVersion = m.expectedVersion
-
 	return reflect.DeepEqual(expectedRequest, req)
 }
 
