@@ -20,10 +20,6 @@ func TestDisabledFeatureSuite(t *testing.T) {
 	suite.Run(t, new(DisabledFeatureTestSuite))
 }
 
-var waitForError job.CheckStatesFunction = func(js model.JobState) (bool, error) {
-	return js.State == model.JobStateError, nil
-}
-
 func disabledTestSpec() scenario.Scenario {
 	return scenario.Scenario{
 		Stack: &scenario.StackConfig{
@@ -32,8 +28,10 @@ func disabledTestSpec() scenario.Scenario {
 				NumberOfComputeOnlyNodes:   1,
 			},
 		},
-		Spec:          scenario.WasmHelloWorld.Spec,
-		SubmitChecker: scenario.SubmitJobErrorContains("not enough nodes to run job"),
+		Spec: scenario.WasmHelloWorld.Spec,
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForUnsuccessfulCompletion(),
+		},
 	}
 }
 

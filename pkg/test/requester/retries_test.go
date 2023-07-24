@@ -256,7 +256,7 @@ func (s *RetriesSuite) TestRetry() {
 			},
 			expectedExecutionErrors: map[model.ExecutionStateType]string{
 				model.ExecutionStateFailed:    executionErr.Error(),
-				model.ExecutionStateCancelled: executionErr.Error(),
+				model.ExecutionStateCancelled: "overall job has failed",
 			},
 		},
 		{
@@ -296,7 +296,7 @@ func (s *RetriesSuite) TestRetry() {
 			s.NoError(err)
 
 			// verify job state
-			if tc.expectedJobState == model.JobStateNew {
+			if tc.expectedJobState.IsUndefined() {
 				if tc.failed {
 					tc.expectedJobState = model.JobStateError
 				} else {

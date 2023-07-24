@@ -210,8 +210,10 @@ func (b *InMemoryBroker) EnqueueAll(evals map[*models.Evaluation]string) error {
 func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle string) error {
 	// If we're not enabled, don't enable more queuing.
 	if !b.enabled {
+		log.Debug().Msgf("broker is not enabled, dropping evaluation %s for job %s", eval.ID, eval.JobID)
 		return nil
 	}
+	log.Debug().Msgf("enqueueing evaluation %s for job %s, triggered by: %s", eval.ID, eval.JobID, eval.TriggeredBy)
 
 	// Check if already enqueued
 	if _, ok := b.evals[eval.ID]; ok {

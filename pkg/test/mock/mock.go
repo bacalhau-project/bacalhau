@@ -69,3 +69,20 @@ func ExecutionState(jobID string) *model.ExecutionState {
 		UpdateTime:       now,
 	}
 }
+
+func Plan() *models.Plan {
+	job := Job()
+	eval := Eval()
+	eval.JobID = job.ID()
+
+	return &models.Plan{
+		EvalID:            eval.ID,
+		EvalReceipt:       uuid.NewString(),
+		Eval:              eval,
+		Priority:          50,
+		Job:               job,
+		JobStateVersion:   1,
+		NewExecutions:     []*model.ExecutionState{},
+		UpdatedExecutions: make(map[model.ExecutionID]*models.PlanExecutionDesiredUpdate),
+	}
+}

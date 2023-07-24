@@ -13,7 +13,9 @@ type JobStateType int
 
 // these are the states a job can be in against a single node
 const (
-	JobStateNew JobStateType = iota // must be first
+	JobStateUndefined JobStateType = iota
+
+	JobStateNew
 
 	JobStateInProgress
 
@@ -29,6 +31,11 @@ const (
 	// Job is waiting to be scheduled.
 	JobStateQueued
 )
+
+// IsUndefined returns true if the job state is undefined
+func (s JobStateType) IsUndefined() bool {
+	return s == JobStateUndefined
+}
 
 // IsTerminal returns true if the given job type signals the end of the lifecycle of
 // that job and that no change in the state can be expected.
