@@ -826,6 +826,19 @@ const docTemplate = `{
                 "engineDone"
             ]
         },
+        "model.ExecutionDesiredState": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "ExecutionDesiredStatePending",
+                "ExecutionDesiredStateRunning",
+                "ExecutionDesiredStateStopped"
+            ]
+        },
         "model.ExecutionState": {
             "type": "object",
             "properties": {
@@ -836,6 +849,14 @@ const docTemplate = `{
                 "CreateTime": {
                     "description": "CreateTime is the time when the job was created.",
                     "type": "string"
+                },
+                "DesiredState": {
+                    "description": "DesiredState is the desired state of the execution",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ExecutionDesiredState"
+                        }
+                    ]
                 },
                 "JobID": {
                     "description": "JobID the job id",
@@ -894,12 +915,14 @@ const docTemplate = `{
                 5,
                 6,
                 7,
-                8
+                8,
+                9
             ],
             "x-enum-comments": {
                 "ExecutionStateBidAccepted": "aka running"
             },
             "x-enum-varnames": [
+                "ExecutionStateUndefined",
                 "ExecutionStateNew",
                 "ExecutionStateAskForBid",
                 "ExecutionStateAskForBidAccepted",
@@ -1162,12 +1185,11 @@ const docTemplate = `{
                 2,
                 3,
                 4,
-                5
+                5,
+                6
             ],
-            "x-enum-comments": {
-                "JobStateNew": "must be first"
-            },
             "x-enum-varnames": [
+                "JobStateUndefined",
                 "JobStateNew",
                 "JobStateInProgress",
                 "JobStateCancelled",
