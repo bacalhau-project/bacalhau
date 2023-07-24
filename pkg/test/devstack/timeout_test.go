@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -18,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackTimeoutSuite struct {
@@ -65,7 +66,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				}),
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
 							time.Sleep(testCase.sleepTime)
 							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil)
 						},

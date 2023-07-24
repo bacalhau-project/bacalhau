@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -14,7 +16,6 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackErrorLogsSuite struct {
@@ -48,7 +49,7 @@ var errorLogsTestCase = scenario.Scenario{
 	Stack: &scenario.StackConfig{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+				JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
 					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
 				},
 			},

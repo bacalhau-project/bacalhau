@@ -8,13 +8,14 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type TargetAllSuite struct {
@@ -81,7 +82,7 @@ func (suite *TargetAllSuite) TestCanRetryOnNodes() {
 			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: 0, NumberOfRequesterOnlyNodes: 1, NumberOfComputeOnlyNodes: 2},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, job model.Job, resultsDir string) (*model.RunCommandResult, error) {
+					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
