@@ -43,6 +43,7 @@ var BucketExecutions = []byte("executions")
 type BoltJobStore struct {
 	database *bolt.DB
 	clock    clock.Clock
+	watchers []*jobstore.Watcher
 
 	inProgressIndex *Index
 	clientsIndex    *Index
@@ -131,6 +132,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store := &BoltJobStore{
 		database: db,
 		clock:    clock.New(),
+		watchers: make([]*jobstore.Watcher, 0), //nolint:gomnd
 	}
 
 	for _, opt := range options {
@@ -181,6 +183,24 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.tagsIndex = NewIndex(BucketPathTags)
 
 	return store, err
+}
+
+func (b *BoltJobStore) Watch(ctx context.Context,
+	types jobstore.StoreWatcherType,
+	events jobstore.StoreEventType) chan jobstore.WatchEvent {
+	w := jobstore.NewWatcher(types, events)
+	b.watchers = append(b.watchers, w)
+	return w.Channel()
+}
+
+func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, o []byte) {
+	for _, w := range b.watchers {
+		if !w.IsWatchingEvent(e) && !w.IsWatchingType(t) {
+			return
+		}
+
+		_ = w.WriteEvent(t, e, o, false) // Do not block
+	}
 }
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
@@ -530,14 +550,14 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 	}
 
 	// Write the job to the Job bucket
-	data, err = json.Marshal(job)
+	jobData, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 	if bkt, err := NewBucketPath(BucketPathJobs).Get(tx, false); err != nil {
 		return err
 	} else {
-		if err = bkt.Put(jobIDKey, data); err != nil {
+		if err = bkt.Put(jobIDKey, jobData); err != nil {
 			return err
 		}
 	}
@@ -562,6 +582,8 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 			return err
 		}
 	}
+
+	b.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, jobData)
 
 	return b.appendJobHistory(tx, jobState, model.JobStateNew, newJobComment)
 }
@@ -615,6 +637,9 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		}
 	}
 
+	encodedJob, _ := json.Marshal(job)
+	b.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, encodedJob)
+
 	return nil
 }
 
@@ -663,12 +688,12 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	jobState.Version++
 	jobState.UpdateTime = b.clock.Now().UTC()
 
-	data, err = json.Marshal(jobState)
+	jobStateData, err := json.Marshal(jobState)
 	if err != nil {
 		return err
 	}
 
-	err = bucket.Put([]byte(request.JobID), data)
+	err = bucket.Put([]byte(request.JobID), jobStateData)
 	if err != nil {
 		return err
 	}
@@ -681,6 +706,8 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 			}
 		}
 	}
+
+	b.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobStateData)
 
 	return b.appendJobHistory(tx, jobState, previousState, request.Comment)
 }
@@ -757,6 +784,8 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 			if err != nil {
 				return err
 			}
+
+			b.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, data)
 		}
 	}
 
@@ -821,6 +850,9 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
+	encodedExec, _ := json.Marshal(existingExecution)
+	b.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, encodedExec)
+
 	return b.appendExecutionHistory(tx, newExecution, existingExecution.State, request.Comment)
 }
 
@@ -860,6 +892,10 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.Executi
 }
 
 func (b *BoltJobStore) Close(ctx context.Context) error {
+	for _, w := range b.watchers {
+		w.Close()
+	}
+
 	log.Ctx(ctx).Debug().Msg("closing bolt-backed job store")
 	return b.database.Close()
 }

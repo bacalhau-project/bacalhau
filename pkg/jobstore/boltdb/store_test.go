@@ -4,6 +4,7 @@ package boltjobstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -360,6 +361,95 @@ func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	s.NoError(err)
 	s.Equal(1, len(infos))
 	s.Equal("3", infos[0].Job.ID())
+}
+
+func (s *BoltJobstoreTestSuite) TestEvents() {
+
+	ch := s.store.Watch(s.ctx, jobstore.JobWatcher|jobstore.ExecutionWatcher, jobstore.CreateEvent)
+
+	job := makeJob(
+		model.EngineDocker,
+		model.PublisherNoop,
+		[]string{"bash", "-c", "echo hello"})
+	job.Metadata.ID = "10"
+	job.Metadata.ClientID = "1"
+
+	var execution model.ExecutionState
+
+	s.Run("job create event", func() {
+		err := s.store.CreateJob(s.ctx, *job)
+		s.NoError(err)
+
+		// Read an event, it should be a jobcreate
+		ev := <-ch
+		s.Equal(ev.Event, jobstore.CreateEvent)
+		s.Equal(ev.Kind, jobstore.JobWatcher)
+
+		var decodedJob model.Job
+		err = json.Unmarshal(ev.Object, &decodedJob)
+		s.NoError(err)
+		s.Equal(decodedJob.ID(), job.ID())
+	})
+
+	s.Run("execution create event", func() {
+		s.clock.Add(1 * time.Second)
+		execution = model.ExecutionState{
+			JobID:            "10",
+			NodeID:           "nodeid",
+			ComputeReference: "e-computeRef",
+			State:            model.ExecutionStateNew,
+		}
+		err := s.store.CreateExecution(s.ctx, execution)
+		s.NoError(err)
+
+		// Read an event, it should be a Execution Create
+		ev := <-ch
+		s.Equal(ev.Event, jobstore.CreateEvent)
+		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
+	})
+
+	s.Run("update job state event", func() {
+		request := jobstore.UpdateJobStateRequest{
+			JobID:    "10",
+			NewState: model.JobStateInProgress,
+			Condition: jobstore.UpdateJobCondition{
+				ExpectedState: model.JobStateNew,
+			},
+			Comment: "event test",
+		}
+		_ = s.store.UpdateJobState(s.ctx, request)
+		ev := <-ch
+		s.Equal(ev.Event, jobstore.UpdateEvent)
+		s.Equal(ev.Kind, jobstore.JobWatcher)
+	})
+
+	s.Run("update execution state event", func() {
+		execution.State = model.ExecutionStateAskForBid
+		execution.UpdateTime = s.clock.Now()
+		s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
+			ExecutionID: execution.ID(),
+			Condition: jobstore.UpdateExecutionCondition{
+				ExpectedState: model.ExecutionStateNew,
+			},
+			NewValues: execution,
+			Comment:   "event test",
+		})
+		ev := <-ch
+		s.Equal(ev.Event, jobstore.UpdateEvent)
+		s.Equal(ev.Kind, jobstore.ExecutionWatcher)
+
+		var decodedExecution model.ExecutionState
+		err := json.Unmarshal(ev.Object, &decodedExecution)
+		s.NoError(err)
+		s.Equal(decodedExecution.ID(), execution.ID())
+	})
+
+	s.Run("update execution state event", func() {
+		_ = s.store.DeleteJob(s.ctx, job.ID())
+		ev := <-ch
+		s.Equal(ev.Event, jobstore.DeleteEvent)
+		s.Equal(ev.Kind, jobstore.JobWatcher)
+	})
 }
 
 func makeJob(

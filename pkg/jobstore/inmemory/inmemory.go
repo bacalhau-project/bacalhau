@@ -41,6 +41,11 @@ func NewInMemoryJobStore() *InMemoryJobStore {
 	return res
 }
 
+func (d *InMemoryJobStore) Watch(_ context.Context, _ jobstore.StoreWatcherType, _ jobstore.StoreEventType) chan jobstore.WatchEvent {
+	// Not implemented
+	panic("unimplemented")
+}
+
 // Gets a job from the datastore.
 //
 // Errors:
