@@ -52,7 +52,7 @@ class BacalhauTask(PythonTask):
     def __init__(
         self,
         name: str,
-        job_spec: dict, # TODO: make this a BacalhauConfig
+        job_spec: dict, # TODO: make this a BacalhauConfig?
         api_version: str = "V1beta1",
         client_id: str = get_client_id(),
         # task_config: BacalhauConfig,
