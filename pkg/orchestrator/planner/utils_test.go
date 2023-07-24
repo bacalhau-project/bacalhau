@@ -142,7 +142,7 @@ func NewUpdateJobMatcherFromPlanUpdate(t *testing.T, plan *models.Plan) *UpdateJ
 	return NewUpdateJobMatcher(t, plan.Job, UpdateJobMatcherParams{
 		NewState:        plan.DesiredJobState,
 		Comment:         plan.Comment,
-		ExpectedVersion: plan.JobVersion,
+		ExpectedVersion: plan.JobStateVersion,
 	})
 }
 

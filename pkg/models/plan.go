@@ -18,8 +18,8 @@ type Plan struct {
 	Eval     *Evaluation
 	Priority int
 
-	Job        *model.Job
-	JobVersion int
+	Job             *model.Job
+	JobStateVersion int
 
 	DesiredJobState model.JobStateType
 	Comment         string
@@ -31,13 +31,13 @@ type Plan struct {
 }
 
 // NewPlan creates a new Plan instance.
-func NewPlan(eval *Evaluation, job *model.Job, jobVersion int) *Plan {
+func NewPlan(eval *Evaluation, job *model.Job, jobStateVersion int) *Plan {
 	return &Plan{
 		EvalID:            eval.ID,
 		Priority:          eval.Priority,
 		Eval:              eval,
 		Job:               job,
-		JobVersion:        jobVersion,
+		JobStateVersion:   jobStateVersion,
 		NewExecutions:     []*model.ExecutionState{},
 		UpdatedExecutions: make(map[model.ExecutionID]*PlanExecutionDesiredUpdate),
 	}
@@ -50,21 +50,21 @@ func (p *Plan) AppendExecution(execution *model.ExecutionState) {
 
 // AppendStoppedExecution marks an execution to be stopped.
 func (p *Plan) AppendStoppedExecution(execution *model.ExecutionState, comment string) {
-	updateRequest := PlanExecutionDesiredUpdate{
+	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: model.ExecutionDesiredStateStopped,
 		Comment:      comment,
 	}
-	p.UpdatedExecutions[execution.ID()] = &updateRequest
+	p.UpdatedExecutions[execution.ID()] = updateRequest
 }
 
 // AppendApprovedExecution marks an execution as accepted and ready to be started.
 func (p *Plan) AppendApprovedExecution(execution *model.ExecutionState) {
-	updateRequest := PlanExecutionDesiredUpdate{
+	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: model.ExecutionDesiredStateRunning,
 	}
-	p.UpdatedExecutions[execution.ID()] = &updateRequest
+	p.UpdatedExecutions[execution.ID()] = updateRequest
 }
 
 func (p *Plan) MarkJobCompleted() {

@@ -81,7 +81,7 @@ func Plan() *models.Plan {
 		Eval:              eval,
 		Priority:          50,
 		Job:               job,
-		JobVersion:        1,
+		JobStateVersion:   1,
 		NewExecutions:     []*model.ExecutionState{},
 		UpdatedExecutions: make(map[model.ExecutionID]*models.PlanExecutionDesiredUpdate),
 	}

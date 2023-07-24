@@ -101,7 +101,7 @@ func (set execSet) filterFailed() execSet {
 	return set.filterByState(model.ExecutionStateFailed)
 }
 
-// union returns the union of two sets. If there are any duplicates, the last one wins.
+// union returns the union of two sets. If there are any duplicates, the `other` will be used.
 func (set execSet) union(other execSet) execSet {
 	union := execSet{}
 	for _, exec := range set {

@@ -62,7 +62,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			NewState: plan.DesiredJobState,
 			Comment:  plan.Comment,
 			Condition: jobstore.UpdateJobCondition{
-				ExpectedVersion: plan.JobVersion,
+				ExpectedVersion: plan.JobStateVersion,
 			},
 		})
 		if err != nil {

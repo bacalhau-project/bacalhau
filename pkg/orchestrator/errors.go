@@ -44,18 +44,3 @@ func (e ErrNotEnoughNodes) Error() string {
 	}
 	return fmt.Sprintf("not enough nodes to run job. requested: %d, available: %d. %s", e.RequestedNodes, available, nodeErrors)
 }
-
-// ErrTooManyRetries is returned when an execution has been retried too many times
-type ErrTooManyRetries struct {
-	Attempts int
-}
-
-func NewErrTooManyRetries(attempts int) ErrTooManyRetries {
-	return ErrTooManyRetries{
-		Attempts: attempts,
-	}
-}
-
-func (e ErrTooManyRetries) Error() string {
-	return fmt.Sprintf("too many retries (attempted %d)", e.Attempts)
-}

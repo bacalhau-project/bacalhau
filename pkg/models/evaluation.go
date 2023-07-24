@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/google/uuid"
 )
 
 const (
@@ -107,22 +106,6 @@ func (e *Evaluation) Copy() *Evaluation {
 	ne := new(Evaluation)
 	*ne = *e
 	return ne
-}
-
-// CreateFollowUpEval creates a new evaluation based on the current one.
-func (e *Evaluation) CreateFollowUpEval(triggerBy string) *Evaluation {
-	now := time.Now().UTC().UnixNano()
-	return &Evaluation{
-		ID:          uuid.NewString(),
-		Namespace:   e.Namespace,
-		JobID:       e.JobID,
-		TriggeredBy: triggerBy,
-		Priority:    e.Priority,
-		Type:        e.Type,
-		Status:      EvalStatusPending,
-		CreateTime:  now,
-		ModifyTime:  now,
-	}
 }
 
 // EvaluationReceipt is a pair of an Evaluation and its ReceiptHandle.
