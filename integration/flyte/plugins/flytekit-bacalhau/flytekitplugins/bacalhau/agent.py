@@ -25,7 +25,8 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
-import bacalhau_sdk
+from bacalhau_sdk.api import submit, results
+from bacalhau_sdk.config import get_client_id
 
 
 @dataclass
@@ -43,7 +44,6 @@ class BacalhauAgent(AgentBase):
     def __init__(self):
         # self.job_spec = job_spec
         # self.api_version = api_version
-        self._client_id = bacalhau_sdk.config.get_client_id()
         super().__init__(task_type="bacalhau_task")
 
     def create(
@@ -91,10 +91,15 @@ class BacalhauAgent(AgentBase):
         if not inputs:
             pass
 
-        res = bacalhau_sdk.api.submit(
+        if inputs.get("client_id") is None:
+            client_id = get_client_id()
+        else:
+            client_id = inputs["client_id"]
+
+        res = submit(
             dict(
                 APIVersion=inputs["api_version"],
-                ClientID=self._client_id,
+                ClientID=client_id,
                 Spec=inputs["spec"],
             )
         )
@@ -108,7 +113,7 @@ class BacalhauAgent(AgentBase):
     ) -> GetTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         # res = requests.get(url, json={"job_id": metadata.job_id})
-        res = bacalhau_sdk.api.results(job_id=metadata.job_id)
+        res = results(job_id=metadata.job_id)
         return GetTaskResponse(resource=Resource(state=res.state))
 
 

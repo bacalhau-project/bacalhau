@@ -6,11 +6,12 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 # TODO add additional requirements
 plugin_requires = [
-    "flytekit>=1.1.0b0,<2.0.0",
-    "bacalhau-sdk",
+    "flytekit>=1.1.0b0,<=1.8.1",
+    "bacalhau-sdk>=1.0.3",
     "dataclasses-json",
     "marshmallow",
     "marshmallow-dataclass",
+    "marshmallow-enum>=1.5.1",
 ]
 
 __version__ = ""

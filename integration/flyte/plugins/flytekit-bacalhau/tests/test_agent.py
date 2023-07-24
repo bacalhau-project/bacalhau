@@ -11,5 +11,5 @@ from bacalhau_apiclient.models.spec import Spec
 
 
 
-# def test_init_function():
-#     pass
+def test_bacalhau_agent():
+    
