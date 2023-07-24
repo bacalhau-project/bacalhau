@@ -69,6 +69,7 @@ func (p *Plan) AppendApprovedExecution(execution *model.ExecutionState) {
 
 func (p *Plan) MarkJobCompleted() {
 	p.DesiredJobState = model.JobStateCompleted
+	p.NewExecutions = []*model.ExecutionState{}
 }
 
 func (p *Plan) MarkJobFailed(comment string) {

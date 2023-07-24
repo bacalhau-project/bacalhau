@@ -34,12 +34,12 @@ func (set execSet) String() string {
 		return "[]"
 	}
 
-	start := fmt.Sprintf("len(%d) [\n", len(set))
+	start := fmt.Sprintf("len(%d) [", len(set))
 	var s []string
 	for k, v := range set {
 		s = append(s, fmt.Sprintf("%q: %v", k, v.ComputeReference))
 	}
-	return start + strings.Join(s, "\n") + "]"
+	return start + strings.Join(s, ", ") + "]"
 }
 
 // has returns true if the set contains the given execution id
