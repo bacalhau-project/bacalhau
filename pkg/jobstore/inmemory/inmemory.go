@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"time"
 
@@ -26,6 +27,7 @@ type InMemoryJobStore struct {
 	history     map[string][]model.JobHistory
 	inprogress  map[string]struct{}
 	evaluations map[string]models.Evaluation
+	watchers    []jobstore.Watcher
 	mtx         sync.RWMutex
 }
 
@@ -36,6 +38,7 @@ func NewInMemoryJobStore() *InMemoryJobStore {
 		history:     make(map[string][]model.JobHistory),
 		inprogress:  make(map[string]struct{}),
 		evaluations: make(map[string]models.Evaluation),
+		watchers:    make([]jobstore.Watcher, 1),
 	}
 	res.mtx.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -44,9 +47,24 @@ func NewInMemoryJobStore() *InMemoryJobStore {
 	return res
 }
 
-func (d *InMemoryJobStore) Watch(_ context.Context, _ jobstore.StoreWatcherType, _ jobstore.StoreEventType) chan jobstore.WatchEvent {
-	// Not implemented
-	panic("unimplemented")
+func (d *InMemoryJobStore) Watch(c context.Context, t jobstore.StoreWatcherType, e jobstore.StoreEventType) chan jobstore.WatchEvent {
+	w := jobstore.NewWatcher(t, e)
+	d.watchers = append(d.watchers, *w)
+	return w.Channel()
+}
+
+func (d *InMemoryJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object interface{}) {
+	data, _ := json.Marshal(object)
+
+	for _, w := range d.watchers {
+		if w.IsWatchingEvent(e) && w.IsWatchingType(t) {
+			w.Channel() <- jobstore.WatchEvent{
+				Kind:   t,
+				Event:  e,
+				Object: data,
+			}
+		}
+	}
 }
 
 // Gets a job from the datastore.
@@ -202,11 +220,16 @@ func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
 	d.states[job.Metadata.ID] = jobState
 	d.inprogress[job.Metadata.ID] = struct{}{}
 	d.appendJobHistory(jobState, model.JobStateNew, newJobComment)
+
+	d.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, job)
+
 	return nil
 }
 
 // DeleteJob removes a job from storage
 func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
+	d.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, d.jobs[jobID])
+
 	delete(d.jobs, jobID)
 	delete(d.states, jobID)
 	delete(d.inprogress, jobID)
@@ -270,6 +293,9 @@ func (d *InMemoryJobStore) UpdateJobState(_ context.Context, request jobstore.Up
 		delete(d.inprogress, request.JobID)
 	}
 	d.appendJobHistory(jobState, previousState, request.Comment)
+
+	d.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobState)
+
 	return nil
 }
 
@@ -297,6 +323,9 @@ func (d *InMemoryJobStore) CreateExecution(_ context.Context, execution model.Ex
 	jobState.Executions = append(jobState.Executions, execution)
 	d.states[execution.JobID] = jobState
 	d.appendExecutionHistory(execution, model.ExecutionStateNew, "")
+
+	d.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, execution)
+
 	return nil
 }
 
@@ -352,6 +381,9 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	jobState.Executions[executionIndex] = newExecution
 	d.states[newExecution.JobID] = jobState
 	d.appendExecutionHistory(newExecution, previousState, request.Comment)
+
+	d.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, newExecution)
+
 	return nil
 }
 
@@ -371,6 +403,8 @@ func (d *InMemoryJobStore) CreateEvaluation(ctx context.Context, eval models.Eva
 	}
 
 	d.evaluations[eval.ID] = eval
+
+	d.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, eval)
 
 	return nil
 }
@@ -394,8 +428,9 @@ func (d *InMemoryJobStore) DeleteEvaluation(ctx context.Context, id string) erro
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	delete(d.evaluations, id)
+	d.triggerEvent(jobstore.EvaluationWatcher, jobstore.DeleteEvent, d.evaluations[id])
 
+	delete(d.evaluations, id)
 	return nil
 }
 

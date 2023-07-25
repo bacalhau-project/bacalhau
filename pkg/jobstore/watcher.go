@@ -10,6 +10,18 @@ const (
 	EvaluationWatcher
 )
 
+func (s StoreWatcherType) String() string {
+	switch s {
+	case JobWatcher:
+		return "JobWatcher"
+	case ExecutionWatcher:
+		return "ExecutionWatcher"
+	case EvaluationWatcher:
+		return "EvaluationWatcher"
+	}
+	return "Unknown type"
+}
+
 type StoreEventType int
 
 const (
@@ -17,6 +29,18 @@ const (
 	UpdateEvent
 	DeleteEvent
 )
+
+func (s StoreEventType) String() string {
+	switch s {
+	case CreateEvent:
+		return "CreateEvent"
+	case UpdateEvent:
+		return "UpdateEvent"
+	case DeleteEvent:
+		return "DeleteEvent"
+	}
+	return "Unknown event"
+}
 
 const DefaultWatchChannelSize = 64
 
