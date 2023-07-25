@@ -121,6 +121,11 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		CreateTime:  job.Metadata.CreatedAt.UnixNano(),
 		ModifyTime:  job.Metadata.CreatedAt.UnixNano(),
 	}
+	err = e.store.CreateEvaluation(ctx, *eval)
+	if err != nil {
+		return job, err
+	}
+
 	err = e.evaluationBroker.Enqueue(eval)
 	if err != nil {
 		return job, err
@@ -172,6 +177,11 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			CreateTime:  now,
 			ModifyTime:  now,
 		}
+		err = e.store.CreateEvaluation(ctx, *eval)
+		if err != nil {
+			return CancelJobResult{}, err
+		}
+
 		err = e.evaluationBroker.Enqueue(eval)
 		if err != nil {
 			return CancelJobResult{}, err
@@ -360,7 +370,13 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 		CreateTime:  now,
 		ModifyTime:  now,
 	}
-	err := e.evaluationBroker.Enqueue(eval)
+	err := e.store.CreateEvaluation(ctx, *eval)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to save evaluation for job %s", operation, jobID)
+		return
+	}
+
+	err = e.evaluationBroker.Enqueue(eval)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
 	}
