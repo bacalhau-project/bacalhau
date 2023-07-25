@@ -128,7 +128,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			request := jobstore.UpdateExecutionRequest{
 				ExecutionID: execution.ID(),
 				Condition: jobstore.UpdateExecutionCondition{
-					ExpectedState:   oldState,
+					ExpectedStates:  []model.ExecutionStateType{oldState},
 					ExpectedVersion: i + 1,
 				},
 				NewValues: execution,
@@ -429,7 +429,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
 			ExecutionID: execution.ID(),
 			Condition: jobstore.UpdateExecutionCondition{
-				ExpectedState: model.ExecutionStateNew,
+				ExpectedStates: []model.ExecutionStateType{model.ExecutionStateNew},
 			},
 			NewValues: execution,
 			Comment:   "event test",
