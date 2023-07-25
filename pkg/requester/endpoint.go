@@ -2,6 +2,7 @@ package requester
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -40,9 +41,10 @@ type BaseEndpoint struct {
 	eventEmitter     orchestrator.EventEmitter
 	computesvc       compute.Endpoint
 	transforms       []jobtransform.Transformer
+	cancel           context.CancelFunc
 }
 
-func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
+func NewBaseEndpoint(ctx context.Context, params *BaseEndpointParams) *BaseEndpoint {
 	transforms := []jobtransform.Transformer{
 		jobtransform.NewInlineStoragePinner(params.StorageProviders),
 		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobExecutionTimeout),
@@ -52,13 +54,44 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		// jobtransform.DockerImageDigest(),
 	}
 
-	return &BaseEndpoint{
+	ctx, cancel := context.WithCancel(ctx)
+
+	endpoint := &BaseEndpoint{
 		id:               params.ID,
 		evaluationBroker: params.EvaluationBroker,
 		computesvc:       params.ComputeEndpoint,
 		store:            params.Store,
 		transforms:       transforms,
 		eventEmitter:     params.EventEmitter,
+		cancel:           cancel,
+	}
+
+	go endpoint.WatchEvaluations(ctx)
+
+	return endpoint
+}
+
+func (e *BaseEndpoint) WatchEvaluations(ctx context.Context) {
+	eventChannel := e.store.Watch(ctx, jobstore.EvaluationWatcher, jobstore.CreateEvent)
+
+	for {
+		select {
+		case msg := <-eventChannel:
+			var eval models.Evaluation
+			err := json.Unmarshal(msg.Object, &eval)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to decode evaluation from jobstore watcher")
+				continue
+			}
+
+			err = e.evaluationBroker.Enqueue(&eval)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to enqueue evaluation with broker")
+				continue
+			}
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
@@ -126,12 +159,8 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		return job, err
 	}
 
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		return job, err
-	}
-
 	e.eventEmitter.EmitJobCreated(ctx, *job)
+
 	return job, nil
 }
 
@@ -178,11 +207,6 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			ModifyTime:  now,
 		}
 		err = e.store.CreateEvaluation(ctx, *eval)
-		if err != nil {
-			return CancelJobResult{}, err
-		}
-
-		err = e.evaluationBroker.Enqueue(eval)
 		if err != nil {
 			return CancelJobResult{}, err
 		}
@@ -375,11 +399,10 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to save evaluation for job %s", operation, jobID)
 		return
 	}
+}
 
-	err = e.evaluationBroker.Enqueue(eval)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
-	}
+func (e *BaseEndpoint) Close(ctx context.Context) {
+	e.cancel()
 }
 
 // Compile-time interface check:
