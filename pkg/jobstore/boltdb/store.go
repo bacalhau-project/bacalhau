@@ -211,7 +211,7 @@ func (b *BoltJobStore) Watch(ctx context.Context,
 
 func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, o []byte) {
 	for _, w := range b.watchers {
-		if !w.IsWatchingEvent(e) && !w.IsWatchingType(t) {
+		if !w.IsWatchingEvent(e) || !w.IsWatchingType(t) {
 			return
 		}
 

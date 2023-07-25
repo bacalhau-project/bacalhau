@@ -167,7 +167,7 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	endpoint := requester.NewBaseEndpoint(ctx, &requester.BaseEndpointParams{
+	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
 		EvaluationBroker:           evalBroker,
@@ -239,15 +239,6 @@ func NewRequesterNode(
 			worker.Stop()
 		}
 		evalBroker.SetEnabled(false)
-
-		// Tell the endpoint to shut down
-		endpoint.Close(ctx)
-
-		// Shutdown the jobstore
-		jobStoreErr := jobStore.Close(ctx)
-		if jobStoreErr != nil {
-			log.Ctx(ctx).Error().Err(jobStoreErr).Msg("failed to shutdown the jobstore cleanly")
-		}
 
 		cleanupErr := tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
