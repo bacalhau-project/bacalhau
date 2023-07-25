@@ -48,7 +48,7 @@ type Worker struct {
 }
 
 // NewWorker returns a new Worker instance.
-func NewWorker(params *WorkerParams) *Worker {
+func NewWorker(params WorkerParams) *Worker {
 	return &Worker{
 		schedulerProvider:     params.SchedulerProvider,
 		evaluationBroker:      params.EvaluationBroker,

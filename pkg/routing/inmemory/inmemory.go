@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -87,11 +86,11 @@ func (r *NodeInfoStore) Get(ctx context.Context, peerID peer.ID) (model.NodeInfo
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[peerID]
 	if !ok {
-		return model.NodeInfo{}, requester.NewErrNodeNotFound(peerID)
+		return model.NodeInfo{}, routing.NewErrNodeNotFound(peerID)
 	}
 	if time.Now().After(infoWrapper.evictAt) {
 		go r.evict(ctx, infoWrapper)
-		return model.NodeInfo{}, requester.NewErrNodeNotFound(peerID)
+		return model.NodeInfo{}, routing.NewErrNodeNotFound(peerID)
 	}
 	return infoWrapper.NodeInfo, nil
 }

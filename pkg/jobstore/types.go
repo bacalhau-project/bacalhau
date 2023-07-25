@@ -101,7 +101,7 @@ type UpdateJobCondition struct {
 
 // Validate checks if the condition matches the given job
 func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
-	if condition.ExpectedState != model.JobStateNew && condition.ExpectedState != jobState.State {
+	if !condition.ExpectedState.IsUndefined() && condition.ExpectedState != jobState.State {
 		return NewErrInvalidJobState(jobState.JobID, jobState.State, condition.ExpectedState)
 	}
 	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != jobState.Version {
@@ -110,7 +110,7 @@ func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
 			if s == jobState.State {
-				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateNew)
+				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateUndefined)
 			}
 		}
 	}
@@ -118,16 +118,26 @@ func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 }
 
 type UpdateExecutionCondition struct {
-	ExpectedState    model.ExecutionStateType
+	ExpectedStates   []model.ExecutionStateType
 	ExpectedVersion  int
 	UnexpectedStates []model.ExecutionStateType
 }
 
 // Validate checks if the condition matches the given execution
 func (condition UpdateExecutionCondition) Validate(execution model.ExecutionState) error {
-	if condition.ExpectedState != model.ExecutionStateNew && condition.ExpectedState != execution.State {
-		return NewErrInvalidExecutionState(execution.ID(), execution.State, condition.ExpectedState)
+	if len(condition.ExpectedStates) > 0 {
+		validState := false
+		for _, s := range condition.ExpectedStates {
+			if s == execution.State {
+				validState = true
+				break
+			}
+		}
+		if !validState {
+			return NewErrInvalidExecutionState(execution.ID(), execution.State, condition.ExpectedStates...)
+		}
 	}
+
 	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != execution.Version {
 		return NewErrInvalidExecutionVersion(execution.ID(), execution.Version, condition.ExpectedVersion)
 	}

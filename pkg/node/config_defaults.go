@@ -1,6 +1,7 @@
 package node
 
 import (
+	"runtime"
 	"time"
 
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
@@ -36,6 +37,46 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	MinBacalhauVersion: model.BuildVersionInfo{
 		Major: "0", Minor: "3", GitVersion: "v0.3.26",
 	},
+
+	EvalBrokerVisibilityTimeout:    60 * time.Second,
+	EvalBrokerInitialRetryDelay:    1 * time.Second,
+	EvalBrokerSubsequentRetryDelay: 30 * time.Second,
+	EvalBrokerMaxRetryCount:        10,
+
+	WorkerCount:                  runtime.NumCPU(),
+	WorkerEvalDequeueTimeout:     5 * time.Second,
+	WorkerEvalDequeueBaseBackoff: 1 * time.Second,
+	WorkerEvalDequeueMaxBackoff:  30 * time.Second,
+}
+
+var TestRequesterConfig = RequesterConfigParams{
+	MinJobExecutionTimeout:     0 * time.Second,
+	DefaultJobExecutionTimeout: 30 * time.Second,
+
+	HousekeepingBackgroundTaskInterval: 30 * time.Second,
+	NodeRankRandomnessRange:            5,
+	OverAskForBidsFactor:               3,
+
+	MinBacalhauVersion: model.BuildVersionInfo{
+		Major: "0", Minor: "3", GitVersion: "v0.3.26",
+	},
+
+	EvalBrokerVisibilityTimeout:    5 * time.Second,
+	EvalBrokerInitialRetryDelay:    100 * time.Millisecond,
+	EvalBrokerSubsequentRetryDelay: 100 * time.Millisecond,
+	EvalBrokerMaxRetryCount:        3,
+
+	WorkerCount:                  3,
+	WorkerEvalDequeueTimeout:     200 * time.Millisecond,
+	WorkerEvalDequeueBaseBackoff: 20 * time.Millisecond,
+	WorkerEvalDequeueMaxBackoff:  200 * time.Millisecond,
+}
+
+func getRequesterConfigParams() RequesterConfigParams {
+	if system.GetEnvironment() == system.EnvironmentTest {
+		return TestRequesterConfig
+	}
+	return DefaultRequesterConfig
 }
 
 var DefaultNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{

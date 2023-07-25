@@ -24,7 +24,7 @@ var (
 	mockSemanticStrategy *semantic.MockSemanticBidStrategy
 	mockResourceStrategy *resource.MockResourceBidStrategy
 	mockExecutionStore   *mockstore.MockExecutionStore
-	mockCallback         *compute.MockCallback
+	mockCallback         *compute.MockCallbackTestify
 	bidder               compute.Bidder
 )
 
@@ -42,7 +42,7 @@ func TestRunBidding(t *testing.T) {
 		mockSemanticStrategy = new(semantic.MockSemanticBidStrategy)
 		mockResourceStrategy = new(resource.MockResourceBidStrategy)
 		mockExecutionStore = new(mockstore.MockExecutionStore)
-		mockCallback = new(compute.MockCallback)
+		mockCallback = new(compute.MockCallbackTestify)
 		bidder = compute.NewBidder(compute.BidderParams{
 			NodeID:           "testNodeID",
 			SemanticStrategy: mockSemanticStrategy,

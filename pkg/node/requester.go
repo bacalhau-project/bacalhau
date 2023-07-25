@@ -2,25 +2,27 @@ package node
 
 import (
 	"context"
-	"net/url"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/discovery"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/ranking"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/retry"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/selection"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -31,7 +33,7 @@ type Requester struct {
 	// Visible for testing
 	Endpoint           requester.Endpoint
 	JobStore           jobstore.Store
-	NodeDiscoverer     requester.NodeDiscoverer
+	NodeDiscoverer     orchestrator.NodeDiscoverer
 	computeProxy       *bprotocol.ComputeProxy
 	localCallback      compute.Callback
 	requesterAPIServer *requester_publicapi.RequesterAPIServer
@@ -59,6 +61,10 @@ func NewRequesterNode(
 		Host: host,
 	})
 
+	eventEmitter := orchestrator.NewEventEmitter(orchestrator.EventEmitterParams{
+		EventConsumer: localJobEventConsumer,
+	})
+
 	// compute node discoverer
 	nodeDiscoveryChain := discovery.NewChain(true)
 	nodeDiscoveryChain.Add(
@@ -84,6 +90,42 @@ func NewRequesterNode(
 		}),
 	)
 
+	// evaluation broker
+	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
+		VisibilityTimeout:    config.EvalBrokerVisibilityTimeout,
+		InitialRetryDelay:    config.EvalBrokerInitialRetryDelay,
+		SubsequentRetryDelay: config.EvalBrokerSubsequentRetryDelay,
+		MaxReceiveCount:      config.EvalBrokerMaxRetryCount,
+	})
+	if err != nil {
+		return nil, err
+	}
+	evalBroker.SetEnabled(true)
+
+	// planners that execute the proposed plan by the scheduler
+	// order of the planners is important as they are executed in order
+	planners := planner.NewChain(
+		// planner that persist the desired state as defined by the scheduler
+		planner.NewStateUpdater(jobStore),
+
+		// planner that forwards the desired state to the compute nodes,
+		// and updates the observed state if the compute node accepts the desired state
+		planner.NewComputeForwarder(planner.ComputeForwarderParams{
+			ID:             host.ID().String(),
+			ComputeService: computeProxy,
+			JobStore:       jobStore,
+		}),
+
+		// planner that publishes events on job completion or failure
+		planner.NewEventEmitter(planner.EventEmitterParams{
+			ID:           host.ID().String(),
+			EventEmitter: eventEmitter,
+		}),
+
+		// logs job completion or failure
+		planner.NewLoggingPlanner(),
+	)
+
 	retryStrategy := config.RetryStrategy
 	if retryStrategy == nil {
 		// retry strategy
@@ -94,34 +136,30 @@ func NewRequesterNode(
 		retryStrategy = retryStrategyChain
 	}
 
-	nodeSelector := selection.NewNodeSelectorSwitch(
-		selection.NewAnyNodeSelector(selection.AnyNodeSelectorParams{
-			NodeDiscoverer:       nodeDiscoveryChain,
-			NodeRanker:           nodeRankerChain,
-			OverAskForBidsFactor: config.OverAskForBidsFactor,
-		}),
-		selection.NewAllNodeSelector(selection.AllNodeSelectorParams{
+	// scheduler provider
+	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
+		model.JobTypeBatch: scheduler.NewBatchJobScheduler(scheduler.BatchJobSchedulerParams{
+			JobStore:       jobStore,
+			Planner:        planners,
 			NodeDiscoverer: nodeDiscoveryChain,
 			NodeRanker:     nodeRankerChain,
+			RetryStrategy:  retryStrategy,
 		}),
-	)
-	emitter := requester.NewEventEmitter(requester.EventEmitterParams{
-		EventConsumer: localJobEventConsumer,
 	})
-	scheduler := requester.NewBaseScheduler(requester.BaseSchedulerParams{
-		ID:               host.ID().String(),
-		Host:             host,
-		JobStore:         jobStore,
-		NodeSelector:     nodeSelector,
-		RetryStrategy:    retryStrategy,
-		ComputeEndpoint:  computeProxy,
-		StorageProviders: storageProviders,
-		EventEmitter:     emitter,
-		GetVerifyCallback: func() *url.URL {
-			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.VerifyRoute)
-		},
-	})
-	queue := requester.NewQueue(jobStore, scheduler, emitter)
+
+	workers := make([]*orchestrator.Worker, 0, config.WorkerCount)
+	for i := 1; i <= config.WorkerCount; i++ {
+		log.Debug().Msgf("Starting worker %d", i)
+		// worker config the polls from the broker
+		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
+			SchedulerProvider:     schedulerProvider,
+			EvaluationBroker:      evalBroker,
+			DequeueTimeout:        config.WorkerEvalDequeueTimeout,
+			DequeueFailureBackoff: backoff.NewExponential(config.WorkerEvalDequeueBaseBackoff, config.WorkerEvalDequeueMaxBackoff),
+		})
+		workers = append(workers, worker)
+		worker.Start(ctx)
+	}
 
 	publicKey := host.Peerstore().PubKey(host.ID())
 	marshaledPublicKey, err := crypto.MarshalPublicKey(publicKey)
@@ -129,21 +167,16 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	selectionStrategy := semantic.FromJobSelectionPolicy(config.JobSelectionPolicy)
-
 	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
 		ID:                         host.ID().String(),
 		PublicKey:                  marshaledPublicKey,
-		Selector:                   selectionStrategy,
+		EvaluationBroker:           evalBroker,
+		EventEmitter:               eventEmitter,
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
-		Queue:                      queue,
 		StorageProviders:           storageProviders,
 		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
-		GetBiddingCallback: func() *url.URL {
-			return apiServer.GetURI().JoinPath(requester_publicapi.APIPrefix, requester_publicapi.ApprovalRoute)
-		},
 	})
 
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
@@ -156,7 +189,7 @@ func NewRequesterNode(
 	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
 	bprotocol.NewCallbackHandler(bprotocol.CallbackHandlerParams{
 		Host:     host,
-		Callback: scheduler,
+		Callback: endpoint,
 	})
 
 	// register debug info providers for the /debug endpoint
@@ -170,7 +203,6 @@ func NewRequesterNode(
 		Requester:          endpoint,
 		DebugInfoProviders: debugInfoProviders,
 		JobStore:           jobStore,
-		StorageProviders:   storageProviders,
 		NodeDiscoverer:     nodeDiscoveryChain,
 	})
 	err = requesterAPIServer.RegisterAllHandlers()
@@ -203,6 +235,10 @@ func NewRequesterNode(
 	cleanupFunc := func(ctx context.Context) {
 		// stop the housekeeping background task
 		housekeeping.Stop()
+		for _, worker := range workers {
+			worker.Stop()
+		}
+		evalBroker.SetEnabled(false)
 
 		cleanupErr := tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
@@ -216,7 +252,7 @@ func NewRequesterNode(
 
 	return &Requester{
 		Endpoint:           endpoint,
-		localCallback:      scheduler,
+		localCallback:      endpoint,
 		NodeDiscoverer:     nodeDiscoveryChain,
 		JobStore:           jobStore,
 		computeProxy:       computeProxy,
