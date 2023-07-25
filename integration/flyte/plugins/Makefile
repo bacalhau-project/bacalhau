@@ -9,7 +9,7 @@ endif
 
 .PHONY: test
 test:
-	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest -s
+	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest --log-cli-level=DEBUG -s
 
 .PHONY: build_all_plugins
 build_all_plugins:

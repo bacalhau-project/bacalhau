@@ -1,7 +1,7 @@
 import datetime
 import json
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Type
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -20,6 +20,7 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     convert_to_flyte_state,
 )
+from flytekit.extend import DictTransformer
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -28,11 +29,15 @@ from flytekit.models.types import LiteralType, StructuredDatasetType
 from bacalhau_sdk.api import submit, results
 from bacalhau_sdk.config import get_client_id
 
+import logging
 
+# TODO (enricorotundo) add more metadata, api port and host, bacalhau dir, etc.
 @dataclass
 class Metadata:
     job_id: str
-    # TODO (enricorotundo) add more metadata, api port and host, bacalhau dir, etc.
+    
+    def to_json(self):
+        return json.dumps(self.__dict__)
 
 
 class BacalhauAgent(AgentBase):
@@ -44,6 +49,7 @@ class BacalhauAgent(AgentBase):
     def __init__(self):
         # self.job_spec = job_spec
         # self.api_version = api_version
+        self._logger = logging.getLogger(__name__)
         super().__init__(task_type="bacalhau_task")
 
     def create(
@@ -87,40 +93,62 @@ class BacalhauAgent(AgentBase):
         Returns:
             CreateTaskResponse: _description_
         """
-
+        
         if not inputs:
-            pass
+            raise ValueError("inputs cannot be None")
 
-        if inputs.get("client_id") is None:
-            client_id = get_client_id()
+        self._logger.debug(f"create inputs.literals: {inputs.literals}")
+        inputs_dict = {}
+        inputs_dict["api_version"] = inputs.literals.get("api_version").hash
+        if inputs.literals.get("client_id") is not None:
+            inputs_dict["client_id"] = inputs.literals.get("client_id").hash
         else:
-            client_id = inputs["client_id"]
+            inputs_dict["client_id"] = get_client_id()
+        inputs_dict["spec"] = inputs.literals.get("spec").hash
+        self._logger.debug(f"create inputs_dict: {inputs_dict}")
 
         res = submit(
             dict(
-                APIVersion=inputs["api_version"],
-                ClientID=client_id,
-                Spec=inputs["spec"],
+                APIVersion=inputs_dict["api_version"],
+                ClientID=inputs_dict["client_id"],
+                Spec=inputs_dict["spec"],
             )
         )
         if not res:
             pass
+        self._logger.debug(f"create res: {res}")
         metadata = Metadata(job_id=str(res.job.metadata.id))
-        return CreateTaskResponse(resource_meta=json.dumps(metadata).encode("utf-8"))
+        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
     def get(
         self, context: grpc.ServicerContext, resource_meta: bytes
     ) -> GetTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        # res = requests.get(url, json={"job_id": metadata.job_id})
-        res = results(job_id=metadata.job_id)
-        return GetTaskResponse(resource=Resource(state=res.state))
+        baclhau_response = results(job_id=metadata.job_id)
+        if not baclhau_response:
+            self._logger.error("error")
+            state = PERMANENT_FAILURE
+            return GetTaskResponse(resource=Resource(state=state))
+        
+        state = SUCCEEDED
+        ctx = FlyteContextManager.current_context()
+        res = literals.LiteralMap(
+            {
+                "results": TypeEngine.to_literal(
+                    ctx,
+                    baclhau_response.job_id,
+                    str,
+                    literals.Literal.hash,
+                )
+            }
+        ).to_flyte_idl()
+        return GetTaskResponse(resource=Resource(state=state, outputs=res))
 
 
     def delete(
         self, context: grpc.ServicerContext, resource_meta: bytes
     ) -> DeleteTaskResponse:
-        print("is this implemented?")
+        """ https://github.com/bacalhau-project/bacalhau/issues/2688 """
         return
     
 
