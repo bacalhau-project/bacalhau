@@ -9,6 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -123,4 +124,34 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 4, len(history))
 	require.Equal(s.T(), model.ExecutionStateAskForBid, history[0].ExecutionState.New)
+}
+
+func (s *InMemoryTestSuite) TestEvaluations() {
+
+	job := model.NewJob()
+	_ = s.store.CreateJob(s.ctx, *job)
+
+	eval := models.Evaluation{
+		ID:    "e1",
+		JobID: "10",
+	}
+
+	// Wrong job ID means JobNotFound
+	err := s.store.CreateEvaluation(s.ctx, eval)
+	s.Error(err)
+
+	// Correct job ID
+	eval.JobID = job.ID()
+	err = s.store.CreateEvaluation(s.ctx, eval)
+	s.NoError(err)
+
+	_, err = s.store.GetEvaluation(s.ctx, "missing")
+	s.Error(err)
+
+	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
+	s.NoError(err)
+	s.Equal(e, eval)
+
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.NoError(err)
 }

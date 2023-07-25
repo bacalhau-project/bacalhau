@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
@@ -73,6 +74,15 @@ type Store interface {
 
 	// DeleteJob removes all trace of the provided job from storage
 	DeleteJob(ctx context.Context, jobID string) error
+
+	// CreateEvaluation creates a new evaluation
+	CreateEvaluation(ctx context.Context, eval models.Evaluation) error
+
+	// GetEvaluation retrieves the specified evaluation
+	GetEvaluation(ctx context.Context, id string) (models.Evaluation, error)
+
+	// DeleteEvaluation deletes the specified evaluation
+	DeleteEvaluation(ctx context.Context, id string) error
 
 	// Close provides an interface to cleanup any resources in use when the
 	// store is no longer required

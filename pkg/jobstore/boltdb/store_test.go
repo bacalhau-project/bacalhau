@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -450,6 +451,33 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Equal(ev.Event, jobstore.DeleteEvent)
 		s.Equal(ev.Kind, jobstore.JobWatcher)
 	})
+}
+
+func (s *BoltJobstoreTestSuite) TestEvaluations() {
+
+	eval := models.Evaluation{
+		ID:    "e1",
+		JobID: "10",
+	}
+
+	// Wrong job ID means JobNotFound
+	err := s.store.CreateEvaluation(s.ctx, eval)
+	s.Error(err)
+
+	// Correct job ID
+	eval.JobID = "1"
+	err = s.store.CreateEvaluation(s.ctx, eval)
+	s.NoError(err)
+
+	_, err = s.store.GetEvaluation(s.ctx, "missing")
+	s.Error(err)
+
+	e, err := s.store.GetEvaluation(s.ctx, eval.ID)
+	s.NoError(err)
+	s.Equal(e, eval)
+
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.NoError(err)
 }
 
 func makeJob(

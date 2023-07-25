@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
@@ -28,6 +29,7 @@ const (
 	BucketPathClients          = "jobs.clients"
 	BucketPathExecutions       = "executions"
 	BucketPathExecutionHistory = "executions.history"
+	BucketPathEvaluations      = "evaluations"
 
 	newJobComment = "Job created"
 )
@@ -39,6 +41,7 @@ var BucketJobsInProgress = []byte("inprogress")
 var BucketJobsHistory = []byte("history")
 var BucketJobsClients = []byte("clients")
 var BucketExecutions = []byte("executions")
+var BucketEvaluations = []byte("evaluations")
 
 type BoltJobStore struct {
 	database *bolt.DB
@@ -109,6 +112,12 @@ func WithClock(clock clock.Clock) Option {
 //	   jobs
 //		|--- key:JobID -> value: {JobObject}
 //
+// * Evaluations are kept within the top level evaluations bucket and
+// referenced by their ID
+//
+//	evaluations
+//	     |---- key:EvaluationID -> value: {Evaluation}
+//
 // * Executions are also stored in the job store, with a top level
 // executions bucket containing a bucket for each execution-id. Within
 // that bucket a key of 'data' has a value that contains the execution
@@ -165,6 +174,13 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 			}
 		}
 
+		// Create the bucket for evaluations
+		_, err = tx.CreateBucketIfNotExists(BucketEvaluations)
+		if err != nil {
+			return err
+		}
+
+		// Create executions buckets
 		if exec, err := tx.CreateBucketIfNotExists(BucketExecutions); err != nil {
 			return err
 		} else {
@@ -884,6 +900,91 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated model.Executi
 	} else {
 		seq := BucketSequenceString(tx, bkt)
 		if err = bkt.Put([]byte(seq), data); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// CreateEvaluation creates a new evaluation
+func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		return b.createEvaluation(tx, eval)
+	})
+}
+
+func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) error {
+	_, err := b.getJob(tx, eval.JobID)
+	if err != nil {
+		return err
+	}
+
+	// If there is no error getting an eval with this ID, then it already exists
+	if _, err = b.getEvaluation(tx, eval.ID); err == nil {
+		return bacerrors.NewAlreadyExists(eval.ID, "Evaluation")
+	}
+
+	data, err := json.Marshal(eval)
+	if err != nil {
+		return err
+	}
+
+	if bkt, err := NewBucketPath(BucketPathEvaluations).Get(tx, false); err != nil {
+		return err
+	} else {
+		if err = bkt.Put([]byte(eval.ID), data); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetEvaluation retrieves the specified evaluation
+func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
+	var eval models.Evaluation
+	err := b.database.View(func(tx *bolt.Tx) (err error) {
+		eval, err = b.getEvaluation(tx, id)
+		return
+	})
+
+	return eval, err
+}
+
+func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation, error) {
+	var eval models.Evaluation
+
+	if bkt, err := NewBucketPath(BucketPathEvaluations).Get(tx, false); err != nil {
+		return eval, err
+	} else {
+		data := bkt.Get([]byte(id))
+		if data == nil {
+			return eval, bacerrors.NewEvaluationNotFound(id)
+		}
+
+		err = json.Unmarshal(data, &eval)
+		if err != nil {
+			return eval, err
+		}
+	}
+
+	return eval, nil
+}
+
+// DeleteEvaluation deletes the specified evaluation
+func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
+	return b.database.Update(func(tx *bolt.Tx) (err error) {
+		return b.deleteEvaluation(tx, id)
+	})
+}
+
+func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
+	if bkt, err := NewBucketPath(BucketPathEvaluations).Get(tx, false); err != nil {
+		return err
+	} else {
+		err := bkt.Delete([]byte(id))
+		if err != nil {
 			return err
 		}
 	}

@@ -108,6 +108,19 @@ func (s *DatabaseTestSuite) TestBucketCreationOne() {
 	s.NoError(err)
 }
 
+func (s *DatabaseTestSuite) TestBucketCreationNone() {
+	err := s.store.database.Update(func(tx *bolt.Tx) error {
+		_, _ = tx.CreateBucketIfNotExists([]byte("single"))
+
+		final, err := NewBucketPath("single").Get(tx, false)
+		s.NoError(err)
+		s.NotNil(final)
+
+		return nil
+	})
+	s.NoError(err)
+}
+
 func (s *DatabaseTestSuite) TestBucketCreationError() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
 		_ = tx.Bucket([]byte("root"))

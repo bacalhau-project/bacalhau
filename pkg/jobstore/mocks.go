@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	model "github.com/bacalhau-project/bacalhau/pkg/model"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -49,6 +50,20 @@ func (mr *MockStoreMockRecorder) Close(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStore)(nil).Close), ctx)
 }
 
+// CreateEvaluation mocks base method.
+func (m *MockStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateEvaluation", ctx, eval)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateEvaluation indicates an expected call of CreateEvaluation.
+func (mr *MockStoreMockRecorder) CreateEvaluation(ctx, eval interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEvaluation", reflect.TypeOf((*MockStore)(nil).CreateEvaluation), ctx, eval)
+}
+
 // CreateExecution mocks base method.
 func (m *MockStore) CreateExecution(ctx context.Context, execution model.ExecutionState) error {
 	m.ctrl.T.Helper()
@@ -77,6 +92,20 @@ func (mr *MockStoreMockRecorder) CreateJob(ctx, j interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStore)(nil).CreateJob), ctx, j)
 }
 
+// DeleteEvaluation mocks base method.
+func (m *MockStore) DeleteEvaluation(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteEvaluation", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteEvaluation indicates an expected call of DeleteEvaluation.
+func (mr *MockStoreMockRecorder) DeleteEvaluation(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEvaluation", reflect.TypeOf((*MockStore)(nil).DeleteEvaluation), ctx, id)
+}
+
 // DeleteJob mocks base method.
 func (m *MockStore) DeleteJob(ctx context.Context, jobID string) error {
 	m.ctrl.T.Helper()
@@ -89,6 +118,21 @@ func (m *MockStore) DeleteJob(ctx context.Context, jobID string) error {
 func (mr *MockStoreMockRecorder) DeleteJob(ctx, jobID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockStore)(nil).DeleteJob), ctx, jobID)
+}
+
+// GetEvaluation mocks base method.
+func (m *MockStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEvaluation", ctx, id)
+	ret0, _ := ret[0].(models.Evaluation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEvaluation indicates an expected call of GetEvaluation.
+func (mr *MockStoreMockRecorder) GetEvaluation(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluation", reflect.TypeOf((*MockStore)(nil).GetEvaluation), ctx, id)
 }
 
 // GetInProgressJobs mocks base method.

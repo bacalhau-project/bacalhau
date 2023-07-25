@@ -14,25 +14,28 @@ import (
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const newJobComment = "Job created"
 
 type InMemoryJobStore struct {
 	// we keep pointers to these things because we will update them partially
-	jobs       map[string]model.Job
-	states     map[string]model.JobState
-	history    map[string][]model.JobHistory
-	inprogress map[string]struct{}
-	mtx        sync.RWMutex
+	jobs        map[string]model.Job
+	states      map[string]model.JobState
+	history     map[string][]model.JobHistory
+	inprogress  map[string]struct{}
+	evaluations map[string]models.Evaluation
+	mtx         sync.RWMutex
 }
 
 func NewInMemoryJobStore() *InMemoryJobStore {
 	res := &InMemoryJobStore{
-		jobs:       make(map[string]model.Job),
-		states:     make(map[string]model.JobState),
-		history:    make(map[string][]model.JobHistory),
-		inprogress: make(map[string]struct{}),
+		jobs:        make(map[string]model.Job),
+		states:      make(map[string]model.JobState),
+		history:     make(map[string][]model.JobHistory),
+		inprogress:  make(map[string]struct{}),
+		evaluations: make(map[string]models.Evaluation),
 	}
 	res.mtx.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -349,6 +352,50 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	jobState.Executions[executionIndex] = newExecution
 	d.states[newExecution.JobID] = jobState
 	d.appendExecutionHistory(newExecution, previousState, request.Comment)
+	return nil
+}
+
+// CreateEvaluation creates a new evaluation
+func (d *InMemoryJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
+	_, ok := d.jobs[eval.JobID]
+	if !ok {
+		return jobstore.NewErrJobNotFound(eval.JobID)
+	}
+
+	_, ok = d.evaluations[eval.ID]
+	if ok {
+		return bacerrors.NewAlreadyExists(eval.ID, "Evaluation")
+	}
+
+	d.evaluations[eval.ID] = eval
+
+	return nil
+}
+
+// GetEvaluation retrieves the specified evaluation
+func (d *InMemoryJobStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+
+	ev, ok := d.evaluations[id]
+	if !ok {
+		returnError := bacerrors.NewEvaluationNotFound(id)
+		return models.Evaluation{}, returnError
+	}
+
+	return ev, nil
+}
+
+// DeleteEvaluation deletes the specified evaluation
+func (d *InMemoryJobStore) DeleteEvaluation(ctx context.Context, id string) error {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
+	delete(d.evaluations, id)
+
 	return nil
 }
 
