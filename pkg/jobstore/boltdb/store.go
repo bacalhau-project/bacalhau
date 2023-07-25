@@ -938,6 +938,8 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 		}
 	}
 
+	b.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, data)
+
 	return nil
 }
 
@@ -980,6 +982,13 @@ func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
 }
 
 func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
+
+	eval, err := b.getEvaluation(tx, id)
+	if err != nil {
+		return err
+	}
+	evalData, _ := json.Marshal(eval)
+
 	if bkt, err := NewBucketPath(BucketPathEvaluations).Get(tx, false); err != nil {
 		return err
 	} else {
@@ -988,6 +997,8 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 			return err
 		}
 	}
+
+	b.triggerEvent(jobstore.EvaluationWatcher, jobstore.DeleteEvent, evalData)
 
 	return nil
 }

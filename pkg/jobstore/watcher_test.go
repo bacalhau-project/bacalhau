@@ -30,16 +30,18 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 		events                 jobstore.StoreEventType
 		expected_watching_job  bool
 		expected_watching_exec bool
+		expected_watching_eval bool
 		expected_create        bool
 		expected_update        bool
 		expected_delete        bool
 	}{
 		{
 			name:                   "All the things",
-			types:                  jobstore.JobWatcher | jobstore.ExecutionWatcher,
+			types:                  jobstore.JobWatcher | jobstore.ExecutionWatcher | jobstore.EvaluationWatcher,
 			events:                 jobstore.CreateEvent | jobstore.UpdateEvent | jobstore.DeleteEvent,
 			expected_watching_job:  true,
 			expected_watching_exec: true,
+			expected_watching_eval: true,
 			expected_create:        true,
 			expected_update:        true,
 			expected_delete:        true,
@@ -48,6 +50,7 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 			name:                   "Job creation events",
 			types:                  jobstore.JobWatcher,
 			events:                 jobstore.CreateEvent,
+			expected_watching_eval: false,
 			expected_watching_job:  true,
 			expected_watching_exec: false,
 			expected_create:        true,
@@ -60,6 +63,7 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 			events:                 jobstore.CreateEvent,
 			expected_watching_job:  true,
 			expected_watching_exec: true,
+			expected_watching_eval: false,
 			expected_create:        true,
 			expected_update:        false,
 			expected_delete:        false,
@@ -70,6 +74,7 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 			events:                 jobstore.DeleteEvent,
 			expected_watching_job:  false,
 			expected_watching_exec: true,
+			expected_watching_eval: false,
 			expected_create:        false,
 			expected_update:        false,
 			expected_delete:        true,
@@ -80,6 +85,7 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 			events:                 jobstore.UpdateEvent,
 			expected_watching_job:  true,
 			expected_watching_exec: true,
+			expected_watching_eval: false,
 			expected_create:        false,
 			expected_update:        true,
 			expected_delete:        false,
@@ -92,8 +98,10 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 
 			watchingJob := w.IsWatchingType(jobstore.JobWatcher)
 			watchingExec := w.IsWatchingType(jobstore.ExecutionWatcher)
+			watchingEval := w.IsWatchingType(jobstore.EvaluationWatcher)
 			s.Equal(tc.expected_watching_job, watchingJob, "expectation around watching job not met")
 			s.Equal(tc.expected_watching_exec, watchingExec, "expectation around watching exec not met")
+			s.Equal(tc.expected_watching_eval, watchingEval, "expectation around watching evaluation not met")
 
 			watchingCreate := w.IsWatchingEvent(jobstore.CreateEvent)
 			watchingUpdate := w.IsWatchingEvent(jobstore.UpdateEvent)
@@ -118,12 +126,21 @@ func (s *WatcherTestSuite) TestGetEvents() {
 	}{
 		{
 			name:                "all the things",
-			types:               jobstore.JobWatcher | jobstore.ExecutionWatcher,
+			types:               jobstore.JobWatcher | jobstore.ExecutionWatcher | jobstore.EvaluationWatcher,
 			events:              jobstore.CreateEvent | jobstore.UpdateEvent | jobstore.DeleteEvent,
 			write_kind:          jobstore.JobWatcher,
 			write_event:         jobstore.CreateEvent,
 			expected_watchevent: true,
 			expected_object:     []byte("all the things"),
+		},
+		{
+			name:                "create an evaluation",
+			types:               jobstore.JobWatcher | jobstore.ExecutionWatcher | jobstore.EvaluationWatcher,
+			events:              jobstore.CreateEvent | jobstore.UpdateEvent | jobstore.DeleteEvent,
+			write_kind:          jobstore.EvaluationWatcher,
+			write_event:         jobstore.CreateEvent,
+			expected_watchevent: true,
+			expected_object:     []byte("create an evaluation"),
 		},
 	}
 

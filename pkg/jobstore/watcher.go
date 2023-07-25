@@ -7,6 +7,7 @@ type StoreWatcherType int
 const (
 	JobWatcher StoreWatcherType = 1 << iota
 	ExecutionWatcher
+	EvaluationWatcher
 )
 
 type StoreEventType int
