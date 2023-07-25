@@ -365,8 +365,10 @@ func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
-
-	ch := s.store.Watch(s.ctx, jobstore.JobWatcher|jobstore.ExecutionWatcher, jobstore.CreateEvent)
+	ch := s.store.Watch(s.ctx,
+		jobstore.JobWatcher|jobstore.ExecutionWatcher,
+		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
+	)
 
 	job := makeJob(
 		model.EngineDocker,
@@ -445,7 +447,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.Equal(decodedExecution.ID(), execution.ID())
 	})
 
-	s.Run("update execution state event", func() {
+	s.Run("delete job event", func() {
 		_ = s.store.DeleteJob(s.ctx, job.ID())
 		ev := <-ch
 		s.Equal(ev.Event, jobstore.DeleteEvent)
