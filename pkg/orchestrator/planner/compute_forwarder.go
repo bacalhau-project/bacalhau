@@ -15,7 +15,7 @@ type ComputeForwarder struct {
 	id             string
 	computeService compute.Endpoint
 	jobStore       jobstore.Store
-	evalBroker     orchestrator.EvaluationBroker
+	evalBroker     orchestrator.EvaluationBroker //nolint:unused
 }
 
 type ComputeForwarderParams struct {
