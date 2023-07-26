@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -465,7 +466,7 @@ func getAuthToken(ctx context.Context, image string, dockerCreds config.DockerCr
 		// pulls for `image` or `user/image` should be okay, anything trying
 		// to pull `repo/user/image` should not.
 		if strings.Count(image, "/") < 2 {
-			authConfig := types.AuthConfig{
+			authConfig := registry.AuthConfig{
 				Username: dockerCreds.Username,
 				Password: dockerCreds.Password,
 			}

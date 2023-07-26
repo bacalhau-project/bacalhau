@@ -102,7 +102,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	}
 
 	// stop executions if we over-subscribed and exceeded the desired number of executions
-	running, overSubscriptions := b.filterOverSubscribedExecs(running, desiredRemainingCount)
+	_, overSubscriptions := b.filterOverSubscribedExecs(running, desiredRemainingCount)
 	b.markStopped(overSubscriptions, execNotNeeded, plan)
 
 	// mark job as completed

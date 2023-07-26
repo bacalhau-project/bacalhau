@@ -27,7 +27,8 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // - Rank 30: Node has never executed the job.
 // - Rank 0: Node has already executed the job.
 // - Rank -1: Node has executed the job more than once, has rejected a bid, or produced a invalid result
-func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
+	job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)

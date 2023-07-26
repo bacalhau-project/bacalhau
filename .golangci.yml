@@ -2,9 +2,9 @@ linters-settings:
   depguard:
     list-type: denylist
     packages:
-      - github.com/sirupsen/logrus
+    - github.com/sirupsen/logrus
     packages-with-error-message:
-      - github.com/sirupsen/logrus: "logging is allowed only by zerolog"
+    - github.com/sirupsen/logrus: "logging is allowed only by zerolog"
   dupl:
     threshold: 100
   funlen:
@@ -15,19 +15,19 @@ linters-settings:
     min-occurrences: 3
   gocritic:
     enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
+    - diagnostic
+    - experimental
+    - opinionated
+    - performance
+    - style
     disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-      - hugeParam
-      - importShadow
+    - dupImport # https://github.com/go-critic/go-critic/issues/845
+    - ifElseChain
+    - octalLiteral
+    - whyNoLint
+    - wrapperFunc
+    - hugeParam
+    - importShadow
   gocyclo:
     min-complexity: 18
   goimports:
@@ -35,17 +35,17 @@ linters-settings:
   gomnd:
     # don't include the "operation" and "assign"
     checks:
-      - argument
-      - case
-      - condition
-      - return
+    - argument
+    - case
+    - condition
+    - return
     ignored-numbers:
-      - "0"
-      - "1"
-      - "2"
-      - "3"
+    - "0"
+    - "1"
+    - "2"
+    - "3"
     ignored-functions:
-      - strings.SplitN
+    - strings.SplitN
 
   govet:
     check-shadowing: true
@@ -61,7 +61,8 @@ linters-settings:
   misspell:
     locale: US
     ignore-words:
-      - favour
+    - favour
+    - cancelled
   nolintlint:
     allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: true # report any unused nolint directives
@@ -72,36 +73,36 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - bodyclose
-    - unused
-    - depguard
-    - dogsled
-    - errcheck
-    - exportloopref
-    - funlen
-    - gochecknoinits
-    - goconst
-    # - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - gomnd
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - noctx
-    - nolintlint
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unused
-    - whitespace
+  - bodyclose
+  - unused
+  - depguard
+  - dogsled
+  - errcheck
+  - exportloopref
+  - funlen
+  - gochecknoinits
+  - goconst
+  # - gocritic
+  - gocyclo
+  - gofmt
+  - goimports
+  - gomnd
+  - goprintffuncname
+  - gosec
+  - gosimple
+  - govet
+  - ineffassign
+  - lll
+  - misspell
+  - nakedret
+  - noctx
+  - nolintlint
+  - staticcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unused
+  - whitespace
 
 # Options for analysis running.
 run:
@@ -126,11 +127,11 @@ run:
   # but default dirs are skipped independently of this option's value (see skip-dirs-use-default).
   # "/" will be replaced by current OS file path separator to properly work on Windows.
   skip-dirs:
-    - experimental$
-    - vendor$
-    - viz$
-    - ops$
-    - testdata$
+  - experimental$
+  - vendor$
+  - viz$
+  - ops$
+  - testdata$
   # Enables skipping of directories:
   # - vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
   # Default: true
@@ -162,5 +163,5 @@ run:
 
 issues:
   exclude:
-    # Naming of `error` variables as `err` is standard practise for Go
-    - 'shadow: declaration of "err" shadows declaration at'
+  # Naming of `error` variables as `err` is standard practise for Go
+  - 'shadow: declaration of "err" shadows declaration at'
