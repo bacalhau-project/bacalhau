@@ -130,5 +130,8 @@ func RecryptEnv(spec model.Spec,
 
 func splitEnv(s string) (k string, v string) {
 	parts := strings.Split(s, "=")
+	if len(parts) != 2 {
+		return "", ""
+	}
 	return parts[0], parts[1]
 }
