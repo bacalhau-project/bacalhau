@@ -60,6 +60,7 @@ var (
 	gatewayCapabilities = []string{"NET_ADMIN"}
 )
 
+//nolint:nakedret
 func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
 	job string,
