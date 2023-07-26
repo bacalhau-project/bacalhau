@@ -5,6 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/imdario/mergo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
+
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -18,12 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
-	"github.com/imdario/mergo"
-	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/host"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 )
 
 const JobInfoTopic = "bacalhau-job-info"
@@ -157,11 +158,6 @@ func NewNode(
 	if nodeInfoPublisherInterval.IsZero() {
 		nodeInfoPublisherInterval = GetNodeInfoPublishConfig()
 	}
-	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
-		PubSub:           nodeInfoPubSub,
-		NodeInfoProvider: nodeInfoProvider,
-		IntervalConfig:   nodeInfoPublisherInterval,
-	})
 
 	// node info store that is used for both discovering compute nodes, as to find addresses of other nodes for routing requests.
 	nodeInfoStore := inmemory.NewNodeInfoStore(inmemory.NodeInfoStoreParams{
@@ -246,6 +242,14 @@ func NewNode(
 		}
 		nodeInfoProvider.RegisterComputeInfoProvider(computeNode.computeInfoProvider)
 	}
+
+	// NB(forrest): this must be done last to avoid eager publishing before nodes are constructed
+	// TODO(forrest) [fixme] we should fix this to make it less racy in testing
+	nodeInfoPublisher := routing.NewNodeInfoPublisher(routing.NodeInfoPublisherParams{
+		PubSub:           nodeInfoPubSub,
+		NodeInfoProvider: nodeInfoProvider,
+		IntervalConfig:   nodeInfoPublisherInterval,
+	})
 
 	// cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {

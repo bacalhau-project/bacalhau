@@ -14,6 +14,7 @@ import (
 // that help reconcile state.
 type execSet map[string]*model.ExecutionState
 
+//nolint:unused
 func execSetFromSlice(executions []*model.ExecutionState) execSet {
 	set := execSet{}
 	for _, exec := range executions {
@@ -51,6 +52,8 @@ func (set execSet) has(key string) bool {
 }
 
 // keys returns the keys of the set as a slice
+//
+//nolint:unused
 func (set execSet) keys() []string {
 	keys := make([]string, 0, len(set))
 	for k := range set {

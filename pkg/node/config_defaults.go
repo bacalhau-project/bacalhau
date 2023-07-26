@@ -85,7 +85,7 @@ var DefaultNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
 	EagerPublishDuration: 30 * time.Second,
 }
 
-// speed up node announcements for tests
+// TestNodeInfoPublishConfig speeds up node announcements for tests
 var TestNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
 	Interval:             30 * time.Second,
 	EagerPublishInterval: 10 * time.Millisecond,
