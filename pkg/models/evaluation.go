@@ -15,6 +15,13 @@ const (
 	EvalStatusCancelled = "canceled"
 )
 
+const (
+	EvalTriggerJobRegister     = "job-register"
+	EvalTriggerJobCancel       = "job-cancel"
+	EvalTriggerRetryFailedExec = "exec-failure"
+	EvalTriggerExecUpdate      = "exec-update"
+)
+
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
 // scheduled or if existing ones must be stopped.
 // It is possible that no action is required if the scheduler sees the desired job state matches the observed state.

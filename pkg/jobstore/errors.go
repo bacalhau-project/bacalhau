@@ -44,10 +44,10 @@ func NewErrInvalidJobState(id string, actual model.JobStateType, expected model.
 }
 
 func (e ErrInvalidJobState) Error() string {
-	if e.Expected == model.JobStateNew {
-		return "job " + e.JobID + " is in unexpted state " + e.Actual.String() + "."
+	if e.Expected.IsUndefined() {
+		return fmt.Sprintf("job %s is in unexpected state %s", e.JobID, e.Actual)
 	}
-	return "job " + e.JobID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	return fmt.Sprintf("job %s is in state %s but expected %s", e.JobID, e.Actual, e.Expected)
 }
 
 // ErrInvalidJobVersion is returned when an job has an invalid version.
@@ -78,7 +78,7 @@ func NewErrJobAlreadyTerminal(id string, actual model.JobStateType, newState mod
 
 func (e ErrJobAlreadyTerminal) Error() string {
 	return fmt.Sprintf("job %s is in terminal state %s and cannot transition to %s",
-		e.JobID, e.Actual.String(), e.NewState.String())
+		e.JobID, e.Actual, e.NewState)
 }
 
 // ErrExecutionNotFound is returned when an job already exists
@@ -111,16 +111,19 @@ func (e ErrExecutionAlreadyExists) Error() string {
 type ErrInvalidExecutionState struct {
 	ExecutionID model.ExecutionID
 	Actual      model.ExecutionStateType
-	Expected    model.ExecutionStateType
+	Expected    []model.ExecutionStateType
 }
 
 func NewErrInvalidExecutionState(
-	id model.ExecutionID, actual model.ExecutionStateType, expected model.ExecutionStateType) ErrInvalidExecutionState {
+	id model.ExecutionID, actual model.ExecutionStateType, expected ...model.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID.String() + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	if len(e.Expected) > 0 {
+		return fmt.Sprintf("execution %s is in unexpted state %s", e.ExecutionID, e.Actual)
+	}
+	return fmt.Sprintf("execution %s is in state %s", e.ExecutionID, e.Actual)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.
@@ -135,7 +138,7 @@ func NewErrInvalidExecutionVersion(id model.ExecutionID, actual int, expected in
 }
 
 func (e ErrInvalidExecutionVersion) Error() string {
-	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID.String(), e.Actual, e.Expected)
+	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
@@ -152,5 +155,5 @@ func NewErrExecutionAlreadyTerminal(
 
 func (e ErrExecutionAlreadyTerminal) Error() string {
 	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
-		e.ExecutionID, e.Actual.String(), e.NewState.String())
+		e.ExecutionID, e.Actual, e.NewState)
 }

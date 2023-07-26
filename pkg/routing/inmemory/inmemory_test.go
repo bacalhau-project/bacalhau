@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -49,7 +49,7 @@ func (s *InMemoryNodeInfoStoreSuite) Test_GetNotFound() {
 	ctx := context.Background()
 	_, err := s.store.Get(ctx, peer.ID("node1"))
 	s.Error(err)
-	s.IsType(requester.ErrNodeNotFound{}, err)
+	s.IsType(routing.ErrNodeNotFound{}, err)
 
 }
 
@@ -158,7 +158,7 @@ func (s *InMemoryNodeInfoStoreSuite) Test_Eviction() {
 	time.Sleep(ttl + 100*time.Millisecond)
 	_, err = s.store.Get(ctx, nodeInfo1.PeerInfo.ID)
 	s.Error(err)
-	s.IsType(requester.ErrNodeNotFound{}, err)
+	s.IsType(routing.ErrNodeNotFound{}, err)
 }
 
 func generateNodeInfo(id string, engines ...model.Engine) model.NodeInfo {

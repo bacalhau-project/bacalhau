@@ -1,32 +1,46 @@
 package models
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
+
+type PlanExecutionDesiredUpdate struct {
+	Execution    *model.ExecutionState
+	DesiredState model.ExecutionDesiredState
+	Comment      string
+}
 
 // Plan holds actions as a result of processing an evaluation by the scheduler.
 type Plan struct {
 	EvalID      string
 	EvalReceipt string
-	Priority    int
+	// TODO: passing the evalID should be enough once we persist evaluations
+	Eval     *Evaluation
+	Priority int
+
+	Job             *model.Job
+	JobStateVersion int
+
+	DesiredJobState model.JobStateType
+	Comment         string
 
 	// NewExecutions holds the executions to be created.
 	NewExecutions []*model.ExecutionState
 
-	// StoppedExecutions holds the executions to be stopped.
-	StoppedExecutions []*jobstore.UpdateExecutionRequest
+	UpdatedExecutions map[model.ExecutionID]*PlanExecutionDesiredUpdate
 }
 
 // NewPlan creates a new Plan instance.
-func NewPlan(eval *Evaluation) *Plan {
+func NewPlan(eval *Evaluation, job *model.Job, jobStateVersion int) *Plan {
 	return &Plan{
 		EvalID:            eval.ID,
 		Priority:          eval.Priority,
+		Eval:              eval,
+		Job:               job,
+		JobStateVersion:   jobStateVersion,
 		NewExecutions:     []*model.ExecutionState{},
-		StoppedExecutions: []*jobstore.UpdateExecutionRequest{},
+		UpdatedExecutions: make(map[model.ExecutionID]*PlanExecutionDesiredUpdate),
 	}
-
 }
 
 // AppendExecution appends the execution to the plan executions.
@@ -35,31 +49,38 @@ func (p *Plan) AppendExecution(execution *model.ExecutionState) {
 }
 
 // AppendStoppedExecution marks an execution to be stopped.
-func (p *Plan) AppendStoppedExecution(execution *model.ExecutionState, newState model.ExecutionStateType, comment string) {
-	updateRequest := jobstore.UpdateExecutionRequest{
-		ExecutionID: execution.ID(),
-		NewValues: model.ExecutionState{
-			State: newState,
-		},
-		Comment: comment,
-		Condition: jobstore.UpdateExecutionCondition{
-			ExpectedState: execution.State,
-		},
+func (p *Plan) AppendStoppedExecution(execution *model.ExecutionState, comment string) {
+	updateRequest := &PlanExecutionDesiredUpdate{
+		Execution:    execution,
+		DesiredState: model.ExecutionDesiredStateStopped,
+		Comment:      comment,
 	}
-	p.StoppedExecutions = append(p.StoppedExecutions, &updateRequest)
+	p.UpdatedExecutions[execution.ID()] = updateRequest
 }
 
-// StoppedExecutionsCount returns the number of stopped executions in the plan.
-func (p *Plan) StoppedExecutionsCount() int {
-	return len(p.StoppedExecutions)
+// AppendApprovedExecution marks an execution as accepted and ready to be started.
+func (p *Plan) AppendApprovedExecution(execution *model.ExecutionState) {
+	updateRequest := &PlanExecutionDesiredUpdate{
+		Execution:    execution,
+		DesiredState: model.ExecutionDesiredStateRunning,
+	}
+	p.UpdatedExecutions[execution.ID()] = updateRequest
 }
 
-// IsExecutionStopped returns true if the execution is marked to be stopped.
-func (p *Plan) IsExecutionStopped(execution *model.ExecutionState) bool {
-	for _, stoppedExecution := range p.StoppedExecutions {
-		if stoppedExecution.ExecutionID == execution.ID() {
-			return true
+func (p *Plan) MarkJobCompleted() {
+	p.DesiredJobState = model.JobStateCompleted
+	p.NewExecutions = []*model.ExecutionState{}
+}
+
+func (p *Plan) MarkJobFailed(comment string) {
+	p.DesiredJobState = model.JobStateError
+	p.Comment = comment
+
+	p.NewExecutions = []*model.ExecutionState{}
+	// drop any update that is not stopping an execution
+	for id, update := range p.UpdatedExecutions {
+		if update.DesiredState != model.ExecutionDesiredStateStopped {
+			delete(p.UpdatedExecutions, id)
 		}
 	}
-	return false
 }

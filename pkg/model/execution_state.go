@@ -12,6 +12,8 @@ import (
 type ExecutionStateType int
 
 const (
+	ExecutionStateUndefined ExecutionStateType = iota
+	// ExecutionStateNew The execution has been created, but not pushed to a compute node yet.
 	ExecutionStateNew ExecutionStateType = iota
 	// ExecutionStateAskForBid A node has been selected to execute a job, and is being asked to bid on the job.
 	ExecutionStateAskForBid
@@ -31,12 +33,25 @@ const (
 	ExecutionStateCancelled
 )
 
+type ExecutionDesiredState int
+
+const (
+	ExecutionDesiredStatePending ExecutionDesiredState = iota
+	ExecutionDesiredStateRunning
+	ExecutionDesiredStateStopped
+)
+
 func ExecutionStateTypes() []ExecutionStateType {
 	var res []ExecutionStateType
 	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
 		res = append(res, typ)
 	}
 	return res
+}
+
+// IsUndefined returns true if the execution state is undefined
+func (s ExecutionStateType) IsUndefined() bool {
+	return s == ExecutionStateUndefined
 }
 
 // IsDiscarded returns true if the execution has been discarded due to a failure, rejection or cancellation
@@ -48,6 +63,12 @@ func (s ExecutionStateType) IsDiscarded() bool {
 // IsActive returns true if the execution is running or has completed
 func (s ExecutionStateType) IsActive() bool {
 	return s == ExecutionStateBidAccepted || s == ExecutionStateCompleted
+}
+
+// IsPending returns true if the execution is still pending approval and did not yet start running
+// or has been discarded
+func (s ExecutionStateType) IsPending() bool {
+	return s == ExecutionStateNew || s == ExecutionStateAskForBid || s == ExecutionStateAskForBidAccepted
 }
 
 // IsTerminal returns true if the execution is in a terminal state where no further state changes are possible
@@ -93,6 +114,8 @@ type ExecutionState struct {
 	State ExecutionStateType `json:"State"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
+	// DesiredState is the desired state of the execution
+	DesiredState ExecutionDesiredState `json:"DesiredState,omitempty"`
 	// the published results for this execution
 	PublishedResult StorageSpec `json:"PublishedResults,omitempty"`
 

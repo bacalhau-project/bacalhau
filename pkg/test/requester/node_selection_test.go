@@ -165,20 +165,22 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 			j.Spec.Deal.Concurrency = math.Max(1, len(tc.expectedNodes))
 
 			submittedJob, err := s.client.Submit(ctx, j)
+			s.NoError(err)
+
+			err = s.stateResolver.WaitUntilComplete(ctx, submittedJob.Metadata.ID)
 			if len(tc.expectedNodes) == 0 {
 				s.Error(err)
 			} else {
 				s.NoError(err)
-				selectedNodes := s.getSelectedNodes(submittedJob.Metadata.ID)
-				s.assertNodesMatch(tc.expectedNodes, selectedNodes)
 			}
+			selectedNodes := s.getSelectedNodes(submittedJob.Metadata.ID)
+			s.assertNodesMatch(tc.expectedNodes, selectedNodes)
 		})
 	}
 }
 
 func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	ctx := context.Background()
-	s.NoError(s.stateResolver.WaitUntilComplete(ctx, jobID))
 	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
 	s.NoError(err)
 	completedExecutionStates := job.GetCompletedExecutionStates(jobState)
