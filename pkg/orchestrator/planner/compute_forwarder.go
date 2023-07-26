@@ -2,12 +2,16 @@ package planner
 
 import (
 	"context"
+	"crypto/rsa"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,12 +20,14 @@ type ComputeForwarder struct {
 	computeService compute.Endpoint
 	jobStore       jobstore.Store
 	evalBroker     orchestrator.EvaluationBroker //nolint:unused
+	peerStore      peerstore.Peerstore
 }
 
 type ComputeForwarderParams struct {
 	ID             string
 	ComputeService compute.Endpoint
 	JobStore       jobstore.Store
+	PeerStore      peerstore.Peerstore
 }
 
 func NewComputeForwarder(params ComputeForwarderParams) *ComputeForwarder {
@@ -29,6 +35,7 @@ func NewComputeForwarder(params ComputeForwarderParams) *ComputeForwarder {
 		id:             params.ID,
 		computeService: params.ComputeService,
 		jobStore:       params.JobStore,
+		peerStore:      params.PeerStore,
 	}
 }
 
@@ -76,6 +83,28 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job, executionID model.ExecutionID) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s asking node %s to bid with executionID %s",
 		s.id, executionID.NodeID, executionID.ExecutionID)
+
+	// Check and recrypt any necessary variables
+	if secrets.JobNeedsDecrypting(job.Spec) {
+		var requesterPrivateKey crypto.PrivKey
+		var computePublicKey crypto.PubKey
+
+		for _, id := range s.peerStore.PeersWithKeys() {
+			if id.String() == executionID.NodeID {
+				computePublicKey = s.peerStore.PubKey(id)
+			} else if id.String() == s.id {
+				requesterPrivateKey = s.peerStore.PrivKey(id)
+			}
+		}
+
+		reqKey, _ := crypto.PrivKeyToStdKey(requesterPrivateKey)
+		reqPrivKey, _ := reqKey.(*rsa.PrivateKey)
+
+		compKey, _ := crypto.PubKeyToStdKey(computePublicKey)
+		computePubKey, _ := compKey.(*rsa.PublicKey)
+
+		job.Spec, _ = secrets.RecryptEnv(job.Spec, reqPrivKey, s.id, computePubKey, executionID.NodeID)
+	}
 
 	// Notify the compute node
 	request := compute.AskForBidRequest{

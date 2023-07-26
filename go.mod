@@ -37,6 +37,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.20.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/joho/godotenv v1.5.1
+	github.com/lestrrat-go/jwx/v2 v2.0.11
 	github.com/libp2p/go-libp2p v0.27.7
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/mattn/go-isatty v0.0.19
@@ -105,6 +106,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.4.1 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -116,8 +118,14 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
+	github.com/lestrrat-go/httpcc v1.0.1 // indirect
+	github.com/lestrrat-go/httprc v1.0.4 // indirect
+	github.com/lestrrat-go/iter v1.0.2 // indirect
+	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -37,6 +38,9 @@ var (
 
 		# Save the job specification to a YAML file
 		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+
+		# Encrypt the supplied environment variables
+		bacalhau docker run --encrypt -e MY_API_KEY=sekrit ubuntu env
 
 		# Specify an image tag (default is 'latest' - using a specific tag other than 'latest' is recommended for reproducibility)
 		bacalhau docker run ubuntu:bionic echo hello
@@ -132,6 +136,31 @@ func dockerRun(cmd *cobra.Command, cmdArgs []string, opts *DockerRunOptions) err
 	j, err := CreateJob(ctx, cmdArgs, opts)
 	if err != nil {
 		return fmt.Errorf("creating job: %w", err)
+	}
+
+	if opts.SpecSettings.EncryptEnv && len(j.Spec.Docker.EnvironmentVariables) > 0 {
+		publicKey, keyID, err := util.GetPublicKey(cmd)
+		if err != nil {
+			return fmt.Errorf("encrypting variables: %w", err)
+		}
+
+		vars := make([]string, 0, len(j.Spec.Docker.EnvironmentVariables))
+		for _, envVarPair := range j.Spec.Docker.EnvironmentVariables {
+			parts := strings.Split(envVarPair, "=")
+			if len(parts) != 2 {
+				return fmt.Errorf("parsing environment variable (%s): %w", envVarPair, err)
+			}
+
+			k, v := parts[0], parts[1]
+			e, err := secrets.EncryptData(publicKey, keyID, v)
+			if err != nil {
+				return fmt.Errorf("encrypting variable (%s) with keyid(%s): %w", envVarPair, keyID, err)
+			}
+
+			vars = append(vars, fmt.Sprintf("%s=%s", k, e.String()))
+		}
+
+		j.Spec.Docker.EnvironmentVariables = vars
 	}
 
 	if err := jobutils.VerifyJob(ctx, j); err != nil {

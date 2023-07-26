@@ -3,6 +3,7 @@ package publicapi
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	jwk "github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -85,6 +88,33 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 	}
 
 	return res.VersionInfo, nil
+}
+
+func (apiClient *APIClient) PublicKey(ctx context.Context) (*rsa.PublicKey, string, error) {
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.PublicKey")
+	defer span.End()
+
+	base := apiClient.BaseURI
+	jwksURL := fmt.Sprintf("%s://%s/.well-known/jwks.json", base.Scheme, base.Host)
+
+	set, err := jwk.Fetch(ctx, jwksURL)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Get the single key, although we'd ideally do this via the key id.
+	key, found := set.Key(0)
+	if !found {
+		return nil, "", errors.New("could not find key in keyset")
+	}
+
+	var rsaKey rsa.PublicKey
+	err = key.Raw(&rsaKey)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return &rsaKey, key.KeyID(), nil
 }
 
 func (apiClient *APIClient) Get(ctx context.Context, api string, resData any) error {

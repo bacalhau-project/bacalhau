@@ -56,7 +56,6 @@ func NewComputeNode(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
-
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
@@ -88,6 +87,7 @@ func NewComputeNode(
 	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     host.ID().String(),
+		Host:                   host,
 		Callback:               computeCallback,
 		Store:                  executionStore,
 		Storages:               storages,

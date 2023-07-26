@@ -105,6 +105,7 @@ func NewAPIServer(params APIServerParams) (*APIServer, error) {
 		{Path: "/varz", Handler: http.HandlerFunc(server.varz)},
 		{Path: "/livez", Handler: http.HandlerFunc(server.livez)},
 		{Path: "/readyz", Handler: http.HandlerFunc(server.readyz)},
+		{Path: "/.well-known/jwks.json", Handler: http.HandlerFunc(server.jwks)},
 		{Path: "/swagger/", Handler: httpSwagger.WrapHandler, Raw: true},
 	}
 

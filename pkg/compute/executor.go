@@ -2,9 +2,12 @@ package compute
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"os"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -12,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/secrets"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -19,6 +23,7 @@ import (
 
 type BaseExecutorParams struct {
 	ID                     string
+	Host                   host.Host
 	Callback               Callback
 	Store                  store.ExecutionStore
 	Storages               storage.StorageProvider
@@ -32,6 +37,7 @@ type BaseExecutorParams struct {
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
 	ID               string
+	host             host.Host
 	callback         Callback
 	store            store.ExecutionStore
 	cancellers       generic.SyncMap[string, context.CancelFunc]
@@ -45,6 +51,7 @@ type BaseExecutor struct {
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
 		ID:               params.ID,
+		host:             params.Host,
 		callback:         params.Callback,
 		store:            params.Store,
 		Storages:         params.Storages,
@@ -166,6 +173,14 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 
 	if e.failureInjection.IsBadActor {
 		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
+	}
+
+	if secrets.JobNeedsDecrypting(execution.Job.Spec) {
+		pkey := e.host.Peerstore().PrivKey(e.host.ID())
+		privKey, _ := crypto.PrivKeyToStdKey(pkey)
+		privateKey, _ := privKey.(*rsa.PrivateKey)
+
+		execution.Job.Spec, _ = secrets.DecryptEnv(execution.Job.Spec, privateKey, e.ID)
 	}
 
 	runCommandCleanup := system.NewCleanupManager()

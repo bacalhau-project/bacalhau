@@ -114,6 +114,7 @@ func NewRequesterNode(
 			ID:             host.ID().String(),
 			ComputeService: computeProxy,
 			JobStore:       jobStore,
+			PeerStore:      host.Peerstore(),
 		}),
 
 		// planner that publishes events on job completion or failure

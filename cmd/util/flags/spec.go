@@ -31,6 +31,7 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 		Labels:        []string{},
 		Selector:      "",
 		DoNotTrack:    false,
+		EncryptEnv:    false,
 	}
 }
 
@@ -43,6 +44,7 @@ type SpecFlagSettings struct {
 	Labels        []string          // Labels for the job on the Bacalhau network (for searching)
 	Selector      string            // Selector (label query) to filter nodes on which this job can be executed
 	DoNotTrack    bool
+	EncryptEnv    bool
 }
 
 func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
@@ -99,6 +101,12 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		settings.DoNotTrack,
 		// TODO(forrest): we need a better definition of this
 		`When true the job will not be tracked(?) TODO BETTER DEFINITION`,
+	)
+	flags.BoolVar(
+		&settings.EncryptEnv,
+		"encrypt",
+		settings.EncryptEnv,
+		`Specifies whether we want any supplied environment variables to be encrypted`,
 	)
 
 	return flags
