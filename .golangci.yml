@@ -62,6 +62,7 @@ linters-settings:
     locale: US
     ignore-words:
     - favour
+    - cancelled
   nolintlint:
     allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: true # report any unused nolint directives
@@ -164,4 +165,3 @@ issues:
   exclude:
   # Naming of `error` variables as `err` is standard practise for Go
   - 'shadow: declaration of "err" shadows declaration at'
-  - '`cancelled` is a misspelling of `canceled`'
