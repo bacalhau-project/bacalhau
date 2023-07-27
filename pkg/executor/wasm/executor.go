@@ -40,7 +40,7 @@ type Executor struct {
 	logManagers generic.SyncMap[string, *wasmlogs.LogManager]
 }
 
-func NewExecutor(_ context.Context, _ storage.StorageProvider) (*Executor, error) {
+func NewExecutor() (*Executor, error) {
 	return &Executor{}, nil
 }
 

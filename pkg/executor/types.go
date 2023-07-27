@@ -41,6 +41,7 @@ type RunCommandRequest struct {
 	Inputs       []storage.PreparedStorage
 	ResultsDir   string
 	EngineParams *Arguments
+	OutputLimits OutputLimits
 }
 
 // ExecutorParams is a stub for pluggable engines

@@ -18,7 +18,7 @@ type StorageProvidersFactory interface {
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 }
 
 type PublishersFactory interface {
@@ -35,15 +35,13 @@ func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeCon
 type ExecutorsFactoryFunc func(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error)
 
 func (f ExecutorsFactoryFunc) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error) {
-	return f(ctx, nodeConfig, storages)
+	return f(ctx, nodeConfig)
 }
 
 type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
@@ -76,11 +74,10 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 
 func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			provider, err := executor_util.NewStandardExecutorProvider(
 				ctx,
 				nodeConfig.CleanupManager,
-				storages,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 				},
