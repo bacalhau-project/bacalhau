@@ -44,7 +44,7 @@ func (s *DatabaseTestSuite) TestGetDatabaseBad() {
 
 func (s *DatabaseTestSuite) TestGetBucketDataErr() {
 	_ = s.store.database.View(func(tx *bolt.Tx) (err error) {
-		data := GetBucketData(tx, "non-existent", []byte("nope"))
+		data := GetBucketData(tx, NewBucketPath("non-existent"), []byte("nope"))
 		s.Nil(data)
 		return nil
 	})

@@ -344,6 +344,7 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job.Spec.Annotations = []string{"tag"}
 	job.Metadata.ID = "deleteme"
 	job.Metadata.ClientID = "client1"
+
 	err := s.store.CreateJob(s.ctx, *job)
 	s.NoError(err)
 

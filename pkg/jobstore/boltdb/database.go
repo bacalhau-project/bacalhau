@@ -44,12 +44,12 @@ func GetBucketsByPrefix(tx *bolt.Tx, bucket *bolt.Bucket, partialName []byte) ([
 
 // GetBucketData is a helper that will use the provided details to find
 // a key in a specific bucket and return its data.
-func GetBucketData(tx *bolt.Tx, bucketPath string, key []byte) []byte {
-	b, err := NewBucketPath(bucketPath).Get(tx, false)
+func GetBucketData(tx *bolt.Tx, bucketPath *BucketPath, key []byte) []byte {
+	bkt, err := bucketPath.Get(tx, false)
 	if err != nil {
 		return nil
 	}
-	return b.Get(key)
+	return bkt.Get(key)
 }
 
 type BucketPath struct {
@@ -62,7 +62,7 @@ type BucketPath struct {
 // "root.bucket.here".
 func NewBucketPath(sections ...string) *BucketPath {
 	return &BucketPath{
-		path: strings.Join(sections, "."),
+		path: strings.Join(sections, BucketPathDelimiter),
 	}
 }
 
