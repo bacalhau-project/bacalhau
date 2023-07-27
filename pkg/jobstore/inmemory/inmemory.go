@@ -28,6 +28,7 @@ type InMemoryJobStore struct {
 	inprogress  map[string]struct{}
 	evaluations map[string]models.Evaluation
 	watchers    []jobstore.Watcher
+	watcherLock sync.Mutex
 	mtx         sync.RWMutex
 }
 
@@ -49,7 +50,11 @@ func NewInMemoryJobStore() *InMemoryJobStore {
 
 func (d *InMemoryJobStore) Watch(c context.Context, t jobstore.StoreWatcherType, e jobstore.StoreEventType) chan jobstore.WatchEvent {
 	w := jobstore.NewWatcher(t, e)
+
+	d.watcherLock.Lock()
 	d.watchers = append(d.watchers, *w)
+	d.watcherLock.Unlock()
+
 	return w.Channel()
 }
 
@@ -228,12 +233,14 @@ func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
 
 // DeleteJob removes a job from storage
 func (d *InMemoryJobStore) DeleteJob(ctx context.Context, jobID string) error {
-	d.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, d.jobs[jobID])
+	job := d.jobs[jobID]
 
 	delete(d.jobs, jobID)
 	delete(d.states, jobID)
 	delete(d.inprogress, jobID)
 	delete(d.history, jobID)
+
+	d.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, job)
 	return nil
 }
 
@@ -362,10 +369,10 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	// populate default values
 	newExecution := request.NewValues
 	if newExecution.CreateTime.IsZero() {
-		newExecution.CreateTime = time.Now()
+		newExecution.CreateTime = existingExecution.CreateTime
 	}
 	if newExecution.UpdateTime.IsZero() {
-		newExecution.UpdateTime = existingExecution.CreateTime
+		newExecution.UpdateTime = time.Now().UTC()
 	}
 	if newExecution.Version == 0 {
 		newExecution.Version = existingExecution.Version + 1

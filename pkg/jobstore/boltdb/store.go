@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -44,9 +45,10 @@ var BucketExecutionsHistoryBytes = []byte(BucketExecutionsHistory)
 var BucketEvaluationsBytes = []byte(BucketEvaluations)
 
 type BoltJobStore struct {
-	database *bolt.DB
-	clock    clock.Clock
-	watchers []*jobstore.Watcher
+	database    *bolt.DB
+	clock       clock.Clock
+	watchers    []*jobstore.Watcher
+	watcherLock sync.Mutex
 
 	inProgressIndex *Index
 	clientsIndex    *Index
@@ -186,17 +188,23 @@ func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
 	events jobstore.StoreEventType) chan jobstore.WatchEvent {
 	w := jobstore.NewWatcher(types, events)
+
+	b.watcherLock.Lock() // keep the watchers lock as narrow as possible
 	b.watchers = append(b.watchers, w)
+	b.watcherLock.Unlock()
+
 	return w.Channel()
 }
 
-func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, o []byte) {
+func (b *BoltJobStore) triggerEvent(t jobstore.StoreWatcherType, e jobstore.StoreEventType, object interface{}) {
+	data, _ := json.Marshal(object)
+
 	for _, w := range b.watchers {
 		if !w.IsWatchingEvent(e) || !w.IsWatchingType(t) {
 			return
 		}
 
-		_ = w.WriteEvent(t, e, o, false) // Do not block
+		_ = w.WriteEvent(t, e, data, false) // Do not block
 	}
 }
 
@@ -527,6 +535,10 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		return jobstore.NewErrJobAlreadyExists(job.Metadata.ID)
 	}
 
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, job)
+	})
+
 	jobIDKey := []byte(job.Metadata.ID)
 
 	jobState := model.JobState{
@@ -583,8 +595,6 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job model.Job) error {
 		}
 	}
 
-	b.triggerEvent(jobstore.JobWatcher, jobstore.CreateEvent, jobData)
-
 	return b.appendJobHistory(tx, jobState, model.JobStateNew, newJobComment)
 }
 
@@ -602,6 +612,10 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 	if err != nil {
 		return bacerrors.NewJobNotFound(jobID)
 	}
+
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, job)
+	})
 
 	// Delete the JobState from the state bucket
 	if bkt, err := NewBucketPath(BucketJobsState).Get(tx, false); err != nil {
@@ -636,9 +650,6 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 			return err
 		}
 	}
-
-	encodedJob, _ := json.Marshal(job)
-	b.triggerEvent(jobstore.JobWatcher, jobstore.DeleteEvent, encodedJob)
 
 	return nil
 }
@@ -679,6 +690,11 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		return jobstore.NewErrJobAlreadyTerminal(request.JobID, jobState.State, request.NewState)
 	}
 
+	// Setup an oncommit handler after the obvious errors/checks
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobState)
+	})
+
 	// update the job state
 	previousState := jobState.State
 	jobState.State = request.NewState
@@ -701,8 +717,6 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 			return err
 		}
 	}
-
-	b.triggerEvent(jobstore.JobWatcher, jobstore.UpdateEvent, jobStateData)
 
 	return b.appendJobHistory(tx, jobState, previousState, request.Comment)
 }
@@ -762,6 +776,10 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 		execution.Version = 1
 	}
 
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, execution)
+	})
+
 	// Check for the existence of this ID and if it doesn't already exist, then create
 	// it
 	if bucket, err := NewBucketPath(BucketExecutions).Get(tx, false); err != nil {
@@ -779,8 +797,6 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution model.ExecutionSta
 			if err != nil {
 				return err
 			}
-
-			b.triggerEvent(jobstore.ExecutionWatcher, jobstore.CreateEvent, data)
 		}
 	}
 
@@ -812,10 +828,10 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	// populate default values
 	newExecution := request.NewValues
 	if newExecution.CreateTime.IsZero() {
-		newExecution.CreateTime = b.clock.Now().UTC()
+		newExecution.CreateTime = existingExecution.CreateTime
 	}
 	if newExecution.UpdateTime.IsZero() {
-		newExecution.UpdateTime = existingExecution.CreateTime
+		newExecution.UpdateTime = b.clock.Now().UTC()
 	}
 	if newExecution.Version == 0 {
 		newExecution.Version = existingExecution.Version + 1
@@ -825,6 +841,10 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	if err != nil {
 		return err
 	}
+
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, newExecution)
+	})
 
 	data, err := json.Marshal(newExecution)
 	if err != nil {
@@ -840,9 +860,6 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 			return err
 		}
 	}
-
-	encodedExec, _ := json.Marshal(existingExecution)
-	b.triggerEvent(jobstore.ExecutionWatcher, jobstore.UpdateEvent, encodedExec)
 
 	return b.appendExecutionHistory(tx, newExecution, existingExecution.State, request.Comment)
 }
@@ -900,6 +917,10 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 		return bacerrors.NewAlreadyExists(eval.ID, "Evaluation")
 	}
 
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, eval)
+	})
+
 	data, err := json.Marshal(eval)
 	if err != nil {
 		return err
@@ -912,8 +933,6 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 			return err
 		}
 	}
-
-	b.triggerEvent(jobstore.EvaluationWatcher, jobstore.CreateEvent, data)
 
 	return nil
 }
@@ -957,12 +976,14 @@ func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
 }
 
 func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
-
 	eval, err := b.getEvaluation(tx, id)
 	if err != nil {
 		return err
 	}
-	evalData, _ := json.Marshal(eval)
+
+	tx.OnCommit(func() {
+		b.triggerEvent(jobstore.EvaluationWatcher, jobstore.DeleteEvent, eval)
+	})
 
 	if bkt, err := NewBucketPath(BucketEvaluations).Get(tx, false); err != nil {
 		return err
@@ -972,8 +993,6 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 			return err
 		}
 	}
-
-	b.triggerEvent(jobstore.EvaluationWatcher, jobstore.DeleteEvent, evalData)
 
 	return nil
 }
