@@ -1,7 +1,5 @@
 package jobstore
 
-import "time"
-
 type StoreWatcherType int
 
 const (
@@ -56,10 +54,11 @@ type WatchEvent struct {
 
 func NewWatchEvent(kind StoreWatcherType, event StoreEventType, object []byte) WatchEvent {
 	return WatchEvent{
-		Kind:      kind,
-		Event:     event,
-		Object:    append([]byte(nil), object...),
-		Timestamp: time.Now().Unix(),
+		Kind:   kind,
+		Event:  event,
+		Object: append([]byte(nil), object...),
+		// TODO(ross): Add a timestamp from the actual time of the event (rather than the
+		// time at which this event was created).
 	}
 }
 
