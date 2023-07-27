@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -270,6 +271,8 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 	}
 
 	jobSet := make(map[string]struct{})
+	tagSet := make(map[string]struct{})
+	clientSet := make(map[string]struct{})
 
 	if query.ReturnAll {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
@@ -288,17 +291,6 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 			return nil, err
 		}
 	} else {
-		if query.ClientID != "" {
-			ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
-			if err != nil {
-				return nil, err
-			}
-
-			for _, k := range ids {
-				jobSet[string(k)] = struct{}{}
-			}
-		}
-
 		for _, tag := range query.IncludeTags {
 			tagLabel := []byte(strings.ToLower(string(tag)))
 			ids, err := b.tagsIndex.List(tx, tagLabel)
@@ -307,9 +299,39 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 			}
 
 			for _, k := range ids {
-				jobSet[string(k)] = struct{}{}
+				tagSet[string(k)] = struct{}{}
 			}
 		}
+
+		if query.ClientID != "" {
+			ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
+			if err != nil {
+				return nil, err
+			}
+
+			for _, k := range ids {
+				clientSet[string(k)] = struct{}{}
+			}
+		}
+
+		clientKeys := maps.Keys(clientSet)
+		clientKeysLen := len(clientKeys)
+
+		tagKeys := maps.Keys(tagSet)
+		tagKeysLen := len(tagKeys)
+
+		var jobIDs []string
+		if clientKeysLen > 0 && tagKeysLen > 0 {
+			jobIDs = lo.Intersect(clientKeys, tagKeys)
+		} else if clientKeysLen > 0 && tagKeysLen == 0 { // being explicit
+			jobIDs = clientKeys
+		} else if tagKeysLen > 0 && clientKeysLen == 0 { // being explicit
+			jobIDs = tagKeys
+		}
+
+		lo.ForEach[string](jobIDs, func(item string, _ int) {
+			jobSet[item] = struct{}{}
+		})
 	}
 
 	for _, tag := range query.ExcludeTags {

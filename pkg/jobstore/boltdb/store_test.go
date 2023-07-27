@@ -65,7 +65,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:              "3",
 			client:          "client3",
-			tags:            []string{},
+			tags:            []string{"slow"},
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress},
 			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted},
 		},
@@ -223,6 +223,18 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
+	})
+
+	s.T().Run("by client ID and included tags", func(t *testing.T) {
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ClientID:    "client1",
+			IncludeTags: []model.IncludedTag{"fast", "slow"},
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
+		require.Equal(t, "client1", jobs[0].Metadata.ClientID)
+		require.Contains(t, jobs[0].Spec.Annotations, "fast")
+		require.NotContains(t, jobs[0].Spec.Annotations, "slow")
 	})
 
 	s.T().Run("everything sorted by id", func(t *testing.T) {
