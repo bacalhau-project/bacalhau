@@ -43,11 +43,11 @@ func (s *IndexTestSuite) TearDownTest() {
 
 func (s *IndexTestSuite) TestIndexUsage() {
 	err := s.store.database.Update(func(tx *bolt.Tx) (err error) {
-		i := NewIndex("test.tags")
+		i := NewIndex("test/tags")
 
 		label := []byte("hasgpu")
 
-		err = i.Add(tx, label, []byte("94b136a3"))
+		err = i.Add(tx, []byte("94b136a3"), label)
 		s.NoError(err)
 
 		entries, err := i.List(tx, label)
@@ -55,7 +55,7 @@ func (s *IndexTestSuite) TestIndexUsage() {
 		s.Equal(1, len(entries))
 		s.Equal("94b136a3", string(entries[0]))
 
-		err = i.Remove(tx, label, []byte("94b136a3"))
+		err = i.Remove(tx, []byte("94b136a3"), label)
 		s.NoError(err)
 
 		entries, err = i.List(tx, label)

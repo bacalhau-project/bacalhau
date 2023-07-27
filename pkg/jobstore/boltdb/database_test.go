@@ -52,7 +52,7 @@ func (s *DatabaseTestSuite) TestGetBucketDataErr() {
 
 func (s *DatabaseTestSuite) TestBucketCreation() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		final, err := NewBucketPath("root.bucket.final").Get(tx, true)
+		final, err := NewBucketPath("root/bucket/final").Get(tx, true)
 		s.NoError(err)
 		s.NotNil(final)
 
@@ -74,19 +74,19 @@ func (s *DatabaseTestSuite) TestBucketCreation() {
 
 func (s *DatabaseTestSuite) TestBucketPartialSearch() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		_, err := NewBucketPath("root.notbucket-000").Get(tx, true)
+		_, err := NewBucketPath("root/notbucket-000").Get(tx, true)
 		s.NoError(err)
 
-		_, err = NewBucketPath("root.bucket-123").Get(tx, true)
+		_, err = NewBucketPath("root/bucket-123").Get(tx, true)
 		s.NoError(err)
 
-		_, err = NewBucketPath("root.bucket-456").Get(tx, true)
+		_, err = NewBucketPath("root/bucket-456").Get(tx, true)
 		s.NoError(err)
 
 		root := tx.Bucket([]byte("root"))
 		s.NotNil(root)
 
-		keys, err := GetBucketsWithPartialName(tx, root, []byte("bucket"))
+		keys, err := GetBucketsByPrefix(tx, root, []byte("bucket"))
 		s.NoError(err)
 
 		s.Equal(2, len(keys))
@@ -125,7 +125,7 @@ func (s *DatabaseTestSuite) TestBucketCreationError() {
 	err := s.store.database.Update(func(tx *bolt.Tx) error {
 		_ = tx.Bucket([]byte("root"))
 
-		final, err := NewBucketPath("root.missing.bucket").Get(tx, false)
+		final, err := NewBucketPath("root/missing/bucket").Get(tx, false)
 		s.Error(err)
 		s.Nil(final)
 		return nil

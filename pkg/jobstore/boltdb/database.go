@@ -12,6 +12,7 @@ import (
 const (
 	DefaultDatabasePermissions   = 0600
 	DefaultBucketSearchSliceSize = 16
+	BucketPathDelimiter          = "/"
 )
 
 func GetDatabase(path string) (*bolt.DB, error) {
@@ -22,9 +23,9 @@ func GetDatabase(path string) (*bolt.DB, error) {
 	return database, nil
 }
 
-// GetBucketsWithPartialName will search through the provided bucket to find other buckets with
+// GetBucketsByPrefix will search through the provided bucket to find other buckets with
 // a name that starts with the partialname that is provided.
-func GetBucketsWithPartialName(tx *bolt.Tx, bucket *bolt.Bucket, partialName []byte) ([][]byte, error) {
+func GetBucketsByPrefix(tx *bolt.Tx, bucket *bolt.Bucket, partialName []byte) ([][]byte, error) {
 	bucketNames := make([][]byte, 0, DefaultBucketSearchSliceSize)
 
 	err := bucket.ForEachBucket(func(k []byte) error {
@@ -67,8 +68,7 @@ func NewBucketPath(sections ...string) *BucketPath {
 
 // Get retrieves the Bucket, or an error, for the bucket found at this path
 func (bp *BucketPath) Get(tx *bolt.Tx, create bool) (*bolt.Bucket, error) {
-	var err error
-	path := strings.Split(bp.path, ".")
+	path := strings.Split(bp.path, BucketPathDelimiter)
 
 	type BucketMaker interface {
 		Bucket([]byte) *bolt.Bucket
@@ -89,16 +89,11 @@ func (bp *BucketPath) Get(tx *bolt.Tx, create bool) (*bolt.Bucket, error) {
 		}
 	}
 
-	bucket, err := getBucket(tx, path[0])
-	if err != nil {
-		return nil, err
-	}
-	if bucket == nil {
-		return nil, bolt.ErrBucketNotFound
-	}
+	var bucket *bolt.Bucket
+	var bucketMaker BucketMaker = tx
 
-	for _, name := range path[1:] {
-		sub, err := getBucket(bucket, name)
+	for _, name := range path {
+		sub, err := getBucket(bucketMaker, name)
 		if err != nil {
 			return nil, err
 		}
@@ -106,13 +101,22 @@ func (bp *BucketPath) Get(tx *bolt.Tx, create bool) (*bolt.Bucket, error) {
 			return nil, bolt.ErrBucketNotFound
 		}
 		bucket = sub
+		bucketMaker = sub
 	}
 
 	return bucket, nil
 }
 
+func (bp *BucketPath) Sub(names ...[]byte) *BucketPath {
+	path := bp.path
+	for _, s := range names {
+		path = fmt.Sprintf("%s%s%s", path, BucketPathDelimiter, s)
+	}
+	return NewBucketPath(path)
+}
+
 // BucketSequenceString returns the next sequence in the provided
-// bucket, formatted as a 3 character padded string to ensure that
+// bucket, formatted as a 16 character padded string to ensure that
 // bolt's lexicographic ordering will return them in the correct
 // order
 func BucketSequenceString(_ *bolt.Tx, bucket *bolt.Bucket) string {
@@ -120,5 +124,5 @@ func BucketSequenceString(_ *bolt.Tx, bucket *bolt.Bucket) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("%03d", seqNum)
+	return fmt.Sprintf("%016d", seqNum)
 }

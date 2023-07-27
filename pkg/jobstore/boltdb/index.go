@@ -8,6 +8,24 @@ import (
 // for use as a sentinel marker to show the presence of a thing. For example
 // an index for job `94b136a3` having label `gpu`, we would create the
 // `gpu` bucket if it didn't exist, and then a bucket with the job ID.
+//
+// Most methods will take a label, and an identifier and these serve as
+// the attenuating field and the item itself.  So for a client id index,
+// where we want to have a list of job ids for each client, the index
+// will look like
+//
+//	jobs_clients
+//	   |----- CLIENT ID 1
+//	             |---- JOBID 1
+//	             |---- JOBID 2
+//	   |----- CLIENT ID 2
+//	    .....
+//
+// In this case, JOBID1 is the identifier, and CLIENT ID 1 is the subpath/label.
+// In some cases, such as indices for jobs in a specific state, we may
+// not have/need the label and so subpath can be excluded instead.
+// The primary use of this is currently the list of InProgress jobs where
+// there is no attenuator (e.g. clientid)
 type Index struct {
 	rootBucketPath *BucketPath
 }
@@ -18,50 +36,35 @@ func NewIndex(bucketPath string) *Index {
 	}
 }
 
-func (i *Index) Add(tx *bolt.Tx, label []byte, identifier []byte) error {
-	bkt, err := i.rootBucketPath.Get(tx, true)
+func (i *Index) Add(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error {
+	bkt, err := i.rootBucketPath.Sub(subpath...).Get(tx, true)
 	if err != nil {
 		return err
 	}
 
-	bktLabel, err := bkt.CreateBucketIfNotExists(label)
-	if err != nil {
-		return err
-	}
-
-	_, err = bktLabel.CreateBucketIfNotExists(identifier)
+	_, err = bkt.CreateBucketIfNotExists(identifier)
 	return err
 }
 
-func (i *Index) List(tx *bolt.Tx, label []byte) ([][]byte, error) {
-	bkt, err := i.rootBucketPath.Get(tx, false)
+func (i *Index) List(tx *bolt.Tx, subpath ...[]byte) ([][]byte, error) {
+	bkt, err := i.rootBucketPath.Sub(subpath...).Get(tx, false)
 	if err != nil {
 		return nil, err
 	}
 
-	lblBkt := bkt.Bucket(label)
-	if lblBkt == nil {
-		return nil, bolt.ErrBucketNotFound
-	}
-
 	result := make([][]byte, 0, DefaultBucketSearchSliceSize)
-	err = lblBkt.ForEachBucket(func(k []byte) error {
+	err = bkt.ForEachBucket(func(k []byte) error {
 		result = append(result, k)
 		return nil
 	})
 	return result, err
 }
 
-func (i *Index) Remove(tx *bolt.Tx, label []byte, identifier []byte) error {
-	bkt, err := i.rootBucketPath.Get(tx, true)
+func (i *Index) Remove(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error {
+	bkt, err := i.rootBucketPath.Sub(subpath...).Get(tx, false)
 	if err != nil {
 		return err
 	}
 
-	lblBkt := bkt.Bucket(label)
-	if lblBkt == nil {
-		return bolt.ErrBucketNotFound
-	}
-
-	return lblBkt.DeleteBucket(identifier)
+	return bkt.DeleteBucket(identifier)
 }
