@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/c2h5oh/datasize"
 	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type outputResult struct {
@@ -77,13 +77,20 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 	return nil
 }
 
+type OutputLimits struct {
+	MaxStdoutFileLength   datasize.ByteSize
+	MaxStdoutReturnLength datasize.ByteSize
+	MaxStderrFileLength   datasize.ByteSize
+	MaxStderrReturnLength datasize.ByteSize
+}
+
 // WriteJobResults produces files and a model.RunCommandResult in the standard
 // format, including truncating the contents of both where necessary to fit
 // within system-defined limits.
 //
 // It will consume only the bytes from the passed io.Readers that it needs to
 // correctly form job outputs. Once the command returns, the readers can close.
-func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error) (*model.RunCommandResult, error) {
+func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error, limits OutputLimits) (*model.RunCommandResult, error) {
 	result := model.NewRunCommandResult()
 
 	outputs := []outputResult{
@@ -91,18 +98,18 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		{
 			stdout,
 			model.DownloadFilenameStdout,
-			system.MaxStdoutFileLength,
+			limits.MaxStdoutFileLength,
 			&result.STDOUT,
-			system.MaxStdoutReturnLength,
+			limits.MaxStdoutReturnLength,
 			&result.StdoutTruncated,
 		},
 		// Standard error
 		{
 			stderr,
 			model.DownloadFilenameStderr,
-			system.MaxStderrFileLength,
+			limits.MaxStderrFileLength,
 			&result.STDERR,
-			system.MaxStderrReturnLength,
+			limits.MaxStderrReturnLength,
 			&result.StderrTruncated,
 		},
 		// Exit code

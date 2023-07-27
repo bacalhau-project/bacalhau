@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -87,7 +88,12 @@ func (suite *TargetAllSuite) TestCanRetryOnNodes() {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
-							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil)
+							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil, executor.OutputLimits{
+								MaxStdoutFileLength:   system.MaxStdoutFileLength,
+								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+								MaxStderrFileLength:   system.MaxStderrFileLength,
+								MaxStderrReturnLength: system.MaxStderrReturnLength,
+							})
 						}
 					},
 				},

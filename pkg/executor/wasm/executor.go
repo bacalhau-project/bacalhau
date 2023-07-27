@@ -255,7 +255,7 @@ func (e *Executor) Run(
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-	return executor.WriteJobResults(request.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
+	return executor.WriteJobResults(request.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr, request.OutputLimits)
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
