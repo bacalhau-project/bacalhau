@@ -122,6 +122,8 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		ModifyTime:  job.Metadata.CreatedAt.UnixNano(),
 	}
 
+	// TODO(ross): How can we create this evaluation in the same transaction that the CreateJob
+	// call uses.
 	err = e.store.CreateEvaluation(ctx, *eval)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for job %s", jobID)
@@ -180,6 +182,7 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			ModifyTime:  now,
 		}
 
+		// TODO(ross): How can we create this evaluation in the same transaction that we update the jobstate
 		err = e.store.CreateEvaluation(ctx, *eval)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for cancel job %s", request.JobID)
@@ -377,7 +380,8 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 
 	err := e.store.CreateEvaluation(ctx, *eval)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to save evaluation for cancel job %s", operation, jobID)
+		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to create/save evaluation for job %s", operation, jobID)
+		return
 	}
 
 	err = e.evaluationBroker.Enqueue(eval)
