@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -120,6 +121,10 @@ func NewCmd() *cobra.Command {
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs",
 	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
+		"Will use pluggable executors when set to true",
+	)
 
 	devstackCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
 	devstackCmd.Flags().AddFlagSet(flags.DisabledFeatureCLIFlags(&ODs.DisabledFeatures))
@@ -175,6 +180,8 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	var stackErr error
 	if IsNoop {
 		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+	} else if ODs.ExecutorPlugins {
+		stack, stackErr = devstack.NewExecutorPluginDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	} else {
 		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
 	}

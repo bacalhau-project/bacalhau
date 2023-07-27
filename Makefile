@@ -152,10 +152,10 @@ release-bacalhau-airflow:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau
+build: build-bacalhau build-plugins
 
 .PHONY: build-ci
-build-ci: build-bacalhau
+build-ci: build-bacalhau install-plugins
 
 .PHONY: build-dev
 build-dev: build-ci
@@ -249,7 +249,7 @@ images: docker/.pulled
 # Target: clean
 ################################################################################
 .PHONY: clean
-clean:
+clean: clean-plugins
 	${GO} clean
 	${RM} -r bin/*
 	${RM} dist/bacalhau_*
@@ -443,3 +443,36 @@ security:
 
 release: build-bacalhau
 	cp bin/bacalhau .
+
+build-plugins: plugins-build
+clean-plugins: plugins-clean
+install-plugins: plugins-install
+
+# TODO make the plugin path configurable instead of using the bacalhau config path.
+BACALHAU_CONFIG_PATH := $(shell echo $$BACALHAU_PATH)
+INSTALL_PLUGINS_DEST := $(if $(BACALHAU_CONFIG_PATH),$(BACALHAU_CONFIG_PATH)plugins/,~/.bacalhau/plugins/)
+
+EXECUTOR_PLUGINS := $(wildcard ./pkg/executor/plugins/executors/*/.)
+
+.PHONY: plugins-build $(EXECUTOR_PLUGINS)
+
+plugins-build: $(EXECUTOR_PLUGINS)
+
+$(EXECUTOR_PLUGINS):
+	$(MAKE) -C $@
+
+.PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+
+$(addsuffix .clean,$(EXECUTOR_PLUGINS)):
+	$(MAKE) -C $(basename $@) clean
+
+
+.PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
+
+$(addsuffix .install,$(EXECUTOR_PLUGINS)):
+	mkdir -p $(INSTALL_PLUGINS_DEST)
+	cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)

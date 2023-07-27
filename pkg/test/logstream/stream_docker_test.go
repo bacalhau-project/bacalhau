@@ -77,6 +77,8 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	}()
 
 	go func() {
+		// TODO(forrest): [correctness] we need to wait a little for the container to become active.
+		time.Sleep(time.Second * 3)
 		reader, err := waitForOutputStream(ctx, executionID, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), reader)
