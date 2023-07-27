@@ -37,17 +37,12 @@ func (p *bidStrategyFromExecutor) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	executor, err := p.provider.Get(ctx, request.Job.Spec.Engine)
+	e, err := p.provider.Get(ctx, request.Job.Spec.Engine)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}
 
-	strategy, err := executor.GetSemanticBidStrategy(ctx)
-	if err != nil {
-		return bidstrategy.BidStrategyResponse{}, err
-	}
-
-	return strategy.ShouldBid(ctx, request)
+	return e.ShouldBid(ctx, request)
 }
 
 // ShouldBidBasedOnUsage implements bidstrategy.BidStrategy
@@ -56,17 +51,12 @@ func (p *bidStrategyFromExecutor) ShouldBidBasedOnUsage(
 	request bidstrategy.BidStrategyRequest,
 	resourceUsage model.ResourceUsageData,
 ) (bidstrategy.BidStrategyResponse, error) {
-	executor, err := p.provider.Get(ctx, request.Job.Spec.Engine)
+	e, err := p.provider.Get(ctx, request.Job.Spec.Engine)
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, err
 	}
 
-	strategy, err := executor.GetResourceBidStrategy(ctx)
-	if err != nil {
-		return bidstrategy.BidStrategyResponse{}, err
-	}
-
-	return strategy.ShouldBidBasedOnUsage(ctx, request, resourceUsage)
+	return e.ShouldBidBasedOnUsage(ctx, request, resourceUsage)
 }
 
 var _ bidstrategy.ResourceBidStrategy = (*bidStrategyFromExecutor)(nil)

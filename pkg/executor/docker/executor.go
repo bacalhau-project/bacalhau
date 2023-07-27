@@ -31,6 +31,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 const NanoCPUCoefficient = 1000000000
@@ -43,10 +44,10 @@ const (
 
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
-	ID string
-	// the storage providers we can implement for a job
+	ID          string
 	activeFlags map[string]chan struct{}
 	client      *docker.Client
+	cancellers  generic.SyncMap[string, context.CancelFunc]
 }
 
 func NewExecutor(
@@ -66,7 +67,6 @@ func NewExecutor(
 	}
 
 	cm.RegisterCallbackWithContext(de.cleanupAll)
-
 	return de, nil
 }
 
@@ -75,13 +75,20 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return e.client.IsInstalled(ctx), nil
 }
 
-// GetBidStrategy implements executor.Executor
-func (e *Executor) GetSemanticBidStrategy(context.Context) (bidstrategy.SemanticBidStrategy, error) {
-	return semantic.NewImagePlatformBidStrategy(e.client), nil
+func (e *Executor) ShouldBid(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+) (bidstrategy.BidStrategyResponse, error) {
+	return semantic.NewImagePlatformBidStrategy(e.client).ShouldBid(ctx, request)
 }
 
-func (e *Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBidStrategy, error) {
-	return resource.NewChainedResourceBidStrategy(), nil
+func (e *Executor) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	usage model.ResourceUsageData,
+) (bidstrategy.BidStrategyResponse, error) {
+	// TODO(forrest): should this just return true always?
+	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
 func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
@@ -97,6 +104,17 @@ func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
+
+	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
+	ctx, cancel := context.WithCancel(ctx)
+	e.cancellers.Put(request.ExecutionID, cancel)
+	defer func() {
+		if cancelFn, found := e.cancellers.Get(request.ExecutionID); found {
+			e.cancellers.Delete(request.ExecutionID)
+			cancelFn()
+		}
+	}()
+
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
@@ -268,6 +286,7 @@ func (e *Executor) Run(
 	detachedContext, cancel := context.WithTimeout(pkgUtil.NewDetachedContext(ctx), 3*time.Second)
 	defer cancel()
 	stdoutPipe, stderrPipe, logsErr := e.client.FollowLogs(detachedContext, jobContainer.ID)
+
 	log.Ctx(detachedContext).Debug().Err(logsErr).Msg("Captured stdout/stderr for container")
 
 	return executor.WriteJobResults(
@@ -276,7 +295,19 @@ func (e *Executor) Run(
 		stderrPipe,
 		int(containerExitStatusCode),
 		multierr.Combine(containerError, logsErr),
+		request.OutputLimits,
 	)
+}
+
+func (e *Executor) Cancel(ctx context.Context, id string) error {
+	log.Ctx(ctx).Trace().Msgf("canceling execution %s", id)
+	if cancel, found := e.cancellers.Get(id); found {
+		e.cancellers.Delete(id)
+		cancel()
+	}
+	log.Ctx(ctx).Debug().Msgf("canceled execution %s", id)
+
+	return nil
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {
