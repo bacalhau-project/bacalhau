@@ -62,6 +62,14 @@ type NodeDependencyInjector struct {
 	PublishersFactory       PublishersFactory
 }
 
+func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
+	return NodeDependencyInjector{
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
+		ExecutorsFactory:        NewPluginExecutorFactory(),
+		PublishersFactory:       NewStandardPublishersFactory(),
+	}
+}
+
 func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),

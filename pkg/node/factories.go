@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -82,6 +84,39 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 				},
 			)
+			if err != nil {
+				return nil, err
+			}
+			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+		})
+}
+
+func NewPluginExecutorFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			provider, err := executor_util.NewPluginExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				executor_util.PluginExecutorOptions{
+					Plugins: []executor_util.PluginExecutorConfig{
+						{
+							Name:             "Docker",
+							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
+							Command:          "docker",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+						{
+							Name:             "Wasm",
+							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
+							Command:          "wasm",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+					},
+				})
 			if err != nil {
 				return nil, err
 			}

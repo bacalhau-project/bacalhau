@@ -7,11 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/imdario/mergo"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -37,6 +38,7 @@ type DevStackOptions struct {
 	DisabledFeatures           node.FeatureConfig
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
+	ExecutorPlugins            bool // when true pluggable executors will be used.
 }
 
 type DevStack struct {
@@ -70,6 +72,16 @@ func NewDevStackForRunLocal(
 		computeConfig,
 		node.NewRequesterConfigWithDefaults(),
 	)
+}
+
+func NewExecutorPluginDevStack(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	options DevStackOptions,
+	computeConfig node.ComputeConfig,
+	requesterNodeConfig node.RequesterConfig,
+) (*DevStack, error) {
+	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewExecutorPluginNodeDependencyInjector())
 }
 
 func NewStandardDevStack(

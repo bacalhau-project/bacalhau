@@ -1,0 +1,125 @@
+
+syntax = "proto3";
+package proto;
+
+message RunCommandRequest {
+  bytes Params = 1;
+}
+
+message RunCommandResponse {
+  bytes Params = 1;
+}
+
+message CancelCommandRequest {
+  string ExecutionID =1;
+}
+
+message CancelCommandResponse {
+
+}
+
+message IsInstalledRequest {
+
+}
+
+message IsInstalledResponse {
+  bool Installed = 1;
+}
+
+message ShouldBidRequest {
+  bytes BidRequest = 1;
+}
+
+message ShouldBidBasedOnUsageRequest {
+  bytes BidRequest = 1;
+  bytes Usage = 2;
+}
+
+// shared by both semantic and resource bid
+message ShouldBidResponse {
+  bytes BidResponse = 1;
+}
+
+message OutputStreamRequest {
+  string ExecutionID = 1;
+  bool History = 2;
+  bool Follow = 3;
+}
+
+message OutputStreamResponse {
+  bytes Data =1;
+}
+
+service Executor {
+  rpc Run(RunCommandRequest) returns (RunCommandResponse);
+  rpc Cancel(CancelCommandRequest) returns (CancelCommandResponse);
+  rpc IsInstalled(IsInstalledRequest) returns (IsInstalledResponse);
+  rpc ShouldBid(ShouldBidRequest) returns (ShouldBidResponse);
+  rpc ShouldBidBasedOnUsage(ShouldBidBasedOnUsageRequest) returns (ShouldBidResponse);
+  rpc GetOutputStream(OutputStreamRequest) returns (stream OutputStreamResponse);
+}
+
+
+// This is going to be really had to change as we update the spec, so serializing it as json on client and server.
+/*
+message RunCommandRequest {
+  string JobID = 1;
+  string ExecutionID = 2;
+  ResourceUsageConfig resources = 3;
+  NetworkConfig Network = 4;
+  repeated StorageSpec outputs = 5;
+  repeated PreparedStorage inputs = 6;
+  string ResultsDir = 7;
+  Arguments EngineParams = 8;
+}
+
+message ResourceUsageConfig {
+  string CPU = 1;
+  string Memory = 2;
+  string Disk = 3;
+  string GPU = 4; // unsigned integer string
+}
+
+message NetworkConfig {
+  int32 Type = 1;
+  repeated string Domains = 2;
+}
+
+message StorageSpec {
+  int32 StorageSource = 1;
+  string Name = 2;
+  string CID = 3;
+  string URL = 4;
+  S3StorageSpec S3 = 5;
+  string Repo = 6;
+  string SourcePath = 7;
+  bool ReadWrite = 8;
+  string Path = 9;
+  map<string, string> Metadata = 10;
+}
+
+message S3StorageSpec {
+  string Bucket = 1;
+  string Key = 2;
+  string ChecksumSHA256 = 3;
+  string VersionID = 4;
+  string Endpoint = 5;
+  string Region = 6;
+}
+
+message PreparedStorage {
+  StorageSpec Spec = 1;
+  StorageVolume Volume = 2;
+}
+
+message StorageVolume {
+  int32 Type = 1;
+  bool ReadOnly = 2;
+  string Source = 3;
+  string Target = 4;
+}
+
+message Arguments {
+  bytes Params = 1;
+}
+*/
