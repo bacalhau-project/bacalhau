@@ -444,9 +444,11 @@ security:
 release: build-bacalhau
 	cp bin/bacalhau .
 
-build-plugins: plugins-build
-clean-plugins: plugins-clean
-install-plugins: plugins-install
+ifeq ($(OS),Windows_NT)
+    detected_OS := Windows
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
 
 # TODO make the plugin path configurable instead of using the bacalhau config path.
 BACALHAU_CONFIG_PATH := $(shell echo $$BACALHAU_PATH)
@@ -454,25 +456,34 @@ INSTALL_PLUGINS_DEST := $(if $(BACALHAU_CONFIG_PATH),$(BACALHAU_CONFIG_PATH)plug
 
 EXECUTOR_PLUGINS := $(wildcard ./pkg/executor/plugins/executors/*/.)
 
-.PHONY: plugins-build $(EXECUTOR_PLUGINS)
+# TODO fix install on windows
+ifeq ($(detected_OS),Windows)
+    build-plugins clean-plugins install-plugins:
+	@echo "Skipping executor plugins on Windows"
+else
+    build-plugins: plugins-build
+    clean-plugins: plugins-clean
+    install-plugins: plugins-install
 
-plugins-build: $(EXECUTOR_PLUGINS)
+    .PHONY: plugins-build $(EXECUTOR_PLUGINS)
 
-$(EXECUTOR_PLUGINS):
-	$(MAKE) -C $@
+    plugins-build: $(EXECUTOR_PLUGINS)
 
-.PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+    $(EXECUTOR_PLUGINS):
+	    $(MAKE) -C $@
 
-plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
+    .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
 
-$(addsuffix .clean,$(EXECUTOR_PLUGINS)):
-	$(MAKE) -C $(basename $@) clean
+    plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
 
+    $(addsuffix .clean,$(EXECUTOR_PLUGINS)):
+	    $(MAKE) -C $(basename $@) clean
 
-.PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
+    .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
 
-plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
+    plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
 
-$(addsuffix .install,$(EXECUTOR_PLUGINS)):
-	mkdir -p $(INSTALL_PLUGINS_DEST)
-	cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+    $(addsuffix .install,$(EXECUTOR_PLUGINS)):
+	    mkdir -p $(INSTALL_PLUGINS_DEST)
+	    cp $(basename $@)/bin/* $(INSTALL_PLUGINS_DEST)
+endif
