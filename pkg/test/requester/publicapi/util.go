@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -38,7 +37,6 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		os.Remove(dbFile)
 		return nil
 	})
-	datastore, _ := boltjobstore.NewBoltJobStore(dbFile)
 
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
@@ -51,7 +49,6 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
-		JobStore:                  datastore,
 		ComputeConfig:             node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
 		APIServerConfig:           config,

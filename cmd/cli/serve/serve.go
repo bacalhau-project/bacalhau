@@ -18,9 +18,6 @@ import (
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -303,18 +300,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		return err
 	}
 
-	var datastore jobstore.Store
-	jobStoreConf := config.GetJobStoreConfig(libp2pHost.ID().String())
-	if jobStoreConf.StoreType == config.JobStoreBoltDB {
-		datastore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
-		if err != nil {
-			return fmt.Errorf("error creating datastore: %w", err)
-		}
-		cm.RegisterCallbackWithContext(datastore.Close)
-	} else {
-		datastore = inmemory.NewInMemoryJobStore()
-	}
-
 	AutoLabels := AutoOutputLabels()
 	combinedMap := make(map[string]string)
 	for key, value := range AutoLabels {
@@ -328,7 +313,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	nodeConfig := node.NodeConfig{
 		IPFSClient:            ipfsClient,
 		CleanupManager:        cm,
-		JobStore:              datastore,
 		Host:                  libp2pHost,
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
