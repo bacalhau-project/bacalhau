@@ -40,7 +40,7 @@ func NewNoopExecutorsFactory() node.ExecutorsFactory {
 
 func NewNoopExecutorsFactoryWithConfig(config noop_executor.ExecutorConfig) node.ExecutorsFactory {
 	return node.ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig node.NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
+		func(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 			return executor_util.NewNoopExecutors(config), nil
 		})
 }

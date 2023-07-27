@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func SetupTestWithDefaultConfigs(
@@ -63,14 +63,13 @@ type mixedExecutorFactory struct {
 func (m *mixedExecutorFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error) {
-	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig, storages)
+	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig, storages)
+	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -122,7 +122,6 @@ func NewNoopStorageProvider(
 func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID)
@@ -130,7 +129,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	wasmExecutor, err := wasm.NewExecutor(ctx, storageProvider)
+	wasmExecutor, err := wasm.NewExecutor()
 	if err != nil {
 		return nil, err
 	}
