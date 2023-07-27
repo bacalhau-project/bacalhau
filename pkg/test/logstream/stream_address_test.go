@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -56,6 +57,12 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 				Inputs:       nil,
 				ResultsDir:   "/tmp",
 				EngineParams: args,
+				OutputLimits: executor.OutputLimits{
+					MaxStdoutFileLength:   system.MaxStdoutFileLength,
+					MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+					MaxStderrFileLength:   system.MaxStderrFileLength,
+					MaxStderrReturnLength: system.MaxStderrReturnLength,
+				},
 			},
 		)
 	}()

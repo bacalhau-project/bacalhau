@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -64,6 +65,12 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 				Inputs:       nil,
 				ResultsDir:   "/tmp",
 				EngineParams: args,
+				OutputLimits: executor.OutputLimits{
+					MaxStdoutFileLength:   system.MaxStdoutFileLength,
+					MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+					MaxStderrFileLength:   system.MaxStderrFileLength,
+					MaxStderrReturnLength: system.MaxStderrReturnLength,
+				},
 			},
 		)
 		fail <- true

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/stretchr/testify/require"
@@ -105,6 +106,12 @@ func TestJobResult(t *testing.T) {
 		strings.NewReader("standard error"),
 		123,
 		nil,
+		OutputLimits{
+			MaxStdoutFileLength:   system.MaxStdoutFileLength,
+			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+			MaxStderrFileLength:   system.MaxStderrFileLength,
+			MaxStderrReturnLength: system.MaxStderrReturnLength,
+		},
 	)
 
 	require.NoError(t, err)
