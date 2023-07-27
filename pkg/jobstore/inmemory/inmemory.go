@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 const newJobComment = "Job created"
@@ -30,9 +31,18 @@ type InMemoryJobStore struct {
 	watchers    []jobstore.Watcher
 	watcherLock sync.Mutex
 	mtx         sync.RWMutex
+	clock       clock.Clock
 }
 
-func NewInMemoryJobStore() *InMemoryJobStore {
+type Option func(store *(InMemoryJobStore))
+
+func WithClock(clock clock.Clock) Option {
+	return func(store *InMemoryJobStore) {
+		store.clock = clock
+	}
+}
+
+func NewInMemoryJobStore(options ...Option) *InMemoryJobStore {
 	res := &InMemoryJobStore{
 		jobs:        make(map[string]model.Job),
 		states:      make(map[string]model.JobState),
@@ -40,7 +50,12 @@ func NewInMemoryJobStore() *InMemoryJobStore {
 		inprogress:  make(map[string]struct{}),
 		evaluations: make(map[string]models.Evaluation),
 		watchers:    make([]jobstore.Watcher, 1),
+		clock:       clock.New(),
 	}
+	for _, opt := range options {
+		opt(res)
+	}
+
 	res.mtx.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
 		Id:        "InMemoryJobStore.mtx",
@@ -219,8 +234,8 @@ func (d *InMemoryJobStore) CreateJob(_ context.Context, job model.Job) error {
 		JobID:      job.Metadata.ID,
 		State:      model.JobStateNew,
 		Version:    1,
-		CreateTime: time.Now().UTC(),
-		UpdateTime: time.Now().UTC(),
+		CreateTime: d.clock.Now().UTC(),
+		UpdateTime: d.clock.Now().UTC(),
 	}
 	d.states[job.Metadata.ID] = jobState
 	d.inprogress[job.Metadata.ID] = struct{}{}
@@ -294,7 +309,7 @@ func (d *InMemoryJobStore) UpdateJobState(_ context.Context, request jobstore.Up
 	previousState := jobState.State
 	jobState.State = request.NewState
 	jobState.Version++
-	jobState.UpdateTime = time.Now()
+	jobState.UpdateTime = d.clock.Now().UTC()
 	d.states[request.JobID] = jobState
 	if request.NewState.IsTerminal() {
 		delete(d.inprogress, request.JobID)
@@ -319,7 +334,7 @@ func (d *InMemoryJobStore) CreateExecution(_ context.Context, execution model.Ex
 		}
 	}
 	if execution.CreateTime.IsZero() {
-		execution.CreateTime = time.Now()
+		execution.CreateTime = d.clock.Now().UTC()
 	}
 	if execution.UpdateTime.IsZero() {
 		execution.UpdateTime = execution.CreateTime
@@ -372,7 +387,7 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 		newExecution.CreateTime = existingExecution.CreateTime
 	}
 	if newExecution.UpdateTime.IsZero() {
-		newExecution.UpdateTime = time.Now().UTC()
+		newExecution.UpdateTime = d.clock.Now().UTC()
 	}
 	if newExecution.Version == 0 {
 		newExecution.Version = existingExecution.Version + 1
