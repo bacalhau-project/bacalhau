@@ -26,16 +26,19 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
+import bacalhau_sdk
+print(bacalhau_sdk)
+print(bacalhau_sdk.__version__)
 from bacalhau_sdk.api import submit, results
 from bacalhau_sdk.config import get_client_id
 
 import logging
 
-# TODO (enricorotundo) add more metadata, api port and host, bacalhau dir, etc.
+
 @dataclass
 class Metadata:
     job_id: str
-    
+
     def to_json(self):
         return json.dumps(self.__dict__)
 
@@ -43,12 +46,10 @@ class Metadata:
 class BacalhauAgent(AgentBase):
     """
     This agent submits a job to the Bacalhau API.
-    All calls are idempotent
+    All calls are idempotent.
     """
 
     def __init__(self):
-        # self.job_spec = job_spec
-        # self.api_version = api_version
         self._logger = logging.getLogger(__name__)
         super().__init__(task_type="bacalhau_task")
 
@@ -93,7 +94,7 @@ class BacalhauAgent(AgentBase):
         Returns:
             CreateTaskResponse: _description_
         """
-        
+
         if not inputs:
             raise ValueError("inputs cannot be None")
 
@@ -118,7 +119,9 @@ class BacalhauAgent(AgentBase):
             pass
         self._logger.debug(f"create res: {res}")
         metadata = Metadata(job_id=str(res.job.metadata.id))
-        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
+        return CreateTaskResponse(
+            resource_meta=json.dumps(asdict(metadata)).encode("utf-8")
+        )
 
     def get(
         self, context: grpc.ServicerContext, resource_meta: bytes
@@ -129,7 +132,7 @@ class BacalhauAgent(AgentBase):
             self._logger.error("error")
             state = PERMANENT_FAILURE
             return GetTaskResponse(resource=Resource(state=state))
-        
+
         state = SUCCEEDED
         ctx = FlyteContextManager.current_context()
         res = literals.LiteralMap(
@@ -144,13 +147,11 @@ class BacalhauAgent(AgentBase):
         ).to_flyte_idl()
         return GetTaskResponse(resource=Resource(state=state, outputs=res))
 
-
     def delete(
         self, context: grpc.ServicerContext, resource_meta: bytes
     ) -> DeleteTaskResponse:
-        """ https://github.com/bacalhau-project/bacalhau/issues/2688 """
+        """https://github.com/bacalhau-project/bacalhau/issues/2688"""
         return
-    
 
 
 AgentRegistry.register(BacalhauAgent())

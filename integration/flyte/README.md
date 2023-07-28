@@ -16,7 +16,6 @@ Similar to https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#
 virtualenv ~/.virtualenvs/flytekit-bacalhau
 source ~/.virtualenvs/flytekit-bacalhau/bin/activate
 make setup
-# pip install -e . # not necessary
 ```
 
 > It is important to maintain separate virtualenvs for flytekit development and flytekit use because installing a Python library in editable mode will link it to your source code. The behavior will change as you work on the code, check out different branches, etc.
