@@ -165,28 +165,16 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	computeConfig := serve.GetComputeConfig(OS)
 	requestorConfig := serve.GetRequesterConfig(OS)
 
-	var options []devstack.ConfigOption
+	options := append(ODs.Options(),
+		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requestorConfig),
+	)
 	if IsNoop {
-		options = append(
-			ODs.Options(),
-			devstack.WithComputeConfig(computeConfig),
-			devstack.WithRequesterConfig(requestorConfig),
-			devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()),
-		)
+		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
 	} else if ODs.ExecutorPlugins {
-		options = append(
-			ODs.Options(),
-			devstack.WithComputeConfig(computeConfig),
-			devstack.WithRequesterConfig(requestorConfig),
-			devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()),
-		)
+		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
 	} else {
-		options = append(
-			ODs.Options(),
-			devstack.WithComputeConfig(computeConfig),
-			devstack.WithRequesterConfig(requestorConfig),
-			devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()),
-		)
+		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
 	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
