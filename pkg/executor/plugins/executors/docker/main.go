@@ -25,6 +25,7 @@ var HandshakeConfig = plugin.HandshakeConfig{
 }
 
 func main() { // Create an hclog.Logger
+	ctx := context.Background()
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:   "docker-plugin",
 		Output: os.Stderr,
@@ -32,14 +33,14 @@ func main() { // Create an hclog.Logger
 	})
 	cm := system.NewCleanupManager()
 	dockerExecutor, err := docker.NewExecutor(
-		context.TODO(),
+		ctx,
 		cm,
 		"bacalhau-pluggable-executor-docker",
 	)
 	if err != nil {
 		logger.Error(err.Error())
 	}
-	defer cm.Cleanup(context.TODO())
+	defer cm.Cleanup(ctx)
 
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: HandshakeConfig,
