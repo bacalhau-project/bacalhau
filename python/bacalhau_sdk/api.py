@@ -3,10 +3,9 @@
 import json
 
 from bacalhau_apiclient.api import job_api
+from bacalhau_apiclient.models.cancel_request import CancelRequest
 from bacalhau_apiclient.models.events_request import EventsRequest
 from bacalhau_apiclient.models.list_request import ListRequest
-from bacalhau_apiclient.models.cancel_request import CancelRequest
-from bacalhau_apiclient.models.job_cancel_payload import JobCancelPayload
 from bacalhau_apiclient.models.state_request import StateRequest
 from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.rest import ApiException
@@ -35,9 +34,9 @@ def submit(data: dict):
     )
     return api_instance.submit(submit_req)
 
-def cancel(job_id: str):
-    """Cancels a job on the server. """
 
+def cancel(job_id: str):
+    """Cancels a job on the server."""
     payload = dict(
         ClientID=get_client_id(),
         JobID=job_id,
