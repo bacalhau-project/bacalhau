@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -30,7 +31,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	for i := 0; i < nodeCount; i++ {
 		nodeOverrides[i] = nodeOverride
 	}
-	stack := testutils.SetupTestDevStack(context.TODO(), t,
+	stack := teststack.Setup(context.TODO(), t,
 		devstack.WithNumberOfHybridNodes(nodeCount),
 		devstack.WithNodeOverrides(nodeOverrides...),
 	)

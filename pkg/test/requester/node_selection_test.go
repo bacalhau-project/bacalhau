@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -17,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -58,7 +60,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
-	stack := testutils.SetupTestDevStack(ctx,
+	stack := teststack.Setup(ctx,
 		s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(3),
@@ -71,14 +73,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 				},
 			),
 		),
-		devstack.WithDependencyInjector(
-			node.NodeDependencyInjector{
-				ExecutorsFactory: &testutils.MixedExecutorFactory{
-					StandardFactory: node.NewStandardExecutorsFactory(),
-					NoopFactory:     devstack.NewNoopExecutorsFactory(),
-				},
-			},
-		),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
 	s.requester = stack.Nodes[0]

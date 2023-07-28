@@ -14,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 const testNodeCount = 1
@@ -26,7 +26,7 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack := testutils.SetupTestDevStack(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
+	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
 	require.NoError(t, err)
 

@@ -188,7 +188,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 			devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()),
 		)
 	}
-	stack, err := devstack.NewDevStack(ctx, cm, options...)
+	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
 		return err
 	}

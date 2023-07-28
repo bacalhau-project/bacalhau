@@ -65,7 +65,8 @@ type DevStack struct {
 	PublicIPFSMode bool
 }
 
-func NewDevStack(
+//nolint:funlen,gocyclo
+func Setup(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	opts ...ConfigOption,
@@ -76,11 +77,11 @@ func NewDevStack(
 	}
 
 	if err := stackConfig.Validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validating devstask config: %w", err)
 	}
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.Setup")
 	defer span.End()
 
 	var nodes []*node.Node

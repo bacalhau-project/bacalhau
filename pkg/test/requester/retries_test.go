@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -122,7 +123,7 @@ func (s *RetriesSuite) SetupSuite() {
 	}
 	ctx := context.Background()
 
-	stack := testutils.SetupTestDevStack(ctx, s.T(),
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
 		devstack.WithNodeOverrides(nodeOverrides...),
@@ -134,12 +135,7 @@ func (s *RetriesSuite) SetupSuite() {
 				},
 			),
 		),
-		devstack.WithDependencyInjector(node.NodeDependencyInjector{
-			ExecutorsFactory: &testutils.MixedExecutorFactory{
-				StandardFactory: node.NewStandardExecutorsFactory(),
-				NoopFactory:     devstack.NewNoopExecutorsFactory(),
-			},
-		}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
 	s.requester = stack.Nodes[0]

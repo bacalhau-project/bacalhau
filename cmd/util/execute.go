@@ -24,7 +24,7 @@ func ExecuteJob(ctx context.Context,
 	cm := GetCleanupManager(ctx)
 
 	if runtimeSettings.IsLocal {
-		stack, err := devstack.NewDevStack(ctx, cm,
+		stack, err := devstack.Setup(ctx, cm,
 			devstack.WithNumberOfHybridNodes(1),
 			devstack.WithPublicIPFSMode(true),
 			devstack.WithComputeConfig(node.ComputeConfig{

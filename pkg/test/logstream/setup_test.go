@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type LogStreamTestSuite struct {
@@ -33,7 +33,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.stack = testutil.SetupTestDevStack(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
+	s.stack = testutil.Setup(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
 }
 
 func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {

@@ -1,6 +1,6 @@
 // Package testutils collects common test utilities.
 // Functions here create test stacks meant for integration tests
-package testutils
+package teststack
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -38,7 +39,7 @@ func testDevStackConfig() *devstack.DevStackOptions {
 	}
 }
 
-func SetupTestDevStack(
+func Setup(
 	ctx context.Context,
 	t testing.TB,
 	opts ...devstack.ConfigOption,
@@ -48,9 +49,9 @@ func SetupTestDevStack(
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.NewDevStack(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
+	stack, err := devstack.Setup(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
 	if err != nil {
-		t.Fatalf("creating devstack: %s", err)
+		t.Fatalf("creating teststack: %s", err)
 	}
 
 	// Wait for nodes to have announced their presence.
@@ -62,45 +63,15 @@ func SetupTestDevStack(
 	return stack
 }
 
-type MixedExecutorFactory struct {
-	StandardFactory, NoopFactory node.ExecutorsFactory
-}
-
-// Get implements node.ExecutorsFactory
-func (m *MixedExecutorFactory) Get(
-	ctx context.Context,
-	nodeConfig node.NodeConfig,
-) (executor.ExecutorProvider, error) {
-	stdProvider, err := m.StandardFactory.Get(ctx, nodeConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	noopProvider, err := m.NoopFactory.Get(ctx, nodeConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.ChainedProvider[model.Engine, executor.Executor]{
-		Providers: []model.Provider[model.Engine, executor.Executor]{
-			stdProvider,
-			model.NewMappedProvider(map[model.Engine]executor.Executor{
-				model.EngineNoop: noopExecutor,
-			}),
+func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOption {
+	return devstack.WithDependencyInjector(node.NodeDependencyInjector{
+		ExecutorsFactory: &mixedExecutorFactory{
+			standardFactory: node.NewStandardExecutorsFactory(),
+			noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(noopConfig),
 		},
-	}, nil
+	})
 }
 
-var _ node.ExecutorsFactory = (*MixedExecutorFactory)(nil)
-
-// Returns whether the requester node(s) in the stack have discovered all of the
-// other nodes in the stack and have complete information for them (i.e. each
-// node has actually announced itself.)
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
@@ -127,3 +98,43 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 
 	return true
 }
+
+type mixedExecutorFactory struct {
+	standardFactory, noopFactory node.ExecutorsFactory
+}
+
+// Get implements node.ExecutorsFactory
+func (m *mixedExecutorFactory) Get(
+	ctx context.Context,
+	nodeConfig node.NodeConfig,
+) (executor.ExecutorProvider, error) {
+	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	noopExecutor, err := noopProvider.Get(ctx, model.EngineNoop)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.ChainedProvider[model.Engine, executor.Executor]{
+		Providers: []model.Provider[model.Engine, executor.Executor]{
+			stdProvider,
+			model.NewMappedProvider(map[model.Engine]executor.Executor{
+				model.EngineNoop: noopExecutor,
+			}),
+		},
+	}, nil
+}
+
+var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
+
+// Returns whether the requester node(s) in the stack have discovered all of the
+// other nodes in the stack and have complete information for them (i.e. each
+// node has actually announced itself.)

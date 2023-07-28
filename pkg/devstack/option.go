@@ -68,13 +68,13 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Int("BadComputeActors", o.NumberOfBadComputeActors).
 		Int("BadRequesterActors", o.NumberOfBadRequesterActors).
 		Str("Peer", o.Peer).
-		Bool("PublicIPFSMode", o.PublicIPFSMode).
 		Str("EstuaryAPIKey", o.EstuaryAPIKey).
 		Str("CPUProfilingFile", o.CPUProfilingFile).
 		Str("MemoryProfilingFile", o.MemoryProfilingFile).
 		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
 		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
+		Bool("PublicIPFSMode", o.PublicIPFSMode).
 		Bool("ExecutorPlugins", o.ExecutorPlugins)
 }
 

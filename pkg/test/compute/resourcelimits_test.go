@@ -23,6 +23,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -122,7 +123,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return capacity.ConvertBytesString(volume.CID), nil
 		}
 
-		stack := testutils.SetupTestDevStack(ctx,
+		stack := teststack.Setup(ctx,
 			suite.T(),
 			devstack.WithNumberOfHybridNodes(1),
 			devstack.WithComputeConfig(node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -130,15 +131,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				IgnorePhysicalResourceLimits:  true,                // in case circleci is running on a small machine
 				ExecutorBufferBackoffDuration: 1 * time.Nanosecond, // disable backoff to allow moving from queue to running quickly for this test
 			})),
-			devstack.WithDependencyInjector(node.NodeDependencyInjector{
-				ExecutorsFactory: &testutils.MixedExecutorFactory{
-					StandardFactory: node.NewStandardExecutorsFactory(),
-					NoopFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-						ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-							JobHandler:    jobHandler,
-							GetVolumeSize: getVolumeSizeHandler,
-						},
-					}),
+			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
+				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+					JobHandler:    jobHandler,
+					GetVolumeSize: getVolumeSizeHandler,
 				},
 			}),
 		)
@@ -288,7 +284,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		return &model.RunCommandResult{}, nil
 	}
 
-	stack := testutils.SetupTestDevStack(ctx,
+	stack := teststack.Setup(ctx,
 		suite.T(),
 		devstack.WithNumberOfHybridNodes(nodeCount),
 		devstack.WithComputeConfig(node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -300,16 +296,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			},
 			IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
 		})),
-		devstack.WithDependencyInjector(node.NodeDependencyInjector{
-			ExecutorsFactory: &testutils.MixedExecutorFactory{
-				StandardFactory: node.NewStandardExecutorsFactory(),
-				NoopFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
-					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-						JobHandler: jobHandler,
-					},
-				}),
-			},
-		}),
+		teststack.WithNoopExecutor(
+			noop_executor.ExecutorConfig{
+				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+					JobHandler: jobHandler,
+				},
+			}),
 	)
 
 	// for the requester node to pick up the nodeInfo messages

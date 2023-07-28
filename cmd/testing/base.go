@@ -8,11 +8,12 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type BaseSuite struct {
@@ -29,7 +30,7 @@ func (s *BaseSuite) SetupTest() {
 	util.Fatal = util.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack := testutils.SetupTestDevStack(ctx, s.T(),
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithComputeConfig(
 			node.NewComputeConfigWith(node.ComputeConfigParams{
@@ -45,12 +46,7 @@ func (s *BaseSuite) SetupTest() {
 				},
 			),
 		),
-		devstack.WithDependencyInjector(node.NodeDependencyInjector{
-			ExecutorsFactory: &testutils.MixedExecutorFactory{
-				StandardFactory: node.NewStandardExecutorsFactory(),
-				NoopFactory:     devstack.NewNoopExecutorsFactory(),
-			},
-		}),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address

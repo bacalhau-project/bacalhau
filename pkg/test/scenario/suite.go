@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type ScenarioTestSuite interface {
@@ -83,16 +83,11 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	if config.ComputeConfig.TotalResourceLimits == empty {
 		config.ComputeConfig = node.NewComputeConfigWithDefaults()
 	}
-	stack := testutils.SetupTestDevStack(s.Ctx, s.T(),
+	stack := testutils.Setup(s.Ctx, s.T(),
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
-			devstack.WithDependencyInjector(node.NodeDependencyInjector{
-				ExecutorsFactory: &testutils.MixedExecutorFactory{
-					StandardFactory: node.NewStandardExecutorsFactory(),
-					NoopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(config.ExecutorConfig),
-				},
-			}),
+			testutils.WithNoopExecutor(config.ExecutorConfig),
 		)...,
 	)
 
