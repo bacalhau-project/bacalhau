@@ -3,26 +3,17 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
-	"github.com/imdario/mergo"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 type DevStackOptions struct {
@@ -42,252 +33,28 @@ type DevStackOptions struct {
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 }
 
+func (o *DevStackOptions) Options() []ConfigOption {
+	return []ConfigOption{
+		WithNumberOfHybridNodes(o.NumberOfHybridNodes),
+		WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
+		WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
+		WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
+		WithNumberOfBadRequesterActors(o.NumberOfBadRequesterActors),
+		WithPeer(o.Peer),
+		WithPublicIPFSMode(o.PublicIPFSMode),
+		WithEstuaryAPIKey(o.EstuaryAPIKey),
+		WithCPUProfilingFile(o.CPUProfilingFile),
+		WithMemoryProfilingFile(o.MemoryProfilingFile),
+		WithDisabledFeatures(o.DisabledFeatures),
+		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
+		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
+		WithExecutorPlugins(o.ExecutorPlugins),
+	}
+}
+
 type DevStack struct {
 	Nodes          []*node.Node
 	PublicIPFSMode bool
-}
-
-func NewDevStackForRunLocal(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	count int,
-	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
-) (*DevStack, error) {
-	options := DevStackOptions{
-		NumberOfHybridNodes: count,
-		PublicIPFSMode:      true,
-	}
-
-	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits: model.ResourceUsageData{GPU: jobGPU},
-		JobSelectionPolicy: model.JobSelectionPolicy{
-			Locality:            model.Anywhere,
-			RejectStatelessJobs: false,
-		},
-	})
-
-	return NewStandardDevStack(
-		ctx,
-		cm,
-		options,
-		computeConfig,
-		node.NewRequesterConfigWithDefaults(),
-	)
-}
-
-func NewExecutorPluginDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewExecutorPluginNodeDependencyInjector())
-}
-
-func NewStandardDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
-}
-
-func NewNoopDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
-}
-
-//nolint:funlen,gocyclo
-func NewDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-	injector node.NodeDependencyInjector,
-	nodeOverrides ...node.NodeConfig,
-) (*DevStack, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
-	defer span.End()
-
-	var nodes []*node.Node
-
-	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
-	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
-	computeNodeCount := options.NumberOfHybridNodes + options.NumberOfComputeOnlyNodes
-
-	if requesterNodeCount == 0 {
-		return nil, fmt.Errorf("at least one requester node is required")
-	}
-	for i := 0; i < totalNodeCount; i++ {
-		isRequesterNode := i < requesterNodeCount
-		isComputeNode := (totalNodeCount - i) <= computeNodeCount
-		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
-
-		//////////////////////////////////////
-		// IPFS
-		//////////////////////////////////////
-
-		var ipfsSwarmAddresses []string
-		if i > 0 {
-			addresses, err := nodes[0].IPFSClient.SwarmAddresses(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
-			}
-			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-			// connecting/joining topics, when using multiple addresses for a single host.
-			// All the IPFS nodes are running within the same process, so connecting over localhost will be fine.
-			ipfsSwarmAddresses = append(ipfsSwarmAddresses, addresses[0])
-		}
-
-		ipfsNode, err := createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddresses)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-		}
-
-		//////////////////////////////////////
-		// libp2p
-		//////////////////////////////////////
-		var libp2pPeer []multiaddr.Multiaddr
-		libp2pPort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-
-		if i == 0 {
-			if options.Peer != "" {
-				// connect 0'th node to external peer if specified
-				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
-				if addrErr != nil {
-					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
-				}
-				libp2pPeer = append(libp2pPeer, peerAddr)
-			}
-		} else {
-			p2pAddr, err := multiaddr.NewMultiaddr("/p2p/" + nodes[0].Host.ID().String())
-			if err != nil {
-				return nil, err
-			}
-			addresses := multiaddresses.SortLocalhostFirst(nodes[0].Host.Addrs())
-			// Only use a single address as libp2p seems to have concurrency issues, like two nodes not able to finish
-			// connecting/joining topics, when using multiple addresses for a single host.
-			libp2pPeer = append(libp2pPeer, addresses[0].Encapsulate(p2pAddr))
-			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
-		}
-
-		libp2pHost, err := libp2p.NewHost(libp2pPort)
-		if err != nil {
-			return nil, err
-		}
-		cm.RegisterCallback(libp2pHost.Close)
-
-		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, libp2pHost.ID().String())
-
-		//////////////////////////////////////
-		// port for API
-		//////////////////////////////////////
-		apiPort := uint16(0)
-		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			const startPort = 20000
-			apiPort = uint16(startPort + i)
-		}
-
-		//////////////////////////////////////
-		// Create and Run Node
-		//////////////////////////////////////
-
-		// here is where we can parse string based CLI options
-		// into more meaningful model.FailureInjectionConfig values
-		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
-		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
-
-		if isBadComputeActor {
-			computeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
-		}
-
-		if isBadRequesterActor {
-			requesterNodeConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
-		}
-
-		nodeInfoPublisherInterval := options.NodeInfoPublisherInterval
-		if nodeInfoPublisherInterval.IsZero() {
-			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
-		}
-
-		nodeConfig := node.NodeConfig{
-			IPFSClient:          ipfsNode.Client(),
-			CleanupManager:      cm,
-			JobStore:            inmemory.NewJobStore(),
-			Host:                libp2pHost,
-			EstuaryAPIKey:       options.EstuaryAPIKey,
-			HostAddress:         "0.0.0.0",
-			APIPort:             apiPort,
-			ComputeConfig:       computeConfig,
-			RequesterNodeConfig: requesterNodeConfig,
-			IsComputeNode:       isComputeNode,
-			IsRequesterNode:     isRequesterNode,
-			Labels: map[string]string{
-				"name": fmt.Sprintf("node-%d", i),
-				"id":   libp2pHost.ID().String(),
-				"env":  "devstack",
-			},
-			DependencyInjector:        injector,
-			DisabledFeatures:          options.DisabledFeatures,
-			AllowListedLocalPaths:     options.AllowListedLocalPaths,
-			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
-		}
-
-		// allow overriding configs of some nodes
-		if i < len(nodeOverrides) {
-			originalConfig := nodeConfig
-			nodeConfig = nodeOverrides[i]
-			err = mergo.Merge(&nodeConfig, originalConfig)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig)
-		if err != nil {
-			return nil, err
-		}
-
-		// Start transport layer
-		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
-		if err != nil {
-			return nil, err
-		}
-
-		// start the node
-		err = n.Start(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		nodes = append(nodes, n)
-	}
-
-	// only start profiling after we've set everything up!
-	profiler := startProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
-	if profiler != nil {
-		cm.RegisterCallbackWithContext(profiler.Close)
-	}
-
-	return &DevStack{
-		Nodes:          nodes,
-		PublicIPFSMode: options.PublicIPFSMode,
-	}, nil
 }
 
 func createIPFSNode(ctx context.Context,

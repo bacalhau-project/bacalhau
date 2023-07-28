@@ -176,17 +176,32 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	computeConfig := serve.GetComputeConfig(OS)
 	requestorConfig := serve.GetRequesterConfig(OS)
 
-	var stack *devstack.DevStack
-	var stackErr error
+	var options []devstack.ConfigOption
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(
+			ODs.Options(),
+			devstack.WithComputeConfig(computeConfig),
+			devstack.WithRequesterConfig(requestorConfig),
+			devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()),
+		)
 	} else if ODs.ExecutorPlugins {
-		stack, stackErr = devstack.NewExecutorPluginDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(
+			ODs.Options(),
+			devstack.WithComputeConfig(computeConfig),
+			devstack.WithRequesterConfig(requestorConfig),
+			devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()),
+		)
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(
+			ODs.Options(),
+			devstack.WithComputeConfig(computeConfig),
+			devstack.WithRequesterConfig(requestorConfig),
+			devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()),
+		)
 	}
-	if stackErr != nil {
-		return stackErr
+	stack, err := devstack.NewDevStack(ctx, cm, options...)
+	if err != nil {
+		return err
 	}
 
 	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)

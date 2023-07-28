@@ -35,6 +35,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
+	//s.stack = testutil.SetupTestDevStack(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
 	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1)
 }
 

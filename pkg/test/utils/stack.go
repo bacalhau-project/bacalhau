@@ -16,8 +16,52 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
+
+func testDevStackConfig() *devstack.DevStackOptions {
+	return &devstack.DevStackOptions{
+		NumberOfHybridNodes:        0,
+		NumberOfRequesterOnlyNodes: 0,
+		NumberOfComputeOnlyNodes:   0,
+		NumberOfBadComputeActors:   0,
+		NumberOfBadRequesterActors: 0,
+		Peer:                       "",
+		PublicIPFSMode:             false,
+		EstuaryAPIKey:              "",
+		CPUProfilingFile:           "",
+		MemoryProfilingFile:        "",
+		DisabledFeatures:           node.FeatureConfig{},
+		AllowListedLocalPaths:      nil,
+		NodeInfoPublisherInterval:  routing.NodeInfoPublisherIntervalConfig{},
+		ExecutorPlugins:            false,
+	}
+}
+
+func SetupTestDevStack(
+	ctx context.Context,
+	t testing.TB,
+	opts ...devstack.ConfigOption,
+) *devstack.DevStack {
+	system.InitConfigForTesting(t)
+	cm := system.NewCleanupManager()
+	t.Cleanup(func() {
+		cm.Cleanup(ctx)
+	})
+	stack, err := devstack.NewDevStack(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
+	if err != nil {
+		t.Fatalf("creating devstack: %s", err)
+	}
+
+	// Wait for nodes to have announced their presence.
+	//nolint:gomnd
+	assert.Eventually(t, func() bool {
+		return allNodesDiscovered(t, stack)
+	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
+
+	return stack
+}
 
 func SetupTestWithDefaultConfigs(
 	ctx context.Context,
@@ -55,21 +99,21 @@ func SetupTest(
 	return stack, cm
 }
 
-type mixedExecutorFactory struct {
-	standardFactory, noopFactory node.ExecutorsFactory
+type MixedExecutorFactory struct {
+	StandardFactory, NoopFactory node.ExecutorsFactory
 }
 
 // Get implements node.ExecutorsFactory
-func (m *mixedExecutorFactory) Get(
+func (m *MixedExecutorFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
 ) (executor.ExecutorProvider, error) {
-	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig)
+	stdProvider, err := m.StandardFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	noopProvider, err := m.noopFactory.Get(ctx, nodeConfig)
+	noopProvider, err := m.NoopFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +133,7 @@ func (m *mixedExecutorFactory) Get(
 	}, nil
 }
 
-var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
+var _ node.ExecutorsFactory = (*MixedExecutorFactory)(nil)
 
 func SetupTestWithNoopExecutor(
 	ctx context.Context,
@@ -102,9 +146,9 @@ func SetupTestWithNoopExecutor(
 ) *devstack.DevStack {
 	system.InitConfigForTesting(t)
 	// We will take the standard executors and add in the noop executor
-	executorFactory := &mixedExecutorFactory{
-		standardFactory: node.NewStandardExecutorsFactory(),
-		noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
+	executorFactory := &MixedExecutorFactory{
+		StandardFactory: node.NewStandardExecutorsFactory(),
+		NoopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
 	}
 
 	injector := node.NodeDependencyInjector{
@@ -118,7 +162,14 @@ func SetupTestWithNoopExecutor(
 		cm.Cleanup(ctx)
 	})
 
-	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterConfig, injector, nodeOverrides...)
+	stack, err := devstack.NewDevStack(ctx, cm,
+		append(
+			options.Options(),
+			devstack.WithComputeConfig(computeConfig),
+			devstack.WithRequesterConfig(requesterConfig),
+			devstack.WithDependencyInjector(injector),
+			devstack.WithNodeOverrides(nodeOverrides...),
+		)...)
 	require.NoError(t, err)
 
 	// Wait for nodes to have announced their presence.
@@ -133,7 +184,7 @@ func SetupTestWithNoopExecutor(
 // Returns whether the requester node(s) in the stack have discovered all of the
 // other nodes in the stack and have complete information for them (i.e. each
 // node has actually announced itself.)
-func allNodesDiscovered(t *testing.T, stack *devstack.DevStack) bool {
+func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.Host.ID().String())
 
