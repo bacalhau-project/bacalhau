@@ -371,6 +371,7 @@ func (s *InMemoryTestSuite) TestGetJobState() {
 	state, err := s.store.GetJobState(s.ctx, id)
 	s.NoError(err)
 	s.NotNil(state)
+	s.Greater(len(state.Executions), 0)
 
 	_, err = s.store.GetJobState(s.ctx, uuid.New().String())
 	s.Error(err)

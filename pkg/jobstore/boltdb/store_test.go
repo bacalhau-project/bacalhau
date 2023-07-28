@@ -365,6 +365,7 @@ func (s *BoltJobstoreTestSuite) TestGetJobState() {
 	state, err := s.store.GetJobState(s.ctx, "1")
 	s.NoError(err)
 	s.NotNil(state)
+	s.Greater(len(state.Executions), 0)
 
 	_, err = s.store.GetJobState(s.ctx, "100")
 	s.Error(err)
