@@ -9,9 +9,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -26,10 +26,7 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack, _ := testutils.SetupTest(ctx, t, testNodeCount,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-	)
+	stack := testutils.SetupTestDevStack(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
 	require.NoError(t, err)
 

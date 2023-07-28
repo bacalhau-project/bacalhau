@@ -12,7 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -63,42 +62,6 @@ func SetupTestDevStack(
 	return stack
 }
 
-func SetupTestWithDefaultConfigs(
-	ctx context.Context,
-	t *testing.T,
-	nodes int,
-	nodeOverrides ...node.NodeConfig,
-) (*devstack.DevStack, *system.CleanupManager) {
-	return SetupTest(
-		ctx,
-		t,
-		nodes,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-		nodeOverrides...,
-	)
-}
-
-func SetupTest(
-	ctx context.Context,
-	t *testing.T,
-	nodes int,
-	computeConfig node.ComputeConfig, //nolint:gocritic
-	requesterConfig node.RequesterConfig,
-	nodeOverrides ...node.NodeConfig,
-) (*devstack.DevStack, *system.CleanupManager) {
-	cm := system.NewCleanupManager()
-	t.Cleanup(func() {
-		cm.Cleanup(ctx)
-	})
-
-	options := devstack.DevStackOptions{
-		NumberOfHybridNodes: nodes,
-	}
-	stack := SetupTestWithNoopExecutor(ctx, t, options, computeConfig, requesterConfig, noop_executor.ExecutorConfig{}, nodeOverrides...)
-	return stack, cm
-}
-
 type MixedExecutorFactory struct {
 	StandardFactory, NoopFactory node.ExecutorsFactory
 }
@@ -134,52 +97,6 @@ func (m *MixedExecutorFactory) Get(
 }
 
 var _ node.ExecutorsFactory = (*MixedExecutorFactory)(nil)
-
-func SetupTestWithNoopExecutor(
-	ctx context.Context,
-	t *testing.T,
-	options devstack.DevStackOptions,
-	computeConfig node.ComputeConfig, //nolint:gocritic
-	requesterConfig node.RequesterConfig,
-	executorConfig noop_executor.ExecutorConfig,
-	nodeOverrides ...node.NodeConfig,
-) *devstack.DevStack {
-	system.InitConfigForTesting(t)
-	// We will take the standard executors and add in the noop executor
-	executorFactory := &MixedExecutorFactory{
-		StandardFactory: node.NewStandardExecutorsFactory(),
-		NoopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(executorConfig),
-	}
-
-	injector := node.NodeDependencyInjector{
-		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
-		ExecutorsFactory:        executorFactory,
-		PublishersFactory:       node.NewStandardPublishersFactory(),
-	}
-
-	cm := system.NewCleanupManager()
-	t.Cleanup(func() {
-		cm.Cleanup(ctx)
-	})
-
-	stack, err := devstack.NewDevStack(ctx, cm,
-		append(
-			options.Options(),
-			devstack.WithComputeConfig(computeConfig),
-			devstack.WithRequesterConfig(requesterConfig),
-			devstack.WithDependencyInjector(injector),
-			devstack.WithNodeOverrides(nodeOverrides...),
-		)...)
-	require.NoError(t, err)
-
-	// Wait for nodes to have announced their presence.
-	//nolint:gomnd
-	assert.Eventually(t, func() bool {
-		return allNodesDiscovered(t, stack)
-	}, 10*time.Second, 100*time.Millisecond, "failed to discover all nodes")
-
-	return stack
-}
 
 // Returns whether the requester node(s) in the stack have discovered all of the
 // other nodes in the stack and have complete information for them (i.e. each

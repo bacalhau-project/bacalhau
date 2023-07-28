@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -28,14 +29,27 @@ func (s *BaseSuite) SetupTest() {
 	util.Fatal = util.FakeFatalErrorHandler
 
 	ctx := context.Background()
-	stack, _ := testutils.SetupTest(ctx, s.T(), 1,
-		node.NewComputeConfigWith(node.ComputeConfigParams{
-			JobSelectionPolicy: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+	stack := testutils.SetupTestDevStack(ctx, s.T(),
+		devstack.WithNumberOfHybridNodes(1),
+		devstack.WithComputeConfig(
+			node.NewComputeConfigWith(node.ComputeConfigParams{
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
+			}),
+		),
+		devstack.WithRequesterConfig(
+			node.NewRequesterConfigWith(
+				node.RequesterConfigParams{
+					HousekeepingBackgroundTaskInterval: 1 * time.Second,
+				},
+			),
+		),
+		devstack.WithDependencyInjector(node.NodeDependencyInjector{
+			ExecutorsFactory: &testutils.MixedExecutorFactory{
+				StandardFactory: node.NewStandardExecutorsFactory(),
+				NoopFactory:     devstack.NewNoopExecutorsFactory(),
 			},
-		}),
-		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			HousekeepingBackgroundTaskInterval: 1 * time.Second,
 		}),
 	)
 	s.Node = stack.Nodes[0]

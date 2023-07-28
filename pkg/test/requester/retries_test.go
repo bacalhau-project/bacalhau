@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -120,18 +121,25 @@ func (s *RetriesSuite) SetupSuite() {
 		},
 	}
 	ctx := context.Background()
-	devstackOptions := devstack.DevStackOptions{
-		NumberOfRequesterOnlyNodes: 1,
-		NumberOfComputeOnlyNodes:   len(nodeOverrides) - 1,
-	}
-	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
+
+	stack := testutils.SetupTestDevStack(ctx, s.T(),
+		devstack.WithNumberOfRequesterOnlyNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
+		devstack.WithNodeOverrides(nodeOverrides...),
+		devstack.WithRequesterConfig(
+			node.NewRequesterConfigWith(
+				node.RequesterConfigParams{
+					NodeRankRandomnessRange: 0,
+					OverAskForBidsFactor:    1,
+				},
+			),
+		),
+		devstack.WithDependencyInjector(node.NodeDependencyInjector{
+			ExecutorsFactory: &testutils.MixedExecutorFactory{
+				StandardFactory: node.NewStandardExecutorsFactory(),
+				NoopFactory:     devstack.NewNoopExecutorsFactory(),
+			},
 		}),
-		noop_executor.ExecutorConfig{},
-		nodeOverrides...,
 	)
 
 	s.requester = stack.Nodes[0]

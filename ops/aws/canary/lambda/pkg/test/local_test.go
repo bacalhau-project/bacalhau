@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/models"
 	"github.com/bacalhau-project/bacalhau/ops/aws/canary/pkg/router"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -29,11 +30,10 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 	for i := 0; i < nodeCount; i++ {
 		nodeOverrides[i] = nodeOverride
 	}
-	stack, _ := testutils.SetupTest(context.Background(), t,
-		nodeCount,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
-		nodeOverrides...)
+	stack := testutils.SetupTestDevStack(context.TODO(), t,
+		devstack.WithNumberOfHybridNodes(nodeCount),
+		devstack.WithNodeOverrides(nodeOverrides...),
+	)
 	// for the requester node to pick up the nodeInfo messages
 	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
 
