@@ -127,11 +127,10 @@ func (e *Executor) makeFsFromStorage(
 }
 
 type Arguments struct {
-	EntryPoint           string
-	Parameters           []string
-	EnvironmentVariables map[string]string
-	EntryModule          storage.PreparedStorage
-	ImportModules        []storage.PreparedStorage
+	EntryPoint    string
+	Parameters    []string
+	EntryModule   storage.PreparedStorage
+	ImportModules []storage.PreparedStorage
 }
 
 func DecodeArguments(args *executor.Arguments) (*Arguments, error) {
@@ -211,11 +210,11 @@ func (e *Executor) Run(
 		WithSysWalltime().
 		WithFS(rootFs)
 
-	keys := maps.Keys(engineParams.EnvironmentVariables)
+	keys := maps.Keys(request.EnvironmentVariables)
 	sort.Strings(keys)
 	for _, key := range keys {
 		// Make sure we add the environment variables in a consistent order
-		config = config.WithEnv(key, engineParams.EnvironmentVariables[key])
+		config = config.WithEnv(key, request.EnvironmentVariables[key])
 	}
 
 	// Load and instantiate imported modules

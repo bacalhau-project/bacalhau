@@ -1,6 +1,9 @@
 package util
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 type EnvParserFunc[T any] func(string) (T, error)
 
@@ -23,4 +26,16 @@ func GetEnv(envVar string, deflt string) string {
 	}
 
 	return deflt
+}
+
+// FlattenMap is used for flattening an env var map
+// for use with docker runtime
+func FlattenMap(m map[string]string) []string {
+	s := make([]string, 0, len(m))
+
+	for k, v := range m {
+		s = append(s, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return s
 }

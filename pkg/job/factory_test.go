@@ -52,7 +52,7 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 		for _, tcids := range testCids {
 			func() {
 				spec, err := MakeSpec(
-					WithDockerEngine("", "", []string{}, []string{}, []string{}),
+					WithDockerEngine("", "", []string{}, []string{}),
 					WithResources("1", "1", "0", "0"),
 					WithOutputs(tcids.outputVolumes...),
 					WithTimeout(300),

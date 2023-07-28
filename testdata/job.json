@@ -9,17 +9,16 @@
                 "/bin/bash",
                 "-c",
                 "echo 15"
-            ],
-            "EnvironmentVariables": []
+            ]
         },
+        "EnvironmentVariables": {},
         "Resources": {
             "CPU": "",
             "GPU": "",
             "Memory": "",
             "Disk": ""
         },
-        "Inputs": [
-        ],
+        "Inputs": [],
         "Outputs": [
             {
                 "StorageSource": "ipfs",

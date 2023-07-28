@@ -56,14 +56,15 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 		exec.Run(
 			ctx,
 			&executor.RunCommandRequest{
-				JobID:        job.ID(),
-				ExecutionID:  executionID,
-				Resources:    job.Spec.Resources,
-				Network:      job.Spec.Network,
-				Outputs:      job.Spec.Outputs,
-				Inputs:       nil,
-				ResultsDir:   "/tmp",
-				EngineParams: args,
+				JobID:                job.ID(),
+				ExecutionID:          executionID,
+				Resources:            job.Spec.Resources,
+				Network:              job.Spec.Network,
+				Outputs:              job.Spec.Outputs,
+				EnvironmentVariables: job.Spec.EnvironmentVariables,
+				Inputs:               nil,
+				ResultsDir:           "/tmp",
+				EngineParams:         args,
 			},
 		)
 		fail <- true

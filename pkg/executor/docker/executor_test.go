@@ -120,14 +120,15 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Sp
 	return s.executor.Run(
 		ctx,
 		&executor.RunCommandRequest{
-			JobID:        j.ID(),
-			ExecutionID:  name,
-			Resources:    spec.Resources,
-			Network:      spec.Network,
-			Outputs:      spec.Outputs,
-			Inputs:       nil,
-			ResultsDir:   result,
-			EngineParams: args,
+			JobID:                j.ID(),
+			ExecutionID:          name,
+			Resources:            spec.Resources,
+			Network:              spec.Network,
+			Outputs:              spec.Outputs,
+			EnvironmentVariables: spec.EnvironmentVariables,
+			Inputs:               nil,
+			ResultsDir:           result,
+			EngineParams:         args,
 		},
 	)
 }

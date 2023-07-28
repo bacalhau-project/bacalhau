@@ -189,8 +189,13 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 		return nil, err
 	}
 
+	env, err := util.ParseArrayAsMap(opts.SpecSettings.EnvVar, "=")
+	if err != nil {
+		return nil, err
+	}
+
 	spec, err := jobutils.MakeDockerSpec(
-		image, opts.WorkingDirectory, opts.Entrypoint, opts.SpecSettings.EnvVar, parameters,
+		image, opts.WorkingDirectory, opts.Entrypoint, parameters,
 		jobutils.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		jobutils.WithResources(
 			opts.ResourceSettings.CPU,
@@ -211,6 +216,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *DockerRunOptions) (*
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 		),
+		jobutils.WithEnvironmentVariables(env),
 	)
 	if err != nil {
 		return nil, err

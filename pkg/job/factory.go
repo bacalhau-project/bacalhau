@@ -2,11 +2,11 @@ package job
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"golang.org/x/exp/maps"
 )
 
 type SpecOpt func(s *model.Spec) error
@@ -80,68 +80,63 @@ func WithNodeSelector(selector []model.LabelSelectorRequirement) SpecOpt {
 	}
 }
 
-func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []string) SpecOpt {
+func WithDockerEngine(image, workdir string, entrypoint, parameters []string) SpecOpt {
 	return func(s *model.Spec) error {
 		if err := system.ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
 		}
 		s.Engine = model.EngineDocker
 		s.Docker = model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypoint,
-			Parameters:           parameters,
-			EnvironmentVariables: envvar,
-			WorkingDirectory:     workdir,
+			Image:            image,
+			Entrypoint:       entrypoint,
+			Parameters:       parameters,
+			WorkingDirectory: workdir,
 		}
 		return nil
 	}
 }
 
+func WithEnvironmentVariables(vars map[string]string) SpecOpt {
+	return func(s *model.Spec) error {
+		maps.Copy(s.EnvironmentVariables, vars)
+		return nil
+	}
+}
+
 func MakeDockerSpec(
-	image, workingdir string, entrypoint, envvar, parameters []string,
+	image, workingdir string, entrypoint, parameters []string,
 	opts ...SpecOpt,
 ) (model.Spec, error) {
-	spec, err := MakeSpec(append(opts, WithDockerEngine(image, workingdir, entrypoint, envvar, parameters))...)
+	spec, err := MakeSpec(append(opts, WithDockerEngine(image, workingdir, entrypoint, parameters))...)
 	if err != nil {
 		return model.Spec{}, err
 	}
 	return spec, nil
 }
 
-const null rune = 0
-
 func WithWasmEngine(
 	entryModule model.StorageSpec,
 	entrypoint string,
 	parameters []string,
-	envvar map[string]string,
 	importModules []model.StorageSpec,
 ) SpecOpt {
 	return func(s *model.Spec) error {
-		// See wazero.ModuleConfig.WithEnv
-		for key, value := range envvar {
-			for _, str := range []string{key, value} {
-				if str == "" || strings.ContainsRune(str, null) {
-					return fmt.Errorf("invalid environment variable %s=%s", key, value)
-				}
-			}
-		}
+
 		s.Engine = model.EngineWasm
 		s.Wasm = model.JobSpecWasm{
-			EntryModule:          entryModule,
-			EntryPoint:           entrypoint,
-			Parameters:           parameters,
-			EnvironmentVariables: envvar,
-			ImportModules:        importModules,
+			EntryModule:   entryModule,
+			EntryPoint:    entrypoint,
+			Parameters:    parameters,
+			ImportModules: importModules,
 		}
 		return nil
 	}
 }
 func MakeWasmSpec(
-	entryModule model.StorageSpec, entrypoint string, parameters []string, envvar map[string]string, importModules []model.StorageSpec,
+	entryModule model.StorageSpec, entrypoint string, parameters []string, importModules []model.StorageSpec,
 	opts ...SpecOpt,
 ) (model.Spec, error) {
-	spec, err := MakeSpec(append(opts, WithWasmEngine(entryModule, entrypoint, parameters, envvar, importModules))...)
+	spec, err := MakeSpec(append(opts, WithWasmEngine(entryModule, entrypoint, parameters, importModules))...)
 	if err != nil {
 		return model.Spec{}, err
 	}
@@ -166,6 +161,7 @@ func MakeSpec(opts ...SpecOpt) (model.Spec, error) {
 		Deal: model.Deal{
 			Concurrency: 1,
 		},
+		EnvironmentVariables: make(map[string]string),
 	}
 
 	for _, opt := range opts {

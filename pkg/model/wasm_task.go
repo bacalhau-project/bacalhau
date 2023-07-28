@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+	"golang.org/x/exp/maps"
 )
 
 type WasmInputs struct {
@@ -21,10 +22,9 @@ var _ JobType = (*WasmInputs)(nil)
 func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 	spec.Engine = EngineWasm
 	spec.Wasm = JobSpecWasm{
-		EntryPoint:           wasm.Entrypoint,
-		Parameters:           wasm.Parameters,
-		EnvironmentVariables: wasm.Env.Values,
-		ImportModules:        []StorageSpec{},
+		EntryPoint:    wasm.Entrypoint,
+		Parameters:    wasm.Parameters,
+		ImportModules: []StorageSpec{},
 	}
 
 	entryModule, err := parseResource(with)
@@ -37,6 +37,9 @@ func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 		resource := resource
 		spec.Wasm.ImportModules = append(spec.Wasm.ImportModules, parseStorageSource("", &resource))
 	}
+
+	spec.EnvironmentVariables = make(map[string]string)
+	maps.Copy(spec.EnvironmentVariables, wasm.Env.Values)
 
 	inputData, err := parseInputs(wasm.Mounts)
 	if err != nil {

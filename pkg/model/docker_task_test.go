@@ -22,7 +22,7 @@ func TestUnmarshalDocker(t *testing.T) {
 	require.Equal(t, "ubuntu", spec.Docker.Image)
 	require.Equal(t, []string{"date"}, spec.Docker.Entrypoint)
 	require.Equal(t, "/", spec.Docker.WorkingDirectory)
-	require.Equal(t, []string{"HELLO", "world"}, spec.Docker.EnvironmentVariables)
+	require.Equal(t, map[string]string{"HELLO": "world"}, spec.EnvironmentVariables)
 	require.Equal(t, []StorageSpec{}, spec.Inputs)
 	require.Equal(t, []StorageSpec{
 		{Path: "/outputs", Name: "outputs"},

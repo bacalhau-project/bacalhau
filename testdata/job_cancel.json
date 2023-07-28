@@ -9,9 +9,9 @@
                 "/bin/bash",
                 "-c",
                 "sleep 1000"
-            ],
-            "EnvironmentVariables": []
+            ]
         },
+        "EnvironmentVariables": {},
         "Resources": {
             "CPU": "",
             "GPU": "",

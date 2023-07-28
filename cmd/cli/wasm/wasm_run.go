@@ -178,13 +178,13 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		return nil, err
 	}
 
-	wasmEnvvar, err := parseArrayAsMap(opts.SpecSettings.EnvVar)
+	wasmEnvvar, err := util.ParseArrayAsMap(opts.SpecSettings.EnvVar, "=")
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
 
 	spec, err := job.MakeWasmSpec(
-		*entryModule, opts.Entrypoint, parameters, wasmEnvvar, opts.ImportModules,
+		*entryModule, opts.Entrypoint, parameters, opts.ImportModules,
 		job.WithPublisher(opts.SpecSettings.Publisher.Value()),
 		job.WithResources(
 			opts.ResourceSettings.CPU,
@@ -205,6 +205,7 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 			opts.DealSettings.TargetingMode,
 			opts.DealSettings.Concurrency,
 		),
+		job.WithEnvironmentVariables(wasmEnvvar),
 	)
 	if err != nil {
 		return nil, err
@@ -214,21 +215,6 @@ func CreateJob(ctx context.Context, cmdArgs []string, opts *WasmRunOptions) (*mo
 		APIVersion: model.APIVersionLatest().String(),
 		Spec:       spec,
 	}, nil
-}
-
-func parseArrayAsMap(inputArray []string) (map[string]string, error) {
-	if len(inputArray)%2 != 0 {
-		return nil, fmt.Errorf("array must have an even number of elements")
-	}
-
-	resultMap := make(map[string]string)
-	for i := 0; i < len(inputArray); i += 2 {
-		key := inputArray[i]
-		value := inputArray[i+1]
-		resultMap[key] = value
-	}
-
-	return resultMap, nil
 }
 
 func parseWasmEntryModule(ctx context.Context, in string) (*model.StorageSpec, error) {

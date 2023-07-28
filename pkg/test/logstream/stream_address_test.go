@@ -48,14 +48,15 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		exec.Run(
 			s.ctx,
 			&executor.RunCommandRequest{
-				JobID:        job.ID(),
-				ExecutionID:  execution.ID,
-				Resources:    job.Spec.Resources,
-				Network:      job.Spec.Network,
-				Outputs:      job.Spec.Outputs,
-				Inputs:       nil,
-				ResultsDir:   "/tmp",
-				EngineParams: args,
+				JobID:                job.ID(),
+				ExecutionID:          execution.ID,
+				Resources:            job.Spec.Resources,
+				Network:              job.Spec.Network,
+				Outputs:              job.Spec.Outputs,
+				EnvironmentVariables: job.Spec.EnvironmentVariables,
+				Inputs:               nil,
+				ResultsDir:           "/tmp",
+				EngineParams:         args,
 			},
 		)
 	}()

@@ -33,14 +33,15 @@ type Executor interface {
 }
 
 type RunCommandRequest struct {
-	JobID        string
-	ExecutionID  string
-	Resources    model.ResourceUsageConfig
-	Network      model.NetworkConfig
-	Outputs      []model.StorageSpec
-	Inputs       []storage.PreparedStorage
-	ResultsDir   string
-	EngineParams *Arguments
+	JobID                string
+	ExecutionID          string
+	Resources            model.ResourceUsageConfig
+	Network              model.NetworkConfig
+	Outputs              []model.StorageSpec
+	Inputs               []storage.PreparedStorage
+	EnvironmentVariables map[string]string
+	ResultsDir           string
+	EngineParams         *Arguments
 }
 
 // ExecutorParams is a stub for pluggable engines

@@ -210,6 +210,10 @@ type Spec struct {
 	// for example "write the results to ipfs"
 	Outputs []StorageSpec `json:"Outputs,omitempty"`
 
+	// the environment variables that the compute will have available at
+	// runtime.
+	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty"`
 
@@ -254,8 +258,6 @@ type JobSpecDocker struct {
 	Entrypoint []string `json:"Entrypoint,omitempty"`
 	// Parameters holds additional commandline arguments
 	Parameters []string `json:"Parameters,omitempty"`
-	// a map of env to run the container with
-	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// working directory inside the container
 	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
@@ -273,9 +275,6 @@ type JobSpecWasm struct {
 
 	// The arguments supplied to the program (i.e. as ARGV).
 	Parameters []string `json:"Parameters,omitempty"`
-
-	// The variables available in the environment of the running program.
-	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
 
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.

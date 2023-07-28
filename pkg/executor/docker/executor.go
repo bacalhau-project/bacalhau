@@ -176,7 +176,7 @@ func (e *Executor) Run(
 	containerConfig := &container.Config{
 		Image:      dockerArgs.Image,
 		Tty:        false,
-		Env:        dockerArgs.EnvironmentVariables,
+		Env:        pkgUtil.FlattenMap(request.EnvironmentVariables),
 		Entrypoint: dockerArgs.Entrypoint,
 		Cmd:        dockerArgs.Parameters,
 		Labels:     e.containerLabels(request.ExecutionID, request.JobID),

@@ -99,11 +99,10 @@ func PrepareRunArguments(
 			return nil
 		})
 		engineArgs = &wasm.Arguments{
-			EntryPoint:           execution.Job.Spec.Wasm.EntryPoint,
-			Parameters:           execution.Job.Spec.Wasm.Parameters,
-			EnvironmentVariables: execution.Job.Spec.Wasm.EnvironmentVariables,
-			EntryModule:          entryModuleVolumes[0],
-			ImportModules:        importModuleVolumes,
+			EntryPoint:    execution.Job.Spec.Wasm.EntryPoint,
+			Parameters:    execution.Job.Spec.Wasm.Parameters,
+			EntryModule:   entryModuleVolumes[0],
+			ImportModules: importModuleVolumes,
 		}
 	}
 	args, err := executor.EncodeArguments(engineArgs)
@@ -111,14 +110,15 @@ func PrepareRunArguments(
 		return nil, err
 	}
 	return &executor.RunCommandRequest{
-		JobID:        execution.Job.ID(),
-		ExecutionID:  execution.ID,
-		Resources:    execution.Job.Spec.Resources,
-		Network:      execution.Job.Spec.Network,
-		Outputs:      execution.Job.Spec.Outputs,
-		Inputs:       inputVolumes,
-		ResultsDir:   resultsDir,
-		EngineParams: args,
+		JobID:                execution.Job.ID(),
+		ExecutionID:          execution.ID,
+		Resources:            execution.Job.Spec.Resources,
+		Network:              execution.Job.Spec.Network,
+		Outputs:              execution.Job.Spec.Outputs,
+		EnvironmentVariables: execution.Job.Spec.EnvironmentVariables,
+		Inputs:               inputVolumes,
+		ResultsDir:           resultsDir,
+		EngineParams:         args,
 	}, nil
 }
 

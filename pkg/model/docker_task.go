@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ipld/go-ipld-prime/datamodel"
+	"golang.org/x/exp/maps"
 )
 
 type DockerInputs struct {
@@ -24,10 +25,8 @@ func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
 		WorkingDirectory: docker.Workdir,
 	}
 
-	spec.Docker.EnvironmentVariables = []string{}
-	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
-	}
+	spec.EnvironmentVariables = make(map[string]string)
+	maps.Copy(spec.EnvironmentVariables, docker.Env.Values)
 
 	inputData, err := parseInputs(docker.Mounts)
 	if err != nil {
