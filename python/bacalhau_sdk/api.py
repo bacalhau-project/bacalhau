@@ -5,6 +5,8 @@ import json
 from bacalhau_apiclient.api import job_api
 from bacalhau_apiclient.models.events_request import EventsRequest
 from bacalhau_apiclient.models.list_request import ListRequest
+from bacalhau_apiclient.models.cancel_request import CancelRequest
+from bacalhau_apiclient.models.job_cancel_payload import JobCancelPayload
 from bacalhau_apiclient.models.state_request import StateRequest
 from bacalhau_apiclient.models.submit_request import SubmitRequest
 from bacalhau_apiclient.rest import ApiException
@@ -32,6 +34,26 @@ def submit(data: dict):
         signature=signature,
     )
     return api_instance.submit(submit_req)
+
+def cancel(job_id: str):
+    """Cancels a job on the server. """
+
+    payload = dict(
+        ClientID=get_client_id(),
+        JobID=job_id,
+    )
+
+    sanitized_data = client.sanitize_for_serialization(payload)
+    json_data = json.dumps(payload, indent=None, separators=(", ", ": "))
+    json_bytes = json_data.encode("utf-8")
+    signature = sign_for_client(json_bytes)
+    client_public_key = get_client_public_key()
+    cancel_req = CancelRequest(
+        client_public_key=client_public_key,
+        payload=sanitized_data,
+        signature=signature,
+    )
+    return api_instance.cancel(cancel_req)
 
 
 def list():
