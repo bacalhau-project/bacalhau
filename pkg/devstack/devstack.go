@@ -74,6 +74,11 @@ func NewDevStack(
 	for _, opt := range opts {
 		opt(stackConfig)
 	}
+
+	if err := stackConfig.Validate(); err != nil {
+		return nil, err
+	}
+
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
 	defer span.End()

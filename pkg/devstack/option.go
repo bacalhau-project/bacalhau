@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -75,6 +76,31 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
 		Str("NodeInfoPublisherInterval", fmt.Sprintf("%v", o.NodeInfoPublisherInterval)).
 		Bool("ExecutorPlugins", o.ExecutorPlugins)
+}
+
+func (o *DevStackConfig) Validate() error {
+	errs := new(multierror.Error)
+	totalNodeCount := o.NumberOfHybridNodes + o.NumberOfRequesterOnlyNodes + o.NumberOfComputeOnlyNodes
+
+	if totalNodeCount == 0 {
+		errs = multierror.Append(errs, fmt.Errorf("you cannot create a devstack with zero nodes"))
+	}
+
+	totalComputeNodes := o.NumberOfComputeOnlyNodes + o.NumberOfHybridNodes
+	if o.NumberOfBadComputeActors > totalComputeNodes {
+		errs = multierror.Append(errs,
+			fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)",
+				o.NumberOfBadComputeActors, totalComputeNodes))
+	}
+
+	totalRequesterNodes := o.NumberOfRequesterOnlyNodes + o.NumberOfHybridNodes
+	if o.NumberOfBadRequesterActors > totalRequesterNodes {
+		errs = multierror.Append(errs,
+			fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
+				o.NumberOfBadRequesterActors, totalRequesterNodes))
+	}
+
+	return errs.ErrorOrNil()
 }
 
 func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {
