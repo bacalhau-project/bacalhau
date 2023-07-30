@@ -83,7 +83,7 @@ class BacalhauSubmitJobOperator(BaseOperator):
         unravelled_input_volumes = []
         if self.input_volumes and len(self.input_volumes) > 0:
             for input_volume in self.input_volumes:
-                if type(input_volume) == str:
+                if isinstance(input_volume, str):
                     cids_str, mount_point = input_volume.split(":")
                     if "," in cids_str:
                         cids = cids_str.split(",")
