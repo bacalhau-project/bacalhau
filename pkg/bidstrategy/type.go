@@ -1,3 +1,4 @@
+//go:generate mockgen --source type.go --destination mocks.go --package bidstrategy
 package bidstrategy
 
 import (

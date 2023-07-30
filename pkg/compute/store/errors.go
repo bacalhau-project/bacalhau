@@ -82,15 +82,15 @@ func (e ErrExecutionAlreadyExists) Error() string {
 type ErrInvalidExecutionState struct {
 	ExecutionID string
 	Actual      ExecutionState
-	Expected    ExecutionState
+	Expected    []ExecutionState
 }
 
-func NewErrInvalidExecutionState(id string, actual ExecutionState, expected ExecutionState) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(id string, actual ExecutionState, expected ...ExecutionState) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
 func (e ErrInvalidExecutionState) Error() string {
-	return "execution " + e.ExecutionID + " is in state " + e.Actual.String() + " but expected " + e.Expected.String()
+	return fmt.Sprintf("execution %s is in state %s but expected one of %v", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrInvalidExecutionVersion is returned when an execution has an invalid version.

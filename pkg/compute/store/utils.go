@@ -34,8 +34,9 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, jobID string) (Ex
 }
 
 func ValidateNewExecution(execution Execution) error {
-	if execution.State != ExecutionStateCreated {
-		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated)
+	// state must be either created, or bid accepted if the execution is pre-approved
+	if execution.State != ExecutionStateCreated && execution.State != ExecutionStateBidAccepted {
+		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated, ExecutionStateBidAccepted)
 	}
 	if execution.Version != 1 {
 		return NewErrInvalidExecutionVersion(execution.ID, execution.Version, 1)

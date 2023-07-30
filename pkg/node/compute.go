@@ -56,7 +56,6 @@ func NewComputeNode(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider) (*Compute, error) {
-
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
@@ -206,6 +205,7 @@ func NewComputeNode(
 		ResourceStrategy: resourceBidStrat,
 		Store:            executionStore,
 		Callback:         computeCallback,
+		Executor:         bufferRunner,
 		GetApproveURL: func() *url.URL {
 			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
 		},

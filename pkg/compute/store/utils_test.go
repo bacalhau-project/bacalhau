@@ -18,7 +18,7 @@ func TestValidateNewExecution(t *testing.T) {
 
 func TestValidateNewExecution_InvalidState(t *testing.T) {
 	execution := newExecution()
-	execution.State = ExecutionStateBidAccepted
+	execution.State = ExecutionStateRunning
 	err := ValidateNewExecution(execution)
 	assert.ErrorAs(t, err, &ErrInvalidExecutionState{})
 }

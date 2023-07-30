@@ -284,8 +284,8 @@ func (s *RetriesSuite) TestRetry() {
 				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			} else {
 				s.NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
-				s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 			}
+			s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 
 			jobState, err := s.stateResolver.GetJobState(ctx, submittedJob.ID())
 			if len(tc.expectedExecutionStates) == 0 {
