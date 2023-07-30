@@ -148,17 +148,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 
 	config.DevstackSetShouldPrintInfo()
 
-	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
-	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
-	if ODs.NumberOfBadComputeActors > totalComputeNodes {
-		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadComputeActors, totalComputeNodes)
-	}
-	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
-		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadRequesterActors, totalRequesterNodes)
-	}
-
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
 
@@ -176,17 +165,20 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	computeConfig := serve.GetComputeConfig(OS)
 	requestorConfig := serve.GetRequesterConfig(OS)
 
-	var stack *devstack.DevStack
-	var stackErr error
+	options := append(ODs.Options(),
+		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requestorConfig),
+	)
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
 	} else if ODs.ExecutorPlugins {
-		stack, stackErr = devstack.NewExecutorPluginDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
-	if stackErr != nil {
-		return stackErr
+	stack, err := devstack.Setup(ctx, cm, options...)
+	if err != nil {
+		return err
 	}
 
 	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)

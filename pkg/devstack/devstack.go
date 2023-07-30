@@ -18,10 +18,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
+
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 type DevStackOptions struct {
@@ -41,87 +41,54 @@ type DevStackOptions struct {
 	ExecutorPlugins            bool // when true pluggable executors will be used.
 }
 
+func (o *DevStackOptions) Options() []ConfigOption {
+	return []ConfigOption{
+		WithNumberOfHybridNodes(o.NumberOfHybridNodes),
+		WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
+		WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
+		WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
+		WithNumberOfBadRequesterActors(o.NumberOfBadRequesterActors),
+		WithPeer(o.Peer),
+		WithPublicIPFSMode(o.PublicIPFSMode),
+		WithEstuaryAPIKey(o.EstuaryAPIKey),
+		WithCPUProfilingFile(o.CPUProfilingFile),
+		WithMemoryProfilingFile(o.MemoryProfilingFile),
+		WithDisabledFeatures(o.DisabledFeatures),
+		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
+		WithNodeInfoPublisherInterval(o.NodeInfoPublisherInterval),
+		WithExecutorPlugins(o.ExecutorPlugins),
+	}
+}
+
 type DevStack struct {
 	Nodes          []*node.Node
 	PublicIPFSMode bool
 }
 
-func NewDevStackForRunLocal(
+//nolint:funlen,gocyclo
+func Setup(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	count int,
-	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
+	opts ...ConfigOption,
 ) (*DevStack, error) {
-	options := DevStackOptions{
-		NumberOfHybridNodes: count,
-		PublicIPFSMode:      true,
+	stackConfig := defaultDevStackConfig()
+	for _, opt := range opts {
+		opt(stackConfig)
 	}
 
-	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
-		TotalResourceLimits: model.ResourceUsageData{GPU: jobGPU},
-		JobSelectionPolicy: model.JobSelectionPolicy{
-			Locality:            model.Anywhere,
-			RejectStatelessJobs: false,
-		},
-	})
+	if err := stackConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("validating devstask config: %w", err)
+	}
 
-	return NewStandardDevStack(
-		ctx,
-		cm,
-		options,
-		computeConfig,
-		node.NewRequesterConfigWithDefaults(),
-	)
-}
-
-func NewExecutorPluginDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewExecutorPluginNodeDependencyInjector())
-}
-
-func NewStandardDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
-}
-
-func NewNoopDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
-}
-
-//nolint:funlen,gocyclo
-func NewDevStack(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	options DevStackOptions,
-	computeConfig node.ComputeConfig,
-	requesterNodeConfig node.RequesterConfig,
-	injector node.NodeDependencyInjector,
-	nodeOverrides ...node.NodeConfig,
-) (*DevStack, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.NewDevStack")
+	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
+	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.Setup")
 	defer span.End()
 
 	var nodes []*node.Node
 
-	totalNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes + options.NumberOfComputeOnlyNodes
-	requesterNodeCount := options.NumberOfHybridNodes + options.NumberOfRequesterOnlyNodes
-	computeNodeCount := options.NumberOfHybridNodes + options.NumberOfComputeOnlyNodes
+	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
+	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
+	computeNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfComputeOnlyNodes
 
 	if requesterNodeCount == 0 {
 		return nil, fmt.Errorf("at least one requester node is required")
@@ -147,7 +114,7 @@ func NewDevStack(
 			ipfsSwarmAddresses = append(ipfsSwarmAddresses, addresses[0])
 		}
 
-		ipfsNode, err := createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddresses)
+		ipfsNode, err := createIPFSNode(ctx, cm, stackConfig.PublicIPFSMode, ipfsSwarmAddresses)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
@@ -162,10 +129,10 @@ func NewDevStack(
 		}
 
 		if i == 0 {
-			if options.Peer != "" {
+			if stackConfig.Peer != "" {
 				// connect 0'th node to external peer if specified
-				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+				log.Ctx(ctx).Debug().Msgf("Connecting 0'th node to remote peer: %s", stackConfig.Peer)
+				peerAddr, addrErr := multiaddr.NewMultiaddr(stackConfig.Peer)
 				if addrErr != nil {
 					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
 				}
@@ -205,20 +172,20 @@ func NewDevStack(
 		// Create and Run Node
 		//////////////////////////////////////
 
-		// here is where we can parse string based CLI options
+		// here is where we can parse string based CLI stackConfig
 		// into more meaningful model.FailureInjectionConfig values
-		isBadComputeActor := (options.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-options.NumberOfBadComputeActors)
-		isBadRequesterActor := (options.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-options.NumberOfBadRequesterActors)
+		isBadComputeActor := (stackConfig.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-stackConfig.NumberOfBadComputeActors)
+		isBadRequesterActor := (stackConfig.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-stackConfig.NumberOfBadRequesterActors)
 
 		if isBadComputeActor {
-			computeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
+			stackConfig.ComputeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
 		}
 
 		if isBadRequesterActor {
-			requesterNodeConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
+			stackConfig.RequesterConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
 		}
 
-		nodeInfoPublisherInterval := options.NodeInfoPublisherInterval
+		nodeInfoPublisherInterval := stackConfig.NodeInfoPublisherInterval
 		if nodeInfoPublisherInterval.IsZero() {
 			nodeInfoPublisherInterval = node.TestNodeInfoPublishConfig
 		}
@@ -227,11 +194,11 @@ func NewDevStack(
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
 			Host:                libp2pHost,
-			EstuaryAPIKey:       options.EstuaryAPIKey,
+			EstuaryAPIKey:       stackConfig.EstuaryAPIKey,
 			HostAddress:         "0.0.0.0",
 			APIPort:             apiPort,
-			ComputeConfig:       computeConfig,
-			RequesterNodeConfig: requesterNodeConfig,
+			ComputeConfig:       stackConfig.ComputeConfig,
+			RequesterNodeConfig: stackConfig.RequesterConfig,
 			IsComputeNode:       isComputeNode,
 			IsRequesterNode:     isRequesterNode,
 			Labels: map[string]string{
@@ -239,16 +206,16 @@ func NewDevStack(
 				"id":   libp2pHost.ID().String(),
 				"env":  "devstack",
 			},
-			DependencyInjector:        injector,
-			DisabledFeatures:          options.DisabledFeatures,
-			AllowListedLocalPaths:     options.AllowListedLocalPaths,
+			DependencyInjector:        stackConfig.NodeDependencyInjector,
+			DisabledFeatures:          stackConfig.DisabledFeatures,
+			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
 		}
 
 		// allow overriding configs of some nodes
-		if i < len(nodeOverrides) {
+		if i < len(stackConfig.NodeOverrides) {
 			originalConfig := nodeConfig
-			nodeConfig = nodeOverrides[i]
+			nodeConfig = stackConfig.NodeOverrides[i]
 			err = mergo.Merge(&nodeConfig, originalConfig)
 			if err != nil {
 				return nil, err
@@ -277,14 +244,14 @@ func NewDevStack(
 	}
 
 	// only start profiling after we've set everything up!
-	profiler := startProfiling(ctx, options.CPUProfilingFile, options.MemoryProfilingFile)
+	profiler := startProfiling(ctx, stackConfig.CPUProfilingFile, stackConfig.MemoryProfilingFile)
 	if profiler != nil {
 		cm.RegisterCallbackWithContext(profiler.Close)
 	}
 
 	return &DevStack{
 		Nodes:          nodes,
-		PublicIPFSMode: options.PublicIPFSMode,
+		PublicIPFSMode: stackConfig.PublicIPFSMode,
 	}, nil
 }
 

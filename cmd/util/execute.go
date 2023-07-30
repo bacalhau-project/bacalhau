@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 )
 
@@ -23,9 +24,21 @@ func ExecuteJob(ctx context.Context,
 	cm := GetCleanupManager(ctx)
 
 	if runtimeSettings.IsLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
-		if errLocalDevStack != nil {
-			return nil, errLocalDevStack
+		stack, err := devstack.Setup(ctx, cm,
+			devstack.WithNumberOfHybridNodes(1),
+			devstack.WithPublicIPFSMode(true),
+			devstack.WithComputeConfig(node.ComputeConfig{
+				TotalResourceLimits: model.ResourceUsageData{
+					GPU: capacity.ConvertGPUString(j.Spec.Resources.GPU),
+				},
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality:            model.Anywhere,
+					RejectStatelessJobs: true,
+				},
+			}),
+		)
+		if err != nil {
+			return nil, err
 		}
 
 		apiServer := stack.Nodes[0].APIServer
