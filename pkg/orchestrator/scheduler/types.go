@@ -108,6 +108,8 @@ func (set execSet) filterFailed() execSet {
 
 // filterOverSubscriptions partitions executions based on if they are more than the desired count.
 func (set execSet) filterByOverSubscriptions(desiredCount int) (remaining execSet, overSubscriptions execSet) {
+	remaining = make(execSet)
+	overSubscriptions = make(execSet)
 	count := 0
 	for _, exec := range set.ordered() {
 		if count >= desiredCount {
@@ -122,6 +124,8 @@ func (set execSet) filterByOverSubscriptions(desiredCount int) (remaining execSe
 
 // filterByNodeHealth partitions executions based on their node's health status.
 func (set execSet) filterByNodeHealth(nodeInfos map[string]*model.NodeInfo) (healthy execSet, lost execSet) {
+	healthy = make(execSet)
+	lost = make(execSet)
 	for _, exec := range set {
 		if _, ok := nodeInfos[exec.NodeID]; !ok {
 			lost[exec.ComputeReference] = exec
