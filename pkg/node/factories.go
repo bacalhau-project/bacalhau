@@ -98,7 +98,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 				ctx,
 				nodeConfig.CleanupManager,
 				executor_util.PluginExecutorOptions{
-					Plugins: []executor_util.PluginExecutorConfig{
+					Plugins: []executor_util.PluginExecutorManagerConfig{
 						{
 							Name:             "Docker",
 							Path:             filepath.Join(config.GetConfigPath(), "plugins"),

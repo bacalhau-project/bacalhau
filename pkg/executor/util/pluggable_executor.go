@@ -14,19 +14,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-func NewPluggableExecutor() *PluggableExecutor {
-	return &PluggableExecutor{
-		registered: make(map[string]PluginExecutorConfig),
+func NewPluginExecutorManager() *PluginExecutorManager {
+	return &PluginExecutorManager{
+		registered: make(map[string]PluginExecutorManagerConfig),
 		active:     make(map[string]*activeExecutor),
 	}
 }
 
-type PluggableExecutor struct {
-	registered map[string]PluginExecutorConfig
+type PluginExecutorManager struct {
+	registered map[string]PluginExecutorManagerConfig
 	active     map[string]*activeExecutor
 }
 
-func (e *PluggableExecutor) Get(ctx context.Context, key model.Engine) (executor.Executor, error) {
+func (e *PluginExecutorManager) Get(ctx context.Context, key model.Engine) (executor.Executor, error) {
 	engine, ok := e.active[key.String()]
 	if !ok {
 		return nil, fmt.Errorf("pluging %s not found", key)
@@ -34,7 +34,7 @@ func (e *PluggableExecutor) Get(ctx context.Context, key model.Engine) (executor
 	return engine.Impl, nil
 }
 
-func (e *PluggableExecutor) Has(ctx context.Context, key model.Engine) bool {
+func (e *PluginExecutorManager) Has(ctx context.Context, key model.Engine) bool {
 	_, ok := e.active[key.String()]
 	return ok
 }
@@ -44,7 +44,7 @@ type activeExecutor struct {
 	Closer func()
 }
 
-type PluginExecutorConfig struct {
+type PluginExecutorManagerConfig struct {
 	Name             string
 	Path             string
 	Command          string
@@ -53,7 +53,7 @@ type PluginExecutorConfig struct {
 	MagicCookieValue string
 }
 
-func (e *PluggableExecutor) RegisterPlugin(config PluginExecutorConfig) error {
+func (e *PluginExecutorManager) RegisterPlugin(config PluginExecutorManagerConfig) error {
 	_, ok := e.registered[config.Name]
 	if ok {
 		return fmt.Errorf("duplicate registration of exector %s", config.Name)
@@ -70,7 +70,7 @@ func (e *PluggableExecutor) RegisterPlugin(config PluginExecutorConfig) error {
 	return nil
 }
 
-func (e *PluggableExecutor) Start(ctx context.Context) error {
+func (e *PluginExecutorManager) Start(ctx context.Context) error {
 	for name, config := range e.registered {
 		pluginExecutor, closer, err := e.dispense(name, config)
 		if err != nil {
@@ -84,7 +84,7 @@ func (e *PluggableExecutor) Start(ctx context.Context) error {
 	return nil
 }
 
-func (e *PluggableExecutor) Stop(ctx context.Context) error {
+func (e *PluginExecutorManager) Stop(ctx context.Context) error {
 	for _, active := range e.active {
 		active.Closer()
 	}
@@ -93,7 +93,7 @@ func (e *PluggableExecutor) Stop(ctx context.Context) error {
 
 const PluggableExecutorPluginName = "PLUGGABLE_EXECUTOR"
 
-func (e *PluggableExecutor) dispense(name string, config PluginExecutorConfig) (executor.Executor, func(), error) {
+func (e *PluginExecutorManager) dispense(name string, config PluginExecutorManagerConfig) (executor.Executor, func(), error) {
 	client := plugin.NewClient(&plugin.ClientConfig{
 		Plugins: map[string]plugin.Plugin{
 			PluggableExecutorPluginName: &grpc.ExecutorGRPCPlugin{},

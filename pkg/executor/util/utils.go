@@ -147,7 +147,7 @@ func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProv
 }
 
 type PluginExecutorOptions struct {
-	Plugins []PluginExecutorConfig
+	Plugins []PluginExecutorManagerConfig
 }
 
 func NewPluginExecutorProvider(
@@ -155,7 +155,7 @@ func NewPluginExecutorProvider(
 	cm *system.CleanupManager,
 	pluginOptions PluginExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	pe := NewPluggableExecutor()
+	pe := NewPluginExecutorManager()
 	for _, cfg := range pluginOptions.Plugins {
 		if err := pe.RegisterPlugin(cfg); err != nil {
 			return nil, err
