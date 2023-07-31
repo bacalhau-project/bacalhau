@@ -128,6 +128,12 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Sp
 			Inputs:       nil,
 			ResultsDir:   result,
 			EngineParams: args,
+			OutputLimits: executor.OutputLimits{
+				MaxStdoutFileLength:   system.MaxStdoutFileLength,
+				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+				MaxStderrFileLength:   system.MaxStderrFileLength,
+				MaxStderrReturnLength: system.MaxStderrReturnLength,
+			},
 		},
 	)
 }

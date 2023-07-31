@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -50,7 +51,12 @@ var errorLogsTestCase = scenario.Scenario{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
-					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
+					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
+						MaxStdoutFileLength:   system.MaxStdoutFileLength,
+						MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+						MaxStderrFileLength:   system.MaxStderrFileLength,
+						MaxStderrReturnLength: system.MaxStderrReturnLength,
+					})
 				},
 			},
 		},

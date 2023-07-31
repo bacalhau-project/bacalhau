@@ -16,20 +16,19 @@ type ExecutorProvider = model.Provider[model.Engine, Executor]
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
 type Executor interface {
+	// A Providable is something that a Provider can check for installation status
 	model.Providable
 
-	// A BidStrategy that should return a positive response if the executor
-	// could run the job or a negative response otherwise.
-	GetSemanticBidStrategy(context.Context) (bidstrategy.SemanticBidStrategy, error)
+	bidstrategy.SemanticBidStrategy
+	bidstrategy.ResourceBidStrategy
 
-	GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error)
-
-	// GetOutputStream retrieves a muxed stream from the executor
 	GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error)
 
-	// run the given job - it's expected that we have already prepared the job
-	// this will return a local filesystem path to the jobs results
+	// TODO refactor to add non-blocking methods for start, stopping, and waiting on executions:
+	// Details in: https://github.com/bacalhau-project/bacalhau/issues/2702
+
 	Run(ctx context.Context, Args *RunCommandRequest) (*model.RunCommandResult, error)
+	Cancel(ctx context.Context, id string) error
 }
 
 type RunCommandRequest struct {
@@ -41,6 +40,7 @@ type RunCommandRequest struct {
 	Inputs       []storage.PreparedStorage
 	ResultsDir   string
 	EngineParams *Arguments
+	OutputLimits OutputLimits
 }
 
 // ExecutorParams is a stub for pluggable engines

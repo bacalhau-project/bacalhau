@@ -255,6 +255,10 @@ jobs:
           executor: linux-amd64
 
       - run:
+          name: Install Executor Plugins
+          command: make install-plugins
+
+      - run:
           name: Set canary dependency
           working_directory: ops/aws/canary/lambda
           command: make update

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -49,6 +48,10 @@ type NoopExecutor struct {
 	Config ExecutorConfig
 }
 
+func (e *NoopExecutor) Cancel(ctx context.Context, id string) error {
+	return nil
+}
+
 func NewNoopExecutor() *NoopExecutor {
 	Executor := &NoopExecutor{
 		Jobs: []string{},
@@ -70,36 +73,33 @@ func (e *NoopExecutor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	if e.Config.ExternalHooks.HasStorageLocally != nil {
-		handler := e.Config.ExternalHooks.HasStorageLocally
-		return handler(ctx, volume)
-	}
-	return true, nil
-}
-
-func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	if e.Config.ExternalHooks.GetVolumeSize != nil {
-		handler := e.Config.ExternalHooks.GetVolumeSize
-		return handler(ctx, volume)
-	}
-	return 0, nil
-}
-
-func (e *NoopExecutor) GetSemanticBidStrategy(ctx context.Context) (bidstrategy.SemanticBidStrategy, error) {
+func (e *NoopExecutor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	if e.Config.ExternalHooks.GetBidStrategy != nil {
 		handler := e.Config.ExternalHooks.GetBidStrategy
-		return handler(ctx)
+		strategy, err := handler(ctx)
+		if err != nil {
+			return bidstrategy.BidStrategyResponse{}, err
+		}
+		return strategy.ShouldBid(ctx, request)
 	}
-	return semantic.NewChainedSemanticBidStrategy(), nil
+	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
 }
 
-func (e *NoopExecutor) GetResourceBidStrategy(ctx context.Context) (bidstrategy.ResourceBidStrategy, error) {
+func (e *NoopExecutor) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	usage model.ResourceUsageData,
+) (bidstrategy.BidStrategyResponse, error) {
 	if e.Config.ExternalHooks.GetBidStrategy != nil {
 		handler := e.Config.ExternalHooks.GetBidStrategy
-		return handler(ctx)
+		strategy, err := handler(ctx)
+		if err != nil {
+			return bidstrategy.BidStrategyResponse{}, err
+		}
+		return strategy.ShouldBidBasedOnUsage(ctx, request, usage)
 	}
-	return resource.NewChainedResourceBidStrategy(), nil
+	// TODO(forrest): [correctness] this returns the correct response, but could be made specific to this method.
+	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
 }
 
 func (e *NoopExecutor) Run(

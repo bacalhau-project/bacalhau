@@ -62,6 +62,14 @@ type NodeDependencyInjector struct {
 	PublishersFactory       PublishersFactory
 }
 
+func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
+	return NodeDependencyInjector{
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
+		ExecutorsFactory:        NewPluginExecutorFactory(),
+		PublishersFactory:       NewStandardPublishersFactory(),
+	}
+}
+
 func NewStandardNodeDependencyInjector() NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
@@ -110,7 +118,7 @@ func NewNode(
 		return nil, err
 	}
 
-	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
+	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}

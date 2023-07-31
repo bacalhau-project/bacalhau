@@ -122,7 +122,6 @@ func NewNoopStorageProvider(
 func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	storageProvider storage.StorageProvider,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID)
@@ -130,7 +129,7 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	wasmExecutor, err := wasm.NewExecutor(ctx, storageProvider)
+	wasmExecutor, err := wasm.NewExecutor()
 	if err != nil {
 		return nil, err
 	}
@@ -145,4 +144,28 @@ func NewStandardExecutorProvider(
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
 	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
+}
+
+type PluginExecutorOptions struct {
+	Plugins []PluginExecutorManagerConfig
+}
+
+func NewPluginExecutorProvider(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	pluginOptions PluginExecutorOptions,
+) (executor.ExecutorProvider, error) {
+	pe := NewPluginExecutorManager()
+	for _, cfg := range pluginOptions.Plugins {
+		if err := pe.RegisterPlugin(cfg); err != nil {
+			return nil, err
+		}
+	}
+	if err := pe.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	cm.RegisterCallbackWithContext(pe.Stop)
+
+	return pe, nil
 }

@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -18,7 +20,7 @@ type StorageProvidersFactory interface {
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 }
 
 type PublishersFactory interface {
@@ -35,15 +37,13 @@ func (f StorageProvidersFactoryFunc) Get(ctx context.Context, nodeConfig NodeCon
 type ExecutorsFactoryFunc func(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error)
 
 func (f ExecutorsFactoryFunc) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	storages storage.StorageProvider,
 ) (executor.ExecutorProvider, error) {
-	return f(ctx, nodeConfig, storages)
+	return f(ctx, nodeConfig)
 }
 
 type PublishersFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (publisher.PublisherProvider, error)
@@ -76,15 +76,47 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 
 func NewStandardExecutorsFactory() ExecutorsFactory {
 	return ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig, storages storage.StorageProvider) (executor.ExecutorProvider, error) {
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			provider, err := executor_util.NewStandardExecutorProvider(
 				ctx,
 				nodeConfig.CleanupManager,
-				storages,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("bacalhau-%s", nodeConfig.Host.ID().String()),
 				},
 			)
+			if err != nil {
+				return nil, err
+			}
+			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+		})
+}
+
+func NewPluginExecutorFactory() ExecutorsFactory {
+	return ExecutorsFactoryFunc(
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+			provider, err := executor_util.NewPluginExecutorProvider(
+				ctx,
+				nodeConfig.CleanupManager,
+				executor_util.PluginExecutorOptions{
+					Plugins: []executor_util.PluginExecutorManagerConfig{
+						{
+							Name:             "Docker",
+							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
+							Command:          "bacalhau-docker-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+						{
+							Name:             "Wasm",
+							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
+							Command:          "bacalhau-wasm-executor",
+							ProtocolVersion:  1,
+							MagicCookieKey:   "EXECUTOR_PLUGIN",
+							MagicCookieValue: "bacalhau_executor",
+						},
+					},
+				})
 			if err != nil {
 				return nil, err
 			}

@@ -6,6 +6,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -15,9 +18,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 type NodeSelectionSuite struct {
@@ -36,10 +38,6 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	system.InitConfigForTesting(s.T())
 
 	ctx := context.Background()
-	devstackOptions := devstack.DevStackOptions{
-		NumberOfRequesterOnlyNodes: 1,
-		NumberOfComputeOnlyNodes:   3,
-	}
 
 	nodeOverrides := []node.NodeConfig{
 		{}, // pass overriding requester node
@@ -62,14 +60,20 @@ func (s *NodeSelectionSuite) SetupSuite() {
 			},
 		},
 	}
-	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
-		}),
-		noop_executor.ExecutorConfig{},
-		nodeOverrides...,
+	stack := teststack.Setup(ctx,
+		s.T(),
+		devstack.WithNumberOfRequesterOnlyNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(3),
+		devstack.WithNodeOverrides(nodeOverrides...),
+		devstack.WithRequesterConfig(
+			node.NewRequesterConfigWith(
+				node.RequesterConfigParams{
+					NodeRankRandomnessRange: 0,
+					OverAskForBidsFactor:    1,
+				},
+			),
+		),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
 	s.requester = stack.Nodes[0]
