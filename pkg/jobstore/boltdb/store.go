@@ -19,7 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -234,11 +233,35 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 		return []model.Job{job}, err
 	}
 
-	jobSet := make(map[string]struct{})
-	tagSet := make(map[string]struct{})
-	clientSet := make(map[string]struct{})
+	jobSet, err := b.getJobsInitialSet(tx, query)
+	if err != nil {
+		return nil, err
+	}
 
-	if query.ReturnAll {
+	jobSet, err = b.getJobsIncludeTags(tx, jobSet, query.IncludeTags)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSet, err = b.getJobsExcludeTags(tx, jobSet, query.ExcludeTags)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := b.getJobsBuildList(tx, jobSet, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.getJobsWithinLimit(result, query), nil
+}
+
+// getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
+// It either returns all jobs, or jobs for a specific client if specified in the query.
+func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (map[string]struct{}, error) {
+	jobSet := make(map[string]struct{})
+
+	if query.ReturnAll || query.ClientID == "" {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
 			return nil, err
@@ -252,50 +275,53 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 			return nil, err
 		}
 	} else {
-		for _, tag := range query.IncludeTags {
-			tagLabel := []byte(strings.ToLower(string(tag)))
-			ids, err := b.tagsIndex.List(tx, tagLabel)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, k := range ids {
-				tagSet[string(k)] = struct{}{}
-			}
+		ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
+		if err != nil {
+			return nil, err
 		}
 
-		if query.ClientID != "" {
-			ids, err := b.clientsIndex.List(tx, []byte(query.ClientID))
-			if err != nil {
-				return nil, err
-			}
-
-			for _, k := range ids {
-				clientSet[string(k)] = struct{}{}
-			}
+		for _, k := range ids {
+			jobSet[string(k)] = struct{}{}
 		}
-
-		clientKeys := maps.Keys(clientSet)
-		clientKeysLen := len(clientKeys)
-
-		tagKeys := maps.Keys(tagSet)
-		tagKeysLen := len(tagKeys)
-
-		var jobIDs []string
-		if clientKeysLen > 0 && tagKeysLen > 0 {
-			jobIDs = lo.Intersect(clientKeys, tagKeys)
-		} else if clientKeysLen > 0 && tagKeysLen == 0 { // being explicit
-			jobIDs = clientKeys
-		} else if tagKeysLen > 0 && clientKeysLen == 0 { // being explicit
-			jobIDs = tagKeys
-		}
-
-		lo.ForEach[string](jobIDs, func(item string, _ int) {
-			jobSet[item] = struct{}{}
-		})
 	}
 
-	for _, tag := range query.ExcludeTags {
+	return jobSet, nil
+}
+
+// getJobsIncludeTags filters out jobs that don't have ANY of the tags specified in the query.
+func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []model.IncludedTag) (map[string]struct{}, error) {
+	if len(tags) == 0 {
+		return jobSet, nil
+	}
+	tagSet := make(map[string]struct{})
+	for _, tag := range tags {
+		tagLabel := []byte(strings.ToLower(string(tag)))
+		ids, err := b.tagsIndex.List(tx, tagLabel)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, k := range ids {
+			tagSet[string(k)] = struct{}{}
+		}
+	}
+
+	// remove jobs that are not in the tag set
+	for k := range jobSet {
+		if _, ok := tagSet[k]; !ok {
+			delete(jobSet, k)
+		}
+	}
+
+	return jobSet, nil
+}
+
+// getJobsExcludeTags filters out jobs that have ANY of the tags specified in the query.
+func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []model.ExcludedTag) (map[string]struct{}, error) {
+	if len(tags) == 0 {
+		return jobSet, nil
+	}
+	for _, tag := range tags {
 		tagLabel := []byte(strings.ToLower(string(tag)))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
@@ -307,6 +333,10 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 		}
 	}
 
+	return jobSet, nil
+}
+
+func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{}, query jobstore.JobQuery) ([]model.Job, error) {
 	var result []model.Job
 
 	for key := range jobSet {
@@ -324,14 +354,18 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) ([]model.Jo
 	listSorter := b.getListSorter(result, query)
 	sort.Slice(result, listSorter)
 
+	return result, nil
+}
+
+func (b *BoltJobStore) getJobsWithinLimit(jobs []model.Job, query jobstore.JobQuery) []model.Job {
 	limit := query.Limit
 	if limit == 0 {
-		limit = len(result)
+		limit = len(jobs)
 	} else {
-		limit = math.Min(len(result), limit+query.Offset)
+		limit = math.Min(len(jobs), limit+query.Offset)
 	}
 
-	return result[query.Offset:limit], nil
+	return jobs[query.Offset:limit]
 }
 
 func (b *BoltJobStore) getListSorter(jobs []model.Job, query jobstore.JobQuery) func(i, j int) bool {

@@ -391,7 +391,7 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 		ModifyTime:  now,
 	}
 
-	err := e.store.CreateEvaluation(ctx, *eval)
+	err = e.store.CreateEvaluation(ctx, *eval)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to create/save evaluation for job %s", operation, jobID)
 		return
