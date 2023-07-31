@@ -431,6 +431,12 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx) ([]model.JobWithInfo, erro
 			return nil, err
 		}
 
+		execs, err := b.getExecutions(tx, string(jobIDKey))
+		if err != nil {
+			return nil, err
+		}
+		jobState.Executions = append(jobState.Executions, execs...)
+
 		info := model.JobWithInfo{
 			Job:   job,
 			State: jobState,
