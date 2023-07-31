@@ -2,21 +2,28 @@ package node
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
+	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	cfg "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
@@ -46,11 +53,10 @@ func NewRequesterNode(
 	cleanupManager *system.CleanupManager,
 	host host.Host,
 	apiServer *publicapi.APIServer,
-	config RequesterConfig,
-	jobStore jobstore.Store,
+	nodeConfig RequesterConfig,
 	storageProviders storage.StorageProvider,
-	jobInfoPublisher *jobinfo.Publisher,
 	nodeInfoStore routing.NodeInfoStore,
+	gossipSub *libp2p_pubsub.PubSub,
 ) (*Requester, error) {
 	// prepare event handlers
 	tracerContextProvider := eventhandler.NewTracerContextProvider(host.ID().String())
@@ -64,6 +70,37 @@ func NewRequesterNode(
 	eventEmitter := orchestrator.NewEventEmitter(orchestrator.EventEmitterParams{
 		EventConsumer: localJobEventConsumer,
 	})
+
+	var err error
+	var jobStore jobstore.Store
+	jobStoreConf := cfg.GetJobStoreConfig(host.ID().String())
+	if jobStoreConf.StoreType == cfg.JobStoreBoltDB {
+		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreConf.Location)
+		if err != nil {
+			return nil, fmt.Errorf("error creating datastore: %w", err)
+		}
+	} else {
+		jobStore = inmemory.NewInMemoryJobStore()
+	}
+
+	// PubSub to publish job events to the network
+	jobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
+		Host:        host,
+		TopicName:   JobInfoTopic,
+		PubSub:      gossipSub,
+		IgnoreLocal: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
+		JobStore: jobStore,
+		PubSub:   jobInfoPubSub,
+	})
+	err = jobInfoPubSub.Subscribe(ctx, pubsub.NewNoopSubscriber[jobinfo.Envelope]())
+	if err != nil {
+		return nil, err
+	}
 
 	// compute node discoverer
 	nodeDiscoveryChain := discovery.NewChain(true)
@@ -82,20 +119,20 @@ func NewRequesterNode(
 		ranking.NewStoragesNodeRanker(),
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
-		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: config.MinBacalhauVersion}),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: nodeConfig.MinBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: config.NodeRankRandomnessRange,
+			RandomnessRange: nodeConfig.NodeRankRandomnessRange,
 		}),
 	)
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
-		VisibilityTimeout:    config.EvalBrokerVisibilityTimeout,
-		InitialRetryDelay:    config.EvalBrokerInitialRetryDelay,
-		SubsequentRetryDelay: config.EvalBrokerSubsequentRetryDelay,
-		MaxReceiveCount:      config.EvalBrokerMaxRetryCount,
+		VisibilityTimeout:    nodeConfig.EvalBrokerVisibilityTimeout,
+		InitialRetryDelay:    nodeConfig.EvalBrokerInitialRetryDelay,
+		SubsequentRetryDelay: nodeConfig.EvalBrokerSubsequentRetryDelay,
+		MaxReceiveCount:      nodeConfig.EvalBrokerMaxRetryCount,
 	})
 	if err != nil {
 		return nil, err
@@ -126,7 +163,7 @@ func NewRequesterNode(
 		planner.NewLoggingPlanner(),
 	)
 
-	retryStrategy := config.RetryStrategy
+	retryStrategy := nodeConfig.RetryStrategy
 	if retryStrategy == nil {
 		// retry strategy
 		retryStrategyChain := retry.NewChain()
@@ -153,15 +190,15 @@ func NewRequesterNode(
 		}),
 	})
 
-	workers := make([]*orchestrator.Worker, 0, config.WorkerCount)
-	for i := 1; i <= config.WorkerCount; i++ {
+	workers := make([]*orchestrator.Worker, 0, nodeConfig.WorkerCount)
+	for i := 1; i <= nodeConfig.WorkerCount; i++ {
 		log.Debug().Msgf("Starting worker %d", i)
 		// worker config the polls from the broker
 		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
 			SchedulerProvider:     schedulerProvider,
 			EvaluationBroker:      evalBroker,
-			DequeueTimeout:        config.WorkerEvalDequeueTimeout,
-			DequeueFailureBackoff: backoff.NewExponential(config.WorkerEvalDequeueBaseBackoff, config.WorkerEvalDequeueMaxBackoff),
+			DequeueTimeout:        nodeConfig.WorkerEvalDequeueTimeout,
+			DequeueFailureBackoff: backoff.NewExponential(nodeConfig.WorkerEvalDequeueBaseBackoff, nodeConfig.WorkerEvalDequeueMaxBackoff),
 		})
 		workers = append(workers, worker)
 		worker.Start(ctx)
@@ -181,15 +218,15 @@ func NewRequesterNode(
 		ComputeEndpoint:            computeProxy,
 		Store:                      jobStore,
 		StorageProviders:           storageProviders,
-		MinJobExecutionTimeout:     config.MinJobExecutionTimeout,
-		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+		MinJobExecutionTimeout:     nodeConfig.MinJobExecutionTimeout,
+		DefaultJobExecutionTimeout: nodeConfig.DefaultJobExecutionTimeout,
 	})
 
 	housekeeping := requester.NewHousekeeping(requester.HousekeepingParams{
 		Endpoint: endpoint,
 		JobStore: jobStore,
 		NodeID:   host.ID().String(),
-		Interval: config.HousekeepingBackgroundTaskInterval,
+		Interval: nodeConfig.HousekeepingBackgroundTaskInterval,
 	})
 
 	// register a handler for the bacalhau protocol handler that will forward requests to the scheduler
@@ -246,7 +283,18 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		cleanupErr := tracerContextProvider.Shutdown()
+		// Close the jobstore after the evaluation broker is disabled
+		cleanupErr := jobStore.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to cleanly shutdown jobstore")
+		}
+
+		cleanupErr = jobInfoPubSub.Close(ctx)
+		if cleanupErr != nil {
+			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown job info pubsub")
+		}
+
+		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to shutdown tracer context provider")
 		}

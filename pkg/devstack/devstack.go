@@ -15,7 +15,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -215,7 +214,6 @@ func NewDevStack(
 		nodeConfig := node.NodeConfig{
 			IPFSClient:          ipfsNode.Client(),
 			CleanupManager:      cm,
-			JobStore:            inmemory.NewJobStore(),
 			Host:                libp2pHost,
 			EstuaryAPIKey:       options.EstuaryAPIKey,
 			HostAddress:         "0.0.0.0",

@@ -151,7 +151,7 @@ func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, executionID 
 	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
 }
 
-// notifyCancel notifies the target node that the execution was cancelled.
+// notifyCancel notifies the target node that the execution was canceled.
 func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, executionID model.ExecutionID) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, executionID.ExecutionID)
 
@@ -165,7 +165,7 @@ func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, exe
 	}
 	_, err := s.computeService.CancelExecution(ctx, request)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was cancelled",
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was canceled",
 			executionID.NodeID, executionID.ExecutionID)
 		return
 	}

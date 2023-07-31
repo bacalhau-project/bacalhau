@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobQuery struct {
@@ -22,19 +23,70 @@ type JobQuery struct {
 // A Store will persist jobs and their state to the underlying storage.
 // It also gives an efficient way to retrieve jobs using queries.
 type Store interface {
+	// Watch returns a channel from which the caller can read specific events
+	// as they are transmitted. When called the combination of parameters
+	// will determine which events are sent.  Both the StoreWatcherType and
+	// StoreEventType parameters can be a bitmask of entries, so to listen
+	// for Create and Delete events for Jobs and Executions you would set
+	//   types = JobWatcher | ExecutionWatcher
+	//   events = CreateEvent | DeleteEvent
+	//
+	// The structure sent down the channel when one of these events occurs
+	// will contain a timestamp, but also the StoreWatcherType and
+	// StoreEventType that triggered the event. A json encoded `[]byte`
+	// of the related object will also be included in the [WatchEvent].
+	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType) chan WatchEvent
+
+	// GetJob returns a job, identified by the id parameter, or an error if
+	// it does not exist.
 	GetJob(ctx context.Context, id string) (model.Job, error)
+
+	// GetJobs retrieves a slice of jobs defined by the contents of the
+	// [JobQuery]. If it fails, it will return an error
 	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
+
+	// GetJobState retrieves the current state for the specified job
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
+
+	// GetInProgressJobs retrieves all jobs that have a state that can be
+	// considered, 'in progress'.  Each job returned is paired with its
+	// state in a [model.JobWithInfo]. Failure generates an error.
 	GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error)
+
+	// GetJobHistory retrieves the history for the specified job.  The
+	// history returned is filtered by the contents of the provided
+	// [JobHistoryFilterOptions].
 	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error)
-	GetJobsCount(ctx context.Context, query JobQuery) (int, error)
+
+	// CreateJob will create a new job and persist it in the store.
 	CreateJob(ctx context.Context, j model.Job) error
-	// UpdateJobState updates the Job state
+
+	// UpdateJobState updates the state for the job identified in the
+	// [UpdateJobStateRequest].
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
-	// CreateExecution creates a new execution for a given job
+
+	// CreateExecution creates a new execution
 	CreateExecution(ctx context.Context, execution model.ExecutionState) error
-	// UpdateExecution updates the Job state
+
+	// UpdateExecution updates the execution state according to the values
+	// within [UpdateExecutionRequest].
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
+
+	// DeleteJob removes all trace of the provided job from storage
+	DeleteJob(ctx context.Context, jobID string) error
+
+	// CreateEvaluation creates a new evaluation
+	CreateEvaluation(ctx context.Context, eval models.Evaluation) error
+
+	// GetEvaluation retrieves the specified evaluation
+	GetEvaluation(ctx context.Context, id string) (models.Evaluation, error)
+
+	// DeleteEvaluation deletes the specified evaluation
+	DeleteEvaluation(ctx context.Context, id string) error
+
+	// Close provides an interface to cleanup any resources in use when the
+	// store is no longer required
+	Close(ctx context.Context) error
 }
 
 type UpdateJobStateRequest struct {

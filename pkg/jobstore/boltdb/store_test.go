@@ -1,42 +1,44 @@
 //go:build unit || !integration
 
-package inmemory
+package boltjobstore
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/benbjohnson/clock"
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-type InMemoryTestSuite struct {
+type BoltJobstoreTestSuite struct {
 	suite.Suite
-	store *InMemoryJobStore
-	ctx   context.Context
-	clock *clock.Mock
-	ids   []string
+	store  *BoltJobStore
+	dbFile string
+	ctx    context.Context
+	clock  *clock.Mock
 }
 
-func TestInMemoryTestSuite(t *testing.T) {
-	suite.Run(t, new(InMemoryTestSuite))
+func TestBoltJobstoreTestSuite(t *testing.T) {
+	suite.Run(t, new(BoltJobstoreTestSuite))
 }
 
-func (s *InMemoryTestSuite) SetupTest() {
+func (s *BoltJobstoreTestSuite) SetupTest() {
 	s.clock = clock.NewMock()
 
-	s.store = NewInMemoryJobStore(WithClock(s.clock))
+	dir, _ := os.MkdirTemp("", "bacalhau-executionstore")
+	s.dbFile = filepath.Join(dir, "test.boltdb")
+
+	s.store, _ = NewBoltJobStore(s.dbFile, WithClock(s.clock))
 	s.ctx = context.Background()
 
 	jobFixtures := []struct {
@@ -47,21 +49,21 @@ func (s *InMemoryTestSuite) SetupTest() {
 		executionStates []model.ExecutionStateType
 	}{
 		{
-			id:              uuid.New().String(),
+			id:              "1",
 			client:          "client1",
 			tags:            []string{"gpu", "fast"},
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
 			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "2",
 			client:          "client2",
 			tags:            []string{},
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress, model.JobStateCancelled},
 			executionStates: []model.ExecutionStateType{model.ExecutionStateAskForBid, model.ExecutionStateAskForBidAccepted, model.ExecutionStateCancelled},
 		},
 		{
-			id:              uuid.New().String(),
+			id:              "3",
 			client:          "client3",
 			tags:            []string{"slow"},
 			jobStates:       []model.JobStateType{model.JobStateQueued, model.JobStateInProgress},
@@ -70,8 +72,6 @@ func (s *InMemoryTestSuite) SetupTest() {
 	}
 
 	for _, fixture := range jobFixtures {
-		s.ids = append(s.ids, fixture.id)
-
 		s.clock.Add(1 * time.Second)
 		job := makeJob(
 			model.EngineDocker,
@@ -143,19 +143,19 @@ func (s *InMemoryTestSuite) SetupTest() {
 	}
 }
 
-func (s *InMemoryTestSuite) TearDownTest() {
+func (s *BoltJobstoreTestSuite) TearDownTest() {
 	s.store.Close(s.ctx)
-	s.ids = []string{}
+	os.Remove(s.dbFile)
 }
 
-func (s *InMemoryTestSuite) TestUnfilteredJobHistory() {
-	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobstore.JobHistoryFilterOptions{})
+func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
+	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 8, len(history))
 }
 
-func (s *InMemoryTestSuite) TestJobHistoryOrdering() {
-	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobstore.JobHistoryFilterOptions{})
+func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
+	history, err := s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
 	require.NoError(s.T(), err, "failed to get job history")
 
 	// There are 6 history entries that we created directly, and 2 created by
@@ -171,17 +171,17 @@ func (s *InMemoryTestSuite) TestJobHistoryOrdering() {
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
-func (s *InMemoryTestSuite) TestTimeFilteredJobHistory() {
+func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 	options := jobstore.JobHistoryFilterOptions{
 		Since: 5,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], options)
+	history, err := s.store.GetJobHistory(s.ctx, "1", options)
 	require.NoError(s.T(), err, "failed to get job history")
 	require.Equal(s.T(), 4, len(history))
 }
 
-func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
+func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	jobOptions := jobstore.JobHistoryFilterOptions{
 		ExcludeExecutionLevel: true,
 	}
@@ -189,7 +189,7 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 		ExcludeJobLevel: true,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobOptions)
+	history, err := s.store.GetJobHistory(s.ctx, "1", jobOptions)
 	s.NoError(err, "failed to get job history")
 	s.Equal(4, len(history))
 	s.Equal(model.JobStateQueued, history[1].JobState.New)
@@ -202,7 +202,7 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	}, 0)
 	s.Equal(count, 4)
 
-	history, err = s.store.GetJobHistory(s.ctx, s.ids[0], execOptions)
+	history, err = s.store.GetJobHistory(s.ctx, "1", execOptions)
 	s.NoError(err, "failed to get job history")
 	s.Equal(4, len(history))
 	s.Equal(model.ExecutionStateAskForBid, history[1].ExecutionState.New)
@@ -216,7 +216,7 @@ func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {
 	s.Equal(count, 4)
 }
 
-func (s *InMemoryTestSuite) TestSearchJobs() {
+func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 	s.T().Run("by client ID", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ClientID: "client1",
@@ -238,26 +238,16 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 	})
 
 	s.T().Run("everything sorted by id", func(t *testing.T) {
-		sorted_ids := append([]string(nil), s.ids...)
-		reverse_sorted_ids := append([]string(nil), s.ids...)
-		sort.Slice(sorted_ids, func(i, j int) bool {
-			return sorted_ids[i] < sorted_ids[j]
-		})
-		sort.Slice(reverse_sorted_ids, func(i, j int) bool {
-			return reverse_sorted_ids[i] > reverse_sorted_ids[j]
-		})
-
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
 			SortBy:    "id",
 		})
 		require.NoError(t, err)
 		require.Equal(t, 3, len(jobs))
-
 		ids := lo.Map(jobs, func(item model.Job, _ int) string {
 			return item.ID()
 		})
-		require.EqualValues(t, sorted_ids, ids)
+		require.EqualValues(t, []string{"1", "2", "3"}, ids)
 
 		jobs, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -270,8 +260,7 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		ids = lo.Map(jobs, func(item model.Job, _ int) string {
 			return item.ID()
 		})
-
-		require.EqualValues(t, reverse_sorted_ids, ids)
+		require.EqualValues(t, []string{"3", "2", "1"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -283,7 +272,12 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
-		// Offset ignored inmemorystore
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			Offset:    1,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, len(jobs))
 	})
 
 	s.T().Run("everything limit", func(t *testing.T) {
@@ -296,7 +290,13 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 	})
 
 	s.T().Run("everything offset/limit", func(t *testing.T) {
-		// Offset ignored inmemorystore
+		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
+			ReturnAll: true,
+			Offset:    1,
+			Limit:     1,
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(jobs))
 	})
 
 	s.T().Run("include tags", func(t *testing.T) {
@@ -305,7 +305,7 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID())
+		require.Equal(t, "1", jobs[0].ID())
 	})
 
 	s.T().Run("all but exclude tags", func(t *testing.T) {
@@ -317,29 +317,26 @@ func (s *InMemoryTestSuite) TestSearchJobs() {
 		require.Equal(t, 2, len(jobs))
 	})
 
-	s.T().Run("include-exclude same tag", func(t *testing.T) {
+	s.T().Run("include/exclude same tag", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			IncludeTags: []model.IncludedTag{"gpu"},
 			ExcludeTags: []model.ExcludedTag{"fast"},
 		})
 		require.NoError(t, err)
-		// TODO: It looks like in the inmemory store, if a job is included
-		// then it is not checked for exclusion. So this returns the first
-		// inclusion
-		require.Equal(t, 1, len(jobs))
+		require.Equal(t, 0, len(jobs))
 	})
 
 	s.T().Run("by id", func(t *testing.T) {
 		jobs, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			ID: s.ids[0],
+			ID: "1",
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(jobs))
-		require.Equal(t, s.ids[0], jobs[0].ID())
+		require.Equal(t, "1", jobs[0].ID())
 	})
 }
 
-func (s *InMemoryTestSuite) TestDeleteJob() {
+func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job := makeJob(
 		model.EngineDocker,
 		model.PublisherNoop,
@@ -347,6 +344,7 @@ func (s *InMemoryTestSuite) TestDeleteJob() {
 	job.Spec.Annotations = []string{"tag"}
 	job.Metadata.ID = "deleteme"
 	job.Metadata.ClientID = "client1"
+
 	err := s.store.CreateJob(s.ctx, *job)
 	s.NoError(err)
 
@@ -354,8 +352,8 @@ func (s *InMemoryTestSuite) TestDeleteJob() {
 	s.NoError(err)
 }
 
-func (s *InMemoryTestSuite) TestGetJob() {
-	job, err := s.store.GetJob(s.ctx, s.ids[0])
+func (s *BoltJobstoreTestSuite) TestGetJob() {
+	job, err := s.store.GetJob(s.ctx, "1")
 	s.NoError(err)
 	s.NotNil(job)
 
@@ -363,29 +361,24 @@ func (s *InMemoryTestSuite) TestGetJob() {
 	s.Error(err)
 }
 
-func (s *InMemoryTestSuite) TestGetJobState() {
-	id := s.ids[0]
-	_, err := s.store.GetJob(s.ctx, id)
-	s.NoError(err)
-
-	state, err := s.store.GetJobState(s.ctx, id)
+func (s *BoltJobstoreTestSuite) TestGetJobState() {
+	state, err := s.store.GetJobState(s.ctx, "1")
 	s.NoError(err)
 	s.NotNil(state)
 	s.Greater(len(state.Executions), 0)
 
-	_, err = s.store.GetJobState(s.ctx, uuid.New().String())
+	_, err = s.store.GetJobState(s.ctx, "100")
 	s.Error(err)
 }
 
-func (s *InMemoryTestSuite) TestInProgressJobs() {
+func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx)
 	s.NoError(err)
 	s.Equal(1, len(infos))
-	last_id := s.ids[2]
-	s.Equal(last_id, infos[0].Job.ID())
+	s.Equal("3", infos[0].Job.ID())
 }
 
-func (s *InMemoryTestSuite) TestEvents() {
+func (s *BoltJobstoreTestSuite) TestEvents() {
 	ch := s.store.Watch(s.ctx,
 		jobstore.JobWatcher|jobstore.ExecutionWatcher,
 		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
@@ -476,7 +469,7 @@ func (s *InMemoryTestSuite) TestEvents() {
 	})
 }
 
-func (s *InMemoryTestSuite) TestEvaluations() {
+func (s *BoltJobstoreTestSuite) TestEvaluations() {
 
 	eval := models.Evaluation{
 		ID:    "e1",
@@ -488,7 +481,7 @@ func (s *InMemoryTestSuite) TestEvaluations() {
 	s.Error(err)
 
 	// Correct job ID
-	eval.JobID = s.ids[0]
+	eval.JobID = "1"
 	err = s.store.CreateEvaluation(s.ctx, eval)
 	s.NoError(err)
 

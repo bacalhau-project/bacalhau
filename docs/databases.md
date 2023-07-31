@@ -1,12 +1,43 @@
-# Compute node database
+# Databases
+
+## Requester node database (job store)
+
+Requester nodes store job state and history in an in-memory store (pkg/jobstore/inmemory), but can be configured to persist this information in a boltdb database on disk by setting the `BACALHAU_JOB_STORE_TYPE` environment variable to `boltdb`. To explicitly set to inmemory, the value should be `inmemory`.
+
+The location of the database file can be specified using the `BACALHAU_JOB_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-requester.db`. 
+
+
+## Compute node database (execution store)
 
 By default, compute nodes store their execution information in an in-memory store (pkg/compute/store/inmemory), but can be configured to persist this information in a boltdb database on disk by setting the `BACALHAU_COMPUTE_STORE_TYPE` environment variable to `boltdb`.
 
 The location of the database file (for a single node) can be specified using the `BACALHAU_COMPUTE_STORE_PATH` environment variable, which will specify which file to use to store the database.  When not specified, the file will be `{$BACALHAU_DIR}/{NODE_ID}-compute.db`. 
 
-## Inspecting the database 
 
-The database can be inspected using the bbolt tool. 
+### Compute node restarts
+
+As compute nodes restart, they will find they have existing state in the boltdb database.
+At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use.  
+
+Currently only batch jobs are possible, and so for each of the listed states below, no action is taken at restart. In future it would make sense to remove records older than a certain age, or moved them to failed, depending on their current state.  For other job types (to be implemented) this may require restarting jobs, resetting jobs, 
+
+|State|Batch jobs|
+|--|--|
+|ExecutionStateCreated| No action |
+|ExecutionStateBidAccepted| No action |
+|ExecutionStateRunning| No action |
+|ExecutionStateWaitingVerification| No action |
+|ExecutionStateResultAccepted| No action |
+|ExecutionStatePublishing| No action |
+|ExecutionStateCompleted| No action |
+|ExecutionStateFailed| No action |
+|ExecutionStateCancelled| No action |
+
+
+
+## Inspecting the databases
+
+The databases can be inspected using the bbolt tool. 
 The bbolt tool can be installed to $GOBIN with:
 
 ```shell 
@@ -81,23 +112,4 @@ bbolt get $FILE execution e-9a937556-ac83-49ec-b794-a94c3aa068b2
 {"ID":"e-9a937556-ac83-49ec-b794-a94c3aa068b2","Job":{"APIVersion":"V1beta2","Metadata": .... more JSON}
 ```
 
-
-## Compute node restarts
-
-As compute nodes restart, they will find they have existing state in the boltdb database.
-At startup the database currently iterates the executions to calculate the counters for each state.  This will be a good opportunity to do some compaction of the records in the database, and cleanup items no longer in use.  
-
-Currently only batch jobs are possible, and so for each of the listed states below, no action is taken at restart. In future it would make sense to remove records older than a certain age, or moved them to failed, depending on their current state.  For other job types (to be implemented) this may require restarting jobs, resetting jobs, 
-
-|State|Batch jobs|
-|--|--|
-|ExecutionStateCreated| No action |
-|ExecutionStateBidAccepted| No action |
-|ExecutionStateRunning| No action |
-|ExecutionStateWaitingVerification| No action |
-|ExecutionStateResultAccepted| No action |
-|ExecutionStatePublishing| No action |
-|ExecutionStateCompleted| No action |
-|ExecutionStateFailed| No action |
-|ExecutionStateCancelled| No action |
 
