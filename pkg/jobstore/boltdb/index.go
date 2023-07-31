@@ -42,8 +42,7 @@ func (i *Index) Add(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error {
 		return err
 	}
 
-	_, err = bkt.CreateBucketIfNotExists(identifier)
-	return err
+	return bkt.Put(identifier, []byte(""))
 }
 
 func (i *Index) List(tx *bolt.Tx, subpath ...[]byte) ([][]byte, error) {
@@ -53,7 +52,7 @@ func (i *Index) List(tx *bolt.Tx, subpath ...[]byte) ([][]byte, error) {
 	}
 
 	result := make([][]byte, 0, DefaultBucketSearchSliceSize)
-	err = bkt.ForEachBucket(func(k []byte) error {
+	err = bkt.ForEach(func(k []byte, _ []byte) error {
 		result = append(result, k)
 		return nil
 	})
@@ -66,5 +65,5 @@ func (i *Index) Remove(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error 
 		return err
 	}
 
-	return bkt.DeleteBucket(identifier)
+	return bkt.Delete(identifier)
 }
