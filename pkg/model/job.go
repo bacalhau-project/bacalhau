@@ -31,6 +31,15 @@ func (j Job) String() string {
 	return j.Metadata.ID
 }
 
+// Type returns the type of the job.
+func (j Job) Type() string {
+	jobType := JobTypeBatch
+	if j.Spec.Deal.TargetingMode == TargetAll {
+		jobType = JobTypeOps
+	}
+	return jobType
+}
+
 type Metadata struct {
 	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"ID,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`

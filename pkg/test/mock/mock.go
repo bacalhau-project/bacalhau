@@ -64,6 +64,7 @@ func ExecutionState(jobID string) *model.ExecutionState {
 		NodeID:           uuid.NewString(),
 		ComputeReference: uuid.NewString(),
 		State:            model.ExecutionStateBidAccepted,
+		DesiredState:     model.ExecutionDesiredStateRunning,
 		Version:          4,
 		CreateTime:       now,
 		UpdateTime:       now,

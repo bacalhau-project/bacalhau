@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package scheduler
 
 import (
@@ -7,34 +9,38 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/stretchr/testify/require"
 )
 
 type PlanMatcher struct {
-	t                  *testing.T
-	JobState           model.JobStateType
-	Evaluation         *models.Evaluation
-	NewExecutionsNodes []peer.ID
-	StoppedExecutions  []model.ExecutionID
-	ApprovedExecutions []model.ExecutionID
+	t                         *testing.T
+	JobState                  model.JobStateType
+	Evaluation                *models.Evaluation
+	NewExecutionsNodes        []peer.ID
+	NewExecutionsDesiredState model.ExecutionDesiredState
+	StoppedExecutions         []model.ExecutionID
+	ApprovedExecutions        []model.ExecutionID
 }
 
 type PlanMatcherParams struct {
-	JobState           model.JobStateType
-	Evaluation         *models.Evaluation
-	NewExecutionsNodes []peer.ID
-	StoppedExecutions  []model.ExecutionID
-	ApprovedExecutions []model.ExecutionID
+	JobState                 model.JobStateType
+	Evaluation               *models.Evaluation
+	NewExecutionsNodes       []peer.ID
+	NewExecutionDesiredState model.ExecutionDesiredState
+	StoppedExecutions        []model.ExecutionID
+	ApprovedExecutions       []model.ExecutionID
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
 func NewPlanMatcher(t *testing.T, params PlanMatcherParams) PlanMatcher {
 	return PlanMatcher{
-		t:                  t,
-		JobState:           params.JobState,
-		Evaluation:         params.Evaluation,
-		NewExecutionsNodes: params.NewExecutionsNodes,
-		StoppedExecutions:  params.StoppedExecutions,
-		ApprovedExecutions: params.ApprovedExecutions,
+		t:                         t,
+		JobState:                  params.JobState,
+		Evaluation:                params.Evaluation,
+		NewExecutionsNodes:        params.NewExecutionsNodes,
+		NewExecutionsDesiredState: params.NewExecutionDesiredState,
+		StoppedExecutions:         params.StoppedExecutions,
+		ApprovedExecutions:        params.ApprovedExecutions,
 	}
 }
 
@@ -54,17 +60,22 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 	}
 
 	// check new executions match the expected nodes
-	newExecutionNodes := make(map[string]struct{})
+	newExecutionNodes := make(map[string]model.ExecutionDesiredState)
 	for _, execution := range plan.NewExecutions {
-		newExecutionNodes[execution.NodeID] = struct{}{}
+		newExecutionNodes[execution.NodeID] = execution.DesiredState
 	}
 	if len(newExecutionNodes) != len(m.NewExecutionsNodes) {
-		m.t.Logf("NewExecutionsNodes: %s != %s", newExecutionNodes, m.NewExecutionsNodes)
+		m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
 		return false
 	}
 	for _, node := range m.NewExecutionsNodes {
-		if _, ok := newExecutionNodes[node.String()]; !ok {
-			m.t.Logf("NewExecutionsNodes: %s != %s", newExecutionNodes, m.NewExecutionsNodes)
+		desiredState, ok := newExecutionNodes[node.String()]
+		if !ok {
+			m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
+			return false
+		}
+		if desiredState != m.NewExecutionsDesiredState {
+			m.t.Logf("NewExecutionsDesiredState: %v != %v", desiredState, m.NewExecutionsDesiredState)
 			return false
 		}
 	}
@@ -110,4 +121,14 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 func (m PlanMatcher) String() string {
 	return fmt.Sprintf("{JobState: %s, Evaluation: %s, NewExecutionsNodes: %s, StoppedExecutions: %s, ApprovedExecutions: %s}",
 		m.JobState, m.Evaluation, m.NewExecutionsNodes, m.StoppedExecutions, m.ApprovedExecutions)
+}
+
+func mockNodeInfo(t *testing.T, nodeID string) *model.NodeInfo {
+	id, err := peer.Decode(nodeID)
+	require.NoError(t, err)
+	return &model.NodeInfo{
+		PeerInfo: peer.AddrInfo{
+			ID: id,
+		},
+	}
 }

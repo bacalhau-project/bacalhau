@@ -8,5 +8,6 @@ const (
 const (
 	JobTypeService = "service"
 	JobTypeBatch   = "batch"
+	JobTypeOps     = "ops" // TODO: revisit the job naming
 	JobTypeSystem  = "system"
 )
