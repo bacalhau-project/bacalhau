@@ -24,6 +24,9 @@ type Executor interface {
 
 	GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error)
 
+	// TODO refactor to add non-blocking methods for start, stopping, and waiting on executions:
+	// Details in: https://github.com/bacalhau-project/bacalhau/issues/2702
+
 	Run(ctx context.Context, Args *RunCommandRequest) (*model.RunCommandResult, error)
 	Cancel(ctx context.Context, id string) error
 }
