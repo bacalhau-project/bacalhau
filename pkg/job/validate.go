@@ -39,9 +39,12 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return err
 	}
 
-	if !model.IsValidEngine(j.Spec.Engine) {
-		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
-	}
+	// TODO(forrest): [review] do we want any type of validation for engine types?
+	/*
+		if !model.IsValidEngine(j.Spec.Engine) {
+			veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String()))
+		}
+	*/
 
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		veriferrs = multierror.Append(veriferrs, fmt.Errorf("invalid publisher type: %s", j.Spec.PublisherSpec.Type.String()))

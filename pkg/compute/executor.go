@@ -74,10 +74,13 @@ func PrepareRunArguments(
 		return nil
 	})
 
-	var engineArgs interface{}
-	engineArgs = execution.Job.Spec.Docker
-	if execution.Job.Spec.Engine == model.EngineWasm {
-		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.ImportModules...)
+	var engineArgs *executor.Arguments
+	if execution.Job.Spec.EngineSpec.Type == model.EngineWasm.String() {
+		wasmEngine, err := model.DecodeEngineSpec[model.WasmEngineSpec](execution.Job.Spec.EngineSpec)
+		if err != nil {
+			return nil, err
+		}
+		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +91,7 @@ func PrepareRunArguments(
 			return nil
 		})
 
-		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.EntryModule)
+		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
 		if err != nil {
 			return nil, err
 		}
@@ -98,17 +101,25 @@ func PrepareRunArguments(
 			}
 			return nil
 		})
-		engineArgs = &wasm.Arguments{
-			EntryPoint:           execution.Job.Spec.Wasm.EntryPoint,
-			Parameters:           execution.Job.Spec.Wasm.Parameters,
-			EnvironmentVariables: execution.Job.Spec.Wasm.EnvironmentVariables,
+		engineArgs, err = executor.EncodeArguments(&wasm.Arguments{
+			EntryPoint:           wasmEngine.Entrypoint,
+			Parameters:           wasmEngine.Parameters,
+			EnvironmentVariables: wasmEngine.EnvironmentVariables,
 			EntryModule:          entryModuleVolumes[0],
 			ImportModules:        importModuleVolumes,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-	args, err := executor.EncodeArguments(engineArgs)
-	if err != nil {
-		return nil, err
+	} else {
+		args, err := execution.Job.Spec.EngineSpec.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		engineArgs = &executor.Arguments{
+			Params: args,
+		}
 	}
 	return &executor.RunCommandRequest{
 		JobID:        execution.Job.ID(),
@@ -118,7 +129,7 @@ func PrepareRunArguments(
 		Outputs:      execution.Job.Spec.Outputs,
 		Inputs:       inputVolumes,
 		ResultsDir:   resultsDir,
-		EngineParams: args,
+		EngineParams: engineArgs,
 		OutputLimits: executor.OutputLimits{
 			MaxStdoutFileLength:   system.MaxStdoutFileLength,
 			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -165,9 +176,13 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return fmt.Errorf("failed to get result path: %w", err)
 	}
 
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
+	engineType, err := execution.Job.Spec.EngineSpec.Engine()
 	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
+		return err
+	}
+	jobExecutor, err := e.executors.Get(ctx, engineType)
+	if err != nil {
+		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.EngineSpec, err)
 	}
 
 	if e.failureInjection.IsBadActor {

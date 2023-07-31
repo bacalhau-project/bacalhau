@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
@@ -73,7 +74,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine: EngineDocker,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
@@ -189,17 +189,21 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// e.g. docker or language
+	// deprecated: use EngineSpec.
 	Engine Engine `json:"Engine,omitempty"`
 
+	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
+
 	// there can be multiple publishers for the job
+
 	// deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
-	// executor specific data
+	// deprecated: use EngineSpec.
 	Docker JobSpecDocker `json:"Docker,omitempty"`
-	Wasm   JobSpecWasm   `json:"Wasm,omitempty"`
+	// deprecated: use EngineSpec.
+	Wasm JobSpecWasm `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -239,8 +243,15 @@ func (s *Spec) GetTimeout() time.Duration {
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Wasm.EntryModule,
+	var storages []*StorageSpec
+	if s.EngineSpec.Type == EngineWasm.String() {
+		wasmEngine, err := DecodeEngineSpec[WasmEngineSpec](s.EngineSpec)
+		if err != nil {
+			// TODO(forrest): [correctness] propagate error up stack
+			log.Error().Err(err).Msg("failed to decode wasm engine spec for AllStorageSpecs")
+		} else {
+			storages = append(storages, &wasmEngine.EntryModule)
+		}
 	}
 
 	for _, collection := range [][]StorageSpec{

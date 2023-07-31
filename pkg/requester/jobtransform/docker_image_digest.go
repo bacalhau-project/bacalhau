@@ -3,9 +3,10 @@ package jobtransform
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
 )
 
 func DockerImageDigest() Transformer {
@@ -22,11 +23,16 @@ func DockerImageDigest() Transformer {
 	}
 
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		if j.Spec.Engine != model.EngineDocker {
+		if j.Spec.EngineSpec.Type != model.EngineDocker.String() {
 			return false, nil
 		}
 
-		image, err := docker.NewImageID(j.Spec.Docker.Image)
+		dockerEngine, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
+		if err != nil {
+			return false, err
+		}
+
+		image, err := docker.NewImageID(dockerEngine.Image)
 		if err != nil {
 			return false, nil
 		}
@@ -40,10 +46,17 @@ func DockerImageDigest() Transformer {
 			return false, nil
 		}
 
-		j.Spec.Docker.Image = resolver.Digest()
+		// TODO(forrest): [review] unsure if this is the best DevEx for mutating an engine.
+		j.Spec.EngineSpec = model.NewDockerEngineBuilder(resolver.Digest()).
+			WithParameters(dockerEngine.Parameters...).
+			WithEntrypoint(dockerEngine.Entrypoint...).
+			WithEnvironmentVariables(dockerEngine.EnvironmentVariables...).
+			WithWorkingDirectory(dockerEngine.WorkingDirectory).
+			Build()
+
 		log.Ctx(ctx).Debug().
 			Stringer("OldImage", image).
-			Str("NewImage", j.Spec.Docker.Image).
+			Str("NewImage", resolver.Digest()).
 			Msg("updated docker image with digest")
 
 		return true, nil

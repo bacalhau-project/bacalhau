@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -30,30 +31,23 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	job := testutils.MakeJob(
-		model.EngineDocker,
-		model.PublisherNoop,
-		[]string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"})
+	job := testutils.MakeJobWithOpts(s.T(),
+		jobutils.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu:latest").
+				WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+				Build(),
+		),
+	)
 	job.Metadata.ID = "logstreamtest-docker"
 
-	node.RequesterNode.JobStore.CreateJob(ctx, *job)
+	require.NoError(s.T(), node.RequesterNode.JobStore.CreateJob(ctx, job))
 	executionID := uuid.New().String()
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		var args *executor.Arguments
-		if job.Spec.Engine == model.EngineDocker {
-			args, err = executor.EncodeArguments(job.Spec.Docker)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineWasm {
-			args, err = executor.EncodeArguments(job.Spec.Wasm)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineNoop {
-			args = &executor.Arguments{Params: []byte{}}
-		}
+		engineBytes, err := job.Spec.EngineSpec.Serialize()
+		require.NoError(s.T(), err)
 		exec.Run(
 			ctx,
 			&executor.RunCommandRequest{
@@ -64,7 +58,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 				Outputs:      job.Spec.Outputs,
 				Inputs:       nil,
 				ResultsDir:   "/tmp",
-				EngineParams: args,
+				EngineParams: &executor.Arguments{Params: engineBytes},
 				OutputLimits: executor.OutputLimits{
 					MaxStdoutFileLength:   system.MaxStdoutFileLength,
 					MaxStdoutReturnLength: system.MaxStdoutReturnLength,

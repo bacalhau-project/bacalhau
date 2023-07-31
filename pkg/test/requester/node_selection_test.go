@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 type NodeSelectionSuite struct {
@@ -91,7 +92,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
-	testutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
+	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, 4)
 }
 
 func (s *NodeSelectionSuite) TearDownSuite() {
@@ -164,7 +165,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 	for _, tc := range testCase {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := testutils.MakeNoopJob()
+			j := testutils.MakeNoopJob(s.T())
 			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
 			j.Spec.Deal.Concurrency = math.Max(1, len(tc.expectedNodes))
 

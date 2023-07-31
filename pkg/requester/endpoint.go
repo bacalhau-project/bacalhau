@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -49,6 +50,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		jobtransform.NewRequesterInfo(params.ID, params.PublicKey),
 		jobtransform.RepoExistsOnIPFS(params.StorageProviders),
 		jobtransform.NewPublisherMigrator(),
+		jobtransform.NewEngineMigrator(),
 		// jobtransform.DockerImageDigest(),
 	}
 

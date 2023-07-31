@@ -25,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 type ComputeNodeResourceLimitsSuite struct {
@@ -141,7 +142,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := testutils.MakeNoopJob()
+			j := testutils.MakeNoopJob(suite.T())
 			j.Spec.Resources = jobResources
 			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID:   "123",
@@ -305,22 +306,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	)
 
 	// for the requester node to pick up the nodeInfo messages
-	testutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0], nodeCount)
 
-	jobConfig := &model.Job{
-		Spec: model.Spec{
-			Engine: model.EngineNoop,
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherNoop,
-			},
-			Resources: model.ResourceUsageConfig{
-				GPU: "1",
-			},
-			Deal: model.Deal{
-				Concurrency: 1,
-			},
-		},
-	}
+	jobConfig := testutils.MakeJobWithOpts(suite.T(),
+		job.WithResources("", "", "", "1"),
+	)
 
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (model.Job, error) {

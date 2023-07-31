@@ -41,28 +41,28 @@ func (s *AskForBidPreApprovedSuite) TestPopulateResourceUsage() {
 func (s *AskForBidPreApprovedSuite) TestUseSubmittedResourceUsage() {
 	usage := model.ResourceUsageData{CPU: 1, Memory: 2, Disk: 3}
 	response := s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(), usage),
+		job: addResourceUsage(generateJob(s.T()), usage),
 	})
 	s.verify(response, usage)
 }
 
 func (s *AskForBidPreApprovedSuite) TestAcceptUsageBelowLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU / 2}),
 	})
 }
 
 func (s *AskForBidPreApprovedSuite) TestAcceptUsageMatachingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU}),
 	})
 }
 
 func (s *AskForBidPreApprovedSuite) TestRejectUsageExceedingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU + 0.01}),
 		rejected: true,
 	})
@@ -75,7 +75,7 @@ func (s *AskForBidPreApprovedSuite) runAskForBidTest(testCase bidResponseTestCas
 	job := testCase.job
 	job.Metadata.Requester.RequesterNodeID = s.node.ID
 	if job.Metadata.ID == "" {
-		job = generateJob()
+		job = generateJob(s.T())
 	}
 
 	executionID := uuid.NewString()

@@ -68,7 +68,7 @@ func (s *AsyncBidSuite) TestAsyncReject() {
 }
 
 func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
-	job := generateJob()
+	job := generateJob(s.T())
 
 	// override execution store create method so that we may wait for async execution creation after `AskForBid`
 	executionCreatedWg := sync.WaitGroup{}

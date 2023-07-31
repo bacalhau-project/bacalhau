@@ -66,6 +66,14 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 				Fixture: testdata.TaskWasmJson,
 			},
 		*/
+		{
+			Name:    "docker engine spec json",
+			Fixture: testdata.JsonJobDockerEngineSpec,
+		},
+		{
+			Name:    "docker engine spec yaml",
+			Fixture: testdata.YamlJobDockerEngineSpec,
+		},
 	}
 
 	for _, tc := range tests {

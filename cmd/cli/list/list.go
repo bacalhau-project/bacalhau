@@ -2,14 +2,15 @@ package list
 
 import (
 	"errors"
-	"strings"
+	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
@@ -156,13 +157,7 @@ var listColumns = []output.TableColumn[*model.JobWithInfo]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "job", WidthMax: maxDescWidth, WidthMaxEnforcer: text.WrapText},
 		Value: func(j *model.JobWithInfo) string {
-			jobDesc := []string{j.Job.Spec.Engine.String()}
-			// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
-			if j.Job.Spec.Engine == model.EngineDocker {
-				jobDesc = append(jobDesc, j.Job.Spec.Docker.Image)
-				jobDesc = append(jobDesc, j.Job.Spec.Docker.Entrypoint...)
-			}
-			finalStr := strings.Join(jobDesc, " ")
+			finalStr := fmt.Sprintf("%v", j.Job.Spec.EngineSpec)
 			return finalStr[:math.Min(len(finalStr), maxDescLines*maxDescWidth)]
 		},
 	},

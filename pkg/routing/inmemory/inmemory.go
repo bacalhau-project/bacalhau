@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
 // TODO: replace the manual and lazy eviction with a more efficient caching library
@@ -56,7 +57,9 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 	} else {
 		var engines []model.Engine
 		if nodeInfo.ComputeNodeInfo != nil {
-			engines = append(engines, nodeInfo.ComputeNodeInfo.ExecutionEngines...)
+			for _, e := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
+				engines = append(engines, e)
+			}
 		}
 		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store with engines %v", nodeInfo.PeerInfo.ID, engines)
 	}

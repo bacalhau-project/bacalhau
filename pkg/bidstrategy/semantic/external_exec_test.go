@@ -39,7 +39,7 @@ func TestJobSelectionExec(t *testing.T) {
 				Command: command,
 			}
 			strategy := semantic.NewExternalCommandStrategy(params)
-			result, err := strategy.ShouldBid(context.Background(), getBidStrategyRequest())
+			result, err := strategy.ShouldBid(context.Background(), getBidStrategyRequest(t))
 			require.NoError(t, err)
 			require.Equal(t, test.expectedResult, result.ShouldBid)
 		})

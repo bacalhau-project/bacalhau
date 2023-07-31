@@ -8,9 +8,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 func (s *LogStreamTestSuite) TestStreamAddress() {
@@ -18,10 +20,16 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 
 	node := s.stack.Nodes[0]
 
-	job := newDockerJob("address-test", model.JobSpecDocker{
-		Image:      "bash",
-		Entrypoint: []string{"bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done"},
-	})
+	job := testutils.MakeJobWithOpts(s.T(),
+		jobutils.WithEngineSpec(
+			model.NewDockerEngineBuilder("bash").
+				WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+				Build(),
+		),
+	)
+	job.Metadata = model.Metadata{
+		ID: "address-test",
+	}
 
 	execution := newTestExecution("test-execution", job)
 
@@ -34,18 +42,10 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	go func() {
 		// Run the job.  We won't ever get a result because of the
 		// entrypoint we chose, but we might get timed-out.
-		var args *executor.Arguments
-		if job.Spec.Engine == model.EngineDocker {
-			args, err = executor.EncodeArguments(job.Spec.Docker)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineWasm {
-			args, err = executor.EncodeArguments(job.Spec.Wasm)
-			require.NoError(s.T(), err)
-		}
-		if job.Spec.Engine == model.EngineNoop {
-			args = &executor.Arguments{Params: []byte{}}
-		}
+		engineArgs, err := job.Spec.EngineSpec.Serialize()
+		require.NoError(s.T(), err)
+		args := &executor.Arguments{Params: engineArgs}
+
 		exec.Run(
 			s.ctx,
 			&executor.RunCommandRequest{

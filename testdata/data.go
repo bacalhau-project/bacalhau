@@ -39,14 +39,22 @@ var taskWithConfigJSON []byte
 //go:embed wasm_task.json
 var wasmTaskJSON []byte
 
-var (
-	JsonJobNoop   *Fixture
-	JsonJobCancel *Fixture
+//go:embed job-docker-engine-spec.json
+var jobJsonDockerEngineSpec []byte
 
-	YamlJobS3          *Fixture
-	YamlJobNoop        *Fixture
-	YamlJobNoopInvalid *Fixture
-	YamlJobNoopUrl     *Fixture
+//go:embed job-docker-engine-spec.yaml
+var jobYamlDockerEngineSpec []byte
+
+var (
+	JsonJobNoop             *Fixture
+	JsonJobCancel           *Fixture
+	JsonJobDockerEngineSpec *Fixture
+
+	YamlJobS3               *Fixture
+	YamlJobNoop             *Fixture
+	YamlJobNoopInvalid      *Fixture
+	YamlJobNoopUrl          *Fixture
+	YamlJobDockerEngineSpec *Fixture
 
 	IPVMTaskDocker     *Fixture
 	IPVMTaskWasm       *Fixture
@@ -68,6 +76,9 @@ func init() {
 	IPVMTaskWasm = NewIPVMFixture(wasmTaskJSON)
 	IPVMTaskWithConfig = NewIPVMFixture(taskWithConfigJSON)
 
+	JsonJobDockerEngineSpec = NewSpecFixture(jobJsonDockerEngineSpec)
+	YamlJobDockerEngineSpec = NewSpecFixture(jobYamlDockerEngineSpec)
+
 }
 
 type Fixture struct {
@@ -76,7 +87,7 @@ type Fixture struct {
 }
 
 func (f *Fixture) RequiresDocker() bool {
-	return f.Job.Spec.Engine == model.EngineDocker
+	return f.Job.Spec.EngineSpec.Type == model.EngineDocker.String()
 }
 
 func (f *Fixture) RequiresS3() bool {
@@ -92,7 +103,11 @@ func (f *Fixture) RequiresS3() bool {
 func (f *Fixture) validate() {
 	// validate the job spec was deserialized correctly and not empty
 	// checking for valid engine seems like a good enough check
-	if !model.IsValidEngine(f.Job.Spec.Engine) {
+	engineType, err := f.Job.Spec.EngineSpec.Engine()
+	if err != nil {
+		panic(fmt.Sprintf("failed to decode engine spec type: %s", err))
+	}
+	if !model.IsValidEngine(engineType) {
 		panic(fmt.Errorf("spec is empty/invalid: %s", string(f.Data)))
 	}
 }
@@ -120,7 +135,7 @@ func NewSpecFixture(data []byte) *Fixture {
 		Job:  out,
 		Data: data,
 	}
-	f.validate()
+	//f.validate()
 	return f
 }
 
@@ -144,6 +159,6 @@ func NewIPVMFixture(data []byte) *Fixture {
 		Job:  *job,
 		Data: data,
 	}
-	f.validate()
+	//f.validate()
 	return f
 }

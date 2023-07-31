@@ -79,19 +79,24 @@ func WithNodeSelector(selector []model.LabelSelectorRequirement) SpecOpt {
 	}
 }
 
+func WithEngineSpec(e model.EngineSpec) SpecOpt {
+	return func(s *model.Spec) error {
+		s.EngineSpec = e
+		return nil
+	}
+}
+
 func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []string) SpecOpt {
 	return func(s *model.Spec) error {
 		if err := system.ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
 		}
-		s.Engine = model.EngineDocker
-		s.Docker = model.JobSpecDocker{
-			Image:                image,
-			Entrypoint:           entrypoint,
-			Parameters:           parameters,
-			EnvironmentVariables: envvar,
-			WorkingDirectory:     workdir,
-		}
+		s.EngineSpec = model.NewDockerEngineBuilder(image).
+			WithWorkingDirectory(workdir).
+			WithEntrypoint(entrypoint...).
+			WithEnvironmentVariables(envvar...).
+			WithParameters(parameters...).
+			Build()
 		return nil
 	}
 }
@@ -125,14 +130,12 @@ func WithWasmEngine(
 				}
 			}
 		}
-		s.Engine = model.EngineWasm
-		s.Wasm = model.JobSpecWasm{
-			EntryModule:          entryModule,
-			EntryPoint:           entrypoint,
-			Parameters:           parameters,
-			EnvironmentVariables: envvar,
-			ImportModules:        importModules,
-		}
+		s.EngineSpec = model.NewWasmEngineBuilder(entryModule).
+			WithEntrypoint(entrypoint).
+			WithParameters(parameters...).
+			WithEnvironmentVariables(envvar).
+			WithImportModules(importModules...).
+			Build()
 		return nil
 	}
 }
@@ -149,7 +152,10 @@ func MakeWasmSpec(
 
 func MakeSpec(opts ...SpecOpt) (model.Spec, error) {
 	spec := &model.Spec{
-		Engine:    model.EngineNoop,
+		EngineSpec: model.EngineSpec{
+			Type:   model.EngineNoop.String(),
+			Params: make(map[string]interface{}),
+		},
 		Publisher: model.PublisherNoop,
 		PublisherSpec: model.PublisherSpec{
 			Type: model.PublisherNoop,

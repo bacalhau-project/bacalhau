@@ -3,9 +3,10 @@ package mock
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/google/uuid"
 )
 
 func Eval() *models.Evaluation {
@@ -24,6 +25,9 @@ func Eval() *models.Evaluation {
 }
 
 func Job() *model.Job {
+	engineSpec := model.NewEngineBuilder().
+		WithType(model.EngineDocker.String()).
+		Build()
 	return &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 		Metadata: model.Metadata{
@@ -31,7 +35,7 @@ func Job() *model.Job {
 			CreatedAt: time.Now().UTC(),
 		},
 		Spec: model.Spec{
-			Engine: model.EngineDocker,
+			EngineSpec: engineSpec,
 			PublisherSpec: model.PublisherSpec{
 				Type: model.PublisherNoop,
 			},

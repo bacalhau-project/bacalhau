@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackTimeoutSuite struct {
@@ -78,13 +79,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					},
 				},
 			},
-			Spec: model.Spec{
-				Engine: model.EngineNoop,
-				PublisherSpec: model.PublisherSpec{
-					Type: model.PublisherIpfs,
-				},
-				Timeout: int64(testCase.jobTimeout.Seconds()),
-			},
+			Spec: testutils.MakeSpecWithOpts(suite.T(),
+				job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
+				job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
+			),
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
 			},

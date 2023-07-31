@@ -6,7 +6,10 @@ import (
 	"context"
 	"testing"
 
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/suite"
 )
@@ -65,7 +68,11 @@ func TestEnginesNodeRankerSuite(t *testing.T) {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineDocker() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineDocker}}
+	job := testutils.MakeJobWithOpts(s.T(),
+		jobutils.WithEngineSpec(
+			model.NewDockerEngineBuilder("TODO").Build(),
+		),
+	)
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -75,7 +82,11 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	assertEquals(s.T(), ranks, "unknown", 0)
 }
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineWasm}}
+	job := testutils.MakeJobWithOpts(s.T(),
+		jobutils.WithEngineSpec(
+			model.NewWasmEngineBuilder(model.StorageSpec{}).Build(),
+		),
+	)
 	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
@@ -86,8 +97,8 @@ func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineNoop() {
-	job := model.Job{Spec: model.Spec{Engine: model.EngineNoop}}
-	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), job, s.Nodes())
+	job := testutils.MakeNoopJob(s.T())
+	ranks, err := s.EnginesNodeRanker.RankNodes(context.Background(), *job, s.Nodes())
 	s.NoError(err)
 	s.Equal(len(s.Nodes()), len(ranks))
 	assertEquals(s.T(), ranks, "docker", -1)

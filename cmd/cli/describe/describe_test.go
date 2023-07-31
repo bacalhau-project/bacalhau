@@ -14,6 +14,7 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -51,9 +52,15 @@ func (s *DescribeSuite) TestDescribeJob() {
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for k := 0; k < n.numOfJobs; k++ {
-						j := testutils.MakeNoopJob()
-						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-						job, err := s.Client.Submit(ctx, j)
+						j := testutils.MakeJobWithOpts(s.T(),
+							jobutils.WithEngineSpec(
+								model.NewEngineBuilder().
+									WithType(model.EngineNoop.String()).
+									WithParam("Entrypoint-Unique-Array", uuid.NewString()).
+									Build(),
+							),
+						)
+						job, err := s.Client.Submit(ctx, &j)
 						require.NoError(s.T(), err)
 						submittedJob = job // Default to the last job submitted, should be fine?
 					}
@@ -79,9 +86,14 @@ func (s *DescribeSuite) TestDescribeJob() {
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+
+				submittedJobEngineSpec, err := submittedJob.Spec.EngineSpec.Serialize()
+				require.NoError(s.T(), err)
+				returnedJobEngineSpec, err := returnedJobDescription.Job.Spec.EngineSpec.Serialize()
+				require.NoError(s.T(), err)
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					submittedJobEngineSpec,
+					returnedJobEngineSpec,
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -95,9 +107,12 @@ func (s *DescribeSuite) TestDescribeJob() {
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+
+				returnedJobEngineSpec, err = returnedJobDescription.Job.Spec.EngineSpec.Serialize()
+				require.NoError(s.T(), err)
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					submittedJobEngineSpec,
+					returnedJobEngineSpec,
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
@@ -111,9 +126,12 @@ func (s *DescribeSuite) TestDescribeJob() {
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+
+				returnedJobEngineSpec, err = returnedJobDescription.Job.Spec.EngineSpec.Serialize()
+				require.NoError(s.T(), err)
 				require.Equal(s.T(),
-					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+					submittedJobEngineSpec,
+					returnedJobEngineSpec,
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -135,7 +153,7 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 			var submittedJob *model.Job
 			ctx := context.Background()
 
-			j := testutils.MakeNoopJob()
+			j := testutils.MakeNoopJob(s.T())
 			job, err := s.Client.Submit(ctx, j)
 			require.NoError(s.T(), err)
 			submittedJob = job // Default to the last job submitted, should be fine?
@@ -192,9 +210,15 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				ctx := context.Background()
 
 				for i := 0; i < n.numOfJobs; i++ {
-					j := testutils.MakeNoopJob()
-					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-					jj, err := s.Client.Submit(ctx, j)
+					j := testutils.MakeJobWithOpts(s.T(),
+						jobutils.WithEngineSpec(
+							model.NewEngineBuilder().
+								WithType(model.EngineNoop.String()).
+								WithParam("Entrypoint-Unique-Array", uuid.NewString()).
+								Build(),
+						),
+					)
+					jj, err := s.Client.Submit(ctx, &j)
 					require.Nil(s.T(), err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}
@@ -222,9 +246,14 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+
+					submittedJobEngineSpec, err := submittedJob.Spec.EngineSpec.Serialize()
+					require.NoError(s.T(), err)
+					returnedJobEngineSpec, err := returnedJobDescription.Job.Spec.EngineSpec.Serialize()
+					require.NoError(s.T(), err)
 					require.Equal(s.T(),
-						submittedJob.Spec.Docker.Entrypoint[0],
-						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
+						submittedJobEngineSpec,
+						returnedJobEngineSpec,
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}

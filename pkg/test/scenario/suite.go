@@ -100,7 +100,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 // devstack.
 func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
-	docker.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
+	docker.EngineSpecRequiresDocker(s.T(), spec.EngineSpec)
 
 	stack, cm := s.setupStack(scenario.Stack)
 
@@ -116,7 +116,9 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	s.Require().True(model.IsValidEngine(j.Spec.Engine))
+	engineType, err := j.Spec.EngineSpec.Engine()
+	s.Require().NoError(err)
+	s.Require().True(model.IsValidEngine(engineType))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
 			Type: model.PublisherIpfs,
