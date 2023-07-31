@@ -59,7 +59,7 @@ func (e *PluggableExecutor) RegisterPlugin(config PluginExecutorConfig) error {
 		return fmt.Errorf("duplicate registration of exector %s", config.Name)
 	}
 
-	if pluginBin, err := os.Stat(filepath.Join(config.Path, config.Name)); err != nil {
+	if pluginBin, err := os.Stat(filepath.Join(config.Path, config.Command)); err != nil {
 		return err
 	} else if pluginBin.IsDir() {
 		return fmt.Errorf("plugin location is directory, expected binary")

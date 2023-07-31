@@ -1,5 +1,5 @@
 docker: main.go
-	go build -o ./bin/docker main.go
+	go build -o ./bin/bacalhau-docker-executor main.go
 
 clean:
-	rm -f ./bin/docker
+	rm -f ./bin/bacalhau-docker-executor

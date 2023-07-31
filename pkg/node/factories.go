@@ -102,7 +102,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 						{
 							Name:             "Docker",
 							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
-							Command:          "docker",
+							Command:          "bacalhau-docker-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
 							MagicCookieValue: "bacalhau_executor",
@@ -110,7 +110,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 						{
 							Name:             "Wasm",
 							Path:             filepath.Join(config.GetConfigPath(), "plugins"),
-							Command:          "wasm",
+							Command:          "bacalhau-wasm-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
 							MagicCookieValue: "bacalhau_executor",
