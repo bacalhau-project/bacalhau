@@ -12,6 +12,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
+// TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
+// Details in: https://github.com/bacalhau-project/bacalhau/issues/2700
+
 type GRPCServer struct {
 	Impl executor.Executor
 }
