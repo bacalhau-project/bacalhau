@@ -88,18 +88,6 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// We can compare the payload's client ID against the existing job's metadata
-	// as we have confirmed the public key that the request was signed with matches
-	// the client ID the request claims.
-	if job.Metadata.ClientID != payload.ClientID {
-		log.Ctx(ctx).Debug().Msgf("Mismatched ClientIDs for logs, existing job: %s and log request: %s",
-			job.Metadata.ClientID, payload.ClientID)
-
-		errorResponse := bacerrors.ErrorToErrorResponse(errors.Errorf("invalid client id: %s", payload.ClientID))
-		s.writeErrorMessage(ctx, conn, errorResponse)
-		return
-	}
-
 	// Ask the Compute node for a multiaddr where we can connect to a log server
 	logRequest := requester.ReadLogsRequest{
 		JobID:       job.ID(),
