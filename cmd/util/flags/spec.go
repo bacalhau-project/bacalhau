@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
-	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -27,7 +26,7 @@ func NewSpecFlagDefaultSettings() *SpecFlagSettings {
 		Inputs:        opts.StorageOpt{},
 		OutputVolumes: []string{"outputs:/outputs"},
 		EnvVar:        []string{},
-		Timeout:       jobutils.DefaultTimeout.Seconds(),
+		Timeout:       int64(model.DefaultJobTimeout.Seconds()),
 		Labels:        []string{},
 		Selector:      "",
 		DoNotTrack:    false,
@@ -39,7 +38,7 @@ type SpecFlagSettings struct {
 	Inputs        opts.StorageOpt   // Array of inputs
 	OutputVolumes []string          // Array of output volumes in 'name:mount point' form
 	EnvVar        []string          // Array of environment variables
-	Timeout       float64           // Job execution timeout in seconds
+	Timeout       int64             // Job execution timeout in seconds
 	Labels        []string          // Labels for the job on the Bacalhau network (for searching)
 	Selector      string            // Selector (label query) to filter nodes on which this job can be executed
 	DoNotTrack    bool
@@ -73,11 +72,11 @@ func SpecFlags(settings *SpecFlagSettings) *pflag.FlagSet {
 		settings.EnvVar,
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
-	flags.Float64Var(
+	flags.Int64Var(
 		&settings.Timeout,
 		"timeout",
 		settings.Timeout,
-		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
+		`Job execution timeout in seconds (e.g. 300 for 5 minutes)`,
 	)
 	flags.StringSliceVarP(
 		&settings.Labels,

@@ -48,6 +48,6 @@ func TestConfig(t *testing.T) {
 	require.Equal(t, "1GB", spec.Resources.Disk)
 	require.Equal(t, "1GB", spec.Resources.Memory)
 	require.Equal(t, "0", spec.Resources.GPU)
-	require.Equal(t, 300.0, spec.Timeout)
+	require.Equal(t, int64(300), spec.Timeout)
 	require.Equal(t, false, spec.DoNotTrack)
 }

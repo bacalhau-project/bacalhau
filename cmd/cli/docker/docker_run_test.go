@@ -23,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -841,17 +840,18 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+	s.Require().Equal(node.TestRequesterConfig.DefaultJobExecutionTimeout, j.Spec.GetTimeout(),
+		"Did not fall back to default timeout value")
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
-	var expectedTimeout float64 = 999
+	const expectedTimeout = 999 * time.Second
 
 	ctx := context.Background()
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
-		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",
 	)
@@ -859,5 +859,5 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, expectedTimeout)
+	s.Require().Equal(expectedTimeout, j.Spec.GetTimeout())
 }
