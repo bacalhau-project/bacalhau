@@ -6,12 +6,14 @@ Bacalhau is a platform for fast, cost efficient, and secure computation by runni
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-bacalhau
+$ pip install flytekitplugins-bacalhau
 ```
 
 ## Task Example
 ```python
-pass
+$ python flytekit-bacalhau/scripts/wf.py
+# or
+$ pyflyte run flytekit-bacalhau/scripts/wf.py wf
 ```
 
 More examples can be found in the documentation. - TODO(@enricorotundo)

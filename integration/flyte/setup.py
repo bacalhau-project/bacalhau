@@ -80,9 +80,9 @@ setup(
     ],
     extras_require=extras_require,
     scripts=[
-        "flytekit_scripts/flytekit_build_image.sh",
-        "flytekit_scripts/flytekit_venv",
-        "flytekit/bin/entrypoint.py",
+        # "flytekit_scripts/flytekit_build_image.sh",
+        # "flytekit_scripts/flytekit_venv",
+        # "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
     python_requires=">=3.8,<3.12",

@@ -7,6 +7,9 @@ install-piptools:
 setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
+.PHONY: test
+test: ## Run tests
+	cd plugins && $(MAKE) test
 
 # .PHONY: fmt
 # fmt: ## Format code with black and isort
