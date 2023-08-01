@@ -2,9 +2,7 @@
 pyflyte run scripts/wf.py bacalhau_task
 """
 
-import bacalhau_sdk
-print(bacalhau_sdk)
-print(bacalhau_sdk.config.get_client_id())
+
 
 from flytekit import workflow
 
