@@ -20,15 +20,15 @@ var DefaultComputeConfig = ComputeConfigParams{
 
 	JobNegotiationTimeout:      3 * time.Minute,
 	MinJobExecutionTimeout:     500 * time.Millisecond,
-	MaxJobExecutionTimeout:     60 * time.Minute,
-	DefaultJobExecutionTimeout: 10 * time.Minute,
+	MaxJobExecutionTimeout:     model.NoJobTimeout,
+	DefaultJobExecutionTimeout: model.NoJobTimeout,
 
 	LogRunningExecutionsInterval: 10 * time.Second,
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	MinJobExecutionTimeout:     0 * time.Second,
-	DefaultJobExecutionTimeout: 30 * time.Minute,
+	DefaultJobExecutionTimeout: model.NoJobTimeout,
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	NodeRankRandomnessRange:            5,

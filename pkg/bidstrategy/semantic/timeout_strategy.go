@@ -3,11 +3,10 @@ package semantic
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type TimeoutStrategyParams struct {
@@ -38,13 +37,14 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
-	// Timeout will be multiplied by 1000000000 (time.Second) when it gets converted to a time.Duration (which is an int64 underneath),
-	// so make sure that iit can fit into it.
-	if request.Job.Spec.Timeout > float64(math.MaxInt64/int64(time.Second)) {
-		timeout := strconv.FormatFloat(request.Job.Spec.Timeout, 'f', -1, sixtyFourBitFloat)
+	// Timeout will be multiplied by 1000000000 (time.Second) when it gets
+	// converted to a time.Duration (which is an int64 underneath), so make sure
+	// that it can fit into it.
+	var maxTimeout = int64(model.NoJobTimeout.Seconds())
+	if request.Job.Spec.Timeout > maxTimeout {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    fmt.Sprintf("job timeout %s exceeds maximum possible value", timeout),
+			Reason:    fmt.Sprintf("job timeout %d exceeds maximum possible value %d", request.Job.Spec.Timeout, maxTimeout),
 		}, nil
 	}
 
@@ -69,5 +69,3 @@ func (s *TimeoutStrategy) ShouldBid(_ context.Context, request bidstrategy.BidSt
 	}
 	return bidstrategy.NewShouldBidResponse(), nil
 }
-
-const sixtyFourBitFloat = 64
