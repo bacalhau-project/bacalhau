@@ -13,7 +13,7 @@ bacalhau_task = BacalhauTask(
 
 @workflow
 def wf():
-    bacalhau_task(
+    a = bacalhau_task(
         api_version="V1beta1",
         spec=dict(
             engine="Docker",
@@ -36,6 +36,7 @@ def wf():
             do_not_track=True,
         ),
     )
+    print(a)
 
 if __name__ == "__main__":
     print(wf())

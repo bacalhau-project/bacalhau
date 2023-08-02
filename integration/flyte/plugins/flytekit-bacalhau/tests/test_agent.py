@@ -2,13 +2,10 @@ import json
 from dataclasses import asdict
 from datetime import timedelta
 
-import pytest
-import os
-from unittest import mock
-from unittest.mock import MagicMock
-
 import grpc
 from google.protobuf import struct_pb2
+from unittest import mock
+from unittest.mock import MagicMock
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -18,12 +15,7 @@ from flytekit.models import literals, task, types
 from flytekit.models.task import Sql, TaskTemplate
 import flytekit.models.interface as interface_models
 
-
-from flytekitplugins.bacalhau import BacalhauTask, BacalhauAgent
 from flytekitplugins.bacalhau.agent import Metadata
-from flytekitplugins.bacalhau.task import BacalhauConfig
-
-# from bacalhau_apiclient.models.spec import Spec
 
 
 @mock.patch("flytekitplugins.bacalhau.agent.submit")

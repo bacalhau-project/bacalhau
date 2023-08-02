@@ -6,10 +6,14 @@ ifeq ($(UNAME_S),Linux)
 export SED = sed
 endif
 
+# make sure tests don't point to production api
+# https://github.com/bacalhau-project/bacalhau/issues/2710
+export BACALHAU_API_HOST=myhost
+export BACALHAU_API_PORT=99999
 
 .PHONY: test
 test:
-	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest --log-cli-level=DEBUG -s
+	find . -maxdepth 1 -type d | grep 'flytekit-' | xargs -L1 pytest --log-cli-level=DEBUG --capture=no
 
 .PHONY: build_all_plugins
 build_all_plugins:

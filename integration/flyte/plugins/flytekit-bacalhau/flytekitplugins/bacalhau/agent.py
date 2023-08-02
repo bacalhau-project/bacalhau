@@ -1,7 +1,6 @@
-import datetime
 import json
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional, Type
+from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
