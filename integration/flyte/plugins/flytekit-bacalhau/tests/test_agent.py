@@ -8,6 +8,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import grpc
+from google.protobuf import struct_pb2
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -43,9 +44,17 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
         def __init__(self):
             self.job = MockResponseJob()
 
+    class MockResultsCid:
+        def __init__(self):
+            self.cid = "dummy_cid"
+
+    class MockResultsData:
+        def __init__(self):
+            self.data = MockResultsCid()
+            
     class MockResultsResponse:
         def __init__(self):
-            self.job_id = job_id
+            self.results = [MockResultsData()]
 
     mock_submit.return_value = MockSubmitResponse()
     mock_results.return_value = MockResultsResponse()
@@ -75,14 +84,21 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
         },
         {},
     )
+    s = struct_pb2.Struct()
+    s.update({
+        "key": "value",
+        "deal": {
+            "concurrency": 1.0,
+        }
+    })
     task_inputs = literals.LiteralMap(
         {
-            "api_version": literals.Literal(hash="hi"),
-            "client_id": literals.Literal(hash="hi"),
-            "spec": literals.Literal(hash="hi"),
+            "api_version": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-api-version"))),
+            "client_id": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="some-client-id"))),
+            "spec": literals.Literal(scalar=literals.Scalar(generic=s)),
         },
     )
-
+    
     task_metadata = task.TaskMetadata(
         True,
         task.RuntimeMetadata(
@@ -115,7 +131,7 @@ def test_bacalhau_agent(mock_get_client_id, mock_results, mock_submit):
     res = agent.get(ctx, metadata_bytes)
 
     assert (
-        res.resource.outputs.literals["results"].scalar.primitive.string_value == job_id
+        res.resource.outputs.literals["results"].scalar.primitive.string_value == "dummy_cid"
     )
     agent.delete(ctx, metadata_bytes)
     # mock_instance.cancel_job.assert_called()

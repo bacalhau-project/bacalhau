@@ -75,7 +75,6 @@ class BacalhauAgent(AgentBase):
             raise ValueError("inputs cannot be None")
 
         self._logger.debug(f"create inputs.literals: {inputs.literals}")
-        print(inputs.literals)
         inputs_dict = {}
         inputs_dict["api_version"] = inputs.literals.get("api_version").scalar.primitive.string_value
         if inputs.literals.get("client_id") is not None:
@@ -85,8 +84,9 @@ class BacalhauAgent(AgentBase):
         
         # google.protobuf.struct_pb2.Struct
         inputs_dict["spec"] = json_format.MessageToDict(inputs.literals.get("spec").scalar.generic)
-        # cannot unmarshal number 1.0 into Go struct field Deal.Spec.Deal.Concurrency of type int
-        # patch https://stackoverflow.com/questions/74233385/protobuf-json-format-changes-datatype-from-int-to-float
+        
+        # Patching: cannot unmarshal number 1.0 into Go struct field Deal.Spec.Deal.Concurrency of type int
+        # https://stackoverflow.com/questions/74233385/protobuf-json-format-changes-datatype-from-int-to-float
         inputs_dict["spec"]["deal"]["concurrency"] = int(inputs_dict["spec"]["deal"]["concurrency"])
 
         self._logger.debug(f"create inputs_dict: {inputs_dict}")
@@ -96,13 +96,11 @@ class BacalhauAgent(AgentBase):
                 ClientID=inputs_dict["client_id"],
                 Spec=inputs_dict["spec"],
         )
-        print(submit_data)
         res = submit(submit_data)
 
         if not res:
             pass
         self._logger.debug(f"create res: {res}")
-        print(str(res.job.metadata.id))
         metadata = Metadata(job_id=str(res.job.metadata.id))
         return CreateTaskResponse(
             resource_meta=json.dumps(asdict(metadata)).encode("utf-8")
@@ -117,16 +115,15 @@ class BacalhauAgent(AgentBase):
             self._logger.error("error")
             state = PERMANENT_FAILURE
             return GetTaskResponse(resource=Resource(state=state))
-
-        print(baclhau_response)
+        
         state = SUCCEEDED
+        resulting_cid = baclhau_response.results[0].data.cid
         ctx = FlyteContextManager.current_context()
         res = literals.LiteralMap(
             {
                 "results": TypeEngine.to_literal(
                     ctx,
-                    "ok",
-                    # baclhau_response.results,
+                    resulting_cid,
                     str,
                     literals.Literal.hash,
                 )
