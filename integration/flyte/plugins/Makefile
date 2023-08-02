@@ -37,3 +37,14 @@ update_all_versions:
 	# it exits with exit code 1 and github actions aborts the build.
 	./run_all_plugins.sh grep "$(PLACEHOLDER)" "$(VERSION_FILE)"
 	./run_all_plugins.sh $(SED) -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" $(VERSION_FILE)
+
+
+#### Bacalhau additions ####
+
+.PHONY: docker-build
+docker-build:
+	docker build -t expanso/flytekit-bacalhau:latest -f Dockerfile .
+
+.PHONY: docker-run
+docker-run:
+	docker run -it --rm -p 8000:8000 expanso/flytekit-bacalhau:latest
