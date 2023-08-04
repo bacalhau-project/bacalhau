@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -59,6 +59,84 @@ var (
 		bacalhau serve --peer env --private-internal-ipfs=false
 `))
 )
+
+func GetServerOptions() (*ServeOptions, error) {
+	engineStrs := viper.GetStringSlice(NodeDisabledFeatureEngines)
+	var engines []model.Engine
+	for _, e := range engineStrs {
+		engine, err := model.ParseEngine(e)
+		if err != nil {
+			return nil, err
+		}
+		engines = append(engines, engine)
+	}
+	publishersStrs := viper.GetStringSlice(NodeDisabledFeaturePublishers)
+	var publishers []model.Publisher
+	for _, p := range publishersStrs {
+		publisher, err := model.ParsePublisher(p)
+		if err != nil {
+			return nil, err
+		}
+		publishers = append(publishers, publisher)
+	}
+	storagesStrs := viper.GetStringSlice(NodeDisabledFeatureStorages)
+	var storages []model.StorageSourceType
+	for _, s := range storagesStrs {
+		storageType, err := model.ParseStorageSourceType(s)
+		if err != nil {
+			return nil, err
+		}
+		storages = append(storages, storageType)
+	}
+	AutoLabels := AutoOutputLabels()
+	combinedLabelMap := make(map[string]string)
+	for key, value := range AutoLabels {
+		combinedLabelMap[key] = value
+	}
+
+	for key, value := range viper.GetStringMapString(NodeLabels) {
+		combinedLabelMap[key] = value
+	}
+
+	jobLocality, err := model.ParseJobSelectionDataLocality(viper.GetString(NodeRequesterJobSelectionPolicyLocality))
+	if err != nil {
+		return nil, err
+	}
+
+	return &ServeOptions{
+		NodeType:      viper.GetStringSlice(NodeType),
+		PeerConnect:   viper.GetString(NodeLibp2pPeerConnect),
+		IPFSConnect:   viper.GetString(NodeIPFSConnect),
+		EstuaryAPIKey: viper.GetString(NodeEstuaryAPIKey),
+		HostAddress:   "0.0.0.0", // TODO
+		SwarmPort:     viper.GetInt(NodeLibp2pSwarmPort),
+		JobSelectionPolicy: model.JobSelectionPolicy{
+			Locality:            jobLocality,
+			RejectStatelessJobs: viper.GetBool(NodeRequesterJobSelectionPolicyRejectStatelessJobs),
+			AcceptNetworkedJobs: viper.GetBool(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs),
+			ProbeHTTP:           viper.GetString(NodeRequesterJobSelectionPolicyProbeHTTP),
+			ProbeExec:           viper.GetString(NodeRequesterJobSelectionPolicyProbeExec),
+		},
+		ExternalVerifierHook: nil, //TODO currently there isn't a flag for this
+		LimitTotalCPU:        viper.GetString(NodeComputeCapacityTotalCPU),
+		LimitTotalMemory:     viper.GetString(NodeComputeCapacityTotalMemory),
+		LimitTotalGPU:        viper.GetString(NodeComputeCapacityTotalGPU),
+		LimitJobCPU:          viper.GetString(NodeComputeCapacityJobCPU),
+		LimitJobMemory:       viper.GetString(NodeComputeCapacityJobMemory),
+		LimitJobGPU:          viper.GetString(NodeComputeCapacityJobGPU),
+		DisabledFeatures: node.FeatureConfig{
+			Engines:    engines,
+			Publishers: publishers,
+			Storages:   storages,
+		},
+		JobExecutionTimeoutClientIDBypassList: viper.GetStringSlice(NodeComputeCapacityClientIDBypass),
+		Labels:                                combinedLabelMap,
+		IPFSSwarmAddresses:                    viper.GetStringSlice(NodeIPFSSwarmAddress),
+		PrivateInternalIPFS:                   viper.GetBool(NodeIPFSPrivateInternal),
+		AllowListedLocalPaths:                 viper.GetStringSlice(NodeAllowListedLocalPaths),
+	}, nil
+
+}
 
 //nolint:lll // Documentation
 type ServeOptions struct {
@@ -198,58 +276,38 @@ func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 }
 
 func NewCmd() *cobra.Command {
-	OS := NewServeOptions()
-
+	var options *ServeOptions
 	serveCmd := &cobra.Command{
 		Use:     "serve",
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if err := registerFlags(map[string][]flagDefinition{
+				"libp2p":           Libp2pFlags,
+				"ipfs":             IPFSFlags,
+				"capacity":         CapacityFlags,
+				"job-selection":    JobSelectionFlags,
+				"disable-features": DisabledFeatureFlags,
+				"labels":           LabelFlags,
+				"node-type":        NodeTypeFlags,
+				"estuary":          EstuaryFlags,
+				"list-local":       AllowListLocalPathsFlags,
+			}); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+			var err error
+			options, err = GetServerOptions()
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+		},
 		Run: func(cmd *cobra.Command, _ []string) {
-			if err := serve(cmd, OS); err != nil {
+			if err := serve(cmd, options); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
 	}
-
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.NodeType, "node-type", OS.NodeType,
-		`Whether the node is a compute, requester or both.`,
-	)
-
-	serveCmd.PersistentFlags().StringToStringVar(
-		&OS.Labels, "labels", OS.Labels,
-		`Labels to be associated with the node that can be used for node selection and filtering. (e.g. --labels key1=value1,key2=value2)`,
-	)
-
-	serveCmd.PersistentFlags().StringVar(
-		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
-		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
-		`The API key used when using the estuary API.`,
-	)
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
-		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
-	)
-	serveCmd.PersistentFlags().StringSliceVar(
-		&OS.AllowListedLocalPaths, "allow-listed-local-paths", OS.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs",
-	)
-	serveCmd.PersistentFlags().BoolVar(
-		&OS.PrivateInternalIPFS, "private-internal-ipfs", OS.PrivateInternalIPFS,
-		"Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - "+
-			"cannot be used with --ipfs-connect. "+
-			"Use \"--private-internal-ipfs=false\" to disable. "+
-			"To persist a local Ipfs node, set BACALHAU_SERVE_IPFS_PATH to a valid path.",
-	)
-
-	SetupLibp2pCLIFlags(serveCmd, OS)
-	serveCmd.Flags().AddFlagSet(flags.DisabledFeatureCLIFlags(&OS.DisabledFeatures))
-	serveCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
-	SetupCapacityManagerCLIFlags(serveCmd, OS)
 
 	return serveCmd
 }
@@ -258,6 +316,15 @@ func NewCmd() *cobra.Command {
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
+
+	var cfg BacalhauConfig
+	if err := viper.Unmarshal(&cfg); err != nil {
+		return err
+	}
+
+	if err := viper.WriteConfig(); err != nil {
+		panic(err)
+	}
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {

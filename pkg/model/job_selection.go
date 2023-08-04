@@ -46,3 +46,13 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 		Locality: Anywhere,
 	}
 }
+
+func (e JobSelectionDataLocality) MarshalText() ([]byte, error) {
+	return []byte(e.String()), nil
+}
+
+func (e *JobSelectionDataLocality) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*e, err = ParseJobSelectionDataLocality(name)
+	return
+}

@@ -1,0 +1,40 @@
+api-host = 'bootstrap.production.bacalhau.org'
+api-port = '1234'
+
+[node]
+allowlistedlocalpaths = []
+estuaryapikey = ''
+labels = []
+type = ['requester']
+
+[node.compute]
+[node.compute.capacity]
+clientidbypass = []
+jobcpu = ''
+jobgpu = ''
+jobmemory = ''
+totalcpu = ''
+totalgpu = ''
+totalmemory = ''
+
+[node.disabledfeature]
+engines = []
+publishers = []
+storages = []
+
+[node.ipfs]
+connect = ''
+privateinternal = true
+swarmaddress = []
+
+[node.libp2p]
+peerconnect = 'none'
+swarmport = 1235
+
+[node.requester]
+[node.requester.jobselectionpolicy]
+acceptnetworkedjobs = false
+locality = 'anywhere'
+probeexec = ''
+probehttp = ''
+rejectstatelessjobs = false

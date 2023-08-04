@@ -13,12 +13,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -39,11 +40,6 @@ func InitConfig() error {
 		return fmt.Errorf("failed to init config dir: %w", err)
 	}
 
-	configFile, err := ensureConfigFile(configDir)
-	if err != nil {
-		return fmt.Errorf("failed to init config file: %w", err)
-	}
-
 	userIDKey, err := ensureUserIDKey(configDir)
 	if err != nil {
 		return fmt.Errorf("failed to init user ID key file: %w", err)
@@ -51,10 +47,12 @@ func InitConfig() error {
 	viper.SetDefault("user-id-key", userIDKey) // rsa key for identifying user
 
 	// Settings and initialisation for viper:
-	viper.SetConfigFile(configFile) // provided or created config file
-	viper.SetConfigType("yaml")     // config is always a yaml file
-	viper.AutomaticEnv()            // try to read config from env if possible
-	viper.SetEnvPrefix("bacalhau")  // BACALHAU_<key> is encoding for env vars
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	//viper.SetConfigType("yaml")
+	viper.AddConfigPath(configDir)
+	viper.AutomaticEnv()           // try to read config from env if possible
+	viper.SetEnvPrefix("bacalhau") // BACALHAU_<key> is encoding for env vars
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	if err = viper.ReadInConfig(); err != nil {
 		return fmt.Errorf("failed to load config file: %w", err)
