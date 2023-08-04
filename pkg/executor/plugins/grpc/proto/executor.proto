@@ -1,0 +1,63 @@
+
+syntax = "proto3";
+package proto;
+
+// TODO: Complete these structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
+// Details in: https://github.com/bacalhau-project/bacalhau/issues/2700
+
+message RunCommandRequest {
+  bytes Params = 1;
+}
+
+message RunCommandResponse {
+  bytes Params = 1;
+}
+
+message CancelCommandRequest {
+  string ExecutionID =1;
+}
+
+message CancelCommandResponse {
+
+}
+
+message IsInstalledRequest {
+
+}
+
+message IsInstalledResponse {
+  bool Installed = 1;
+}
+
+message ShouldBidRequest {
+  bytes BidRequest = 1;
+}
+
+message ShouldBidBasedOnUsageRequest {
+  bytes BidRequest = 1;
+  bytes Usage = 2;
+}
+
+// shared by both semantic and resource bid
+message ShouldBidResponse {
+  bytes BidResponse = 1;
+}
+
+message OutputStreamRequest {
+  string ExecutionID = 1;
+  bool History = 2;
+  bool Follow = 3;
+}
+
+message OutputStreamResponse {
+  bytes Data =1;
+}
+
+service Executor {
+  rpc Run(RunCommandRequest) returns (RunCommandResponse);
+  rpc Cancel(CancelCommandRequest) returns (CancelCommandResponse);
+  rpc IsInstalled(IsInstalledRequest) returns (IsInstalledResponse);
+  rpc ShouldBid(ShouldBidRequest) returns (ShouldBidResponse);
+  rpc ShouldBidBasedOnUsage(ShouldBidBasedOnUsageRequest) returns (ShouldBidResponse);
+  rpc GetOutputStream(OutputStreamRequest) returns (stream OutputStreamResponse);
+}

@@ -18,6 +18,7 @@ type BidderParams struct {
 	SemanticStrategy bidstrategy.SemanticBidStrategy
 	ResourceStrategy bidstrategy.ResourceBidStrategy
 	Store            store.ExecutionStore
+	Executor         Executor
 	Callback         Callback
 	GetApproveURL    func() *url.URL
 }
@@ -25,6 +26,7 @@ type BidderParams struct {
 type Bidder struct {
 	nodeID        string
 	store         store.ExecutionStore
+	executor      Executor
 	callback      Callback
 	getApproveURL func() *url.URL
 
@@ -37,12 +39,14 @@ func NewBidder(params BidderParams) Bidder {
 		nodeID:           params.NodeID,
 		store:            params.Store,
 		getApproveURL:    params.GetApproveURL,
+		executor:         params.Executor,
 		callback:         params.Callback,
 		semanticStrategy: params.SemanticStrategy,
 		resourceStrategy: params.ResourceStrategy,
 	}
 }
 
+// TODO: evaluate the need for async bidding and marking bids as waiting
 func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageCalc capacity.UsageCalculator) {
 	var (
 		// ask the bidding strategy if we should bid on this job
@@ -76,17 +80,35 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 		return
 	}
 
-	result := BidResult{
+	// if the request is pre-approved, we should run the execution immediately if the bid is accepted
+	if !request.WaitForApproval {
+		if !response.ShouldBid || response.ShouldWait {
+			b.callback.OnComputeFailure(ctx, ComputeError{
+				RoutingMetadata:   routingMetadata,
+				ExecutionMetadata: executionMetadata,
+				Err:               fmt.Sprintf("Job rejected: %s", response.Reason),
+			})
+		} else {
+			execution := store.NewExecution(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
+			execution.State = store.ExecutionStateBidAccepted
+			if err := b.store.CreateExecution(ctx, *execution); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
+				return
+			}
+			err := b.executor.Run(ctx, *execution)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("Unable to run execution")
+				return
+			}
+		}
+		return
+	}
+
+	bidResult := BidResult{
 		RoutingMetadata:   routingMetadata,
 		ExecutionMetadata: executionMetadata,
 		Accepted:          response.ShouldBid,
 		Reason:            response.Reason,
-	}
-
-	// if we are not bidding and not wait return a response, we can't do this job. mark as complete then bail
-	if !response.ShouldBid && !response.ShouldWait {
-		b.callback.OnBidComplete(ctx, result)
-		return
 	}
 
 	// if we are bidding or waiting create an execution
@@ -98,9 +120,15 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 		}
 	}
 
+	// if we are not bidding and not wait return a response, we can't do this job. mark as complete then bail
+	if !response.ShouldBid && !response.ShouldWait {
+		b.callback.OnBidComplete(ctx, bidResult)
+		return
+	}
+
 	// were not waiting return a response.
 	if !response.ShouldWait {
-		b.callback.OnBidComplete(ctx, result)
+		b.callback.OnBidComplete(ctx, bidResult)
 	}
 }
 

@@ -17,8 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	testutil "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	testutil "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
 type LogStreamTestSuite struct {
@@ -26,7 +25,6 @@ type LogStreamTestSuite struct {
 
 	ctx   context.Context
 	stack *devstack.DevStack
-	cm    *system.CleanupManager
 }
 
 func TestLogStreamTestSuite(t *testing.T) {
@@ -35,11 +33,7 @@ func TestLogStreamTestSuite(t *testing.T) {
 
 func (s *LogStreamTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.stack, s.cm = testutil.SetupTestWithDefaultConfigs(s.ctx, s.T(), 1)
-}
-
-func (s *LogStreamTestSuite) TearDownSuite() {
-	s.cm.Cleanup(s.ctx)
+	s.stack = testutil.Setup(s.ctx, s.T(), devstack.WithNumberOfHybridNodes(1))
 }
 
 func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (io.Reader, error) {

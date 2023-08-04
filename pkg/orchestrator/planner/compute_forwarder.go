@@ -55,7 +55,8 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 	// TODO: notifying nodes for the same plan can be done in parallel, but we should limit
 	//  the total number of concurrent notifications across plans to avoid overloading the network.
 	for _, exec := range plan.NewExecutions {
-		s.doNotifyAskForBid(ctx, *plan.Job, exec.ID())
+		waitForApproval := exec.DesiredState == model.ExecutionDesiredStatePending
+		s.doNotifyAskForBid(ctx, *plan.Job, exec.ID(), waitForApproval)
 	}
 	for _, u := range plan.UpdatedExecutions {
 		observedState := u.Execution.State
@@ -63,11 +64,14 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 		switch u.DesiredState {
 		case model.ExecutionDesiredStatePending:
 			if observedState == model.ExecutionStateNew {
-				s.doNotifyAskForBid(ctx, *plan.Job, u.Execution.ID())
+				s.doNotifyAskForBid(ctx, *plan.Job, u.Execution.ID(), true)
 			}
 		case model.ExecutionDesiredStateRunning:
 			if observedState == model.ExecutionStateAskForBidAccepted {
 				s.doNotifyBidAccepted(ctx, u.Execution.ID())
+			}
+			if observedState == model.ExecutionStateNew {
+				s.doNotifyAskForBid(ctx, *plan.Job, u.Execution.ID(), false)
 			}
 		case model.ExecutionDesiredStateStopped:
 			if observedState == model.ExecutionStateAskForBidAccepted {
@@ -80,7 +84,7 @@ func (s *ComputeForwarder) doProcess(ctx context.Context, plan *models.Plan) {
 }
 
 // doNotifyAskForBid notifies the target node to bid for the given execution.
-func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job, executionID model.ExecutionID) {
+func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job, executionID model.ExecutionID, waitForApproval bool) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s asking node %s to bid with executionID %s",
 		s.id, executionID.NodeID, executionID.ExecutionID)
 
@@ -108,7 +112,8 @@ func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job,
 
 	// Notify the compute node
 	request := compute.AskForBidRequest{
-		Job: job,
+		Job:             job,
+		WaitForApproval: waitForApproval,
 		ExecutionMetadata: compute.ExecutionMetadata{
 			ExecutionID: executionID.ExecutionID,
 			JobID:       executionID.JobID,
@@ -126,7 +131,11 @@ func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, job model.Job,
 	}
 
 	// Update the execution state if the notification was successful
-	s.updateExecutionState(ctx, executionID, model.ExecutionStateAskForBid, model.ExecutionStateNew)
+	newState := model.ExecutionStateAskForBid
+	if !waitForApproval {
+		newState = model.ExecutionStateBidAccepted
+	}
+	s.updateExecutionState(ctx, executionID, newState, model.ExecutionStateNew)
 }
 
 // doNotifyBidAccepted notifies the target node that the bid was accepted.
@@ -171,7 +180,7 @@ func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, executionID 
 	s.updateExecutionState(ctx, executionID, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
 }
 
-// notifyCancel notifies the target node that the execution was cancelled.
+// notifyCancel notifies the target node that the execution was canceled.
 func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, executionID model.ExecutionID) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, executionID.ExecutionID)
 
@@ -185,7 +194,7 @@ func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, exe
 	}
 	_, err := s.computeService.CancelExecution(ctx, request)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was cancelled",
+		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was canceled",
 			executionID.NodeID, executionID.ExecutionID)
 		return
 	}

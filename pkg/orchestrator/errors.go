@@ -44,3 +44,15 @@ func (e ErrNotEnoughNodes) Error() string {
 	}
 	return fmt.Sprintf("not enough nodes to run job. requested: %d, available: %d. %s", e.RequestedNodes, available, nodeErrors)
 }
+
+// ErrNoMatchingNodes is returned when no matching nodes in the network to run a job
+type ErrNoMatchingNodes struct {
+}
+
+func NewErrNoMatchingNodes() ErrNoMatchingNodes {
+	return ErrNoMatchingNodes{}
+}
+
+func (e ErrNoMatchingNodes) Error() string {
+	return "no matching nodes to run job"
+}

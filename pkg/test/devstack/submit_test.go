@@ -6,11 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -38,12 +38,8 @@ func (suite *DevstackSubmitSuite) SetupTest() {
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack, _ := testutils.SetupTest(
-		ctx,
-		suite.T(),
-		1,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWithDefaults(),
+	stack := testutils.Setup(ctx, suite.T(),
+		devstack.WithNumberOfHybridNodes(1),
 	)
 
 	apiServer := stack.Nodes[0].APIServer

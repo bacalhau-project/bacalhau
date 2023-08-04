@@ -8,13 +8,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
-	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -23,7 +24,6 @@ type TargetAllSuite struct {
 }
 
 func TestTargetAllSuite(t *testing.T) {
-	t.Skipf("re-enable when we introduce system batch jobs")
 	suite.Run(t, new(TargetAllSuite))
 }
 
@@ -53,7 +53,12 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 		Spec:          model.Spec{Engine: model.EngineNoop},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers:   scenario.WaitUntilSuccessful(1),
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
+			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				model.ExecutionStateCompleted: 1,
+			}),
+		},
 	}
 
 	suite.RunScenario(testCase)
@@ -69,25 +74,39 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 		Spec:          model.Spec{Engine: model.EngineNoop},
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
-		JobCheckers:   scenario.WaitUntilSuccessful(5),
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForSuccessfulCompletion(),
+			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
+				model.ExecutionStateCompleted: 5,
+			}),
+		},
 	}
 
 	suite.RunScenario(testCase)
 }
 
-func (suite *TargetAllSuite) TestCanRetryOnNodes() {
+func (suite *TargetAllSuite) TestPartialFailure() {
 	var hasFailed atomic.Bool
 
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{NumberOfHybridNodes: 0, NumberOfRequesterOnlyNodes: 1, NumberOfComputeOnlyNodes: 2},
+			DevStackOptions: &devstack.DevStackOptions{
+				NumberOfHybridNodes:        0,
+				NumberOfRequesterOnlyNodes: 1,
+				NumberOfComputeOnlyNodes:   2,
+			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
 					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*model.RunCommandResult, error) {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
-							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil)
+							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil, executor.OutputLimits{
+								MaxStdoutFileLength:   system.MaxStdoutFileLength,
+								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+								MaxStderrFileLength:   system.MaxStderrFileLength,
+								MaxStderrReturnLength: system.MaxStderrReturnLength,
+							})
 						}
 					},
 				},
@@ -97,8 +116,9 @@ func (suite *TargetAllSuite) TestCanRetryOnNodes() {
 		Deal:          model.Deal{TargetingMode: model.TargetAll},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 		JobCheckers: []job.CheckStatesFunction{
+			job.WaitForUnsuccessfulCompletion(),
 			job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-				model.ExecutionStateCompleted: 2,
+				model.ExecutionStateCompleted: 1,
 				model.ExecutionStateFailed:    1,
 			}),
 		},

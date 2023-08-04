@@ -22,6 +22,11 @@ func ExecutionStateTypes() []ExecutionState {
 	return res
 }
 
+// IsUndefined returns true if the execution state is undefined
+func (s ExecutionState) IsUndefined() bool {
+	return s == ExecutionStateUndefined
+}
+
 // IsActive returns true if the execution is active
 func (s ExecutionState) IsActive() bool {
 	return s == ExecutionStateCreated || s == ExecutionStateBidAccepted || s == ExecutionStateRunning || s == ExecutionStatePublishing

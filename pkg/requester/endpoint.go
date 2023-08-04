@@ -116,11 +116,20 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 		ID:          uuid.NewString(),
 		JobID:       job.ID(),
 		TriggeredBy: models.EvalTriggerJobRegister,
-		Type:        model.JobTypeBatch,
+		Type:        job.Type(),
 		Status:      models.EvalStatusPending,
 		CreateTime:  job.Metadata.CreatedAt.UnixNano(),
 		ModifyTime:  job.Metadata.CreatedAt.UnixNano(),
 	}
+
+	// TODO(ross): How can we create this evaluation in the same transaction that the CreateJob
+	// call uses.
+	err = e.store.CreateEvaluation(ctx, *eval)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for job %s", jobID)
+		return job, err
+	}
+
 	err = e.evaluationBroker.Enqueue(eval)
 	if err != nil {
 		return job, err
@@ -131,12 +140,16 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayloa
 }
 
 func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
+	job, err := e.store.GetJob(ctx, request.JobID)
+	if err != nil {
+		return CancelJobResult{}, err
+	}
 	existingJobState, err := e.store.GetJobState(ctx, request.JobID)
 	if err != nil {
 		return CancelJobResult{}, err
 	}
 	if existingJobState.State == model.JobStateCancelled {
-		// no need to cancel a job that is already cancelled
+		// no need to cancel a job that is already canceled
 		return CancelJobResult{}, nil
 	}
 	if existingJobState.State == model.JobStateCompleted {
@@ -144,7 +157,7 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 	}
 
 	// update the job state, except if the job is already completed
-	// we allow marking a failed job as cancelled
+	// we allow marking a failed job as canceled
 	err = e.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
 		JobID: request.JobID,
 		Condition: jobstore.UpdateJobCondition{
@@ -153,7 +166,7 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			},
 		},
 		NewState: model.JobStateCancelled,
-		Comment:  "job cancelled by user",
+		Comment:  "job canceled by user",
 	})
 	if err != nil {
 		return CancelJobResult{}, err
@@ -167,11 +180,19 @@ func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) 
 			ID:          uuid.NewString(),
 			JobID:       request.JobID,
 			TriggeredBy: models.EvalTriggerJobCancel,
-			Type:        model.JobTypeBatch,
+			Type:        job.Type(),
 			Status:      models.EvalStatusPending,
 			CreateTime:  now,
 			ModifyTime:  now,
 		}
+
+		// TODO(ross): How can we create this evaluation in the same transaction that we update the jobstate
+		err = e.store.CreateEvaluation(ctx, *eval)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for cancel job %s", request.JobID)
+			return CancelJobResult{}, err
+		}
+
 		err = e.evaluationBroker.Enqueue(eval)
 		if err != nil {
 			return CancelJobResult{}, err
@@ -288,8 +309,12 @@ func (e *BaseEndpoint) OnRunComplete(ctx context.Context, result compute.RunResu
 		},
 		Condition: jobstore.UpdateExecutionCondition{
 			ExpectedStates: []model.ExecutionStateType{
+				// usual expected state
 				model.ExecutionStateBidAccepted,
-				model.ExecutionStateAskForBidAccepted, //in case the compute node responded before the compute_forwarder updated the execution state
+				// in case of approval is required, and the compute node responded before the compute_forwarder updated the execution state
+				model.ExecutionStateAskForBidAccepted,
+				// in case of approval is not required, and the compute node responded before the compute_forwarder updated the execution state
+				model.ExecutionStateNew,
 			},
 		},
 		NewValues: model.ExecutionState{
@@ -350,17 +375,29 @@ func (e *BaseEndpoint) OnComputeFailure(ctx context.Context, result compute.Comp
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node
 // TODO: solve edge case where execution is updated, but evaluation is not enqueued
 func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation string) {
+	job, err := e.store.GetJob(ctx, jobID)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to get job %s while enqueueing evaluation", operation, jobID)
+		return
+	}
 	now := time.Now().UTC().UnixNano()
 	eval := &models.Evaluation{
 		ID:          uuid.NewString(),
 		JobID:       jobID,
 		TriggeredBy: models.EvalTriggerExecUpdate,
-		Type:        model.JobTypeBatch,
+		Type:        job.Type(),
 		Status:      models.EvalStatusPending,
 		CreateTime:  now,
 		ModifyTime:  now,
 	}
-	err := e.evaluationBroker.Enqueue(eval)
+
+	err = e.store.CreateEvaluation(ctx, *eval)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to create/save evaluation for job %s", operation, jobID)
+		return
+	}
+
+	err = e.evaluationBroker.Enqueue(eval)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[%s] failed to enqueue evaluation for job %s", operation, jobID)
 	}

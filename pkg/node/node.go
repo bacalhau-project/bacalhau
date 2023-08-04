@@ -14,12 +14,10 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/pubsub/jobinfo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -40,7 +38,6 @@ type FeatureConfig struct {
 type NodeConfig struct {
 	IPFSClient                ipfs.Client
 	CleanupManager            *system.CleanupManager
-	JobStore                  jobstore.Store
 	Host                      host.Host
 	EstuaryAPIKey             string
 	HostAddress               string
@@ -63,6 +60,14 @@ type NodeDependencyInjector struct {
 	StorageProvidersFactory StorageProvidersFactory
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
+}
+
+func NewExecutorPluginNodeDependencyInjector() NodeDependencyInjector {
+	return NodeDependencyInjector{
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(),
+		ExecutorsFactory:        NewPluginExecutorFactory(),
+		PublishersFactory:       NewStandardPublishersFactory(),
+	}
 }
 
 func NewStandardNodeDependencyInjector() NodeDependencyInjector {
@@ -113,7 +118,7 @@ func NewNode(
 		return nil, err
 	}
 
-	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config, storageProviders)
+	executors, err := config.DependencyInjector.ExecutorsFactory.Get(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -173,25 +178,6 @@ func NewNode(
 		return nil, err
 	}
 
-	// PubSub to publish job events to the network
-	jobInfoPubSub, err := libp2p.NewPubSub[jobinfo.Envelope](libp2p.PubSubParams{
-		Host:        config.Host,
-		TopicName:   JobInfoTopic,
-		PubSub:      gossipSub,
-		IgnoreLocal: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	jobInfoPublisher := jobinfo.NewPublisher(jobinfo.PublisherParams{
-		JobStore: config.JobStore,
-		PubSub:   jobInfoPubSub,
-	})
-	err = jobInfoPubSub.Subscribe(ctx, pubsub.NewNoopSubscriber[jobinfo.Envelope]())
-	if err != nil {
-		return nil, err
-	}
-
 	// public http api server
 	apiServer, err := publicapi.NewAPIServer(publicapi.APIServerParams{
 		Address:          config.HostAddress,
@@ -215,10 +201,9 @@ func NewNode(
 			routedHost,
 			apiServer,
 			config.RequesterNodeConfig,
-			config.JobStore,
 			storageProviders,
-			jobInfoPublisher,
 			nodeInfoStore,
+			gossipSub,
 		)
 		if err != nil {
 			return nil, err
@@ -262,8 +247,6 @@ func NewNode(
 		nodeInfoPublisher.Stop(ctx)
 		cleanupErr := nodeInfoPubSub.Close(ctx)
 		util.LogDebugIfContextCancelled(ctx, cleanupErr, "node info pub sub")
-		cleanupErr = jobInfoPubSub.Close(ctx)
-		util.LogDebugIfContextCancelled(ctx, cleanupErr, "job info pub sub")
 		gossipSubCancel()
 
 		cleanupErr = config.Host.Close()

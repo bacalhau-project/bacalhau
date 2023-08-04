@@ -175,6 +175,7 @@ type ComputeRequestMatcher struct {
 	nodeID    string
 	plan      *models.Plan
 	execution *model.ExecutionState
+	update    *models.PlanExecutionDesiredUpdate
 }
 
 func NewComputeRequestMatcher(t *testing.T, nodeID string, execution *model.ExecutionState) *ComputeRequestMatcher {
@@ -182,6 +183,15 @@ func NewComputeRequestMatcher(t *testing.T, nodeID string, execution *model.Exec
 		t:         t,
 		nodeID:    nodeID,
 		execution: execution,
+	}
+}
+
+func NewComputeRequestMatcherFromPlanUpdate(t *testing.T, nodeID string, update *models.PlanExecutionDesiredUpdate) *ComputeRequestMatcher {
+	return &ComputeRequestMatcher{
+		t:         t,
+		nodeID:    nodeID,
+		execution: update.Execution,
+		update:    update,
 	}
 }
 
@@ -194,6 +204,19 @@ func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
 		req := x.(compute.AskForBidRequest)
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
+		desiredState := m.execution.DesiredState
+		if m.update != nil {
+			desiredState = m.update.DesiredState
+		}
+		if desiredState == model.ExecutionDesiredStatePending {
+			if !req.WaitForApproval {
+				return false
+			}
+		} else {
+			if req.WaitForApproval {
+				return false
+			}
+		}
 	case compute.BidAcceptedRequest:
 		req := x.(compute.BidAcceptedRequest)
 		routingMetadata = req.RoutingMetadata
@@ -216,5 +239,5 @@ func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
 }
 
 func (m *ComputeRequestMatcher) String() string {
-	return fmt.Sprintf("{Execution: %s}", m.execution)
+	return fmt.Sprintf("{Update Req: %+v}", m.update)
 }

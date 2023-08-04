@@ -206,6 +206,7 @@ func NewComputeNode(
 		ResourceStrategy: resourceBidStrat,
 		Store:            executionStore,
 		Callback:         computeCallback,
+		Executor:         bufferRunner,
 		GetApproveURL: func() *url.URL {
 			return apiServer.GetURI().JoinPath(compute_publicapi.APIPrefix, compute_publicapi.APIApproveSuffix)
 		},

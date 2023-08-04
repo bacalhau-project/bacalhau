@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -120,18 +122,20 @@ func (s *RetriesSuite) SetupSuite() {
 		},
 	}
 	ctx := context.Background()
-	devstackOptions := devstack.DevStackOptions{
-		NumberOfRequesterOnlyNodes: 1,
-		NumberOfComputeOnlyNodes:   len(nodeOverrides) - 1,
-	}
-	stack := testutils.SetupTestWithNoopExecutor(ctx, s.T(), devstackOptions,
-		node.NewComputeConfigWithDefaults(),
-		node.NewRequesterConfigWith(node.RequesterConfigParams{
-			NodeRankRandomnessRange: 0,
-			OverAskForBidsFactor:    1,
-		}),
-		noop_executor.ExecutorConfig{},
-		nodeOverrides...,
+
+	stack := teststack.Setup(ctx, s.T(),
+		devstack.WithNumberOfRequesterOnlyNodes(1),
+		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
+		devstack.WithNodeOverrides(nodeOverrides...),
+		devstack.WithRequesterConfig(
+			node.NewRequesterConfigWith(
+				node.RequesterConfigParams{
+					NodeRankRandomnessRange: 0,
+					OverAskForBidsFactor:    1,
+				},
+			),
+		),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
 	)
 
 	s.requester = stack.Nodes[0]
@@ -284,8 +288,8 @@ func (s *RetriesSuite) TestRetry() {
 				s.Error(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
 			} else {
 				s.NoError(s.stateResolver.WaitUntilComplete(ctx, submittedJob.ID()))
-				s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 			}
+			s.NoError(s.stateResolver.Wait(ctx, submittedJob.ID(), job.WaitForTerminalStates()))
 
 			jobState, err := s.stateResolver.GetJobState(ctx, submittedJob.ID())
 			if len(tc.expectedExecutionStates) == 0 {

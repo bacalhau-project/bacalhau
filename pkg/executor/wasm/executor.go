@@ -38,9 +38,10 @@ import (
 
 type Executor struct {
 	logManagers generic.SyncMap[string, *wasmlogs.LogManager]
+	cancellers  generic.SyncMap[string, context.CancelFunc]
 }
 
-func NewExecutor(_ context.Context, _ storage.StorageProvider) (*Executor, error) {
+func NewExecutor() (*Executor, error) {
 	return &Executor{}, nil
 }
 
@@ -49,13 +50,16 @@ func (e *Executor) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-// GetBidStrategy implements executor.Executor
-func (*Executor) GetSemanticBidStrategy(context.Context) (bidstrategy.SemanticBidStrategy, error) {
-	return semantic.NewChainedSemanticBidStrategy(), nil
+func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
+	return semantic.NewChainedSemanticBidStrategy().ShouldBid(ctx, request)
 }
 
-func (*Executor) GetResourceBidStrategy(context.Context) (bidstrategy.ResourceBidStrategy, error) {
-	return resource.NewChainedResourceBidStrategy(), nil
+func (*Executor) ShouldBidBasedOnUsage(
+	ctx context.Context,
+	request bidstrategy.BidStrategyRequest,
+	usage model.ResourceUsageData,
+) (bidstrategy.BidStrategyResponse, error) {
+	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
 // makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
@@ -147,6 +151,16 @@ func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
 ) (*model.RunCommandResult, error) {
+
+	ctx, cancel := context.WithCancel(ctx)
+	e.cancellers.Put(request.ExecutionID, cancel)
+	defer func() {
+		if cancel, found := e.cancellers.Get(request.ExecutionID); found {
+			e.cancellers.Delete(request.ExecutionID)
+			cancel()
+		}
+	}()
+
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
@@ -255,7 +269,15 @@ func (e *Executor) Run(
 	logs.Drain()
 
 	stdoutReader, stderrReader := logs.GetDefaultReaders(false)
-	return executor.WriteJobResults(request.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr)
+	return executor.WriteJobResults(request.ResultsDir, stdoutReader, stderrReader, exitCode, wasmErr, request.OutputLimits)
+}
+
+func (e *Executor) Cancel(ctx context.Context, id string) error {
+	if cancel, found := e.cancellers.Get(id); found {
+		e.cancellers.Delete(id)
+		cancel()
+	}
+	return nil
 }
 
 func (e *Executor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

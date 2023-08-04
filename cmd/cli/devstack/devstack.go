@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/bacalhau-project/bacalhau/pkg/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -118,7 +119,11 @@ func NewCmd() *cobra.Command {
 	)
 	devstackCmd.PersistentFlags().StringSliceVar(
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs",
+		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
+	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
+		"Will use pluggable executors when set to true",
 	)
 
 	devstackCmd.Flags().AddFlagSet(flags.JobSelectionCLIFlags(&OS.JobSelectionPolicy))
@@ -143,17 +148,6 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 
 	config.DevstackSetShouldPrintInfo()
 
-	totalComputeNodes := ODs.NumberOfComputeOnlyNodes + ODs.NumberOfHybridNodes
-	totalRequesterNodes := ODs.NumberOfRequesterOnlyNodes + ODs.NumberOfHybridNodes
-	if ODs.NumberOfBadComputeActors > totalComputeNodes {
-		return fmt.Errorf("you cannot have more bad compute actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadComputeActors, totalComputeNodes)
-	}
-	if ODs.NumberOfBadRequesterActors > totalRequesterNodes {
-		return fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
-			ODs.NumberOfBadRequesterActors, totalRequesterNodes)
-	}
-
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
 
@@ -171,15 +165,20 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	computeConfig := serve.GetComputeConfig(OS)
 	requestorConfig := serve.GetRequesterConfig(OS)
 
-	var stack *devstack.DevStack
-	var stackErr error
+	options := append(ODs.Options(),
+		devstack.WithComputeConfig(computeConfig),
+		devstack.WithRequesterConfig(requestorConfig),
+	)
 	if IsNoop {
-		stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
+	} else if ODs.ExecutorPlugins {
+		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector()))
 	} else {
-		stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeConfig, requestorConfig)
+		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
-	if stackErr != nil {
-		return stackErr
+	stack, err := devstack.Setup(ctx, cm, options...)
+	if err != nil {
+		return err
 	}
 
 	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)

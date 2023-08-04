@@ -2,10 +2,11 @@ package publicapi
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -27,7 +28,16 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	system.InitConfigForTesting(t)
 	ctx := context.Background()
 
-	datastore := inmemory.NewJobStore()
+	cm := system.NewCleanupManager()
+	t.Cleanup(func() { cm.Cleanup(context.Background()) })
+
+	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
+	dbFile := filepath.Join(dir, "testing.db")
+	cm.RegisterCallback(func() error {
+		os.Remove(dbFile)
+		return nil
+	})
+
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
@@ -39,7 +49,6 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,
-		JobStore:                  datastore,
 		ComputeConfig:             node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig:       node.NewRequesterConfigWithDefaults(),
 		APIServerConfig:           config,

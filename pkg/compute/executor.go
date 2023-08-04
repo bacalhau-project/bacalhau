@@ -126,6 +126,12 @@ func PrepareRunArguments(
 		Inputs:       inputVolumes,
 		ResultsDir:   resultsDir,
 		EngineParams: args,
+		OutputLimits: executor.OutputLimits{
+			MaxStdoutFileLength:   system.MaxStdoutFileLength,
+			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
+			MaxStderrFileLength:   system.MaxStderrFileLength,
+			MaxStderrReturnLength: system.MaxStderrReturnLength,
+		},
 	}, nil
 }
 

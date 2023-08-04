@@ -108,6 +108,7 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 		},
 		RoutingMetadata: compute.RoutingMetadata{TargetPeerID: s.node.ID, SourcePeerID: s.node.ID},
 		Job:             job,
+		WaitForApproval: true,
 	})
 	s.NoError(err)
 
