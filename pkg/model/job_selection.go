@@ -7,6 +7,15 @@ import "fmt"
 //go:generate stringer -type=JobSelectionDataLocality -linecomment
 type JobSelectionDataLocality int64
 
+func (i *JobSelectionDataLocality) UnmarshalText(text []byte) error {
+	out, err := ParseJobSelectionDataLocality(string(text))
+	if err != nil {
+		return err
+	}
+	*i = out
+	return nil
+}
+
 const (
 	Local    JobSelectionDataLocality = 0 // local
 	Anywhere JobSelectionDataLocality = 1 // anywhere
@@ -45,14 +54,4 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 	return JobSelectionPolicy{
 		Locality: Anywhere,
 	}
-}
-
-func (e JobSelectionDataLocality) MarshalText() ([]byte, error) {
-	return []byte(e.String()), nil
-}
-
-func (e *JobSelectionDataLocality) UnmarshalText(text []byte) (err error) {
-	name := string(text)
-	*e, err = ParseJobSelectionDataLocality(name)
-	return
 }

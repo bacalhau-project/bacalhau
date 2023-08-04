@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
 
@@ -282,31 +283,29 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		PreRun: func(cmd *cobra.Command, args []string) {
-			if err := registerFlags(map[string][]flagDefinition{
-				"libp2p":           Libp2pFlags,
-				"ipfs":             IPFSFlags,
-				"capacity":         CapacityFlags,
-				"job-selection":    JobSelectionFlags,
-				"disable-features": DisabledFeatureFlags,
-				"labels":           LabelFlags,
-				"node-type":        NodeTypeFlags,
-				"estuary":          EstuaryFlags,
-				"list-local":       AllowListLocalPathsFlags,
-			}); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
+		Run: func(cmd *cobra.Command, _ []string) {
 			var err error
 			options, err = GetServerOptions()
 			if err != nil {
 				util.Fatal(cmd, err, 1)
 			}
-		},
-		Run: func(cmd *cobra.Command, _ []string) {
 			if err := serve(cmd, options); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 		},
+	}
+	if err := registerFlags(serveCmd, map[string][]flagDefinition{
+		"libp2p":           Libp2pFlags,
+		"ipfs":             IPFSFlags,
+		"capacity":         CapacityFlags,
+		"job-selection":    JobSelectionFlags,
+		"disable-features": DisabledFeatureFlags,
+		"labels":           LabelFlags,
+		"node-type":        NodeTypeFlags,
+		"estuary":          EstuaryFlags,
+		"list-local":       AllowListLocalPathsFlags,
+	}); err != nil {
+		util.Fatal(serveCmd, err, 1)
 	}
 
 	return serveCmd
@@ -318,7 +317,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	cm := util.GetCleanupManager(ctx)
 
 	var cfg BacalhauConfig
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := viper.Unmarshal(&cfg, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())); err != nil {
 		return err
 	}
 

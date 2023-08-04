@@ -3,8 +3,12 @@ package serve
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type flagDefinition struct {
@@ -15,7 +19,7 @@ type flagDefinition struct {
 }
 
 // Generic function to define a flag, set a default value, and bind it to Viper
-func registerFlags(register map[string][]flagDefinition) error {
+func registerFlags(cmd *cobra.Command, register map[string][]flagDefinition) error {
 	for name, defs := range register {
 		fset := pflag.NewFlagSet(name, pflag.ContinueOnError)
 		// Determine the type of the default value
@@ -31,12 +35,17 @@ func registerFlags(register map[string][]flagDefinition) error {
 				fset.StringSlice(def.Name, v, def.Description)
 			case map[string]string:
 				fset.StringToString(def.Name, v, def.Description)
+			case model.JobSelectionDataLocality:
+				fset.Var(flags.DataLocalityFlag(&v), def.Name, def.Description)
+			default:
+				return fmt.Errorf("unhandled type: %T", v)
 			}
 			viper.SetDefault(def.Path, def.Default)
 			if err := viper.BindPFlag(def.Path, fset.Lookup(def.Name)); err != nil {
-				return fmt.Errorf("")
+				return err
 			}
 		}
+		cmd.PersistentFlags().AddFlagSet(fset)
 	}
 	return nil
 }

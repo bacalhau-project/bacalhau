@@ -41,7 +41,7 @@ var DefaultProductionBacalhauConfig = BacalhauConfig{
 		Requester: RequesterConfig{
 			ExternalVerifierHook: "",
 			JobSelectionPolicy: JobSelectionPolicyConfig{
-				Locality:            model.Anywhere.String(),
+				Locality:            model.Anywhere,
 				RejectStatelessJobs: false,
 				AcceptNetworkedJobs: false,
 				ProbeHTTP:           "",
@@ -112,7 +112,7 @@ type RequesterConfig struct {
 }
 
 type JobSelectionPolicyConfig struct {
-	Locality            string
+	Locality            model.JobSelectionDataLocality
 	RejectStatelessJobs bool
 	AcceptNetworkedJobs bool
 	ProbeHTTP           string
