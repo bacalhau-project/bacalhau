@@ -1,5 +1,3 @@
-//go:generate go run gen/gen.go > viper_defaults.go
-
 package config_v2
 
 import (

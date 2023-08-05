@@ -1,0 +1,38 @@
+package config_v2
+
+import "github.com/spf13/viper"
+
+func setDefaults(cfg BacalhauConfig) {
+viper.SetDefault(NodeEnvironmentAPIHost, cfg.Environment.APIHost)
+viper.SetDefault(NodeEnvironmentAPIPort, cfg.Environment.APIPort)
+viper.SetDefault(NodeEnvironmentBootstrapAddresses, cfg.Environment.BootstrapAddresses)
+viper.SetDefault(NodeEnvironmentIPFSSwarmAddresses, cfg.Environment.IPFSSwarmAddresses)
+viper.SetDefault(NodeType, cfg.Node.Type)
+viper.SetDefault(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
+viper.SetDefault(NodeAllowListedLocalPaths, cfg.Node.AllowListedLocalPaths)
+viper.SetDefault(NodeDisabledFeaturesEngines, cfg.Node.DisabledFeatures.Engines)
+viper.SetDefault(NodeDisabledFeaturesPublishers, cfg.Node.DisabledFeatures.Publishers)
+viper.SetDefault(NodeDisabledFeaturesStorages, cfg.Node.DisabledFeatures.Storages)
+viper.SetDefault(NodeLabels, cfg.Node.Labels)
+viper.SetDefault(NodeAPIAddress, cfg.Node.API.Address)
+viper.SetDefault(NodeAPIPort, cfg.Node.API.Port)
+viper.SetDefault(NodeLibp2pSwarmPort, cfg.Node.Libp2p.SwarmPort)
+viper.SetDefault(NodeLibp2pPeerConnect, cfg.Node.Libp2p.PeerConnect)
+viper.SetDefault(NodeIPFSConnect, cfg.Node.IPFS.Connect)
+viper.SetDefault(NodeIPFSPrivateInternal, cfg.Node.IPFS.PrivateInternal)
+viper.SetDefault(NodeIPFSSwarmAddresses, cfg.Node.IPFS.SwarmAddresses)
+viper.SetDefault(NodeComputeClientIDBypass, cfg.Node.Compute.ClientIDBypass)
+viper.SetDefault(NodeComputeIgnorePhysicalResourceLimits, cfg.Node.Compute.IgnorePhysicalResourceLimits)
+viper.SetDefault(NodeComputeCapacityJobCPU, cfg.Node.Compute.Capacity.JobCPU)
+viper.SetDefault(NodeComputeCapacityJobMemory, cfg.Node.Compute.Capacity.JobMemory)
+viper.SetDefault(NodeComputeCapacityJobGPU, cfg.Node.Compute.Capacity.JobGPU)
+viper.SetDefault(NodeComputeCapacityTotalCPU, cfg.Node.Compute.Capacity.TotalCPU)
+viper.SetDefault(NodeComputeCapacityTotalMemory, cfg.Node.Compute.Capacity.TotalMemory)
+viper.SetDefault(NodeComputeCapacityTotalGPU, cfg.Node.Compute.Capacity.TotalGPU)
+viper.SetDefault(NodeRequesterExternalVerifierHook, cfg.Node.Requester.ExternalVerifierHook)
+viper.SetDefault(NodeRequesterJobSelectionPolicyLocality, cfg.Node.Requester.JobSelectionPolicy.Locality)
+viper.SetDefault(NodeRequesterJobSelectionPolicyRejectStatelessJobs, cfg.Node.Requester.JobSelectionPolicy.RejectStatelessJobs)
+viper.SetDefault(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs, cfg.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs)
+viper.SetDefault(NodeRequesterJobSelectionPolicyProbeHTTP, cfg.Node.Requester.JobSelectionPolicy.ProbeHTTP)
+viper.SetDefault(NodeRequesterJobSelectionPolicyProbeExec, cfg.Node.Requester.JobSelectionPolicy.ProbeExec)
+}

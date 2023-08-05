@@ -37,13 +37,13 @@ func generateSetDefaults(t reflect.Type, prefix string, path []string, value ref
 		} else {
 			constantName := strings.ReplaceAll(newPrefix, ".", "")
 			constantPath := strings.Join(newPath, ".")
-			fmt.Fprintf(writer, "viper.SetDefault(%s, Default.%s)\n", constantName, constantPath)
+			fmt.Fprintf(writer, "viper.SetDefault(%s, cfg.%s)\n", constantName, constantPath)
 		}
 	}
 }
 
 func main() {
-	file, err := os.Create("viper_defaults.go")
+	file, err := os.Create("generated_viper_defaults.go")
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +55,7 @@ func main() {
 	// Adding the package name
 	fmt.Fprintf(file, "package config_v2\n\n")
 	fmt.Fprintf(file, "import \"github.com/spf13/viper\"\n\n")
-	fmt.Fprintf(file, "func setDefaults() {\n")
+	fmt.Fprintf(file, "func setDefaults(cfg BacalhauConfig) {\n")
 
 	generateSetDefaults(reflect.TypeOf(defaultConfig), "Node", []string{}, reflect.ValueOf(defaultConfig), file)
 

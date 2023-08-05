@@ -13,7 +13,7 @@ func main() {
 	config := config_v2.BacalhauConfig{}
 
 	// Open a file for writing
-	file, err := os.Create("paths.go")
+	file, err := os.Create("generated_constants.go")
 	if err != nil {
 		panic(err)
 	}
