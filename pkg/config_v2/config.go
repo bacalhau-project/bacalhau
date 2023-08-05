@@ -10,27 +10,12 @@ var Default BacalhauConfig
 //go:generate go run gen_paths/generate.go
 //go:generate go run gen_viper/generate.go
 type BacalhauConfig struct {
-	Environment EnvironmentConfig
-	Node        NodeConfig
-	User        UserConfig
+	Node NodeConfig
+	User UserConfig
 }
 
 type UserConfig struct {
 	UserKeyPath string
-}
-
-type EnvironmentConfig struct {
-	// APIHost is the hostname of an environment's public API servers.
-	APIHost string
-	// APIPort is the port that an environment serves the public API on.
-	APIPort int
-	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
-	BootstrapAddresses []string
-	// IPFSSwarmAddresses lists the swarm addresses of an environment's IPFS
-	// nodes, for bootstrapping new local nodes.
-	IPFSSwarmAddresses []string
-
-	LoggingMode logger.LogMode
 }
 
 type FeatureConfig struct {
@@ -40,6 +25,10 @@ type FeatureConfig struct {
 }
 
 type NodeConfig struct {
+	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
+	BootstrapAddresses []string
+
+	LoggingMode           logger.LogMode
 	Type                  []string
 	EstuaryAPIKey         string
 	AllowListedLocalPaths []string
@@ -54,8 +43,10 @@ type NodeConfig struct {
 }
 
 type APIConfig struct {
-	Address string
-	Port    int
+	// Host is the hostname of an environment's public API servers.
+	Host string
+	// Port is the port that an environment serves the public API on.
+	Port int
 }
 
 type Libp2pConfig struct {

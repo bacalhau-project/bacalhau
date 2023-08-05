@@ -3,11 +3,8 @@ package config_v2
 import "github.com/spf13/viper"
 
 func setDefaults(cfg BacalhauConfig) {
-viper.SetDefault(NodeEnvironmentAPIHost, cfg.Environment.APIHost)
-viper.SetDefault(NodeEnvironmentAPIPort, cfg.Environment.APIPort)
-viper.SetDefault(NodeEnvironmentBootstrapAddresses, cfg.Environment.BootstrapAddresses)
-viper.SetDefault(NodeEnvironmentIPFSSwarmAddresses, cfg.Environment.IPFSSwarmAddresses)
-viper.SetDefault(NodeEnvironmentLoggingMode, cfg.Environment.LoggingMode)
+viper.SetDefault(NodeBootstrapAddresses, cfg.Node.BootstrapAddresses)
+viper.SetDefault(NodeLoggingMode, cfg.Node.LoggingMode)
 viper.SetDefault(NodeType, cfg.Node.Type)
 viper.SetDefault(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
 viper.SetDefault(NodeAllowListedLocalPaths, cfg.Node.AllowListedLocalPaths)
@@ -15,7 +12,7 @@ viper.SetDefault(NodeDisabledFeaturesEngines, cfg.Node.DisabledFeatures.Engines)
 viper.SetDefault(NodeDisabledFeaturesPublishers, cfg.Node.DisabledFeatures.Publishers)
 viper.SetDefault(NodeDisabledFeaturesStorages, cfg.Node.DisabledFeatures.Storages)
 viper.SetDefault(NodeLabels, cfg.Node.Labels)
-viper.SetDefault(NodeAPIAddress, cfg.Node.API.Address)
+viper.SetDefault(NodeAPIHost, cfg.Node.API.Host)
 viper.SetDefault(NodeAPIPort, cfg.Node.API.Port)
 viper.SetDefault(NodeLibp2pSwarmPort, cfg.Node.Libp2p.SwarmPort)
 viper.SetDefault(NodeLibp2pPeerConnect, cfg.Node.Libp2p.PeerConnect)

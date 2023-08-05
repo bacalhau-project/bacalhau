@@ -12,6 +12,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -293,6 +294,7 @@ func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupMana
 	devStackIPFSSwarmAddress := ""
 	var devstackPeerAddrs []string
 
+	// TODO remove this it's wrong and never printed, nothing sets the env vars its printing
 	logString += `
 -----------------------------------------
 -----------------------------------------
@@ -366,17 +368,30 @@ export BACALHAU_API_PORT_%d=%d`,
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 	}
 
-	// Just convenience below - print out the last of the nodes information as the global variable
-	summaryShellVariablesString := fmt.Sprintf(`
-export BACALHAU_IPFS_SWARM_ADDRESSES=%s
-export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%s
-export BACALHAU_PEER_CONNECT=%s`,
+	summaryBuilder := strings.Builder{}
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config_v2.KeyAsEnvVar(config_v2.NodeIPFSSwarmAddresses),
 		devStackIPFSSwarmAddress,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config_v2.KeyAsEnvVar(config_v2.NodeAPIHost),
 		devStackAPIHost,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config_v2.KeyAsEnvVar(config_v2.NodeAPIPort),
 		devStackAPIPort,
+	))
+	summaryBuilder.WriteString(fmt.Sprintf(
+		"export %s=%s\n",
+		config_v2.KeyAsEnvVar(config_v2.NodeLibp2pPeerConnect),
 		strings.Join(devstackPeerAddrs, ","),
-	)
+	))
+
+	// Just convenience below - print out the last of the nodes information as the global variable
+	summaryShellVariablesString := summaryBuilder.String()
 
 	err := config.WriteRunInfoFile(ctx, summaryShellVariablesString)
 	if err != nil {
@@ -385,13 +400,14 @@ export BACALHAU_PEER_CONNECT=%s`,
 	cm.RegisterCallback(config.CleanupRunInfoFile)
 
 	if !stack.PublicIPFSMode {
-		summaryShellVariablesString += `
-
-By default devstack is not running on the public IPFS network.
-If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.
-You can also run a new IPFS daemon locally and connect it to Bacalhau using:
-
-ipfs swarm connect $BACALHAU_IPFS_SWARM_ADDRESSES`
+		summaryBuilder.WriteString(
+			"\nBy default devstack is not running on the public IPFS network.\n" +
+				"If you wish to connect devstack to the public IPFS network add the --public-ipfs flag.\n" +
+				"You can also run a new IPFS daemon locally and connect it to Bacalhau using:\n\n",
+		)
+		summaryBuilder.WriteString(
+			fmt.Sprintf("ipfs swarm connect $%s", config_v2.KeyAsEnvVar(config_v2.NodeIPFSSwarmAddresses)),
+		)
 	}
 
 	log.Ctx(ctx).Debug().Msg(logString)
@@ -401,13 +417,15 @@ Devstack is ready!
 No. of requester only nodes: %d
 No. of compute only nodes: %d
 No. of hybrid nodes: %d
-To use the devstack, run the following commands in your shell: %s
+To use the devstack, run the following commands in your shell: 
+
+%s
 
 The above variables were also written to this file (will be deleted when devstack exits): %s`,
 		requesterOnlyNodes,
 		computeOnlyNodes,
 		hybridNodes,
-		summaryShellVariablesString,
+		summaryBuilder.String(),
 		config.GetRunInfoFilePath())
 	return returnString, nil
 }

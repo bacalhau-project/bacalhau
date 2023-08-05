@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -209,7 +210,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 		return fmt.Errorf("error writing out pid file: %v: %w", pidFileName, err)
 	}
 
-	if util.LoggingMode == logger.LogModeStation {
+	if config_v2.GetLogMode() == logger.LogModeStation {
 		for _, node := range stack.Nodes {
 			if node.IsComputeNode() {
 				cmd.Printf("API: %s\n", node.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))

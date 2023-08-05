@@ -11,22 +11,17 @@ func init() {
 
 func Production() BacalhauConfig {
 	return BacalhauConfig{
-		Environment: EnvironmentConfig{
-			APIHost: "bootstrap.production.bacalhau.org",
-			APIPort: 1234,
+		Node: NodeConfig{
+			API: APIConfig{
+				Host: "bootstrap.production.bacalhau.org",
+				Port: 1234,
+			},
 			BootstrapAddresses: []string{
 				"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
 				"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
 				"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
 			},
-			IPFSSwarmAddresses: []string{
-				"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
-				"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
-				"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
-			},
-			LoggingMode: logger.LogModeDefault,
-		},
-		Node: NodeConfig{
+			LoggingMode:           logger.LogModeDefault,
 			Type:                  []string{"requester"},
 			EstuaryAPIKey:         "",
 			AllowListedLocalPaths: []string{},
@@ -36,10 +31,6 @@ func Production() BacalhauConfig {
 				Publishers: []string{},
 				Storages:   []string{},
 			},
-			API: APIConfig{
-				Address: "bootstrap.production.bacalhau.org",
-				Port:    1234,
-			},
 			Libp2p: Libp2pConfig{
 				SwarmPort:   1235,
 				PeerConnect: "none",
@@ -47,7 +38,11 @@ func Production() BacalhauConfig {
 			IPFS: IpfsConfig{
 				Connect:         "",
 				PrivateInternal: true,
-				SwarmAddresses:  []string{},
+				SwarmAddresses: []string{
+					"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+					"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+					"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+				},
 			},
 			Compute: ComputeConfig{
 				ClientIDBypass:               []string{},

@@ -21,16 +21,20 @@ func SetViperDefaults(config BacalhauConfig) error {
 	return nil
 }
 
-const configType = "yaml"
+const configType = "toml"
 const configName = "config"
+
+const environmentVariablePrefix = "BACALHAU"
+
+var environmentVariableReplace = strings.NewReplacer(".", "_")
 
 func InitConfig(configPath string) error {
 	// configure viper.
 	viper.SetConfigName(configName)
 	viper.SetConfigType(configType)
+	viper.SetEnvPrefix(environmentVariablePrefix)
 	viper.AddConfigPath(configPath)
-	viper.SetEnvPrefix("BACALHAU")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.SetEnvKeyReplacer(environmentVariableReplace)
 
 	userKeyPath, err := ensureUserIDKey(configPath)
 	if err != nil {
@@ -56,9 +60,9 @@ func LoadConfig(configPath string) error {
 	// configure viper.
 	viper.SetConfigName(configName)
 	viper.SetConfigType(configType)
+	viper.SetEnvPrefix(environmentVariablePrefix)
 	viper.AddConfigPath(configPath)
-	viper.SetEnvPrefix("BACALHAU")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.SetEnvKeyReplacer(environmentVariableReplace)
 	if err := viper.ReadInConfig(); err != nil {
 		return fmt.Errorf("viper failed to read config: %w", err)
 	}

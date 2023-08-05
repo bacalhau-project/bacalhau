@@ -9,15 +9,15 @@ import (
 var APIFlags = []flags.FlagDefinition{
 	{
 		FlagName:     "api-host",
-		DefaultValue: config_v2.Default.Environment.APIHost,
-		ConfigPath:   config_v2.NodeEnvironmentAPIHost,
+		DefaultValue: config_v2.Default.Node.API.Host,
+		ConfigPath:   config_v2.NodeAPIHost,
 		Description: `The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 	},
 	{
 		FlagName:     "api-port",
-		DefaultValue: config_v2.Default.Environment.APIPort,
-		ConfigPath:   config_v2.NodeEnvironmentAPIPort,
+		DefaultValue: config_v2.Default.Node.API.Port,
+		ConfigPath:   config_v2.NodeAPIPort,
 		Description: `The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 	},
@@ -27,7 +27,7 @@ var LogFlags = []flags.FlagDefinition{
 	{
 		FlagName:     "log-mode",
 		DefaultValue: logger.LogModeDefault,
-		ConfigPath:   config_v2.NodeEnvironmentLoggingMode,
+		ConfigPath:   config_v2.NodeLoggingMode,
 		Description:  `Log format: 'default','station','json','combined','event'`,
 	},
 }
