@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
@@ -12,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func main() {
@@ -29,10 +27,12 @@ func main() {
 		_ = godotenv.Overload(devstackEnvFile)
 	}
 
-	if err := system.InitConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize config: %s\n", err)
-		os.Exit(1)
-	}
+	/*
+		if err := system.InitConfig(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to initialize config: %s\n", err)
+			os.Exit(1)
+		}
+	*/
 
 	cli.Execute()
 }

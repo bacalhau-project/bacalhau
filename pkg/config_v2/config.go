@@ -1,58 +1,28 @@
-package serve
+package config_v2
 
-import "github.com/bacalhau-project/bacalhau/pkg/model"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+)
 
-var DefaultProductionBacalhauConfig = BacalhauConfig{
-	Node: NodeConfig{
-		Type:                  []string{"requester"},
-		EstuaryAPIKey:         "",
-		AllowListedLocalPaths: []string{},
-		Labels:                map[string]string{},
-		DisabledFeatures: FeatureConfig{
-			Engines:    []string{},
-			Publishers: []string{},
-			Storages:   []string{},
-		},
-		API: APIConfig{
-			Address: "bootstrap.production.bacalhau.org",
-			Port:    1234,
-		},
-		Libp2p: Libp2pConfig{
-			SwarmPort:   1235,
-			PeerConnect: "none",
-		},
-		IPFS: IpfsConfig{
-			Connect:         "",
-			PrivateInternal: true,
-			SwarmAddresses:  []string{},
-		},
-		Compute: ComputeConfig{
-			ClientIDBypass:               []string{},
-			IgnorePhysicalResourceLimits: false,
-			Capacity: CapacityConfig{
-				JobCPU:      "",
-				JobMemory:   "",
-				JobGPU:      "",
-				TotalCPU:    "",
-				TotalMemory: "",
-				TotalGPU:    "",
-			},
-		},
-		Requester: RequesterConfig{
-			ExternalVerifierHook: "",
-			JobSelectionPolicy: JobSelectionPolicyConfig{
-				Locality:            model.Anywhere,
-				RejectStatelessJobs: false,
-				AcceptNetworkedJobs: false,
-				ProbeHTTP:           "",
-				ProbeExec:           "",
-			},
-		},
-	},
+var Default BacalhauConfig
+
+//go:generate go run gen_paths/generate.go
+//go:generate go run gen_viper/generate.go
+type BacalhauConfig struct {
+	Environment EnvironmentConfig
+	Node        NodeConfig
 }
 
-type BacalhauConfig struct {
-	Node NodeConfig
+type EnvironmentConfig struct {
+	// APIHost is the hostname of an environment's public API servers.
+	APIHost string
+	// APIPort is the port that an environment serves the public API on.
+	APIPort uint16
+	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
+	BootstrapAddresses []string
+	// IPFSSwarmAddresses lists the swarm addresses of an environment's IPFS
+	// nodes, for bootstrapping new local nodes.
+	IPFSSwarmAddresses []string
 }
 
 type FeatureConfig struct {

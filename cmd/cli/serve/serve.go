@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
 
@@ -18,12 +17,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
@@ -62,7 +63,7 @@ var (
 )
 
 func GetServerOptions() (*ServeOptions, error) {
-	engineStrs := viper.GetStringSlice(NodeDisabledFeatureEngines)
+	engineStrs := viper.GetStringSlice(config_v2.NodeDisabledFeaturesEngines)
 	var engines []model.Engine
 	for _, e := range engineStrs {
 		engine, err := model.ParseEngine(e)
@@ -71,7 +72,7 @@ func GetServerOptions() (*ServeOptions, error) {
 		}
 		engines = append(engines, engine)
 	}
-	publishersStrs := viper.GetStringSlice(NodeDisabledFeaturePublishers)
+	publishersStrs := viper.GetStringSlice(config_v2.NodeDisabledFeaturesPublishers)
 	var publishers []model.Publisher
 	for _, p := range publishersStrs {
 		publisher, err := model.ParsePublisher(p)
@@ -80,7 +81,7 @@ func GetServerOptions() (*ServeOptions, error) {
 		}
 		publishers = append(publishers, publisher)
 	}
-	storagesStrs := viper.GetStringSlice(NodeDisabledFeatureStorages)
+	storagesStrs := viper.GetStringSlice(config_v2.NodeDisabledFeaturesStorages)
 	var storages []model.StorageSourceType
 	for _, s := range storagesStrs {
 		storageType, err := model.ParseStorageSourceType(s)
@@ -95,46 +96,46 @@ func GetServerOptions() (*ServeOptions, error) {
 		combinedLabelMap[key] = value
 	}
 
-	for key, value := range viper.GetStringMapString(NodeLabels) {
+	for key, value := range viper.GetStringMapString(config_v2.NodeLabels) {
 		combinedLabelMap[key] = value
 	}
 
-	jobLocality, err := model.ParseJobSelectionDataLocality(viper.GetString(NodeRequesterJobSelectionPolicyLocality))
+	jobLocality, err := model.ParseJobSelectionDataLocality(viper.GetString(config_v2.NodeRequesterJobSelectionPolicyLocality))
 	if err != nil {
 		return nil, err
 	}
 
 	return &ServeOptions{
-		NodeType:      viper.GetStringSlice(NodeType),
-		PeerConnect:   viper.GetString(NodeLibp2pPeerConnect),
-		IPFSConnect:   viper.GetString(NodeIPFSConnect),
-		EstuaryAPIKey: viper.GetString(NodeEstuaryAPIKey),
+		NodeType:      viper.GetStringSlice(config_v2.NodeType),
+		PeerConnect:   viper.GetString(config_v2.NodeLibp2pPeerConnect),
+		IPFSConnect:   viper.GetString(config_v2.NodeIPFSConnect),
+		EstuaryAPIKey: viper.GetString(config_v2.NodeEstuaryAPIKey),
 		HostAddress:   "0.0.0.0", // TODO
-		SwarmPort:     viper.GetInt(NodeLibp2pSwarmPort),
+		SwarmPort:     viper.GetInt(config_v2.NodeLibp2pSwarmPort),
 		JobSelectionPolicy: model.JobSelectionPolicy{
 			Locality:            jobLocality,
-			RejectStatelessJobs: viper.GetBool(NodeRequesterJobSelectionPolicyRejectStatelessJobs),
-			AcceptNetworkedJobs: viper.GetBool(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs),
-			ProbeHTTP:           viper.GetString(NodeRequesterJobSelectionPolicyProbeHTTP),
-			ProbeExec:           viper.GetString(NodeRequesterJobSelectionPolicyProbeExec),
+			RejectStatelessJobs: viper.GetBool(config_v2.NodeRequesterJobSelectionPolicyRejectStatelessJobs),
+			AcceptNetworkedJobs: viper.GetBool(config_v2.NodeRequesterJobSelectionPolicyAcceptNetworkedJobs),
+			ProbeHTTP:           viper.GetString(config_v2.NodeRequesterJobSelectionPolicyProbeHTTP),
+			ProbeExec:           viper.GetString(config_v2.NodeRequesterJobSelectionPolicyProbeExec),
 		},
 		ExternalVerifierHook: nil, //TODO currently there isn't a flag for this
-		LimitTotalCPU:        viper.GetString(NodeComputeCapacityTotalCPU),
-		LimitTotalMemory:     viper.GetString(NodeComputeCapacityTotalMemory),
-		LimitTotalGPU:        viper.GetString(NodeComputeCapacityTotalGPU),
-		LimitJobCPU:          viper.GetString(NodeComputeCapacityJobCPU),
-		LimitJobMemory:       viper.GetString(NodeComputeCapacityJobMemory),
-		LimitJobGPU:          viper.GetString(NodeComputeCapacityJobGPU),
+		LimitTotalCPU:        viper.GetString(config_v2.NodeComputeCapacityTotalCPU),
+		LimitTotalMemory:     viper.GetString(config_v2.NodeComputeCapacityTotalMemory),
+		LimitTotalGPU:        viper.GetString(config_v2.NodeComputeCapacityTotalGPU),
+		LimitJobCPU:          viper.GetString(config_v2.NodeComputeCapacityJobCPU),
+		LimitJobMemory:       viper.GetString(config_v2.NodeComputeCapacityJobMemory),
+		LimitJobGPU:          viper.GetString(config_v2.NodeComputeCapacityJobGPU),
 		DisabledFeatures: node.FeatureConfig{
 			Engines:    engines,
 			Publishers: publishers,
 			Storages:   storages,
 		},
-		JobExecutionTimeoutClientIDBypassList: viper.GetStringSlice(NodeComputeCapacityClientIDBypass),
+		JobExecutionTimeoutClientIDBypassList: viper.GetStringSlice(config_v2.NodeComputeClientIDBypass),
 		Labels:                                combinedLabelMap,
-		IPFSSwarmAddresses:                    viper.GetStringSlice(NodeIPFSSwarmAddress),
-		PrivateInternalIPFS:                   viper.GetBool(NodeIPFSPrivateInternal),
-		AllowListedLocalPaths:                 viper.GetStringSlice(NodeAllowListedLocalPaths),
+		IPFSSwarmAddresses:                    viper.GetStringSlice(config_v2.NodeIPFSSwarmAddresses),
+		PrivateInternalIPFS:                   viper.GetBool(config_v2.NodeIPFSPrivateInternal),
+		AllowListedLocalPaths:                 viper.GetStringSlice(config_v2.NodeAllowListedLocalPaths),
 	}, nil
 
 }
@@ -283,6 +284,17 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			fsRepo, err := repo.NewFS(viper.GetString("repo"))
+			if err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+
+			if err := fsRepo.Init(config_v2.Default); err != nil {
+				util.Fatal(cmd, err, 1)
+			}
+
+		},
 		Run: func(cmd *cobra.Command, _ []string) {
 			var err error
 			options, err = GetServerOptions()
@@ -315,15 +327,6 @@ func NewCmd() *cobra.Command {
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
-
-	var cfg BacalhauConfig
-	if err := viper.Unmarshal(&cfg, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())); err != nil {
-		return err
-	}
-
-	if err := viper.WriteConfig(); err != nil {
-		panic(err)
-	}
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -572,9 +575,9 @@ func AutoOutputLabels() map[string]string {
 	// }
 	// var packageList []string
 	// for _, file := range files {
-	// 	if !file.IsDir() && filepath.Ext(file.Name()) == ".list" {
+	// 	if !file.IsDir() && filepath.Ext(file.FlagName()) == ".list" {
 
-	// 		packageList = append(packageList, file.Name()[:len(file.Name())-5])
+	// 		packageList = append(packageList, file.FlagName()[:len(file.FlagName())-5])
 	// 	}
 	// }
 	// m["Installed-Packages"] = strings.Join(packageList, ",")

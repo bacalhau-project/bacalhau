@@ -92,6 +92,15 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
+	defaultRepo, err := DefaultRepo()
+	if err != nil {
+		panic(err)
+	}
+	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
+	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+		panic(err)
+	}
+
 	// ====== Start a job
 
 	// Create job from file
@@ -151,6 +160,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 		flags.LoggingFlag(&util.LoggingMode), "log-mode",
 		`Log format: 'default','station','json','combined','event'`,
 	)
+
 	return RootCmd
 }
 
@@ -162,8 +172,11 @@ func Execute() {
 	defer cancel()
 	rootCmd.SetContext(ctx)
 
+	// TODO I think remove?
 	viper.SetEnvPrefix("BACALHAU")
 
+	// TODO we don't need to rebind the api stuff, as it should already be done?
+	// these will be merged with the prefix above. e.g. BACALHAU_API_HOST
 	if err := viper.BindEnv("API_HOST"); err != nil {
 		log.Ctx(ctx).Fatal().Msgf("API_HOST was set, but could not bind.")
 	}

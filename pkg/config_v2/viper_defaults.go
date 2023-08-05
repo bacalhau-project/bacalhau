@@ -1,0 +1,38 @@
+package config_v2
+
+import "github.com/spf13/viper"
+
+func SetDefaults() {
+	viper.SetDefault(NodeEnvironmentAPIHost, Default.Environment.APIHost)
+	viper.SetDefault(NodeEnvironmentAPIPort, Default.Environment.APIPort)
+	viper.SetDefault(NodeEnvironmentBootstrapAddresses, Default.Environment.BootstrapAddresses)
+	viper.SetDefault(NodeEnvironmentIPFSSwarmAddresses, Default.Environment.IPFSSwarmAddresses)
+	viper.SetDefault(NodeType, Default.Node.Type)
+	viper.SetDefault(NodeEstuaryAPIKey, Default.Node.EstuaryAPIKey)
+	viper.SetDefault(NodeAllowListedLocalPaths, Default.Node.AllowListedLocalPaths)
+	viper.SetDefault(NodeDisabledFeaturesEngines, Default.Node.DisabledFeatures.Engines)
+	viper.SetDefault(NodeDisabledFeaturesPublishers, Default.Node.DisabledFeatures.Publishers)
+	viper.SetDefault(NodeDisabledFeaturesStorages, Default.Node.DisabledFeatures.Storages)
+	viper.SetDefault(NodeLabels, Default.Node.Labels)
+	viper.SetDefault(NodeAPIAddress, Default.Node.API.Address)
+	viper.SetDefault(NodeAPIPort, Default.Node.API.Port)
+	viper.SetDefault(NodeLibp2pSwarmPort, Default.Node.Libp2p.SwarmPort)
+	viper.SetDefault(NodeLibp2pPeerConnect, Default.Node.Libp2p.PeerConnect)
+	viper.SetDefault(NodeIPFSConnect, Default.Node.IPFS.Connect)
+	viper.SetDefault(NodeIPFSPrivateInternal, Default.Node.IPFS.PrivateInternal)
+	viper.SetDefault(NodeIPFSSwarmAddresses, Default.Node.IPFS.SwarmAddresses)
+	viper.SetDefault(NodeComputeClientIDBypass, Default.Node.Compute.ClientIDBypass)
+	viper.SetDefault(NodeComputeIgnorePhysicalResourceLimits, Default.Node.Compute.IgnorePhysicalResourceLimits)
+	viper.SetDefault(NodeComputeCapacityJobCPU, Default.Node.Compute.Capacity.JobCPU)
+	viper.SetDefault(NodeComputeCapacityJobMemory, Default.Node.Compute.Capacity.JobMemory)
+	viper.SetDefault(NodeComputeCapacityJobGPU, Default.Node.Compute.Capacity.JobGPU)
+	viper.SetDefault(NodeComputeCapacityTotalCPU, Default.Node.Compute.Capacity.TotalCPU)
+	viper.SetDefault(NodeComputeCapacityTotalMemory, Default.Node.Compute.Capacity.TotalMemory)
+	viper.SetDefault(NodeComputeCapacityTotalGPU, Default.Node.Compute.Capacity.TotalGPU)
+	viper.SetDefault(NodeRequesterExternalVerifierHook, Default.Node.Requester.ExternalVerifierHook)
+	viper.SetDefault(NodeRequesterJobSelectionPolicyLocality, Default.Node.Requester.JobSelectionPolicy.Locality)
+	viper.SetDefault(NodeRequesterJobSelectionPolicyRejectStatelessJobs, Default.Node.Requester.JobSelectionPolicy.RejectStatelessJobs)
+	viper.SetDefault(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs, Default.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs)
+	viper.SetDefault(NodeRequesterJobSelectionPolicyProbeHTTP, Default.Node.Requester.JobSelectionPolicy.ProbeHTTP)
+	viper.SetDefault(NodeRequesterJobSelectionPolicyProbeExec, Default.Node.Requester.JobSelectionPolicy.ProbeExec)
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -40,7 +41,6 @@ func registerFlags(cmd *cobra.Command, register map[string][]flagDefinition) err
 			default:
 				return fmt.Errorf("unhandled type: %T", v)
 			}
-			viper.SetDefault(def.Path, def.Default)
 			if err := viper.BindPFlag(def.Path, fset.Lookup(def.Name)); err != nil {
 				return err
 			}
@@ -50,67 +50,23 @@ func registerFlags(cmd *cobra.Command, register map[string][]flagDefinition) err
 	return nil
 }
 
-const (
-	// Constants for DisabledFeatureFlags
-	NodeDisabledFeatureEngines    = "Node.DisabledFeature.Engines"
-	NodeDisabledFeaturePublishers = "Node.DisabledFeature.Publishers"
-	NodeDisabledFeatureStorages   = "Node.DisabledFeature.Storages"
-
-	// Constants for CapacityFlags
-	NodeComputeCapacityClientIDBypass = "Node.Compute.Capacity.ClientIDBypass"
-	NodeComputeCapacityTotalCPU       = "Node.Compute.Capacity.TotalCPU"
-	NodeComputeCapacityTotalMemory    = "Node.Compute.Capacity.TotalMemory"
-	NodeComputeCapacityTotalGPU       = "Node.Compute.Capacity.TotalGPU"
-	NodeComputeCapacityJobCPU         = "Node.Compute.Capacity.JobCPU"
-	NodeComputeCapacityJobMemory      = "Node.Compute.Capacity.JobMemory"
-	NodeComputeCapacityJobGPU         = "Node.Compute.Capacity.JobGPU"
-
-	// Constants for EstuaryFlags
-	NodeEstuaryAPIKey = "Node.EstuaryAPIKey"
-
-	// Constants for IPFSFlags
-	NodeIPFSSwarmAddress    = "Node.IPFS.SwarmAddress"
-	NodeIPFSConnect         = "Node.IPFS.Connect"
-	NodeIPFSPrivateInternal = "Node.IPFS.PrivateInternal"
-
-	// Constants for JobSelectionFlags
-	NodeRequesterJobSelectionPolicyLocality            = "Node.Requester.JobSelectionPolicy.Locality"
-	NodeRequesterJobSelectionPolicyRejectStatelessJobs = "Node.Requester.JobSelectionPolicy.RejectStatelessJobs"
-	NodeRequesterJobSelectionPolicyAcceptNetworkedJobs = "Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs"
-	NodeRequesterJobSelectionPolicyProbeHTTP           = "Node.Requester.JobSelectionPolicy.ProbeHTTP"
-	NodeRequesterJobSelectionPolicyProbeExec           = "Node.Requester.JobSelectionPolicy.ProbeExec"
-
-	// Constants for LabelFlags
-	NodeLabels = "Node.Labels"
-
-	// Constants for Libp2pFlags
-	NodeLibp2pPeerConnect = "Node.Libp2p.PeerConnect"
-	NodeLibp2pSwarmPort   = "Node.Libp2p.SwarmPort"
-
-	// Constants for AllowListLocalPathsFlags
-	NodeAllowListedLocalPaths = "Node.AllowListedLocalPaths"
-
-	// Constants for NodeTypeFlags
-	NodeType = "Node.Type"
-)
-
 var DisabledFeatureFlags = []flagDefinition{
 	{
 		Name:        "disable-engine",
-		Path:        NodeDisabledFeatureEngines,
-		Default:     DefaultProductionBacalhauConfig.Node.DisabledFeatures.Engines,
+		Path:        config_v2.NodeDisabledFeaturesEngines,
+		Default:     config_v2.Default.Node.DisabledFeatures.Engines,
 		Description: "Engine types to disable",
 	},
 	{
-		Name:        NodeDisabledFeaturePublishers,
+		Name:        config_v2.NodeDisabledFeaturesPublishers,
 		Path:        "Node.DisabledFeature.Publishers",
-		Default:     DefaultProductionBacalhauConfig.Node.DisabledFeatures.Publishers,
+		Default:     config_v2.Default.Node.DisabledFeatures.Publishers,
 		Description: "Engine types to disable",
 	},
 	{
 		Name:        "disable-storage",
-		Path:        NodeDisabledFeatureStorages,
-		Default:     DefaultProductionBacalhauConfig.Node.DisabledFeatures.Storages,
+		Path:        config_v2.NodeDisabledFeaturesStorages,
+		Default:     config_v2.Default.Node.DisabledFeatures.Storages,
 		Description: "Engine types to disable",
 	},
 }
@@ -118,44 +74,44 @@ var DisabledFeatureFlags = []flagDefinition{
 var CapacityFlags = []flagDefinition{
 	{
 		Name:        "job-execution-timeout-bypass-client-id",
-		Path:        NodeComputeCapacityClientIDBypass,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.ClientIDBypass,
+		Path:        config_v2.NodeComputeClientIDBypass,
+		Default:     config_v2.Default.Node.Compute.ClientIDBypass,
 		Description: `List of IDs of clients that are allowed to bypass the job execution timeout check`,
 	},
 	{
 		Name:        "limit-total-cpu",
-		Path:        NodeComputeCapacityTotalCPU,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.TotalCPU,
+		Path:        config_v2.NodeComputeCapacityTotalCPU,
+		Default:     config_v2.Default.Node.Compute.Capacity.TotalCPU,
 		Description: `Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	},
 	{
 		Name:        "limit-total-memory",
-		Path:        NodeComputeCapacityTotalMemory,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.TotalMemory,
+		Path:        config_v2.NodeComputeCapacityTotalMemory,
+		Default:     config_v2.Default.Node.Compute.Capacity.TotalMemory,
 		Description: `Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	},
 	{
 		Name:        "limit-total-gpu",
-		Path:        NodeComputeCapacityTotalGPU,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.TotalGPU,
+		Path:        config_v2.NodeComputeCapacityTotalGPU,
+		Default:     config_v2.Default.Node.Compute.Capacity.TotalGPU,
 		Description: `Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
 	},
 	{
 		Name:        "limit-job-cpu",
-		Path:        NodeComputeCapacityJobCPU,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.JobCPU,
+		Path:        config_v2.NodeComputeCapacityJobCPU,
+		Default:     config_v2.Default.Node.Compute.Capacity.JobCPU,
 		Description: `Job CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	},
 	{
 		Name:        "limit-job-memory",
-		Path:        NodeComputeCapacityJobMemory,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.JobMemory,
+		Path:        config_v2.NodeComputeCapacityJobMemory,
+		Default:     config_v2.Default.Node.Compute.Capacity.JobMemory,
 		Description: `Job Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	},
 	{
 		Name:        "limit-job-gpu",
-		Path:        NodeComputeCapacityJobGPU,
-		Default:     DefaultProductionBacalhauConfig.Node.Compute.Capacity.JobGPU,
+		Path:        config_v2.NodeComputeCapacityJobGPU,
+		Default:     config_v2.Default.Node.Compute.Capacity.JobGPU,
 		Description: `Job GPU limit to run all jobs (e.g. 1, 2, or 8).`,
 	},
 }
@@ -163,8 +119,8 @@ var CapacityFlags = []flagDefinition{
 var EstuaryFlags = []flagDefinition{
 	{
 		Name:        "estuary-api-key",
-		Path:        NodeEstuaryAPIKey,
-		Default:     DefaultProductionBacalhauConfig.Node.EstuaryAPIKey,
+		Path:        config_v2.NodeEstuaryAPIKey,
+		Default:     config_v2.Default.Node.EstuaryAPIKey,
 		Description: `The API key used when using the estuary API.`,
 	},
 }
@@ -172,20 +128,20 @@ var EstuaryFlags = []flagDefinition{
 var IPFSFlags = []flagDefinition{
 	{
 		Name:        "ipfs-swarm-addr",
-		Path:        NodeIPFSSwarmAddress,
-		Default:     DefaultProductionBacalhauConfig.Node.IPFS.SwarmAddresses,
+		Path:        config_v2.NodeIPFSSwarmAddresses,
+		Default:     config_v2.Default.Node.IPFS.SwarmAddresses,
 		Description: "IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
 	},
 	{
 		Name:        "ipfs-connect",
-		Path:        NodeIPFSConnect,
-		Default:     DefaultProductionBacalhauConfig.Node.IPFS.Connect,
+		Path:        config_v2.NodeIPFSConnect,
+		Default:     config_v2.Default.Node.IPFS.Connect,
 		Description: "The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.",
 	},
 	{
 		Name:    "private-internal-ipfs",
-		Path:    NodeIPFSPrivateInternal,
-		Default: DefaultProductionBacalhauConfig.Node.IPFS.PrivateInternal,
+		Path:    config_v2.NodeIPFSPrivateInternal,
+		Default: config_v2.Default.Node.IPFS.PrivateInternal,
 		Description: "Whether the in-process IPFS node should auto-discover other nodes, including the public IPFS network - " +
 			"cannot be used with --ipfs-connect. " +
 			"Use \"--private-internal-ipfs=false\" to disable. " +
@@ -196,32 +152,32 @@ var IPFSFlags = []flagDefinition{
 var JobSelectionFlags = []flagDefinition{
 	{
 		Name:        "job-selection-data-locality",
-		Path:        NodeRequesterJobSelectionPolicyLocality,
-		Default:     DefaultProductionBacalhauConfig.Node.Requester.JobSelectionPolicy.Locality,
+		Path:        config_v2.NodeRequesterJobSelectionPolicyLocality,
+		Default:     config_v2.Default.Node.Requester.JobSelectionPolicy.Locality,
 		Description: `Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
 	},
 	{
 		Name:        "job-selection-reject-stateless",
-		Path:        NodeRequesterJobSelectionPolicyRejectStatelessJobs,
-		Default:     DefaultProductionBacalhauConfig.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
+		Path:        config_v2.NodeRequesterJobSelectionPolicyRejectStatelessJobs,
+		Default:     config_v2.Default.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
 		Description: `Reject jobs that don't specify any data.`,
 	},
 	{
 		Name:        "job-selection-accept-networked",
-		Path:        NodeRequesterJobSelectionPolicyAcceptNetworkedJobs,
-		Default:     DefaultProductionBacalhauConfig.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
+		Path:        config_v2.NodeRequesterJobSelectionPolicyAcceptNetworkedJobs,
+		Default:     config_v2.Default.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
 		Description: `Accept jobs that require network access.`,
 	},
 	{
 		Name:        "job-selection-probe-http",
-		Path:        NodeRequesterJobSelectionPolicyProbeHTTP,
-		Default:     DefaultProductionBacalhauConfig.Node.Requester.JobSelectionPolicy.ProbeHTTP,
+		Path:        config_v2.NodeRequesterJobSelectionPolicyProbeHTTP,
+		Default:     config_v2.Default.Node.Requester.JobSelectionPolicy.ProbeHTTP,
 		Description: `Use the result of a HTTP POST to decide if we should take on the job.`,
 	},
 	{
 		Name:        "job-selection-probe-exec",
-		Path:        NodeRequesterJobSelectionPolicyProbeExec,
-		Default:     DefaultProductionBacalhauConfig.Node.Requester.JobSelectionPolicy.ProbeExec,
+		Path:        config_v2.NodeRequesterJobSelectionPolicyProbeExec,
+		Default:     config_v2.Default.Node.Requester.JobSelectionPolicy.ProbeExec,
 		Description: `Use the result of a exec an external program to decide if we should take on the job.`,
 	},
 }
@@ -229,8 +185,8 @@ var JobSelectionFlags = []flagDefinition{
 var LabelFlags = []flagDefinition{
 	{
 		Name:        "labels",
-		Path:        NodeLabels,
-		Default:     DefaultProductionBacalhauConfig.Node.Labels,
+		Path:        config_v2.NodeLabels,
+		Default:     config_v2.Default.Node.Labels,
 		Description: `Labels to be associated with the node that can be used for node selection and filtering. (e.g. --labels key1=value1,key2=value2)`,
 	},
 }
@@ -238,16 +194,16 @@ var LabelFlags = []flagDefinition{
 var Libp2pFlags = []flagDefinition{
 	{
 		Name:    "peer",
-		Path:    NodeLibp2pPeerConnect,
-		Default: DefaultProductionBacalhauConfig.Node.Libp2p.PeerConnect,
+		Path:    config_v2.NodeLibp2pPeerConnect,
+		Default: config_v2.Default.Node.Libp2p.PeerConnect,
 		Description: `A comma-separated list of libp2p multiaddress to connect to. ` +
 			`Use "none" to avoid connecting to any peer, ` +
 			`"env" to connect to the default peer list of your active environment (see BACALHAU_ENVIRONMENT env var).`,
 	},
 	{
 		Name:        "swarm-port",
-		Path:        NodeLibp2pSwarmPort,
-		Default:     DefaultProductionBacalhauConfig.Node.Libp2p.SwarmPort,
+		Path:        config_v2.NodeLibp2pSwarmPort,
+		Default:     config_v2.Default.Node.Libp2p.SwarmPort,
 		Description: `The port to listen on for swarm connections.`,
 	},
 }
@@ -255,8 +211,8 @@ var Libp2pFlags = []flagDefinition{
 var AllowListLocalPathsFlags = []flagDefinition{
 	{
 		Name:        "allow-listed-local-paths",
-		Path:        NodeAllowListedLocalPaths,
-		Default:     DefaultProductionBacalhauConfig.Node.AllowListedLocalPaths,
+		Path:        config_v2.NodeAllowListedLocalPaths,
+		Default:     config_v2.Default.Node.AllowListedLocalPaths,
 		Description: "Local paths that are allowed to be mounted into jobs",
 	},
 }
@@ -264,8 +220,8 @@ var AllowListLocalPathsFlags = []flagDefinition{
 var NodeTypeFlags = []flagDefinition{
 	{
 		Name:        "node-type",
-		Path:        NodeType,
-		Default:     DefaultProductionBacalhauConfig.Node.Type,
+		Path:        config_v2.NodeType,
+		Default:     config_v2.Default.Node.Type,
 		Description: `Whether the node is a compute, requester or both.`,
 	},
 }
