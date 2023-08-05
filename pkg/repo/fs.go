@@ -46,7 +46,7 @@ func (fsr *FsRepo) Init() error {
 		return err
 	}
 	if exist {
-		log.Info().Msgf("Repo found at '%s", fsr.path)
+		log.Debug().Msgf("Repo found at '%s", fsr.path)
 		return config_v2.LoadConfig(fsr.path)
 	}
 
@@ -65,7 +65,7 @@ func (fsr *FsRepo) Init() error {
 }
 
 const defaultRunInfoFilename = "bacalhau.run"
-const runInfoFilePermissions = 0400
+const runInfoFilePermissions = 0755
 
 func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString string) (string, error) {
 	runInfoPath := filepath.Join(fsr.path, defaultRunInfoFilename)

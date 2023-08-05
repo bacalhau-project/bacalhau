@@ -284,17 +284,6 @@ func NewCmd() *cobra.Command {
 		Short:   "Start the bacalhau compute node",
 		Long:    serveLong,
 		Example: serveExample,
-		PreRun: func(cmd *cobra.Command, _ []string) {
-			fsRepo, err := repo.NewFS(viper.GetString("repo"))
-			if err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-
-			if err := fsRepo.Init(); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-
-		},
 		Run: func(cmd *cobra.Command, _ []string) {
 			var err error
 			options, err = GetServerOptions()
@@ -467,7 +456,7 @@ export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, config_v2.Ge
 		if err != nil {
 			return fmt.Errorf("writing run info to repo: %w", err)
 		} else {
-			cmd.Printf("A copy of these variables have been written to: %s", ripath)
+			cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 		}
 
 		cm.RegisterCallback(config.CleanupRunInfoFile)

@@ -26,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -57,11 +56,6 @@ func NewRootCmd() *cobra.Command {
 
 			cmd.SetContext(ctx)
 
-			// set the default configuration
-			if err := config_v2.SetViperDefaults(config_v2.Default); err != nil {
-				fmt.Fprintf(os.Stderr, err.Error())
-				os.Exit(1)
-			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()

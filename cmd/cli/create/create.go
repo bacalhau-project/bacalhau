@@ -10,7 +10,6 @@ import (
 
 	"github.com/ipld/go-ipld-prime/codec/json"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -65,17 +63,7 @@ func NewCmd() *cobra.Command {
 		Long:    createLong,
 		Example: createExample,
 		Args:    cobra.MinimumNArgs(0),
-		PreRun: func(cmd *cobra.Command, args []string) {
-			util.ApplyPorcelainLogLevel(cmd, args)
-			fsRepo, err := repo.NewFS(viper.GetString("repo"))
-			if err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-
-			if err := fsRepo.Init(); err != nil {
-				util.Fatal(cmd, err, 1)
-			}
-		},
+		PreRun:  util.ApplyPorcelainLogLevel,
 		Run: func(cmd *cobra.Command, cmdArgs []string) {
 			if err := create(cmd, cmdArgs, OC); err != nil {
 				util.Fatal(cmd, err, 1)

@@ -20,6 +20,32 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
+func InitConfig() error {
+	configDir := os.Getenv("BACALHAU_DIR")
+	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
+	//and not a generic environment variable set by the user
+	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
+		configDir = os.Getenv("ROOT_DIR")
+	}
+	log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
+
+	if configDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get user home dir: %w", err)
+		}
+		configDir = filepath.Join(home, ".bacalhau")
+	}
+	fsRepo, err := repo.NewFS(configDir)
+	if err != nil {
+		return fmt.Errorf("failed to create repo: %w", err)
+	}
+	if err := fsRepo.Init(); err != nil {
+		return fmt.Errorf("failed to initalize repo: %w", err)
+	}
+	return nil
+}
+
 const (
 	sigHash = crypto.SHA256 // hash function to use for sign/verify
 )

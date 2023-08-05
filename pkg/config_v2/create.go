@@ -21,7 +21,7 @@ func SetViperDefaults(config BacalhauConfig) error {
 	return nil
 }
 
-const configType = "toml"
+const configType = "yaml"
 const configName = "config"
 
 func InitConfig(configPath string) error {
