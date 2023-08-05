@@ -30,7 +30,7 @@ viper.SetDefault(NodeComputeCapacityTotalCPU, cfg.Node.Compute.Capacity.TotalCPU
 viper.SetDefault(NodeComputeCapacityTotalMemory, cfg.Node.Compute.Capacity.TotalMemory)
 viper.SetDefault(NodeComputeCapacityTotalGPU, cfg.Node.Compute.Capacity.TotalGPU)
 viper.SetDefault(NodeRequesterExternalVerifierHook, cfg.Node.Requester.ExternalVerifierHook)
-viper.SetDefault(NodeRequesterJobSelectionPolicyLocality, cfg.Node.Requester.JobSelectionPolicy.Locality)
+viper.SetDefault(NodeRequesterJobSelectionPolicyLocality, cfg.Node.Requester.JobSelectionPolicy.Locality.String())
 viper.SetDefault(NodeRequesterJobSelectionPolicyRejectStatelessJobs, cfg.Node.Requester.JobSelectionPolicy.RejectStatelessJobs)
 viper.SetDefault(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs, cfg.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs)
 viper.SetDefault(NodeRequesterJobSelectionPolicyProbeHTTP, cfg.Node.Requester.JobSelectionPolicy.ProbeHTTP)
