@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 )
 
-const DefaultBacalhauDir = ".bacalhau"
+const defaultBacalhauDir = ".bacalhau"
 
-func DefaultRepo() (string, error) {
+func defaultRepo() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home dir: %w", err)
 	}
-	return filepath.Join(home, DefaultBacalhauDir), nil
+	return filepath.Join(home, defaultBacalhauDir), nil
 }

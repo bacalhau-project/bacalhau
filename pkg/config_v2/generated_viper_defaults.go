@@ -7,6 +7,7 @@ viper.SetDefault(NodeEnvironmentAPIHost, cfg.Environment.APIHost)
 viper.SetDefault(NodeEnvironmentAPIPort, cfg.Environment.APIPort)
 viper.SetDefault(NodeEnvironmentBootstrapAddresses, cfg.Environment.BootstrapAddresses)
 viper.SetDefault(NodeEnvironmentIPFSSwarmAddresses, cfg.Environment.IPFSSwarmAddresses)
+viper.SetDefault(NodeEnvironmentLoggingMode, cfg.Environment.LoggingMode)
 viper.SetDefault(NodeType, cfg.Node.Type)
 viper.SetDefault(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
 viper.SetDefault(NodeAllowListedLocalPaths, cfg.Node.AllowListedLocalPaths)
@@ -35,4 +36,5 @@ viper.SetDefault(NodeRequesterJobSelectionPolicyRejectStatelessJobs, cfg.Node.Re
 viper.SetDefault(NodeRequesterJobSelectionPolicyAcceptNetworkedJobs, cfg.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs)
 viper.SetDefault(NodeRequesterJobSelectionPolicyProbeHTTP, cfg.Node.Requester.JobSelectionPolicy.ProbeHTTP)
 viper.SetDefault(NodeRequesterJobSelectionPolicyProbeExec, cfg.Node.Requester.JobSelectionPolicy.ProbeExec)
+viper.SetDefault(NodeUserUserKeyPath, cfg.User.UserKeyPath)
 }

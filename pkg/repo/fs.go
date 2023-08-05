@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"fmt"
+	"context"
 	"os"
 	"path/filepath"
 
@@ -14,12 +14,8 @@ import (
 // cribbed from lotus
 
 type FsRepo struct {
-	path       string
-	configPath string
+	path string
 }
-
-const fsConfigType = "toml"
-const fsConfigName = "config"
 
 func NewFS(path string) (*FsRepo, error) {
 	path, err := homedir.Expand(path)
@@ -28,8 +24,7 @@ func NewFS(path string) (*FsRepo, error) {
 	}
 
 	return &FsRepo{
-		path:       path,
-		configPath: filepath.Join(path, fmt.Sprintf("%s.%s", fsConfigName, fsConfigType)),
+		path: path,
 	}, nil
 
 }
@@ -45,14 +40,14 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	return true, nil
 }
 
-func (fsr *FsRepo) Init(cfg config_v2.BacalhauConfig) error {
+func (fsr *FsRepo) Init() error {
 	exist, err := fsr.Exists()
 	if err != nil {
 		return err
 	}
 	if exist {
 		log.Info().Msgf("Repo found at '%s", fsr.path)
-		return nil
+		return config_v2.LoadConfig(fsr.path)
 	}
 
 	log.Info().Msgf("Initializing repo at '%s'", fsr.path)
@@ -62,9 +57,67 @@ func (fsr *FsRepo) Init(cfg config_v2.BacalhauConfig) error {
 		return err
 	}
 
-	if err := config_v2.InitConfig(fsr.path, fsConfigName, fsConfigType); err != nil {
+	if err := config_v2.InitConfig(fsr.path); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+const defaultRunInfoFilename = "bacalhau.run"
+const runInfoFilePermissions = 0400
+
+func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString string) (string, error) {
+	runInfoPath := filepath.Join(fsr.path, defaultRunInfoFilename)
+
+	// TODO kill this
+	devStackRunInfoPath := os.Getenv("DEVSTACK_ENV_FILE")
+	if devStackRunInfoPath != "" {
+		runInfoPath = devStackRunInfoPath
+	}
+
+	// Use os.Create to truncate the file if it already exists
+	f, err := os.Create(runInfoPath)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msgf("Failed to close run info file %s", runInfoPath)
+		}
+	}()
+
+	// Set permissions to constant for read read/write only by user
+	err = f.Chmod(runInfoFilePermissions)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = f.Write([]byte(summaryShellVariablesString))
+	if err != nil {
+		return "", err
+	}
+
+	return runInfoPath, nil
+	// TODO previous behaviour put it in these places, we may consider creating a symlink later
+	/*
+		if writeable, _ := filefs.IsWritable("/run"); writeable {
+			writePath = "/run" // Linux
+		} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
+			writePath = "/var/run" // Older Linux
+		} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
+			writePath = "/private/var/run" // MacOS
+		} else {
+			// otherwise write to the user's dir, which should be available on all systems
+			userDir, err := os.UserHomeDir()
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
+				return nil
+			}
+			log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
+				"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
+			writePath = userDir
+		}
+	*/
 }

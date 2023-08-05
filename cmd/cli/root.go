@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
@@ -29,37 +26,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
-
-var apiHost string
-var apiPort uint16
-
-var defaultAPIHost string
-var defaultAPIPort uint16
-
-func init() { //nolint:gochecknoinits
-	defaultAPIHost = system.Envs[system.GetEnvironment()].APIHost
-	defaultAPIPort = system.Envs[system.GetEnvironment()].APIPort
-
-	if config.GetAPIHost() != "" {
-		defaultAPIHost = config.GetAPIHost()
-	}
-
-	if config.GetAPIPort() != nil {
-		defaultAPIPort = *config.GetAPIPort()
-	}
-
-	if logtype, set := os.LookupEnv("LOG_TYPE"); set {
-		util.LoggingMode = logger.LogMode(strings.ToLower(logtype))
-	}
-
-	// Force cobra to set apiHost & apiPort
-	NewRootCmd()
-}
 
 func NewRootCmd() *cobra.Command {
 	RootCmd := &cobra.Command{
@@ -85,6 +56,12 @@ func NewRootCmd() *cobra.Command {
 			ctx = context.WithValue(ctx, spanKey, span)
 
 			cmd.SetContext(ctx)
+
+			// set the default configuration
+			if err := config_v2.SetViperDefaults(config_v2.Default); err != nil {
+				fmt.Fprintf(os.Stderr, err.Error())
+				os.Exit(1)
+			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			ctx := cmd.Context()
@@ -92,12 +69,20 @@ func NewRootCmd() *cobra.Command {
 			ctx.Value(util.SystemManagerKey).(*system.CleanupManager).Cleanup(ctx)
 		},
 	}
-	defaultRepo, err := DefaultRepo()
+	defaultRepo, err := defaultRepo()
 	if err != nil {
 		panic(err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
+	// TODO binding this flag will cause it to be written to the config, which is annoying..
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+		panic(err)
+	}
+
+	if err := flags.RegisterFlags(RootCmd, map[string][]flags.FlagDefinition{
+		"api":     APIFlags,
+		"logging": LogFlags,
+	}); err != nil {
 		panic(err)
 	}
 
@@ -140,66 +125,12 @@ func NewRootCmd() *cobra.Command {
 	RootCmd.AddCommand(id.NewCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
 
-	RootCmd.PersistentFlags().StringVar(
-		&apiHost, "api-host", defaultAPIHost,
-		`The host for the client and server to communicate on (via REST).
-Ignored if BACALHAU_API_HOST environment variable is set.`,
-	)
-	if err := viper.BindPFlag("api-host", RootCmd.PersistentFlags().Lookup("api-host")); err != nil {
-		panic(err)
-	}
-	RootCmd.PersistentFlags().Uint16Var(
-		&apiPort, "api-port", defaultAPIPort,
-		`The port for the client and server to communicate on (via REST).
-Ignored if BACALHAU_API_PORT environment variable is set.`,
-	)
-	if err := viper.BindPFlag("api-port", RootCmd.PersistentFlags().Lookup("api-port")); err != nil {
-		panic(err)
-	}
-	RootCmd.PersistentFlags().Var(
-		flags.LoggingFlag(&util.LoggingMode), "log-mode",
-		`Log format: 'default','station','json','combined','event'`,
-	)
-
 	return RootCmd
 }
 
-func Execute() {
+func Execute(ctx context.Context) {
 	rootCmd := NewRootCmd()
-
-	// Ensure commands are able to stop cleanly if someone presses ctrl+c
-	ctx, cancel := signal.NotifyContext(context.Background(), util.ShutdownSignals...)
-	defer cancel()
 	rootCmd.SetContext(ctx)
-
-	// TODO I think remove?
-	viper.SetEnvPrefix("BACALHAU")
-
-	// TODO we don't need to rebind the api stuff, as it should already be done?
-	// these will be merged with the prefix above. e.g. BACALHAU_API_HOST
-	if err := viper.BindEnv("API_HOST"); err != nil {
-		log.Ctx(ctx).Fatal().Msgf("API_HOST was set, but could not bind.")
-	}
-
-	if err := viper.BindEnv("API_PORT"); err != nil {
-		log.Ctx(ctx).Fatal().Msgf("API_PORT was set, but could not bind.")
-	}
-
-	viper.AutomaticEnv()
-
-	if envAPIHost := viper.GetString("API_HOST"); envAPIHost != "" {
-		apiHost = envAPIHost
-	}
-
-	if envAPIPort := viper.GetString("API_PORT"); envAPIPort != "" {
-		var parseErr error
-		parsedPort, parseErr := strconv.ParseUint(envAPIPort, 10, 16)
-		if parseErr != nil {
-			log.Ctx(ctx).Fatal().Msgf("could not parse API_PORT into an int. %s", envAPIPort)
-		} else {
-			apiPort = uint16(parsedPort)
-		}
-	}
 
 	// Use stdout, not stderr for cmd.Print output, so that
 	// e.g. ID=$(bacalhau run) works

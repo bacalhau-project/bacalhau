@@ -290,7 +290,7 @@ func NewCmd() *cobra.Command {
 				util.Fatal(cmd, err, 1)
 			}
 
-			if err := fsRepo.Init(config_v2.Default); err != nil {
+			if err := fsRepo.Init(); err != nil {
 				util.Fatal(cmd, err, 1)
 			}
 
@@ -327,6 +327,11 @@ func NewCmd() *cobra.Command {
 func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
+
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	if err != nil {
+		return err
+	}
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {
@@ -386,7 +391,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
-		APIPort:               util.GetAPIPort(ctx),
+		APIPort:               config_v2.GetAPIPort(),
 		ComputeConfig:         GetComputeConfig(OS),
 		RequesterNodeConfig:   GetRequesterConfig(OS),
 		IsComputeNode:         isComputeNode,
@@ -413,7 +418,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// only in station logging output
-	if util.LoggingMode == logger.LogModeStation && standardNode.IsComputeNode() {
+	if config_v2.GetLogMode() == logger.LogModeStation && standardNode.IsComputeNode() {
 		cmd.Printf("API: %s\n", standardNode.APIServer.GetURI().JoinPath(computenodeapi.APIPrefix, computenodeapi.APIDebugSuffix))
 	}
 
@@ -450,7 +455,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
 export BACALHAU_API_PORT=%d
-export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, util.GetAPIPort(ctx), peerAddress)
+export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, config_v2.GetAPIPort(), peerAddress)
 
 		if isRequesterNode {
 			cmd.Println()
@@ -458,11 +463,12 @@ export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, util.GetAPIP
 			cmd.Println(shellVariablesString)
 		}
 
-		err = config.WriteRunInfoFile(ctx, shellVariablesString)
+		ripath, err := fsRepo.WriteRunInfo(ctx, shellVariablesString)
 		if err != nil {
-			return err
+			return fmt.Errorf("writing run info to repo: %w", err)
+		} else {
+			cmd.Printf("A copy of these variables have been written to: %s", ripath)
 		}
-		cmd.Println("\nA copy of these variables have been written to: " + config.GetRunInfoFilePath())
 
 		cm.RegisterCallback(config.CleanupRunInfoFile)
 

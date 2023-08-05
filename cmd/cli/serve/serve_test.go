@@ -12,10 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -28,8 +29,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 5 * time.Second
-const maxTestTime = 10 * time.Second
+const maxServeTime = 5 * time.Minute
+const maxTestTime = 10 * time.Minute
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {

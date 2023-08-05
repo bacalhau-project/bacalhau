@@ -1,6 +1,7 @@
 package config_v2
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -11,18 +12,25 @@ var Default BacalhauConfig
 type BacalhauConfig struct {
 	Environment EnvironmentConfig
 	Node        NodeConfig
+	User        UserConfig
+}
+
+type UserConfig struct {
+	UserKeyPath string
 }
 
 type EnvironmentConfig struct {
 	// APIHost is the hostname of an environment's public API servers.
 	APIHost string
 	// APIPort is the port that an environment serves the public API on.
-	APIPort uint16
+	APIPort int
 	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
 	BootstrapAddresses []string
 	// IPFSSwarmAddresses lists the swarm addresses of an environment's IPFS
 	// nodes, for bootstrapping new local nodes.
 	IPFSSwarmAddresses []string
+
+	LoggingMode logger.LogMode
 }
 
 type FeatureConfig struct {

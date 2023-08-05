@@ -1,6 +1,7 @@
 package config_v2
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -23,6 +24,7 @@ func Production() BacalhauConfig {
 				"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
 				"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
 			},
+			LoggingMode: logger.LogModeDefault,
 		},
 		Node: NodeConfig{
 			Type:                  []string{"requester"},
