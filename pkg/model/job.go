@@ -244,6 +244,25 @@ func (s *Spec) GetTimeout() time.Duration {
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
 	var storages []*StorageSpec
+	// TODO TODO: to refactor the way that wasm finds/loads remote modules
+	/*
+		wasm engine contains embedded StorageSpec's, we need to decode the engine
+		to access these specs so the requester can route the job based on storage requirements.
+
+		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
+		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
+		spec.Inputs with its EntryModule and ImportModules fields.
+		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
+		inputs via their arguments - docker image comes to mind as a potential candidate).
+
+		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
+		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
+		plugins to handle the download of different storage specs seems impractical
+		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
+		provides more context on the need for the change).
+	*/
+
 	if s.EngineSpec.Type == EngineWasm.String() {
 		wasmEngine, err := DecodeEngineSpec[WasmEngineSpec](s.EngineSpec)
 		if err != nil {
