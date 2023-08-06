@@ -75,6 +75,22 @@ func PrepareRunArguments(
 	})
 
 	var engineArgs *executor.Arguments
+	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
+	// download them before passing it to the wasm executor
+	/*
+		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
+		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
+		spec.Inputs with its EntryModule and ImportModules fields.
+		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
+		inputs via their arguments - docker image comes to mind as a potential candidate).
+
+		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
+		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
+		plugins to handle the download of different storage specs seems impractical
+		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
+		provides more context on the need for the change).
+	*/
 	if execution.Job.Spec.EngineSpec.Type == model.EngineWasm.String() {
 		wasmEngine, err := model.DecodeEngineSpec[model.WasmEngineSpec](execution.Job.Spec.EngineSpec)
 		if err != nil {
