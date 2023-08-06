@@ -42,7 +42,7 @@ func init() {
 		),
 	)
 	if err != nil {
-		panic(fmt.Sprintf("failed to make sepc for testing: %s", err))
+		panic(fmt.Sprintf("failed to make spec for testing: %s", err))
 	}
 }
 
