@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -27,6 +28,17 @@ func NewFS(path string) (*FsRepo, error) {
 		path: path,
 	}, nil
 
+}
+
+func (fsr *FsRepo) Path() (string, error) {
+	exists, err := fsr.Exists()
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		return "", fmt.Errorf("repo is uninitalized")
+	}
+	return fsr.path, nil
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {

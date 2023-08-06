@@ -77,6 +77,17 @@ func Setup(
 		opt(stackConfig)
 	}
 
+	// TODO this is messy
+	if stackConfig.Repo != nil {
+		repoPath, err := stackConfig.Repo.Path()
+		if err != nil {
+			return nil, fmt.Errorf("devstack was provided an uninitalized repo: %w", err)
+		}
+		if err := config_v2.LoadConfig(repoPath); err != nil {
+			return nil, fmt.Errorf("failed to load config for devstack: %w", err)
+		}
+	}
+
 	if err := stackConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("validating devstask config: %w", err)
 	}

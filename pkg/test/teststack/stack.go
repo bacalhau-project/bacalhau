@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -70,6 +71,12 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 			noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(noopConfig),
 		},
 	})
+}
+
+func WithRepo(r *repo.FsRepo) devstack.ConfigOption {
+	return func(cfg *devstack.DevStackConfig) {
+		cfg.Repo = r
+	}
 }
 
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {

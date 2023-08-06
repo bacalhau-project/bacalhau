@@ -196,7 +196,7 @@ func decodePublicKey(key string) (*rsa.PublicKey, error) {
 
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
-func InitConfigForTesting(t testing.TB) {
+func InitConfigForTesting(t testing.TB) *repo.FsRepo {
 	/*
 		if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
 			return
@@ -220,4 +220,5 @@ func InitConfigForTesting(t testing.TB) {
 	if err := fsRepo.Init(); err != nil {
 		t.Errorf("Unable to initialize config dir %s: %s", repoDir, err)
 	}
+	return fsRepo
 }
