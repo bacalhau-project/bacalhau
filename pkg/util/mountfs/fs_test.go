@@ -51,7 +51,7 @@ func getStandardMount() *MountDir {
 
 func (suite *mountFsSuite) TestMount() {
 	mount := New()
-	require.NoError(suite.T(), mount.Mount("normal", testFs))
+	suite.Require().NoError(mount.Mount("normal", testFs))
 
 	testCases := []struct {
 		name  string
@@ -150,9 +150,9 @@ func (suite *mountFsSuite) TestOpen() {
 	for _, testCase := range testCases {
 		suite.Run(testCase.path, func() {
 			stat, err := fs.Stat(mount, testCase.path)
-			require.Equal(suite.T(), testCase.err, err != nil)
+			suite.Require().Equal(testCase.err, err != nil)
 			if err == nil {
-				require.Equal(suite.T(), testCase.dir, stat.IsDir())
+				suite.Require().Equal(testCase.dir, stat.IsDir())
 			}
 		})
 	}

@@ -23,19 +23,19 @@ func TestCounterSuite(t *testing.T) {
 func (s *CounterSuite) TestSimpleAdd() {
 	c := counter.NewCounter(100)
 	c.Inc(1)
-	require.Equal(s.T(), uint64(1), c.Current())
+	s.Require().Equal(uint64(1), c.Current())
 
 	c.Inc(10)
-	require.Equal(s.T(), uint64(11), c.Current())
+	s.Require().Equal(uint64(11), c.Current())
 
 	c.Dec(10)
-	require.Equal(s.T(), uint64(1), c.Current())
+	s.Require().Equal(uint64(1), c.Current())
 
-	require.Equal(s.T(), true, c.HasSpaceFor(99))
-	require.Equal(s.T(), false, c.HasSpaceFor(100))
+	s.Require().Equal(true, c.HasSpaceFor(99))
+	s.Require().Equal(false, c.HasSpaceFor(100))
 
 	c.Inc(99)
-	require.Equal(s.T(), true, c.IsFull())
+	s.Require().Equal(true, c.IsFull())
 }
 
 func BenchmarkCounter(b *testing.B) {

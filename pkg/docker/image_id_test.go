@@ -5,7 +5,6 @@ package docker
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -52,12 +51,12 @@ func (s *ImageIDSuite) TestImageIDStringer() {
 		s.Run(tc.name, func() {
 			id, err := NewImageID(tc.imageID)
 			if tc.error {
-				require.Error(s.T(), err)
+				s.Require().Error(err)
 			} else {
-				require.NoError(s.T(), err)
+				s.Require().NoError(err)
 			}
-			require.Equal(s.T(), tc.digest, id.HasDigest())
-			require.Equal(s.T(), tc.expected, id.String())
+			s.Require().Equal(tc.digest, id.HasDigest())
+			s.Require().Equal(tc.expected, id.String())
 		})
 	}
 

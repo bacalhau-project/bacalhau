@@ -150,17 +150,17 @@ func (s *InMemoryTestSuite) TearDownTest() {
 
 func (s *InMemoryTestSuite) TestUnfilteredJobHistory() {
 	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobstore.JobHistoryFilterOptions{})
-	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 8, len(history))
+	s.Require().NoError(err, "failed to get job history")
+	s.Require().Equal(8, len(history))
 }
 
 func (s *InMemoryTestSuite) TestJobHistoryOrdering() {
 	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], jobstore.JobHistoryFilterOptions{})
-	require.NoError(s.T(), err, "failed to get job history")
+	s.Require().NoError(err, "failed to get job history")
 
 	// There are 6 history entries that we created directly, and 2 created by
 	// CreateJob and CreateExecution
-	require.Equal(s.T(), 8, len(history))
+	s.Require().Equal(8, len(history))
 
 	// Make sure they come back in order
 	values := make([]int64, len(history))
@@ -168,7 +168,7 @@ func (s *InMemoryTestSuite) TestJobHistoryOrdering() {
 		values[i] = h.Time.Unix()
 	}
 
-	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
+	s.Require().Equal([]int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
 func (s *InMemoryTestSuite) TestTimeFilteredJobHistory() {
@@ -177,8 +177,8 @@ func (s *InMemoryTestSuite) TestTimeFilteredJobHistory() {
 	}
 
 	history, err := s.store.GetJobHistory(s.ctx, s.ids[0], options)
-	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 4, len(history))
+	s.Require().NoError(err, "failed to get job history")
+	s.Require().Equal(4, len(history))
 }
 
 func (s *InMemoryTestSuite) TestLevelFilteredJobHistory() {

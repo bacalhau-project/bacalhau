@@ -5,10 +5,10 @@ package generic_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type BroadcasterTestSuite struct {
@@ -32,39 +32,39 @@ func (s *BroadcasterTestSuite) TestBroadcasterSimple() {
 
 	s.broadcaster.Broadcast("Hello")
 
-	require.Equal(s.T(), "Hello", <-channels[0])
-	require.Equal(s.T(), "Hello", <-channels[1])
-	require.Equal(s.T(), "Hello", <-channels[2])
+	s.Require().Equal("Hello", <-channels[0])
+	s.Require().Equal("Hello", <-channels[1])
+	s.Require().Equal("Hello", <-channels[2])
 }
 
 func (s *BroadcasterTestSuite) TestBroadcasterAutoclose() {
 	s.broadcaster.SetAutoclose(true)
 
 	ch, err := s.broadcaster.Subscribe()
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.broadcaster.Unsubscribe(ch)
-	require.Equal(s.T(), true, s.broadcaster.IsClosed())
+	s.Require().Equal(true, s.broadcaster.IsClosed())
 
 	err = s.broadcaster.Broadcast("err?")
-	require.Error(s.T(), err)
+	s.Require().Error(err)
 }
 
 func (s *BroadcasterTestSuite) TestBroadcasterSubUnsub() {
 	ch1, err1 := s.broadcaster.Subscribe()
 	ch2, err2 := s.broadcaster.Subscribe()
-	require.NoError(s.T(), err1)
-	require.NoError(s.T(), err2)
+	s.Require().NoError(err1)
+	s.Require().NoError(err2)
 
 	err := s.broadcaster.Broadcast("err?")
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), "err?", <-ch1)
-	require.Equal(s.T(), "err?", <-ch2)
+	s.Require().NoError(err)
+	s.Require().Equal("err?", <-ch1)
+	s.Require().Equal("err?", <-ch2)
 
 	// Close the channel without unsubscribing it
 	close(ch2)
 
 	s.broadcaster.Broadcast("hello")
-	require.Equal(s.T(), "hello", <-ch1)
+	s.Require().Equal("hello", <-ch1)
 
 }

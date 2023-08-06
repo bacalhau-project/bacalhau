@@ -11,7 +11,6 @@ import (
 
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -148,7 +147,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				APIVersion: j.APIVersion,
 				Spec:       &j.Spec,
 			})
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
 			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
@@ -166,7 +165,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		err := waiter.Wait(ctx)
-		require.NoError(suite.T(), err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
+		suite.Require().NoError(err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
 		if err != nil {
 			fmt.Printf("error waiting for jobs to have been seen\n")
@@ -182,14 +181,14 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			if err != nil {
 				errorMessage = fmt.Sprintf("there was an error in the check function: %s %s", checker.name, err.Error())
 			}
-			require.NoError(suite.T(), err, errorMessage)
+			suite.Require().NoError(err, errorMessage)
 			if !innerCheck {
 				checkOk = false
 				failingCheckMessage = fmt.Sprintf("there was an fail in the check function: %s", checker.name)
 			}
 		}
 
-		require.True(suite.T(), checkOk, failingCheckMessage)
+		suite.Require().True(checkOk, failingCheckMessage)
 
 		if !checkOk {
 			fmt.Printf("error checking results on seen jobs\n")
@@ -338,7 +337,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				APIVersion: jobConfig.APIVersion,
 				Spec:       &jobConfig.Spec,
 			})
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 			jobIds = append(jobIds, submittedJob.Metadata.ID)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
@@ -350,28 +349,28 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	for _, jobId := range jobIds {
 		err := resolver.WaitUntilComplete(ctx, jobId)
-		require.NoError(suite.T(), err)
+		suite.Require().NoError(err)
 	}
 
-	require.Equal(suite.T(), nodeCount*jobsPerNode, seenJobs)
+	suite.Require().Equal(nodeCount*jobsPerNode, seenJobs)
 
 	allocationMap := map[string]int{}
 
 	for _, jobId := range jobIds {
 		jobState, err := resolver.GetJobState(ctx, jobId)
-		require.NoError(suite.T(), err)
+		suite.Require().NoError(err)
 		completedExecutionStates := job.GetCompletedExecutionStates(jobState)
-		require.Equal(suite.T(), 1, len(completedExecutionStates))
-		require.Equal(suite.T(), model.ExecutionStateCompleted, completedExecutionStates[0].State)
+		suite.Require().Equal(1, len(completedExecutionStates))
+		suite.Require().Equal(model.ExecutionStateCompleted, completedExecutionStates[0].State)
 		allocationMap[completedExecutionStates[0].NodeID]++
 	}
 
 	// test that each node has 2 job allocated to it
 	node1Count, ok := allocationMap[stack.Nodes[0].Host.ID().String()]
-	require.True(suite.T(), ok)
-	require.Equal(suite.T(), jobsPerNode, node1Count)
+	suite.Require().True(ok)
+	suite.Require().Equal(jobsPerNode, node1Count)
 
 	node2Count, ok := allocationMap[stack.Nodes[1].Host.ID().String()]
-	require.True(suite.T(), ok)
-	require.Equal(suite.T(), jobsPerNode, node2Count)
+	suite.Require().True(ok)
+	suite.Require().Equal(jobsPerNode, node2Count)
 }

@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -56,7 +55,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 		s.cm,
 		"bacalhau-executor-unittest",
 	)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Path))
@@ -70,14 +69,14 @@ func (s *ExecutorTestSuite) SetupTest() {
 	var gateway net.IP
 	if runtime.GOOS == "linux" {
 		gateway, err = s.executor.client.HostGatewayIP(context.Background())
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	} else {
 		gateway = net.ParseIP("127.0.0.1")
 	}
 
 	serverAddr := net.TCPAddr{IP: gateway, Port: 0}
 	listener, err := net.Listen("tcp", serverAddr.String())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	// Don't need to close the listener as it'll be closed by the server.
 
 	s.server = &http.Server{
@@ -90,7 +89,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	url, err := url.Parse("http://" + s.server.Addr)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// On Mac/Windows, we are within a VM and hence we need to route to the
 	// host. On Linux we are not, so localhost should work.
@@ -167,15 +166,15 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	values := strings.Fields(result)
 
 	numerator, err := strconv.Atoi(values[0])
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	denominator, err := strconv.Atoi(values[1])
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	var containerCPU float64 = 0
 
@@ -183,7 +182,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(s.T(), capacity.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	s.Require().Equal(capacity.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
 func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
@@ -205,11 +204,11 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
 		},
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), capacity.ConvertBytesString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	s.Require().NoError(err)
+	s.Require().Equal(capacity.ConvertBytesString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
@@ -218,9 +217,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 		Network: model.NetworkConfig{Type: model.NetworkFull},
 		Docker:  s.curlTask(),
 	})
-	require.NoError(s.T(), err, result.STDERR)
-	require.Zero(s.T(), result.ExitCode, result.STDERR)
-	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+	s.Require().NoError(err, result.STDERR)
+	s.Require().Zero(result.ExitCode, result.STDERR)
+	s.Require().Equal("/hello.txt", result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
@@ -229,10 +228,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 		Network: model.NetworkConfig{Type: model.NetworkNone},
 		Docker:  s.curlTask(),
 	})
-	require.NoError(s.T(), err)
-	require.Empty(s.T(), result.STDOUT)
-	require.NotEmpty(s.T(), result.STDERR)
-	require.NotZero(s.T(), result.ExitCode)
+	s.Require().NoError(err)
+	s.Require().Empty(result.STDOUT)
+	s.Require().NotEmpty(result.STDERR)
+	s.Require().NotZero(result.ExitCode)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
@@ -244,9 +243,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 		},
 		Docker: s.curlTask(),
 	})
-	require.NoError(s.T(), err, result.STDERR)
-	require.Zero(s.T(), result.ExitCode, result.STDERR)
-	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+	s.Require().NoError(err, result.STDERR)
+	s.Require().Zero(result.ExitCode, result.STDERR)
+	s.Require().Equal("/hello.txt", result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
@@ -261,9 +260,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 		},
 		Docker: s.curlTask(),
 	})
-	require.NoError(s.T(), err, result.STDERR)
-	require.Zero(s.T(), result.ExitCode, result.STDERR)
-	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+	s.Require().NoError(err, result.STDERR)
+	s.Require().Zero(result.ExitCode, result.STDERR)
+	s.Require().Equal("/hello.txt", result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
@@ -278,9 +277,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 		},
 		Docker: s.curlTask(),
 	})
-	require.NoError(s.T(), err, result.STDERR)
-	require.Zero(s.T(), result.ExitCode, result.STDERR)
-	require.Equal(s.T(), "/hello.txt", result.STDOUT)
+	s.Require().NoError(err, result.STDERR)
+	s.Require().Zero(result.ExitCode, result.STDERR)
+	s.Require().Equal("/hello.txt", result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
@@ -293,9 +292,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 		Docker: s.curlTask(),
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
-	require.NoError(s.T(), err)
-	require.NotZero(s.T(), result.ExitCode)
-	require.Contains(s.T(), result.STDOUT, "ERROR: The requested URL could not be retrieved")
+	s.Require().NoError(err)
+	s.Require().NotZero(result.ExitCode)
+	s.Require().Contains(result.STDOUT, "ERROR: The requested URL could not be retrieved")
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
@@ -311,9 +310,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 		},
 	})
 	// The curl will succeed but should return a non-zero exit code and error page.
-	require.NoError(s.T(), err)
-	require.NotZero(s.T(), result.ExitCode)
-	require.Empty(s.T(), result.STDOUT)
+	s.Require().NoError(err)
+	s.Require().NotZero(result.ExitCode)
+	s.Require().Empty(result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
@@ -329,8 +328,8 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 		},
 		Docker: s.curlTask(),
 	})
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), "test", result.STDOUT, result.STDOUT)
+	s.Require().NoError(err)
+	s.Require().Equal("test", result.STDOUT, result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
@@ -378,8 +377,8 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
 
 	<-done
-	require.Nil(s.T(), reader)
-	require.Error(s.T(), err)
+	s.Require().Nil(reader)
+	s.Require().Error(err)
 }
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
@@ -411,12 +410,12 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	reader, err := s.executor.GetOutputStream(ctx, id, true, true)
 
-	require.NotNil(s.T(), reader)
-	require.NoError(s.T(), err)
+	s.Require().NotNil(reader)
+	s.Require().NoError(err)
 
 	df, err := logger.NewDataFrameFromReader(reader)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), string(df.Data), "hello\n")
-	require.Equal(s.T(), df.Size, 6)
-	require.Equal(s.T(), df.Tag, logger.StdoutStreamTag)
+	s.Require().NoError(err)
+	s.Require().Equal(string(df.Data), "hello\n")
+	s.Require().Equal(df.Size, 6)
+	s.Require().Equal(df.Tag, logger.StdoutStreamTag)
 }

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/opencontainers/go-digest"
 )
@@ -127,35 +127,35 @@ func (s *ImageResolverSuite) TestResolverCases() {
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			i, err := NewImageID(tc.image)
-			require.NoError(s.T(), err)
-			require.NotNil(s.T(), i)
-			require.Equal(s.T(), tc.initial_tag, i.tag.String())
+			s.Require().NoError(err)
+			s.Require().NotNil(i)
+			s.Require().Equal(tc.initial_tag, i.tag.String())
 
 			resolved := NewImageResolver(i)
 			err = resolved.Resolve(ctx, tc.resolver, mockCache)
 			if tc.error {
-				require.Error(s.T(), err)
+				s.Require().Error(err)
 			} else {
-				require.NoError(s.T(), err)
+				s.Require().NoError(err)
 			}
 
 			if tc.digest {
-				require.NoError(s.T(), err)
-				require.Equal(s.T(), tc.expected, resolved.Digest())
+				s.Require().NoError(err)
+				s.Require().Equal(tc.expected, resolved.Digest())
 
 				if !i.HasDigest() {
 					// If the image didn't already have a digest, check what we
 					// created ended up in a cache.
 					cachedDigest, found := mockCache.Get(i.String())
-					require.True(s.T(), found)
-					require.Equal(s.T(), tc.expected, cachedDigest)
+					s.Require().True(found)
+					s.Require().Equal(tc.expected, cachedDigest)
 				}
 
 			} else {
-				require.Empty(s.T(), resolved.Digest())
+				s.Require().Empty(resolved.Digest())
 
 				_, found := mockCache.Get(i.String())
-				require.False(s.T(), found)
+				s.Require().False(found)
 			}
 
 			// Cleanup the cache for the next run

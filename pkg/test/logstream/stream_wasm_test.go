@@ -16,7 +16,7 @@ import (
 func (s *LogStreamTestSuite) TestWasmOutputStream() {
 	node := s.stack.Nodes[0]
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineWasm)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
 	defer cancelFunc()
@@ -42,9 +42,9 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 		// entrypoint we chose, but we might get timed-out.
 		dir, _ := os.MkdirTemp("", "test")
 		_, err = exec.Run(ctx, "test-execution", job, dir)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}()
 
 	_, err = waitForOutputStream(ctx, "test-execution", true, true, exec)
-	require.NotNil(s.T(), err)
+	s.Require().NotNil(err)
 }

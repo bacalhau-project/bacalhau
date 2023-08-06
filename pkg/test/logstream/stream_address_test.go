@@ -3,8 +3,6 @@
 package logstream
 
 import (
-	"github.com/stretchr/testify/require"
-
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -26,10 +24,10 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	execution := newTestExecution("test-execution", job)
 
 	err := node.RequesterNode.JobStore.CreateJob(s.ctx, job)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	go func() {
 		// Run the job.  We won't ever get a result because of the
@@ -37,11 +35,11 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		var args *executor.Arguments
 		if job.Spec.Engine == model.EngineDocker {
 			args, err = executor.EncodeArguments(job.Spec.Docker)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		}
 		if job.Spec.Engine == model.EngineWasm {
 			args, err = executor.EncodeArguments(job.Spec.Wasm)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		}
 		if job.Spec.Engine == model.EngineNoop {
 			args = &executor.Arguments{Params: []byte{}}
@@ -70,8 +68,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	// Wait for the docker container to be running so we know it'll be there when
 	// the logstream requests it
 	reader, err := waitForOutputStream(s.ctx, execution.ID, true, true, exec)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), reader)
+	s.Require().NoError(err)
+	s.Require().NotNil(reader)
 
 	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, execution)
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, model.ExecutionState{
@@ -80,7 +78,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		ComputeReference: execution.ID,
 		NodeID:           node.Host.ID().Pretty(),
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	logRequest := requester.ReadLogsRequest{
 		JobID:       job.ID(),
@@ -88,17 +86,17 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		WithHistory: true,
 		Follow:      true}
 	response, err := node.RequesterNode.Endpoint.ReadLogs(s.ctx, logRequest)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	client, err := logstream.NewLogStreamClient(s.ctx, response.Address)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	defer client.Close()
 
 	client.Connect(s.ctx, execution.ID, true, true)
 
 	frame, err := client.ReadDataFrame(s.ctx)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), frame)
+	s.Require().NoError(err)
+	s.Require().NotNil(frame)
 
-	require.Equal(s.T(), string(frame.Data), "logstreamoutput\n")
+	s.Require().Equal(string(frame.Data), "logstreamoutput\n")
 }

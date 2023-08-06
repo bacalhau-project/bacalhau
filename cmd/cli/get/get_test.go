@@ -104,7 +104,7 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 
 func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	args := []string{
 		"docker", "run",
 		"--api-host", s.Host,
@@ -135,7 +135,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 		"--download",
 	})
 	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.Node.Host.ID().String()
 	outputFolder := filepath.Join(tempDir, util.GetDefaultJobFolder(jobID))
@@ -148,7 +148,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
@@ -156,7 +156,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 		"--output-dir", tempDir,
 	})
 	_, runOutput, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := s.Node.Host.ID().String()
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
@@ -168,7 +168,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -176,7 +176,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.Node.Host.ID().String()
 
@@ -186,7 +186,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		jobID,
 	)
-	require.NoError(s.T(), err, "Error getting results")
+	s.Require().NoError(err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, nil)
@@ -194,13 +194,13 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := cmdtesting.ExecuteTestCobraCommand("get",
@@ -210,12 +210,12 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
-	require.Contains(s.T(), getoutput, "error downloading job")
+	s.Require().Contains(getoutput, "error downloading job")
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -223,7 +223,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.Node.Host.ID().String()
 
@@ -233,7 +233,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
-	require.NoError(s.T(), err, "Error getting results")
+	s.Require().NoError(err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
@@ -241,7 +241,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(context.Background())
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -249,7 +249,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.Node.Host.ID().String()
 
@@ -259,7 +259,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),
 	)
-	require.NoError(s.T(), err, "Error getting results")
+	s.Require().NoError(err, "Error getting results")
 
 	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(),
@@ -277,17 +277,17 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	swarmAddresses, err := s.Node.IPFSClient.SwarmAddresses(ctx)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 	})
 	_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 
-	require.NoError(s.T(), err, "Error submitting job")
+	s.Require().NoError(err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := s.Node.Host.ID().String()
 
@@ -298,7 +298,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 		"--output-dir", tempDir,
 		jobID,
 	)
-	require.NoError(s.T(), err, "Error getting results")
+	s.Require().NoError(err, "Error getting results")
 	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID, nil)
 }

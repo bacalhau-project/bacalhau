@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+
+	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/eventhandler/mock_eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/mock/gomock"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -69,7 +70,7 @@ func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEvent() {
 	)
 
 	// assert no error was returned
-	require.NoError(suite.T(), suite.chainedHandler.HandleJobEvent(ctx, suite.event))
+	suite.Require().NoError(suite.chainedHandler.HandleJobEvent(ctx, suite.event))
 }
 
 func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventLazilyAdded() {
@@ -87,7 +88,7 @@ func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventLazi
 	)
 
 	// assert no error was returned
-	require.NoError(suite.T(), suite.chainedHandler.HandleJobEvent(ctx, suite.event))
+	suite.Require().NoError(suite.chainedHandler.HandleJobEvent(ctx, suite.event))
 }
 
 func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventError() {
@@ -103,9 +104,9 @@ func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventErro
 	suite.handler1.EXPECT().HandleJobEvent(suite.context, suite.event).Return(mockError)
 
 	// assert no error was returned
-	require.Equal(suite.T(), mockError, suite.chainedHandler.HandleJobEvent(ctx, suite.event))
+	suite.Require().Equal(mockError, suite.chainedHandler.HandleJobEvent(ctx, suite.event))
 }
 
 func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventEmptyHandlers() {
-	require.Error(suite.T(), suite.chainedHandler.HandleJobEvent(context.Background(), suite.event))
+	suite.Require().Error(suite.chainedHandler.HandleJobEvent(context.Background(), suite.event))
 }

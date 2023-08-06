@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type LocalDirectorySuite struct {
@@ -45,11 +45,11 @@ func (s *LocalDirectorySuite) TestIsInstalled() {
 	} {
 		s.Run(tc.name, func() {
 			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			installed, err := storageProvider.IsInstalled(context.Background())
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), tc.isInstalled, installed)
+			s.Require().NoError(err)
+			s.Require().Equal(tc.isInstalled, installed)
 		})
 	}
 }
@@ -141,11 +141,11 @@ func (s *LocalDirectorySuite) TestHasStorageLocally() {
 	} {
 		s.Run(tc.name, func() {
 			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			hasStorageLocally, err := storageProvider.HasStorageLocally(context.Background(), s.prepareStorageSpec(tc.sourcePath))
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), tc.hasStorageLocally, hasStorageLocally)
+			s.Require().NoError(err)
+			s.Require().Equal(tc.hasStorageLocally, hasStorageLocally)
 		})
 	}
 }
@@ -203,15 +203,15 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 	} {
 		s.Run(tc.name, func() {
 			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), s.prepareStorageSpec(tc.sourcePath))
 			if tc.shouldFail {
-				require.Error(s.T(), err)
+				s.Require().Error(err)
 				return
 			}
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), tc.expectedVolumeSize, volumeSize)
+			s.Require().NoError(err)
+			s.Require().Equal(tc.expectedVolumeSize, volumeSize)
 		})
 	}
 }
@@ -221,7 +221,7 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 	folderPath := filepath.Join(tmpDir, "sub", "path")
 	s.Require().NoError(os.MkdirAll(folderPath, 0755))
 	storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths([]string{filepath.Join(tmpDir, "**:rw")})})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	for _, tc := range []struct {
 		name      string
@@ -237,11 +237,11 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 			}
 			spec := s.prepareStorageSpec(path)
 			volume, err := storageProvider.PrepareStorage(context.Background(), spec)
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), volume.Source, folderPath)
-			require.Equal(s.T(), volume.Target, spec.Path)
-			require.Equal(s.T(), volume.ReadOnly, !tc.readWrite)
-			require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
+			s.Require().NoError(err)
+			s.Require().Equal(volume.Source, folderPath)
+			s.Require().Equal(volume.Target, spec.Path)
+			s.Require().Equal(volume.ReadOnly, !tc.readWrite)
+			s.Require().Equal(volume.Type, storage.StorageVolumeConnectorBind)
 		})
 	}
 

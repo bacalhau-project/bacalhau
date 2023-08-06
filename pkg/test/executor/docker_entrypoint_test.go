@@ -13,16 +13,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 //When the entrypoint flag is used on the CLI, eg "docker run --entrypoint /bin/echo image hello world" docker will ignore the CMD
@@ -98,20 +98,20 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		name := createUniqueName("Dockerfile")
 		filename := filepath.Join(tempDir, name)
 		f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, util.OS_ALL_RWX)
-		require.NoError(suite.T(), err, "creating temp file")
+		suite.Require().NoError(err, "creating temp file")
 		_, err = f.WriteString(dockerFile)
-		require.NoError(suite.T(), err, "writing string to file")
+		suite.Require().NoError(err, "writing string to file")
 		data, err := os.ReadFile(filename)
-		require.NoError(suite.T(), err, "reading file")
+		suite.Require().NoError(err, "reading file")
 		suite.T().Log(string(data))
 
 		f.Close()
 		//build image
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-		require.NoError(suite.T(), err, "Creating client")
+		suite.Require().NoError(err, "Creating client")
 		buildContext := &bytes.Buffer{}
 		err = targzip.Compress(ctx, tempDir, buildContext)
-		require.NoError(suite.T(), err, "Creating build context")
+		suite.Require().NoError(err, "Creating build context")
 		tag := createUniqueName("image")
 		buildOptions := types.ImageBuildOptions{
 			Dockerfile: filepath.Join(tempDir, name),
@@ -119,10 +119,10 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		}
 
 		response, err := cli.ImageBuild(ctx, buildContext, buildOptions)
-		require.NoError(suite.T(), err, "Error building image: ")
+		suite.Require().NoError(err, "Error building image: ")
 		suite.imageNames = append(suite.imageNames, tag)
 		output, err := io.ReadAll(response.Body)
-		require.NoError(suite.T(), err, "building image")
+		suite.Require().NoError(err, "building image")
 		suite.T().Logf("Image %q built successfully: %s", tag, string(output))
 		defer response.Body.Close()
 	}
@@ -132,25 +132,25 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 	// delete the test docker images here!
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
-	require.NoError(suite.T(), err, "Error listing containers")
+	suite.Require().NoError(err, "Error listing containers")
 
 	for _, tag := range suite.imageNames {
 		for _, runningContainer := range containers {
 			if strings.Contains(runningContainer.Image, tag) {
 
 				err := cli.ContainerStop(ctx, runningContainer.ID, container.StopOptions{})
-				require.NoError(suite.T(), err, fmt.Sprintf("Error stopping container %q", runningContainer.ID))
+				suite.Require().NoError(err, fmt.Sprintf("Error stopping container %q", runningContainer.ID))
 
 				err = cli.ContainerRemove(ctx, runningContainer.ID, types.ContainerRemoveOptions{})
-				require.NoError(suite.T(), err, fmt.Sprintf("Error removing container %q", runningContainer.ID))
+				suite.Require().NoError(err, fmt.Sprintf("Error removing container %q", runningContainer.ID))
 			}
 		}
 
 		_, err = cli.ImageRemove(ctx, tag+":latest", types.ImageRemoveOptions{Force: true})
-		require.NoError(suite.T(), err, "Error removing image")
+		suite.Require().NoError(err, "Error removing image")
 	}
 
 }

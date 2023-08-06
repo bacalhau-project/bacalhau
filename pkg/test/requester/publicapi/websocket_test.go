@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -56,7 +56,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 	wurl := url.JoinPath("requester", "websocket", "events")
 
 	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	s.T().Cleanup(func() {
 		s.NoError(conn.Close())
 	})
@@ -70,7 +70,7 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 			if errors.Is(err, net.ErrClosed) {
 				return
 			}
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			eventChan <- event
 		}
 	}()
@@ -80,10 +80,10 @@ func (s *WebsocketSuite) TestWebsocketEverything() {
 
 	genericJob := testutils.MakeGenericJob()
 	_, err = s.client.Submit(ctx, genericJob)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	event := <-eventChan
-	require.Equal(s.T(), model.JobEventCreated, event.EventName)
+	s.Require().Equal(model.JobEventCreated, event.EventName)
 
 }
 
@@ -94,7 +94,7 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 
 	genericJob := testutils.MakeGenericJob()
 	j, err := s.client.Submit(ctx, genericJob)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	url := *s.client.BaseURI
 	url.Scheme = "ws"
@@ -102,10 +102,10 @@ func (s *WebsocketSuite) TestWebsocketSingleJob() {
 	wurl.RawQuery = fmt.Sprintf("job_id=%s", j.Metadata.ID)
 
 	conn, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	var event model.JobEvent
 	err = conn.ReadJSON(&event)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), "Created", event.EventName.String())
+	s.Require().NoError(err)
+	s.Require().Equal("Created", event.EventName.String())
 }

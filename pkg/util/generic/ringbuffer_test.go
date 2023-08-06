@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type RingBufferTestSuite struct {
@@ -29,7 +29,7 @@ func (s *RingBufferTestSuite) TestRingBufferSimple() {
 
 	for i := 0; i < 10; i++ {
 		x := rb.Dequeue()
-		require.Equal(s.T(), i, x)
+		s.Require().Equal(i, x)
 	}
 }
 
@@ -42,7 +42,7 @@ func (s *RingBufferTestSuite) TestRingBufferCycle() {
 
 	for i := 0; i < 9; i++ {
 		x := rb.Dequeue()
-		require.Equal(s.T(), i%3, x)
+		s.Require().Equal(i%3, x)
 	}
 }
 
@@ -51,7 +51,7 @@ func (s *RingBufferTestSuite) TestRingBufferBlock() {
 
 	go func() {
 		x := rb.Dequeue()
-		require.Equal(s.T(), 1, x)
+		s.Require().Equal(1, x)
 	}()
 
 	time.Sleep(time.Duration(100) * time.Millisecond)
@@ -67,8 +67,8 @@ func (s *RingBufferTestSuite) TestRingBufferOverwrite() {
 		// Dequeue 3 items, then
 		for i := 0; i < 3; i++ {
 			d := rb.Dequeue()
-			require.NotNil(s.T(), d)
-			require.Equal(s.T(), "message", d)
+			s.Require().NotNil(d)
+			s.Require().Equal("message", d)
 		}
 		done <- true
 	}()
@@ -81,5 +81,5 @@ func (s *RingBufferTestSuite) TestRingBufferOverwrite() {
 	// Ensure that we haven't expanded the ring at all
 	count := 0
 	rb.Each(func(r any) { count += 1 })
-	require.Equal(s.T(), 3, count)
+	s.Require().Equal(3, count)
 }

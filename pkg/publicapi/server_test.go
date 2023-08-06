@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -50,13 +50,13 @@ func (s *ServerSuite) TestHealthz() {
 
 	var healthData types.HealthInfo
 	err := model.JSONUnmarshalWithMax(rawHealthData, &healthData)
-	require.NoError(s.T(), err, "Error unmarshalling /healthz data.")
+	s.Require().NoError(err, "Error unmarshalling /healthz data.")
 
 	// Checks that it's a number, and bigger than zero
-	require.Greater(s.T(), int(healthData.DiskFreeSpace.ROOT.All), 0)
+	s.Require().Greater(int(healthData.DiskFreeSpace.ROOT.All), 0)
 
 	// "all" should be bigger than "free" always
-	require.Greater(s.T(), healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
+	s.Require().Greater(healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
 }
 
 func (s *ServerSuite) TestLivez() {
@@ -77,7 +77,7 @@ func (s *ServerSuite) TestVarz() {
 
 	var varZ types.VarZ
 	err := model.JSONUnmarshalWithMax(rawVarZBody, &varZ)
-	require.NoError(s.T(), err, "Error unmarshalling /varz data.")
+	s.Require().NoError(err, "Error unmarshalling /varz data.")
 
 }
 
@@ -91,13 +91,13 @@ func (s *ServerSuite) TestTimeout() {
 
 	endpoint := "/logz"
 	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
-	require.NoError(s.T(), err, "Could not get %s endpoint.", endpoint)
-	require.Equal(s.T(), http.StatusServiceUnavailable, res.StatusCode)
+	s.Require().NoError(err, "Could not get %s endpoint.", endpoint)
+	s.Require().Equal(http.StatusServiceUnavailable, res.StatusCode)
 
 	// validate response body
 	body, err := io.ReadAll(res.Body)
-	require.NoError(s.T(), err, "Could not read %s response body", endpoint)
-	require.Equal(s.T(), body, []byte("Server Timeout!"))
+	s.Require().NoError(err, "Could not read %s response body", endpoint)
+	s.Require().Equal(body, []byte("Server Timeout!"))
 
 	defer res.Body.Close()
 }
@@ -131,13 +131,13 @@ func (s *ServerSuite) TestMaxBodyReader() {
 			var res VersionResponse
 			err := s.client.Post(context.Background(), "version", request, &res)
 			if tc.expectError {
-				require.Error(s.T(), err)
+				s.Require().Error(err)
 				if !strings.Contains(err.Error(), "Job not found") {
 					if tc.expectError {
-						require.Error(s.T(), err, "expected error")
-						require.Contains(s.T(), err.Error(), "http: request body too large", "expected to error with body too large")
+						s.Require().Error(err, "expected error")
+						s.Require().Contains(err.Error(), "http: request body too large", "expected to error with body too large")
 					} else {
-						require.NoError(s.T(), err, "expected no error")
+						s.Require().NoError(err, "expected no error")
 					}
 				}
 			} else {
@@ -149,12 +149,12 @@ func (s *ServerSuite) TestMaxBodyReader() {
 
 func (s *ServerSuite) testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
 	res, err := http.Get(s.client.BaseURI.JoinPath(endpoint).String())
-	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
+	s.Require().NoError(err, "Could not get %s endpoint.", endpoint)
 	defer res.Body.Close()
 
-	require.Equal(t, res.StatusCode, http.StatusOK)
+	s.Require().Equal(res.StatusCode, http.StatusOK)
 	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err, "Could not read %s response body", endpoint)
-	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
+	s.Require().NoError(err, "Could not read %s response body", endpoint)
+	s.Require().Contains(string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
 	return body
 }

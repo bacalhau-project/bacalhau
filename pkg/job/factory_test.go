@@ -5,7 +5,6 @@ package job
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -63,8 +62,8 @@ func (suite *JobFactorySuite) TestRun_DockerJobOutputs() {
 					Spec:       spec,
 				}
 
-				require.NoError(suite.T(), err, "Error in creating spec - %+v", tcids)
-				require.Equal(suite.T(), len(j.Spec.Outputs),
+				suite.Require().NoError(err, "Error in creating spec - %+v", tcids)
+				suite.Require().Equal(len(j.Spec.Outputs),
 					tcids.correctLength,
 					"Length of deal outputs (%d) not the same as expected (%d). %+v",
 					len(j.Spec.Outputs),

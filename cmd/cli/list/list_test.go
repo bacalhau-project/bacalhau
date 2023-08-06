@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
@@ -54,7 +53,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			for i := 0; i < tc.numberOfJobs; i++ {
 				j := testutils.MakeNoopJob()
 				_, err := suite.Client.Submit(ctx, j)
-				require.NoError(suite.T(), err)
+				suite.Require().NoError(err)
 			}
 
 			_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
@@ -64,9 +63,9 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 				"--reverse", "false",
 			)
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 
-			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+			suite.Require().Equal(tc.numberOfJobsOutput, strings.Count(out, "\n"))
 		})
 	}
 }
@@ -83,7 +82,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		j, err = suite.Client.Submit(ctx, j)
 		jobIds = append(jobIds, system.GetShortID(j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
-		require.NoError(suite.T(), err)
+		suite.Require().NoError(err)
 	}
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("list",
 		"--hide-header",
@@ -92,13 +91,13 @@ func (suite *ListSuite) TestList_IdFilter() {
 		"--id-filter", jobIds[0],
 		"--wide",
 	)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), "\n", out[len(out)-1:], "Expected output to end with a newline: %q", out)
+	suite.Require().NoError(err)
+	suite.Require().Equal("\n", out[len(out)-1:], "Expected output to end with a newline: %q", out)
 
 	// parse list output
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-	require.Equal(suite.T(), 1, len(lines), "We didn't get only one result: %q", lines)
-	require.Contains(suite.T(), lines[0], jobIds[0], "The returned job id was not what we asked for")
+	suite.Require().Equal(1, len(lines), "We didn't get only one result: %q", lines)
+	suite.Require().Contains(lines[0], jobIds[0], "The returned job id was not what we asked for")
 
 	//// Test --output json
 
@@ -110,7 +109,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		"--id-filter", jobLongIds[0],
 		"--output", "json",
 	)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
 	// parse response
 	response := publicapi.ListResponse{}
@@ -122,10 +121,10 @@ func (suite *ListSuite) TestList_IdFilter() {
 		break
 	}
 
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
-	require.Contains(suite.T(), firstItem.Metadata.ID, jobLongIds[0], "The filtered job id was not found in the response")
-	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
+	suite.Require().Contains(firstItem.Metadata.ID, jobLongIds[0], "The filtered job id was not found in the response")
+	suite.Require().Equal(1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
 }
 
 func (suite *ListSuite) TestList_AnnotationFilter() {
@@ -173,7 +172,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			j := testutils.MakeNoopJob()
 			j.Spec.Annotations = tc.JobLabels
 			j, err := suite.Client.Submit(ctx, j)
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 
 			checkList := func(shouldAppear bool, flags ...string) {
 				args := []string{"list",
@@ -184,15 +183,15 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				}
 				args = append(args, flags...)
 				_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-				require.NoError(suite.T(), err)
+				suite.Require().NoError(err)
 
 				response := publicapi.ListResponse{}
 				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
-					require.NotEmpty(suite.T(), response.Jobs)
-					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)
+					suite.Require().NotEmpty(response.Jobs)
+					suite.Require().Equal(j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)
 				} else {
-					require.Empty(suite.T(), response.Jobs)
+					suite.Require().Empty(response.Jobs)
 				}
 			}
 
@@ -265,7 +264,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 					var err error
 					j := testutils.MakeNoopJob()
 					j, err = suite.Client.Submit(ctx, j)
-					require.NoError(suite.T(), err)
+					suite.Require().NoError(err)
 					jobIDs = append(jobIDs, system.GetShortID(j.Metadata.ID))
 
 					// all the middle jobs can have the same timestamp
@@ -293,11 +292,11 @@ func (suite *ListSuite) TestList_SortFlags() {
 				)
 
 				if sortFlags.badSortFlag {
-					require.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
-					require.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
+					suite.Require().Error(err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
+					suite.Require().Contains(out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
 				} else {
-					require.NoError(suite.T(), err)
-					require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+					suite.Require().NoError(err)
+					suite.Require().Equal(tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 					if tc.numberOfJobsOutput > 0 {
 
@@ -339,11 +338,11 @@ Compare Ids:
 			    		`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))
 
 						if sortFlags.sortFlag == string(list.ColumnID) {
-							require.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
+							suite.Require().True(reflect.DeepEqual(compareIds, seenIds), errorMessage)
 						} else if sortFlags.sortFlag == createdAtSortFlag {
 							// check the first and last are correct
 							// the middles all have the same created time so we ignore those
-							require.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
+							suite.Require().Equal(compareIds[0], seenIds[0], errorMessage)
 						}
 					}
 				}

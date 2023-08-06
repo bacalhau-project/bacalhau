@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
@@ -43,10 +42,10 @@ func (suite *VersionSuite) TestVersionHumanOutput() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 
-	require.Contains(suite.T(), out, "CLIENT", "Client version not in output")
-	require.Contains(suite.T(), out, "SERVER", "Server version not in output")
+	suite.Require().Contains(out, "CLIENT", "Client version not in output")
+	suite.Require().Contains(out, "SERVER", "Server version not in output")
 }
 
 func (suite *VersionSuite) TestVersionJSONOutput() {
@@ -55,12 +54,12 @@ func (suite *VersionSuite) TestVersionJSONOutput() {
 		"--api-port", fmt.Sprint(suite.Port),
 		"--output", string(output.JSONFormat),
 	)
-	require.NoError(suite.T(), err, "Could not request version with json output.")
+	suite.Require().NoError(err, "Could not request version with json output.")
 
 	jsonDoc := &version.Versions{}
 	err = model.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
-	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
-	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
+	suite.Require().NoError(err, "Could not unmarshall the output into json - %+v", err)
+	suite.Require().Equal(jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 }
 
 func (suite *VersionSuite) TestVersionYAMLOutput() {
@@ -69,11 +68,11 @@ func (suite *VersionSuite) TestVersionYAMLOutput() {
 		"--api-port", fmt.Sprint(suite.Port),
 		"--output", string(output.YAMLFormat),
 	)
-	require.NoError(suite.T(), err, "Could not request version with json output.")
+	suite.Require().NoError(err, "Could not request version with json output.")
 
 	yamlDoc := &version.Versions{}
 	err = model.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
-	require.NoError(suite.T(), err, "Could not unmarshall the output into yaml - %+v", err)
-	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
+	suite.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", err)
+	suite.Require().Equal(yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
 
 }

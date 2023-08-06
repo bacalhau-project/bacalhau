@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,9 +27,9 @@ func (s *DataFrameTestSuite) TestBasic() {
 	buf.Write(original.ToBytes())
 
 	df, err := NewDataFrameFromReader(&buf)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
-	require.Equal(s.T(), original.Tag, df.Tag)
-	require.Equal(s.T(), original.Size, df.Size)
-	require.Equal(s.T(), original.Data, df.Data)
+	s.Require().Equal(original.Tag, df.Tag)
+	s.Require().Equal(original.Size, df.Size)
+	s.Require().Equal(original.Data, df.Data)
 }

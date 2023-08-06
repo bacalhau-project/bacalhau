@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type LogMessageTestSuite struct {
@@ -29,7 +29,7 @@ func TestLogMessageTestSuite(t *testing.T) {
 
 func (s *LogMessageTestSuite) SetupTest() {
 	f, err := os.CreateTemp("", "")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.file = f
 }
@@ -52,10 +52,10 @@ func (s *LogMessageTestSuite) TestLogMessageSimpleWriteRead() {
 	reader := bufio.NewReader(s.file)
 
 	lm2, err := readFromFile(reader)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), lm.Timestamp, lm2.Timestamp)
-	require.Equal(s.T(), lm.Stream, lm2.Stream)
-	require.Equal(s.T(), lm.Data, lm2.Data)
+	s.Require().NoError(err)
+	s.Require().Equal(lm.Timestamp, lm2.Timestamp)
+	s.Require().Equal(lm.Stream, lm2.Stream)
+	s.Require().Equal(lm.Data, lm2.Data)
 }
 
 func (s *LogMessageTestSuite) TestLogMessageBinaryWriteRead() {
@@ -72,9 +72,9 @@ func (s *LogMessageTestSuite) TestLogMessageBinaryWriteRead() {
 	rdr := bufio.NewReader(buff)
 	lmx.FromReader(*rdr)
 
-	require.Equal(s.T(), lm.Stream, lmx.Stream)
-	require.Equal(s.T(), lm.Timestamp, lmx.Timestamp)
-	require.Equal(s.T(), lm.Data, lmx.Data)
+	s.Require().Equal(lm.Stream, lmx.Stream)
+	s.Require().Equal(lm.Timestamp, lmx.Timestamp)
+	s.Require().Equal(lm.Data, lmx.Data)
 }
 
 func (s *LogMessageTestSuite) TestLogMessageMany() {
@@ -93,7 +93,7 @@ func (s *LogMessageTestSuite) TestLogMessageMany() {
 	for i := 0; i < 1000; i++ {
 		x, err := readFromFile(reader)
 		x.Timestamp += 1
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}
 }
 

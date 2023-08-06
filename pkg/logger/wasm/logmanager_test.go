@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type LogManagerTestSuite struct {
@@ -57,18 +57,18 @@ func (s *LogManagerTestSuite) TestLogManagerWrittenToDisk() {
 	<-done
 
 	f, err := os.OpenFile(lm.file.Name(), os.O_RDWR, 0755)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	fmt.Println(lm.file.Name())
 	time.Sleep(time.Duration(100) * time.Millisecond)
 
 	reader := bufio.NewReader(f)
 	ln, err := reader.ReadString('\n')
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	msg := LogMessage{}
 	json.Unmarshal([]byte(ln), &msg)
-	require.Equal(s.T(), string(msg.Data), "hello")
+	s.Require().Equal(string(msg.Data), "hello")
 
 	lm.Close()
 }

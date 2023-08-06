@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type URLTestSuite struct {
@@ -148,16 +148,16 @@ func (s *URLTestSuite) TestURLsInParallel() {
 	runURLTest(s, handler, testCase)
 
 	start1, ok := accessTimes["/"+getAccessKey(testCase.file1, "start")]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	start2, ok := accessTimes["/"+getAccessKey(testCase.file2, "start")]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	end1, ok := accessTimes["/"+getAccessKey(testCase.file1, "end")]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 	end2, ok := accessTimes["/"+getAccessKey(testCase.file2, "end")]
-	require.True(s.T(), ok)
+	s.Require().True(ok)
 
-	require.True(s.T(), start2 < end1, "start 2 should be before end 1")
-	require.True(s.T(), start1 < end2, "start 1 should be before end 2")
+	s.Require().True(start2 < end1, "start 2 should be before end 1")
+	s.Require().True(start1 < end2, "start 1 should be before end 2")
 }
 
 func (s *URLTestSuite) TestFlakyURLs() {

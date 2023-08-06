@@ -5,16 +5,14 @@ package repo
 import (
 	"context"
 	"fmt"
-
-	"github.com/go-git/go-git/v5"
-
 	// "net/http"
 	// "net/http/httptest"
 	"os"
 	"path/filepath"
-
 	// "regexp"
 	"testing"
+
+	"github.com/go-git/go-git/v5"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
@@ -24,7 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -82,19 +79,19 @@ func (s *StorageSuite) TestNewStorageProvider() {
 		panic(err)
 	}
 	sp, err := NewStorage(cm, storage, "")
-	require.NoError(s.T(), err, "failed to create storage provider")
+	s.Require().NoError(err, "failed to create storage provider")
 
 	// is dir writable?
 	fmt.Println(sp.LocalDir)
 	f, err := os.Create(filepath.Join(sp.LocalDir, "data.txt"))
-	require.NoError(s.T(), err, "failed to create file")
+	s.Require().NoError(err, "failed to create file")
 
 	_, err = f.WriteString("test\n")
-	require.NoError(s.T(), err, "failed to write to file")
+	s.Require().NoError(err, "failed to write to file")
 
 	f.Close()
 	// if sp.IPFSClient == nil {
-	// 	require.Fail(s.T(), "IPFSClient is nil")
+	// 	s.Require().Fail( "IPFSClient is nil")
 	// }
 }
 
@@ -106,7 +103,7 @@ func (s *StorageSuite) TestHasStorageLocally() {
 		panic(err)
 	}
 	sp, err := NewStorage(cm, storage, "")
-	require.NoError(s.T(), err, "failed to create storage provider")
+	s.Require().NoError(err, "failed to create storage provider")
 
 	spec := model.StorageSpec{
 		StorageSource: model.StorageSourceRepoClone,
@@ -115,10 +112,10 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
-	require.NoError(s.T(), err, "failed to check if storage is locally available")
+	s.Require().NoError(err, "failed to check if storage is locally available")
 
 	if locally != false {
-		require.Fail(s.T(), "storage should not be locally available")
+		s.Require().Fail("storage should not be locally available")
 	}
 }
 
@@ -193,7 +190,7 @@ func (s *StorageSuite) TestCloneRepo() {
 		}
 		urlhash, _ := urltoLatestCommitHash(context.Background(), ftc.URL)
 		if urlhash != "" {
-			require.Equal(s.T(), urlhash, hash, "%s: content of file does not match", name)
+			s.Require().Equal(urlhash, hash, "%s: content of file does not match", name)
 		}
 		fmt.Printf("HASH: %s", hash)
 

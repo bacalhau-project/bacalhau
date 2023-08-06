@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
@@ -40,15 +39,15 @@ func (s *ValidateSuite) TestValidate() {
 				"--api-port", fmt.Sprint(s.Port),
 				test.testFile.AsTempFile(s.T(), fmt.Sprintf("%s.*.yaml", name)),
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			if test.valid {
-				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
+				s.Require().Contains(out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
 				fatalError, err := testutils.FirstFatalError(s.T(), out)
-				require.NoError(s.T(), err)
-				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				s.Require().NoError(err)
+				s.Require().Contains(fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				s.Require().Contains(fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		})
 

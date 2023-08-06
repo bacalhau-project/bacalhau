@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type Suite struct {
@@ -286,7 +286,7 @@ func (s *Suite) TestDeleteExecution_MultiEntries() {
 	secondExecution := newExecution()
 	secondExecution.Job = s.execution.Job
 	err = s.executionStore.CreateExecution(ctx, secondExecution)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// third execution with different jobID
 	thirdExecution := newExecution()

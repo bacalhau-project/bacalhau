@@ -6,7 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/job"
@@ -45,9 +44,9 @@ func (s *UtilsSuite) TestSafeRegex() {
 
 	for _, tc := range tests {
 		strippedString := job.SafeStringStripper(tc.stringToTest)
-		require.LessOrEqual(s.T(), len(strippedString), len(tc.stringToTest))
+		s.Require().LessOrEqual(len(strippedString), len(tc.stringToTest))
 		if tc.predictedLength >= 0 {
-			require.Equal(s.T(), tc.predictedLength, len(strippedString))
+			s.Require().Equal(tc.predictedLength, len(strippedString))
 		}
 	}
 }
@@ -61,7 +60,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// OK: invalid semver
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -69,13 +68,13 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// OK: nil semver
 	err = EnsureValidVersion(context.TODO(), nil, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// OK: development version
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -83,7 +82,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// OK: development version
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -91,7 +90,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: version.DevelopmentGitVersion,
 	})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// NOT OK: server is newer
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -99,7 +98,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.4",
 	})
-	require.Error(s.T(), err)
+	s.Require().Error(err)
 
 	// NOT OK: client is newer
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -107,7 +106,7 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
-	require.Error(s.T(), err)
+	s.Require().Error(err)
 
 	// https://github.com/bacalhau-project/bacalhau/issues/495
 	err = EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{
@@ -115,8 +114,8 @@ func (s *UtilsSuite) TestVersionCheck() {
 	}, &model.BuildVersionInfo{
 		GitVersion: "v0.1.36",
 	})
-	require.Error(s.T(), err)
-	require.Contains(s.T(), err.Error(), "client version v0.1.37")
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), "client version v0.1.37")
 }
 
 func (s *UtilsSuite) TestImages() {
@@ -149,9 +148,9 @@ func (s *UtilsSuite) TestImages() {
 			sampleJob.Spec.Docker.Image = test.Image
 			err := job.VerifyJob(context.TODO(), sampleJob)
 			if test.Valid {
-				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.Image)
+				s.Require().NoError(err, "%s: expected valid image %s to pass", name, test.Image)
 			} else {
-				require.Error(s.T(), err, "%s: expected invalid image %s to fail", name, test.Image)
+				s.Require().Error(err, "%s: expected invalid image %s to fail", name, test.Image)
 			}
 		})
 	}

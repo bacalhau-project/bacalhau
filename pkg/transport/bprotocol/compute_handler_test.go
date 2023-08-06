@@ -7,10 +7,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeProxyTestSuite struct {
@@ -28,10 +28,10 @@ func (s *ComputeProxyTestSuite) SetupSuite() {
 	s.ctx = context.Background()
 
 	computeNode, err := libp2p.NewHostForTest(s.ctx)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	proxyNode, err := libp2p.NewHostForTest(s.ctx, computeNode)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.handler = NewComputeHandler(ComputeHandlerParams{
 		Host:            computeNode,
@@ -77,8 +77,8 @@ func (s *ComputeProxyTestSuite) TestSimpleError() {
 		RoutingMetadata: s.getRoutingMetadataForCompute(),
 	})
 
-	require.Error(s.T(), err)
-	require.Equal(s.T(), "error raised by AskForBid", err.Error())
+	s.Require().Error(err)
+	s.Require().Equal("error raised by AskForBid", err.Error())
 }
 
 func (s *ComputeProxyTestSuite) TestSimpleSuccess() {
@@ -88,6 +88,6 @@ func (s *ComputeProxyTestSuite) TestSimpleSuccess() {
 
 	// Expect a BidAcceptedResponse, err result.
 
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), "test", response.ExecutionID)
+	s.Require().NoError(err)
+	s.Require().Equal("test", response.ExecutionID)
 }

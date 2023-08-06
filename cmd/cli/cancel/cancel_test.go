@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
@@ -38,7 +37,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.NoError(suite.T(), err, "Error submitting job")
+	suite.Require().NoError(err, "Error submitting job")
 
 	job := testutils.GetJobFromTestOutput(ctx, suite.T(), suite.Client, stdout)
 	suite.T().Logf("Created job %s", job.Metadata.ID)
@@ -48,7 +47,7 @@ func (suite *CancelSuite) TestCancelTerminalJob() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.ErrorContains(suite.T(), err, "already in a terminal state")
+	suite.Require().ErrorContains(err, "already in a terminal state")
 }
 
 func (suite *CancelSuite) TestCancelJob() {
@@ -59,22 +58,22 @@ func (suite *CancelSuite) TestCancelJob() {
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.NoError(suite.T(), err, "Error submitting job")
+	suite.Require().NoError(err, "Error submitting job")
 
 	// Read the job ID from stdout of the create command and make sure
 	// we remove any whitespace before passing it to the Get call.
 	stdout = strings.TrimSpace(stdout)
 
 	jobInfo, _, err := suite.Client.Get(ctx, stdout)
-	require.NoError(suite.T(), err, "Error finding newly created job")
+	suite.Require().NoError(err, "Error finding newly created job")
 
 	_, stdout, err = cmdtesting.ExecuteTestCobraCommand("cancel",
 		jobInfo.Job.Metadata.ID,
 		"--api-host", suite.Host,
 		"--api-port", fmt.Sprint(suite.Port),
 	)
-	require.NoError(suite.T(), err, "Error cancelling job")
+	suite.Require().NoError(err, "Error cancelling job")
 
 	successMsg := fmt.Sprintf("Job successfully canceled. Job ID: %s", jobInfo.Job.Metadata.ID)
-	require.Contains(suite.T(), stdout, successMsg)
+	suite.Require().Contains(stdout, successMsg)
 }

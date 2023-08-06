@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 )
@@ -30,8 +28,8 @@ func (s *StatelessJobStrategySuite) TestRejectStateless_StatelessJob() {
 	strategy := semantic.NewStatelessJobStrategy(params)
 
 	result, err := strategy.ShouldBid(context.Background(), s.statelessJob)
-	require.NoError(s.T(), err)
-	require.False(s.T(), result.ShouldBid)
+	s.Require().NoError(err)
+	s.Require().False(result.ShouldBid)
 }
 
 func (s *StatelessJobStrategySuite) TestRejectStateless_StatefulJob() {
@@ -39,8 +37,8 @@ func (s *StatelessJobStrategySuite) TestRejectStateless_StatefulJob() {
 	strategy := semantic.NewStatelessJobStrategy(params)
 
 	result, err := strategy.ShouldBid(context.Background(), s.statefulJob)
-	require.NoError(s.T(), err)
-	require.True(s.T(), result.ShouldBid)
+	s.Require().NoError(err)
+	s.Require().True(result.ShouldBid)
 }
 
 func (s *StatelessJobStrategySuite) TestAcceptStateless_StatelessJob() {
@@ -48,8 +46,8 @@ func (s *StatelessJobStrategySuite) TestAcceptStateless_StatelessJob() {
 	strategy := semantic.NewStatelessJobStrategy(params)
 
 	result, err := strategy.ShouldBid(context.Background(), s.statelessJob)
-	require.NoError(s.T(), err)
-	require.True(s.T(), result.ShouldBid)
+	s.Require().NoError(err)
+	s.Require().True(result.ShouldBid)
 }
 
 func (s *StatelessJobStrategySuite) TestAcceptStateless_StatefulJob() {
@@ -57,8 +55,8 @@ func (s *StatelessJobStrategySuite) TestAcceptStateless_StatefulJob() {
 	strategy := semantic.NewStatelessJobStrategy(params)
 
 	result, err := strategy.ShouldBid(context.Background(), s.statefulJob)
-	require.NoError(s.T(), err)
-	require.True(s.T(), result.ShouldBid)
+	s.Require().NoError(err)
+	s.Require().True(result.ShouldBid)
 }
 
 func TestStatelessJobStrategySuite(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
@@ -54,7 +53,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 						j := testutils.MakeNoopJob()
 						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
 						job, err := s.Client.Submit(ctx, j)
-						require.NoError(s.T(), err)
+						s.Require().NoError(err)
 						submittedJob = job // Default to the last job submitted, should be fine?
 					}
 				}
@@ -65,7 +64,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 					"--api-host", s.Host,
 					"--api-port", fmt.Sprint(s.Port),
 				)
-				require.Error(s.T(), err, "Submitting a describe request with no id should error.")
+				s.Require().Error(err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
 				_, out, err := cmdtesting.ExecuteTestCobraCommand("describe",
@@ -73,13 +72,13 @@ func (s *DescribeSuite) TestDescribeJob() {
 					"--api-port", fmt.Sprint(s.Port),
 					submittedJob.Metadata.ID,
 				)
-				require.NoError(s.T(), err, "Error in describing job: %+v", err)
+				s.Require().NoError(err, "Error in describing job: %+v", err)
 
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
-				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
+				s.Require().NoError(err, "Error in unmarshalling description: %+v", err)
 
-				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
+				s.Require().Equal(submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+				s.Require().Equal(
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
@@ -91,11 +90,11 @@ func (s *DescribeSuite) TestDescribeJob() {
 					"--api-port", fmt.Sprint(s.Port),
 				)
 
-				require.NoError(s.T(), err, "Error in describing job: %+v", err)
+				s.Require().NoError(err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
-				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
+				s.Require().NoError(err, "Error in unmarshalling description: %+v", err)
+				s.Require().Equal(submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+				s.Require().Equal(
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
@@ -107,11 +106,11 @@ func (s *DescribeSuite) TestDescribeJob() {
 					"--api-port", fmt.Sprint(s.Port),
 				)
 
-				require.NoError(s.T(), err, "Error in describing job: %+v", err)
+				s.Require().NoError(err, "Error in describing job: %+v", err)
 				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
-				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-				require.Equal(s.T(),
+				s.Require().NoError(err, "Error in unmarshalling description: %+v", err)
+				s.Require().Equal(submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+				s.Require().Equal(
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
@@ -137,7 +136,7 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			j := testutils.MakeNoopJob()
 			job, err := s.Client.Submit(ctx, j)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			submittedJob = job // Default to the last job submitted, should be fine?
 
 			var returnedJob = &model.Job{}
@@ -151,16 +150,16 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			// Job Id at the end
 			_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
-			require.NoError(s.T(), err, "Error in describing job: %+v", err)
+			s.Require().NoError(err, "Error in describing job: %+v", err)
 
 			err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
-			require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
+			s.Require().NoError(err, "Error in unmarshalling description: %+v", err)
 
 			// TODO: #600 When we figure out how to add events to a noop job, uncomment the below
-			// require.True(s.T(), eventsWereIncluded == tc.includeEvents,
+			// s.Require().True( eventsWereIncluded == tc.includeEvents,
 			// 	fmt.Sprintf("Events include: %v\nExpected: %v", eventsWereIncluded, tc.includeEvents))
 
-			// require.True(s.T(), localEventsWereIncluded == tc.includeEvents,
+			// s.Require().True( localEventsWereIncluded == tc.includeEvents,
 			// 	fmt.Sprintf("Events included: %v\nExpected: %v", localEventsWereIncluded, tc.includeEvents))
 
 		}()
@@ -195,7 +194,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					j := testutils.MakeNoopJob()
 					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
 					jj, err := s.Client.Submit(ctx, j)
-					require.Nil(s.T(), err)
+					s.Require().Nil(err)
 					submittedJob = jj // Default to the last job submitted, should be fine?
 				}
 
@@ -217,12 +216,12 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					jobID,
 				)
 				if tc.describeIDEdgecase == "" {
-					require.NoError(s.T(), err, "Error in describing job: %+v", err)
+					s.Require().NoError(err, "Error in describing job: %+v", err)
 
 					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
-					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
-					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
-					require.Equal(s.T(),
+					s.Require().NoError(err, "Error in unmarshalling description: %+v", err)
+					s.Require().Equal(submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
+					s.Require().Equal(
 						submittedJob.Spec.Docker.Entrypoint[0],
 						returnedJobDescription.Job.Spec.Docker.Entrypoint[0],
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
@@ -230,7 +229,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					c := &model.TestFatalErrorHandlerContents{}
 					s.NoError(model.JSONUnmarshalWithMax([]byte(out), &c))
 					e := bacerrors.NewJobNotFound(tc.describeIDEdgecase)
-					require.Contains(s.T(), c.Message, e.GetMessage(), "Job not found error string not found.", err)
+					s.Require().Contains(c.Message, e.GetMessage(), "Job not found error string not found.", err)
 				}
 
 			}()

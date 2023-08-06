@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
@@ -87,7 +86,7 @@ func (s *CreateSuite) TestCreateGenericSubmitBetter() {
 
 			fmt.Println(tc.Fixture.Data)
 
-			require.NoError(s.T(), err, "Error submitting job")
+			s.Require().NoError(err, "Error submitting job")
 			testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 		})
 	}
@@ -99,7 +98,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 		"--api-port", fmt.Sprint(s.Port),
 	)
 
-	require.NoError(s.T(), err, "Error submitting job.")
+	s.Require().NoError(err, "Error submitting job.")
 
 	// Now run describe on the ID we got back
 	job := testutils.GetJobFromTestOutput(context.Background(), s.T(), s.Client, out)
@@ -109,7 +108,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 		job.Metadata.ID,
 	)
 
-	require.NoError(s.T(), err, "Error describing job.")
+	s.Require().NoError(err, "Error describing job.")
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
@@ -132,7 +131,7 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	wg.Wait()
 
 	stdinErr := os.Stdin.Close()
-	require.NoError(s.T(), stdinErr, "Error closing stdin")
+	s.Require().NoError(stdinErr, "Error closing stdin")
 
 	commandReturnValue := <-commandChan
 
@@ -144,6 +143,6 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 		}
 	}
 
-	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
-	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
+	s.Require().Contains(errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
+	s.Require().Equal(int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
 }

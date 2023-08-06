@@ -6,7 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -49,10 +48,10 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	j.Spec.Deal = model.Deal{Concurrency: 1}
 	_, missingSpecError := apiClient.Submit(ctx, j)
 
-	require.Error(suite.T(), missingSpecError)
+	suite.Require().Error(missingSpecError)
 
 	j = &model.Job{}
 	j.Spec = model.Spec{Engine: model.EngineDocker}
 	_, missingDealError := apiClient.Submit(ctx, j)
-	require.Error(suite.T(), missingDealError)
+	suite.Require().Error(missingDealError)
 }

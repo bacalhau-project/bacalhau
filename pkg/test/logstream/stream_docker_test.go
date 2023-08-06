@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -22,7 +21,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 
 	node := s.stack.Nodes[0]
 	exec, err := node.ComputeNode.Executors.Get(s.ctx, model.EngineDocker)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
 	defer cancelFunc()
@@ -45,11 +44,11 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 		var args *executor.Arguments
 		if job.Spec.Engine == model.EngineDocker {
 			args, err = executor.EncodeArguments(job.Spec.Docker)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		}
 		if job.Spec.Engine == model.EngineWasm {
 			args, err = executor.EncodeArguments(job.Spec.Wasm)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 		}
 		if job.Spec.Engine == model.EngineNoop {
 			args = &executor.Arguments{Params: []byte{}}
@@ -80,13 +79,13 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 		// TODO(forrest): [correctness] we need to wait a little for the container to become active.
 		time.Sleep(time.Second * 3)
 		reader, err := waitForOutputStream(ctx, executionID, true, true, exec)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), reader)
+		s.Require().NoError(err)
+		s.Require().NotNil(reader)
 
 		dataframe, err := logger.NewDataFrameFromReader(reader)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 
-		require.Contains(s.T(), string(dataframe.Data), "logstreamoutput")
+		s.Require().Contains(string(dataframe.Data), "logstreamoutput")
 
 		success <- true
 	}()

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/cache/basic"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 type BasicCacheSuite struct {
@@ -56,27 +56,27 @@ func (s *BasicCacheSuite) TestBasicCache() {
 	k := "test"
 
 	c, err := s.createTestCache("TestBasicCache", 2, oneHour, nil)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	defer c.Close()
 
 	err = c.Set(k, "value", 1, int64(oneSecond.Seconds()))
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	v, found := c.Get(k)
-	require.Equal(s.T(), true, found)
-	require.Equal(s.T(), "value", v)
+	s.Require().Equal(true, found)
+	s.Require().Equal("value", v)
 }
 
 func (s *BasicCacheSuite) TestTooCostly() {
 	k := "test"
 
 	c, err := s.createTestCache("TestTooCostly", 1, oneHour, nil)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	defer c.Close()
 
 	err = c.Set(k, "value", 10, int64(oneSecond.Seconds()))
-	require.Error(s.T(), err)
-	require.Equal(s.T(), cache.ErrCacheTooCostly, err)
+	s.Require().Error(err)
+	s.Require().Equal(cache.ErrCacheTooCostly, err)
 }
 
 func (s *BasicCacheSuite) TestExpiry() {
@@ -92,15 +92,15 @@ func (s *BasicCacheSuite) TestExpiry() {
 	}
 
 	c, err := s.createTestCache("TestExpiry", 1, 1, f)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	defer c.Close()
 
 	err = c.Set(k, "value", 1, int64(oneHour.Seconds()))
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	runtime.Gosched()
 
 	<-evictionComplete
 	_, found := c.Get(k)
-	require.Equal(s.T(), false, found)
+	s.Require().Equal(false, found)
 }

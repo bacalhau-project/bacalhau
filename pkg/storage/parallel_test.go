@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
@@ -42,12 +41,12 @@ func (s *ParallelStorageSuite) SetupSuite() {
 
 	// Setup required IPFS node and client
 	node, err := ipfs.NewLocalNode(s.ctx, s.cm, []string{})
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 	s.node = node
 	client := s.node.Client()
 
 	s.cid, err = client.Put(s.ctx, "../../testdata/grep_file.txt")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	s.provider, _ = executor_util.NewStandardStorageProvider(
 		s.ctx,
@@ -72,7 +71,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 			Path:          "/inputs/test.txt",
 		},
 	}...)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
@@ -87,7 +86,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 	// an error for each one
 	lo.ForEach(files, func(filepath string, index int) {
 		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
+		s.Require().Error(err, "file still exists and we expected it to be deleted")
 	})
 }
 
@@ -107,7 +106,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 			Path:          "/inputs/test.txt",
 		},
 	}...)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
 	// there.
@@ -123,6 +122,6 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 	// an error for each one
 	lo.ForEach(files, func(filepath string, index int) {
 		_, err := os.Stat(filepath)
-		require.Error(s.T(), err, "file still exists and we expected it to be deleted")
+		s.Require().Error(err, "file still exists and we expected it to be deleted")
 	})
 }

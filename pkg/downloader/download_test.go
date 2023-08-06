@@ -15,11 +15,11 @@ import (
 	ipfs2 "github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestDownloaderSuite(t *testing.T) {
@@ -51,12 +51,12 @@ func (ds *DownloaderSuite) SetupTest() {
 	ds.T().Cleanup(cancel)
 
 	node, err := ipfs.NewLocalNode(ctx, ds.cm, nil)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	ds.client = node.Client()
 
 	swarm, err := node.SwarmAddresses()
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
@@ -116,7 +116,7 @@ func mockOutput(ds *DownloaderSuite, setup func(string)) string {
 	setup(testDir)
 
 	cid, err := ds.client.Put(context.Background(), testDir)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	return cid
 }
@@ -145,10 +145,10 @@ func (ds *DownloaderSuite) easyMockOutput(outputNames ...string) mockResult {
 func mockFile(ds *DownloaderSuite, path ...string) []byte {
 	filePath := filepath.Join(path...)
 	err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	contents, err := generateFile(filePath)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 	return contents
 }
 
@@ -156,7 +156,7 @@ func mockFile(ds *DownloaderSuite, path ...string) []byte {
 // output directory.
 func requireFileExists(ds *DownloaderSuite, path ...string) string {
 	testPath := filepath.Join(ds.outputDir, filepath.Join(path...))
-	require.FileExistsf(ds.T(), testPath, "File %s not present", testPath)
+	ds.Require().FileExistsf(testPath, "File %s not present", testPath)
 
 	return testPath
 }
@@ -167,8 +167,8 @@ func requireFile(ds *DownloaderSuite, expected []byte, path ...string) {
 	testPath := requireFileExists(ds, path...)
 
 	contents, err := os.ReadFile(testPath)
-	require.NoError(ds.T(), err)
-	require.Equal(ds.T(), expected, contents)
+	ds.Require().NoError(err)
+	ds.Require().Equal(expected, contents)
 }
 
 func (ds *DownloaderSuite) TestNoExpectedResults() {
@@ -178,7 +178,7 @@ func (ds *DownloaderSuite) TestNoExpectedResults() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 }
 
 func (ds *DownloaderSuite) TestSingleOutput() {
@@ -199,7 +199,7 @@ func (ds *DownloaderSuite) TestSingleOutput() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	requireFile(ds, res.stdout, "stdout")
 	requireFile(ds, res.stderr, "stderr")
@@ -228,7 +228,7 @@ func (ds *DownloaderSuite) TestSingleRawOutput() {
 		ds.downloadProvider,
 		settings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	requireFile(ds, res.stdout, model.DownloadCIDsFolderName, res.cid, "stdout")
 	requireFile(ds, res.stderr, model.DownloadCIDsFolderName, res.cid, "stderr")
@@ -266,7 +266,7 @@ func (ds *DownloaderSuite) TestMultiRawOutput() {
 		ds.downloadProvider,
 		settings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	requireFile(ds, res.stdout, model.DownloadCIDsFolderName, res.cid, "stdout")
 	requireFile(ds, res.stderr, model.DownloadCIDsFolderName, res.cid, "stderr")
@@ -306,7 +306,7 @@ func (ds *DownloaderSuite) TestMultiMergedOutput() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 	requireFile(ds, res.outputs["hello.txt"], "outputs", "hello.txt")
 	requireFile(ds, res2.outputs["goodbye.txt"], "outputs", "goodbye.txt")
 }
@@ -338,7 +338,7 @@ func (ds *DownloaderSuite) TestMultiMergeConflictingOutput() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.Error(ds.T(), err)
+	ds.Require().Error(err)
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
@@ -361,7 +361,7 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	requireFileExists(ds, "outputs", "lonely.txt")
 }
@@ -386,7 +386,7 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 		ds.downloadProvider,
 		ds.downloadSettings,
 	)
-	require.NoError(ds.T(), err)
+	ds.Require().NoError(err)
 
 	requireFileExists(ds, "secrets", "private.pem")
 }

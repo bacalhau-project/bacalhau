@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -81,14 +81,14 @@ func (s *JobUtilSuite) TestRun_URLs() {
 				originalURLTrimmed := strings.Trim(testURL.submittedURL, `"' `)
 				convertedTrimmed := strings.Trim(testURL.convertedURL, `"' `)
 				if testURL.valid {
-					require.NoError(s.T(), err, fmt.Sprintf("%s: Should not have errored - %s", testURL.errorMsg, testURL.submittedURL))
+					s.Require().NoError(err, fmt.Sprintf("%s: Should not have errored - %s", testURL.errorMsg, testURL.submittedURL))
 					if testURL.convertedURL != "" {
-						require.Equal(s.T(), convertedTrimmed, spec.URL, testURL.errorMsg)
+						s.Require().Equal(convertedTrimmed, spec.URL, testURL.errorMsg)
 					} else {
-						require.Equal(s.T(), originalURLTrimmed, spec.URL, testURL.errorMsg)
+						s.Require().Equal(originalURLTrimmed, spec.URL, testURL.errorMsg)
 					}
 				} else {
-					require.Error(s.T(), err, fmt.Sprintf("%s: Should have errored - %s", testURL.errorMsg, testURL.submittedURL))
+					s.Require().Error(err, fmt.Sprintf("%s: Should have errored - %s", testURL.errorMsg, testURL.submittedURL))
 				}
 			}()
 		}
@@ -151,7 +151,7 @@ func (s *JobUtilSuite) TestStateSummary() {
 			}
 
 			summary := ComputeStateSummary(j)
-			require.Equal(s.T(), testCase.expected, summary)
+			s.Require().Equal(testCase.expected, summary)
 		})
 	}
 }
