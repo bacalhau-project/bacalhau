@@ -57,9 +57,7 @@ func (r *NodeInfoStore) Add(ctx context.Context, nodeInfo model.NodeInfo) error 
 	} else {
 		var engines []model.Engine
 		if nodeInfo.ComputeNodeInfo != nil {
-			for _, e := range nodeInfo.ComputeNodeInfo.ExecutionEngines {
-				engines = append(engines, e)
-			}
+			engines = append(engines, nodeInfo.ComputeNodeInfo.ExecutionEngines...)
 		}
 		log.Ctx(ctx).Debug().Msgf("Adding new node %s to in-memory nodeInfo store with engines %v", nodeInfo.PeerInfo.ID, engines)
 	}
