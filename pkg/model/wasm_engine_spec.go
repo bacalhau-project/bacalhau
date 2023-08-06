@@ -29,10 +29,15 @@ type WasmEngineSpec struct {
 	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
+// WasmEngineBuilder is a struct used for constructing an EngineSpec object
+// specifically for WebAssembly (Wasm) engines using the Builder pattern.
+// It embeds an EngineBuilder object for handling the common builder methods.
 type WasmEngineBuilder struct {
 	eb EngineBuilder
 }
 
+// NewWasmEngineBuilder function initializes a new WasmEngineBuilder instance.
+// It sets the engine type to engine.EngineWasm.String() and entry module as per the input argument.
 func NewWasmEngineBuilder(entryModule StorageSpec) *WasmEngineBuilder {
 	var eb EngineBuilder
 	eb.WithType(EngineWasm.String())
@@ -40,26 +45,35 @@ func NewWasmEngineBuilder(entryModule StorageSpec) *WasmEngineBuilder {
 	return &WasmEngineBuilder{eb: eb}
 }
 
+// WithEntrypoint is a builder method that sets the WebAssembly engine's entrypoint.
+// It returns the WasmEngineBuilder for further chaining of builder methods.
 func (b *WasmEngineBuilder) WithEntrypoint(e string) *WasmEngineBuilder {
 	b.eb.WithParam(EngineKeyEntrypointWasm, e)
 	return b
 }
 
+// WithParameters is a builder method that sets the WebAssembly engine's parameters.
+// It returns the WasmEngineBuilder for further chaining of builder methods.
 func (b *WasmEngineBuilder) WithParameters(e ...string) *WasmEngineBuilder {
 	b.eb.WithParam(EngineKeyParametersWasm, e)
 	return b
 }
 
+// WithEnvironmentVariables is a builder method that sets the WebAssembly engine's environment variables.
+// It returns the WasmEngineBuilder for further chaining of builder methods.
 func (b *WasmEngineBuilder) WithEnvironmentVariables(e map[string]string) *WasmEngineBuilder {
 	b.eb.WithParam(EngineKeyEnvironmentVariablesWasm, e)
 	return b
 }
 
+// WithImportModules is a builder method that sets the WebAssembly engine's import modules.
+// It returns the WasmEngineBuilder for further chaining of builder methods.
 func (b *WasmEngineBuilder) WithImportModules(e ...StorageSpec) *WasmEngineBuilder {
 	b.eb.WithParam(EngineKeyImportModulesWasm, e)
 	return b
 }
 
+// Build method constructs the final EngineSpec object by calling the embedded EngineBuilder's Build method.
 func (b *WasmEngineBuilder) Build() EngineSpec {
 	return b.eb.Build()
 }
