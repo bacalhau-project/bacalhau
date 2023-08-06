@@ -207,17 +207,17 @@ func InitConfigForTesting(t testing.TB) {
 	viper.Reset()
 	// TODO pass a testing config.
 	if err := config_v2.SetViperDefaults(config_v2.Default); err != nil {
-		t.Errorf("unable to set default configuration values: %w", err)
+		t.Errorf("unable to set default configuration values: %s", err)
 		t.FailNow()
 	}
 	repoDir := t.TempDir()
 	t.Setenv("BACALHAU_REPO", repoDir)
 	fsRepo, err := repo.NewFS(filepath.Join(repoDir, fmt.Sprintf("bacalhau_test-%s", t.Name())))
 	if err != nil {
-		t.Errorf("Unable to set up config in dir %s: %w", repoDir, err)
+		t.Errorf("Unable to set up config in dir %s: %s", repoDir, err)
 		t.FailNow()
 	}
 	if err := fsRepo.Init(); err != nil {
-		t.Errorf("Unable to initialize config dir %s: %w", repoDir, err)
+		t.Errorf("Unable to initialize config dir %s: %s", repoDir, err)
 	}
 }
