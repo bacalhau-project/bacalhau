@@ -18,21 +18,7 @@ func (e EngineSpec) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
 		// Custom formatting for %v
-		fmt.Fprintf(f, `Type:"%s",Params:{`, e.Type)
-		keys := make([]string, 0, len(e.Params))
-		for field := range e.Params {
-			keys = append(keys, field)
-		}
-
-		for i, field := range keys {
-			value := e.Params[field]
-			if i < len(keys)-1 {
-				fmt.Fprintf(f, `"%s":%v,`, field, value)
-			} else {
-				fmt.Fprintf(f, `"%s":%v`, field, value) // No trailing comma
-			}
-		}
-		fmt.Fprintf(f, "}")
+		fmt.Fprintf(f, `Type:"%s",Params:"%+v"`, e.Type, e.Params)
 
 	default:
 		// Default to String method for %s or other formats
