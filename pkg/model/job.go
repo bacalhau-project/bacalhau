@@ -189,20 +189,20 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// deprecated: use EngineSpec.
+	// Deprecated: use EngineSpec.
 	Engine Engine `json:"Engine,omitempty"`
 
 	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
 
 	// there can be multiple publishers for the job
 
-	// deprecated: use PublisherSpec instead
+	// Deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
-	// deprecated: use EngineSpec.
+	// Deprecated: use EngineSpec.
 	Docker JobSpecDocker `json:"Docker,omitempty"`
-	// deprecated: use EngineSpec.
+	// Deprecated: use EngineSpec.
 	Wasm JobSpecWasm `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
