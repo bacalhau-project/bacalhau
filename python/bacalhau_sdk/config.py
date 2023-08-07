@@ -6,6 +6,7 @@ import os
 import stat
 from pathlib import Path
 from typing import Union
+from urllib.parse import urlparse
 
 import pem
 from bacalhau_apiclient import Configuration
@@ -58,9 +59,16 @@ def init_config():
     log.debug("client_id: {}".format(get_client_id()))
 
     conf = Configuration()
-    if os.getenv("BACALHAU_API_HOST") and os.getenv("BACALHAU_API_PORT"):
-        conf.host = "http://{}:{}".format(os.getenv("BACALHAU_API_HOST"), os.getenv("BACALHAU_API_PORT"))
-        log.debug("Using BACALHAU_API_HOST and BACALHAU_API_PORT to set host: %s", conf.host)
+
+    # Parse out defaults and override with environment variables if they exist
+    # before setting the configuration host.
+    u = urlparse(conf.host)
+    api_host: str = os.getenv("BACALHAU_API_HOST", u.hostname)
+    api_port: str = os.getenv("BACALHAU_API_PORT", str(u.port))
+
+    # TODO: Allow TLS and not just http
+    conf.host = "http://{}:{}".format(api_host, api_port)
+    log.debug("Host is set to: %s", conf.host)
 
     # Remove trailing slash from host
     if conf.host[-1] == "/":
