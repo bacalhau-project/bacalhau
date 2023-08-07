@@ -5,8 +5,8 @@ import (
 )
 
 type PlanExecutionDesiredUpdate struct {
-	Execution    *model.ExecutionState
-	DesiredState model.ExecutionDesiredState
+	Execution    *Execution
+	DesiredState ExecutionDesiredStateType
 	Comment      string
 }
 
@@ -18,68 +18,68 @@ type Plan struct {
 	Eval     *Evaluation
 	Priority int
 
-	Job             *model.Job
+	Job             *Job
 	JobStateVersion int
 
 	DesiredJobState model.JobStateType
 	Comment         string
 
 	// NewExecutions holds the executions to be created.
-	NewExecutions []*model.ExecutionState
+	NewExecutions []*Execution
 
-	UpdatedExecutions map[model.ExecutionID]*PlanExecutionDesiredUpdate
+	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate
 }
 
 // NewPlan creates a new Plan instance.
-func NewPlan(eval *Evaluation, job *model.Job, jobStateVersion int) *Plan {
+func NewPlan(eval *Evaluation, job *Job, jobStateVersion int) *Plan {
 	return &Plan{
 		EvalID:            eval.ID,
 		Priority:          eval.Priority,
 		Eval:              eval,
 		Job:               job,
 		JobStateVersion:   jobStateVersion,
-		NewExecutions:     []*model.ExecutionState{},
-		UpdatedExecutions: make(map[model.ExecutionID]*PlanExecutionDesiredUpdate),
+		NewExecutions:     []*Execution{},
+		UpdatedExecutions: make(map[string]*PlanExecutionDesiredUpdate),
 	}
 }
 
 // AppendExecution appends the execution to the plan executions.
-func (p *Plan) AppendExecution(execution *model.ExecutionState) {
+func (p *Plan) AppendExecution(execution *Execution) {
 	p.NewExecutions = append(p.NewExecutions, execution)
 }
 
 // AppendStoppedExecution marks an execution to be stopped.
-func (p *Plan) AppendStoppedExecution(execution *model.ExecutionState, comment string) {
+func (p *Plan) AppendStoppedExecution(execution *Execution, comment string) {
 	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
-		DesiredState: model.ExecutionDesiredStateStopped,
+		DesiredState: ExecutionDesiredStateStopped,
 		Comment:      comment,
 	}
-	p.UpdatedExecutions[execution.ID()] = updateRequest
+	p.UpdatedExecutions[execution.ID] = updateRequest
 }
 
 // AppendApprovedExecution marks an execution as accepted and ready to be started.
-func (p *Plan) AppendApprovedExecution(execution *model.ExecutionState) {
+func (p *Plan) AppendApprovedExecution(execution *Execution) {
 	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
-		DesiredState: model.ExecutionDesiredStateRunning,
+		DesiredState: ExecutionDesiredStateRunning,
 	}
-	p.UpdatedExecutions[execution.ID()] = updateRequest
+	p.UpdatedExecutions[execution.ID] = updateRequest
 }
 
 func (p *Plan) MarkJobCompleted() {
 	p.DesiredJobState = model.JobStateCompleted
-	p.NewExecutions = []*model.ExecutionState{}
+	p.NewExecutions = []*Execution{}
 }
 
 func (p *Plan) MarkJobFailed(comment string) {
 	p.DesiredJobState = model.JobStateError
 	p.Comment = comment
 
-	p.NewExecutions = []*model.ExecutionState{}
+	p.NewExecutions = []*Execution{}
 	// drop any update that is not stopping an execution
 	for id, update := range p.UpdatedExecutions {
-		if update.DesiredState != model.ExecutionDesiredStateStopped {
+		if update.DesiredState != ExecutionDesiredStateStopped {
 			delete(p.UpdatedExecutions, id)
 		}
 	}
