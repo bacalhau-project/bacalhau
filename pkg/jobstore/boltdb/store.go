@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -119,6 +120,13 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 
 		return nil
 	})
+	if err != nil {
+		return store, fmt.Errorf("failed to create required buckets at startup: %s", err)
+	}
+
+	if err = store.startupHousekeeping(); err != nil {
+		return store, fmt.Errorf("failed to perform startup housekeeping: %s", err)
+	}
 
 	log.Debug().Str("DBFile", dbPath).Msg("created bolt-backed job store")
 
@@ -128,6 +136,32 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
 
 	return store, err
+}
+
+// startupHousekeeping is used to cleanup old jobs that have reached a terminal
+// state and have persisted past their 'lifetime' which is defined on a job type
+// basis.
+func (b *BoltJobStore) startupHousekeeping() error {
+	lifetimes := make(map[string]time.Duration)
+
+	err := b.database.Update(func(tx *bolt.Tx) (err error) {
+		ids, err := FindDeadJobs(tx, b.clock.Now().UTC(), lifetimes)
+		if err != nil {
+			return err
+		}
+
+		if len(ids) > 0 {
+			return DeleteDeadJobs(tx, ids)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to remove old jobs at startup: %s", err)
+	}
+
+	return nil
 }
 
 func (b *BoltJobStore) Watch(ctx context.Context,
