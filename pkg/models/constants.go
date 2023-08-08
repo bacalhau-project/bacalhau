@@ -6,8 +6,19 @@ const (
 )
 
 const (
+	// JobTypeService represents a long-running job that runs on a desired number of nodes
+	// matching the specified constraints.
 	JobTypeService = "service"
-	JobTypeBatch   = "batch"
-	JobTypeOps     = "ops" // TODO: revisit the job naming
-	JobTypeDaemon  = "daemon"
+
+	// JobTypeDaemon represents a long-running job that runs on all nodes matching the
+	// specified constraints.
+	JobTypeDaemon = "daemon"
+
+	// JobTypeBatch represents a batch job that runs to completion on the desired number
+	// of nodes matching the specified constraints.
+	JobTypeBatch = "batch"
+
+	// JobTypeOps represents a batch job that runs to completion on all nodes matching
+	// the specified constraints.
+	JobTypeOps = "ops"
 )
