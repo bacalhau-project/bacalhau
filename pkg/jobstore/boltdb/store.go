@@ -555,6 +555,10 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 // CreateJob creates a new record of a job in the data store
 func (b *BoltJobStore) CreateJob(ctx context.Context, job model.Job) error {
+	if job.ID() == "" {
+		return fmt.Errorf("cannot create a job with no id")
+	}
+
 	return b.database.Update(func(tx *bolt.Tx) (err error) {
 		return b.createJob(tx, job)
 	})

@@ -3,7 +3,7 @@ package jobstore
 import "encoding/json"
 
 // Envelope provides a wrapper around types that can be stored in a jobstore.
-// It takes responsibility for ser/de for the wrapped type, ensuring that
+// It takes responsibility for ser/de for the wrapped type.
 type Envelope[T any] struct {
 	Body      T
 	marshal   MarshalFunc

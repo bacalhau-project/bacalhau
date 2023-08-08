@@ -7,7 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/suite"
 	bolt "go.etcd.io/bbolt"
 )
@@ -16,6 +20,7 @@ type DatabaseTestSuite struct {
 	suite.Suite
 	store  *BoltJobStore
 	dbFile string
+	clock  *clock.Mock
 	ctx    context.Context
 }
 
@@ -24,12 +29,13 @@ func TestDatabaseTestSuite(t *testing.T) {
 }
 
 func (s *DatabaseTestSuite) SetupTest() {
+	s.clock = clock.NewMock()
 	s.ctx = context.Background()
 
 	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
 	s.dbFile = filepath.Join(dir, "testing.db")
 
-	s.store, _ = NewBoltJobStore(s.dbFile)
+	s.store, _ = NewBoltJobStore(s.dbFile, WithClock(s.clock))
 }
 
 func (s *DatabaseTestSuite) TearDownTest() {
@@ -48,28 +54,6 @@ func (s *DatabaseTestSuite) TestGetBucketDataErr() {
 		s.Nil(data)
 		return nil
 	})
-}
-
-func (s *DatabaseTestSuite) TestBucketCreation() {
-	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		final, err := NewBucketPath("root/bucket/final").Get(tx, true)
-		s.NoError(err)
-		s.NotNil(final)
-
-		root := tx.Bucket([]byte("root"))
-		s.NotNil(root)
-
-		bucket := root.Bucket([]byte("bucket"))
-		s.NotNil(bucket)
-
-		finalAgain := bucket.Bucket([]byte("final"))
-		s.NotNil(finalAgain)
-
-		s.Equal(final.Root(), finalAgain.Root())
-
-		return nil
-	})
-	s.NoError(err)
 }
 
 func (s *DatabaseTestSuite) TestBucketPartialSearch() {
@@ -98,37 +82,60 @@ func (s *DatabaseTestSuite) TestBucketPartialSearch() {
 	s.NoError(err)
 }
 
-func (s *DatabaseTestSuite) TestBucketCreationOne() {
-	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		final, err := NewBucketPath("root").Get(tx, true)
-		s.NoError(err)
-		s.NotNil(final)
-		return nil
-	})
-	s.NoError(err)
-}
+func (s *DatabaseTestSuite) TestDeadJobs() {
 
-func (s *DatabaseTestSuite) TestBucketCreationNone() {
-	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		_, _ = tx.CreateBucketIfNotExists([]byte("single"))
+	type testcase struct {
+		JobID      string
+		IsTerminal bool
+		Type       string
+	}
 
-		final, err := NewBucketPath("single").Get(tx, false)
-		s.NoError(err)
-		s.NotNil(final)
+	testcases := []testcase{
+		{
+			JobID:      "1",
+			IsTerminal: true,
+			Type:       "batch",
+		},
+		{
+			JobID:      "2",
+			IsTerminal: false,
+			Type:       "batch",
+		},
+		{
+			JobID:      "3",
+			IsTerminal: false,
+			Type:       "service",
+		},
+	}
 
-		return nil
-	})
-	s.NoError(err)
-}
+	lifetimes := make(map[string]time.Duration)
+	lifetimes["batch"] = time.Duration(1) * time.Second
 
-func (s *DatabaseTestSuite) TestBucketCreationError() {
-	err := s.store.database.Update(func(tx *bolt.Tx) error {
-		_ = tx.Bucket([]byte("root"))
+	for _, tc := range testcases {
+		job := makeJob(
+			model.EngineDocker,
+			model.PublisherNoop,
+			[]string{"bash", "-c", "echo hello"})
+		job.Metadata.ID = tc.JobID
+		job.Metadata.ClientID = tc.JobID
 
-		final, err := NewBucketPath("root/missing/bucket").Get(tx, false)
-		s.Error(err)
-		s.Nil(final)
-		return nil
-	})
-	s.NoError(err)
+		err := s.store.CreateJob(s.ctx, *job)
+		s.Require().NoError(err)
+
+		if tc.IsTerminal {
+			// Make sure job is in terminal state
+			s.store.UpdateJobState(s.ctx, jobstore.UpdateJobStateRequest{
+				JobID:    job.Metadata.ID,
+				NewState: model.JobStateCancelled,
+			})
+		}
+		var identifiers []string
+		err = s.store.database.View(func(tx *bolt.Tx) (err error) {
+			s.clock.Add(1 * time.Hour)
+			identifiers, err = FindDeadJobs(tx, s.clock.Now().UTC(), lifetimes)
+			return err
+		})
+		s.Require().NoError(err)
+		s.Require().Equal(identifiers, []string{"1"})
+	}
 }
