@@ -1590,7 +1590,7 @@
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "Wasm": {
                     "$ref": "#/definitions/model.JobSpecWasm"

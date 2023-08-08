@@ -73,7 +73,7 @@ def test_load_user_id_key():
         with open(tmpdir.joinpath("mykey.pem"), "wb") as f:
             f.write(key.export_key("PEM"))
         loaded_key = __load_user_id_key(tmpdir.joinpath("mykey.pem"))
-        assert type(loaded_key) == RSA.RsaKey
+        assert isinstance(loaded_key, RSA.RsaKey)
         assert loaded_key.export_key("PEM") == key.export_key("PEM")
 
 
@@ -101,13 +101,13 @@ def test_init_config():
     os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
     os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
-    assert type(conf) == Configuration
+    assert isinstance(conf, Configuration)
     assert conf.host == "http://1.1.1.1:9999"
 
     os.environ["BACALHAU_API_HOST"] = ""
     os.environ["BACALHAU_API_PORT"] = ""
     conf = init_config()
-    assert type(conf) == Configuration
+    assert isinstance(conf, Configuration)
     assert conf.host == "http://bootstrap.production.bacalhau.org:1234"
 
 
@@ -186,7 +186,7 @@ def test_get_client_public_key():
 
     pub_key = get_client_public_key()
     assert pub_key is not None
-    assert type(pub_key) == str
+    assert isinstance(pub_key, str)
     assert len(pub_key) == 360
     assert "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A" not in pub_key
     assert "BEGIN PUBLIC KEY" not in pub_key

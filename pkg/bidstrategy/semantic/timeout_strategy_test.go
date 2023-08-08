@@ -30,11 +30,11 @@ func TestTimeoutStrategy(t *testing.T) {
 			request: bidstrategy.BidStrategyRequest{
 				Job: model.Job{
 					Metadata: model.Metadata{ClientID: "client"},
-					Spec:     model.Spec{Timeout: 9223372036.1},
+					Spec:     model.Spec{Timeout: int64(model.NoJobTimeout.Seconds()) + 1},
 				},
 			},
 			shouldBid: false,
-			reason:    "job timeout 9223372036.1 exceeds maximum possible value",
+			reason:    "job timeout 9223372037 exceeds maximum possible value 9223372036",
 		},
 		{
 			name: "client-skip-list",

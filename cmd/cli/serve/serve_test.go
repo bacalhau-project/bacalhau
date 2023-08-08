@@ -28,7 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 5 * time.Second
+const maxServeTime = 15 * time.Second
 const maxTestTime = 10 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 

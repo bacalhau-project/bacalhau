@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -76,6 +77,7 @@ type ServeOptions struct {
 	LimitJobCPU                           string                   // The amount of CPU the system can be using at one time for a single job.
 	LimitJobMemory                        string                   // The amount of memory the system can be using at one time for a single job.
 	LimitJobGPU                           string                   // The amount of GPU the system can be using at one time for a single job.
+	MaxJobExecutionTimeout                time.Duration            // The maximum time a job can execute for.
 	DisabledFeatures                      node.FeatureConfig       // What feautres should not be enbaled even if installed
 	JobExecutionTimeoutClientIDBypassList []string                 // IDs of clients that can submit jobs more than the configured job execution timeout
 	Labels                                map[string]string        // Labels to apply to the node that can be used for node selection and filtering
@@ -86,20 +88,21 @@ type ServeOptions struct {
 
 func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
-		NodeType:            []string{"requester"},
-		PeerConnect:         DefaultPeerConnect,
-		IPFSConnect:         "",
-		EstuaryAPIKey:       os.Getenv("ESTUARY_API_KEY"),
-		HostAddress:         "0.0.0.0",
-		SwarmPort:           DefaultSwarmPort,
-		JobSelectionPolicy:  model.NewDefaultJobSelectionPolicy(),
-		LimitTotalCPU:       "",
-		LimitTotalMemory:    "",
-		LimitTotalGPU:       "",
-		LimitJobCPU:         "",
-		LimitJobMemory:      "",
-		LimitJobGPU:         "",
-		PrivateInternalIPFS: true,
+		NodeType:               []string{"requester"},
+		PeerConnect:            DefaultPeerConnect,
+		IPFSConnect:            "",
+		EstuaryAPIKey:          os.Getenv("ESTUARY_API_KEY"),
+		HostAddress:            "0.0.0.0",
+		SwarmPort:              DefaultSwarmPort,
+		JobSelectionPolicy:     model.NewDefaultJobSelectionPolicy(),
+		LimitTotalCPU:          "",
+		LimitTotalMemory:       "",
+		LimitTotalGPU:          "",
+		LimitJobCPU:            "",
+		LimitJobMemory:         "",
+		LimitJobGPU:            "",
+		MaxJobExecutionTimeout: model.NoJobTimeout,
+		PrivateInternalIPFS:    true,
 	}
 }
 
@@ -127,6 +130,10 @@ func SetupCapacityManagerCLIFlags(cmd *cobra.Command, OS *ServeOptions) {
 	cmd.PersistentFlags().StringVar(
 		&OS.LimitJobGPU, "limit-job-gpu", OS.LimitJobGPU,
 		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
+	)
+	cmd.PersistentFlags().DurationVar(
+		&OS.MaxJobExecutionTimeout, "max-timeout", OS.MaxJobExecutionTimeout,
+		`Job time exeuciton limit for a single job (e.g. 30m, 1hr)`,
 	)
 	cmd.PersistentFlags().StringSliceVar(
 		&OS.JobExecutionTimeoutClientIDBypassList, "job-execution-timeout-bypass-client-id", OS.JobExecutionTimeoutClientIDBypassList,
@@ -186,14 +193,16 @@ func GetComputeConfig(OS *ServeOptions) node.ComputeConfig {
 			GPU:    OS.LimitJobGPU,
 		}),
 		IgnorePhysicalResourceLimits:          os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
+		MaxJobExecutionTimeout:                OS.MaxJobExecutionTimeout,
 		JobExecutionTimeoutClientIDBypassList: OS.JobExecutionTimeoutClientIDBypassList,
 	})
 }
 
 func GetRequesterConfig(OS *ServeOptions) node.RequesterConfig {
 	return node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobSelectionPolicy:       OS.JobSelectionPolicy,
-		ExternalValidatorWebhook: OS.ExternalVerifierHook,
+		JobSelectionPolicy:         OS.JobSelectionPolicy,
+		ExternalValidatorWebhook:   OS.ExternalVerifierHook,
+		DefaultJobExecutionTimeout: OS.MaxJobExecutionTimeout,
 	})
 }
 

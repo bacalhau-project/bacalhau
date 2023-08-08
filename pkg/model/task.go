@@ -94,7 +94,7 @@ func (task *Task) ToSpec() (*Spec, error) {
 
 			spec.Publisher = config.Publisher
 			spec.Annotations = config.Annotations
-			spec.Timeout = config.Timeout.Seconds()
+			spec.Timeout = int64(config.Timeout.Seconds())
 			spec.Resources = ResourceUsageConfig{
 				CPU:    config.Resources.Cpu.String(),
 				Memory: config.Resources.Memory.String(),

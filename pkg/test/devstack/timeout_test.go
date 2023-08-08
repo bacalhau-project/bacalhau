@@ -83,7 +83,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				PublisherSpec: model.PublisherSpec{
 					Type: model.PublisherIpfs,
 				},
-				Timeout: testCase.jobTimeout.Seconds(),
+				Timeout: int64(testCase.jobTimeout.Seconds()),
 			},
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
@@ -91,7 +91,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted:         testCase.completedCount,
-					model.ExecutionStateFailed:            testCase.errorCount,
+					model.ExecutionStateCancelled:         testCase.errorCount,
 					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
@@ -148,7 +148,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			nodeCount:                           1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
-			jobTimeout:                          1 * time.Millisecond,
+			jobTimeout:                          1 * time.Second,
 			errorCount:                          1,
 		},
 		{

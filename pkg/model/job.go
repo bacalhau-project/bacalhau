@@ -209,7 +209,7 @@ type Spec struct {
 
 	// How long a job can run in seconds before it is killed.
 	// This includes the time required to run, verify and publish results
-	Timeout float64 `json:"Timeout,omitempty"`
+	Timeout int64 `json:"Timeout,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
@@ -234,7 +234,7 @@ type Spec struct {
 
 // Return timeout duration
 func (s *Spec) GetTimeout() time.Duration {
-	return time.Duration(s.Timeout * float64(time.Second))
+	return time.Duration(s.Timeout) * time.Second
 }
 
 // Return pointers to all the storage specs in the spec.
