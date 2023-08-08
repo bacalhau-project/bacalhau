@@ -92,7 +92,7 @@ func (n *NetworkConfig) Normalize() {
 	}
 	// Ensure that an empty and nil slice are treated the same
 	if len(n.Domains) == 0 {
-		n.Domains = nil
+		n.Domains = make([]string, 0)
 	}
 	// Ensure that domains are lowercased, and trimmed of whitespace
 	for i, domain := range n.Domains {

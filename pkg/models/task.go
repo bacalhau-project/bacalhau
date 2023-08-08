@@ -44,10 +44,10 @@ type Task struct {
 func (t *Task) Normalize(*Job) {
 	// Ensure that an empty and nil map are treated the same
 	if len(t.Meta) == 0 {
-		t.Meta = nil
+		t.Meta = make(map[string]string)
 	}
 	if len(t.Env) == 0 {
-		t.Env = nil
+		t.Env = make(map[string]string)
 	}
 	t.Engine.Normalize()
 	t.Publisher.Normalize()

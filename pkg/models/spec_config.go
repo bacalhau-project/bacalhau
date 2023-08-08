@@ -21,7 +21,7 @@ func (s *SpecConfig) Normalize() {
 	}
 	// Ensure that an empty and nil map are treated the same
 	if len(s.Params) == 0 {
-		s.Params = nil
+		s.Params = make(map[string]interface{})
 	}
 }
 

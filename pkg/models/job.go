@@ -93,8 +93,8 @@ func (j *Job) Normalize() {
 
 	// Ensure that an empty and nil map are treated the same to avoid scheduling
 	// problems since we use reflect DeepEquals.
-	if len(j.Meta) == 0 {
-		j.Meta = nil
+	if j.Meta == nil {
+		j.Meta = make(map[string]string)
 	}
 
 	// Ensure the job is in a namespace.
