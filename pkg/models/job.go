@@ -68,7 +68,7 @@ type Job struct {
 	// State is the current state of the job.
 	State State[JobStateType]
 
-	// Version is a monotonically increasing version number that is incremented
+	// Version is a per-job monotonically increasing version number that is incremented
 	// on each job update.
 	Version uint64
 

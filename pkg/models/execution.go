@@ -59,7 +59,8 @@ type Execution struct {
 	// This is copied at execution time to avoid issues if the job
 	// definition is updated.
 	JobID string
-	Job   *Job
+	// TODO: evaluate using a copy of the job instead of a pointer
+	Job *Job
 
 	// AllocatedResources is the total resources allocated for the execution tasks.
 	AllocatedResources *AllocatedResources
