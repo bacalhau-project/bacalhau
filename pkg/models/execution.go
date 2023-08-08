@@ -65,16 +65,10 @@ type Execution struct {
 	AllocatedResources *AllocatedResources
 
 	// DesiredState of the execution on the compute node
-	DesiredState ExecutionDesiredStateType
-
-	// DesiredStateDescription is meant to provide more human useful information
-	DesiredStateDescription string
+	DesiredState State[ExecutionDesiredStateType]
 
 	// ComputeState observed state of the execution on the compute node
-	ComputeState ExecutionStateType
-
-	// ComputeStateDescription is meant to provide more human useful information
-	ComputeStateDescription string
+	ComputeState State[ExecutionStateType]
 
 	// the published results for this execution
 	PublishedResult *SpecConfig

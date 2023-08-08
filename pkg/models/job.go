@@ -66,10 +66,7 @@ type Job struct {
 	Tasks []*Task
 
 	// State is the current state of the job.
-	State JobStateType
-
-	// StateDescription is meant to provide more human useful information
-	StateDescription string
+	State State[JobStateType]
 
 	// Version is a monotonically increasing version number that is incremented
 	// on each job update.
