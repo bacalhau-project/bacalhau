@@ -21,16 +21,17 @@ func IsValidEngine(e Engine) bool {
 	return e > engineUnknown && e < engineDone
 }
 
-func ParseEngine(str string) (Engine, error) {
+// ParseEngine will either return a valid engine type or `engineUnknown`
+func ParseEngine(str string) Engine {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		if strings.EqualFold(typ.String(), str) {
-			return typ, nil
+			return typ
 		}
 	}
 
 	// NB: change introduced in #2552 due to remove of language and pythonwasm engine types.
 	log.Warn().Msgf("executor: unknown engine type: '%s'", str)
-	return engineUnknown, nil
+	return engineUnknown
 }
 
 func EngineTypes() []Engine {
@@ -56,6 +57,6 @@ func (e Engine) MarshalText() ([]byte, error) {
 
 func (e *Engine) UnmarshalText(text []byte) (err error) {
 	name := string(text)
-	*e, err = ParseEngine(name)
+	*e = ParseEngine(name)
 	return
 }

@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -91,14 +90,6 @@ func (e *Executor) ShouldBidBasedOnUsage(
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
-func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
-	out := model.JobSpecDocker{}
-	if err := json.Unmarshal(args.Params, &out); err != nil {
-		return model.JobSpecDocker{}, err
-	}
-	return out, nil
-}
-
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
@@ -120,7 +111,11 @@ func (e *Executor) Run(
 	defer span.End()
 	defer e.cleanupExecution(ctx, request.ExecutionID)
 
-	dockerArgs, err := DecodeArguments(request.EngineParams)
+	engineSpec, err := model.DeserializeEngineSpec(request.EngineParams.Params)
+	if err != nil {
+		return nil, err
+	}
+	dockerArgs, err := model.DecodeEngineSpec[model.DockerEngineSpec](engineSpec)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 func TestScenariosAgainstDevstack(t *testing.T) {
@@ -36,7 +36,7 @@ func TestScenariosAgainstDevstack(t *testing.T) {
 		devstack.WithNodeOverrides(nodeOverrides...),
 	)
 	// for the requester node to pick up the nodeInfo messages
-	testutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
+	nodeutils.WaitForNodeDiscovery(t, stack.Nodes[0], nodeCount)
 
 	var swarmAddresses []string
 	for _, n := range stack.Nodes {

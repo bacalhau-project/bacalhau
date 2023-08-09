@@ -6,14 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -53,7 +54,7 @@ func (s *ServerSuite) TestList() {
 	require.Empty(s.T(), jobs)
 
 	// Submit a random job to the node:
-	j := testutils.MakeNoopJob()
+	j := testutils.MakeNoopJob(s.T())
 
 	_, err = s.client.Submit(ctx, j)
 	require.NoError(s.T(), err)
@@ -65,7 +66,7 @@ func (s *ServerSuite) TestList() {
 }
 
 func (s *ServerSuite) TestSubmitRejectsJobWithSigilHeader() {
-	j := testutils.MakeNoopJob()
+	j := testutils.MakeNoopJob(s.T())
 	jobID, err := uuid.NewRandom()
 	require.NoError(s.T(), err)
 

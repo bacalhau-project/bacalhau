@@ -11,9 +11,12 @@ import (
 	"testing"
 	"time"
 
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
 	"github.com/benbjohnson/clock"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -73,8 +76,8 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 
 	for _, fixture := range jobFixtures {
 		s.clock.Add(1 * time.Second)
-		job := makeJob(
-			model.EngineDocker,
+		job := makeDockerEngineJob(
+			s.T(),
 			model.PublisherNoop,
 			[]string{"bash", "-c", "echo hello"})
 		job.Spec.Annotations = fixture.tags
@@ -337,8 +340,8 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestDeleteJob() {
-	job := makeJob(
-		model.EngineDocker,
+	job := makeDockerEngineJob(
+		s.T(),
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
 	job.Spec.Annotations = []string{"tag"}
@@ -384,8 +387,8 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
 	)
 
-	job := makeJob(
-		model.EngineDocker,
+	job := makeDockerEngineJob(
+		s.T(),
 		model.PublisherNoop,
 		[]string{"bash", "-c", "echo hello"})
 	job.Metadata.ID = "10"
@@ -496,26 +499,18 @@ func (s *BoltJobstoreTestSuite) TestEvaluations() {
 	s.NoError(err)
 }
 
-func makeJob(
-	engineType model.Engine,
+func makeDockerEngineJob(
+	t testing.TB,
 	publisherType model.Publisher,
 	entrypointArray []string) *model.Job {
-	j := model.NewJob()
 
-	j.Spec = model.Spec{
-		Engine: engineType,
-		PublisherSpec: model.PublisherSpec{
-			Type: publisherType,
-		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: entrypointArray,
-		},
-	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
-
-	return j
+	j := testutils.MakeJobWithOpts(t,
+		jobutils.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu:latest").
+				WithEntrypoint(entrypointArray...).
+				Build(),
+		),
+		jobutils.WithPublisher(model.PublisherSpec{Type: publisherType}),
+	)
+	return &j
 }

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
-	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func GetJobFromTestOutput(ctx context.Context, t *testing.T, c *publicapi.RequesterAPIClient, out string) model.Job {
@@ -40,71 +39,26 @@ func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerCo
 	return model.TestFatalErrorHandlerContents{}, fmt.Errorf("no fatal error found in output")
 }
 
-func MakeGenericJob() *model.Job {
-	return MakeJob(model.EngineDocker, model.PublisherNoop, []string{
-		"echo",
-		"$(date +%s)",
-	})
+func MakeNoopJob(t testing.TB) *model.Job {
+	j := MakeJobWithOpts(t)
+	return &j
 }
 
-func MakeNoopJob() *model.Job {
-	return MakeJob(model.EngineNoop, model.PublisherNoop, []string{
-		"echo",
-		"$(date +%s)",
-	})
-}
+func MakeJobWithOpts(t testing.TB, opts ...job.SpecOpt) model.Job {
+	spec, err := job.MakeSpec(opts...)
+	if err != nil {
+		t.Fatalf("creating job spec: %s", err)
+	}
 
-func MakeJob(
-	engineType model.Engine,
-	publisherType model.Publisher,
-	entrypointArray []string) *model.Job {
 	j := model.NewJob()
-
-	j.Spec = model.Spec{
-		Engine: engineType,
-		PublisherSpec: model.PublisherSpec{
-			Type: publisherType,
-		},
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu:latest",
-			Entrypoint: entrypointArray,
-		},
-	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
-
-	return j
+	j.Spec = spec
+	return *j
 }
 
-// WaitForNodeDiscovery for the requester node to pick up the nodeInfo messages
-func WaitForNodeDiscovery(t *testing.T, requesterNode *node.Node, expectedNodeCount int) {
-	ctx := context.Background()
-	waitDuration := 15 * time.Second
-	waitGaps := 20 * time.Millisecond
-	waitUntil := time.Now().Add(waitDuration)
-	loggingGap := 1 * time.Second
-	waitLoggingUntil := time.Now().Add(loggingGap)
-
-	var nodeInfos []model.NodeInfo
-	for time.Now().Before(waitUntil) {
-		var err error
-		nodeInfos, err = requesterNode.NodeInfoStore.List(ctx)
-		require.NoError(t, err)
-		if time.Now().After(waitLoggingUntil) {
-			t.Logf("connected to %d peers: %v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
-				return t.PeerInfo.ID.String()
-			}))
-			waitLoggingUntil = time.Now().Add(loggingGap)
-		}
-		if len(nodeInfos) == expectedNodeCount {
-			return
-		}
-		time.Sleep(waitGaps)
+func MakeSpecWithOpts(t testing.TB, opts ...job.SpecOpt) model.Spec {
+	spec, err := job.MakeSpec(opts...)
+	if err != nil {
+		t.Fatalf("creating job spec: %s", err)
 	}
-	require.FailNowf(t, fmt.Sprintf("requester node didn't read all node infos even after waiting for %s", waitDuration),
-		"expected 4 node infos, got %d. %+v", len(nodeInfos), logger.ToSliceStringer(nodeInfos, func(t model.NodeInfo) string {
-			return t.PeerInfo.ID.String()
-		}))
+	return spec
 }

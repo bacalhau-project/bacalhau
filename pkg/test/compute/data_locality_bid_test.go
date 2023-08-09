@@ -29,6 +29,6 @@ func (s *DataLocalityBidSuite) TestRejectStateless() {
 
 func (s *DataLocalityBidSuite) TestAcceptStateful() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addInput(generateJob(), "cid"),
+		job: addInput(generateJob(s.T()), "cid"),
 	})
 }

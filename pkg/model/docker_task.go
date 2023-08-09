@@ -17,17 +17,16 @@ type DockerInputs struct {
 var _ JobType = (*DockerInputs)(nil)
 
 func (docker DockerInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineDocker
-	spec.Docker = JobSpecDocker{
-		Image:            with,
-		Entrypoint:       docker.Entrypoint,
-		WorkingDirectory: docker.Workdir,
+	envvars := make([]string, 0, len(docker.Env.Values))
+	for key, val := range docker.Env.Values {
+		envvars = append(envvars, key, val)
 	}
 
-	spec.Docker.EnvironmentVariables = []string{}
-	for key, val := range docker.Env.Values {
-		spec.Docker.EnvironmentVariables = append(spec.Docker.EnvironmentVariables, key, val)
-	}
+	spec.EngineSpec = NewDockerEngineBuilder(with).
+		WithEntrypoint(docker.Entrypoint...).
+		WithWorkingDirectory(docker.Workdir).
+		WithEnvironmentVariables(envvars...).
+		Build()
 
 	inputData, err := parseInputs(docker.Mounts)
 	if err != nil {

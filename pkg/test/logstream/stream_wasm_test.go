@@ -7,10 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/stretchr/testify/require"
-	"github.com/vincent-petithory/dataurl"
+
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 func (s *LogStreamTestSuite) TestWasmOutputStream() {
@@ -25,16 +26,17 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 		Metadata: model.Metadata{
 			ID: "logstreamtest-wasm",
 		},
-		Spec: model.Spec{
-			Engine: model.EngineWasm,
-			Wasm: model.JobSpecWasm{
-				EntryPoint: "_start",
-				EntryModule: model.StorageSpec{
-					StorageSource: model.StorageSourceInline,
-					URL:           dataurl.EncodeBytes(cat.Program()),
-				},
-			},
-		},
+		Spec: testutils.MakeSpecWithOpts(s.T(),
+			jobutils.WithEngineSpec(
+				model.NewWasmEngineBuilder(
+					model.StorageSpec{
+						StorageSource: model.StorageSourceInline,
+						URL:           dataurl.EncodeBytes(cat.Program()),
+					},
+				).WithEntrypoint("_start").
+					Build(),
+			),
+		),
 	}
 
 	go func() {

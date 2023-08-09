@@ -74,10 +74,29 @@ func PrepareRunArguments(
 		return nil
 	})
 
-	var engineArgs interface{}
-	engineArgs = execution.Job.Spec.Docker
-	if execution.Job.Spec.Engine == model.EngineWasm {
-		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.ImportModules...)
+	var engineArgs *executor.Arguments
+	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
+	// download them before passing it to the wasm executor
+	/*
+		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
+		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
+		spec.Inputs with its EntryModule and ImportModules fields.
+		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
+		inputs via their arguments - docker image comes to mind as a potential candidate).
+
+		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
+		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
+		plugins to handle the download of different storage specs seems impractical
+		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
+		provides more context on the need for the change).
+	*/
+	if execution.Job.Spec.EngineSpec.Engine() == model.EngineWasm {
+		wasmEngine, err := model.DecodeEngineSpec[model.WasmEngineSpec](execution.Job.Spec.EngineSpec)
+		if err != nil {
+			return nil, err
+		}
+		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.ImportModules...)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +107,7 @@ func PrepareRunArguments(
 			return nil
 		})
 
-		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.EntryModule)
+		entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, wasmEngine.EntryModule)
 		if err != nil {
 			return nil, err
 		}
@@ -98,17 +117,25 @@ func PrepareRunArguments(
 			}
 			return nil
 		})
-		engineArgs = &wasm.Arguments{
-			EntryPoint:           execution.Job.Spec.Wasm.EntryPoint,
-			Parameters:           execution.Job.Spec.Wasm.Parameters,
-			EnvironmentVariables: execution.Job.Spec.Wasm.EnvironmentVariables,
+		engineArgs, err = executor.EncodeArguments(&wasm.Arguments{
+			EntryPoint:           wasmEngine.Entrypoint,
+			Parameters:           wasmEngine.Parameters,
+			EnvironmentVariables: wasmEngine.EnvironmentVariables,
 			EntryModule:          entryModuleVolumes[0],
 			ImportModules:        importModuleVolumes,
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-	args, err := executor.EncodeArguments(engineArgs)
-	if err != nil {
-		return nil, err
+	} else {
+		args, err := execution.Job.Spec.EngineSpec.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		engineArgs = &executor.Arguments{
+			Params: args,
+		}
 	}
 	return &executor.RunCommandRequest{
 		JobID:        execution.Job.ID(),
@@ -118,7 +145,7 @@ func PrepareRunArguments(
 		Outputs:      execution.Job.Spec.Outputs,
 		Inputs:       inputVolumes,
 		ResultsDir:   resultsDir,
-		EngineParams: args,
+		EngineParams: engineArgs,
 		OutputLimits: executor.OutputLimits{
 			MaxStdoutFileLength:   system.MaxStdoutFileLength,
 			MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -165,9 +192,9 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return fmt.Errorf("failed to get result path: %w", err)
 	}
 
-	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.Engine)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.EngineSpec.Engine())
 	if err != nil {
-		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.Engine, err)
+		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.EngineSpec, err)
 	}
 
 	if e.failureInjection.IsBadActor {

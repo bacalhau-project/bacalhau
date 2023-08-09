@@ -24,27 +24,24 @@ func getSampleDockerJob() (*model.Job, error) {
 	if err != nil {
 		return nil, err
 	}
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
+			Type: model.PublisherIpfs,
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint("echo", defaultEchoMessage).
+				Build(),
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
+	}
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
-	}
-	j.Spec = model.Spec{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
-			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"echo",
-				defaultEchoMessage,
-			},
-		},
-		Annotations:   []string{canaryAnnotation},
-		NodeSelectors: nodeSelectors,
-	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
+		Spec:       spec,
 	}
 	return j, nil
 }
@@ -57,43 +54,42 @@ func getSampleDockerIPFSJob() (*model.Job, error) {
 	var j = &model.Job{
 		APIVersion: model.APIVersionLatest().String(),
 	}
-	j.Spec = model.Spec{
-		Engine: model.EngineDocker,
-		PublisherSpec: model.PublisherSpec{
+	spec, err := job.MakeSpec(
+		job.WithPublisher(model.PublisherSpec{
 			Type: model.PublisherIpfs,
-		},
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash",
-				"-c",
-				"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
-			},
-		},
-		Inputs: []model.StorageSpec{
+		}),
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder("ubuntu").
+				WithEntrypoint(
+					"bash",
+					"-c",
+					"stat --format=%s /inputs/data.tar.gz > /outputs/stat.txt && md5sum /inputs/data.tar.gz > /outputs/checksum.txt && cp /inputs/data.tar.gz /outputs/data.tar.gz && sync",
+				).Build(),
+		),
+		job.WithInputs(
 			// This is a 64MB file backed by Filecoin deals via web3.storage on Phil's account
 			// You can download via https://w3s.link/ipfs/bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq
-			{
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "inputs",
 				CID:           "bafybeihxutvxg3bw7fbwohq4gvncrk3hngkisrtkp52cu7qu7tfcuvktnq",
 				Path:          "/inputs/data.tar.gz",
 			},
-		},
-		Outputs: []model.StorageSpec{
-			{
+		),
+		job.WithOutputs(
+			model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
 				Path:          "/outputs",
 			},
-		},
-		Annotations:   []string{canaryAnnotation},
-		NodeSelectors: nodeSelectors,
+		),
+		job.WithAnnotations(canaryAnnotation),
+		job.WithNodeSelector(nodeSelectors),
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	j.Spec.Deal = model.Deal{
-		Concurrency: 1,
-	}
+	j.Spec = spec
 	return j, nil
 }
 

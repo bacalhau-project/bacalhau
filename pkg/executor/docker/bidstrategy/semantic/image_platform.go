@@ -5,12 +5,13 @@ import (
 
 	"go.uber.org/multierr"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/rs/zerolog/log"
 )
 
 const oneDayInSeconds = int64(86400)
@@ -32,7 +33,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Spec.Engine != model.EngineDocker {
+	if request.Job.Spec.EngineSpec.Engine() != model.EngineDocker {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
@@ -41,24 +42,33 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	var ierr error = nil
 	var manifest docker.ImageManifest
 
-	manifest, found := (*ManifestCache).Get(request.Job.Spec.Docker.Image)
+	dockerEngine, err := model.DecodeEngineSpec[model.DockerEngineSpec](request.Job.Spec.EngineSpec)
+	if err != nil {
+		return bidstrategy.BidStrategyResponse{
+			ShouldBid:  false,
+			ShouldWait: false,
+			Reason:     err.Error(),
+		}, nil
+	}
+
+	manifest, found := (*ManifestCache).Get(dockerEngine.Image)
 	if !found {
-		log.Ctx(ctx).Debug().Str("Image", request.Job.Spec.Docker.Image).Msg("Image not found in manifest cache")
+		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
 		var m *docker.ImageManifest
-		m, ierr = s.client.ImageDistribution(ctx, request.Job.Spec.Docker.Image, config.GetDockerCredentials())
+		m, ierr = s.client.ImageDistribution(ctx, dockerEngine.Image, config.GetDockerCredentials())
 		if m != nil {
 			manifest = *m
 		}
 	} else {
-		log.Ctx(ctx).Debug().Str("Image", request.Job.Spec.Docker.Image).Msg("Image found in manifest cache")
+		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
 	}
 
-	err := multierr.Combine(serr, ierr)
-	if err != nil {
+	errs := multierr.Combine(serr, ierr)
+	if errs != nil {
 		return bidstrategy.BidStrategyResponse{
 			ShouldBid: false,
-			Reason:    err.Error(),
+			Reason:    errs.Error(),
 		}, nil
 	}
 
@@ -68,13 +78,13 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	// about managing eviction. In the meantime we get this through calling
 	// Set even when don't have to, to reset the expiry time.
 	err = (*ManifestCache).Set(
-		request.Job.Spec.Docker.Image, manifest, 1, oneDayInSeconds,
+		dockerEngine.Image, manifest, 1, oneDayInSeconds,
 	) //nolint:gomnd
 	if err != nil {
 		// Log the error but continue as it is not serious enough to stop
 		// processing
 		log.Ctx(ctx).Warn().
-			Str("Image", request.Job.Spec.Docker.Image).
+			Str("Image", dockerEngine.Image).
 			Str("Error", err.Error()).
 			Msg("Failed to save to manifest cache")
 	}

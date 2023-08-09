@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
@@ -23,11 +24,27 @@ var (
 )
 
 var (
-	EmptySpec       = model.Spec{}
-	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
-	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	EmptySpec       model.Spec
+	SpecWithInputs  model.Spec
+	SpecWithOutputs model.Spec
+	SpecWithWasm    model.Spec
 )
+
+func init() {
+	EmptySpec = model.Spec{}
+	SpecWithInputs = model.Spec{Inputs: OneStorageSpec}
+	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
+
+	var err error
+	SpecWithWasm, err = job.MakeSpec(
+		job.WithEngineSpec(
+			model.NewWasmEngineBuilder(OneStorageSpec[0]).Build(),
+		),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to make spec for testing: %s", err))
+	}
+}
 
 func TestStorageBidStrategy(t *testing.T) {
 	testCases := []struct {

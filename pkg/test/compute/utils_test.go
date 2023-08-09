@@ -4,24 +4,22 @@ package compute
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/google/uuid"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
-func generateJob() model.Job {
+func generateJob(t testing.TB) model.Job {
 	return model.Job{
 		Metadata: model.Metadata{
 			ID: uuid.New().String(),
 		},
 		APIVersion: model.APIVersionLatest().String(),
-		Spec: model.Spec{
-			Engine: model.EngineNoop,
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherNoop,
-			},
-		},
+		Spec:       testutils.MakeSpecWithOpts(t),
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/multierr"
 	"k8s.io/apimachinery/pkg/selection"
 )
@@ -73,7 +74,6 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 	err := mergo.Merge(j, &Job{
 		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
-			Engine: EngineDocker,
 			PublisherSpec: PublisherSpec{
 				Type: PublisherEstuary,
 			},
@@ -189,17 +189,21 @@ type PublisherSpec struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// e.g. docker or language
+	// Deprecated: use EngineSpec.
 	Engine Engine `json:"Engine,omitempty"`
 
+	EngineSpec EngineSpec `json:"EngineSpec,omitempty"`
+
 	// there can be multiple publishers for the job
-	// deprecated: use PublisherSpec instead
+
+	// Deprecated: use PublisherSpec instead
 	Publisher     Publisher     `json:"Publisher,omitempty"`
 	PublisherSpec PublisherSpec `json:"PublisherSpec,omitempty"`
 
-	// executor specific data
+	// Deprecated: use EngineSpec.
 	Docker JobSpecDocker `json:"Docker,omitempty"`
-	Wasm   JobSpecWasm   `json:"Wasm,omitempty"`
+	// Deprecated: use EngineSpec.
+	Wasm JobSpecWasm `json:"Wasm,omitempty"`
 
 	// the compute (cpu, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -239,8 +243,34 @@ func (s *Spec) GetTimeout() time.Duration {
 
 // Return pointers to all the storage specs in the spec.
 func (s *Spec) AllStorageSpecs() []*StorageSpec {
-	storages := []*StorageSpec{
-		&s.Wasm.EntryModule,
+	var storages []*StorageSpec
+	// TODO TODO: to refactor the way that wasm finds/loads remote modules
+	/*
+		wasm engine contains embedded StorageSpec's, we need to decode the engine
+		to access these specs so the requester can route the job based on storage requirements.
+
+		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
+		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
+		spec.Inputs with its EntryModule and ImportModules fields.
+		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
+		inputs via their arguments - docker image comes to mind as a potential candidate).
+
+		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
+		before passing it to the executor. Previously executors we responsible for downloading their inputs to
+		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
+		plugins to handle the download of different storage specs seems impractical
+		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
+		provides more context on the need for the change).
+	*/
+
+	if s.EngineSpec.Engine() == EngineWasm {
+		wasmEngine, err := DecodeEngineSpec[WasmEngineSpec](s.EngineSpec)
+		if err != nil {
+			// TODO(forrest): [correctness] propagate error up stack
+			log.Error().Err(err).Msg("failed to decode wasm engine spec for AllStorageSpecs")
+		} else {
+			storages = append(storages, &wasmEngine.EntryModule)
+		}
 	}
 
 	for _, collection := range [][]StorageSpec{

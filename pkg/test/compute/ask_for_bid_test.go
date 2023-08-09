@@ -46,28 +46,28 @@ func (s *AskForBidSuite) TestPopulateResourceUsage() {
 func (s *AskForBidSuite) TestUseSubmittedResourceUsage() {
 	usage := model.ResourceUsageData{CPU: 1, Memory: 2, Disk: 3}
 	response := s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(), usage),
+		job: addResourceUsage(generateJob(s.T()), usage),
 	})
 	s.verify(response, usage)
 }
 
 func (s *AskForBidSuite) TestAcceptUsageBelowLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU / 2}),
 	})
 }
 
 func (s *AskForBidSuite) TestAcceptUsageMatachingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU}),
 	})
 }
 
 func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		job: addResourceUsage(generateJob(),
+		job: addResourceUsage(generateJob(s.T()),
 			model.ResourceUsageData{CPU: s.config.JobResourceLimits.CPU + 0.01}),
 		rejected: true,
 	})
@@ -80,7 +80,7 @@ func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.
 	job := testCase.job
 	job.Metadata.Requester.RequesterNodeID = s.node.ID
 	if job.Metadata.ID == "" {
-		job = generateJob()
+		job = generateJob(s.T())
 	}
 
 	result := s.askForBid(ctx, job)

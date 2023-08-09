@@ -11,20 +11,20 @@ import (
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/selection"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-
-	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
 var executionErr = errors.New("I am a bad executor")
@@ -56,8 +56,8 @@ func (s *RetriesSuite) SetupSuite() {
 				"name": "bid-rejector",
 			},
 			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
-				BidSemanticStrategy: testing2.NewFixedBidStrategy(false, false),
-				BidResourceStrategy: testing2.NewFixedBidStrategy(false, false),
+				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 			}),
 		},
 		{
@@ -148,7 +148,7 @@ func (s *RetriesSuite) SetupSuite() {
 			return s.requester.RequesterNode.JobStore.GetJobState(ctx, id)
 		},
 	)
-	testutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
+	nodeutils.WaitForNodeDiscovery(s.T(), s.requester, len(nodeOverrides))
 }
 
 func (s *RetriesSuite) TearDownSuite() {
@@ -281,7 +281,7 @@ func (s *RetriesSuite) TestRetry() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := makeBadTargetingJob(tc.nodes)
+			j := makeBadTargetingJob(s.T(), tc.nodes)
 			j.Spec.Deal.Concurrency = math.Max(1, tc.concurrency)
 			submittedJob, err := s.client.Submit(ctx, j)
 			if tc.failed {
@@ -328,8 +328,8 @@ func (s *RetriesSuite) TestRetry() {
 	}
 }
 
-func makeBadTargetingJob(restrictedNodes []string) *model.Job {
-	j := testutils.MakeJob(model.EngineNoop, model.PublisherNoop, []string{"echo", "hello"})
+func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *model.Job {
+	j := testutils.MakeJobWithOpts(t)
 	req := []model.LabelSelectorRequirement{
 		{
 			Key:      "favour_name",
@@ -344,5 +344,5 @@ func makeBadTargetingJob(restrictedNodes []string) *model.Job {
 		})
 	}
 	j.Spec.NodeSelectors = req
-	return j
+	return &j
 }

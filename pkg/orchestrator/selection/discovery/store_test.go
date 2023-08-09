@@ -7,8 +7,11 @@ import (
 	"math"
 	"testing"
 
+	job2 "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/suite"
@@ -41,15 +44,16 @@ func (s *StoreNodeDiscovererSuite) TestFindNodes() {
 	s.NoError(s.store.Add(ctx, nodeInfo2))
 
 	// both nodes are returned when asked for docker nodes
-	job := model.Job{}
-	job.Spec.Engine = model.EngineDocker
+	job := testutils.MakeJobWithOpts(s.T(), job2.WithEngineSpec(
+		model.NewDockerEngineBuilder("TODO").Build(),
+	))
 	peerIDs, err := s.discoverer.FindNodes(context.Background(), job)
 	s.NoError(err)
 	s.ElementsMatch([]model.NodeInfo{nodeInfo1, nodeInfo2}, peerIDs)
 
 	// only node2 is returned when asked for noop nodes
-	job.Spec.Engine = model.EngineNoop
-	peerIDs, err = s.discoverer.FindNodes(context.Background(), job)
+	job2 := testutils.MakeNoopJob(s.T())
+	peerIDs, err = s.discoverer.FindNodes(context.Background(), *job2)
 	s.NoError(err)
 	s.Empty(peerIDs)
 }

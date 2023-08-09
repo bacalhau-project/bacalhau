@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/rs/zerolog/log"
 )
 
 // featureNodeRanker is a generic ranker that can rank nodes based on what
@@ -18,7 +19,9 @@ type featureNodeRanker[Key model.ProviderKey] struct {
 
 func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
 	return &featureNodeRanker[model.Engine]{
-		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
+		getJobRequirement: func(job model.Job) []model.Engine {
+			return []model.Engine{job.Spec.EngineSpec.Engine()}
+		},
 		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
 	}
 }

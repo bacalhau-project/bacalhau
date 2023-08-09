@@ -19,24 +19,12 @@ var _ JobType = (*WasmInputs)(nil)
 
 // UnmarshalInto implements taskUnmarshal
 func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
-	spec.Engine = EngineWasm
-	spec.Wasm = JobSpecWasm{
-		EntryPoint:           wasm.Entrypoint,
-		Parameters:           wasm.Parameters,
-		EnvironmentVariables: wasm.Env.Values,
-		ImportModules:        []StorageSpec{},
-	}
-
 	entryModule, err := parseResource(with)
 	if err != nil {
 		return err
 	}
-	spec.Inputs = []StorageSpec{parseStorageSource("/job", entryModule)}
-
-	for _, resource := range wasm.Modules {
-		resource := resource
-		spec.Wasm.ImportModules = append(spec.Wasm.ImportModules, parseStorageSource("", &resource))
-	}
+	entryModuleStorageSpec := parseStorageSource("/job", entryModule)
+	spec.Inputs = []StorageSpec{entryModuleStorageSpec}
 
 	inputData, err := parseInputs(wasm.Mounts)
 	if err != nil {
@@ -51,6 +39,19 @@ func (wasm *WasmInputs) UnmarshalInto(with string, spec *Spec) error {
 			Name: strings.Trim(path, "/"),
 		})
 	}
+
+	importModules := make([]StorageSpec, 0, len(wasm.Modules))
+	for _, resource := range wasm.Modules {
+		resource := resource
+		importModules = append(importModules, parseStorageSource("", &resource))
+	}
+
+	spec.EngineSpec = NewWasmEngineBuilder(entryModuleStorageSpec).
+		WithEntrypoint(wasm.Entrypoint).
+		WithParameters(wasm.Parameters...).
+		WithEnvironmentVariables(wasm.Env.Values).
+		WithImportModules(importModules...).
+		Build()
 
 	return nil
 }
