@@ -45,10 +45,14 @@ var jobJsonDockerEngineSpec []byte
 //go:embed job-docker-engine-spec.yaml
 var jobYamlDockerEngineSpec []byte
 
+//go:embed job-wasm-engine-spec.json
+var jobJsonWasmEngineSpec []byte
+
 var (
 	JsonJobNoop             *Fixture
 	JsonJobCancel           *Fixture
 	JsonJobDockerEngineSpec *Fixture
+	JsonJobWasmEngineSpec   *Fixture
 
 	YamlJobS3               *Fixture
 	YamlJobNoop             *Fixture
@@ -79,6 +83,7 @@ func init() {
 	JsonJobDockerEngineSpec = NewSpecFixture(jobJsonDockerEngineSpec)
 	YamlJobDockerEngineSpec = NewSpecFixture(jobYamlDockerEngineSpec)
 
+	JsonJobWasmEngineSpec = NewSpecFixture(jobJsonWasmEngineSpec)
 }
 
 type Fixture struct {
