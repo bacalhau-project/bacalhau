@@ -3,7 +3,7 @@ variable "bacalhau_version" {
 }
 # allows deploying bacalhau from a specific branch instead of a release
 variable "bacalhau_branch" {
-  type = string
+  type    = string
   default = ""
 }
 variable "bacalhau_port" {
@@ -161,12 +161,6 @@ variable "grafana_cloud_tempo_user" {
 variable "grafana_cloud_tempo_endpoint" {
   type    = string
   default = ""
-}
-
-variable "estuary_api_key" {
-  type      = string
-  default   = ""
-  sensitive = true
 }
 
 variable "internal_ip_addresses" {

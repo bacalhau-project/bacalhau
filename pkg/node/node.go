@@ -39,7 +39,6 @@ type NodeConfig struct {
 	IPFSClient                ipfs.Client
 	CleanupManager            *system.CleanupManager
 	Host                      host.Host
-	EstuaryAPIKey             string
 	HostAddress               string
 	APIPort                   uint16
 	DisabledFeatures          FeatureConfig

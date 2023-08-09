@@ -126,10 +126,6 @@ func ParsePublisherString(destinationURI string, options map[string]interface{})
 		res = model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		}
-	case "estuary":
-		res = model.PublisherSpec{
-			Type: model.PublisherEstuary,
-		}
 	case "s3":
 		if _, ok := options["bucket"]; !ok {
 			options["bucket"] = parsedURI.Host

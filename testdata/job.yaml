@@ -1,16 +1,16 @@
 APIVersion: v1beta1
 Spec:
   Engine: Docker
-  Publisher: Estuary
+  Publisher: IPFS
   Docker:
     Image: ubuntu:latest
     Entrypoint:
-      - /bin/bash
-      - -c
-      - echo 15
+    - /bin/bash
+    - -c
+    - echo 15
   Outputs:
-    - StorageSource: IPFS
-      Name: output_custom
-      Path: /output_custom
+  - StorageSource: IPFS
+    Name: output_custom
+    Path: /output_custom
   Deal:
     Concurrency: 1

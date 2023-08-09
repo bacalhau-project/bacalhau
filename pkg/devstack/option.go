@@ -2,7 +2,6 @@ package devstack
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
@@ -25,7 +24,6 @@ func defaultDevStackConfig() *DevStackConfig {
 		NumberOfBadComputeActors:   0,
 		Peer:                       "",
 		PublicIPFSMode:             false,
-		EstuaryAPIKey:              os.Getenv("ESTUARY_API_KEY"),
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
@@ -52,7 +50,6 @@ type DevStackConfig struct {
 	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
 	PublicIPFSMode             bool   // Use public IPFS nodes
-	EstuaryAPIKey              string
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
 	DisabledFeatures           node.FeatureConfig
@@ -68,7 +65,6 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Int("BadComputeActors", o.NumberOfBadComputeActors).
 		Int("BadRequesterActors", o.NumberOfBadRequesterActors).
 		Str("Peer", o.Peer).
-		Str("EstuaryAPIKey", o.EstuaryAPIKey).
 		Str("CPUProfilingFile", o.CPUProfilingFile).
 		Str("MemoryProfilingFile", o.MemoryProfilingFile).
 		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
@@ -166,12 +162,6 @@ func WithNumberOfBadRequesterActors(count int) ConfigOption {
 func WithPeer(p string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.Peer = p
-	}
-}
-
-func WithEstuaryAPIKey(key string) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.EstuaryAPIKey = key
 	}
 }
 

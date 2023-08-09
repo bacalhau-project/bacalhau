@@ -66,7 +66,6 @@ type ServeOptions struct {
 	NodeType                              []string                 // "compute", "requester" node or both
 	PeerConnect                           string                   // The libp2p multiaddress to connect to.
 	IPFSConnect                           string                   // The multiaddress to connect to for IPFS.
-	EstuaryAPIKey                         string                   // The API key used when using the estuary API.
 	HostAddress                           string                   // The host address to listen on.
 	SwarmPort                             int                      // The host port for libp2p network.
 	JobSelectionPolicy                    model.JobSelectionPolicy // How the node decides what jobs to run.
@@ -91,7 +90,6 @@ func NewServeOptions() *ServeOptions {
 		NodeType:               []string{"requester"},
 		PeerConnect:            DefaultPeerConnect,
 		IPFSConnect:            "",
-		EstuaryAPIKey:          os.Getenv("ESTUARY_API_KEY"),
 		HostAddress:            "0.0.0.0",
 		SwarmPort:              DefaultSwarmPort,
 		JobSelectionPolicy:     model.NewDefaultJobSelectionPolicy(),
@@ -235,10 +233,6 @@ func NewCmd() *cobra.Command {
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to, otherwise an in-process IPFS node will be created if not set.`,
 	)
-	serveCmd.PersistentFlags().StringVar(
-		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
-		`The API key used when using the estuary API.`,
-	)
 	serveCmd.PersistentFlags().StringSliceVar(
 		&OS.IPFSSwarmAddresses, "ipfs-swarm-addr", OS.IPFSSwarmAddresses,
 		"IPFS multiaddress to connect the in-process IPFS node to - cannot be used with --ipfs-connect.",
@@ -323,7 +317,6 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IPFSClient:            ipfsClient,
 		CleanupManager:        cm,
 		Host:                  libp2pHost,
-		EstuaryAPIKey:         OS.EstuaryAPIKey,
 		DisabledFeatures:      OS.DisabledFeatures,
 		HostAddress:           OS.HostAddress,
 		APIPort:               util.GetAPIPort(ctx),
