@@ -96,12 +96,7 @@ func (s *LogStreamServer) Handle(stream network.Stream) {
 	log.Ctx(s.ctx).Debug().Msgf("Logserver finding executor for: %s", execution.Job.Spec.EngineSpec)
 
 	jobSpec := execution.Job.Spec
-	engineType, err := jobSpec.EngineSpec.Engine()
-	if err != nil {
-		log.Ctx(s.ctx).Error().Err(err).Msg("failed to decode EngineSpec Type to Engine")
-		_ = stream.Reset()
-	}
-	e, err := s.executors.Get(s.ctx, engineType)
+	e, err := s.executors.Get(s.ctx, jobSpec.EngineSpec.Engine())
 	if err != nil {
 		log.Ctx(s.ctx).Error().Msgf("failed to find executor for engine: %s", jobSpec.EngineSpec)
 		_ = stream.Reset()

@@ -22,10 +22,7 @@ func TestUnmarshalWasm(t *testing.T) {
 	wasmSpec, err := DecodeEngineSpec[WasmEngineSpec](spec.EngineSpec)
 	require.NoError(t, err)
 
-	engineType, err := spec.EngineSpec.Engine()
-	require.NoError(t, err)
-
-	require.Equal(t, EngineWasm, engineType)
+	require.Equal(t, EngineWasm, spec.EngineSpec.Engine())
 	require.Equal(t, "_start", wasmSpec.Entrypoint)
 	require.Equal(t, []string{"/inputs/data.tar.gz"}, wasmSpec.Parameters)
 	require.Equal(t, map[string]string{"HELLO": "world"}, wasmSpec.EnvironmentVariables)

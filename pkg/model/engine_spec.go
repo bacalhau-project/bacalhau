@@ -38,7 +38,7 @@ func (e EngineSpec) Serialize() ([]byte, error) {
 	return json.Marshal(e)
 }
 
-func (e EngineSpec) Engine() (Engine, error) {
+func (e EngineSpec) Engine() Engine {
 	return ParseEngine(e.Type)
 }
 

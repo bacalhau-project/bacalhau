@@ -22,10 +22,7 @@ func TestUnmarshalDocker(t *testing.T) {
 	dockerSpec, err := DecodeEngineSpec[DockerEngineSpec](spec.EngineSpec)
 	require.NoError(t, err)
 
-	engineType, err := spec.EngineSpec.Engine()
-	require.NoError(t, err)
-
-	require.Equal(t, EngineDocker, engineType)
+	require.Equal(t, EngineDocker, spec.EngineSpec.Engine())
 	require.Equal(t, "ubuntu", dockerSpec.Image)
 	require.Equal(t, []string{"date"}, dockerSpec.Entrypoint)
 	require.Equal(t, "/", dockerSpec.WorkingDirectory)

@@ -33,7 +33,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Spec.EngineSpec.Type != model.EngineDocker.String() {
+	if request.Job.Spec.EngineSpec.Engine() != model.EngineDocker {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 

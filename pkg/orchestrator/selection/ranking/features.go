@@ -20,12 +20,7 @@ type featureNodeRanker[Key model.ProviderKey] struct {
 func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
 	return &featureNodeRanker[model.Engine]{
 		getJobRequirement: func(job model.Job) []model.Engine {
-			engineType, err := job.Spec.EngineSpec.Engine()
-			if err != nil {
-				log.Error().Err(err).Msg("failed to decode engine type defaulting to Noop")
-				return []model.Engine{model.EngineNoop}
-			}
-			return []model.Engine{engineType}
+			return []model.Engine{job.Spec.EngineSpec.Engine()}
 		},
 		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
 	}

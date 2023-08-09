@@ -23,7 +23,7 @@ func DockerImageDigest() Transformer {
 	}
 
 	return func(ctx context.Context, j *model.Job) (modified bool, err error) {
-		if j.Spec.EngineSpec.Type != model.EngineDocker.String() {
+		if j.Spec.EngineSpec.Engine() != model.EngineDocker {
 			return false, nil
 		}
 

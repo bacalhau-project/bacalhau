@@ -91,7 +91,7 @@ func PrepareRunArguments(
 		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
 		provides more context on the need for the change).
 	*/
-	if execution.Job.Spec.EngineSpec.Type == model.EngineWasm.String() {
+	if execution.Job.Spec.EngineSpec.Engine() == model.EngineWasm {
 		wasmEngine, err := model.DecodeEngineSpec[model.WasmEngineSpec](execution.Job.Spec.EngineSpec)
 		if err != nil {
 			return nil, err
@@ -192,11 +192,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return fmt.Errorf("failed to get result path: %w", err)
 	}
 
-	engineType, err := execution.Job.Spec.EngineSpec.Engine()
-	if err != nil {
-		return err
-	}
-	jobExecutor, err := e.executors.Get(ctx, engineType)
+	jobExecutor, err := e.executors.Get(ctx, execution.Job.Spec.EngineSpec.Engine())
 	if err != nil {
 		return fmt.Errorf("failed to get executor %s: %w", execution.Job.Spec.EngineSpec, err)
 	}

@@ -92,7 +92,7 @@ type Fixture struct {
 }
 
 func (f *Fixture) RequiresDocker() bool {
-	return f.Job.Spec.EngineSpec.Type == model.EngineDocker.String()
+	return f.Job.Spec.EngineSpec.Engine() == model.EngineDocker
 }
 
 func (f *Fixture) RequiresS3() bool {
@@ -108,11 +108,7 @@ func (f *Fixture) RequiresS3() bool {
 func (f *Fixture) validate() {
 	// validate the job spec was deserialized correctly and not empty
 	// checking for valid engine seems like a good enough check
-	engineType, err := f.Job.Spec.EngineSpec.Engine()
-	if err != nil {
-		panic(fmt.Sprintf("failed to decode engine spec type: %s", err))
-	}
-	if !model.IsValidEngine(engineType) {
+	if !model.IsValidEngine(f.Job.Spec.EngineSpec.Engine()) {
 		panic(fmt.Errorf("spec is empty/invalid: %s", string(f.Data)))
 	}
 }

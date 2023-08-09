@@ -116,9 +116,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	s.Require().NoError(err)
 
 	j.Spec = spec
-	engineType, err := j.Spec.EngineSpec.Engine()
-	s.Require().NoError(err)
-	s.Require().True(model.IsValidEngine(engineType))
+	s.Require().True(model.IsValidEngine(j.Spec.EngineSpec.Engine()))
 	if !model.IsValidPublisher(j.Spec.PublisherSpec.Type) {
 		j.Spec.PublisherSpec = model.PublisherSpec{
 			Type: model.PublisherIpfs,

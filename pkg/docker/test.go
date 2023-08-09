@@ -21,9 +21,7 @@ func MustHaveDocker(t testing.TB) {
 // EngineSpecRequiresDocker will skip the test if the test is running in an environment that cannot support cross-platform
 // Docker images, and the passed model.EngineSpec type is model.EngineDocker
 func EngineSpecRequiresDocker(t testing.TB, engineSpec model.EngineSpec) {
-	engineType, err := engineSpec.Engine()
-	require.NoError(t, err)
-	MaybeNeedDocker(t, engineType == model.EngineDocker)
+	MaybeNeedDocker(t, engineSpec.Engine() == model.EngineDocker)
 }
 
 // MaybeNeedDocker will skip the test if the test is running in an environment that cannot support cross-platform

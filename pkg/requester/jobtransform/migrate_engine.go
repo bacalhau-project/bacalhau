@@ -53,13 +53,8 @@ func migrateForward(job *model.Job) (bool, error) {
 // migrateBack populates deprecated model.Spec engine fields iff the engine is a known type, else
 // no change is made.
 func migrateBack(job *model.Job) (bool, error) {
-	maybeValidEngine, err := model.ParseEngine(job.Spec.EngineSpec.Type)
-	if err != nil {
-		// NB(forrest): the above method never errors, but let's check it anyway.
-		return false, fmt.Errorf("parsing engine spec type: %w", err)
-	}
 	// check if it's a know engine type and populate the deprecated fields.
-	switch maybeValidEngine {
+	switch job.Spec.EngineSpec.Engine() {
 	case model.EngineNoop:
 		job.Spec.Engine = model.EngineNoop
 		return true, nil

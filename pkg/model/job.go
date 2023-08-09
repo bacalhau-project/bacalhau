@@ -263,7 +263,7 @@ func (s *Spec) AllStorageSpecs() []*StorageSpec {
 		provides more context on the need for the change).
 	*/
 
-	if s.EngineSpec.Type == EngineWasm.String() {
+	if s.EngineSpec.Engine() == EngineWasm {
 		wasmEngine, err := DecodeEngineSpec[WasmEngineSpec](s.EngineSpec)
 		if err != nil {
 			// TODO(forrest): [correctness] propagate error up stack
