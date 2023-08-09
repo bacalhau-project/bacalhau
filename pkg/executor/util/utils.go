@@ -72,7 +72,9 @@ func NewStandardStorageProvider(
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
 	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+		model.StorageSourceIPFS: tracing.Wrap(useIPFSDriver),
+		// the deprecated estuary storage source now uses the native IPFS support
+		model.StorageSourceEstuary:        tracing.Wrap(useIPFSDriver),
 		model.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
 		model.StorageSourceInline:         tracing.Wrap(inlineStorage),
 		model.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),

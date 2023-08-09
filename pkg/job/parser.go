@@ -122,7 +122,7 @@ func ParsePublisherString(destinationURI string, options map[string]interface{})
 
 	var res model.PublisherSpec
 	switch parsedURI.Scheme {
-	case "ipfs":
+	case "ipfs", "estuary": // Also handle the deprecated estuary publisher
 		res = model.PublisherSpec{
 			Type: model.PublisherIpfs,
 		}
