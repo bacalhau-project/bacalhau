@@ -26,6 +26,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
@@ -55,12 +56,14 @@ func NewComputeNode(
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	publishers publisher.PublisherProvider) (*Compute, error) {
+	publishers publisher.PublisherProvider,
+	fsRepo *repo.FsRepo,
+) (*Compute, error) {
 	var executionStore store.ExecutionStore
 	// create the execution store
 	if config.ExecutionStore == nil {
 		var err error
-		executionStore, err = createExecutionStore(ctx, host)
+		executionStore, err = fsRepo.InitExecutionStore(ctx, host.ID().String())
 		if err != nil {
 			return nil, err
 		}

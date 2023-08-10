@@ -387,6 +387,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 		IsRequesterNode:       isRequesterNode,
 		Labels:                combinedMap,
 		AllowListedLocalPaths: OS.AllowListedLocalPaths,
+		FsRepo:                fsRepo,
 	}
 
 	// Create node

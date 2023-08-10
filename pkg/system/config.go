@@ -9,17 +9,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
+/*
 func InitConfig() error {
 	configDir := os.Getenv("BACALHAU_DIR")
 	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
@@ -45,6 +43,8 @@ func InitConfig() error {
 	}
 	return nil
 }
+
+*/
 
 const (
 	sigHash = crypto.SHA256 // hash function to use for sign/verify
@@ -194,15 +194,14 @@ func decodePublicKey(key string) (*rsa.PublicKey, error) {
 	return x509.ParsePKCS1PublicKey(keyBytes)
 }
 
+/*
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
 func InitConfigForTesting(t testing.TB) *repo.FsRepo {
-	/*
-		if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
-			return
-		}
-		t.Setenv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__", "set")
-	*/
+		//if _, ok := os.LookupEnv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__"); ok {
+			//return
+		//}
+		//t.Setenv("__InitConfigForTestingHasAlreadyBeenRunSoCanBeSkipped__", "set")
 
 	viper.Reset()
 	// TODO pass a testing config.
@@ -222,3 +221,4 @@ func InitConfigForTesting(t testing.TB) *repo.FsRepo {
 	}
 	return fsRepo
 }
+*/
