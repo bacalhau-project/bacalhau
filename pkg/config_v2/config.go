@@ -1,6 +1,8 @@
 package config_v2
 
 import (
+	"time"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -10,12 +12,19 @@ var Default BacalhauConfig
 //go:generate go run gen_paths/generate.go
 //go:generate go run gen_viper/generate.go
 type BacalhauConfig struct {
-	Node NodeConfig
-	User UserConfig
+	Node    NodeConfig
+	User    UserConfig
+	Metrics MetricsConfig
+}
+
+type MetricsConfig struct {
+	Libp2pTracerPath string
+	EventTracerPath  string
 }
 
 type UserConfig struct {
-	UserKeyPath string
+	UserKeyPath   string
+	Libp2pKeyPath string
 }
 
 type FeatureConfig struct {
@@ -27,6 +36,14 @@ type FeatureConfig struct {
 type NodeConfig struct {
 	// BootstrapAddresses is a list of bacalhau addresses for bootstrapping new local nodes.
 	BootstrapAddresses []string
+
+	DownloadURLRequestRetries int
+	DownloadURLRequestTimeout time.Duration
+	VolumeSizeRequestTimeout  time.Duration
+
+	ExecutorPluginPath string
+
+	ComputeStoragePath string
 
 	LoggingMode           logger.LogMode
 	Type                  []string

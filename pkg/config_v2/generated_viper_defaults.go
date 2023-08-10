@@ -5,6 +5,11 @@ import "github.com/spf13/viper"
 func setDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(Node, cfg.Node)
 	viper.SetDefault(NodeBootstrapAddresses, cfg.Node.BootstrapAddresses)
+	viper.SetDefault(NodeDownloadURLRequestRetries, cfg.Node.DownloadURLRequestRetries)
+	viper.SetDefault(NodeDownloadURLRequestTimeout, cfg.Node.DownloadURLRequestTimeout.String())
+	viper.SetDefault(NodeVolumeSizeRequestTimeout, cfg.Node.VolumeSizeRequestTimeout.String())
+	viper.SetDefault(NodeExecutorPluginPath, cfg.Node.ExecutorPluginPath)
+	viper.SetDefault(NodeComputeStoragePath, cfg.Node.ComputeStoragePath)
 	viper.SetDefault(NodeLoggingMode, cfg.Node.LoggingMode)
 	viper.SetDefault(NodeType, cfg.Node.Type)
 	viper.SetDefault(NodeEstuaryAPIKey, cfg.Node.EstuaryAPIKey)
@@ -50,4 +55,8 @@ func setDefaults(cfg BacalhauConfig) {
 	viper.SetDefault(NodeRequesterJobStorePath, cfg.Node.Requester.JobStore.Path)
 	viper.SetDefault(NodeUser, cfg.User)
 	viper.SetDefault(NodeUserUserKeyPath, cfg.User.UserKeyPath)
+	viper.SetDefault(NodeUserLibp2pKeyPath, cfg.User.Libp2pKeyPath)
+	viper.SetDefault(NodeMetrics, cfg.Metrics)
+	viper.SetDefault(NodeMetricsLibp2pTracerPath, cfg.Metrics.Libp2pTracerPath)
+	viper.SetDefault(NodeMetricsEventTracerPath, cfg.Metrics.EventTracerPath)
 }

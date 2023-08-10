@@ -1,10 +1,8 @@
 package id
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/spf13/cobra"
 
 	"github.com/libp2p/go-libp2p"
 
@@ -12,8 +10,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -61,14 +59,11 @@ var idColumns = []output.TableColumn[IDInfo]{
 }
 
 func id(cmd *cobra.Command, OS *serve.ServeOptions, outputOpts output.OutputOptions) error {
-	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	privKey, err := config_v2.GetLibp2pPrivKey()
 	if err != nil {
 		return err
 	}
-	privKey, err := fsRepo.InitLibp2pPrivateKey(OS.SwarmPort)
-	if err != nil {
-		return err
-	}
+
 	libp2pHost, err := bac_libp2p.NewHost(OS.SwarmPort, libp2p.Identity(privKey))
 	if err != nil {
 		return err

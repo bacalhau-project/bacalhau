@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -110,5 +111,32 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
 	}
 
+	return key, nil
+}
+
+func GetLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
+	return loadLibp2pPrivKey()
+}
+
+func loadLibp2pPrivKey() (libp2p_crypto.PrivKey, error) {
+	keyFile := viper.GetString(NodeUserLibp2pKeyPath)
+	if keyFile == "" {
+		return nil, fmt.Errorf("config error: libp2p private key not set")
+	}
+
+	keyBytes, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key: %v", err)
+	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %v", err)
+	}
+	// parse the private key
+	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	}
 	return key, nil
 }

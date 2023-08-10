@@ -10,11 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/rs/zerolog/log"
 )
 
 /*
@@ -69,7 +70,7 @@ func (s *StorageProvider) HasStorageLocally(_ context.Context, _ model.StorageSp
 }
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
+	ctx, cancel := context.WithTimeout(ctx, config_v2.GetVolumeSizeRequestTimeout())
 	defer cancel()
 
 	client := s.clientProvider.GetClient(volume.S3.Endpoint, volume.S3.Region)

@@ -7,11 +7,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 	"github.com/ricochet2200/go-disk-usage/du"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // NvidiaCLI is the path to the Nvidia helper binary
@@ -25,7 +26,7 @@ func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
 }
 
 func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (model.ResourceUsageData, error) {
-	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
+	diskSpace, err := getFreeDiskSpace(config_v2.GetStoragePath())
 	if err != nil {
 		return model.ResourceUsageData{}, err
 	}

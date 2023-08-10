@@ -17,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	computenodeapi "github.com/bacalhau-project/bacalhau/pkg/compute/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -349,7 +348,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
-	privKey, err := fsRepo.InitLibp2pPrivateKey(OS.SwarmPort)
+	privKey, err := config_v2.GetLibp2pPrivKey()
 	if err != nil {
 		return err
 	}
@@ -448,30 +447,51 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 			os.Args[0], nodeType, peerAddress, ipfsSwarmAddress,
 		)
 
-		shellVariablesString := fmt.Sprintf(`
-export BACALHAU_IPFS_SWARM_ADDRESSES=%s
-export BACALHAU_API_HOST=%s
-export BACALHAU_API_PORT=%d
-export BACALHAU_PEER_CONNECT=%s`, ipfsSwarmAddress, OS.HostAddress, config_v2.GetAPIPort(), peerAddress)
+		summaryBuilder := strings.Builder{}
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config_v2.KeyAsEnvVar(config_v2.NodeIPFSSwarmAddresses),
+			ipfsSwarmAddress,
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config_v2.KeyAsEnvVar(config_v2.NodeAPIHost),
+			OS.HostAddress,
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%d\n",
+			config_v2.KeyAsEnvVar(config_v2.NodeAPIPort),
+			config_v2.GetAPIPort(),
+		))
+		summaryBuilder.WriteString(fmt.Sprintf(
+			"export %s=%s\n",
+			config_v2.KeyAsEnvVar(config_v2.NodeLibp2pPeerConnect),
+			peerAddress,
+		))
+
+		// Just convenience below - print out the last of the nodes information as the global variable
+		summaryShellVariablesString := summaryBuilder.String()
 
 		if isRequesterNode {
 			cmd.Println()
 			cmd.Println("To use this requester node from the client, run the following commands in your shell:")
-			cmd.Println(shellVariablesString)
+			cmd.Println(summaryShellVariablesString)
 		}
 
-		ripath, err := fsRepo.WriteRunInfo(ctx, shellVariablesString)
+		ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
 		if err != nil {
 			return fmt.Errorf("writing run info to repo: %w", err)
 		} else {
 			cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
 		}
-
-		cm.RegisterCallback(config.CleanupRunInfoFile)
-
 		if err != nil {
 			return err
 		}
+
+		cm.RegisterCallback(func() error {
+			return os.Remove(ripath)
+		})
+
 	}
 
 	<-ctx.Done() // block until killed

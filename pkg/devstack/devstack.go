@@ -12,11 +12,12 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -163,7 +164,7 @@ func Setup(
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		privKey, err := stackConfig.Repo.InitLibp2pPrivateKey(libp2pPort)
+		privKey, err := config_v2.GetLibp2pPrivKey()
 		if err != nil {
 			return nil, err
 		}
@@ -300,6 +301,11 @@ func createIPFSNode(ctx context.Context,
 
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	if err != nil {
+		return "", err
+	}
+
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -409,11 +415,13 @@ export BACALHAU_API_PORT_%d=%d`,
 	// Just convenience below - print out the last of the nodes information as the global variable
 	summaryShellVariablesString := summaryBuilder.String()
 
-	err := config.WriteRunInfoFile(ctx, summaryShellVariablesString)
+	ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
 	if err != nil {
 		return "", err
 	}
-	cm.RegisterCallback(config.CleanupRunInfoFile)
+	cm.RegisterCallback(func() error {
+		return os.Remove(ripath)
+	})
 
 	if !stack.PublicIPFSMode {
 		summaryBuilder.WriteString(
@@ -442,7 +450,7 @@ The above variables were also written to this file (will be deleted when devstac
 		computeOnlyNodes,
 		hybridNodes,
 		summaryBuilder.String(),
-		config.GetRunInfoFilePath())
+		ripath)
 	return returnString, nil
 }
 

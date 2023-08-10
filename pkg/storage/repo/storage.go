@@ -4,19 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	// git "github.com/gogs/git-module"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/clone"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -40,7 +39,7 @@ func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvide
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-repo")
+	dir, err := os.MkdirTemp(config_v2.GetStoragePath(), "bacalhau-repo")
 	if err != nil {
 		return nil, err
 	}

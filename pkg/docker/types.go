@@ -3,8 +3,6 @@ package docker
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )

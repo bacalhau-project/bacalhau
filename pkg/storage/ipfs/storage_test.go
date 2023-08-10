@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 // how many bytes more does ipfs report the file than the actual content?
@@ -94,7 +95,7 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			ctx = config.SetVolumeSizeRequestTimeout(ctx, testDuration)
+			config_v2.SetVolumeSizeRequestTimeout(testDuration)
 			_, err = storage.GetVolumeSize(ctx, model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           cid,

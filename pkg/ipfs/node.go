@@ -9,14 +9,14 @@ import (
 	"strconv"
 	"sync"
 
-	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/boxo/coreiface"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/rs/zerolog/log"
 

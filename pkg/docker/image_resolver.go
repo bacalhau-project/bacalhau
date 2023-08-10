@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/cache"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/cache"
 )
 
 type ImageResolver struct {

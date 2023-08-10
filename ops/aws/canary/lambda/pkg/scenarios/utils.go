@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
@@ -135,16 +135,9 @@ func compareOutput(output []byte, expectedOutput string) error {
 }
 
 func getClient() *publicapi.RequesterAPIClient {
-	apiHost := config.GetAPIHost()
-	apiPort := config.GetAPIPort()
-	if apiHost == "" {
-		apiHost = system.Envs[system.GetEnvironment()].APIHost
-	}
-	if apiPort == nil {
-		defaultPort := system.Envs[system.GetEnvironment()].APIPort
-		apiPort = &defaultPort
-	}
-	return publicapi.NewRequesterAPIClient(apiHost, *apiPort)
+	apiHost := config_v2.GetAPIHost()
+	apiPort := config_v2.GetAPIPort()
+	return publicapi.NewRequesterAPIClient(apiHost, apiPort)
 }
 
 func getNodeSelectors() ([]model.LabelSelectorRequirement, error) {
