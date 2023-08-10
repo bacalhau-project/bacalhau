@@ -50,6 +50,11 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 		}
 
 		if field.Type.Kind() == reflect.Struct {
+			// This is the modification where we add an intermediary path
+			// constant before diving deeper into the struct.
+			constantNameForStruct := strings.ReplaceAll(newPrefix, ".", "")
+			fmt.Fprintf(file, "const %s = \"%s\"\n", constantNameForStruct, newPrefix)
+
 			generateConstants(field.Type, newPrefix, file)
 		} else {
 			constantName := strings.ReplaceAll(newPrefix, ".", "")
