@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"golang.org/x/exp/maps"
 )
 
 const newExecutionComment = "Execution created"
@@ -14,6 +15,7 @@ const newExecutionComment = "Execution created"
 type Store struct {
 	executionMap map[string]store.Execution
 	jobMap       map[string][]string
+	liveMap      map[string]struct{}
 	history      map[string][]store.ExecutionHistory
 	mu           sync.RWMutex
 }
@@ -22,6 +24,7 @@ func NewStore() *Store {
 	res := &Store{
 		executionMap: make(map[string]store.Execution),
 		jobMap:       make(map[string][]string),
+		liveMap:      make(map[string]struct{}),
 		history:      make(map[string][]store.ExecutionHistory),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
@@ -50,6 +53,19 @@ func (s *Store) GetExecutions(ctx context.Context, jobID string) ([]store.Execut
 	}
 	executions := make([]store.Execution, len(executionIDs))
 	for i, id := range executionIDs {
+		executions[i] = s.executionMap[id]
+	}
+	return executions, nil
+}
+
+func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.Execution, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	liveIDs := maps.Keys(s.liveMap)
+
+	executions := make([]store.Execution, len(liveIDs))
+	for i, id := range liveIDs {
 		executions[i] = s.executionMap[id]
 	}
 	return executions, nil
@@ -103,6 +119,13 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	execution.UpdateTime = time.Now()
 	s.executionMap[execution.ID] = execution
 	s.appendHistory(execution, previousState, request.Comment)
+
+	if execution.State.IsExecuting() {
+		s.liveMap[execution.ID] = struct{}{}
+	} else {
+		delete(s.liveMap, execution.ID)
+	}
+
 	return nil
 }
 

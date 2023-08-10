@@ -9,6 +9,7 @@ import (
 type CallbackStore struct {
 	GetExecutionFn         func(ctx context.Context, id string) (store.Execution, error)
 	GetExecutionsFn        func(ctx context.Context, id string) ([]store.Execution, error)
+	GetLiveExecutionsFn    func(ctx context.Context) ([]store.Execution, error)
 	GetExecutionHistoryFn  func(ctx context.Context, id string) ([]store.ExecutionHistory, error)
 	CreateExecutionFn      func(ctx context.Context, execution store.Execution) error
 	UpdateExecutionStateFn func(ctx context.Context, request store.UpdateExecutionStateRequest) error
@@ -23,6 +24,10 @@ func (m *CallbackStore) GetExecution(ctx context.Context, id string) (store.Exec
 
 func (m *CallbackStore) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
 	return m.GetExecutionsFn(ctx, jobID)
+}
+
+func (m *CallbackStore) GetLiveExecutions(ctx context.Context) ([]store.Execution, error) {
+	return m.GetLiveExecutionsFn(ctx)
 }
 
 func (m *CallbackStore) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {

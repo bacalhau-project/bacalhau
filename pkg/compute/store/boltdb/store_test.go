@@ -98,6 +98,23 @@ func (s *Suite) TestGetExecutions() {
 	s.Equal(anotherExecution, readExecutions[1])
 }
 
+func (s *Suite) TestGetLiveExecutions() {
+	ctx := context.Background()
+	err := s.executionStore.CreateExecution(ctx, s.execution)
+	s.Require().NoError(err)
+
+	err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		ExecutionID: s.execution.ID,
+		NewState:    store.ExecutionStateRunning,
+	})
+	s.Require().NoError(err)
+
+	execs, err := s.executionStore.GetLiveExecutions(ctx)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(execs))
+	s.Require().Equal(s.execution.ID, execs[0].ID)
+}
+
 func (s *Suite) TestGetExecutions_DoesntExist() {
 	_, err := s.executionStore.GetExecutions(context.Background(), uuid.NewString())
 	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
