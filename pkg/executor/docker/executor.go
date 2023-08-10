@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -27,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -85,25 +84,17 @@ func (e *Executor) ShouldBid(
 func (e *Executor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	usage models.Resources,
+	usage model.ResourceUsageData,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// TODO(forrest): should this just return true always?
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
-}
-
-func DecodeArguments(args *executor.Arguments) (models.JobSpecDocker, error) {
-	out := models.JobSpecDocker{}
-	if err := json.Unmarshal(args.Params, &out); err != nil {
-		return models.JobSpecDocker{}, err
-	}
-	return out, nil
 }
 
 //nolint:funlen,gocyclo // will clean up
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
-) (*models.RunCommandResult, error) {
+) (*model.RunCommandResult, error) {
 
 	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
 	ctx, cancel := context.WithCancel(ctx)
@@ -120,7 +111,11 @@ func (e *Executor) Run(
 	defer span.End()
 	defer e.cleanupExecution(ctx, request.ExecutionID)
 
-	dockerArgs, err := DecodeArguments(request.EngineParams)
+	engineSpec, err := model.DeserializeEngineSpec(request.EngineParams.Params)
+	if err != nil {
+		return nil, err
+	}
+	dockerArgs, err := model.DecodeEngineSpec[model.DockerEngineSpec](engineSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +127,7 @@ func (e *Executor) Run(
 	var mounts []mount.Mount
 	for _, input := range request.Inputs {
 		if input.Volume.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Artifact, input.Volume)
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Spec, input.Volume)
 
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,

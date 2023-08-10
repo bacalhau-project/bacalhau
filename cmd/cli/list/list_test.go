@@ -16,6 +16,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -52,7 +53,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			ctx := context.Background()
 
 			for i := 0; i < tc.numberOfJobs; i++ {
-				j := testutils.MakeNoopJob()
+				j := testutils.MakeNoopJob(suite.T())
 				_, err := suite.Client.Submit(ctx, j)
 				require.NoError(suite.T(), err)
 			}
@@ -79,7 +80,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	var jobLongIds []string
 	for i := 0; i < 10; i++ {
 		var err error
-		j := testutils.MakeNoopJob()
+		j := testutils.MakeNoopJob(suite.T())
 		j, err = suite.Client.Submit(ctx, j)
 		jobIds = append(jobIds, system.GetShortID(j.Metadata.ID))
 		jobLongIds = append(jobIds, j.Metadata.ID)
@@ -170,9 +171,10 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 			suite.TearDownTest()
 			suite.SetupTest()
 
-			j := testutils.MakeNoopJob()
-			j.Spec.Annotations = tc.JobLabels
-			j, err := suite.Client.Submit(ctx, j)
+			testJob := testutils.MakeJobWithOpts(suite.T(),
+				jobutils.WithAnnotations(tc.JobLabels...),
+			)
+			j, err := suite.Client.Submit(ctx, &testJob)
 			require.NoError(suite.T(), err)
 
 			checkList := func(shouldAppear bool, flags ...string) {
@@ -263,7 +265,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				var jobIDs []string
 				for i := 0; i < tc.numberOfJobs; i++ {
 					var err error
-					j := testutils.MakeNoopJob()
+					j := testutils.MakeNoopJob(suite.T())
 					j, err = suite.Client.Submit(ctx, j)
 					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, system.GetShortID(j.Metadata.ID))

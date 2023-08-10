@@ -8,11 +8,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/suite"
 )
 
 type DevstackJobSelectionSuite struct {
@@ -48,9 +49,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 					JobSelectionPolicy: testCase.policy,
 				}),
 			},
-			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
-			Outputs: scenario.WasmCsvTransform.Outputs,
-			Spec:    scenario.WasmCsvTransform.Spec,
+			Inputs:  scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform(suite.T()).Inputs),
+			Outputs: scenario.WasmCsvTransform(suite.T()).Outputs,
+			Spec:    scenario.WasmCsvTransform(suite.T()).Spec,
 			Deal:    model.Deal{Concurrency: testCase.nodeCount},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitDontExceedCount(testCase.expectedAccepts),

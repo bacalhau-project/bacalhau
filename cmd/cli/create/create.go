@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
@@ -210,11 +209,7 @@ func create(cmd *cobra.Command, cmdArgs []string, OC *CreateOptions) error { //n
 
 	err = jobutils.VerifyJob(ctx, j)
 	if err != nil {
-		if _, ok := err.(*bacerrors.ImageNotFound); ok {
-			return fmt.Errorf("docker image '%s' not found in the registry, or needs authorization", j.Spec.Docker.Image)
-		} else {
-			return fmt.Errorf("error verifying job: %w", err)
-		}
+		return fmt.Errorf("error verifying job: %w", err)
 	}
 	if OC.RunTimeSettings.DryRun {
 		// Converting job to yaml

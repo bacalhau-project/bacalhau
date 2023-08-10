@@ -3,24 +3,32 @@ package scenario
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/suite"
+
+	jobutils "github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
-var basicScenario Scenario = Scenario{
-	Inputs: ManyStores(
-		StoredText("hello, world!", "/inputs"),
-		StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
-	),
-	Outputs: []model.StorageSpec{},
-	Spec: model.Spec{
-		Engine: model.EngineWasm,
-		Wasm: model.JobSpecWasm{
-			EntryPoint: "_start",
-		},
-	},
-	ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
-	JobCheckers:    WaitUntilSuccessful(1),
+func basicScenario(t testing.TB) Scenario {
+	return Scenario{
+		Inputs: ManyStores(
+			StoredText("hello, world!", "/inputs"),
+			StoredFile("../../../testdata/wasm/cat/main.wasm", "/job"),
+		),
+		Outputs:        []model.StorageSpec{},
+		ResultsChecker: FileEquals(model.DownloadFilenameStdout, "hello, world!\n"),
+		JobCheckers:    WaitUntilSuccessful(1),
+		Spec: testutils.MakeSpecWithOpts(t,
+			jobutils.WithEngineSpec(
+				// TODO(forrest): [correctness] this isn't a valid wasm engine spec - it needs an entry module
+				// but leaving as is to preserve whatever behaviour this test is after.
+				model.NewWasmEngineBuilder(model.StorageSpec{}).
+					WithEntrypoint("_start").
+					Build(),
+			),
+		),
+	}
 }
 
 type ExampleTest struct {
@@ -33,5 +41,5 @@ func Example_basic() {
 }
 
 func (suite *ExampleTest) TestRun() {
-	suite.RunScenario(basicScenario)
+	suite.RunScenario(basicScenario(suite.T()))
 }

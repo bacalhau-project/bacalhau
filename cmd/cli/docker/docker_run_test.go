@@ -23,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 
@@ -104,9 +103,12 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			s.Require().Contains(out, randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			s.Require().NoError(marshaller.YAMLUnmarshalWithMax([]byte(out), &j))
+			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
-			s.Require().Equal(j.Spec.Docker.Parameters[0], entrypointCommand, "Dry run job should not have an ID")
+
+			dockerSpec, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
+			s.Require().NoError(err)
+			s.Require().Equal(entrypointCommand, dockerSpec.Parameters[0], "Dry run job should not have an ID")
 		}()
 	}
 }
@@ -600,7 +602,9 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 				j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-				s.Require().Equal(tc.workdir, j.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
+				dockerSpec, err := model.DecodeEngineSpec[model.DockerEngineSpec](j.Spec.EngineSpec)
+				s.Require().NoError(err)
+				s.Require().Equal(tc.workdir, dockerSpec.WorkingDirectory, "Job workdir != test workdir.")
 				s.Require().NoError(err, "Error in running command.")
 			}
 		}()
@@ -841,17 +845,18 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Task().Timeouts.ExecutionTimeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+	s.Require().Equal(node.TestRequesterConfig.DefaultJobExecutionTimeout, j.Spec.GetTimeout(),
+		"Did not fall back to default timeout value")
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
-	var expectedTimeout float64 = 999
+	const expectedTimeout = 999 * time.Second
 
 	ctx := context.Background()
 	_, out, err := cmdtesting.ExecuteTestCobraCommand("docker", "run",
 		"--api-host", s.Host,
 		"--api-port", fmt.Sprint(s.Port),
-		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"ubuntu",
 		"echo", "'hello world'",
 	)
@@ -859,5 +864,5 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Task().Timeouts.ExecutionTimeout, expectedTimeout)
+	s.Require().Equal(expectedTimeout, j.Spec.GetTimeout())
 }

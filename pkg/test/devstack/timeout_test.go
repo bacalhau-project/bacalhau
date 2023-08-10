@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackTimeoutSuite struct {
@@ -78,20 +79,17 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					},
 				},
 			},
-			Spec: model.Spec{
-				Engine: model.EngineNoop,
-				PublisherSpec: model.PublisherSpec{
-					Type: model.PublisherIpfs,
-				},
-				Timeout: testCase.jobTimeout.Seconds(),
-			},
+			Spec: testutils.MakeSpecWithOpts(suite.T(),
+				job.WithPublisher(model.PublisherSpec{Type: model.PublisherIpfs}),
+				job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
+			),
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
 			},
 			JobCheckers: []job.CheckStatesFunction{
 				job.WaitForExecutionStates(map[model.ExecutionStateType]int{
 					model.ExecutionStateCompleted:         testCase.completedCount,
-					model.ExecutionStateFailed:            testCase.errorCount,
+					model.ExecutionStateCancelled:         testCase.errorCount,
 					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
@@ -148,7 +146,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			nodeCount:                           1,
 			concurrency:                         1,
 			sleepTime:                           20 * time.Second,
-			jobTimeout:                          1 * time.Millisecond,
+			jobTimeout:                          1 * time.Second,
 			errorCount:                          1,
 		},
 		{

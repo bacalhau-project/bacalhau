@@ -826,6 +826,18 @@ const docTemplate = `{
                 "engineDone"
             ]
         },
+        "model.EngineSpec": {
+            "type": "object",
+            "properties": {
+                "params": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ExecutionDesiredState": {
             "type": "integer",
             "enum": [
@@ -1529,7 +1541,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "Docker": {
-                    "description": "executor specific data",
+                    "description": "Deprecated: use EngineSpec.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.JobSpecDocker"
@@ -1537,12 +1549,15 @@ const docTemplate = `{
                     ]
                 },
                 "Engine": {
-                    "description": "e.g. docker or language",
+                    "description": "Deprecated: use EngineSpec.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Engine"
                         }
                     ]
+                },
+                "EngineSpec": {
+                    "$ref": "#/definitions/model.EngineSpec"
                 },
                 "Inputs": {
                     "description": "the data volumes we will read in the job\nfor example \"read this ipfs cid\"",
@@ -1574,7 +1589,7 @@ const docTemplate = `{
                     }
                 },
                 "Publisher": {
-                    "description": "there can be multiple publishers for the job\ndeprecated: use PublisherSpec instead",
+                    "description": "Deprecated: use PublisherSpec instead",
                     "allOf": [
                         {
                             "$ref": "#/definitions/model.Publisher"
@@ -1594,10 +1609,15 @@ const docTemplate = `{
                 },
                 "Timeout": {
                     "description": "How long a job can run in seconds before it is killed.\nThis includes the time required to run, verify and publish results",
-                    "type": "number"
+                    "type": "integer"
                 },
                 "Wasm": {
-                    "$ref": "#/definitions/model.JobSpecWasm"
+                    "description": "Deprecated: use EngineSpec.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.JobSpecWasm"
+                        }
+                    ]
                 }
             }
         },

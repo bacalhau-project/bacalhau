@@ -43,6 +43,8 @@ cryptography = ">=39.0.1,<42.0.0"
 six = "^1.16.0"
 types-six = "^1.16.21.4"
 bacalhau-apiclient = "1.0.0"
+pygments = "2.15.0"
+certifi = "2023.07.22"
 
 [tool.poetry.extras]
 

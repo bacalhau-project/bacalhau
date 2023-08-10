@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 )
 
 type bufferTask struct {
@@ -141,13 +142,13 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 	select {
 	case <-ctx.Done():
-		s.callback.OnComputeFailure(ctx, ComputeError{
+		log.Ctx(ctx).Info().Str("ID", task.execution.ID).Dur("Timeout", timeout).Msg("Execution timed out")
+		s.callback.OnCancelComplete(ctx, CancelResult{
 			ExecutionMetadata: NewExecutionMetadata(task.execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: s.ID,
 				TargetPeerID: task.execution.RequesterNodeID,
 			},
-			Err: fmt.Sprintf("execution timed out after %s", timeout),
 		})
 	case <-ch:
 		// no need to check for run errors as they are already handled by the delegate backend.Executor and

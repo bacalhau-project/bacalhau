@@ -88,7 +88,7 @@ func TestJobSelectionHttp(t *testing.T) {
 
 			params := semantic.ExternalHTTPStrategyParams{URL: svr.URL}
 			strategy := semantic.NewExternalHTTPStrategy(params)
-			request := getBidStrategyRequest()
+			request := getBidStrategyRequest(t)
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)
 			require.Equal(t, test.expectBid, result.ShouldBid)

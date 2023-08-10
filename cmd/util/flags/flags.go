@@ -219,10 +219,14 @@ func NewURLStorageSpecArrayFlag(value *[]model.StorageSpec) *ArrayValueFlag[mode
 	}
 }
 
+func engineParser(str string) (model.Engine, error) {
+	return model.ParseEngine(str), nil
+}
+
 func EngineFlag(value *model.Engine) *ValueFlag[model.Engine] {
 	return &ValueFlag[model.Engine]{
 		value:    value,
-		parser:   model.ParseEngine,
+		parser:   engineParser,
 		stringer: func(e *model.Engine) string { return e.String() },
 		typeStr:  "engine",
 	}

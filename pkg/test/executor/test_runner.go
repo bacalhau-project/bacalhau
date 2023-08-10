@@ -27,7 +27,7 @@ func RunTestCase(
 	spec := testCase.Spec
 
 	stack := testutils.Setup(ctx, t, devstack.WithNumberOfHybridNodes(testNodeCount))
-	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.Engine)
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine())
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)

@@ -3,24 +3,35 @@
 package semantic_test
 
 import (
+	"testing"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-func getBidStrategyRequest() bidstrategy.BidStrategyRequest {
+func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
+	spec, err := job.MakeSpec()
+	if err != nil {
+		t.Fatalf("failed to make spec: %s", err)
+	}
 	return bidstrategy.BidStrategyRequest{
 		NodeID: "node-id",
-		Job:    *mock.Job(),
+		Job: model.Job{
+			Metadata: model.Metadata{
+				ID: "job-id",
+			},
+			Spec: spec,
+		},
 	}
 }
 
-func getBidStrategyRequestWithInput() bidstrategy.BidStrategyRequest {
-	request := getBidStrategyRequest()
-	request.Job.Task().Artifacts = []*models.Artifact{
+func getBidStrategyRequestWithInput(t testing.TB) bidstrategy.BidStrategyRequest {
+	request := getBidStrategyRequest(t)
+	request.Job.Spec.Inputs = []model.StorageSpec{
 		{
-			Source: models.NewSpecConfig(models.StorageSourceIPFS).WithParam("CID", "volume-id"),
-			Target: "target",
+			StorageSource: model.StorageSourceIPFS,
+			CID:           "volume-id",
 		},
 	}
 	return request

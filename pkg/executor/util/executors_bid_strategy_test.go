@@ -11,6 +11,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type mockBidStrategy func(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error)
@@ -21,7 +23,7 @@ func (m *mockBidStrategy) ShouldBid(ctx context.Context, request bidstrategy.Bid
 }
 
 // ShouldBidBasedOnUsage implements bidstrategy.BidStrategy
-func (m *mockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, resourceUsage models.Resources) (bidstrategy.BidStrategyResponse, error) {
+func (m *mockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, resourceUsage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
 	return (*m)(ctx, request)
 }
 
@@ -62,10 +64,9 @@ func TestExecutorsBidStrategy(t *testing.T) {
 				},
 			})
 			strategy := NewExecutorSpecificBidStrategy(noop_provider)
+			job := testutils.MakeNoopJob(t)
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: models.Job{
-					Spec: models.Spec{Engine: models.EngineNoop},
-				},
+				Job: *job,
 			})
 			require.NoError(t, err)
 			testCase.check(t, result.ShouldBid, fmt.Sprintf("Reason: %q", result.Reason))

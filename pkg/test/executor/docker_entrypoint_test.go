@@ -13,16 +13,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 )
 
 //When the entrypoint flag is used on the CLI, eg "docker run --entrypoint /bin/echo image hello world" docker will ignore the CMD
@@ -164,20 +167,20 @@ type tests []struct {
 	expectError    bool
 }
 
-func createTestScenario(expectedStderr, expectedStdout, image string, entrypoint, parameters []string, expectError bool) scenario.Scenario {
+func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image string, entrypoint, parameters []string, expectError bool) scenario.Scenario {
 	testScenario := scenario.Scenario{
 		ResultsChecker: scenario.ManyChecks(
 			scenario.FileEquals(model.DownloadFilenameStderr, expectedStderr),
 			scenario.FileEquals(model.DownloadFilenameStdout, expectedStdout),
 		),
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: model.JobSpecDocker{
-				Image:      image,
-				Entrypoint: entrypoint,
-				Parameters: parameters,
-			},
-		},
+		Spec: testutils.MakeSpecWithOpts(t,
+			job.WithEngineSpec(
+				model.NewDockerEngineBuilder(image).
+					WithEntrypoint(entrypoint...).
+					WithParameters(parameters...).
+					Build(),
+			),
+		),
 		SubmitChecker: scenario.SubmitJobSuccess(),
 	}
 	if expectError == true {
@@ -201,7 +204,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueTrue() {
 		{stderr, "echo This is from CMD\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
+		testScenario := createTestScenario(suite.T(), test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 
@@ -221,7 +224,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageTrueFalse() {
 		{stderr, "\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
+		testScenario := createTestScenario(suite.T(), test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 }
@@ -240,7 +243,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseTrue() {
 		{stderr, "This is from CMD\n", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
+		testScenario := createTestScenario(suite.T(), test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 
@@ -259,7 +262,7 @@ func (suite *DockerEntrypointTestSuite) TestCaseImageFalseFalse() {
 		{stderr, "", image, nil, nil, false},
 	}
 	for _, test := range newTests {
-		testScenario := createTestScenario(test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
+		testScenario := createTestScenario(suite.T(), test.expectedStderr, test.expectedStdout, test.image, test.entrypoint, test.parameters, test.expectError)
 		RunTestCase(suite.T(), testScenario)
 	}
 }

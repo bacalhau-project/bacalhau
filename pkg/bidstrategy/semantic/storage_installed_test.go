@@ -7,30 +7,49 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 var (
-	OneStorageSpec []string = []string{models.StorageSourceIPFS}
+	OneStorageSpec []model.StorageSpec = []model.StorageSpec{
+		{StorageSource: model.StorageSourceIPFS},
+	}
 )
 
 var (
-	EmptySpec      = models.Task{}
-	SpecWithInputs = models.Task{Artifacts: OneStorageSpec}
-	SpecWithWasm   = models.Spec{Wasm: models.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	EmptySpec       model.Spec
+	SpecWithInputs  model.Spec
+	SpecWithOutputs model.Spec
+	SpecWithWasm    model.Spec
 )
+
+func init() {
+	EmptySpec = model.Spec{}
+	SpecWithInputs = model.Spec{Inputs: OneStorageSpec}
+	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
+
+	var err error
+	SpecWithWasm, err = job.MakeSpec(
+		job.WithEngineSpec(
+			model.NewWasmEngineBuilder(OneStorageSpec[0]).Build(),
+		),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to make spec for testing: %s", err))
+	}
+}
 
 func TestStorageBidStrategy(t *testing.T) {
 	testCases := []struct {
 		name      string
-		spec      models.Spec
+		spec      model.Spec
 		installed bool
 		check     func(require.TestingT, bool, ...any)
 	}{
@@ -53,11 +72,11 @@ func TestStorageBidStrategy(t *testing.T) {
 					},
 				},
 			})
-			provider := provider.NewSingletonProvider[models.StorageSourceType, storage.Storage](noop_storage)
+			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop_storage)
 			strategy := semantic.NewStorageInstalledBidStrategy(provider)
 
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: models.Job{
+				Job: model.Job{
 					Spec: testCase.spec,
 				},
 			})

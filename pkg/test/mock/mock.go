@@ -3,17 +3,19 @@ package mock
 import (
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/google/uuid"
+
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func Eval() *models.Evaluation {
 	now := time.Now().UTC().UnixNano()
 	eval := &models.Evaluation{
 		ID:         uuid.NewString(),
-		Namespace:  models.DefaultNamespace,
+		Namespace:  model.DefaultNamespace,
 		Priority:   50,
-		Type:       models.JobTypeBatch,
+		Type:       model.JobTypeBatch,
 		JobID:      uuid.NewString(),
 		Status:     models.EvalStatusPending,
 		CreateTime: now,
@@ -22,65 +24,61 @@ func Eval() *models.Evaluation {
 	return eval
 }
 
-func Job() *models.Job {
-	return &models.Job{
-		ID:        uuid.NewString(),
-		Name:      "test-job",
-		Type:      models.JobTypeBatch,
-		Namespace: models.DefaultNamespace,
-		Count:     1,
-		State: models.State[models.JobStateType]{
-			StateType: models.JobStateTypeRunning,
+func Job() *model.Job {
+	engineSpec := model.NewEngineBuilder().
+		WithType(model.EngineDocker.String()).
+		Build()
+	return &model.Job{
+		APIVersion: model.APIVersionLatest().String(),
+		Metadata: model.Metadata{
+			ID:        uuid.NewString(),
+			CreatedAt: time.Now().UTC(),
 		},
-		Version:    1,
-		Revision:   2,
-		CreateTime: time.Now().UTC().UnixNano(),
-		ModifyTime: time.Now().UTC().UnixNano(),
-		Tasks: []*models.Task{
-			{
-				Name: "task1",
-				Engine: &models.SpecConfig{
-					Type: "noop",
-				},
-				Publisher: &models.SpecConfig{
-					Type: "noop",
-				},
+		Spec: model.Spec{
+			EngineSpec: engineSpec,
+			PublisherSpec: model.PublisherSpec{
+				Type: model.PublisherNoop,
+			},
+			Deal: model.Deal{
+				Concurrency: 1,
 			},
 		},
 	}
 }
 
-func Execution(job *models.Job) *models.Execution {
+func JobState(jobID string, executionCount int) *model.JobState {
 	now := time.Now().UTC()
-	return &models.Execution{
-		JobID:  job.ID,
-		Job:    job,
-		NodeID: uuid.NewString(),
-		ID:     uuid.NewString(),
-		ComputeState: models.State[models.ExecutionStateType]{
-			StateType: models.ExecutionStateBidAccepted,
-		},
-		DesiredState: models.State[models.ExecutionDesiredStateType]{
-			StateType: models.ExecutionDesiredStateRunning,
-		},
-		Revision:   4,
-		CreateTime: now.UnixNano(),
-		ModifyTime: now.UnixNano(),
+	executions := make([]model.ExecutionState, executionCount)
+	for i := 0; i < executionCount; i++ {
+		executions[i] = *ExecutionState(jobID)
+	}
+	return &model.JobState{
+		JobID:      jobID,
+		Executions: executions,
+		State:      model.JobStateInProgress,
+		CreateTime: now,
+		UpdateTime: now,
 	}
 }
 
-func Executions(job *models.Job, executionCount int) []*models.Execution {
-	executions := make([]*models.Execution, executionCount)
-	for i := 0; i < executionCount; i++ {
-		executions[i] = Execution(job)
+func ExecutionState(jobID string) *model.ExecutionState {
+	now := time.Now().UTC()
+	return &model.ExecutionState{
+		JobID:            jobID,
+		NodeID:           uuid.NewString(),
+		ComputeReference: uuid.NewString(),
+		State:            model.ExecutionStateBidAccepted,
+		DesiredState:     model.ExecutionDesiredStateRunning,
+		Version:          4,
+		CreateTime:       now,
+		UpdateTime:       now,
 	}
-	return executions
 }
 
 func Plan() *models.Plan {
 	job := Job()
 	eval := Eval()
-	eval.JobID = job.ID
+	eval.JobID = job.ID()
 
 	return &models.Plan{
 		EvalID:            eval.ID,
@@ -88,8 +86,8 @@ func Plan() *models.Plan {
 		Eval:              eval,
 		Priority:          50,
 		Job:               job,
-		JobStateRevision:  1,
-		NewExecutions:     []*models.Execution{},
-		UpdatedExecutions: make(map[string]*models.PlanExecutionDesiredUpdate),
+		JobStateVersion:   1,
+		NewExecutions:     []*model.ExecutionState{},
+		UpdatedExecutions: make(map[model.ExecutionID]*models.PlanExecutionDesiredUpdate),
 	}
 }

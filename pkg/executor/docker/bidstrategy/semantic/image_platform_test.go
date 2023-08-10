@@ -13,17 +13,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache/fake"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
-func jobForDockerImage(imageID string) models.Job {
-	return models.Job{
-		Spec: models.Spec{
-			Engine: models.EngineDocker,
-			Docker: models.JobSpecDocker{
-				Image: imageID,
-			},
-		},
-	}
+func jobForDockerImage(t testing.TB, imageID string) model.Job {
+	return testutils.MakeJobWithOpts(t,
+		job.WithEngineSpec(
+			model.NewDockerEngineBuilder(imageID).Build(),
+		),
+	)
 }
 
 func TestBidsBasedOnImagePlatform(t *testing.T) {
@@ -36,7 +36,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 	t.Run("positive response for supported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage("ubuntu"),
+			Job: jobForDockerImage(t, "ubuntu"),
 		})
 
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 	t.Run("negative response for unsupported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage("mcr.microsoft.com/windows:ltsc2019"),
+			Job: jobForDockerImage(t, "mcr.microsoft.com/windows:ltsc2019"),
 		})
 
 		require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 		semantic.ManifestCache = &cc
 
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage("ubuntu:latest"),
+			Job: jobForDockerImage(t, "ubuntu:latest"),
 		})
 
 		require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 		// Second time we expect should be cached
 		response, err = strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage("ubuntu:latest"),
+			Job: jobForDockerImage(t, "ubuntu:latest"),
 		})
 
 		require.NoError(t, err)

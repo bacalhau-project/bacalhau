@@ -6,10 +6,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
@@ -23,7 +24,7 @@ func TestGet(t *testing.T) {
 	var err error
 	var j *model.Job
 	for i := 0; i < 5; i++ {
-		genericJob := testutils.MakeGenericJob()
+		genericJob := testutils.MakeNoopJob(t)
 		j, err = c.Submit(ctx, genericJob)
 		require.NoError(t, err)
 	}

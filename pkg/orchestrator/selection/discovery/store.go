@@ -3,7 +3,7 @@ package discovery
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
@@ -23,13 +23,13 @@ func NewStoreNodeDiscoverer(params StoreNodeDiscovererParams) *StoreNodeDiscover
 }
 
 // FindNodes returns the nodes that support the job's execution engine, and have enough TOTAL capacity to run the job.
-func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
+func (d *StoreNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
 	// filter nodes that support the job's engine
-	return d.store.ListForEngine(ctx, job.Task().Engine.Type)
+	return d.store.ListForEngine(ctx, job.Spec.EngineSpec.Engine())
 }
 
 // ListNodes implements orchestrator.NodeDiscoverer
-func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
+func (d *StoreNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
 	return d.store.List(ctx)
 }
 
