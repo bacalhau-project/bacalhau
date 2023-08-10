@@ -6,16 +6,16 @@ import (
 )
 
 type StateCounter struct {
-	data map[store.ExecutionState]*atomic.Uint64
+	data map[store.LocalStateType]*atomic.Uint64
 }
 
 func NewStateCounter() *StateCounter {
 	return &StateCounter{
-		data: make(map[store.ExecutionState]*atomic.Uint64),
+		data: make(map[store.LocalStateType]*atomic.Uint64),
 	}
 }
 
-func (s *StateCounter) IncrementState(key store.ExecutionState, amount uint64) {
+func (s *StateCounter) IncrementState(key store.LocalStateType, amount uint64) {
 	counter, ok := s.data[key]
 	if !ok {
 		s.data[key] = atomic.NewUint64(amount)
@@ -24,7 +24,7 @@ func (s *StateCounter) IncrementState(key store.ExecutionState, amount uint64) {
 	}
 }
 
-func (s *StateCounter) DecrementState(key store.ExecutionState, amount uint64) {
+func (s *StateCounter) DecrementState(key store.LocalStateType, amount uint64) {
 	counter, ok := s.data[key]
 	if !ok {
 		// We shouldn't get to the point where we have a missing state that
@@ -41,7 +41,7 @@ func (s *StateCounter) Include(other *StateCounter) {
 	}
 }
 
-func (s *StateCounter) Get(key store.ExecutionState) uint64 {
+func (s *StateCounter) Get(key store.LocalStateType) uint64 {
 	v, ok := s.data[key]
 	if !ok {
 		return 0

@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type BidderSuite struct {
@@ -58,7 +57,7 @@ func (s *BidderSuite) SetupTest() {
 
 func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 	ctx := context.Background()
-	job, err := model.NewJobWithSaneProductionDefaults()
+	job, err := models.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
 	askForBidRequest := compute.AskForBidRequest{
 		ExecutionMetadata: compute.ExecutionMetadata{
@@ -69,11 +68,11 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		WaitForApproval: true,
 	}
 
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: model.ResourceUsageData{}})
+	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.ExecutionState
+		expectedExecutionState store.LocalStateType
 		mockExpectations       func()
 	}{
 		{
@@ -163,7 +162,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 	ctx := context.Background()
-	job, err := model.NewJobWithSaneProductionDefaults()
+	job, err := models.NewJobWithSaneProductionDefaults()
 	s.Require().NoError(err)
 	askForBidRequest := compute.AskForBidRequest{
 		ExecutionMetadata: compute.ExecutionMetadata{
@@ -174,11 +173,11 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 		WaitForApproval: false,
 	}
 
-	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: model.ResourceUsageData{}})
+	usageCalculator := capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}})
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.ExecutionState
+		expectedExecutionState store.LocalStateType
 		mockExpectations       func()
 	}{
 		{

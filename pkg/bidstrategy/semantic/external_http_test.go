@@ -95,7 +95,7 @@ func TestJobSelectionHttp(t *testing.T) {
 			require.Equal(t, test.expectWait, result.ShouldWait)
 
 			// this makes sure that the http payload was given to the http endpoint
-			require.Equal(t, request.Job.Metadata.ID, requestPayload.JobID)
+			require.Equal(t, request.Job.ID, requestPayload.Job.ID)
 		})
 	}
 }

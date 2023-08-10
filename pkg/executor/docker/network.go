@@ -15,7 +15,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 const (
@@ -65,18 +64,18 @@ func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
 	job string,
 	executionID string,
-	network model.NetworkConfig,
+	network models.NetworkConfig,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
 	containerConfig.NetworkDisabled = network.Disabled()
 	switch network.Type {
-	case model.NetworkNone:
+	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
-	case model.NetworkFull:
+	case models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
-	case model.NetworkHTTP:
+	case models.NetworkHTTP:
 		var internalNetwork *types.NetworkResource
 		var proxyAddr *net.TCPAddr
 		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, network)
@@ -99,7 +98,7 @@ func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	job string,
 	executionID string,
-	network model.NetworkConfig,
+	network models.NetworkConfig,
 ) (*types.NetworkResource, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
 	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
@@ -129,7 +128,7 @@ func (e *Executor) createHTTPGateway(
 	if len(network.DomainSet()) == 0 {
 		return nil,
 			nil,
-			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", model.NetworkHTTP)
+			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", models.NetworkHTTP)
 	}
 
 	// Create the gateway container initially attached to the *host* network

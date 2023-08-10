@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,7 +20,7 @@ type Suite struct {
 	ctx            context.Context
 	dbFile         string
 	executionStore store.ExecutionStore
-	execution      store.Execution
+	execution      store.LocalState
 }
 
 func (s *Suite) SetupTest() {
@@ -75,16 +74,16 @@ func (s *Suite) TestGetActiveExecution_DoestExist() {
 	s.ErrorAs(err, &store.ErrExecutionsNotFoundForJob{})
 }
 
-func newExecution() store.Execution {
-	return *store.NewExecution(
+func newExecution() store.LocalState {
+	return *store.NewLocalState(
 		uuid.NewString(),
-		model.Job{
-			Metadata: model.Metadata{
+		models.Job{
+			Metadata: models.Metadata{
 				ID: uuid.NewString(),
 			},
 		},
 		"nodeID-1",
-		model.ResourceUsageData{
+		models.Resources{
 			CPU:    1,
 			Memory: 2,
 		})

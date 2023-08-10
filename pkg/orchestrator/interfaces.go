@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -91,30 +90,30 @@ type Planner interface {
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
 type NodeDiscoverer interface {
-	ListNodes(ctx context.Context) ([]model.NodeInfo, error)
-	FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error)
+	ListNodes(ctx context.Context) ([]models.NodeInfo, error)
+	FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error)
 }
 
 // NodeRanker ranks nodes based on their suitability to execute a job.
 type NodeRanker interface {
-	RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]NodeRank, error)
+	RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]NodeRank, error)
 }
 
 // NodeSelector chooses appropriate nodes for to execute a job.
 type NodeSelector interface {
 	// SelectNodes returns the nodes that should be used to execute the passed job.
-	SelectNodes(context.Context, *model.Job) ([]model.NodeInfo, error)
+	SelectNodes(context.Context, *models.Job) ([]models.NodeInfo, error)
 	// SelectNodesForRetry returns the nodes that should be used to retry the
 	// passed failed executions in the context of the passed job. If no nodes
 	// are returned, the executions do not need to be retried just yet.
-	SelectNodesForRetry(context.Context, *model.Job, *model.JobState) ([]model.NodeInfo, error)
+	SelectNodesForRetry(context.Context, *models.Job, *models.JobState) ([]models.NodeInfo, error)
 	// SelectBids returns the pending bids on the passed job that should be
 	// accepted or rejected.
-	SelectBids(context.Context, *model.Job, *model.JobState) (accept, reject []model.ExecutionState)
+	SelectBids(context.Context, *models.Job, *models.JobState) (accept, reject []models.Execution)
 	// CanCompleteJob returns whether the passed job is ready to be declared
 	// complete. The returned job state should be used to update the state of
-	// the job, and may be JobStateCompleted or JobStateCompletedPartially.
-	CanCompleteJob(context.Context, *model.Job, *model.JobState) (bool, model.JobStateType)
+	// the job, and may be JobStateTypeCompleted or JobStateTypeCompletedPartially.
+	CanCompleteJob(context.Context, *models.Job, *models.JobState) (bool, models.JobStateType)
 }
 
 type RetryStrategy interface {

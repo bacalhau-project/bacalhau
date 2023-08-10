@@ -56,8 +56,8 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	go s.bidder.RunBidding(ctx, request, s.usageCalculator) // TODO: context shareable?
 
 	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
-		ExecutionID: request.ExecutionID,
-		JobID:       request.JobID,
+		ExecutionID: request.Execution.ID,
+		JobID:       request.Execution.JobID,
 	}}, nil
 }
 

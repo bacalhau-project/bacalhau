@@ -11,7 +11,6 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
@@ -72,14 +71,14 @@ func NewStandardStorageProvider(
 
 	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
-	return model.NewMappedProvider(map[model.StorageSourceType]storage.Storage{
-		model.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
-		model.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
-		model.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		model.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
-		model.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
-		model.StorageSourceS3:             tracing.Wrap(s3Storage),
-		model.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
+	return provider.NewMappedProvider(map[models.StorageSourceType]storage.Storage{
+		models.StorageSourceIPFS:           tracing.Wrap(useIPFSDriver),
+		models.StorageSourceURLDownload:    tracing.Wrap(urlDownloadStorage),
+		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
+		models.StorageSourceRepoClone:      tracing.Wrap(repoCloneStorage),
+		models.StorageSourceRepoCloneLFS:   tracing.Wrap(repoCloneStorage),
+		models.StorageSourceS3:             tracing.Wrap(s3Storage),
+		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
 	}), nil
 }
 
@@ -116,7 +115,7 @@ func NewNoopStorageProvider(
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
 	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
-	return model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage), nil
+	return provider.NewSingletonProvider[models.StorageSourceType, storage.Storage](noopStorage), nil
 }
 
 func NewStandardExecutorProvider(
@@ -134,16 +133,16 @@ func NewStandardExecutorProvider(
 		return nil, err
 	}
 
-	return model.NewMappedProvider(map[model.Engine]executor.Executor{
-		model.EngineDocker: dockerExecutor,
-		model.EngineWasm:   wasmExecutor,
+	return provider.NewMappedProvider(map[models.Engine]executor.Executor{
+		models.EngineDocker: dockerExecutor,
+		models.EngineWasm:   wasmExecutor,
 	}), nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
-	return model.NewNoopProvider[model.Engine, executor.Executor](noopExecutor)
+	return provider.NewSingletonProvider[models.Engine, executor.Executor](noopExecutor)
 }
 
 type PluginExecutorOptions struct {

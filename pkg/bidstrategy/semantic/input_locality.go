@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type InputLocalityStrategyParams struct {
-	Locality model.JobSelectionDataLocality
+	Locality JobSelectionDataLocality
 	Storages storage.StorageProvider
 }
 
 type InputLocalityStrategy struct {
-	locality model.JobSelectionDataLocality
+	locality JobSelectionDataLocality
 	storages storage.StorageProvider
 }
 
@@ -34,18 +33,18 @@ func (s *InputLocalityStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// if we have an "anywhere" policy for the data then we accept the job
-	if s.locality == model.Anywhere {
+	if s.locality == Anywhere {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 
 	foundInputs := 0
-	for _, input := range request.Job.Spec.Inputs {
+	for _, input := range request.Job.Task().Artifacts {
 		// see if the storage engine reports that we have the resource locally
-		strg, err := s.storages.Get(ctx, input.StorageSource)
+		strg, err := s.storages.Get(ctx, input.Source.Type)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, err
 		}
-		hasStorage, err := strg.HasStorageLocally(ctx, input)
+		hasStorage, err := strg.HasStorageLocally(ctx, *input)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
 		}
@@ -54,7 +53,7 @@ func (s *InputLocalityStrategy) ShouldBid(
 		}
 	}
 
-	if foundInputs >= len(request.Job.Spec.Inputs) {
+	if foundInputs >= len(request.Job.Task().Artifacts) {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 	return bidstrategy.BidStrategyResponse{ShouldBid: false, Reason: "not all inputs are local"}, nil

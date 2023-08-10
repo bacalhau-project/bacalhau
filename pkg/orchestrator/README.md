@@ -23,8 +23,8 @@ Planner executes the plan suggested by the scheduler. Existing planners include:
 # Execution
 
 Execution represents a mapping of a job to a compute node, where a job can have multiple active executions based on the desired executions count. Each execution is represented by two components:
-- [model.ExecutionStateType](/pkg/model/execution_state.go): Represents the current observed state type of the execution
-- [model.ExecutionDesiredState](/pkg/model/execution_state.go): Represents the desired state of the execution as provided by the scheduler.
+- [models.ExecutionStateType](/pkg/model/execution_state.go): Represents the current observed state type of the execution
+- [models.ExecutionDesiredState](/pkg/model/execution_state.go): Represents the desired state of the execution as provided by the scheduler.
 
 The following sequence diagram shows the flow of an execution from the time it is created until it is completed, along with the different components that can mutate its state:
 ![img.png](../../docs/images/orchestrator-execution-lc.png)

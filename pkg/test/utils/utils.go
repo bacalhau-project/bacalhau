@@ -30,7 +30,7 @@ func FirstFatalError(_ *testing.T, output string) (model.TestFatalErrorHandlerCo
 	linesInOutput := system.SplitLines(output)
 	fakeFatalError := &model.TestFatalErrorHandlerContents{}
 	for _, line := range linesInOutput {
-		err := model.JSONUnmarshalWithMax([]byte(line), fakeFatalError)
+		err := marshaller.JSONUnmarshalWithMax([]byte(line), fakeFatalError)
 		if err != nil {
 			return model.TestFatalErrorHandlerContents{}, err
 		} else {

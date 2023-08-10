@@ -70,7 +70,7 @@ func NewPersistentExecutionStore(params PersistentJobStoreParams) (*PersistentEx
 }
 
 // CreateExecution implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) CreateExecution(ctx context.Context, execution store.Execution) error {
+func (proxy *PersistentExecutionStore) CreateExecution(ctx context.Context, execution store.LocalState) error {
 	return proxy.store.CreateExecution(ctx, execution)
 }
 
@@ -80,24 +80,24 @@ func (proxy *PersistentExecutionStore) DeleteExecution(ctx context.Context, id s
 }
 
 // GetExecution implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecution(ctx context.Context, id string) (store.Execution, error) {
+func (proxy *PersistentExecutionStore) GetExecution(ctx context.Context, id string) (store.LocalState, error) {
 	return proxy.store.GetExecution(ctx, id)
 }
 
 // GetExecutionCount implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context, _ store.ExecutionState) (uint64, error) {
+func (proxy *PersistentExecutionStore) GetExecutionCount(ctx context.Context, _ store.LocalStateType) (uint64, error) {
 	proxy.mu.RLock()
 	defer proxy.mu.RUnlock()
 	return readCounter(proxy.stateFile)
 }
 
 // GetExecutionHistory implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {
+func (proxy *PersistentExecutionStore) GetExecutionHistory(ctx context.Context, id string) ([]store.LocalStateHistory, error) {
 	return proxy.store.GetExecutionHistory(ctx, id)
 }
 
 // GetExecutions implements store.ExecutionStore
-func (proxy *PersistentExecutionStore) GetExecutions(ctx context.Context, sharedID string) ([]store.Execution, error) {
+func (proxy *PersistentExecutionStore) GetExecutions(ctx context.Context, sharedID string) ([]store.LocalState, error) {
 	return proxy.store.GetExecutions(ctx, sharedID)
 }
 

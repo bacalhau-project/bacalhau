@@ -124,9 +124,9 @@ func (m *mixedExecutorFactory) Get(
 	}
 
 	return &model.ChainedProvider[model.Engine, executor.Executor]{
-		Providers: []model.Provider[model.Engine, executor.Executor]{
+		Providers: []provider.Provider[model.Engine, executor.Executor]{
 			stdProvider,
-			model.NewMappedProvider(map[model.Engine]executor.Executor{
+			provider.NewMappedProvider(map[model.Engine]executor.Executor{
 				model.EngineNoop: noopExecutor,
 			}),
 		},

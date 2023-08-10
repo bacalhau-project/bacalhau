@@ -35,7 +35,7 @@ func (r *Resources) Validate() error {
 }
 
 // Add returns the sum of the resources
-func (r *Resources) Add(other Resources) *Resources {
+func (r *Resources) Add(other *Resources) *Resources {
 	return &Resources{
 		CPU:    r.CPU + other.CPU,
 		Memory: r.Memory + other.Memory,
@@ -45,7 +45,7 @@ func (r *Resources) Add(other Resources) *Resources {
 }
 
 // Merge merges the resources, preferring the current resources
-func (r *Resources) Merge(other Resources) *Resources {
+func (r *Resources) Merge(other *Resources) *Resources {
 	newR := r.Copy()
 	if newR.CPU <= 0 {
 		newR.CPU = other.CPU
@@ -70,6 +70,10 @@ func (r *Resources) Copy() *Resources {
 	newR := new(Resources)
 	*newR = *r
 	return newR
+}
+
+func (r *Resources) LessThanEq(other Resources) bool {
+	return r.CPU <= other.CPU && r.Memory <= other.Memory && r.Disk <= other.Disk && r.GPU <= other.GPU
 }
 
 func (r *Resources) IsZero() bool {

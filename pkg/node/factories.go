@@ -8,7 +8,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/bacalhau-project/bacalhau/pkg/publisher/util"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -70,7 +69,7 @@ func NewStandardStorageProvidersFactory() StorageProvidersFactory {
 		if err != nil {
 			return nil, err
 		}
-		return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Storages), err
+		return provider.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Storages), err
 	})
 }
 
@@ -87,7 +86,7 @@ func NewStandardExecutorsFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
 		})
 }
 
@@ -120,7 +119,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Engines), err
 		})
 }
 
@@ -138,6 +137,6 @@ func NewStandardPublishersFactory() PublishersFactory {
 			if err != nil {
 				return nil, err
 			}
-			return model.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Publishers), err
+			return provider.NewConfiguredProvider(provider, nodeConfig.DisabledFeatures.Publishers), err
 		})
 }

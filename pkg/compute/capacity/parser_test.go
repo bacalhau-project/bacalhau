@@ -5,23 +5,22 @@ package capacity
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
 func TestResourceUsageConfigParser(t *testing.T) {
 	testCases := []struct {
-		usageConfig  model.ResourceUsageConfig
-		expectedData model.ResourceUsageData
+		usageConfig  models.ResourceUsageConfig
+		expectedData models.Resources
 	}{
 		{
-			model.ResourceUsageConfig{
+			models.ResourceUsageConfig{
 				CPU:    "100m",
 				Memory: "100Mi",
 				Disk:   "",
 				GPU:    "",
 			},
-			model.ResourceUsageData{
+			models.Resources{
 				CPU:    0.1,               // 100m
 				Memory: 100 * 1024 * 1024, // 100Mi
 				Disk:   0,

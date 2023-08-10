@@ -3,7 +3,7 @@ package ranking
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -23,7 +23,7 @@ func (c *Chain) Add(ranker ...orchestrator.NodeRanker) {
 	c.rankers = append(c.rankers, ranker...)
 }
 
-func (c *Chain) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (c *Chain) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	// initialize map of node ranks
 	ranksMap := make(map[peer.ID]*orchestrator.NodeRank, len(nodes))
 	for _, node := range nodes {

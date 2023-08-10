@@ -9,23 +9,22 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
-type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
-type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
+type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume models.StorageSpec) (bool, error)
+type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume models.StorageSpec) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error)
 
 func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
+	return func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
 		return nil, err
 	}
 }
 
 func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, jobID string, resultsDir string) (*model.RunCommandResult, error) {
+	return func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
 		time.Sleep(sleep)
 		return nil, nil
 	}
@@ -88,7 +87,7 @@ func (e *NoopExecutor) ShouldBid(ctx context.Context, request bidstrategy.BidStr
 func (e *NoopExecutor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	usage model.ResourceUsageData,
+	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
 	if e.Config.ExternalHooks.GetBidStrategy != nil {
 		handler := e.Config.ExternalHooks.GetBidStrategy
@@ -105,13 +104,13 @@ func (e *NoopExecutor) ShouldBidBasedOnUsage(
 func (e *NoopExecutor) Run(
 	ctx context.Context,
 	args *executor.RunCommandRequest,
-) (*model.RunCommandResult, error) {
+) (*models.RunCommandResult, error) {
 	e.Jobs = append(e.Jobs, args.JobID)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
 		return handler(ctx, args.JobID, args.ResultsDir)
 	}
-	return &model.RunCommandResult{}, nil
+	return &models.RunCommandResult{}, nil
 }
 
 func (e *NoopExecutor) GetOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool) (io.ReadCloser, error) {

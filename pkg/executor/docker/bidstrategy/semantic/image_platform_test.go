@@ -13,14 +13,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache/fake"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-func jobForDockerImage(imageID string) model.Job {
-	return model.Job{
-		Spec: model.Spec{
-			Engine: model.EngineDocker,
-			Docker: model.JobSpecDocker{
+func jobForDockerImage(imageID string) models.Job {
+	return models.Job{
+		Spec: models.Spec{
+			Engine: models.EngineDocker,
+			Docker: models.JobSpecDocker{
 				Image: imageID,
 			},
 		},

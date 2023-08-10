@@ -54,8 +54,8 @@ func waitForOutputStream(ctx context.Context, executionID string, withHistory bo
 	return nil, fmt.Errorf("failed to get output stream from container")
 }
 
-func newTestExecution(name string, job model.Job) store.Execution {
-	return *store.NewExecution(
+func newTestExecution(name string, job model.Job) store.LocalState {
+	return *store.NewLocalState(
 		uuid.NewString(),
 		job,
 		name,

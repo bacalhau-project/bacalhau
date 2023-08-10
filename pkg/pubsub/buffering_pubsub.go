@@ -9,7 +9,6 @@ import (
 
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -69,7 +68,7 @@ func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
 	defer span.End()
 
-	payload, err := model.JSONMarshalWithMax(message)
+	payload, err := marshaller.JSONMarshalWithMax(message)
 	if err != nil {
 		return err
 	}
@@ -122,7 +121,7 @@ func (p *BufferingPubSub[T]) Handle(ctx context.Context, envelope BufferingEnvel
 		}
 
 		var message T
-		err := model.JSONUnmarshalWithMax(payload, &message)
+		err := marshaller.JSONUnmarshalWithMax(payload, &message)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal message: %w", err)
 		}

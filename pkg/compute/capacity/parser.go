@@ -5,12 +5,11 @@ import (
 	"strings"
 
 	"github.com/BTBurke/k8sresource"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/c2h5oh/datasize"
 )
 
-func ParseResourceUsageConfig(usage model.ResourceUsageConfig) model.ResourceUsageData {
-	return model.ResourceUsageData{
+func ParseResourceUsageConfig(usage models.ResourceUsageConfig) models.Resources {
+	return models.Resources{
 		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertBytesString(usage.Memory),
 		Disk:   ConvertBytesString(usage.Disk),

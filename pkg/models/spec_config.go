@@ -15,6 +15,23 @@ type SpecConfig struct {
 	Params map[string]interface{}
 }
 
+// NewSpecConfig returns a new spec config
+func NewSpecConfig(t string) *SpecConfig {
+	return &SpecConfig{
+		Type:   t,
+		Params: make(map[string]interface{}),
+	}
+}
+
+// WithParam adds a param to the spec config
+func (s *SpecConfig) WithParam(key string, value interface{}) *SpecConfig {
+	if s.Params == nil {
+		s.Params = make(map[string]interface{})
+	}
+	s.Params[key] = value
+	return s
+}
+
 func (s *SpecConfig) Normalize() {
 	if s == nil {
 		return

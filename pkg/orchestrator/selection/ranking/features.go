@@ -4,45 +4,42 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
 )
 
 // featureNodeRanker is a generic ranker that can rank nodes based on what
 // features (engines, publishers, storage sources) are installed.
-type featureNodeRanker[Key model.ProviderKey] struct {
-	getJobRequirement   func(model.Job) []Key
-	getNodeProvidedKeys func(model.ComputeNodeInfo) []Key
+type featureNodeRanker struct {
+	getJobRequirement   func(models.Job) []string
+	getNodeProvidedKeys func(models.ComputeNodeInfo) []string
 }
 
-func NewEnginesNodeRanker() *featureNodeRanker[model.Engine] {
-	return &featureNodeRanker[model.Engine]{
-		getJobRequirement:   func(job model.Job) []model.Engine { return []model.Engine{job.Spec.Engine} },
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Engine { return ni.ExecutionEngines },
+func NewEnginesNodeRanker() *featureNodeRanker {
+	return &featureNodeRanker{
+		getJobRequirement:   func(job models.Job) []string { return []string{job.Task().Engine.Type} },
+		getNodeProvidedKeys: func(ni models.ComputeNodeInfo) []string { return ni.ExecutionEngines },
 	}
 }
 
-func NewPublishersNodeRanker() *featureNodeRanker[model.Publisher] {
-	return &featureNodeRanker[model.Publisher]{
-		getJobRequirement:   func(j model.Job) []model.Publisher { return []model.Publisher{j.Spec.PublisherSpec.Type} },
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.Publisher { return ni.Publishers },
+func NewPublishersNodeRanker() *featureNodeRanker {
+	return &featureNodeRanker{
+		getJobRequirement:   func(j models.Job) []string { return []string{j.Task().Publisher.Type} },
+		getNodeProvidedKeys: func(ni models.ComputeNodeInfo) []string { return ni.Publishers },
 	}
 }
 
-func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
-	return &featureNodeRanker[model.StorageSourceType]{
-		getJobRequirement: func(j model.Job) []model.StorageSourceType {
-			specs := j.Spec.AllStorageSpecs()
-			types := make([]model.StorageSourceType, 0, len(specs))
-			for _, spec := range specs {
-				if spec != nil && model.IsValidStorageSourceType(spec.StorageSource) {
-					types = append(types, spec.StorageSource)
-				}
+func NewStoragesNodeRanker() *featureNodeRanker {
+	return &featureNodeRanker{
+		getJobRequirement: func(j models.Job) []string {
+			types := make([]string, 0)
+			for _, spec := range j.Task().Artifacts {
+				types = append(types, spec.Type)
 			}
 			return types
 		},
-		getNodeProvidedKeys: func(ni model.ComputeNodeInfo) []model.StorageSourceType { return ni.StorageSources },
+		getNodeProvidedKeys: func(ni models.ComputeNodeInfo) []string { return ni.StorageSources },
 	}
 }
 
@@ -50,7 +47,7 @@ func NewStoragesNodeRanker() *featureNodeRanker[model.StorageSourceType] {
 // - Rank 10: Node is supporting the type(s) the job is requiring.
 // - Rank 0: We don't have information on what the node supports.
 // - Rank -1: Node is not supporting a type the job is requiring.
-func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeInfo, requiredKeys []Key) (rank int, reason string) {
+func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, requiredKeys []string) (rank int, reason string) {
 	if node.ComputeNodeInfo == nil {
 		// Node supported types are not set, or the node was discovered not
 		// through nodeInfoPublisher (e.g. identity protocol). We will give the
@@ -78,10 +75,10 @@ func (s *featureNodeRanker[Key]) rankNode(ctx context.Context, node model.NodeIn
 	return orchestrator.RankPreferred, "provides all the specified required types"
 }
 
-func (s *featureNodeRanker[Key]) RankNodes(
+func (s *featureNodeRanker) RankNodes(
 	ctx context.Context,
-	job model.Job,
-	nodes []model.NodeInfo,
+	job models.Job,
+	nodes []models.NodeInfo,
 ) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	requiredKeys := s.getJobRequirement(job)

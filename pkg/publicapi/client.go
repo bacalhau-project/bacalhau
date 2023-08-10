@@ -163,7 +163,7 @@ func (apiClient *APIClient) Do(ctx context.Context, req *http.Request, resData a
 		}
 
 		var serverError *bacerrors.ErrorResponse
-		if err = model.JSONUnmarshalWithMax(responseBody, &serverError); err != nil {
+		if err = marshaller.JSONUnmarshalWithMax(responseBody, &serverError); err != nil {
 			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v",
 				string(responseBody)))
 		}

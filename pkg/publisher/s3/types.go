@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 )
@@ -17,10 +17,10 @@ type Params struct {
 	Compress bool   `json:"Compress"`
 }
 
-func DecodeSpec(spec model.PublisherSpec) (Params, error) {
-	if spec.Type != model.PublisherS3 {
+func DecodeSpec(spec *models.SpecConfig) (Params, error) {
+	if spec.Type != models.PublisherS3 {
 		return Params{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
-			model.PublisherS3, spec.Type)
+			models.PublisherS3, spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {

@@ -134,7 +134,7 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Cancel mocks base method.
-func (m *MockExecutor) Cancel(ctx context.Context, execution store.Execution) error {
+func (m *MockExecutor) Cancel(ctx context.Context, execution store.LocalState) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cancel", ctx, execution)
 	ret0, _ := ret[0].(error)
@@ -148,7 +148,7 @@ func (mr *MockExecutorMockRecorder) Cancel(ctx, execution interface{}) *gomock.C
 }
 
 // Run mocks base method.
-func (m *MockExecutor) Run(ctx context.Context, execution store.Execution) error {
+func (m *MockExecutor) Run(ctx context.Context, execution store.LocalState) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Run", ctx, execution)
 	ret0, _ := ret[0].(error)

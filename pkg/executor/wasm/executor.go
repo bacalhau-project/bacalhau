@@ -25,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -57,7 +56,7 @@ func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyR
 func (*Executor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	usage model.ResourceUsageData,
+	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
@@ -72,13 +71,13 @@ func (e *Executor) makeFsFromStorage(
 	ctx context.Context,
 	jobResultsDir string,
 	volumes []storage.PreparedStorage,
-	outputs []model.StorageSpec) (fs.FS, error) {
+	outputs []models.StorageSpec) (fs.FS, error) {
 	var err error
 	rootFs := mountfs.New()
 
 	for _, v := range volumes {
 		log.Ctx(ctx).Debug().
-			Str("input", v.Spec.Path).
+			Str("input", v.Artifact.Path).
 			Str("source", v.Volume.Source).
 			Msg("Using input")
 
@@ -95,7 +94,7 @@ func (e *Executor) makeFsFromStorage(
 			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(v.Spec.Path, inputFs)
+		err = rootFs.Mount(v.Artifact.Path, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +149,7 @@ func DecodeArguments(args *executor.Arguments) (*Arguments, error) {
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
-) (*model.RunCommandResult, error) {
+) (*models.RunCommandResult, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	e.cancellers.Put(request.ExecutionID, cancel)
@@ -214,7 +213,7 @@ func (e *Executor) Run(
 	// Configure the modules. We don't want to execute any start functions
 	// automatically as we will do it manually later. Finally, add the
 	// filesystem which contains our input and output.
-	args := append([]string{engineParams.EntryModule.Spec.Name}, engineParams.Parameters...)
+	args := append([]string{engineParams.EntryModule.Artifact.Name}, engineParams.Parameters...)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).

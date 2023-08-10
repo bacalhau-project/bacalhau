@@ -9,7 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc/proto"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
@@ -72,7 +71,7 @@ func (s *GRPCServer) ShouldBidBasedOnUsage(ctx context.Context, request *proto.S
 	if err := json.Unmarshal(request.BidRequest, &bidReq); err != nil {
 		return nil, err
 	}
-	var usage model.ResourceUsageData
+	var usage models.Resources
 	if err := json.Unmarshal(request.Usage, &usage); err != nil {
 		return nil, err
 	}

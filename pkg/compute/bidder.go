@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type BidderParams struct {
@@ -89,7 +88,7 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 				Err:               fmt.Sprintf("Job rejected: %s", response.Reason),
 			})
 		} else {
-			execution := store.NewExecution(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
+			execution := store.NewLocalState(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
 			execution.State = store.ExecutionStateBidAccepted
 			if err := b.store.CreateExecution(ctx, *execution); err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
@@ -113,7 +112,7 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 
 	// if we are bidding or waiting create an execution
 	if response.ShouldWait || response.ShouldBid {
-		execution := store.NewExecution(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
+		execution := store.NewLocalState(request.ExecutionID, request.Job, request.SourcePeerID, *resourceUsage)
 		if err := b.store.CreateExecution(ctx, *execution); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Unable to create execution state")
 			return
@@ -132,7 +131,7 @@ func (b Bidder) RunBidding(ctx context.Context, request AskForBidRequest, usageC
 	}
 }
 
-func (b Bidder) ReturnBidResult(ctx context.Context, execution store.Execution, response *bidstrategy.BidStrategyResponse) {
+func (b Bidder) ReturnBidResult(ctx context.Context, execution store.LocalState, response *bidstrategy.BidStrategyResponse) {
 	if response.ShouldWait {
 		return
 	}
@@ -165,7 +164,7 @@ func (b Bidder) doBidding(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 	calculator capacity.UsageCalculator,
-) (*bidstrategy.BidStrategyResponse, *model.ResourceUsageData, error) {
+) (*bidstrategy.BidStrategyResponse, *models.Resources, error) {
 	// Check semantic bidding strategies before calculating resource usage.
 	semanticResponse, err := b.semanticStrategy.ShouldBid(ctx, request)
 	if err != nil {

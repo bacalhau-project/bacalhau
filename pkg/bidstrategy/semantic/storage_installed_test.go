@@ -7,32 +7,30 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 )
 
 var (
-	OneStorageSpec []model.StorageSpec = []model.StorageSpec{
-		{StorageSource: model.StorageSourceIPFS},
-	}
+	OneStorageSpec []string = []string{models.StorageSourceIPFS}
 )
 
 var (
-	EmptySpec       = model.Spec{}
-	SpecWithInputs  = model.Spec{Inputs: OneStorageSpec}
-	SpecWithOutputs = model.Spec{Outputs: OneStorageSpec}
-	SpecWithWasm    = model.Spec{Wasm: model.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
+	EmptySpec      = models.Task{}
+	SpecWithInputs = models.Task{Artifacts: OneStorageSpec}
+	SpecWithWasm   = models.Spec{Wasm: models.JobSpecWasm{EntryModule: OneStorageSpec[0]}}
 )
 
 func TestStorageBidStrategy(t *testing.T) {
 	testCases := []struct {
 		name      string
-		spec      model.Spec
+		spec      models.Spec
 		installed bool
 		check     func(require.TestingT, bool, ...any)
 	}{
@@ -55,11 +53,11 @@ func TestStorageBidStrategy(t *testing.T) {
 					},
 				},
 			})
-			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noop_storage)
+			provider := provider.NewSingletonProvider[models.StorageSourceType, storage.Storage](noop_storage)
 			strategy := semantic.NewStorageInstalledBidStrategy(provider)
 
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: model.Job{
+				Job: models.Job{
 					Spec: testCase.spec,
 				},
 			})

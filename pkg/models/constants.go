@@ -22,3 +22,37 @@ const (
 	// the specified constraints.
 	JobTypeOps = "ops"
 )
+
+const (
+	EngineNoop   = "noop"
+	EngineDocker = "docker"
+	EngineWasm   = "wasm"
+)
+
+const (
+	StorageSourceIPFS           = "ipfs"
+	StorageSourceRepoClone      = "repoClone"
+	StorageSourceRepoCloneLFS   = "repoCloneLFS"
+	StorageSourceEstuary        = "estuary"
+	StorageSourceURL            = "url"
+	StorageSourceS3             = "s3"
+	StorageSourceInline         = "inline"
+	StorageSourceLocalDirectory = "localDirectory"
+)
+
+const (
+	PublisherNoop    = "noop"
+	PublisherIPFS    = "ipfs"
+	PublisherEstuary = "estuary"
+	PublisherS3      = "s3"
+)
+
+const (
+const (
+	DownloadFilenameStdout   = "stdout"
+	DownloadFilenameStderr   = "stderr"
+	DownloadFilenameExitCode = "exitCode"
+	DownloadCIDsFolderName   = "raw"
+	DownloadFolderPerm       = 0755
+	DownloadFilePerm         = 0644
+)

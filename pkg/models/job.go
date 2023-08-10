@@ -13,7 +13,7 @@ import (
 type JobStateType int
 
 const (
-	JobStateTypeUnknown JobStateType = iota
+	JobStateTypeUndefined JobStateType = iota
 
 	// JobStateTypePending is the state of a job that has been submitted but not
 	// yet scheduled.
@@ -33,6 +33,11 @@ const (
 	// JobStateTypeStopped is the state of a job that has been stopped by the user.
 	JobStateTypeStopped
 )
+
+// IsUndefined returns true if the job state is undefined
+func (s JobStateType) IsUndefined() bool {
+	return s == JobStateTypeUndefined
+}
 
 type Job struct {
 	// ID is a unique identifier assigned to this job.
@@ -69,8 +74,12 @@ type Job struct {
 	State State[JobStateType]
 
 	// Version is a per-job monotonically increasing version number that is incremented
-	// on each job update.
+	// on each job specification update.
 	Version uint64
+
+	// Revision is a per-job monotonically increasing revision number that is incremented
+	// on each update to the job's state or specification
+	Revision uint64
 
 	CreateTime int64
 	ModifyTime int64
@@ -181,4 +190,35 @@ func (j *Job) Validate() error {
 	}
 
 	return mErr.ErrorOrNil()
+}
+
+// IsTerminal returns true if the job is in a terminal state
+func (j *Job) IsTerminal() bool {
+	switch j.State.StateType {
+	case JobStateTypeCompleted, JobStateTypeFailed, JobStateTypeStopped:
+		return true
+	default:
+		return false
+	}
+}
+
+// Task returns the job task
+// TODO: remove this once we have multiple tasks per job
+func (j *Job) Task() *Task {
+	if j == nil {
+		return nil
+	}
+	return j.Tasks[0]
+}
+
+// AllStorageTypes returns keys of all storage types required by the job
+func (j *Job) AllStorageTypes() []string {
+	var storageTypes []string
+	if j == nil {
+		return storageTypes
+	}
+	for _, task := range j.Tasks {
+		storageTypes = append(storageTypes, task.AllStorageTypes()...)
+	}
+	return storageTypes
 }

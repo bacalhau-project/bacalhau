@@ -104,7 +104,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			s.Require().Contains(out, randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			s.Require().NoError(model.YAMLUnmarshalWithMax([]byte(out), &j))
+			s.Require().NoError(marshaller.YAMLUnmarshalWithMax([]byte(out), &j))
 			s.Require().NotNil(j, "Failed to unmarshal job from dry run output")
 			s.Require().Equal(j.Spec.Docker.Parameters[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
@@ -841,7 +841,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+	s.Require().Equal(j.Task().Timeouts.ExecutionTimeout, job.DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
@@ -859,5 +859,5 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.Client, out)
 
-	s.Require().Equal(j.Spec.Timeout, expectedTimeout)
+	s.Require().Equal(j.Task().Timeouts.ExecutionTimeout, expectedTimeout)
 }

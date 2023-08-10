@@ -8,7 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -52,54 +52,74 @@ func (s *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	return s.ipfsClient.HasCID(ctx, volume.CID)
+func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.Artifact) (bool, error) {
+	source, err := DecodeSpec(volume.Source)
+	if err != nil {
+		return false, err
+	}
+	return s.ipfsClient.HasCID(ctx, source.CID)
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Artifact) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
 	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout(ctx))
 	defer cancel()
 
-	return s.ipfsClient.GetCidSize(ctx, volume.CID)
+	source, err := DecodeSpec(volume.Source)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.ipfsClient.GetCidSize(ctx, source.CID)
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	stat, err := s.ipfsClient.Stat(ctx, storageSpec.CID)
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec models.Artifact) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.CID, err)
+		return storage.StorageVolume{}, err
+	}
+	stat, err := s.ipfsClient.Stat(ctx, source.CID)
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", source.CID, err)
 	}
 
 	if stat.Type != ipfs.IPLDFile && stat.Type != ipfs.IPLDDirectory {
-		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.CID, stat.Type)
+		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", source.CID, stat.Type)
 	}
 
 	var volume storage.StorageVolume
-	volume, err = s.getFileFromIPFS(ctx, storageSpec)
+	volume, err = s.getFileFromIPFS(ctx, source.CID, storageSpec.Target)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Target, err)
 	}
 
 	return volume, nil
 }
 
-func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.StorageSpec, _ storage.StorageVolume) error {
-	return os.RemoveAll(filepath.Join(s.localDir, storageSpec.CID))
+func (s *StorageProvider) CleanupStorage(_ context.Context, storageSpec models.Artifact, _ storage.StorageVolume) error {
+	source, err := DecodeSpec(storageSpec.Source)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(filepath.Join(s.localDir, source.CID))
 }
 
-func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (s *StorageProvider) Upload(ctx context.Context, localPath string) (models.SpecConfig, error) {
 	cid, err := s.ipfsClient.Put(ctx, localPath)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
+
+	return models.SpecConfig{
+		Type: models.StorageSourceIPFS,
+		Params: Source{
+			CID: cid,
+		}.ToMap(),
 	}, nil
 }
 
-func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	outputPath := filepath.Join(s.localDir, storageSpec.CID)
+func (s *StorageProvider) getFileFromIPFS(ctx context.Context, cid, path string) (storage.StorageVolume, error) {
+	outputPath := filepath.Join(s.localDir, cid)
 
 	// If the output path already exists, we already have the data, as
 	// ipfsClient.Get(...) renames the result path atomically after it has
@@ -109,7 +129,7 @@ func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 	if !ok {
-		err = s.ipfsClient.Get(ctx, storageSpec.CID, outputPath)
+		err = s.ipfsClient.Get(ctx, cid, outputPath)
 		if err != nil {
 			return storage.StorageVolume{}, err
 		}
@@ -118,7 +138,7 @@ func (s *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
-		Target: storageSpec.Path,
+		Target: path,
 	}
 
 	return volume, nil

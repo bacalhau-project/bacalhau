@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -61,4 +62,28 @@ func (r *LabelSelectorRequirement) Validate() error {
 		}
 	}
 	return mErr.ErrorOrNil()
+}
+
+func ToLabelSelectorRequirements(requirements ...labels.Requirement) []LabelSelectorRequirement {
+	var labelSelectorRequirements []LabelSelectorRequirement
+	for _, requirement := range requirements {
+		labelSelectorRequirements = append(labelSelectorRequirements, LabelSelectorRequirement{
+			Key:      requirement.Key(),
+			Operator: requirement.Operator(),
+			Values:   requirement.Values().List(),
+		})
+	}
+	return labelSelectorRequirements
+}
+
+func FromLabelSelectorRequirements(requirements ...*LabelSelectorRequirement) ([]labels.Requirement, error) {
+	var labelSelectorRequirements []labels.Requirement
+	for _, requirement := range requirements {
+		req, err := labels.NewRequirement(requirement.Key, requirement.Operator, requirement.Values)
+		if err != nil {
+			return nil, err
+		}
+		labelSelectorRequirements = append(labelSelectorRequirements, *req)
+	}
+	return labelSelectorRequirements, nil
 }

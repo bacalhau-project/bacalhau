@@ -7,7 +7,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -50,20 +49,20 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 		return fmt.Errorf("failed to retrieve job %s: %w", evaluation.JobID, err)
 	}
 	// Retrieve the job state
-	jobState, err := b.jobStore.GetJobState(ctx, evaluation.JobID)
+	jobExecutions, err := b.jobStore.GetExecutions(ctx, evaluation.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
 
 	// Plan to hold the actions to be taken
-	plan := models.NewPlan(evaluation, &job, jobState.Version)
+	plan := models.NewPlan(evaluation, &job)
 
-	existingExecs := execSetFromSliceOfValues(jobState.Executions)
+	existingExecs := execSetFromSliceOfValues(jobExecutions)
 	nonTerminalExecs := existingExecs.filterNonTerminal()
 
 	// early exit if the job is stopped
-	if jobState.State.IsTerminal() {
+	if job.IsTerminal() {
 		nonTerminalExecs.markStopped(execNotNeeded, plan)
 		return b.planner.Process(ctx, plan)
 	}
@@ -79,7 +78,7 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	lost.markStopped(execLost, plan)
 
 	// Approve/Reject nodes
-	desiredRemainingCount := math.Max(0, job.Spec.Deal.Concurrency-existingExecs.countCompleted())
+	desiredRemainingCount := math.Max(0, job.Count-existingExecs.countCompleted())
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
 	execsByApprovalStatus.toApprove.markApproved(plan)
 	execsByApprovalStatus.toReject.markStopped(execRejected, plan)
@@ -89,8 +88,8 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 	if remainingExecutionCount > 0 {
 		allFailed := existingExecs.filterFailed().union(lost)
 		var placementErr error
-		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID()}) {
-			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID())
+		if len(allFailed) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
+			placementErr = fmt.Errorf("exceeded max retries for job %s", job.ID)
 		} else {
 			_, placementErr = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
 		}
@@ -112,16 +111,16 @@ func (b *BatchJobScheduler) Process(ctx context.Context, evaluation *models.Eval
 }
 
 func (b *BatchJobScheduler) createMissingExecs(
-	ctx context.Context, remainingExecutionCount int, job *model.Job, plan *models.Plan) (execSet, error) {
+	ctx context.Context, remainingExecutionCount int, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
 	for i := 0; i < remainingExecutionCount; i++ {
-		execution := &model.ExecutionState{
-			JobID:            job.Metadata.ID,
-			ComputeReference: "e-" + uuid.NewString(),
-			State:            model.ExecutionStateNew,
-			DesiredState:     model.ExecutionDesiredStatePending,
+		execution := &models.Execution{
+			JobID:        job.ID,
+			ID:           "e-" + uuid.NewString(),
+			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
+			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
 		}
-		newExecs[execution.ComputeReference] = execution
+		newExecs[execution.ID] = execution
 	}
 	if len(newExecs) > 0 {
 		err := b.placeExecs(ctx, newExecs, job)
@@ -136,7 +135,7 @@ func (b *BatchJobScheduler) createMissingExecs(
 }
 
 // placeExecs places the executions
-func (b *BatchJobScheduler) placeExecs(ctx context.Context, execs execSet, job *model.Job) error {
+func (b *BatchJobScheduler) placeExecs(ctx context.Context, execs execSet, job *models.Job) error {
 	if len(execs) > 0 {
 		selectedNodes, err := b.selectNodes(ctx, job, len(execs))
 		if err != nil {
@@ -151,7 +150,7 @@ func (b *BatchJobScheduler) placeExecs(ctx context.Context, execs execSet, job *
 	return nil
 }
 
-func (b *BatchJobScheduler) selectNodes(ctx context.Context, job *model.Job, desiredCount int) ([]model.NodeInfo, error) {
+func (b *BatchJobScheduler) selectNodes(ctx context.Context, job *models.Job, desiredCount int) ([]models.NodeInfo, error) {
 	nodeIDs, err := b.nodeDiscoverer.FindNodes(ctx, *job)
 	if err != nil {
 		return nil, err
@@ -183,7 +182,7 @@ func (b *BatchJobScheduler) selectNodes(ctx context.Context, job *model.Job, des
 	})
 
 	selectedNodes := filteredNodes[:math.Min(len(filteredNodes), desiredCount)]
-	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) model.NodeInfo { return nr.NodeInfo })
+	selectedInfos := generic.Map(selectedNodes, func(nr orchestrator.NodeRank) models.NodeInfo { return nr.NodeInfo })
 	return selectedInfos, nil
 }
 
@@ -196,7 +195,7 @@ func (b *BatchJobScheduler) handleFailure(nonTerminalExecs execSet, failed execS
 	// the error message passed by the scheduler
 	latestErr := err.Error()
 	if len(failed) > 0 {
-		latestErr = failed.latest().Status
+		latestErr = failed.latest().ComputeState.Message
 	}
 	plan.MarkJobFailed(latestErr)
 }

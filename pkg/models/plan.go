@@ -1,9 +1,5 @@
 package models
 
-import (
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-)
-
 type PlanExecutionDesiredUpdate struct {
 	Execution    *Execution
 	DesiredState ExecutionDesiredStateType
@@ -18,10 +14,9 @@ type Plan struct {
 	Eval     *Evaluation
 	Priority int
 
-	Job             *Job
-	JobStateVersion int
+	Job *Job
 
-	DesiredJobState model.JobStateType
+	DesiredJobState JobStateType
 	Comment         string
 
 	// NewExecutions holds the executions to be created.
@@ -31,13 +26,12 @@ type Plan struct {
 }
 
 // NewPlan creates a new Plan instance.
-func NewPlan(eval *Evaluation, job *Job, jobStateVersion int) *Plan {
+func NewPlan(eval *Evaluation, job *Job) *Plan {
 	return &Plan{
 		EvalID:            eval.ID,
 		Priority:          eval.Priority,
 		Eval:              eval,
 		Job:               job,
-		JobStateVersion:   jobStateVersion,
 		NewExecutions:     []*Execution{},
 		UpdatedExecutions: make(map[string]*PlanExecutionDesiredUpdate),
 	}
@@ -68,12 +62,12 @@ func (p *Plan) AppendApprovedExecution(execution *Execution) {
 }
 
 func (p *Plan) MarkJobCompleted() {
-	p.DesiredJobState = model.JobStateCompleted
+	p.DesiredJobState = JobStateTypeCompleted
 	p.NewExecutions = []*Execution{}
 }
 
 func (p *Plan) MarkJobFailed(comment string) {
-	p.DesiredJobState = model.JobStateError
+	p.DesiredJobState = JobStateTypeFailed
 	p.Comment = comment
 
 	p.NewExecutions = []*Execution{}

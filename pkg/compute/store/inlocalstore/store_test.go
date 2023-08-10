@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -44,13 +43,13 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 	s.NoError(err)
 	s.Equal(uint64(0), count)
 	//create execution
-	defaultJob, err := model.NewJobWithSaneProductionDefaults()
+	defaultJob, err := models.NewJobWithSaneProductionDefaults()
 	s.NoError(err)
-	execution := store.NewExecution(
+	execution := store.NewLocalState(
 		"id",
 		*defaultJob,
 		"defaultRequestorNodeID",
-		model.ResourceUsageData{},
+		models.Resources{},
 	)
 	err = s.proxy.CreateExecution(context.Background(), *execution)
 	s.NoError(err)
@@ -65,7 +64,7 @@ func (s *Suite) TestOneExecutionReturnsOneCount() {
 
 func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 	idList := []string{"id1", "id2", "id3"}
-	defaultJob, err := model.NewJobWithSaneProductionDefaults()
+	defaultJob, err := models.NewJobWithSaneProductionDefaults()
 	s.NoError(err)
 	// 3 executions
 	for index, id := range idList {
@@ -73,11 +72,11 @@ func (s *Suite) TestConsecutiveExecutionsReturnCorrectJobCount() {
 		s.NoError(err)
 		s.Equal(uint64(index), count)
 
-		execution := store.NewExecution(
+		execution := store.NewLocalState(
 			id,
 			*defaultJob,
 			"defaultRequestorNodeID",
-			model.ResourceUsageData{},
+			models.Resources{},
 		)
 		err = s.proxy.CreateExecution(context.Background(), *execution)
 		s.NoError(err)
@@ -95,19 +94,19 @@ func (s *Suite) TestOnlyCompletedJobsIncreaseCounter() {
 			continue
 		}
 		s.Run(executionState.String(), func() {
-			defaultJob, err := model.NewJobWithSaneProductionDefaults()
+			defaultJob, err := models.NewJobWithSaneProductionDefaults()
 			s.NoError(err)
-			execution := store.NewExecution(
+			execution := store.NewLocalState(
 				uuid.NewString(),
 				*defaultJob,
 				"defaultRequestorNodeID",
-				model.ResourceUsageData{},
+				models.Resources{},
 			)
 			err = s.proxy.CreateExecution(context.Background(), *execution)
 			s.NoError(err)
 			err = s.proxy.UpdateExecutionState(context.Background(), store.UpdateExecutionStateRequest{
 				ExecutionID: execution.ID,
-				NewState:    store.ExecutionState(executionState)})
+				NewState:    store.LocalStateType(executionState)})
 			s.NoError(err)
 			count, err := s.proxy.GetExecutionCount(context.Background(), store.ExecutionStateCompleted)
 			s.NoError(err)

@@ -11,7 +11,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type mockBidStrategy func(context.Context, bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error)
@@ -22,7 +21,7 @@ func (m *mockBidStrategy) ShouldBid(ctx context.Context, request bidstrategy.Bid
 }
 
 // ShouldBidBasedOnUsage implements bidstrategy.BidStrategy
-func (m *mockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, resourceUsage model.ResourceUsageData) (bidstrategy.BidStrategyResponse, error) {
+func (m *mockBidStrategy) ShouldBidBasedOnUsage(ctx context.Context, request bidstrategy.BidStrategyRequest, resourceUsage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	return (*m)(ctx, request)
 }
 
@@ -64,8 +63,8 @@ func TestExecutorsBidStrategy(t *testing.T) {
 			})
 			strategy := NewExecutorSpecificBidStrategy(noop_provider)
 			result, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-				Job: model.Job{
-					Spec: model.Spec{Engine: model.EngineNoop},
+				Job: models.Job{
+					Spec: models.Spec{Engine: models.EngineNoop},
 				},
 			})
 			require.NoError(t, err)

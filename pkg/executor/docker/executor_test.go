@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -99,20 +98,20 @@ func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
 	return url
 }
 
-func (s *ExecutorTestSuite) curlTask() model.JobSpecDocker {
-	return model.JobSpecDocker{
+func (s *ExecutorTestSuite) curlTask() models.JobSpecDocker {
+	return models.JobSpecDocker{
 		Image:      CurlDockerImage,
 		Entrypoint: []string{"curl", "--fail-with-body", s.containerHttpURL().JoinPath("hello.txt").String()},
 	}
 }
 
-func (s *ExecutorTestSuite) runJob(spec model.Spec) (*model.RunCommandResult, error) {
+func (s *ExecutorTestSuite) runJob(spec models.Spec) (*models.RunCommandResult, error) {
 	return s.runJobWithContext(context.Background(), spec, "test")
 }
 
-func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Spec, name string) (*model.RunCommandResult, error) {
+func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec models.Spec, name string) (*models.RunCommandResult, error) {
 	result := s.T().TempDir()
-	j := model.Job{Metadata: model.Metadata{ID: name}, Spec: spec}
+	j := models.Job{Metadata: models.Metadata{ID: name}, Spec: spec}
 	args, err := executor.EncodeArguments(spec.Docker)
 	if err != nil {
 		return nil, err
@@ -138,7 +137,7 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec model.Sp
 	)
 }
 
-func (s *ExecutorTestSuite) runJobGetStdout(spec model.Spec) (string, error) {
+func (s *ExecutorTestSuite) runJobGetStdout(spec models.Spec) (string, error) {
 	runnerOutput, runErr := s.runJob(spec)
 	return runnerOutput.STDOUT, runErr
 }
@@ -156,13 +155,13 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result, err := s.runJobGetStdout(model.Spec{
-		Engine: model.EngineDocker,
-		Resources: model.ResourceUsageConfig{
+	result, err := s.runJobGetStdout(models.Spec{
+		Engine: models.EngineDocker,
+		Resources: models.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: models.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
@@ -194,13 +193,13 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result, err := s.runJobGetStdout(model.Spec{
-		Engine: model.EngineDocker,
-		Resources: model.ResourceUsageConfig{
+	result, err := s.runJobGetStdout(models.Spec{
+		Engine: models.EngineDocker,
+		Resources: models.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: models.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/memory.max"},
 		},
@@ -213,9 +212,9 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
-	result, err := s.runJob(model.Spec{
-		Engine:  model.EngineDocker,
-		Network: model.NetworkConfig{Type: model.NetworkFull},
+	result, err := s.runJob(models.Spec{
+		Engine:  models.EngineDocker,
+		Network: models.NetworkConfig{Type: models.NetworkFull},
 		Docker:  s.curlTask(),
 	})
 	require.NoError(s.T(), err, result.STDERR)
@@ -224,9 +223,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
-	result, err := s.runJob(model.Spec{
-		Engine:  model.EngineDocker,
-		Network: model.NetworkConfig{Type: model.NetworkNone},
+	result, err := s.runJob(models.Spec{
+		Engine:  models.EngineDocker,
+		Network: models.NetworkConfig{Type: models.NetworkNone},
 		Docker:  s.curlTask(),
 	})
 	require.NoError(s.T(), err)
@@ -236,10 +235,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type:    model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type:    models.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
 		Docker: s.curlTask(),
@@ -250,10 +249,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type: model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type: models.NetworkHTTP,
 			Domains: []string{
 				s.containerHttpURL().Hostname(),
 				"bacalhau.org",
@@ -270,10 +269,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 	hostname := s.containerHttpURL().Hostname()
 	hostroot := strings.Join(strings.SplitN(hostname, ".", 2)[:1], ".")
 
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type:    model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type:    models.NetworkHTTP,
 			Domains: []string{hostname, hostroot},
 		},
 		Docker: s.curlTask(),
@@ -284,10 +283,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type:    model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type:    models.NetworkHTTP,
 			Domains: []string{"bacalhau.org"},
 		},
 		Docker: s.curlTask(),
@@ -299,13 +298,13 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type:    model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type:    models.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
-		Docker: model.JobSpecDocker{
+		Docker: models.JobSpecDocker{
 			Image:      CurlDockerImage,
 			Entrypoint: []string{"curl", "--fail-with-body", "https://www.bacalhau.org"},
 		},
@@ -321,10 +320,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 		_, err := w.Write([]byte(r.Header.Get("X-Bacalhau-Job-ID")))
 		s.Require().NoError(err)
 	})
-	result, err := s.runJob(model.Spec{
-		Engine: model.EngineDocker,
-		Network: model.NetworkConfig{
-			Type:    model.NetworkHTTP,
+	result, err := s.runJob(models.Spec{
+		Engine: models.EngineDocker,
+		Network: models.NetworkConfig{
+			Type:    models.NetworkHTTP,
 			Domains: []string{s.containerHttpURL().Hostname()},
 		},
 		Docker: s.curlTask(),
@@ -338,9 +337,9 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	result, err := s.runJobWithContext(ctx, model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
+	result, err := s.runJobWithContext(ctx, models.Spec{
+		Engine: models.EngineDocker,
+		Docker: models.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)},
 		},
@@ -358,13 +357,13 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	spec := model.Spec{
-		Engine: model.EngineDocker,
-		Resources: model.ResourceUsageConfig{
+	spec := models.Spec{
+		Engine: models.EngineDocker,
+		Resources: models.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: models.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "cat /sys/fs/cgroup/cpu.max"},
 		},
@@ -388,13 +387,13 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	spec := model.Spec{
-		Engine: model.EngineDocker,
-		Resources: model.ResourceUsageConfig{
+	spec := models.Spec{
+		Engine: models.EngineDocker,
+		Resources: models.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: MEMORY_LIMIT,
 		},
-		Docker: model.JobSpecDocker{
+		Docker: models.JobSpecDocker{
 			Image:      "ubuntu",
 			Entrypoint: []string{"bash", "-c", "echo hello && sleep 20"},
 		},

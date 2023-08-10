@@ -11,7 +11,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func NewPluginExecutorManager() *PluginExecutorManager {
@@ -26,7 +25,7 @@ type PluginExecutorManager struct {
 	active     map[string]*activeExecutor
 }
 
-func (e *PluginExecutorManager) Get(ctx context.Context, key model.Engine) (executor.Executor, error) {
+func (e *PluginExecutorManager) Get(ctx context.Context, key models.Engine) (executor.Executor, error) {
 	engine, ok := e.active[key.String()]
 	if !ok {
 		return nil, fmt.Errorf("pluging %s not found", key)
@@ -34,7 +33,7 @@ func (e *PluginExecutorManager) Get(ctx context.Context, key model.Engine) (exec
 	return engine.Impl, nil
 }
 
-func (e *PluginExecutorManager) Has(ctx context.Context, key model.Engine) bool {
+func (e *PluginExecutorManager) Has(ctx context.Context, key models.Engine) bool {
 	_, ok := e.active[key.String()]
 	return ok
 }

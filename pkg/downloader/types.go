@@ -7,7 +7,7 @@ import (
 )
 
 type Downloader interface {
-	model.Providable
+	provider.Providable
 
 	// DescribeResult provides information on the contents of the result,
 	// providing a mapping between the 'path' of the contents and the
@@ -19,5 +19,5 @@ type Downloader interface {
 }
 
 type DownloaderProvider interface {
-	model.Provider[model.StorageSourceType, Downloader]
+	provider.Provider[model.StorageSourceType, Downloader]
 }

@@ -30,6 +30,11 @@ const (
 	ExecutionStateCancelled
 )
 
+// IsUndefined returns true if the execution state is undefined
+func (s ExecutionStateType) IsUndefined() bool {
+	return s == ExecutionStateUndefined
+}
+
 type ExecutionDesiredStateType int
 
 const (
@@ -74,6 +79,10 @@ type Execution struct {
 	// the published results for this execution
 	PublishedResult *SpecConfig
 
+	// RunOutput is the output of the run command
+	// TODO: evaluate removing this from execution spec in favour of calling `bacalhau logs`
+	RunOutput *RunCommandResult
+
 	// PreviousExecution is the execution that this execution is replacing
 	PreviousExecution string
 
@@ -84,8 +93,8 @@ type Execution struct {
 	// that can be rescheduled in the future
 	FollowupEvalID string
 
-	// Version is increment each time the execution is updated.
-	Version uint64
+	// Revision is increment each time the execution is updated.
+	Revision uint64
 
 	// CreateTime is the time the execution has finished scheduling and been
 	// verified by the plan applier.
@@ -118,4 +127,64 @@ func (a *Execution) Copy() *Execution {
 	na.AllocatedResources = na.AllocatedResources.Copy()
 	na.PublishedResult = na.PublishedResult.Copy()
 	return na
+}
+
+// IsTerminalState returns true if the execution desired of observed state is terminal
+func (a *Execution) IsTerminalState() bool {
+	return a.IsTerminalDesiredState() || a.IsTerminalComputeState()
+}
+
+// IsTerminalDesiredState returns true if the execution desired state is terminal
+func (a *Execution) IsTerminalDesiredState() bool {
+	return a.DesiredState.StateType == ExecutionDesiredStateStopped
+}
+
+// IsTerminalComputeState returns true if the execution observed state is terminal
+func (a *Execution) IsTerminalComputeState() bool {
+	switch a.ComputeState.StateType {
+	case ExecutionStateCompleted, ExecutionStateFailed, ExecutionStateCancelled, ExecutionStateAskForBidRejected, ExecutionStateBidRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsDiscarded returns true if the execution has failed, been cancelled or rejected.
+func (a *Execution) IsDiscarded() bool {
+	switch a.ComputeState.StateType {
+	case ExecutionStateAskForBidRejected, ExecutionStateBidRejected, ExecutionStateCancelled, ExecutionStateFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+type RunCommandResult struct {
+	// stdout of the run. Yaml provided for `describe` output
+	STDOUT string `json:"stdout"`
+
+	// bool describing if stdout was truncated
+	StdoutTruncated bool `json:"stdouttruncated"`
+
+	// stderr of the run.
+	STDERR string `json:"stderr"`
+
+	// bool describing if stderr was truncated
+	StderrTruncated bool `json:"stderrtruncated"`
+
+	// exit code of the run.
+	ExitCode int `json:"exitCode"`
+
+	// Runner error
+	ErrorMsg string `json:"runnerError"`
+}
+
+func NewRunCommandResult() *RunCommandResult {
+	return &RunCommandResult{
+		STDOUT:          "",    // stdout of the run.
+		StdoutTruncated: false, // bool describing if stdout was truncated
+		STDERR:          "",    // stderr of the run.
+		StderrTruncated: false, // bool describing if stderr was truncated
+		ExitCode:        -1,    // exit code of the run.
+	}
 }

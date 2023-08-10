@@ -63,7 +63,7 @@ func trace[Event any](log zerolog.Logger, event Event) {
 		Func(func(e *zerolog.Event) {
 			// TODO: #828 Potential hotspot - marshaling is expensive, and
 			// we do it for every event.
-			eventJSON, err := model.JSONMarshalWithMax(event)
+			eventJSON, err := marshaller.JSONMarshalWithMax(event)
 			if err == nil {
 				e.RawJSON("Event", eventJSON)
 			} else {

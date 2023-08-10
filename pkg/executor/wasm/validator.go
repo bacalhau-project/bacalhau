@@ -3,7 +3,6 @@ package wasm
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -15,7 +14,7 @@ import (
 // run to fulfill the job.
 func ValidateModuleAgainstJob(
 	module wazero.CompiledModule,
-	job model.Spec,
+	job models.Spec,
 	importModules ...wazero.CompiledModule,
 ) error {
 	err := ValidateModuleImports(module, importModules...)

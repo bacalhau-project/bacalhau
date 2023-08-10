@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/stretchr/testify/require"
 )
@@ -52,10 +52,10 @@ func TestUpload(t *testing.T) {
 	spec, err := publisher.PublishResult(
 		context.Background(),
 		"execution-id",
-		model.Job{},
+		models.Job{},
 		tempDir,
 	)
 	require.NoError(t, err)
-	require.Equal(t, spec.StorageSource, model.StorageSourceEstuary)
-	require.NotEmpty(t, spec.CID)
+	require.Equal(t, spec.Type, models.StorageSourceEstuary)
+	require.NotEmpty(t, spec.Params["CID"])
 }

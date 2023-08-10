@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -29,9 +28,9 @@ type Endpoint interface {
 // Implementations can be synchronous or asynchronous by using Callbacks.
 type Executor interface {
 	// Run triggers the execution of a job.
-	Run(ctx context.Context, execution store.Execution) error
+	Run(ctx context.Context, execution store.LocalState) error
 	// Cancel cancels the execution of a job.
-	Cancel(ctx context.Context, execution store.Execution) error
+	Cancel(ctx context.Context, execution store.LocalState) error
 }
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
@@ -56,7 +55,7 @@ type ExecutionMetadata struct {
 	JobID       string
 }
 
-func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
+func NewExecutionMetadata(execution store.LocalState) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
 		JobID:       execution.Job.Metadata.ID,
@@ -64,10 +63,9 @@ func NewExecutionMetadata(execution store.Execution) ExecutionMetadata {
 }
 
 type AskForBidRequest struct {
-	ExecutionMetadata
 	RoutingMetadata
-	// Job specifies the job to be executed.
-	Job model.Job
+	// Execution specifies the job to be executed.
+	Execution *models.Execution
 	// WaitForApproval specifies whether the compute node should wait for the requester to approve the bid.
 	// if set to true, the compute node will not start the execution until the requester approves the bid.
 	// If set to false, the compute node will automatically start the execution after bidding and when resources are available.
@@ -138,8 +136,8 @@ type BidResult struct {
 type RunResult struct {
 	RoutingMetadata
 	ExecutionMetadata
-	PublishResult    model.StorageSpec
-	RunCommandResult *model.RunCommandResult
+	PublishResult    models.StorageSpec
+	RunCommandResult *models.RunCommandResult
 }
 
 // CancelResult Result of a job cancel that is returned to the caller through a Callback.

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -15,7 +14,7 @@ import (
 type Suite struct {
 	suite.Suite
 	executionStore store.ExecutionStore
-	execution      store.Execution
+	execution      store.LocalState
 }
 
 func (s *Suite) SetupTest() {
@@ -244,22 +243,22 @@ func (s *Suite) TestGetExecutionHistory_DoesntExist() {
 	s.ErrorAs(err, &store.ErrExecutionHistoryNotFound{})
 }
 
-func newExecution() store.Execution {
-	return *store.NewExecution(
+func newExecution() store.LocalState {
+	return *store.NewLocalState(
 		uuid.NewString(),
-		model.Job{
-			Metadata: model.Metadata{
+		models.Job{
+			Metadata: models.Metadata{
 				ID: uuid.NewString(),
 			},
 		},
 		"nodeID-1",
-		model.ResourceUsageData{
+		models.Resources{
 			CPU:    1,
 			Memory: 2,
 		})
 }
 
-func (s *Suite) verifyHistory(history store.ExecutionHistory, newExecution store.Execution, previousState store.ExecutionState, comment string) {
+func (s *Suite) verifyHistory(history store.LocalStateHistory, newExecution store.LocalState, previousState store.LocalStateType, comment string) {
 	s.Equal(previousState, history.PreviousState)
 	s.Equal(newExecution.ID, history.ExecutionID)
 	s.Equal(newExecution.State, history.NewState)

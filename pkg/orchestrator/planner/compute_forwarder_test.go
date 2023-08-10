@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
@@ -55,8 +54,8 @@ func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAs
 
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution1)).Times(1)
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution2)).Times(1)
-	suite.assertStateUpdated(execution1, model.ExecutionStateBidAccepted, model.ExecutionStateNew)
-	suite.assertStateUpdated(execution2, model.ExecutionStateBidAccepted, model.ExecutionStateNew)
+	suite.assertStateUpdated(execution1, models.ExecutionStateBidAccepted, models.ExecutionStateNew)
+	suite.assertStateUpdated(execution2, models.ExecutionStateBidAccepted, models.ExecutionStateNew)
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
 	suite.waitUntilSatisfied()
@@ -65,13 +64,13 @@ func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAs
 func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAskForBid_Pending() {
 	plan := mock.Plan()
 	execution1, execution2 := mockCreateExecutions(plan)
-	execution1.DesiredState = model.ExecutionDesiredStatePending
-	execution2.DesiredState = model.ExecutionDesiredStatePending
+	execution1.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStatePending)
+	execution2.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStatePending)
 
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution1)).Times(1)
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcher(suite.T(), suite.nodeID, execution2)).Times(1)
-	suite.assertStateUpdated(execution1, model.ExecutionStateAskForBid, model.ExecutionStateNew)
-	suite.assertStateUpdated(execution2, model.ExecutionStateAskForBid, model.ExecutionStateNew)
+	suite.assertStateUpdated(execution1, models.ExecutionStateAskForBid, models.ExecutionStateNew)
+	suite.assertStateUpdated(execution2, models.ExecutionStateAskForBid, models.ExecutionStateNew)
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
 	suite.waitUntilSatisfied()
@@ -79,38 +78,38 @@ func (suite *ComputeForwarderSuite) TestProcess_WithNewExecutions_ShouldNotifyAs
 
 func (suite *ComputeForwarderSuite) TestProcess_WithUpdatedExecutions_ShouldNotifyAppropriateStates() {
 	plan := mock.Plan()
-	toAskForBid := suite.mockUpdateExecution(plan, "toAskForBid", model.ExecutionDesiredStateRunning, model.ExecutionStateNew)
-	toAskForBidPending := suite.mockUpdateExecution(plan, "toAskForBidPending", model.ExecutionDesiredStatePending, model.ExecutionStateNew)
-	bidAccepted := suite.mockUpdateExecution(plan, "bidAccepted", model.ExecutionDesiredStateRunning, model.ExecutionStateAskForBidAccepted)
-	bidRejected := suite.mockUpdateExecution(plan, "bidRejected", model.ExecutionDesiredStateStopped, model.ExecutionStateAskForBidAccepted)
-	toCancel1 := suite.mockUpdateExecution(plan, "toCancel1", model.ExecutionDesiredStateStopped, model.ExecutionStateNew)
-	toCancel2 := suite.mockUpdateExecution(plan, "toCancel2", model.ExecutionDesiredStateStopped, model.ExecutionStateAskForBid)
-	toCancel3 := suite.mockUpdateExecution(plan, "toCancel3", model.ExecutionDesiredStateStopped, model.ExecutionStateBidAccepted)
+	toAskForBid := suite.mockUpdateExecution(plan, "toAskForBid", models.ExecutionDesiredStateRunning, models.ExecutionStateNew)
+	toAskForBidPending := suite.mockUpdateExecution(plan, "toAskForBidPending", models.ExecutionDesiredStatePending, models.ExecutionStateNew)
+	bidAccepted := suite.mockUpdateExecution(plan, "bidAccepted", models.ExecutionDesiredStateRunning, models.ExecutionStateAskForBidAccepted)
+	bidRejected := suite.mockUpdateExecution(plan, "bidRejected", models.ExecutionDesiredStateStopped, models.ExecutionStateAskForBidAccepted)
+	toCancel1 := suite.mockUpdateExecution(plan, "toCancel1", models.ExecutionDesiredStateStopped, models.ExecutionStateNew)
+	toCancel2 := suite.mockUpdateExecution(plan, "toCancel2", models.ExecutionDesiredStateStopped, models.ExecutionStateAskForBid)
+	toCancel3 := suite.mockUpdateExecution(plan, "toCancel3", models.ExecutionDesiredStateStopped, models.ExecutionStateBidAccepted)
 
 	// noop
-	suite.mockUpdateExecution(plan, "noop1", model.ExecutionDesiredStateStopped, model.ExecutionStateFailed)
-	suite.mockUpdateExecution(plan, "noop2", model.ExecutionDesiredStateStopped, model.ExecutionStateCompleted)
+	suite.mockUpdateExecution(plan, "noop1", models.ExecutionDesiredStateStopped, models.ExecutionStateFailed)
+	suite.mockUpdateExecution(plan, "noop2", models.ExecutionDesiredStateStopped, models.ExecutionStateCompleted)
 
 	// NotifyAskForBid
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toAskForBid)).Times(1)
-	suite.assertStateUpdated(toAskForBid.Execution, model.ExecutionStateBidAccepted, model.ExecutionStateNew)
+	suite.assertStateUpdated(toAskForBid.Execution, models.ExecutionStateBidAccepted, models.ExecutionStateNew)
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toAskForBidPending)).Times(1)
-	suite.assertStateUpdated(toAskForBidPending.Execution, model.ExecutionStateAskForBid, model.ExecutionStateNew)
+	suite.assertStateUpdated(toAskForBidPending.Execution, models.ExecutionStateAskForBid, models.ExecutionStateNew)
 	// NotifyBidAccepted
 	suite.computeService.EXPECT().BidAccepted(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidAccepted)).Times(1)
-	suite.assertStateUpdated(bidAccepted.Execution, model.ExecutionStateBidAccepted, model.ExecutionStateAskForBidAccepted)
+	suite.assertStateUpdated(bidAccepted.Execution, models.ExecutionStateBidAccepted, models.ExecutionStateAskForBidAccepted)
 
 	// NotifyBidRejected
 	suite.computeService.EXPECT().BidRejected(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidRejected)).Times(1)
-	suite.assertStateUpdated(bidRejected.Execution, model.ExecutionStateBidRejected, model.ExecutionStateAskForBidAccepted)
+	suite.assertStateUpdated(bidRejected.Execution, models.ExecutionStateBidRejected, models.ExecutionStateAskForBidAccepted)
 
 	// NotifyCancel
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toCancel1)).Times(1)
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toCancel2)).Times(1)
 	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toCancel3)).Times(1)
-	suite.assertStateUpdated(toCancel1.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
-	suite.assertStateUpdated(toCancel2.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
-	suite.assertStateUpdated(toCancel3.Execution, model.ExecutionStateCancelled, model.ExecutionStateUndefined)
+	suite.assertStateUpdated(toCancel1.Execution, models.ExecutionStateCancelled, models.ExecutionStateUndefined)
+	suite.assertStateUpdated(toCancel2.Execution, models.ExecutionStateCancelled, models.ExecutionStateUndefined)
+	suite.assertStateUpdated(toCancel3.Execution, models.ExecutionStateCancelled, models.ExecutionStateUndefined)
 
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
@@ -119,10 +118,10 @@ func (suite *ComputeForwarderSuite) TestProcess_WithUpdatedExecutions_ShouldNoti
 
 func (suite *ComputeForwarderSuite) TestProcess_OnNotifyFailure_NoStateUpdate() {
 	plan := mock.Plan()
-	toAskForBid := suite.mockUpdateExecution(plan, "toAskForBid", model.ExecutionDesiredStatePending, model.ExecutionStateNew)
-	bidAccepted := suite.mockUpdateExecution(plan, "bidAccepted", model.ExecutionDesiredStateRunning, model.ExecutionStateAskForBidAccepted)
-	bidRejected := suite.mockUpdateExecution(plan, "bidRejected", model.ExecutionDesiredStateStopped, model.ExecutionStateAskForBidAccepted)
-	toCancel1 := suite.mockUpdateExecution(plan, "toCancel1", model.ExecutionDesiredStateStopped, model.ExecutionStateNew)
+	toAskForBid := suite.mockUpdateExecution(plan, "toAskForBid", models.ExecutionDesiredStatePending, models.ExecutionStateNew)
+	bidAccepted := suite.mockUpdateExecution(plan, "bidAccepted", models.ExecutionDesiredStateRunning, models.ExecutionStateAskForBidAccepted)
+	bidRejected := suite.mockUpdateExecution(plan, "bidRejected", models.ExecutionDesiredStateStopped, models.ExecutionStateAskForBidAccepted)
+	toCancel1 := suite.mockUpdateExecution(plan, "toCancel1", models.ExecutionDesiredStateStopped, models.ExecutionStateNew)
 
 	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toAskForBid)).Return(compute.AskForBidResponse{}, suite.plannerErr).Times(1)
 	suite.computeService.EXPECT().BidAccepted(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidAccepted)).Return(compute.BidAcceptedResponse{}, suite.plannerErr).Times(1)
@@ -133,20 +132,20 @@ func (suite *ComputeForwarderSuite) TestProcess_OnNotifyFailure_NoStateUpdate() 
 	suite.waitUntilSatisfied()
 }
 
-func (suite *ComputeForwarderSuite) mockUpdateExecution(plan *models.Plan, id string, desiredState model.ExecutionDesiredState, currentState model.ExecutionStateType) *models.PlanExecutionDesiredUpdate {
-	execution := mock.ExecutionState(plan.Job.ID())
-	execution.ComputeReference = id
-	execution.State = currentState
+func (suite *ComputeForwarderSuite) mockUpdateExecution(plan *models.Plan, id string, desiredState models.ExecutionDesiredStateType, currentState models.ExecutionStateType) *models.PlanExecutionDesiredUpdate {
+	execution := mock.Execution(plan.Job)
+	execution.ID = id
+	execution.ComputeState = models.NewExecutionState(currentState)
 	update := &models.PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: desiredState,
 		Comment:      "update",
 	}
-	plan.UpdatedExecutions[execution.ID()] = update
+	plan.UpdatedExecutions[execution.ID] = update
 	return update
 
 }
-func (suite *ComputeForwarderSuite) assertStateUpdated(execution *model.ExecutionState, newState model.ExecutionStateType, expectedState model.ExecutionStateType) {
+func (suite *ComputeForwarderSuite) assertStateUpdated(execution *models.Execution, newState models.ExecutionStateType, expectedState models.ExecutionStateType) {
 	matcher := NewUpdateExecutionMatcher(suite.T(), execution, UpdateExecutionMatcherParams{
 		NewState:      newState,
 		ExpectedState: expectedState,

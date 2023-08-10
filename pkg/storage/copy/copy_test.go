@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/c2h5oh/datasize"
@@ -17,64 +18,88 @@ import (
 
 type copyOversizeTestCase struct {
 	name     string
-	specs    []*model.StorageSpec
+	specs    []*models.Artifact
 	modified bool
 }
 
 const (
-	maxSingle datasize.ByteSize       = 10 * datasize.B
-	maxTotal  datasize.ByteSize       = 10 * datasize.B
-	srcType   model.StorageSourceType = model.StorageSourceInline
-	dstType   model.StorageSourceType = model.StorageSourceIPFS
+	maxSingle datasize.ByteSize = 10 * datasize.B
+	maxTotal  datasize.ByteSize = 10 * datasize.B
+	srcType                     = models.StorageSourceInline
+	dstType                     = models.StorageSourceIPFS
 )
 
 var copyOversizeTestCases = []copyOversizeTestCase{
 	{
 		name:     "non specs are unchanged",
-		specs:    []*model.StorageSpec{{StorageSource: dstType}},
+		specs:    []*models.Artifact{{Source: &models.SpecConfig{Type: dstType}}},
 		modified: false,
 	},
 	{
 		name: "small specs are unchanged",
-		specs: []*model.StorageSpec{{
-			StorageSource: srcType,
-			Path:          "/inputs",
-			URL:           strings.Repeat("a", int(maxSingle)),
+		specs: []*models.Artifact{{
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxSingle)),
+				},
+			},
+			Target: "/inputs",
 		}},
 		modified: false,
 	},
 	{
 		name: "large specs are changed",
-		specs: []*model.StorageSpec{{
-			StorageSource: srcType,
-			Path:          "/inputs",
-			URL:           strings.Repeat("a", int(maxSingle)+1),
+		specs: []*models.Artifact{{
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxSingle)+1),
+				},
+			},
+			Target: "/inputs",
 		}},
 		modified: true,
 	},
 	{
 		name: "multiple small specs below threshold are unchanged",
-		specs: []*model.StorageSpec{{
-			StorageSource: srcType,
-			Path:          "/inputs1",
-			URL:           strings.Repeat("a", int(maxTotal/2)),
+		specs: []*models.Artifact{{
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxTotal/2)),
+				},
+			},
+			Target: "/inputs1",
 		}, {
-			StorageSource: srcType,
-			Path:          "/inputs2",
-			URL:           strings.Repeat("a", int(maxTotal/2)),
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxTotal/2)),
+				},
+			},
+			Target: "/inputs2",
 		}},
 		modified: false,
 	},
 	{
 		name: "multiple small specs above threshold are changed",
-		specs: []*model.StorageSpec{{
-			StorageSource: srcType,
-			Path:          "/inputs1",
-			URL:           strings.Repeat("a", int(maxTotal/2)+1),
+		specs: []*models.Artifact{{
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxTotal/2)+1),
+				},
+			},
+			Target: "/inputs1",
 		}, {
-			StorageSource: srcType,
-			Path:          "/inputs2",
-			URL:           strings.Repeat("a", int(maxTotal/2)),
+			Source: &models.SpecConfig{
+				Type: srcType,
+				Params: map[string]interface{}{
+					"URL": strings.Repeat("a", int(maxTotal/2)),
+				},
+			},
+			Target: "/inputs2",
 		}},
 		modified: true,
 	},
@@ -96,17 +121,17 @@ func TestCopyOversize(t *testing.T) {
 			didUpload := false
 			noopStorage := noop.NewNoopStorageWithConfig(noop.StorageConfig{
 				ExternalHooks: noop.StorageConfigExternalHooks{
-					GetVolumeSize: func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-						return uint64(len(volume.URL)), nil
+					GetVolumeSize: func(ctx context.Context, volume models.Artifact) (uint64, error) {
+						return uint64(len(volume.Source.Type)), nil
 					},
-					Upload: func(ctx context.Context, localPath string) (model.StorageSpec, error) {
+					Upload: func(ctx context.Context, localPath string) (models.SpecConfig, error) {
 						didUpload = true
-						return model.StorageSpec{StorageSource: dstType}, nil
+						return models.SpecConfig{Type: dstType}, nil
 					},
 				},
 			})
 
-			provider := model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopStorage)
+			provider := provider.NewSingletonProvider[storage.Storage](noopStorage)
 			modified, err := CopyOversize(
 				context.Background(),
 				provider,
@@ -129,13 +154,9 @@ func TestCopyOversize(t *testing.T) {
 				require.Subset(t, newSpecs, originals)
 			}
 
-			oldPaths := lo.Map(originals, func(s model.StorageSpec, _ int) string { return s.Path })
-			newPaths := lo.Map(newSpecs, func(s model.StorageSpec, _ int) string { return s.Path })
+			oldPaths := lo.Map(originals, func(s models.Artifact, _ int) string { return s.Target })
+			newPaths := lo.Map(newSpecs, func(s models.Artifact, _ int) string { return s.Target })
 			require.ElementsMatch(t, oldPaths, newPaths)
-
-			oldNames := lo.Map(originals, func(s model.StorageSpec, _ int) string { return s.Name })
-			newNames := lo.Map(newSpecs, func(s model.StorageSpec, _ int) string { return s.Name })
-			require.ElementsMatch(t, oldNames, newNames)
 		})
 	}
 

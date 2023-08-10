@@ -7,7 +7,6 @@ import (
 	realsync "sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -54,7 +53,7 @@ func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub/libp2p.publish.publish")
 	defer span.End()
 
-	payload, err := model.JSONMarshalWithMax(message)
+	payload, err := marshaller.JSONMarshalWithMax(message)
 	if err != nil {
 		return err
 	}
@@ -111,7 +110,7 @@ func (p *PubSub[T]) readMessage(ctx context.Context, msg *libp2p_pubsub.Message)
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
 	var payload T
-	err := model.JSONUnmarshalWithMax(msg.Data, &payload)
+	err := marshaller.JSONUnmarshalWithMax(msg.Data, &payload)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p payload: %v", err)
 		return

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/go-git/go-git/v5"
 
 	// "net/http"
@@ -19,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
@@ -108,10 +108,14 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	sp, err := NewStorage(cm, storage, "")
 	require.NoError(s.T(), err, "failed to create storage provider")
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceRepoClone,
-		URL:           "foo",
-		Path:          "foo",
+	spec := models.Artifact{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceRepoClone,
+			Params: Source{
+				Repo: "foo",
+			}.ToMap(),
+		},
+		Target: "bar",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
@@ -156,10 +160,14 @@ func (s *StorageSuite) TestCloneRepo() {
 				return "", fmt.Errorf("%s: failed to create storage provider", name)
 			}
 
-			spec := model.StorageSpec{
-				StorageSource: model.StorageSourceRepoClone,
-				Repo:          ftc.URL,
-				Path:          "/inputs/" + ftc.repoName,
+			spec := models.Artifact{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceRepoClone,
+					Params: Source{
+						Repo: ftc.URL,
+					}.ToMap(),
+				},
+				Target: "/inputs/" + ftc.repoName,
 			}
 
 			volume, err := sp.PrepareStorage(ctx, spec)

@@ -3,7 +3,6 @@ package publicapi
 import (
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -108,7 +107,7 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 	// CPU usage
 
 	healthInfo := GenerateHealthData()
-	healthJSONBlob, _ := model.JSONMarshalWithMax(healthInfo)
+	healthJSONBlob, _ := marshaller.JSONMarshalWithMax(healthInfo)
 
 	_, err := res.Write(healthJSONBlob)
 	if err != nil {

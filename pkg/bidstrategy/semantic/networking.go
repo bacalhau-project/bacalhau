@@ -21,7 +21,7 @@ func NewNetworkingStrategy(accept bool) *NetworkingStrategy {
 func (s *NetworkingStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
-	shouldBid := s.Accept || request.Job.Spec.Network.Disabled()
+	shouldBid := s.Accept || request.Job.Task().Network.Disabled()
 	return bidstrategy.BidStrategyResponse{
 		ShouldBid: shouldBid,
 		Reason:    fmt.Sprintf("networking is enabled: %t", s.Accept),

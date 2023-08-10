@@ -11,7 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -239,7 +239,7 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 			volume, err := storageProvider.PrepareStorage(context.Background(), spec)
 			require.NoError(s.T(), err)
 			require.Equal(s.T(), volume.Source, folderPath)
-			require.Equal(s.T(), volume.Target, spec.Path)
+			require.Equal(s.T(), volume.Target, spec.Target)
 			require.Equal(s.T(), volume.ReadOnly, !tc.readWrite)
 			require.Equal(s.T(), volume.Type, storage.StorageVolumeConnectorBind)
 		})
@@ -247,15 +247,20 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 
 }
 
-func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) model.StorageSpec {
+func (s *LocalDirectorySuite) prepareStorageSpec(sourcePath string) models.Artifact {
 	readWrite := false
 	if strings.HasSuffix(sourcePath, ":rw") {
 		readWrite = true
 		sourcePath = strings.TrimSuffix(sourcePath, ":rw")
 	}
-	return model.StorageSpec{
-		SourcePath: sourcePath,
-		Path:       "/path/inside/the/container",
-		ReadWrite:  readWrite,
+	return models.Artifact{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceInline,
+			Params: Source{
+				SourcePath: sourcePath,
+				ReadWrite:  readWrite,
+			}.ToMap(),
+		},
+		Target: "/path/inside/the/container",
 	}
 }

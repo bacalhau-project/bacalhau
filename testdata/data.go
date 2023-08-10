@@ -112,7 +112,7 @@ func (f *Fixture) AsTempFile(t testing.TB, pattern string) string {
 
 func NewSpecFixture(data []byte) *Fixture {
 	var out model.Job
-	if err := model.YAMLUnmarshalWithMax(data, &out); err != nil {
+	if err := marshaller.YAMLUnmarshalWithMax(data, &out); err != nil {
 		panic(err)
 	}
 

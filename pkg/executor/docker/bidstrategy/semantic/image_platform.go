@@ -9,7 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -32,7 +31,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
-	if request.Job.Spec.Engine != model.EngineDocker {
+	if request.Job.Spec.Engine != models.EngineDocker {
 		return bidstrategy.NewShouldBidResponse(), nil
 	}
 

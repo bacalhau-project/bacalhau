@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
@@ -45,20 +44,20 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		return fmt.Errorf("failed to retrieve job %s: %w", evaluation.JobID, err)
 	}
 	// Retrieve the job state
-	jobState, err := b.jobStore.GetJobState(ctx, evaluation.JobID)
+	jobExecutions, err := b.jobStore.GetExecutions(ctx, evaluation.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
 
 	// Plan to hold the actions to be taken
-	plan := models.NewPlan(evaluation, &job, jobState.Version)
+	plan := models.NewPlan(evaluation, &job)
 
-	existingExecs := execSetFromSliceOfValues(jobState.Executions)
+	existingExecs := execSetFromSliceOfValues(jobExecutions)
 	nonTerminalExecs := existingExecs.filterNonTerminal()
 
 	// early exit if the job is stopped
-	if jobState.State.IsTerminal() {
+	if job.IsTerminal() {
 		nonTerminalExecs.markStopped(execNotNeeded, plan)
 		return b.planner.Process(ctx, plan)
 	}
@@ -96,21 +95,21 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 }
 
 func (b *OpsJobScheduler) createMissingExecs(
-	ctx context.Context, job *model.Job, plan *models.Plan) (execSet, error) {
+	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
 	newExecs := execSet{}
 	nodes, err := b.selectNodes(ctx, job)
 	if err != nil {
 		return newExecs, err
 	}
 	for _, node := range nodes {
-		execution := &model.ExecutionState{
-			JobID:            job.Metadata.ID,
-			ComputeReference: "e-" + uuid.NewString(),
-			State:            model.ExecutionStateNew,
-			DesiredState:     model.ExecutionDesiredStateRunning,
-			NodeID:           node.PeerInfo.ID.String(),
+		execution := &models.Execution{
+			JobID:        job.ID,
+			ID:           "e-" + uuid.NewString(),
+			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
+			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+			NodeID:       node.PeerInfo.ID.String(),
 		}
-		newExecs[execution.ComputeReference] = execution
+		newExecs[execution.ID] = execution
 	}
 	for _, exec := range newExecs {
 		plan.AppendExecution(exec)
@@ -118,7 +117,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 	return newExecs, nil
 }
 
-func (b *OpsJobScheduler) selectNodes(ctx context.Context, job *model.Job) ([]model.NodeInfo, error) {
+func (b *OpsJobScheduler) selectNodes(ctx context.Context, job *models.Job) ([]models.NodeInfo, error) {
 	nodeIDs, err := b.nodeDiscoverer.FindNodes(ctx, *job)
 	if err != nil {
 		return nil, err
@@ -131,7 +130,7 @@ func (b *OpsJobScheduler) selectNodes(ctx context.Context, job *model.Job) ([]mo
 	}
 
 	// filter nodes with rank below 0
-	var filteredNodes []model.NodeInfo
+	var filteredNodes []models.NodeInfo
 	for _, nodeRank := range rankedNodes {
 		if nodeRank.MeetsRequirement() {
 			filteredNodes = append(filteredNodes, nodeRank.NodeInfo)
@@ -154,7 +153,7 @@ func (b *OpsJobScheduler) handleFailure(nonTerminalExecs execSet, failed execSet
 	// the error message passed by the scheduler
 	latestErr := err.Error()
 	if len(failed) > 0 {
-		latestErr = failed.latest().Status
+		latestErr = failed.latest().ComputeState.Message
 	}
 	plan.MarkJobFailed(latestErr)
 }

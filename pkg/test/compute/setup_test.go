@@ -84,9 +84,9 @@ func (s *ComputeSuite) setupNode() {
 		host,
 		apiServer,
 		s.config,
-		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
-		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
-		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
+		provider.NewSingletonProvider[model.StorageSourceType, storage.Storage](noopstorage),
+		provider.NewSingletonProvider[model.Engine, executor.Executor](s.executor),
+		provider.NewSingletonProvider[model.Publisher, publisher.Publisher](s.publisher),
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

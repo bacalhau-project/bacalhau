@@ -25,13 +25,13 @@ type Task struct {
 
 	// Artifacts is a list of remote artifacts to be downloaded before running the task
 	// and mounted into the task.
-	Artifacts []*SpecConfig
+	Artifacts []*Artifact
 
 	// Volumes is a list of volumes to be mounted into the task.
 	Volumes []*SpecConfig
 
-	// Outputs is a list of task volumes to be included in the task's published result
-	Outputs []*SpecConfig
+	// ResultPaths is a list of task volumes to be included in the task's published result
+	ResultPaths []*Path
 
 	// Resources is the resources needed by this task
 	Resources *Resources
@@ -53,7 +53,7 @@ func (t *Task) Normalize(*Job) {
 	t.Publisher.Normalize()
 	NormalizeSlice(t.Artifacts)
 	NormalizeSlice(t.Volumes)
-	NormalizeSlice(t.Outputs)
+	NormalizeSlice(t.ResultPaths)
 	t.Network.Normalize()
 }
 
@@ -68,7 +68,7 @@ func (t *Task) Copy() *Task {
 	nt.Resources = t.Resources.Copy()
 	nt.Artifacts = CopySlice(t.Artifacts)
 	nt.Volumes = CopySlice(t.Volumes)
-	nt.Outputs = CopySlice(t.Outputs)
+	nt.ResultPaths = CopySlice(t.ResultPaths)
 	nt.Meta = maps.Clone(t.Meta)
 	nt.Env = maps.Clone(t.Env)
 	nt.Network = t.Network.Copy()
@@ -95,7 +95,7 @@ func (t *Task) Validate(j *Job) error {
 	if err := ValidateSlice(t.Volumes); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
 	}
-	if err := ValidateSlice(t.Outputs); err != nil {
+	if err := ValidateSlice(t.ResultPaths); err != nil {
 		mErr.Errors = append(mErr.Errors, fmt.Errorf("output validation failed: %v", err))
 	}
 	if err := t.Resources.Validate(); err != nil {
@@ -106,4 +106,12 @@ func (t *Task) Validate(j *Job) error {
 	}
 
 	return mErr.ErrorOrNil()
+}
+
+func (t *Task) AllStorageTypes() []string {
+	var types []string
+	for _, a := range t.Artifacts {
+		types = append(types, a.Source.Type)
+	}
+	return types
 }

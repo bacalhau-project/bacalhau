@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -49,7 +48,7 @@ func (s *ServerSuite) TestHealthz() {
 	rawHealthData := s.testEndpoint(s.T(), "/healthz", "FreeSpace")
 
 	var healthData types.HealthInfo
-	err := model.JSONUnmarshalWithMax(rawHealthData, &healthData)
+	err := marshaller.JSONUnmarshalWithMax(rawHealthData, &healthData)
 	require.NoError(s.T(), err, "Error unmarshalling /healthz data.")
 
 	// Checks that it's a number, and bigger than zero
@@ -76,7 +75,7 @@ func (s *ServerSuite) TestVarz() {
 	rawVarZBody := s.testEndpoint(s.T(), "/varz", "{")
 
 	var varZ types.VarZ
-	err := model.JSONUnmarshalWithMax(rawVarZBody, &varZ)
+	err := marshaller.JSONUnmarshalWithMax(rawVarZBody, &varZ)
 	require.NoError(s.T(), err, "Error unmarshalling /varz data.")
 
 }

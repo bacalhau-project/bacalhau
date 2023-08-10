@@ -32,7 +32,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 	"github.com/c2h5oh/datasize"
@@ -57,14 +57,18 @@ func NewStorage() *InlineStorage {
 
 // As PrepareStorage writes the data to the local filesystem, CleanupStorage
 // just needs to remove that temporary directory.
-func (i *InlineStorage) CleanupStorage(_ context.Context, _ model.StorageSpec, vol storage.StorageVolume) error {
+func (i *InlineStorage) CleanupStorage(_ context.Context, _ models.Artifact, vol storage.StorageVolume) error {
 	return os.RemoveAll(vol.Source)
 }
 
 // For an inline storage, we define the volume size as uncompressed data size,
 // as this is how much resource using the storage will take up.
-func (i *InlineStorage) GetVolumeSize(_ context.Context, spec model.StorageSpec) (uint64, error) {
-	data, err := dataurl.DecodeString(spec.URL)
+func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.Artifact) (uint64, error) {
+	source, err := DecodeSpec(spec.Source)
+	if err != nil {
+		return 0, err
+	}
+	data, err := dataurl.DecodeString(source.URL)
 	if err != nil {
 		return 0, err
 	}
@@ -77,8 +81,8 @@ func (i *InlineStorage) GetVolumeSize(_ context.Context, spec model.StorageSpec)
 	}
 }
 
-// The storage is always local because it is contained with the StorageSpec.
-func (*InlineStorage) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
+// The storage is always local because it is contained with the SpecConfig.
+func (*InlineStorage) HasStorageLocally(context.Context, models.Artifact) (bool, error) {
 	return true, nil
 }
 
@@ -90,13 +94,17 @@ func (*InlineStorage) IsInstalled(context.Context) (bool, error) {
 // PrepareStorage extracts the data from the "data:" URL and writes it to a
 // temporary directory. If the data was a compressed tarball, it decompresses it
 // into a directory structure.
-func (i *InlineStorage) PrepareStorage(_ context.Context, spec model.StorageSpec) (storage.StorageVolume, error) {
+func (i *InlineStorage) PrepareStorage(_ context.Context, spec models.Artifact) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(spec.Source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
 	tempdir, err := os.MkdirTemp(os.TempDir(), "inline-storage")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	data, err := dataurl.DecodeString(spec.URL)
+	data, err := dataurl.DecodeString(source.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -112,7 +120,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, spec model.StorageSpec
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempdir,
-			Target: spec.Path,
+			Target: spec.Target,
 		}, err
 	} else {
 		tempfile, err := os.CreateTemp(tempdir, "file")
@@ -125,49 +133,51 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, spec model.StorageSpec
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
-			Target: spec.Path,
+			Target: spec.Target,
 		}, multierr.Combine(werr, cerr)
 	}
 }
 
-// Upload stores the data into the returned StorageSpec. If the path points to a
+// Upload stores the data into the returned SpecConfig. If the path points to a
 // directory, the directory will be made into a tarball. The data might be
 // compressed and will always be base64-encoded using a URL-safe method.
-func (*InlineStorage) Upload(ctx context.Context, path string) (model.StorageSpec, error) {
+func (*InlineStorage) Upload(ctx context.Context, path string) (models.SpecConfig, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
 	var url string
 	if info.IsDir() || info.Size() > int64(maximumPlaintextSize.Bytes()) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return model.StorageSpec{}, err
+			return models.SpecConfig{}, err
 		}
 		if err := os.Chdir(filepath.Dir(path)); err != nil {
-			return model.StorageSpec{}, err
+			return models.SpecConfig{}, err
 		}
 		var buf bytes.Buffer
 		if err := targzip.Compress(ctx, filepath.Base(path), &buf); err != nil {
-			return model.StorageSpec{}, err
+			return models.SpecConfig{}, err
 		}
 		url = dataurl.New(buf.Bytes(), gzipMimeType).String()
 		if err := os.Chdir(cwd); err != nil {
-			return model.StorageSpec{}, err
+			return models.SpecConfig{}, err
 		}
 	} else {
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return model.StorageSpec{}, err
+			return models.SpecConfig{}, err
 		}
 		url = dataurl.EncodeBytes(data)
 	}
 
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceInline,
-		URL:           url,
-	}, err
+	return models.SpecConfig{
+		Type: models.StorageSourceInline,
+		Params: Source{
+			URL: url,
+		}.ToMap(),
+	}, nil
 }
 
 var _ storage.Storage = (*InlineStorage)(nil)

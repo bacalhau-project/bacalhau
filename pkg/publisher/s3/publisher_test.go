@@ -19,8 +19,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -112,14 +113,13 @@ func (s *PublisherTestSuite) TestValidateJob() {
 		},
 	} {
 		s.Run(tc.name, func() {
-			err := s.publisher.ValidateJob(context.Background(), model.Job{
-				Spec: model.Spec{
-					PublisherSpec: model.PublisherSpec{
-						Type:   model.PublisherS3,
-						Params: tc.config.ToMap(),
-					},
-				},
-			})
+			job := mock.Job()
+			job.Task().Publisher = &models.SpecConfig{
+				Type:   models.PublisherS3,
+				Params: tc.config.ToMap(),
+			}
+
+			err := s.publisher.ValidateJob(context.Background(), *job)
 			if tc.invalid {
 				s.Error(err)
 			} else {
@@ -130,17 +130,15 @@ func (s *PublisherTestSuite) TestValidateJob() {
 }
 
 func (s *PublisherTestSuite) TestInvalidValidateJobType() {
-	s.Require().Error(s.publisher.ValidateJob(context.Background(), model.Job{
-		Spec: model.Spec{
-			PublisherSpec: model.PublisherSpec{
-				Type: model.PublisherIpfs,
-				Params: Params{
-					Bucket: bucket,
-					Key:    prefix + uuid.New().String(),
-				}.ToMap(),
-			},
-		},
-	}))
+	job := mock.Job()
+	job.Task().Publisher = &models.SpecConfig{
+		Type: models.PublisherS3,
+		Params: Params{
+			Bucket: bucket,
+			Key:    prefix + uuid.New().String(),
+		}.ToMap(),
+	}
+	s.Require().Error(s.publisher.ValidateJob(context.Background(), *job))
 }
 
 func (s *PublisherTestSuite) TestPublish() {
@@ -250,14 +248,14 @@ func (s *PublisherTestSuite) TestPublish() {
 			}
 			s.Require().NoError(err)
 
-			s.Equal(tc.expectedKey, storageSpec.S3.Key)
-			s.Equal(bucket, storageSpec.S3.Bucket)
-			s.Equal(params.Region, storageSpec.S3.Region)
-			s.Equal(params.Endpoint, storageSpec.S3.Endpoint)
+			s.Equal(tc.expectedKey, storageSpec.Params["Key"])
+			s.Equal(bucket, storageSpec.Params["Bucket"])
+			s.Equal(params.Region, storageSpec.Params["Region"])
+			s.Equal(params.Endpoint, storageSpec.Params["Endpoint"])
 
 			if tc.archived {
-				s.NotEmptyf(storageSpec.S3.ChecksumSHA256, "ChecksumSHA256 should not be empty")
-				s.NotEmptyf(storageSpec.S3.VersionID, "VersionID should not be empty")
+				s.NotEmptyf(storageSpec.Params["ChecksumSHA256"], "ChecksumSHA256 should not be empty")
+				s.NotEmptyf(storageSpec.Params["VersionID"], "VersionID should not be empty")
 				dir := s.decompress(storageSpec)
 				s.equalLocalContent("1", filepath.Join(dir, "1.txt"))
 				s.equalLocalContent("2", filepath.Join(dir, "2.txt"))
@@ -265,8 +263,8 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.equalLocalContent("4", filepath.Join(dir, "nested", "4.txt"))
 
 			} else {
-				s.Empty(storageSpec.S3.ChecksumSHA256, "ChecksumSHA256 should be empty")
-				s.Empty(storageSpec.S3.VersionID, "VersionID should be empty")
+				s.Empty(storageSpec.Params["ChecksumSHA256"], "ChecksumSHA256 should be empty")
+				s.Empty(storageSpec.Params["VersionID"], "VersionID should be empty")
 				s.equalS3Content("1", storageSpec, "1.txt")
 				s.equalS3Content("2", storageSpec, "2.txt")
 				s.equalS3Content("3", storageSpec, "nested/3.txt")
@@ -276,7 +274,7 @@ func (s *PublisherTestSuite) TestPublish() {
 	}
 }
 
-func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (model.StorageSpec, error) {
+func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params) (models.SpecConfig, error) {
 	resultPath, err := os.MkdirTemp(s.tempDir, "")
 	s.Require().NoError(err)
 
@@ -294,32 +292,26 @@ func (s *PublisherTestSuite) publish(ctx context.Context, publisherConfig Params
 		s.Require().NoError(err)
 	}
 
-	job := model.Job{
-		Metadata: model.Metadata{
-			ID: jobID,
-		},
-		Spec: model.Spec{
-			PublisherSpec: model.PublisherSpec{
-				Type:   model.PublisherS3,
-				Params: publisherConfig.ToMap(),
-			},
-		},
+	job := mock.Job()
+	job.Task().Publisher = &models.SpecConfig{
+		Type:   models.PublisherS3,
+		Params: publisherConfig.ToMap(),
 	}
-	return s.publisher.PublishResult(ctx, executionID, job, resultPath)
+	return s.publisher.PublishResult(ctx, executionID, *job, resultPath)
 }
 
-func (s *PublisherTestSuite) equalS3Content(expected string, uploaded model.StorageSpec, suffix string) {
+func (s *PublisherTestSuite) equalS3Content(expected string, uploaded models.SpecConfig, suffix string) {
 	ctx := context.Background()
 	client := s.publisher.clientProvider.GetClient("", region)
 	resp, err := client.S3.GetObject(ctx, &s3.GetObjectInput{
-		Bucket:       aws.String(uploaded.S3.Bucket),
-		Key:          aws.String(uploaded.S3.Key + suffix),
+		Bucket:       aws.String(uploaded.Params["Bucket"].(string)),
+		Key:          aws.String(uploaded.Params["Key"].(string) + suffix),
 		ChecksumMode: types.ChecksumModeEnabled,
 	})
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	if uploaded.S3.ChecksumSHA256 != "" {
-		s.Equal(uploaded.S3.ChecksumSHA256, aws.ToString(resp.ChecksumSHA256))
+	if uploaded.Params["ChecksumSHA256"] != "" {
+		s.Equal(uploaded.Params["ChecksumSHA256"], aws.ToString(resp.ChecksumSHA256))
 	}
 
 	// Read the object body into a byte buffer
@@ -335,15 +327,15 @@ func (s *PublisherTestSuite) equalLocalContent(expected string, path string) {
 	s.Equal(expected, string(bytes))
 }
 
-func (s *PublisherTestSuite) decompress(uploaded model.StorageSpec) string {
+func (s *PublisherTestSuite) decompress(uploaded models.SpecConfig) string {
 	outputFile, err := os.CreateTemp(s.tempDir, "")
 	s.Require().NoError(err)
 	defer outputFile.Close()
 
 	_, err = s.publisher.clientProvider.GetClient("", region).Downloader.Download(context.Background(),
 		outputFile, &s3.GetObjectInput{
-			Bucket: aws.String(uploaded.S3.Bucket),
-			Key:    aws.String(uploaded.S3.Key),
+			Bucket: aws.String(uploaded.Params["Bucket"].(string)),
+			Key:    aws.String(uploaded.Params["Key"].(string)),
 		})
 	s.Require().NoError(err)
 
@@ -419,7 +411,7 @@ func unarchiveToDirectory(sourcePath string, targetDir string) error {
 		case tar.TypeDir:
 			// Create the directory.
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, model.DownloadFolderPerm); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil {
 					return err
 				}
 			}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type RunningExecutionsInfoProviderParams struct {
@@ -27,18 +26,18 @@ func NewRunningExecutionsInfoProvider(params RunningExecutionsInfoProviderParams
 	}
 }
 
-func (r RunningExecutionsInfoProvider) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
+func (r RunningExecutionsInfoProvider) GetDebugInfo(ctx context.Context) (models.DebugInfo, error) {
 	executions := r.backendBuffer.RunningExecutions()
 	summaries := make([]store.ExecutionSummary, 0, len(executions))
 	for _, execution := range executions {
 		summaries = append(summaries, store.NewExecutionSummary(execution))
 	}
 
-	return model.DebugInfo{
+	return models.DebugInfo{
 		Component: r.name,
 		Info:      summaries,
 	}, nil
 }
 
 // compile-time check that we implement the interface
-var _ model.DebugInfoProvider = (*RunningExecutionsInfoProvider)(nil)
+var _ models.DebugInfoProvider = (*RunningExecutionsInfoProvider)(nil)

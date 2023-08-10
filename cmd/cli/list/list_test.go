@@ -114,7 +114,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	// parse response
 	response := publicapi.ListResponse{}
-	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+	err = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem model.Job
 	for _, v := range response.Jobs {
@@ -187,7 +187,7 @@ func (suite *ListSuite) TestList_AnnotationFilter() {
 				require.NoError(suite.T(), err)
 
 				response := publicapi.ListResponse{}
-				_ = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
+				_ = marshaller.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 				if shouldAppear {
 					require.NotEmpty(suite.T(), response.Jobs)
 					require.Equal(suite.T(), j.Metadata.ID, response.Jobs[0].Job.Metadata.ID)

@@ -75,7 +75,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				)
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
 
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
+				err = marshaller.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
@@ -92,7 +92,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
+				err = marshaller.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
@@ -108,7 +108,7 @@ func (s *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(s.T(), err, "Error in describing job: %+v", err)
-				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
+				err = marshaller.YAMLUnmarshalWithMax([]byte(out), returnedJobDescription)
 				require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 				require.Equal(s.T(),
@@ -153,7 +153,7 @@ func (s *DescribeSuite) TestDescribeJobIncludeEvents() {
 			_, out, err := cmdtesting.ExecuteTestCobraCommand(args...)
 			require.NoError(s.T(), err, "Error in describing job: %+v", err)
 
-			err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
+			err = marshaller.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
 			require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 
 			// TODO: #600 When we figure out how to add events to a noop job, uncomment the below
@@ -219,7 +219,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 				if tc.describeIDEdgecase == "" {
 					require.NoError(s.T(), err, "Error in describing job: %+v", err)
 
-					err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
+					err = marshaller.YAMLUnmarshalWithMax([]byte(out), &returnedJobDescription)
 					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
 					require.Equal(s.T(), submittedJob.Metadata.ID, returnedJobDescription.Job.Metadata.ID, "IDs do not match.")
 					require.Equal(s.T(),
@@ -228,7 +228,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
 				} else {
 					c := &model.TestFatalErrorHandlerContents{}
-					s.NoError(model.JSONUnmarshalWithMax([]byte(out), &c))
+					s.NoError(marshaller.JSONUnmarshalWithMax([]byte(out), &c))
 					e := bacerrors.NewJobNotFound(tc.describeIDEdgecase)
 					require.Contains(s.T(), c.Message, e.GetMessage(), "Job not found error string not found.", err)
 				}

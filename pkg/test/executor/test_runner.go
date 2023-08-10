@@ -73,7 +73,7 @@ func RunTestCase(
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
 	runCommandCleanup := system.NewCleanupManager()
-	execution := store.NewExecution("test-execution", job, "res-requesterID", model.ResourceUsageData{})
+	execution := store.NewLocalState("test-execution", job, "res-requesterID", model.ResourceUsageData{})
 	runCommandArguments, err := compute.PrepareRunArguments(ctx, strgProvider, *execution, resultsDirectory, runCommandCleanup)
 	require.NoError(t, err)
 	t.Cleanup(func() {

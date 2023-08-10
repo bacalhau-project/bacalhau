@@ -389,8 +389,8 @@ func (d *InMemoryJobStore) UpdateExecution(_ context.Context, request jobstore.U
 	if newExecution.UpdateTime.IsZero() {
 		newExecution.UpdateTime = d.clock.Now().UTC()
 	}
-	if newExecution.Version == 0 {
-		newExecution.Version = existingExecution.Version + 1
+	if newExecution.Revision == 0 {
+		newExecution.Revision = existingExecution.Version + 1
 	}
 
 	err := mergo.Merge(&newExecution, existingExecution)

@@ -105,8 +105,8 @@ func (s *InMemoryTestSuite) SetupTest() {
 				JobID:    fixture.id,
 				NewState: state,
 				Condition: jobstore.UpdateJobCondition{
-					ExpectedState:   oldState,
-					ExpectedVersion: i + 1,
+					ExpectedState:    oldState,
+					ExpectedRevision: i + 1,
 				},
 				Comment: fmt.Sprintf("moved to %+v", state),
 			}
@@ -129,8 +129,8 @@ func (s *InMemoryTestSuite) SetupTest() {
 			request := jobstore.UpdateExecutionRequest{
 				ExecutionID: execution.ID(),
 				Condition: jobstore.UpdateExecutionCondition{
-					ExpectedStates:  []model.ExecutionStateType{oldState},
-					ExpectedVersion: i + 1,
+					ExpectedStates:   []model.ExecutionStateType{oldState},
+					ExpectedRevision: i + 1,
 				},
 				NewValues: execution,
 				Comment:   fmt.Sprintf("exec update to %+v", state),

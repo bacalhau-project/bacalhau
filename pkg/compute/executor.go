@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -25,7 +24,7 @@ type BaseExecutorParams struct {
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
-	FailureInjectionConfig model.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionComputeConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -39,7 +38,7 @@ type BaseExecutor struct {
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
-	failureInjection model.FailureInjectionComputeConfig
+	failureInjection models.FailureInjectionComputeConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -58,11 +57,11 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 func PrepareRunArguments(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
-	execution store.Execution,
+	localState store.LocalState,
 	resultsDir string,
 	cleanup *system.CleanupManager,
 ) (*executor.RunCommandRequest, error) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Inputs...)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, localState.Execution.Job.Task().Artifacts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepate storage for execution: %w", err)
 	}
@@ -76,7 +75,7 @@ func PrepareRunArguments(
 
 	var engineArgs interface{}
 	engineArgs = execution.Job.Spec.Docker
-	if execution.Job.Spec.Engine == model.EngineWasm {
+	if execution.Job.Spec.Engine == models.EngineWasm {
 		importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Wasm.ImportModules...)
 		if err != nil {
 			return nil, err
@@ -129,7 +128,7 @@ func PrepareRunArguments(
 }
 
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
-func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Run(ctx context.Context, localState store.LocalState) (err error) {
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID()).
 		Str("execution", execution.ID).
@@ -202,8 +201,8 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 }
 
 // Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
-	resultFolder string, result *model.RunCommandResult) (err error) {
+func (e *BaseExecutor) publish(ctx context.Context, localState store.LocalState,
+	resultFolder string, result *models.RunCommandResult) (err error) {
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Spec.PublisherSpec.Type)
@@ -220,7 +219,7 @@ func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
 		Str("cid", publishedResult.CID).
-		Msg("Execution published")
+		Msg("LocalState published")
 
 	err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:   execution.ID,
@@ -250,14 +249,14 @@ func (e *BaseExecutor) publish(ctx context.Context, execution store.Execution,
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (err error) {
+func (e *BaseExecutor) Cancel(ctx context.Context, localState store.LocalState) (err error) {
 	defer func() {
 		if err != nil {
 			e.handleFailure(ctx, execution, err, "Canceling")
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
+	log.Ctx(ctx).Debug().Str("LocalState", execution.ID).Msg("Canceling execution")
 	if cancel, found := e.cancellers.Get(execution.ID); found {
 		e.cancellers.Delete(execution.ID)
 		cancel()
@@ -273,7 +272,7 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution store.Execution) (e
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, execution store.Execution, err error, operation string) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, localState store.LocalState, err error, operation string) {
 	log.Ctx(ctx).Error().Err(err).Msgf("%s execution %s failed", operation, execution.ID)
 	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: execution.ID,

@@ -288,10 +288,10 @@ func (m *MockNodeDiscoverer) EXPECT() *MockNodeDiscovererMockRecorder {
 }
 
 // FindNodes mocks base method.
-func (m *MockNodeDiscoverer) FindNodes(ctx context.Context, job model.Job) ([]model.NodeInfo, error) {
+func (m *MockNodeDiscoverer) FindNodes(ctx context.Context, job models.Job) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindNodes", ctx, job)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -303,10 +303,10 @@ func (mr *MockNodeDiscovererMockRecorder) FindNodes(ctx, job interface{}) *gomoc
 }
 
 // ListNodes mocks base method.
-func (m *MockNodeDiscoverer) ListNodes(ctx context.Context) ([]model.NodeInfo, error) {
+func (m *MockNodeDiscoverer) ListNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListNodes", ctx)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -341,7 +341,7 @@ func (m *MockNodeRanker) EXPECT() *MockNodeRankerMockRecorder {
 }
 
 // RankNodes mocks base method.
-func (m *MockNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]NodeRank, error) {
+func (m *MockNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]NodeRank, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RankNodes", ctx, job, nodes)
 	ret0, _ := ret[0].([]NodeRank)
@@ -379,11 +379,11 @@ func (m *MockNodeSelector) EXPECT() *MockNodeSelectorMockRecorder {
 }
 
 // CanCompleteJob mocks base method.
-func (m *MockNodeSelector) CanCompleteJob(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) (bool, model.JobStateType) {
+func (m *MockNodeSelector) CanCompleteJob(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) (bool, models.JobStateType) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CanCompleteJob", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(model.JobStateType)
+	ret1, _ := ret[1].(models.JobStateType)
 	return ret0, ret1
 }
 
@@ -394,11 +394,11 @@ func (mr *MockNodeSelectorMockRecorder) CanCompleteJob(arg0, arg1, arg2 interfac
 }
 
 // SelectBids mocks base method.
-func (m *MockNodeSelector) SelectBids(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) ([]model.ExecutionState, []model.ExecutionState) {
+func (m *MockNodeSelector) SelectBids(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) ([]models.Execution, []models.Execution) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectBids", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]model.ExecutionState)
-	ret1, _ := ret[1].([]model.ExecutionState)
+	ret0, _ := ret[0].([]models.Execution)
+	ret1, _ := ret[1].([]models.Execution)
 	return ret0, ret1
 }
 
@@ -409,10 +409,10 @@ func (mr *MockNodeSelectorMockRecorder) SelectBids(arg0, arg1, arg2 interface{})
 }
 
 // SelectNodes mocks base method.
-func (m *MockNodeSelector) SelectNodes(arg0 context.Context, arg1 *model.Job) ([]model.NodeInfo, error) {
+func (m *MockNodeSelector) SelectNodes(arg0 context.Context, arg1 *models.Job) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectNodes", arg0, arg1)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -424,10 +424,10 @@ func (mr *MockNodeSelectorMockRecorder) SelectNodes(arg0, arg1 interface{}) *gom
 }
 
 // SelectNodesForRetry mocks base method.
-func (m *MockNodeSelector) SelectNodesForRetry(arg0 context.Context, arg1 *model.Job, arg2 *model.JobState) ([]model.NodeInfo, error) {
+func (m *MockNodeSelector) SelectNodesForRetry(arg0 context.Context, arg1 *models.Job, arg2 *models.JobState) ([]models.NodeInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectNodesForRetry", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]model.NodeInfo)
+	ret0, _ := ret[0].([]models.NodeInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

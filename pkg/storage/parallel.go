@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type PreparedStorage struct {
-	Spec   model.StorageSpec
-	Volume StorageVolume
+	Artifact models.Artifact
+	Volume   StorageVolume
 }
 
 // ParallelPrepareStorage downloads all of the data necessary for the passed
@@ -21,12 +20,12 @@ type PreparedStorage struct {
 func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
-	specs ...model.StorageSpec,
+	specs ...*models.Artifact,
 ) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
 
-	addStorageSpec := func(idx int, input model.StorageSpec, output []PreparedStorage) error {
-		storageProvider, err := provider.Get(ctx, input.StorageSource)
+	addStorageSpec := func(idx int, input models.Artifact, output []PreparedStorage) error {
+		storageProvider, err := provider.Get(ctx, input.Source.Type)
 		if err != nil {
 			return err
 		}
@@ -37,8 +36,8 @@ func ParallelPrepareStorage(
 		}
 
 		output[idx] = PreparedStorage{
-			Spec:   input,
-			Volume: volumeMount,
+			Artifact: input,
+			Volume:   volumeMount,
 		}
 		return nil
 	}
@@ -49,7 +48,7 @@ func ParallelPrepareStorage(
 		index := i
 		input := spec
 		waitgroup.Go(func() error {
-			return addStorageSpec(index, input, out)
+			return addStorageSpec(index, *input, out)
 		})
 	}
 	if err := waitgroup.Wait(); err != nil {
@@ -67,21 +66,21 @@ func ParallelCleanStorage(
 	var rootErr error
 
 	for _, s := range storages {
-		storage, err := provider.Get(ctx, s.Spec.StorageSource)
+		storage, err := provider.Get(ctx, s.Artifact.Source.Type)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", s.Spec.StorageSource).
+				Str("Source", s.Artifact.Source.Type).
 				Msg("failed to get storage provider in cleanup")
 			rootErr = errors.Join(rootErr, err)
 			continue
 		}
 
-		err = storage.CleanupStorage(ctx, s.Spec, s.Volume)
+		err = storage.CleanupStorage(ctx, s.Artifact, s.Volume)
 		if err != nil {
 			log.Ctx(ctx).
 				Debug().
-				Stringer("Source", s.Spec.StorageSource).
+				Str("Source", s.Artifact.Source.Type).
 				Msg("failed to cleanup volume")
 			rootErr = errors.Join(rootErr, err)
 		}

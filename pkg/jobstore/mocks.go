@@ -65,7 +65,7 @@ func (mr *MockStoreMockRecorder) CreateEvaluation(ctx, eval interface{}) *gomock
 }
 
 // CreateExecution mocks base method.
-func (m *MockStore) CreateExecution(ctx context.Context, execution model.ExecutionState) error {
+func (m *MockStore) CreateExecution(ctx context.Context, execution models.Execution) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
 	ret0, _ := ret[0].(error)
@@ -79,7 +79,7 @@ func (mr *MockStoreMockRecorder) CreateExecution(ctx, execution interface{}) *go
 }
 
 // CreateJob mocks base method.
-func (m *MockStore) CreateJob(ctx context.Context, j model.Job) error {
+func (m *MockStore) CreateJob(ctx context.Context, j models.Job) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJob", ctx, j)
 	ret0, _ := ret[0].(error)
@@ -135,11 +135,26 @@ func (mr *MockStoreMockRecorder) GetEvaluation(ctx, id interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluation", reflect.TypeOf((*MockStore)(nil).GetEvaluation), ctx, id)
 }
 
+// GetExecutions mocks base method.
+func (m *MockStore) GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetExecutions", ctx, jobID)
+	ret0, _ := ret[0].([]models.Execution)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetExecutions indicates an expected call of GetExecutions.
+func (mr *MockStoreMockRecorder) GetExecutions(ctx, jobID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExecutions", reflect.TypeOf((*MockStore)(nil).GetExecutions), ctx, jobID)
+}
+
 // GetInProgressJobs mocks base method.
-func (m *MockStore) GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error) {
+func (m *MockStore) GetInProgressJobs(ctx context.Context) ([]models.Job, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetInProgressJobs", ctx)
-	ret0, _ := ret[0].([]model.JobWithInfo)
+	ret0, _ := ret[0].([]models.Job)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -151,10 +166,10 @@ func (mr *MockStoreMockRecorder) GetInProgressJobs(ctx interface{}) *gomock.Call
 }
 
 // GetJob mocks base method.
-func (m *MockStore) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (m *MockStore) GetJob(ctx context.Context, id string) (models.Job, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJob", ctx, id)
-	ret0, _ := ret[0].(model.Job)
+	ret0, _ := ret[0].(models.Job)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -180,26 +195,11 @@ func (mr *MockStoreMockRecorder) GetJobHistory(ctx, jobID, options interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobHistory", reflect.TypeOf((*MockStore)(nil).GetJobHistory), ctx, jobID, options)
 }
 
-// GetJobState mocks base method.
-func (m *MockStore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetJobState", ctx, jobID)
-	ret0, _ := ret[0].(model.JobState)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetJobState indicates an expected call of GetJobState.
-func (mr *MockStoreMockRecorder) GetJobState(ctx, jobID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobState", reflect.TypeOf((*MockStore)(nil).GetJobState), ctx, jobID)
-}
-
 // GetJobs mocks base method.
-func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error) {
+func (m *MockStore) GetJobs(ctx context.Context, query JobQuery) ([]models.Job, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJobs", ctx, query)
-	ret0, _ := ret[0].([]model.Job)
+	ret0, _ := ret[0].([]models.Job)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

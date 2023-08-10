@@ -138,7 +138,16 @@ func NewComputeNode(
 	if semanticBidStrat == nil {
 		semanticBidStrat = semantic.NewChainedSemanticBidStrategy(
 			executor_util.NewExecutorSpecificBidStrategy(executors),
-			semantic.FromJobSelectionPolicy(config.JobSelectionPolicy),
+			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: config.JobSelectionPolicy.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: config.JobSelectionPolicy.ProbeHTTP,
+			}),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+			}),
 			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
 				Locality: config.JobSelectionPolicy.Locality,
 				Storages: storages,

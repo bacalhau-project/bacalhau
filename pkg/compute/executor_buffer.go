@@ -13,11 +13,11 @@ import (
 )
 
 type bufferTask struct {
-	execution  store.Execution
+	execution  store.LocalState
 	enqueuedAt time.Time
 }
 
-func newBufferTask(execution store.Execution) *bufferTask {
+func newBufferTask(execution store.LocalState) *bufferTask {
 	return &bufferTask{
 		execution:  execution,
 		enqueuedAt: time.Now(),
@@ -78,7 +78,7 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ExecutorBuffer) Run(ctx context.Context, execution store.Execution) (err error) {
+func (s *ExecutorBuffer) Run(ctx context.Context, execution store.LocalState) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -127,7 +127,7 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
-	timeout := task.execution.Job.Spec.GetTimeout()
+	timeout := task.execution.Job.Task().Timeouts.ExecutionTimeout
 	if timeout == 0 {
 		timeout = s.defaultJobExecutionTimeout
 	}
@@ -192,7 +192,7 @@ func (s *ExecutorBuffer) deque() {
 	s.backoffUntil = time.Now().Add(s.backoffDuration)
 }
 
-func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) error {
+func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.LocalState) error {
 	// TODO: Enqueue cancel tasks
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
@@ -213,19 +213,19 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, execution store.Execution) er
 }
 
 // RunningExecutions return list of running executions
-func (s *ExecutorBuffer) RunningExecutions() []store.Execution {
+func (s *ExecutorBuffer) RunningExecutions() []store.LocalState {
 	return s.mapValues(s.running)
 }
 
 // EnqueuedExecutions return list of enqueued executions
-func (s *ExecutorBuffer) EnqueuedExecutions() []store.Execution {
+func (s *ExecutorBuffer) EnqueuedExecutions() []store.LocalState {
 	return s.mapValues(s.enqueued)
 }
 
-func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.Execution {
+func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalState {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	executions := make([]store.Execution, 0, len(m))
+	executions := make([]store.LocalState, 0, len(m))
 	for _, v := range m {
 		executions = append(executions, v.execution)
 	}

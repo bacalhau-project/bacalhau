@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -26,7 +27,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -85,16 +85,16 @@ func (e *Executor) ShouldBid(
 func (e *Executor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
-	usage model.ResourceUsageData,
+	usage models.Resources,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// TODO(forrest): should this just return true always?
 	return resource.NewChainedResourceBidStrategy().ShouldBidBasedOnUsage(ctx, request, usage)
 }
 
-func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
-	out := model.JobSpecDocker{}
+func DecodeArguments(args *executor.Arguments) (models.JobSpecDocker, error) {
+	out := models.JobSpecDocker{}
 	if err := json.Unmarshal(args.Params, &out); err != nil {
-		return model.JobSpecDocker{}, err
+		return models.JobSpecDocker{}, err
 	}
 	return out, nil
 }
@@ -103,7 +103,7 @@ func DecodeArguments(args *executor.Arguments) (model.JobSpecDocker, error) {
 func (e *Executor) Run(
 	ctx context.Context,
 	request *executor.RunCommandRequest,
-) (*model.RunCommandResult, error) {
+) (*models.RunCommandResult, error) {
 
 	log.Ctx(ctx).Info().Msgf("running execution %s", request.ExecutionID)
 	ctx, cancel := context.WithCancel(ctx)
@@ -132,7 +132,7 @@ func (e *Executor) Run(
 	var mounts []mount.Mount
 	for _, input := range request.Inputs {
 		if input.Volume.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Spec, input.Volume)
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", input.Artifact, input.Volume)
 
 			mounts = append(mounts, mount.Mount{
 				Type:     mount.TypeBind,

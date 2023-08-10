@@ -5,7 +5,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
@@ -16,7 +15,7 @@ type NodeInfoProviderParams struct {
 	Storages           storage.StorageProvider
 	CapacityTracker    capacity.Tracker
 	ExecutorBuffer     *ExecutorBuffer
-	MaxJobRequirements model.ResourceUsageData
+	MaxJobRequirements models.Resources
 }
 
 type NodeInfoProvider struct {
@@ -25,7 +24,7 @@ type NodeInfoProvider struct {
 	storages           storage.StorageProvider
 	capacityTracker    capacity.Tracker
 	executorBuffer     *ExecutorBuffer
-	maxJobRequirements model.ResourceUsageData
+	maxJobRequirements models.Resources
 }
 
 func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
@@ -39,11 +38,11 @@ func NewNodeInfoProvider(params NodeInfoProviderParams) *NodeInfoProvider {
 	}
 }
 
-func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNodeInfo {
-	return model.ComputeNodeInfo{
-		ExecutionEngines:   model.InstalledTypes(ctx, n.executors, model.EngineTypes()),
-		Publishers:         model.InstalledTypes(ctx, n.publishers, model.PublisherTypes()),
-		StorageSources:     model.InstalledTypes(ctx, n.storages, model.StorageSourceTypes()),
+func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) models.ComputeNodeInfo {
+	return models.ComputeNodeInfo{
+		ExecutionEngines:   models.InstalledTypes(ctx, n.executors, models.EngineTypes()),
+		Publishers:         models.InstalledTypes(ctx, n.publishers, models.PublisherTypes()),
+		StorageSources:     models.InstalledTypes(ctx, n.storages, models.StorageSourceTypes()),
 		MaxCapacity:        n.capacityTracker.GetMaxCapacity(ctx),
 		AvailableCapacity:  n.capacityTracker.GetAvailableCapacity(ctx),
 		MaxJobRequirements: n.maxJobRequirements,
@@ -53,4 +52,4 @@ func (n *NodeInfoProvider) GetComputeInfo(ctx context.Context) model.ComputeNode
 }
 
 // compile-time interface check
-var _ model.ComputeNodeInfoProvider = &NodeInfoProvider{}
+var _ models.ComputeNodeInfoProvider = &NodeInfoProvider{}

@@ -7,29 +7,29 @@ import (
 )
 
 type CallbackStore struct {
-	GetExecutionFn         func(ctx context.Context, id string) (store.Execution, error)
-	GetExecutionsFn        func(ctx context.Context, id string) ([]store.Execution, error)
-	GetExecutionHistoryFn  func(ctx context.Context, id string) ([]store.ExecutionHistory, error)
-	CreateExecutionFn      func(ctx context.Context, execution store.Execution) error
+	GetExecutionFn         func(ctx context.Context, id string) (store.LocalState, error)
+	GetExecutionsFn        func(ctx context.Context, id string) ([]store.LocalState, error)
+	GetExecutionHistoryFn  func(ctx context.Context, id string) ([]store.LocalStateHistory, error)
+	CreateExecutionFn      func(ctx context.Context, execution store.LocalState) error
 	UpdateExecutionStateFn func(ctx context.Context, request store.UpdateExecutionStateRequest) error
 	DeleteExecutionFn      func(ctx context.Context, id string) error
-	GetExecutionCountFn    func(ctx context.Context, state store.ExecutionState) (uint64, error)
+	GetExecutionCountFn    func(ctx context.Context, state store.LocalStateType) (uint64, error)
 	CloseFn                func(ctx context.Context) error
 }
 
-func (m *CallbackStore) GetExecution(ctx context.Context, id string) (store.Execution, error) {
+func (m *CallbackStore) GetExecution(ctx context.Context, id string) (store.LocalState, error) {
 	return m.GetExecutionFn(ctx, id)
 }
 
-func (m *CallbackStore) GetExecutions(ctx context.Context, jobID string) ([]store.Execution, error) {
+func (m *CallbackStore) GetExecutions(ctx context.Context, jobID string) ([]store.LocalState, error) {
 	return m.GetExecutionsFn(ctx, jobID)
 }
 
-func (m *CallbackStore) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {
+func (m *CallbackStore) GetExecutionHistory(ctx context.Context, id string) ([]store.LocalStateHistory, error) {
 	return m.GetExecutionHistoryFn(ctx, id)
 }
 
-func (m *CallbackStore) CreateExecution(ctx context.Context, execution store.Execution) error {
+func (m *CallbackStore) CreateExecution(ctx context.Context, execution store.LocalState) error {
 	return m.CreateExecutionFn(ctx, execution)
 }
 
@@ -41,7 +41,7 @@ func (m *CallbackStore) DeleteExecution(ctx context.Context, id string) error {
 	return m.DeleteExecutionFn(ctx, id)
 }
 
-func (m *CallbackStore) GetExecutionCount(ctx context.Context, state store.ExecutionState) (uint64, error) {
+func (m *CallbackStore) GetExecutionCount(ctx context.Context, state store.LocalStateType) (uint64, error) {
 	return m.GetExecutionCountFn(ctx, state)
 }
 

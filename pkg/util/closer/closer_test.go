@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +33,7 @@ func TestCloseWithLogOnError_logsErrors(t *testing.T) {
 	CloseWithLogOnError(t.Name(), closer{fmt.Errorf("error message"), strings.NewReader("")})
 
 	var content map[string]string
-	require.NoError(t, model.JSONUnmarshalWithMax(logOutput.Bytes(), &content))
+	require.NoError(t, marshaller.JSONUnmarshalWithMax(logOutput.Bytes(), &content))
 
 	assert.Equal(t, "bar", content["foo"])
 	assert.NotEmpty(t, content["message"])
@@ -72,7 +71,7 @@ func TestDrainAndCloseWithLogOnError_logsDrainError(t *testing.T) {
 	DrainAndCloseWithLogOnError(context.Background(), "example", closer{nil, failingReader{fmt.Errorf("error message")}})
 
 	var content map[string]string
-	require.NoError(t, model.JSONUnmarshalWithMax(logOutput.Bytes(), &content))
+	require.NoError(t, marshaller.JSONUnmarshalWithMax(logOutput.Bytes(), &content))
 
 	assert.Equal(t, "marker", content["foo"])
 	assert.NotEmpty(t, content["message"])

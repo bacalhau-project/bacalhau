@@ -5,7 +5,6 @@ package store
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,16 +29,16 @@ func TestValidateNewExecution_InvalidVersion(t *testing.T) {
 	assert.ErrorAs(t, err, &ErrInvalidExecutionVersion{})
 }
 
-func newExecution() Execution {
-	return *NewExecution(
+func newExecution() LocalState {
+	return *NewLocalState(
 		uuid.NewString(),
-		model.Job{
-			Metadata: model.Metadata{
+		models.Job{
+			Metadata: models.Metadata{
 				ID: uuid.NewString(),
 			},
 		},
 		"nodeID-1",
-		model.ResourceUsageData{
+		models.Resources{
 			CPU:    1,
 			Memory: 2,
 		})

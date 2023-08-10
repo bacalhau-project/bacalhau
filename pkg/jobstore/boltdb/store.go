@@ -870,8 +870,8 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	if newExecution.UpdateTime.IsZero() {
 		newExecution.UpdateTime = b.clock.Now().UTC()
 	}
-	if newExecution.Version == 0 {
-		newExecution.Version = existingExecution.Version + 1
+	if newExecution.Revision == 0 {
+		newExecution.Revision = existingExecution.Version + 1
 	}
 
 	err = mergo.Merge(&newExecution, existingExecution)

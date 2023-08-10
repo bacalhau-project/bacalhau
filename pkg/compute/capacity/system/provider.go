@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 	"github.com/ricochet2200/go-disk-usage/du"
 )
@@ -24,18 +23,18 @@ func NewPhysicalCapacityProvider() *PhysicalCapacityProvider {
 	return &PhysicalCapacityProvider{}
 }
 
-func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (model.ResourceUsageData, error) {
+func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (models.Resources, error) {
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
-		return model.ResourceUsageData{}, err
+		return models.Resources{}, err
 	}
 	gpus, err := numSystemGPUs()
 	if err != nil {
-		return model.ResourceUsageData{}, err
+		return models.Resources{}, err
 	}
 
 	// the actual resources we have
-	return model.ResourceUsageData{
+	return models.Resources{
 		CPU:    float64(runtime.NumCPU()) * 0.8,
 		Memory: memory.TotalMemory() * 80 / 100,
 		Disk:   diskSpace * 80 / 100,

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
@@ -40,14 +39,16 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 	// Update existing executions
 	for _, u := range plan.UpdatedExecutions {
 		err := s.store.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-			ExecutionID: u.Execution.ID(),
-			NewValues: model.ExecutionState{
-				DesiredState: u.DesiredState,
-				Status:       u.Comment,
+			ExecutionID: u.Execution.ID,
+			NewValues: models.Execution{
+				DesiredState: models.State[models.ExecutionDesiredStateType]{
+					StateType: u.DesiredState,
+					Message:   u.Comment,
+				},
 			},
 			Comment: u.Comment,
 			Condition: jobstore.UpdateExecutionCondition{
-				ExpectedVersion: u.Execution.Version,
+				ExpectedRevision: u.Execution.Revision,
 			},
 		})
 		if err != nil {
@@ -58,11 +59,11 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 	// Update job state if necessary
 	if !plan.DesiredJobState.IsUndefined() {
 		err := s.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
-			JobID:    plan.Job.ID(),
+			JobID:    plan.Job.ID,
 			NewState: plan.DesiredJobState,
 			Comment:  plan.Comment,
 			Condition: jobstore.UpdateJobCondition{
-				ExpectedVersion: plan.JobStateVersion,
+				ExpectedRevision: plan.JobStateRevision,
 			},
 		})
 		if err != nil {

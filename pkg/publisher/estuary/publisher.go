@@ -9,13 +9,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 
 	"github.com/antihax/optional"
 	estuary_client "github.com/application-research/estuary-clients/go"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs/car"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -47,10 +46,10 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	}
 }
 
-func (e *estuaryPublisher) ValidateJob(ctx context.Context, j model.Job) error {
-	if j.Spec.PublisherSpec.Type != model.PublisherEstuary {
+func (e *estuaryPublisher) ValidateJob(ctx context.Context, j models.Job) error {
+	if j.Task().Publisher.Type != models.PublisherEstuary {
 		return fmt.Errorf("invalid publisher type. expected %s, but received: %s",
-			model.PublisherEstuary, j.Spec.PublisherSpec.Type)
+			models.PublisherEstuary, j.Task().Publisher.Type)
 	}
 	return nil
 }
@@ -59,29 +58,29 @@ func (e *estuaryPublisher) ValidateJob(ctx context.Context, j model.Job) error {
 func (e *estuaryPublisher) PublishResult(
 	ctx context.Context,
 	executionID string,
-	j model.Job,
+	j models.Job,
 	resultPath string,
-) (model.StorageSpec, error) {
+) (models.SpecConfig, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 	defer os.RemoveAll(tempDir)
 
 	carFile := filepath.Join(tempDir, "results.car")
 	_, err = car.CreateCar(ctx, resultPath, carFile, 1)
 	if err != nil {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	}
 
 	carReader, err := os.Open(carFile)
 	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error opening CAR file")
+		return models.SpecConfig{}, errors.Wrap(err, "error opening CAR file")
 	}
 
 	carContent, err := io.ReadAll(carReader)
 	if err != nil {
-		return model.StorageSpec{}, errors.Wrap(err, "error reading CAR data")
+		return models.SpecConfig{}, errors.Wrap(err, "error reading CAR data")
 	}
 
 	timeout, cancel := context.WithTimeout(ctx, publisherTimeout)
@@ -91,21 +90,24 @@ func (e *estuaryPublisher) PublishResult(
 		timeout,
 		string(carContent),
 		&estuary_client.ContentApiContentAddCarPostOpts{
-			Filename: optional.NewString(j.ID()),
+			Filename: optional.NewString(j.ID),
 		},
 	)
 	if err != nil && err != io.EOF {
-		return model.StorageSpec{}, err
+		return models.SpecConfig{}, err
 	} else if httpResponse.StatusCode != http.StatusOK {
-		return model.StorageSpec{}, fmt.Errorf("upload to Estuary failed")
+		return models.SpecConfig{}, fmt.Errorf("upload to Estuary failed")
 	}
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
 	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
-	spec := job.GetIPFSPublishedStorageSpec(executionID, j, model.StorageSourceEstuary, addCarResponse.Cid)
-	spec.URL = addCarResponse.EstuaryRetrievalUrl
-
-	return spec, nil
+	return models.SpecConfig{
+		Type: models.StorageSourceEstuary,
+		Params: map[string]interface{}{
+			"CID": addCarResponse.Cid,
+			"URL": addCarResponse.EstuaryRetrievalUrl,
+		},
+	}, nil
 }
 
 func PinToIPFSViaEstuary(

@@ -39,19 +39,15 @@ type Store interface {
 
 	// GetJob returns a job, identified by the id parameter, or an error if
 	// it does not exist.
-	GetJob(ctx context.Context, id string) (model.Job, error)
+	GetJob(ctx context.Context, id string) (models.Job, error)
 
 	// GetJobs retrieves a slice of jobs defined by the contents of the
 	// [JobQuery]. If it fails, it will return an error
-	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
-
-	// GetJobState retrieves the current state for the specified job
-	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
+	GetJobs(ctx context.Context, query JobQuery) ([]models.Job, error)
 
 	// GetInProgressJobs retrieves all jobs that have a state that can be
-	// considered, 'in progress'.  Each job returned is paired with its
-	// state in a [model.JobWithInfo]. Failure generates an error.
-	GetInProgressJobs(ctx context.Context) ([]model.JobWithInfo, error)
+	// considered, 'in progress'. Failure generates an error.
+	GetInProgressJobs(ctx context.Context) ([]models.Job, error)
 
 	// GetJobHistory retrieves the history for the specified job.  The
 	// history returned is filtered by the contents of the provided
@@ -59,14 +55,17 @@ type Store interface {
 	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]model.JobHistory, error)
 
 	// CreateJob will create a new job and persist it in the store.
-	CreateJob(ctx context.Context, j model.Job) error
+	CreateJob(ctx context.Context, j models.Job) error
+
+	// GetExecutions retrieves all executions for the specified job.
+	GetExecutions(ctx context.Context, jobID string) ([]models.Execution, error)
 
 	// UpdateJobState updates the state for the job identified in the
 	// [UpdateJobStateRequest].
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 
 	// CreateExecution creates a new execution
-	CreateExecution(ctx context.Context, execution model.ExecutionState) error
+	CreateExecution(ctx context.Context, execution models.Execution) error
 
 	// UpdateExecution updates the execution state according to the values
 	// within [UpdateExecutionRequest].
@@ -92,35 +91,35 @@ type Store interface {
 type UpdateJobStateRequest struct {
 	JobID     string
 	Condition UpdateJobCondition
-	NewState  model.JobStateType
+	NewState  models.JobStateType
 	Comment   string
 }
 
 type UpdateExecutionRequest struct {
-	ExecutionID model.ExecutionID
+	ExecutionID string
 	Condition   UpdateExecutionCondition
-	NewValues   model.ExecutionState
+	NewValues   models.Execution
 	Comment     string
 }
 
 type UpdateJobCondition struct {
-	ExpectedState    model.JobStateType
-	UnexpectedStates []model.JobStateType
-	ExpectedVersion  int
+	ExpectedState    models.JobStateType
+	UnexpectedStates []models.JobStateType
+	ExpectedRevision uint64
 }
 
 // Validate checks if the condition matches the given job
-func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
-	if !condition.ExpectedState.IsUndefined() && condition.ExpectedState != jobState.State {
-		return NewErrInvalidJobState(jobState.JobID, jobState.State, condition.ExpectedState)
+func (condition UpdateJobCondition) Validate(job models.Job) error {
+	if !condition.ExpectedState.IsUndefined() && condition.ExpectedState != job.State.StateType {
+		return NewErrInvalidJobState(job.ID, job.State.StateType, condition.ExpectedState)
 	}
-	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != jobState.Version {
-		return NewErrInvalidJobVersion(jobState.JobID, jobState.Version, condition.ExpectedVersion)
+	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != job.Revision {
+		return NewErrInvalidJobVersion(job.ID, job.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
-			if s == jobState.State {
-				return NewErrInvalidJobState(jobState.JobID, jobState.State, model.JobStateUndefined)
+			if s == job.State.StateType {
+				return NewErrInvalidJobState(job.ID, job.State.StateType, models.JobStateTypeUndefined)
 			}
 		}
 	}
@@ -128,33 +127,33 @@ func (condition UpdateJobCondition) Validate(jobState model.JobState) error {
 }
 
 type UpdateExecutionCondition struct {
-	ExpectedStates   []model.ExecutionStateType
-	ExpectedVersion  int
-	UnexpectedStates []model.ExecutionStateType
+	ExpectedStates   []models.ExecutionStateType
+	ExpectedRevision uint64
+	UnexpectedStates []models.ExecutionStateType
 }
 
 // Validate checks if the condition matches the given execution
-func (condition UpdateExecutionCondition) Validate(execution model.ExecutionState) error {
+func (condition UpdateExecutionCondition) Validate(execution models.Execution) error {
 	if len(condition.ExpectedStates) > 0 {
 		validState := false
 		for _, s := range condition.ExpectedStates {
-			if s == execution.State {
+			if s == execution.ComputeState.StateType {
 				validState = true
 				break
 			}
 		}
 		if !validState {
-			return NewErrInvalidExecutionState(execution.ID(), execution.State, condition.ExpectedStates...)
+			return NewErrInvalidExecutionState(execution.ID, execution.ComputeState.StateType, condition.ExpectedStates...)
 		}
 	}
 
-	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != execution.Version {
-		return NewErrInvalidExecutionVersion(execution.ID(), execution.Version, condition.ExpectedVersion)
+	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != execution.Revision {
+		return NewErrInvalidExecutionVersion(execution.ID, execution.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
-			if s == execution.State {
-				return NewErrInvalidExecutionState(execution.ID(), execution.State, model.ExecutionStateNew)
+			if s == execution.ComputeState.StateType {
+				return NewErrInvalidExecutionState(execution.ID, execution.ComputeState.StateType)
 			}
 		}
 	}

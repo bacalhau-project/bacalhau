@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
@@ -56,10 +56,14 @@ func (s *StorageSuite) TestNewStorageProvider() {
 func (s *StorageSuite) TestHasStorageLocally() {
 	sp := newStorage(s.T().TempDir())
 
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           "foo",
-		Path:          "foo",
+	spec := models.Artifact{
+		Source: &models.SpecConfig{
+			Type: models.StorageSourceURL,
+			Params: Source{
+				URL: "foo",
+			}.ToMap(),
+		},
+		Target: "bar",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(context.Background(), spec)
@@ -316,10 +320,17 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			subject := newStorage(s.T().TempDir())
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
-			vol, err := subject.PrepareStorage(context.Background(), model.StorageSpec{
-				URL:  url,
-				Path: "/inputs",
-			})
+			spec := models.Artifact{
+				Source: &models.SpecConfig{
+					Type: models.StorageSourceURL,
+					Params: Source{
+						URL: url,
+					}.ToMap(),
+				},
+				Target: "/inputs",
+			}
+
+			vol, err := subject.PrepareStorage(context.Background(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)

@@ -171,7 +171,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 		ipfsDownloader := ipfs.NewIPFSDownloader(cm, downloaderSettings)
 		s.Require().NoError(err)
 
-		downloaderProvider := model.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
+		downloaderProvider := provider.NewMappedProvider(map[model.StorageSourceType]downloader.Downloader{
 			model.StorageSourceIPFS: ipfsDownloader,
 		})
 

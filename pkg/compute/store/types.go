@@ -5,48 +5,46 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
-type Execution struct {
-	ID              string
-	Job             model.Job
-	RequesterNodeID string
-	ResourceUsage   model.ResourceUsageData
-	State           ExecutionState
-	Version         int
-	CreateTime      time.Time
-	UpdateTime      time.Time
-	LatestComment   string
+type LocalState struct {
+	Execution     *models.Execution
+	State         LocalStateType
+	Version       int
+	CreateTime    time.Time
+	UpdateTime    time.Time
+	LatestComment string
 }
 
-func NewExecution(
-	id string,
-	job model.Job,
-	requesterNodeID string,
-	resourceUsage model.ResourceUsageData) *Execution {
-	return &Execution{
-		ID:              id,
-		Job:             job,
-		RequesterNodeID: requesterNodeID,
-		ResourceUsage:   resourceUsage,
-		State:           ExecutionStateCreated,
-		Version:         1,
-		CreateTime:      time.Now().UTC(),
-		UpdateTime:      time.Now().UTC(),
+func NewLocalState(execution *models.Execution) *LocalState {
+	return &LocalState{
+		Execution:  execution,
+		State:      ExecutionStateCreated,
+		Version:    1,
+		CreateTime: time.Now().UTC(),
+		UpdateTime: time.Now().UTC(),
 	}
 }
 
 // string returns a string representation of the execution
-func (e Execution) String() string {
-	return fmt.Sprintf("{ID: %s, Job: %s}", e.ID, e.Job.Metadata.ID)
+func (e *LocalState) String() string {
+	return fmt.Sprintf("{ID: %s, Job: %s}", e.Execution.ID, e.Execution.Job.ID)
 }
 
-type ExecutionHistory struct {
+// ToSummary returns a summary of the execution
+func (e *LocalState) ToSummary() ExecutionSummary {
+	return ExecutionSummary{
+		ExecutionID:        e.Execution.ID,
+		JobID:              e.Execution.Job.ID,
+		State:              e.State.String(),
+		AllocatedResources: e.Execution.AllocatedResources,
+	}
+}
+
+type LocalStateHistory struct {
 	ExecutionID   string
-	PreviousState ExecutionState
-	NewState      ExecutionState
+	PreviousState LocalStateType
+	NewState      LocalStateType
 	NewVersion    int
 	Comment       string
 	Time          time.Time
@@ -54,26 +52,16 @@ type ExecutionHistory struct {
 
 // Summary of an execution that is used in logging and debugging.
 type ExecutionSummary struct {
-	ExecutionID   string                  `json:"ExecutionID"`
-	JobID         string                  `json:"JobID"`
-	State         string                  `json:"State"`
-	ResourceUsage model.ResourceUsageData `json:"ResourceUsage"`
-}
-
-// NewExecutionSummary generate a summary from an execution
-func NewExecutionSummary(execution Execution) ExecutionSummary {
-	return ExecutionSummary{
-		ExecutionID:   execution.ID,
-		JobID:         execution.Job.Metadata.ID,
-		State:         execution.State.String(),
-		ResourceUsage: execution.ResourceUsage,
-	}
+	ExecutionID        string
+	JobID              string
+	State              string
+	AllocatedResources *models.AllocatedResources
 }
 
 type UpdateExecutionStateRequest struct {
 	ExecutionID     string
-	NewState        ExecutionState
-	ExpectedState   ExecutionState
+	NewState        LocalStateType
+	ExpectedState   LocalStateType
 	ExpectedVersion int
 	Comment         string
 }
@@ -81,20 +69,20 @@ type UpdateExecutionStateRequest struct {
 // ExecutionStore A metadata store of job executions handled by the current compute node
 type ExecutionStore interface {
 	// GetExecution returns the execution for a given id
-	GetExecution(ctx context.Context, id string) (Execution, error)
+	GetExecution(ctx context.Context, id string) (LocalState, error)
 	// GetExecutions returns all the executions for a given job
-	GetExecutions(ctx context.Context, jobID string) ([]Execution, error)
+	GetExecutions(ctx context.Context, jobID string) ([]LocalState, error)
 	// GetExecutionHistory returns the history of an execution
-	GetExecutionHistory(ctx context.Context, id string) ([]ExecutionHistory, error)
+	GetExecutionHistory(ctx context.Context, id string) ([]LocalStateHistory, error)
 	// CreateExecution creates a new execution for a given job
-	CreateExecution(ctx context.Context, execution Execution) error
+	CreateExecution(ctx context.Context, execution LocalState) error
 	// UpdateExecutionState updates the execution state
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error
 	// DeleteExecution deletes an execution
 	DeleteExecution(ctx context.Context, id string) error
 	// GetExecutionCount returns a count of all executions that are in the specified
 	// state
-	GetExecutionCount(ctx context.Context, state ExecutionState) (uint64, error)
+	GetExecutionCount(ctx context.Context, state LocalStateType) (uint64, error)
 	// Close provides the opportunity for the underlying store to cleanup
 	// any resources as the compute node is shutting down
 	Close(ctx context.Context) error

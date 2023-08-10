@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/rs/zerolog/log"
 )
@@ -21,9 +20,9 @@ func NewMaxUsageNodeRanker() *MaxUsageNodeRanker {
 // - Rank 10: Node is accepting MaxJobRequirements that are equal or higher than the job requirements.
 // - Rank -1: Node is accepting MaxJobRequirements that are lower than the job requirements.
 // - Rank 0: Node MaxJobRequirements are not set, or the node was discovered not through nodeInfoPublisher (e.g. identity protocol)
-func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job model.Job, nodes []model.NodeInfo) ([]orchestrator.NodeRank, error) {
+func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 	ranks := make([]orchestrator.NodeRank, len(nodes))
-	jobResourceUsage := capacity.ParseResourceUsageConfig(job.Spec.Resources)
+	jobResourceUsage := job.Task().Resources
 	jobResourceUsageSet := !jobResourceUsage.IsZero()
 	for i, node := range nodes {
 		rank := orchestrator.RankPossible

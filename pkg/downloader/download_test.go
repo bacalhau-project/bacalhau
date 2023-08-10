@@ -67,7 +67,7 @@ func (ds *DownloaderSuite) SetupTest() {
 		IPFSSwarmAddrs: strings.Join(swarm, ","),
 	}
 
-	ds.downloadProvider = model.NewMappedProvider(
+	ds.downloadProvider = provider.NewMappedProvider(
 		map[model.StorageSourceType]Downloader{
 			model.StorageSourceIPFS: ipfs2.NewIPFSDownloader(ds.cm, ds.downloadSettings),
 		},
