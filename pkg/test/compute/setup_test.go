@@ -6,6 +6,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
@@ -20,9 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/google/uuid"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/suite"
 )
 
 type ComputeSuite struct {
@@ -65,6 +66,7 @@ func (s *ComputeSuite) setupNode() {
 	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
+	// TODO(forrest) [config] generate a key
 	host, err := libp2p.NewHost(libp2pPort)
 	s.NoError(err)
 	s.T().Cleanup(func() { _ = host.Close })

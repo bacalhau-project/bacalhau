@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/libp2p/go-libp2p"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p/rcmgr"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -348,7 +349,13 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 	log.Ctx(ctx).Debug().Msgf("libp2p connecting to: %s", peers)
 
-	libp2pHost, err := libp2p.NewHost(OS.SwarmPort, rcmgr.DefaultResourceManager)
+	privKey, err := fsRepo.InitLibp2pPrivateKey(OS.SwarmPort)
+	if err != nil {
+		return err
+	}
+	var libp2pOpts []libp2p.Option
+	libp2pOpts = append(libp2pOpts, rcmgr.DefaultResourceManager, libp2p.Identity(privKey))
+	libp2pHost, err := bac_libp2p.NewHost(OS.SwarmPort, libp2pOpts...)
 	if err != nil {
 		return fmt.Errorf("error creating libp2p host: %w", err)
 	}
@@ -397,7 +404,7 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	}
 
 	// Start transport layer
-	err = libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
+	err = bac_libp2p.ConnectToPeersContinuously(ctx, cm, libp2pHost, peers)
 	if err != nil {
 		return err
 	}

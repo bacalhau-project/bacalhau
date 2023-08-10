@@ -2,20 +2,16 @@ package config
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -211,68 +207,6 @@ func GetConfigPath() string {
 	return d
 }
 
-const BitsForKeyPair = 2048
-
-func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
-	configPath := GetConfigPath()
-
-	// We include the port in the filename so that in devstack multiple nodes
-	// running on the same host get different identities
-	privKeyPath := filepath.Join(configPath, keyName)
-
-	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
-		// Private key does not exist - create and write it
-
-		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
-		if err != nil {
-			log.Error().Err(err)
-			return nil, err
-		}
-
-		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, util.OS_USER_RW)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
-		}
-		privBytes, err := crypto.MarshalPrivateKey(prvKey)
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal private key: %v", err)
-		}
-		// base64 encode privBytes
-		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		_, err = keyOut.WriteString(b64 + "\n")
-		if err != nil {
-			return nil, fmt.Errorf("failed to write to key file: %v", err)
-		}
-		if err := keyOut.Close(); err != nil {
-			return nil, fmt.Errorf("error closing key file: %v", err)
-		}
-		log.Debug().Msgf("wrote %s", privKeyPath)
-	}
-
-	// Now that we've ensured the private key is written to disk, read it! This
-	// ensures that loading it works even in the case where we've just created
-	// it.
-
-	// read the private key
-	keyBytes, err := os.ReadFile(privKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %v", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %v", err)
-	}
-	// parse the private key
-	prvKey, err := crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
-	}
-
-	return prvKey, nil
-}
-
 type DockerCredentials struct {
 	Username string
 	Password string
@@ -295,74 +229,4 @@ func GetDockerCredentials() DockerCredentials {
 // using 0.0.0.0
 func PreferredAddress() string {
 	return os.Getenv("BACALHAU_PREFERRED_ADDRESS")
-}
-
-type ExecutionStoreType = int
-
-const (
-	ExecutionStoreInMemory = iota
-	ExecutionStoreBoltDB
-)
-
-type ComputeStorageConfig struct {
-	StoreType ExecutionStoreType
-	Location  string
-}
-
-func GetComputeStorageConfig(nodeID string) ComputeStorageConfig {
-	c := ComputeStorageConfig{}
-
-	computeStore := strings.ToLower(os.Getenv("BACALHAU_COMPUTE_STORE_TYPE"))
-	if computeStore == "boltdb" {
-		c.StoreType = ExecutionStoreBoltDB
-	} else {
-		c.StoreType = ExecutionStoreInMemory
-	}
-
-	// Either, the user has specified the full path to the file in
-	// an environment variable, or we will derive the filename ourselves
-	// from the node id.
-	path := os.Getenv("BACALHAU_COMPUTE_STORE_PATH")
-	if path == "" {
-		f := fmt.Sprintf("%s-compute.db", nodeID)
-		path = filepath.Join(GetConfigPath(), f)
-	}
-	c.Location = path
-
-	return c
-}
-
-type JobStoreType = int
-
-const (
-	JobStoreInMemory = iota
-	JobStoreBoltDB
-)
-
-type JobStoreConfig struct {
-	StoreType JobStoreType
-	Location  string
-}
-
-func GetJobStoreConfig(nodeID string) JobStoreConfig {
-	c := JobStoreConfig{}
-
-	jobStore := strings.ToLower(os.Getenv("BACALHAU_JOB_STORE_TYPE"))
-	if jobStore == "boltdb" {
-		c.StoreType = JobStoreBoltDB
-	} else {
-		c.StoreType = JobStoreInMemory
-	}
-
-	// Either, the user has specified the full path to the file in
-	// an environment variable, or we will derive the filename ourselves
-	// from the node id.
-	path := os.Getenv("BACALHAU_JOB_STORE_PATH")
-	if path == "" {
-		f := fmt.Sprintf("%s-requester.db", nodeID)
-		path = filepath.Join(GetConfigPath(), f)
-	}
-	c.Location = path
-
-	return c
 }

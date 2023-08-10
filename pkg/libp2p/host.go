@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -16,6 +12,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 const continuouslyConnectPeersLoopDelay = 10 * time.Second
@@ -23,11 +24,6 @@ const continuouslyConnectPeersLoopDelay = 10 * time.Second
 // NewHost creates a new libp2p host with some default configuration. It will continuously connect to bootstrap peers
 // if they are defined.
 func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
-	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
-	if err != nil {
-		return nil, err
-	}
-
 	addrs := []string{
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
 		fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port),
@@ -44,7 +40,6 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 	}
 
 	opts = append(opts, libp2p.ListenAddrStrings(addrs...))
-	opts = append(opts, libp2p.Identity(prvKey))
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err

@@ -9,12 +9,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 //nolint:unused // used in tests
@@ -41,6 +42,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	libp2pPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
+	// TODO(forrest) [config] generate a key for testing
 	libp2pHost, err := libp2p.NewHost(libp2pPort)
 	require.NoError(t, err)
 

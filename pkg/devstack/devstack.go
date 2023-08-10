@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
+	"github.com/libp2p/go-libp2p"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -17,7 +18,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 
@@ -162,7 +163,11 @@ func Setup(
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		libp2pHost, err := libp2p.NewHost(libp2pPort)
+		privKey, err := stackConfig.Repo.InitLibp2pPrivateKey(libp2pPort)
+		if err != nil {
+			return nil, err
+		}
+		libp2pHost, err := bac_libp2p.NewHost(libp2pPort, libp2p.Identity(privKey))
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +246,7 @@ func Setup(
 		}
 
 		// Start transport layer
-		err = libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
+		err = bac_libp2p.ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, libp2pHost, libp2pPeer, 2*time.Second)
 		if err != nil {
 			return nil, err
 		}
