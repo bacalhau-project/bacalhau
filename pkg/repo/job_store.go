@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	memjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/inmemory"
@@ -18,18 +18,18 @@ func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
 		return nil, fmt.Errorf("repo is uninitialized, cannot create JobStore")
 	}
 	// load the compute nodes execution store config
-	var storeCfg config_v2.StorageConfig
-	if err := config_v2.GetConfigForKey(config_v2.NodeRequesterJobStore, &storeCfg); err != nil {
+	var storeCfg config.StorageConfig
+	if err := config.GetConfigForKey(config.NodeRequesterJobStore, &storeCfg); err != nil {
 		return nil, err
 	}
 	switch storeCfg.Type {
-	case config_v2.BoltDB:
+	case config.BoltDB:
 		path := storeCfg.Path
 		if path == "" {
 			path = filepath.Join(fsr.path, fmt.Sprintf("%s-requester.db", prefix))
 		}
 		return boltjobstore.NewBoltJobStore(path)
-	case config_v2.InMemory:
+	case config.InMemory:
 		return memjobstore.NewInMemoryJobStore(), nil
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)

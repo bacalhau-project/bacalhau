@@ -3,12 +3,13 @@ package wasm
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 var _ wazero.Runtime = tracedRuntime{}

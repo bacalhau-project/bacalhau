@@ -7,6 +7,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -14,9 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type logRequest = publicapi.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this

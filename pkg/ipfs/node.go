@@ -16,9 +16,10 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-
 	"github.com/rs/zerolog/log"
+
+	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/ipfs/kubo/commands"
 	"github.com/ipfs/kubo/config"

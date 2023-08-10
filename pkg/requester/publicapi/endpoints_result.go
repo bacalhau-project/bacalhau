@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type resultsRequest struct {

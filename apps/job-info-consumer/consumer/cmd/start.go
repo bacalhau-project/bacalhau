@@ -6,13 +6,14 @@ import (
 	"os/signal"
 	"strconv"
 
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/apps/job-info-consumer/consumer/pkg"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 )
 
 type StartOptions struct {

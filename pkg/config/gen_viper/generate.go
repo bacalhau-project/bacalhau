@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 // generateSetDefaults is a recursive function that takes a reflect.Type representing the structure of the configuration,
@@ -80,7 +80,7 @@ func main() {
 	defer file.Close()
 
 	// You would replace this with an actual instance of BacalhauConfig with the default values set
-	defaultConfig := config_v2.Default
+	defaultConfig := config.Default
 
 	// Adding the package name
 	fmt.Fprintf(file, "package config_v2\n\n")

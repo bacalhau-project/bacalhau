@@ -6,9 +6,10 @@ import (
 	realsync "sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 // CleanupManager provides utilities for ensuring that sub-goroutines can

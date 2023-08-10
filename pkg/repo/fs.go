@@ -9,7 +9,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 // cribbed from lotus
@@ -59,7 +59,7 @@ func (fsr *FsRepo) Init() error {
 	}
 	if exist {
 		log.Debug().Msgf("Repo found at '%s", fsr.path)
-		return config_v2.LoadConfig(fsr.path)
+		return config.LoadConfig(fsr.path)
 	}
 
 	log.Info().Msgf("Initializing repo at '%s'", fsr.path)
@@ -69,7 +69,7 @@ func (fsr *FsRepo) Init() error {
 		return err
 	}
 
-	if err := config_v2.InitConfig(fsr.path); err != nil {
+	if err := config.InitConfig(fsr.path); err != nil {
 		return err
 	}
 

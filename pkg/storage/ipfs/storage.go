@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -27,7 +27,7 @@ type StorageProvider struct {
 
 func NewStorage(cm *system.CleanupManager, cl ipfs.Client) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := os.MkdirTemp(config_v2.GetStoragePath(), "bacalhau-ipfs")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume model.St
 
 func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
-	ctx, cancel := context.WithTimeout(ctx, config_v2.GetVolumeSizeRequestTimeout())
+	ctx, cancel := context.WithTimeout(ctx, config.GetVolumeSizeRequestTimeout())
 	defer cancel()
 
 	return s.ipfsClient.GetCidSize(ctx, volume.CID)

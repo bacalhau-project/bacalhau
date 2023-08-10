@@ -28,6 +28,7 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/exp/slices"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )

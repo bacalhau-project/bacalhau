@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	oteltrace "go.opentelemetry.io/otel/trace"
+
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type submitRequest = publicapi.SignedRequest[model.JobCreatePayload] //nolint:unused // Swagger wants this

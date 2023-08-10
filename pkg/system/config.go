@@ -10,41 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
-
-/*
-func InitConfig() error {
-	configDir := os.Getenv("BACALHAU_DIR")
-	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
-	//and not a generic environment variable set by the user
-	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
-		configDir = os.Getenv("ROOT_DIR")
-	}
-	log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
-
-	if configDir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get user home dir: %w", err)
-		}
-		configDir = filepath.Join(home, ".bacalhau")
-	}
-	fsRepo, err := repo.NewFS(configDir)
-	if err != nil {
-		return fmt.Errorf("failed to create repo: %w", err)
-	}
-	if err := fsRepo.Init(); err != nil {
-		return fmt.Errorf("failed to initalize repo: %w", err)
-	}
-	return nil
-}
-
-*/
 
 const (
 	sigHash = crypto.SHA256 // hash function to use for sign/verify
@@ -53,7 +23,7 @@ const (
 // SignForClient signs a message with the user's private ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func SignForClient(msg []byte) (string, error) {
-	privKey, err := config_v2.GetClientPrivateKey()
+	privKey, err := config.GetClientPrivateKey()
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +43,7 @@ func SignForClient(msg []byte) (string, error) {
 // VerifyForClient verifies a signed message with the user's public ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func VerifyForClient(msg []byte, sig string) (bool, error) {
-	pubKey, err := config_v2.GetClientPublicKey()
+	pubKey, err := config.GetClientPublicKey()
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +85,7 @@ func Verify(msg []byte, sig, publicKey string) error {
 // GetClientID returns a hash identifying a user based on their ID key.
 // NOTE: must be called after InitConfig() or system will panic.
 func GetClientID() string {
-	clientID, err := config_v2.GetClientID()
+	clientID, err := config.GetClientID()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load clientID: %s", err))
 	}
@@ -126,7 +96,7 @@ func GetClientID() string {
 // GetClientPublicKey returns a base64-encoding of the user's public ID key:
 // NOTE: must be called after InitConfig() or system will panic.
 func GetClientPublicKey() string {
-	pkstr, err := config_v2.GetClientPublicKeyString()
+	pkstr, err := config.GetClientPublicKeyString()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load client public key: %s", err))
 	}
@@ -142,37 +112,6 @@ func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
 	}
 
 	return clientID == convertToClientID(pkey), nil
-}
-
-// ensureDefaultConfigDir ensures that a bacalhau config dir exists.
-func EnsureConfigDir() (string, error) {
-	configDir := os.Getenv("BACALHAU_DIR")
-	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
-	//and not a generic environment variable set by the user
-	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
-		configDir = os.Getenv("ROOT_DIR")
-	}
-	if configDir == "" {
-		log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
-
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", errors.Wrap(err, "failed to get user home dir")
-		}
-
-		configDir = filepath.Join(home, ".bacalhau")
-		if err = os.MkdirAll(configDir, util.OS_USER_RWX); err != nil {
-			return "", errors.Wrap(err, "failed to create config dir")
-		}
-	} else {
-		if fileinf, err := os.Stat(configDir); err != nil {
-			return "", errors.Wrapf(err, "could not create or access config dir %q", configDir)
-		} else if !fileinf.IsDir() {
-			return "", fmt.Errorf("%q is not a directory", configDir)
-		}
-	}
-
-	return configDir, nil
 }
 
 // convertToClientID converts a public key to a client ID:
@@ -192,6 +131,37 @@ func decodePublicKey(key string) (*rsa.PublicKey, error) {
 	}
 
 	return x509.ParsePKCS1PublicKey(keyBytes)
+}
+
+// SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initalized.
+func SetupBacalhauRepo() (string, error) {
+	// set the default configuration
+	if err := config.SetViperDefaults(config.Default); err != nil {
+		return "", fmt.Errorf("fialed to set up default config values: %w", err)
+	}
+	configDir := os.Getenv("BACALHAU_DIR")
+	//If FIL_WALLET_ADDRESS is set, assumes that ROOT_DIR is the config dir for Station
+	//and not a generic environment variable set by the user
+	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); configDir == "" && set {
+		configDir = os.Getenv("ROOT_DIR")
+	}
+	log.Debug().Msg("BACALHAU_DIR not set, using default of ~/.bacalhau")
+
+	if configDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get user home dir: %w", err)
+		}
+		configDir = filepath.Join(home, ".bacalhau")
+	}
+	fsRepo, err := repo.NewFS(configDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to create repo: %w", err)
+	}
+	if err := fsRepo.Init(); err != nil {
+		return "", fmt.Errorf("failed to initalize repo: %w", err)
+	}
+	return fsRepo.Path()
 }
 
 /*

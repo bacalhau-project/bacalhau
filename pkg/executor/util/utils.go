@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -84,7 +84,7 @@ func NewStandardStorageProvider(
 }
 
 func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
-	dir, err := os.MkdirTemp(config_v2.GetStoragePath(), "bacalhau-s3-input")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-input")
 	if err != nil {
 		return nil, err
 	}

@@ -5,19 +5,16 @@ package repo
 import (
 	"context"
 	"fmt"
-
-	"github.com/go-git/go-git/v5"
-
 	// "net/http"
 	// "net/http/httptest"
 	"os"
 	"path/filepath"
-
 	// "regexp"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/go-git/go-git/v5"
 
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"

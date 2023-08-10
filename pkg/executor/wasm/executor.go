@@ -18,12 +18,11 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"

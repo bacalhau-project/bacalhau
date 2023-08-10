@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 type ImageResolver struct {

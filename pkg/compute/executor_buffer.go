@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	sync "github.com/bacalhau-project/golang-mutex-tracer"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	sync "github.com/bacalhau-project/golang-mutex-tracer"
 )
 
 type bufferTask struct {

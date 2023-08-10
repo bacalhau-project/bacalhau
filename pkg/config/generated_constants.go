@@ -1,4 +1,4 @@
-package config_v2
+package config
 
 const Node = "Node"
 const NodeBootstrapAddresses = "Node.BootstrapAddresses"

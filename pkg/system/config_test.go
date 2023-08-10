@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/initalize"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type SystemConfigSuite struct {
@@ -106,7 +108,7 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 			func() {
 				s.T().Setenv("ROOT_DIR", test.root_dir)
 				s.T().Setenv("BACALHAU_DIR", test.bacalhau_dir)
-				configDir, err := EnsureConfigDir()
+				configDir, err := initalize.SetupBacalhauRepo()
 				s.DirExists(configDir)
 				s.Equal(configDir, test.exp)
 				s.NoError(err)
@@ -117,7 +119,7 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 func (s *SystemConfigSuite) TestNiceErrorOnBadConfigDir() {
 	badDirString := "/BADDIR"
 	s.T().Setenv("BACALHAU_DIR", badDirString)
-	_, err := EnsureConfigDir()
+	_, err := SetupBacalhauRepo()
 	s.Error(err)
 	s.Contains(err.Error(), badDirString)
 }

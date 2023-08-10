@@ -6,10 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"go.opentelemetry.io/otel"
 )

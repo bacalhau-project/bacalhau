@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
@@ -28,7 +28,7 @@ const eventTracerFilePerms fs.FileMode = 0644
 // Returns an eventhandler.Tracer that writes to config.GetEventTracerPath(), or
 // an error if the file can't be opened.
 func NewTracer() (*Tracer, error) {
-	return NewTracerToFile(config_v2.GetEventTracerPath())
+	return NewTracerToFile(config.GetEventTracerPath())
 }
 
 // Returns an eventhandler.Tracer that writes to the specified filename, or an

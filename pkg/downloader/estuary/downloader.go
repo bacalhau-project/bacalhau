@@ -3,12 +3,13 @@ package estuary
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"go.uber.org/multierr"
+
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // Estuary downloader uses HTTP downloader to download result published to Estuary

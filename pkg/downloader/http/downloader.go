@@ -8,10 +8,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
-	"github.com/rs/zerolog/log"
 )
 
 type Downloader struct {

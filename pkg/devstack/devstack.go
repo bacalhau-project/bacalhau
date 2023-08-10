@@ -14,17 +14,16 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
-
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type DevStackOptions struct {
@@ -85,7 +84,7 @@ func Setup(
 		if err != nil {
 			return nil, fmt.Errorf("devstack was provided an uninitalized repo: %w", err)
 		}
-		if err := config_v2.LoadConfig(repoPath); err != nil {
+		if err := config.LoadConfig(repoPath); err != nil {
 			return nil, fmt.Errorf("failed to load config for devstack: %w", err)
 		}
 	}
@@ -164,7 +163,7 @@ func Setup(
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		privKey, err := config_v2.GetLibp2pPrivKey()
+		privKey, err := config.GetLibp2pPrivKey()
 		if err != nil {
 			return nil, err
 		}
@@ -393,22 +392,22 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryBuilder := strings.Builder{}
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config_v2.KeyAsEnvVar(config_v2.NodeIPFSSwarmAddresses),
+		config.KeyAsEnvVar(config.NodeIPFSSwarmAddresses),
 		devStackIPFSSwarmAddress,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config_v2.KeyAsEnvVar(config_v2.NodeAPIHost),
+		config.KeyAsEnvVar(config.NodeAPIHost),
 		devStackAPIHost,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config_v2.KeyAsEnvVar(config_v2.NodeAPIPort),
+		config.KeyAsEnvVar(config.NodeAPIPort),
 		devStackAPIPort,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config_v2.KeyAsEnvVar(config_v2.NodeLibp2pPeerConnect),
+		config.KeyAsEnvVar(config.NodeLibp2pPeerConnect),
 		strings.Join(devstackPeerAddrs, ","),
 	))
 
@@ -430,7 +429,7 @@ export BACALHAU_API_PORT_%d=%d`,
 				"You can also run a new IPFS daemon locally and connect it to Bacalhau using:\n\n",
 		)
 		summaryBuilder.WriteString(
-			fmt.Sprintf("ipfs swarm connect $%s", config_v2.KeyAsEnvVar(config_v2.NodeIPFSSwarmAddresses)),
+			fmt.Sprintf("ipfs swarm connect $%s", config.KeyAsEnvVar(config.NodeIPFSSwarmAddresses)),
 		)
 	}
 

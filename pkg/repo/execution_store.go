@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/inlocalstore"
 	memcomputestore "github.com/bacalhau-project/bacalhau/pkg/compute/store/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 )
 
 // InitExecutionStore must be called after Init
@@ -25,8 +25,8 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 		return nil, err
 	}
 	// load the compute nodes execution store config
-	var storeCfg config_v2.StorageConfig
-	if err := config_v2.GetConfigForKey(config_v2.NodeComputeExecutionStore, &storeCfg); err != nil {
+	var storeCfg config.StorageConfig
+	if err := config.GetConfigForKey(config.NodeComputeExecutionStore, &storeCfg); err != nil {
 		return nil, err
 	}
 	var (
@@ -34,7 +34,7 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 		err   error
 	)
 	switch storeCfg.Type {
-	case config_v2.BoltDB:
+	case config.BoltDB:
 		path := storeCfg.Path
 		if path == "" {
 			path = filepath.Join(stateRootDir, fmt.Sprintf("%s-compute.db", prefix))
@@ -43,7 +43,7 @@ func (fsr *FsRepo) InitExecutionStore(ctx context.Context, prefix string) (store
 		if err != nil {
 			return nil, err
 		}
-	case config_v2.InMemory:
+	case config.InMemory:
 		store = memcomputestore.NewStore()
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)

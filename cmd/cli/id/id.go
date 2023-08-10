@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	bac_libp2p "github.com/bacalhau-project/bacalhau/pkg/libp2p"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -59,7 +59,7 @@ var idColumns = []output.TableColumn[IDInfo]{
 }
 
 func id(cmd *cobra.Command, OS *serve.ServeOptions, outputOpts output.OutputOptions) error {
-	privKey, err := config_v2.GetLibp2pPrivKey()
+	privKey, err := config.GetLibp2pPrivKey()
 	if err != nil {
 		return err
 	}

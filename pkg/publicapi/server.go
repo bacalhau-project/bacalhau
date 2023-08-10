@@ -8,12 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/docs"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	sync "github.com/bacalhau-project/golang-mutex-tracer"
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
@@ -22,6 +16,13 @@ import (
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/bacalhau-project/bacalhau/docs"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 var DefaultAPIServerConfig = APIServerConfig{

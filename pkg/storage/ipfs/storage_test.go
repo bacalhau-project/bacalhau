@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -95,7 +95,7 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			config_v2.SetVolumeSizeRequestTimeout(testDuration)
+			config.SetVolumeSizeRequestTimeout(testDuration)
 			_, err = storage.GetVolumeSize(ctx, model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           cid,

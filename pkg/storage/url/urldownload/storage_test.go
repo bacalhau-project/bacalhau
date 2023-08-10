@@ -11,11 +11,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/suite"
 )
 
 // Define the suite, and absorb the built-in basic suite

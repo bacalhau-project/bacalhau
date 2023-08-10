@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	ipfsClient "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -73,7 +73,7 @@ func NewIPFSPublishers(
 }
 
 func configureS3Publisher(cm *system.CleanupManager) (*s3.Publisher, error) {
-	dir, err := os.MkdirTemp(config_v2.GetStoragePath(), "bacalhau-s3-publisher")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-publisher")
 	if err != nil {
 		return nil, err
 	}

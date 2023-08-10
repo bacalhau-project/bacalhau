@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/require"
 )
 
 func SetupTest(ctx context.Context, t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {

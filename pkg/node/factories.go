@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -100,7 +100,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 					Plugins: []executor_util.PluginExecutorManagerConfig{
 						{
 							Name:             "Docker",
-							Path:             config_v2.GetExecutorPluginsPath(),
+							Path:             config.GetExecutorPluginsPath(),
 							Command:          "bacalhau-docker-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
@@ -108,7 +108,7 @@ func NewPluginExecutorFactory() ExecutorsFactory {
 						},
 						{
 							Name:             "Wasm",
-							Path:             config_v2.GetExecutorPluginsPath(),
+							Path:             config.GetExecutorPluginsPath(),
 							Command:          "bacalhau-wasm-executor",
 							ProtocolVersion:  1,
 							MagicCookieKey:   "EXECUTOR_PLUGIN",
