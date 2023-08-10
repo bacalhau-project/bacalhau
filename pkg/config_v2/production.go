@@ -55,6 +55,10 @@ func Production() BacalhauConfig {
 					TotalMemory: "",
 					TotalGPU:    "",
 				},
+				ExecutionStore: StorageConfig{
+					Type: InMemory,
+					Path: "",
+				},
 			},
 			Requester: RequesterConfig{
 				ExternalVerifierHook: "",
@@ -64,6 +68,10 @@ func Production() BacalhauConfig {
 					AcceptNetworkedJobs: false,
 					ProbeHTTP:           "",
 					ProbeExec:           "",
+				},
+				JobStore: StorageConfig{
+					Type: InMemory,
+					Path: "",
 				},
 			},
 		},

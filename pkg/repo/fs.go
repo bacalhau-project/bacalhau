@@ -9,7 +9,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/config_v2"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 )
 
 // cribbed from lotus
@@ -50,6 +52,16 @@ func (fsr *FsRepo) Exists() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// InitExecutionStore must be called after Init
+func (fsr *FsRepo) InitExecutionStore(prefix string) (store.ExecutionStore, error) {
+	return nil, nil
+}
+
+// InitJobStore must be called after Init
+func (fsr *FsRepo) InitJobStore(prefix string) (jobstore.Store, error) {
+	return nil, nil
 }
 
 func (fsr *FsRepo) Init() error {

@@ -64,6 +64,7 @@ type ComputeConfig struct {
 	ClientIDBypass               []string
 	IgnorePhysicalResourceLimits bool
 	Capacity                     CapacityConfig
+	ExecutionStore               StorageConfig
 }
 
 type CapacityConfig struct {
@@ -78,6 +79,7 @@ type CapacityConfig struct {
 type RequesterConfig struct {
 	ExternalVerifierHook string
 	JobSelectionPolicy   JobSelectionPolicyConfig
+	JobStore             StorageConfig
 }
 
 type JobSelectionPolicyConfig struct {
