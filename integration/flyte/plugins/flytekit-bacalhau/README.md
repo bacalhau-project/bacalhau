@@ -8,10 +8,3 @@ To install the plugin, run the following command:
 ```bash
 $ pip install flytekitplugins-bacalhau
 ```
-
-## Task Example
-```python
-$ python flytekit-bacalhau/examples/wf.py
-# or
-$ pyflyte run flytekit-bacalhau/examples/wf.py wf
-```

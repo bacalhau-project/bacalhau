@@ -2,13 +2,59 @@
 
 This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be merged into Flytekit repository.
 
-## Deployment
+## Deploy
 
 [deploy](./DEPLOYMENT.md)
 
 ## Examples
 
-[example](./plugins/flytekit-bacalhau)
+Here's a Hello World workflow submitting a job to Bacalhau. Run it with: `pyflyte run my-wf-file.py my_workflow`
+
+```python
+from flytekit import workflow, kwtypes
+from flytekitplugins.bacalhau import BacalhauTask
+
+bacalhau_task = BacalhauTask(
+    name="hello_world",
+    inputs=kwtypes(
+        spec=dict,
+        api_version=str,
+    ),
+)
+
+
+@workflow
+def my_workflow():
+    my_bacalhau_task = bacalhau_task(
+        api_version="V1beta1",
+        spec=dict(
+            engine="Docker",
+            verifier="Noop",
+            PublisherSpec={"type": "IPFS"},
+            docker={
+                "image": "ubuntu",
+                "entrypoint": ["echo", "Flyte is awesome!"],
+            },
+            language={"job_context": None},
+            wasm=None,
+            resources=None,
+            timeout=1800,
+            outputs=[
+                {
+                    "storage_source": "IPFS",
+                    "name": "outputs",
+                    "path": "/outputs",
+                }
+            ],
+            deal={"concurrency": 1},
+            do_not_track=True,
+        ),
+    )
+```
+
+Find more [examples here](./plugins/flytekit-bacalhau/examples/).
+
+
 
 ## Development :computer:
 
