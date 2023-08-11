@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
@@ -28,6 +29,7 @@ type StorageSuite struct {
 }
 
 func TestStorageSuite(t *testing.T) {
+	config.SetViperDefaults(config.Default)
 	suite.Run(t, new(StorageSuite))
 }
 
