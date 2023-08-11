@@ -8,7 +8,7 @@ This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg
 
 ## Examples
 
-[example](./plugins/flytekit-bacalhau/README.md)
+[example](./plugins/flytekit-bacalhau)
 
 ## Development :computer:
 
