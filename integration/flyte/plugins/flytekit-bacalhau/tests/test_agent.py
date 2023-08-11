@@ -10,9 +10,8 @@ from unittest.mock import MagicMock
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models.core.identifier import ResourceType
-from flytekit import workflow
 from flytekit.models import literals, task, types
-from flytekit.models.task import Sql, TaskTemplate
+from flytekit.models.task import TaskTemplate
 import flytekit.models.interface as interface_models
 
 from flytekitplugins.bacalhau.agent import Metadata

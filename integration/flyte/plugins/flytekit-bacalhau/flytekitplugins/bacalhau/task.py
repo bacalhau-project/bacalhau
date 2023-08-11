@@ -1,5 +1,4 @@
-from flytekit.configuration import SerializationSettings
-from flytekit.extend import Interface, PythonTask, context_manager
+from flytekit.extend import Interface, PythonTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit import kwtypes
 

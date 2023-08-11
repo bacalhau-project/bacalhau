@@ -13,18 +13,15 @@ from flyteidl.admin.agent_pb2 import (
 )
 from google.protobuf import json_format
 
-from flytekit import FlyteContextManager, StructuredDataset, logger
+from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentBase,
     AgentRegistry,
-    convert_to_flyte_state,
 )
-from flytekit.extend import DictTransformer
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.models.types import LiteralType, StructuredDatasetType
 
 
 from bacalhau_sdk.api import submit, results

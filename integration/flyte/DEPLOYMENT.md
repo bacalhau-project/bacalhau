@@ -583,5 +583,5 @@ $ curl -GET \
 
 ## Side notes:
 
-- `<HOSTNAME>` must be a FQDN and registred as a valid domain 
+- `<HOSTNAME>` must be a FQDN and registered as a valid domain 
 - CloudFlare: https://docs.flyte.org/en/v1.0.0/community/troubleshoot.html#troubles-with-flytectl-commands-with-cloudflare-dns
