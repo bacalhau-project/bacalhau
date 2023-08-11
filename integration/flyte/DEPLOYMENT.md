@@ -5,7 +5,7 @@ This page contains complimentary steps for the [official GCP (GKE) setup](https:
 ## Certificate manager
 
 Please proceed by following all GCP (GKE) instructions linked above up to the "SSL Certificate" section.
-You shall use the following updated manifest instead.
+You shall use the (updated) manifest below.
 
 cert-issuer.yaml:
 
@@ -29,7 +29,7 @@ spec:
 
 You need to use a newer version than the one in the official docs, and add the `installCRDs=true` too.
 
-```shell
+```console
 $ helm repo add jetstack https://charts.jetstack.io
 $ helm repo update
 $ helm install cert-manager --namespace flyte --create-namespace --version v1.12.3 jetstack/cert-manager --set installCRDs=true
