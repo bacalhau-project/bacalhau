@@ -2,9 +2,7 @@
 
 This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be merged into Flytekit repository.
 
-## Deploy
-
-[deploy](./DEPLOYMENT.md)
+## Install 
 
 ## Examples
 
@@ -56,6 +54,10 @@ Curious to see more complex workflows 🧐?
 Find more [in the examples folder](./plugins/flytekit-bacalhau/examples/) ✨.
 
 
+## Kubernetes Deployment
+
+To deploy Flyte on Kubernetes, please follow the [official instructions](https://docs.flyte.org/en/latest/deployment/index.html).
+You'll have to install our [custom Bacalhau Agent](https://docs.flyte.org/projects/cookbook/en/latest/auto_examples/extend_flyte/agent_service.html#update-flyteagent) as well; to faciliate you in doing that we do provide extra [deployment instructions for GKE](./DEPLOYMENT.md) 
 
 ## Development :computer:
 
