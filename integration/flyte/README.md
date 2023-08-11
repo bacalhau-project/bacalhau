@@ -2,8 +2,6 @@
 
 This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be moved into Flytekit repository.
 
-Author: [@enricorotundo](https://github.com/enricorotundo) from winder.ai
-
 ## Development :computer:
 
 Similarly to the [official development guidelines](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#contribute-code), we use a virtual environment to develop this Flytekit plugin.
@@ -45,3 +43,6 @@ make fmt
 make lint
 make spellcheck
 ```
+
+
+**Author:** [@enricorotundo](https://github.com/enricorotundo) from winder.ai.
