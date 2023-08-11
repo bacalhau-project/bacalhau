@@ -47,18 +47,14 @@ func TestGetVolumeSize(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), storage.ipfsClient)
 			require.NoError(t, err)
 
-			// Estuary was deprecated, but we use IPFS for requests that use it for
-			// back compat so we test with both sources
-			for _, source := range []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceEstuary} {
-				result, err := storage.GetVolumeSize(ctx, model.StorageSpec{
-					StorageSource: source,
-					CID:           cid,
-					Path:          "/",
-				})
+			result, err := storage.GetVolumeSize(ctx, model.StorageSpec{
+				StorageSource: model.StorageSourceIPFS,
+				CID:           cid,
+				Path:          "/",
+			})
 
-				require.NoError(t, err)
-				require.Equal(t, uint64(len(testString))+IpfsMetadataSize, result)
-			}
+			require.NoError(t, err)
+			require.Equal(t, uint64(len(testString))+IpfsMetadataSize, result)
 		})
 	}
 }
@@ -76,14 +72,12 @@ func TestPrepareStorageRespectsTimeouts(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			for _, source := range []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceEstuary} {
-				_, err = storage.PrepareStorage(ctx, model.StorageSpec{
-					StorageSource: source,
-					CID:           cid,
-					Path:          "/",
-				})
-				require.Equal(t, testDuration == 0, err != nil)
-			}
+			_, err = storage.PrepareStorage(ctx, model.StorageSpec{
+				StorageSource: model.StorageSourceIPFS,
+				CID:           cid,
+				Path:          "/",
+			})
+			require.Equal(t, testDuration == 0, err != nil)
 		})
 	}
 }
@@ -100,15 +94,13 @@ func TestGetVolumeSizeRespectsTimeout(t *testing.T) {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), storage.ipfsClient)
 			require.NoError(t, err)
 
-			for _, source := range []model.StorageSourceType{model.StorageSourceIPFS, model.StorageSourceEstuary} {
-				ctx = config.SetVolumeSizeRequestTimeout(ctx, testDuration)
-				_, err = storage.GetVolumeSize(ctx, model.StorageSpec{
-					StorageSource: source,
-					CID:           cid,
-					Path:          "/",
-				})
-				require.Equal(t, testDuration == 0, err != nil)
-			}
+			ctx = config.SetVolumeSizeRequestTimeout(ctx, testDuration)
+			_, err = storage.GetVolumeSize(ctx, model.StorageSpec{
+				StorageSource: model.StorageSourceIPFS,
+				CID:           cid,
+				Path:          "/",
+			})
+			require.Equal(t, testDuration == 0, err != nil)
 		})
 	}
 }

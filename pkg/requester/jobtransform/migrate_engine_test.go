@@ -91,7 +91,7 @@ func TestEngineMigrator(t *testing.T) {
 			},
 			{
 				Name:          "w4b",
-				StorageSource: model.StorageSourceEstuary,
+				StorageSource: model.StorageSourceIPFS,
 			},
 		}
 		verify := func(t *testing.T, job model.Job) {

@@ -39,10 +39,9 @@ func NewIPFSPublishers(
 		return nil, err
 	}
 	return model.NewMappedProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:    tracing.Wrap(noopPublisher),
-		model.PublisherIpfs:    tracing.Wrap(ipfsPublisher),
-		model.PublisherEstuary: tracing.Wrap(ipfsPublisher), // the deprecated estuary publisher now uses ipfs directly
-		model.PublisherS3:      tracing.Wrap(s3Publisher),
+		model.PublisherNoop: tracing.Wrap(noopPublisher),
+		model.PublisherIpfs: tracing.Wrap(ipfsPublisher),
+		model.PublisherS3:   tracing.Wrap(s3Publisher),
 	}), nil
 }
 
