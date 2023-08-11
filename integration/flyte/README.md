@@ -1,6 +1,14 @@
 # Flyte Bacalhau Plugin
 
-This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be moved into Flytekit repository.
+This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be merged into Flytekit repository.
+
+## Deployment
+
+[deploy](./DEPLOYMENT.md)
+
+## Examples
+
+[example](./plugins/flytekit-bacalhau/README.md)
 
 ## Development :computer:
 
