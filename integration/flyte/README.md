@@ -46,4 +46,4 @@ make spellcheck
 
 ---
 
-**Author:** [@enricorotundo](https://github.com/enricorotundo) from winder.ai
+**Author:** [@enricorotundo](https://github.com/enricorotundo)/[winder.ai](winder.ai)
