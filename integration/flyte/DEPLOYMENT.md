@@ -1,6 +1,7 @@
 # Production-grade Deployment
 
-This page contains complimentary steps for the [official GCP (GKE) setup](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html). For a complete setup you may also want to take a look at [this page](https://docs.flyte.org/en/latest/deployment/deployment/cloud_production.html).
+This page contains complimentary steps for the [official GCP (GKE) setup](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html); please make sure you have the all the prerequistes in place.
+For a additional production-grade steps you may also want to take a look at [this page](https://docs.flyte.org/en/latest/deployment/deployment/cloud_production.html).
 
 ## Certificate manager
 
@@ -135,7 +136,7 @@ spec:
 
 ## Install Flyte
 
-The official docs'll have you download a yaml file with values for their GCP Helm chart, instead, use the one below which adds the Bacalhau Agent config as well as a number of minor fixes:
+The official docs'll have you download a yaml file with values for their GCP Helm chart, instead, use the one below which adds the Bacalhau Agent config as well as a number of minor fixes.
 
 <details>
   <summary>values-gcp.yaml:</summary>
@@ -570,8 +571,9 @@ sparkoperator:
 
 </details>
 
+Now, please complete the remaining steps in official instructions.
 
-## Example API Call
+## Example HTTP API Call
 
 ```shell
 $ curl -GET \
