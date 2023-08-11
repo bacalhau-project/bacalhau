@@ -46,4 +46,4 @@ make spellcheck
 
 ---
 
-**Author:** [@enricorotundo](https://github.com/enricorotundo)/[winder.ai](winder.ai)
+**Questions?** Feel free to contact the author [@enricorotundo](https://github.com/enricorotundo) at [winder.ai](winder.ai)
