@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	libp2p2 "github.com/libp2p/go-libp2p"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
@@ -69,7 +71,9 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 
 	// TODO(forrest) [config] generate a key
-	host, err := libp2p.NewHost(libp2pPort)
+	privKey, err := config.GetLibp2pPrivKey()
+	s.Require().NoError(err)
+	host, err := libp2p.NewHost(libp2pPort, libp2p2.Identity(privKey))
 	s.NoError(err)
 	s.T().Cleanup(func() { _ = host.Close })
 

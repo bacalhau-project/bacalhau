@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
@@ -25,5 +26,11 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 }
 
 func GetStoragePath() string {
-	return viper.GetString(NodeComputeStoragePath)
+	path := viper.GetString(NodeComputeStoragePath)
+	// TODO this is left over from previous behaviour
+	if path == "" {
+		return os.TempDir()
+	} else {
+		return path
+	}
 }

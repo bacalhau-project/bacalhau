@@ -13,7 +13,7 @@ type DataLocalityBidSuite struct {
 }
 
 func TestDataLocalityBidSuite(t *testing.T) {
-	suite.Run(t, new(AskForBidSuite))
+	suite.Run(t, new(DataLocalityBidSuite))
 }
 
 func (s *DataLocalityBidSuite) SetupTest() {
