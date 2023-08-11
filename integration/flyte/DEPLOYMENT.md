@@ -4,7 +4,7 @@ This page contains complimentary steps for the [official GCP (GKE) setup](https:
 
 ## Certificate manager
 
-Please proceed by following all GCP (GKE) instructions linked above up to the "SSL Certificate" section.
+Please proceed by following all GCP (GKE) instructions linked above up to the "[SSL Certificate](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html#ssl-certificate)" section.
 You shall use the (updated) manifest below.
 
 cert-issuer.yaml:
@@ -29,14 +29,14 @@ spec:
 
 You need to use a newer version than the one in the official docs, and add the `installCRDs=true` too.
 
-```bash
+```shell
 $ helm repo add jetstack https://charts.jetstack.io
 $ helm repo update
 $ helm install cert-manager --namespace flyte --create-namespace --version v1.12.3 jetstack/cert-manager --set installCRDs=true
 $ kubectl apply --namespace=flyte -f cert-issuer.yaml
 ```
 
-Move on with the official instructions up to the "Installing Flyte" section.
+Move on with the official instructions up to the "[Installing Flyte](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html#installing-flyte)" section.
 
 ## Bacalhau Agent
 
