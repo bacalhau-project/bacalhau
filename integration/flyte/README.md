@@ -2,7 +2,7 @@
 
 This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be moved into Flytekit repository.
 
-Author: @enricorotundo
+Author: [@enricorotundo](https://github.com/enricorotundo) from winder.ai
 
 ## Development :computer:
 
