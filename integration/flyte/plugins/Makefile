@@ -1,3 +1,5 @@
+VERSION ?= $${PYPI_VERSION}
+
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 export SED = gsed
@@ -43,8 +45,12 @@ update_all_versions:
 
 .PHONY: docker-build
 docker-build:
-	docker build -t expanso/flytekit-bacalhau:latest -f Dockerfile .
+	docker build -t winderresearch/flytekit-bacalhau:${VERSION} -f Dockerfile .
 
 .PHONY: docker-run
 docker-run:
-	docker run -it --rm -p 8000:8000 expanso/flytekit-bacalhau:latest
+	docker run -it --rm -p 8000:8000 winderresearch/flytekit-bacalhau:${VERSION}
+
+.PHONY: docker-push
+docker-push:
+	docker push winderresearch/flytekit-bacalhau:${VERSION}

@@ -1,6 +1,6 @@
 FROM python:3.8-slim-buster
 
-MAINTAINER Enrico Rotundo <enrico@winder.ai>
+LABEL Enrico Rotundo <enrico@winder.ai>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
