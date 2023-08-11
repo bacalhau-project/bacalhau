@@ -1,7 +1,5 @@
 # flytekit-bacalhau examples
 
 ```shell
-$ pyflyte run ./wf.py wf
-# or
-$ pyflyte run --remote ./wf.py wf
+$ pyflyte run ./hello-world.py wf
 ```

@@ -2,6 +2,7 @@ from flytekit import workflow
 
 from flytekitplugins.bacalhau import BacalhauTask
 from flytekit import kwtypes
+from flytekit.core.promise import get_primitive_val
 
 bacalhau_task = BacalhauTask(
         name="hello_world",
@@ -10,6 +11,7 @@ bacalhau_task = BacalhauTask(
                 api_version=str,
         )
     )
+
 
 @workflow
 def wf():
@@ -36,7 +38,8 @@ def wf():
             do_not_track=True,
         ),
     )
-    print(a)
+    print(type(a))
+    print(a.interface.outputs)
 
 if __name__ == "__main__":
-    print(wf())
+    wf()
