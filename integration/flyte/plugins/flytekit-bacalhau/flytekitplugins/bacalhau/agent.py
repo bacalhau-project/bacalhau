@@ -85,7 +85,12 @@ class BacalhauAgent(AgentBase):
         # https://stackoverflow.com/questions/74233385/protobuf-json-format-changes-datatype-from-int-to-float
         inputs_dict["spec"]["deal"]["concurrency"] = int(inputs_dict["spec"]["deal"]["concurrency"])
 
-        self._logger.debug(f"create inputs_dict: {inputs_dict}")
+        if "annotations" in inputs_dict["spec"].keys():
+            inputs_dict["spec"]["annotations"].append("flytekitplugins-bacalhau")
+        else:
+            inputs_dict["spec"]["annotations"] = ["flytekitplugins-bacalhau"]
+
+        self._logger.debug(f"creagte inputs_dict: {inputs_dict}")
 
         submit_data = dict(
                 APIVersion=inputs_dict["api_version"],
