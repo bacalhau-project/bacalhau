@@ -36,11 +36,12 @@ $ helm install cert-manager --namespace flyte --create-namespace --version v1.12
 $ kubectl apply --namespace=flyte -f cert-issuer.yaml
 ```
 
-Move on with the official instructions up to the "[Installing Flyte](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html#installing-flyte)" section.
+Continue with the official instructions up to the "[Installing Flyte](https://docs.flyte.org/en/v1.0.0/deployment/gcp/manual.html#installing-flyte)" section.
 
 ## Bacalhau Agent
 
-Before installing Flyte with the provided Helm chart, install the Bacalhau Agent in the `flyte` namespace.
+Before installing Flyte with the provided Helm chart, install the following resources in the `flyte` namespace.
+Make sure you use the latest version of the [winderresearch/flytekit-bacalhau](https://hub.docker.com/r/winderresearch/flytekit-bacalhau/tags) docker image.
 
 bacalhau-agent-deployment.yaml:
 
