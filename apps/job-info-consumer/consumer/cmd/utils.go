@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
+
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +31,7 @@ func getPeers(peerConnect string) ([]multiaddr.Multiaddr, error) {
 	if peerConnect == "none" {
 		peersStrings = []string{}
 	} else if peerConnect == "" {
-		peersStrings = system.Envs[system.EnvironmentProd].BootstrapAddresses
+		peersStrings = system.Envs[environment.EnvironmentProd].BootstrapAddresses
 	} else {
 		peersStrings = strings.Split(peerConnect, ",")
 	}

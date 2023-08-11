@@ -21,7 +21,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -38,7 +39,7 @@ type FeatureConfig struct {
 // Node configuration
 type NodeConfig struct {
 	IPFSClient                ipfs.Client
-	CleanupManager            *system.CleanupManager
+	CleanupManager            *cleanup.CleanupManager
 	Host                      host.Host
 	EstuaryAPIKey             string
 	HostAddress               string
@@ -86,7 +87,7 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	NodeInfoStore  routing.NodeInfoStore
-	CleanupManager *system.CleanupManager
+	CleanupManager *cleanup.CleanupManager
 	IPFSClient     ipfs.Client
 	Host           host.Host
 }
@@ -99,7 +100,7 @@ func (n *Node) Start(ctx context.Context) error {
 func NewNode(
 	ctx context.Context,
 	config NodeConfig) (*Node, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/node.NewNode")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/node.NewNode")
 	defer span.End()
 
 	identify.ActivationThresh = 2

@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -60,7 +61,7 @@ func PrepareRunArguments(
 	strgprovider storage.StorageProvider,
 	execution store.Execution,
 	resultsDir string,
-	cleanup *system.CleanupManager,
+	cleanup *cleanup.CleanupManager,
 ) (*executor.RunCommandRequest, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, execution.Job.Spec.Inputs...)
 	if err != nil {
@@ -174,7 +175,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution store.Execution) (err 
 		return fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
 	}
 
-	runCommandCleanup := system.NewCleanupManager()
+	runCommandCleanup := cleanup.NewCleanupManager()
 	runCommandArguments, err := PrepareRunArguments(ctx, e.Storages, execution, resultFolder, runCommandCleanup)
 	if err != nil {
 		return err

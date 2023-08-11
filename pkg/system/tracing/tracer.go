@@ -1,4 +1,4 @@
-package system
+package tracing
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
 )
 
 // ----------------------------------------
@@ -35,7 +36,7 @@ func NewSpan(ctx context.Context, t oteltrace.Tracer, name string, opts ...otelt
 		}
 	}
 	opts = append(opts, oteltrace.WithAttributes(
-		attribute.String("environment", GetEnvironment().String()),
+		attribute.String("environment", environment.GetEnvironment().String()),
 	))
 
 	return t.Start(ctx, name, opts...)
@@ -43,7 +44,7 @@ func NewSpan(ctx context.Context, t oteltrace.Tracer, name string, opts ...otelt
 
 func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (context.Context, oteltrace.Span) {
 	// Always include environment info in spans:
-	environment := GetEnvironment().String()
+	environment := environment.GetEnvironment().String()
 	m0, _ := baggage.NewMember("environment", environment)
 	b, _ := baggage.New(m0)
 	ctx = baggage.ContextWithBaggage(ctx, b)
@@ -64,7 +65,7 @@ func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (context.
 func Span(ctx context.Context, spanName string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
 	// Always include environment info in spans:
 	opts = append(opts, oteltrace.WithAttributes(
-		attribute.String("environment", GetEnvironment().String()),
+		attribute.String("environment", environment.GetEnvironment().String()),
 	))
 
 	return GetTracer().Start(ctx, spanName, opts...)

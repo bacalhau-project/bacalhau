@@ -29,7 +29,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
@@ -52,7 +53,7 @@ type Executor struct {
 
 func NewExecutor(
 	_ context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	id string,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
@@ -116,7 +117,7 @@ func (e *Executor) Run(
 	}()
 
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/docker.Executor.Run")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/docker.Executor.Run")
 	defer span.End()
 	defer e.cleanupExecution(ctx, request.ExecutionID)
 

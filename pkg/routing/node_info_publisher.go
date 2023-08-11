@@ -9,7 +9,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 type NodeInfoPublisherIntervalConfig struct {
@@ -69,7 +69,7 @@ func NewNodeInfoPublisher(params NodeInfoPublisherParams) *NodeInfoPublisher {
 
 // Publish publishes the node info to the pubsub topic manually and won't wait for the background task to do it.
 func (n *NodeInfoPublisher) Publish(ctx context.Context) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoPublisher.publish")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/routing.NodeInfoPublisher.publish")
 	defer span.End()
 
 	return n.pubSub.Publish(ctx, n.nodeInfoProvider.GetNodeInfo(ctx))
@@ -99,7 +99,7 @@ func (n *NodeInfoPublisher) publishBackgroundTask(ctx context.Context, interval 
 		select {
 		case <-ticker.C:
 			func() {
-				ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoPublisher.publishBackgroundTask") //nolint:govet
+				ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/routing.NodeInfoPublisher.publishBackgroundTask") //nolint:govet
 				defer span.End()
 
 				err := n.Publish(ctx)

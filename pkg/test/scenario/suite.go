@@ -17,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
@@ -45,7 +46,7 @@ type ScenarioRunner struct {
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Repo = system.InitConfigForTesting(s.T())
+	s.Repo = system.SetupBacalhauRepoForTesting(s.T())
 
 	s.Ctx = context.Background()
 
@@ -68,7 +69,7 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 
 // Set up the test devstack according to the passed options. By default, the
 // devstack will have 1 node with local only data and no timeouts.
-func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
+func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *cleanup.CleanupManager) {
 	if config == nil {
 		config = &StackConfig{}
 	}

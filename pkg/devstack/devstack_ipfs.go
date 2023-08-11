@@ -7,16 +7,16 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 type DevStackIPFS struct {
 	IPFSClients    []ipfs.Client
-	CleanupManager *system.CleanupManager
+	CleanupManager *cleanup.CleanupManager
 }
 
 // NewDevStackIPFS creates a devstack but with only IPFS servers connected to each other
-func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
+func NewDevStackIPFS(ctx context.Context, cm *cleanup.CleanupManager, count int) (*DevStackIPFS, error) {
 	var clients []ipfs.Client
 	for i := 0; i < count; i++ {
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d`, i)

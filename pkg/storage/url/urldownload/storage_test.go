@@ -16,7 +16,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -34,11 +34,10 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 
 	sp, err := NewStorage(cm)
 	s.Require().NoError(err, "failed to create storage provider")

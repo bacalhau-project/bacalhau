@@ -1,4 +1,4 @@
-package system
+package cleanup
 
 import (
 	"context"

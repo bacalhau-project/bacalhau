@@ -20,7 +20,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -70,7 +71,7 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
 	stackConfig := defaultDevStackConfig()
@@ -94,7 +95,7 @@ func Setup(
 	}
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.Setup")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/devstack.Setup")
 	defer span.End()
 
 	var nodes []*node.Node
@@ -227,6 +228,7 @@ func Setup(
 			DisabledFeatures:          stackConfig.DisabledFeatures,
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
+			FsRepo:                    stackConfig.Repo,
 		}
 
 		// allow overriding configs of some nodes
@@ -273,10 +275,10 @@ func Setup(
 }
 
 func createIPFSNode(ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	publicIPFSMode bool,
 	ipfsSwarmAddresses []string) (*ipfs.Node, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/devstack.createIPFSNode")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/devstack.createIPFSNode")
 	defer span.End()
 	//////////////////////////////////////
 	// IPFS
@@ -299,7 +301,7 @@ func createIPFSNode(ctx context.Context,
 }
 
 //nolint:funlen
-func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
+func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *cleanup.CleanupManager) (string, error) {
 	fsRepo, err := repo.NewFS(viper.GetString("repo"))
 	if err != nil {
 		return "", err

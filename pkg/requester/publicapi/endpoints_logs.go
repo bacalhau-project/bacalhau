@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 type logRequest = publicapi.SignedRequest[model.LogsPayload] //nolint:unused // Swagger wants this
@@ -79,7 +79,7 @@ func (s *RequesterAPIServer) logs(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx = system.AddJobIDToBaggage(ctx, payload.ClientID)
+	ctx = tracing.AddJobIDToBaggage(ctx, payload.ClientID)
 
 	// Get the job, check it exists and check it belongs to the same client
 	job, err := s.jobStore.GetJob(ctx, payload.JobID)

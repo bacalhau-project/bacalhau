@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -55,7 +56,7 @@ func NewAPIClient(host string, port uint16, path ...string) *APIClient {
 
 // Alive calls the node's API server health check.
 func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Alive")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/publicapi.Client.Alive")
 	defer span.End()
 
 	var body io.Reader
@@ -73,7 +74,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Version")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/publicapi.Client.Version")
 	defer span.End()
 
 	req := VersionRequest{
@@ -89,7 +90,7 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInf
 }
 
 func (apiClient *APIClient) Get(ctx context.Context, api string, resData any) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Get")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/publicapi.Client.Get")
 	defer span.End()
 
 	addr := apiClient.BaseURI.JoinPath(api).String()
@@ -101,7 +102,7 @@ func (apiClient *APIClient) Get(ctx context.Context, api string, resData any) er
 }
 
 func (apiClient *APIClient) PostSigned(ctx context.Context, api string, reqData, resData interface{}) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.PostSigned")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/publicapi.Client.PostSigned")
 	defer span.End()
 
 	req, err := SignRequest(reqData)
@@ -113,7 +114,7 @@ func (apiClient *APIClient) PostSigned(ctx context.Context, api string, reqData,
 }
 
 func (apiClient *APIClient) Post(ctx context.Context, api string, reqData, resData interface{}) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/publicapi.Client.Post")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/publicapi.Client.Post")
 	defer span.End()
 
 	var body bytes.Buffer

@@ -6,7 +6,8 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -19,7 +20,7 @@ type Downloader struct {
 	ipfsDownloader *ipfs.Downloader
 }
 
-func NewEstuaryDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
+func NewEstuaryDownloader(cm *cleanup.CleanupManager, settings *model.DownloaderSettings) *Downloader {
 	return &Downloader{
 		ipfsDownloader: ipfs.NewIPFSDownloader(cm, settings),
 		httpDownloader: http.NewHTTPDownloader(settings),
@@ -33,7 +34,7 @@ func (downloader *Downloader) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (downloader *Downloader) DescribeResult(ctx context.Context, result model.PublishedResult) (map[string]string, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
 	// fallback to ipfs download for old results without URL
@@ -45,7 +46,7 @@ func (downloader *Downloader) DescribeResult(ctx context.Context, result model.P
 }
 
 func (downloader *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader.estuary.FetchResult")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/downloader.estuary.FetchResult")
 	defer span.End()
 
 	if item.CID == "" {

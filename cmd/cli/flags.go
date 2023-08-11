@@ -26,7 +26,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 var LogFlags = []flags.FlagDefinition{
 	{
 		FlagName:     "log-mode",
-		DefaultValue: logger.LogModeDefault,
+		DefaultValue: logger.LogMode(logger.LogModeDefault),
 		ConfigPath:   config.NodeLoggingMode,
 		Description:  `Log format: 'default','station','json','combined','event'`,
 	},

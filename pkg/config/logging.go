@@ -8,10 +8,18 @@ import (
 )
 
 func GetLogMode() logger.LogMode {
-	val := viper.GetString(NodeLoggingMode)
-	out, err := logger.ParseLogMode(val)
-	if err != nil {
-		log.Warn().Err(err).Msgf("invalid logging mode specified: %s", val)
+	mode := viper.Get(NodeLoggingMode)
+	switch v := mode.(type) {
+	case logger.LogMode:
+		return v
+	case string:
+		out, err := logger.ParseLogMode(v)
+		if err != nil {
+			log.Warn().Err(err).Msgf("invalid logging mode specified: %s", v)
+		}
+		return out
+	default:
+		log.Error().Msgf("unknown logging mode: %v", mode)
+		return logger.LogModeDefault
 	}
-	return out
 }

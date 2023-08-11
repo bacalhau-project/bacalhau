@@ -20,7 +20,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 type Response struct {
@@ -34,7 +35,7 @@ type StorageProvider struct {
 	IPFSClient    *apicopy.StorageProvider
 }
 
-func NewStorage(cm *system.CleanupManager, IPFSapiclient *apicopy.StorageProvider, EstuaryAPIKey string) (*StorageProvider, error) {
+func NewStorage(cm *cleanup.CleanupManager, IPFSapiclient *apicopy.StorageProvider, EstuaryAPIKey string) (*StorageProvider, error) {
 	c, err := clone.NewCloneClient()
 	if err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (ui
 
 //nolint:gocyclo
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
+	_, span := tracing.GetTracer().Start(ctx, "pkg/storage/repo/repo.PrepareStorage")
 	defer span.End()
 
 	repoURL := storageSpec.Repo
@@ -147,7 +148,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 }
 
 func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "storage/repo/apicopy.Upload")
+	ctx, span := tracing.GetTracer().Start(ctx, "storage/repo/apicopy.Upload")
 	defer span.End()
 
 	cid, err := sp.IPFSClient.Upload(ctx, localPath)
@@ -169,7 +170,7 @@ func (sp *StorageProvider) CleanupStorage(
 	_ model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
-	_, span := system.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
+	_, span := tracing.GetTracer().Start(ctx, "pkg/storage/repo/repo.CleanupStorage")
 	defer span.End()
 
 	pathToCleanup := filepath.Dir(volume.Source)

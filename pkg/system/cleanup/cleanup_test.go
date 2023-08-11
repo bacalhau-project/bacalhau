@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package system
+package cleanup
 
 import (
 	"context"
@@ -21,7 +21,6 @@ func TestSystemCleanupSuite(t *testing.T) {
 
 func (s *SystemCleanupSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	InitConfigForTesting(s.T())
 }
 
 func (s *SystemCleanupSuite) TestCleanupManager() {

@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
@@ -47,6 +48,7 @@ func (s *BaseSuite) SetupTest() {
 			),
 		),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}),
+		teststack.WithRepo(system.SetupBacalhauRepoForTesting(s.T())),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address

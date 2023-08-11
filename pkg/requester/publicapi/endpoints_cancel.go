@@ -12,7 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/bacalhau-project/bacalhau/pkg/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 type cancelRequest = publicapi.SignedRequest[model.JobCancelPayload] //nolint:unused // Swagger wants this
@@ -45,7 +45,7 @@ func (s *RequesterAPIServer) cancel(res http.ResponseWriter, req *http.Request) 
 	}
 
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, jobCancelPayload.ClientID)
-	ctx = system.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
+	ctx = tracing.AddJobIDToBaggage(ctx, jobCancelPayload.ClientID)
 
 	// Get the job, check it exists and check it belongs to the same client
 	job, err := s.jobStore.GetJob(ctx, jobCancelPayload.JobID)

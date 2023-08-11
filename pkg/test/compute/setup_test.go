@@ -23,14 +23,15 @@ import (
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	repo2 "github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 type ComputeSuite struct {
 	suite.Suite
 	node             *node.Compute
 	config           node.ComputeConfig
-	cm               *system.CleanupManager
+	cm               *cleanup.CleanupManager
 	executor         *noop_executor.NoopExecutor
 	publisher        *noop_publisher.NoopPublisher
 	stateResolver    resolver.StateResolver
@@ -50,7 +51,7 @@ func (s *ComputeSuite) SetupSuite() {
 func (s *ComputeSuite) SetupTest() {
 	var err error
 	ctx := context.Background()
-	s.cm = system.NewCleanupManager()
+	s.cm = cleanup.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
 	s.executor = noop_executor.NewNoopExecutor()
@@ -63,6 +64,7 @@ func (s *ComputeSuite) SetupTest() {
 }
 
 func (s *ComputeSuite) setupNode() {
+	repo := repo2.SetupBacalhauRepoForTesting(s.T())
 	libp2pPort, err := freeport.GetFreePort()
 	s.NoError(err)
 
@@ -89,6 +91,7 @@ func (s *ComputeSuite) setupNode() {
 		model.NewNoopProvider[model.StorageSourceType, storage.Storage](noopstorage),
 		model.NewNoopProvider[model.Engine, executor.Executor](s.executor),
 		model.NewNoopProvider[model.Publisher, publisher.Publisher](s.publisher),
+		repo,
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

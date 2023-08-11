@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/initalize"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -35,7 +34,7 @@ func (s *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	InitConfigForTesting(s.T())
+	SetupBacalhauRepoForTesting(s.T())
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
@@ -59,14 +58,14 @@ func (s *SystemConfigSuite) TestGetClientID() {
 
 	var firstId string
 	s.Run("first", func() {
-		InitConfigForTesting(s.T())
+		SetupBacalhauRepoForTesting(s.T())
 		firstId = GetClientID()
 		s.Require().NotEmpty(firstId)
 	})
 
 	var secondId string
 	s.Run("second", func() {
-		InitConfigForTesting(s.T())
+		SetupBacalhauRepoForTesting(s.T())
 		secondId = GetClientID()
 		s.Require().NotEmpty(secondId)
 
@@ -76,7 +75,7 @@ func (s *SystemConfigSuite) TestGetClientID() {
 }
 
 func (s *SystemConfigSuite) TestPublicKeyMatchesID() {
-	InitConfigForTesting(s.T())
+	SetupBacalhauRepoForTesting(s.T())
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()
@@ -85,7 +84,10 @@ func (s *SystemConfigSuite) TestPublicKeyMatchesID() {
 	s.True(ok)
 }
 
+// TODO(forrest): [fixme] I am removing this test because it creates a file in the home directory, tests should
+// _______NEVER_______ do that
 func (s *SystemConfigSuite) TestEnsureConfigDir() {
+	s.T().Skip("skipping because test is creating a directory in home dir")
 	tempDir := s.T().TempDir()
 	home, err := os.UserHomeDir()
 	s.NoError(err)
@@ -108,7 +110,7 @@ func (s *SystemConfigSuite) TestEnsureConfigDir() {
 			func() {
 				s.T().Setenv("ROOT_DIR", test.root_dir)
 				s.T().Setenv("BACALHAU_DIR", test.bacalhau_dir)
-				configDir, err := initalize.SetupBacalhauRepo()
+				configDir, err := SetupBacalhauRepo()
 				s.DirExists(configDir)
 				s.Equal(configDir, test.exp)
 				s.NoError(err)

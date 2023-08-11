@@ -9,7 +9,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 // Interface for a context provider that can be used to generate a context to be used to handle
@@ -55,7 +55,7 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	t.contextMutex.Lock()
 	defer t.contextMutex.Unlock()
 
-	jobCtx, _ := system.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
+	jobCtx, _ := tracing.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
 		oteltrace.WithSpanKind(oteltrace.SpanKindInternal),
 		oteltrace.WithAttributes(
 			attribute.String(model.TracerAttributeNameNodeID, t.nodeID),

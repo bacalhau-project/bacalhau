@@ -9,16 +9,17 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 type Downloader struct {
 	settings *model.DownloaderSettings
-	cm       *system.CleanupManager
+	cm       *cleanup.CleanupManager
 	node     *ipfs.Node // defaults to nil
 }
 
-func NewIPFSDownloader(cm *system.CleanupManager, settings *model.DownloaderSettings) *Downloader {
+func NewIPFSDownloader(cm *cleanup.CleanupManager, settings *model.DownloaderSettings) *Downloader {
 	return &Downloader{
 		cm:       cm,
 		settings: settings,
@@ -95,7 +96,7 @@ func (d *Downloader) DescribeResult(ctx context.Context, result model.PublishedR
 }
 
 func (d *Downloader) FetchResult(ctx context.Context, item model.DownloadItem) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/downloader/ipfs.Downloader.FetchResult")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/downloader/ipfs.Downloader.FetchResult")
 	defer span.End()
 
 	ipfsClient, err := d.getClient(ctx)

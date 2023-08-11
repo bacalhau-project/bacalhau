@@ -7,7 +7,7 @@ import (
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
 )
 
 var DefaultComputeConfig = ComputeConfigParams{
@@ -73,7 +73,7 @@ var TestRequesterConfig = RequesterConfigParams{
 }
 
 func getRequesterConfigParams() RequesterConfigParams {
-	if system.GetEnvironment() == system.EnvironmentTest {
+	if environment.GetEnvironment() == environment.EnvironmentTest {
 		return TestRequesterConfig
 	}
 	return DefaultRequesterConfig
@@ -93,7 +93,7 @@ var TestNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
 }
 
 func GetNodeInfoPublishConfig() routing.NodeInfoPublisherIntervalConfig {
-	if system.GetEnvironment() == system.EnvironmentTest {
+	if environment.GetEnvironment() == environment.EnvironmentTest {
 		return TestNodeInfoPublishConfig
 	}
 	return DefaultNodeInfoPublishConfig

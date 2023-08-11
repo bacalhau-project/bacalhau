@@ -22,7 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 type StandardStorageProviderOptions struct {
@@ -38,7 +38,7 @@ type StandardExecutorOptions struct {
 
 func NewStandardStorageProvider(
 	_ context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (storage.StorageProvider, error) {
 	ipfsAPICopyStorage, err := ipfs_storage.NewStorage(cm, options.API)
@@ -83,7 +83,7 @@ func NewStandardStorageProvider(
 	}), nil
 }
 
-func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider, error) {
+func configureS3StorageProvider(cm *cleanup.CleanupManager) (*s3.StorageProvider, error) {
 	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-s3-input")
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func configureS3StorageProvider(cm *system.CleanupManager) (*s3.StorageProvider,
 
 func NewNoopStorageProvider(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (storage.StorageProvider, error) {
 	noopStorage := noop_storage.NewNoopStorageWithConfig(config)
@@ -121,7 +121,7 @@ func NewNoopStorageProvider(
 
 func NewStandardExecutorProvider(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID)
@@ -152,7 +152,7 @@ type PluginExecutorOptions struct {
 
 func NewPluginExecutorProvider(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	pluginOptions PluginExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	pe := NewPluginExecutorManager()

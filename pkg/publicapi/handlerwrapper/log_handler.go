@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,8 +26,8 @@ func (h *JSONLogHandler) Handle(ctx context.Context, ri *HTTPRequestInfo) {
 		log.Ctx(ctx).Error().RawJSON("Request", jsonBytes).Send()
 	} else {
 		// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
-		if system.GetEnvironment() == system.EnvironmentTest ||
-			system.GetEnvironment() == system.EnvironmentDev {
+		if environment.GetEnvironment() == environment.EnvironmentTest ||
+			environment.GetEnvironment() == environment.EnvironmentDev {
 			return
 		}
 		log.Ctx(ctx).Info().RawJSON("Request", jsonBytes).Send()

@@ -15,7 +15,7 @@ import (
 	"go.ptx.dk/multierrgroup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 // ModuleLoader handles the loading of WebAssembly modules from storage.PreparedStorage
@@ -36,7 +36,7 @@ func NewModuleLoader(runtime wazero.Runtime, config wazero.ModuleConfig, storage
 
 // Load comiples and returns a module located at the passed path.
 func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.CompiledModule, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.Load")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/wasm.ModuleLoader.Load")
 	span.SetAttributes(attribute.String("Path", path))
 	defer span.End()
 
@@ -56,7 +56,7 @@ func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.Compi
 
 // loadModule loads and compiles all of the modules located by the passed storage specs.
 func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedStorage) (wazero.CompiledModule, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModule")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModule")
 	defer span.End()
 
 	programPath := m.Volume.Source
@@ -104,7 +104,7 @@ func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedSt
 // loaded modules, so that the returned module has all of its dependencies fully
 // instantiated and is ready to use.
 func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m storage.PreparedStorage) (api.Module, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
 	span.SetAttributes(attribute.String("ModuleName", m.Spec.Name))
 	defer span.End()
 
@@ -143,7 +143,7 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 }
 
 func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModuleByName")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModuleByName")
 	span.SetAttributes(attribute.String("ModuleName", moduleName))
 	defer span.End()
 

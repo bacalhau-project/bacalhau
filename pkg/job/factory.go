@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type SpecOpt func(s *model.Spec) error
@@ -82,7 +81,7 @@ func WithNodeSelector(selector []model.LabelSelectorRequirement) SpecOpt {
 
 func WithDockerEngine(image, workdir string, entrypoint, envvar, parameters []string) SpecOpt {
 	return func(s *model.Spec) error {
-		if err := system.ValidateWorkingDir(workdir); err != nil {
+		if err := ValidateWorkingDir(workdir); err != nil {
 			return fmt.Errorf("validating docker working directory: %w", err)
 		}
 		s.Engine = model.EngineDocker

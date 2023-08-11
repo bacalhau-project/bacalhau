@@ -53,7 +53,7 @@ func (s *UtilsSuite) TestSafeRegex() {
 }
 
 func (s *UtilsSuite) TestVersionCheck() {
-	system.InitConfigForTesting(s.T())
+	system.SetupBacalhauRepoForTesting(s.T())
 
 	// OK: Normal operation
 	err := EnsureValidVersion(context.TODO(), &model.BuildVersionInfo{

@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 func testDevStackConfig() *devstack.DevStackOptions {
@@ -45,8 +46,8 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	system.InitConfigForTesting(t)
-	cm := system.NewCleanupManager()
+	system.SetupBacalhauRepoForTesting(t)
+	cm := cleanup.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})

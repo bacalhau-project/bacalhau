@@ -19,7 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	bac_config "github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 
 	"github.com/ipfs/kubo/commands"
 	"github.com/ipfs/kubo/config"
@@ -109,17 +109,17 @@ func (cfg *Config) getMode() NodeMode {
 // NewNode creates a new IPFS node in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
-func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+func NewNode(ctx context.Context, cm *cleanup.CleanupManager, peerAddrs []string) (*Node, error) {
 	return newNode(ctx, cm, peerAddrs, ModeDefault)
 }
 
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+func NewLocalNode(ctx context.Context, cm *cleanup.CleanupManager, peerAddrs []string) (*Node, error) {
 	return newNode(ctx, cm, peerAddrs, ModeLocal)
 }
 
-func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
+func newNode(ctx context.Context, cm *cleanup.CleanupManager, peerAddrs []string, mode NodeMode) (*Node, error) {
 	// filter out any empty peer addresses
 	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
 	for _, addr := range peerAddrs {
@@ -135,7 +135,7 @@ func newNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string,
 
 // newNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+func newNodeWithConfig(ctx context.Context, cm *cleanup.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins(cm)
@@ -253,7 +253,7 @@ func (n *Node) Close(ctx context.Context) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
+func createNode(ctx context.Context, _ *cleanup.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
 	var repoPath string
 	var err error
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") == "" {
@@ -292,7 +292,7 @@ func createNode(ctx context.Context, _ *system.CleanupManager, cfg Config) (icor
 }
 
 // serveAPI starts a new API server for the node on the given address.
-func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) ([]string, error) {
+func serveAPI(cm *cleanup.CleanupManager, node *core.IpfsNode, repoPath string) ([]string, error) {
 	cfg, err := node.Repo.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
@@ -443,7 +443,7 @@ func createRepo(path string, nodeConfig Config) error {
 }
 
 // loadPlugins initializes and injects the standard set of ipfs plugins.
-func loadPlugins(cm *system.CleanupManager) error {
+func loadPlugins(cm *cleanup.CleanupManager) error {
 	plugins, err := loader.NewPluginLoader("")
 	if err != nil {
 		return fmt.Errorf("error loading plugins: %s", err)

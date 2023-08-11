@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/environment"
 )
 
 const defaultEchoMessage = "hello λ!"
@@ -105,7 +106,7 @@ func getIPFSDownloadSettings() (*model.DownloaderSettings, error) {
 
 	IPFSSwarmAddrs := os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
 	if IPFSSwarmAddrs == "" {
-		IPFSSwarmAddrs = strings.Join(system.Envs[system.GetEnvironment()].IPFSSwarmAddresses, ",")
+		IPFSSwarmAddrs = strings.Join(system.Envs[environment.GetEnvironment()].IPFSSwarmAddresses, ",")
 	}
 
 	return &model.DownloaderSettings{

@@ -27,7 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
@@ -160,7 +160,7 @@ func (e *Executor) Run(
 		}
 	}()
 
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Run")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/executor/wasm.Executor.Run")
 	defer span.End()
 
 	engineParams, err := DecodeArguments(request.EngineParams)

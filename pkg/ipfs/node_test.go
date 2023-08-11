@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 const testString = "Hello World"
@@ -24,7 +25,7 @@ type NodeSuite struct {
 
 func (s *NodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	system.SetupBacalhauRepoForTesting(s.T())
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:
@@ -35,7 +36,7 @@ func (s *NodeSuite) TestFunctionality() {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
 
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 	s.T().Cleanup(func() {
 		cm.Cleanup(context.Background())
 	})

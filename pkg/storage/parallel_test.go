@@ -19,14 +19,14 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 type ParallelStorageSuite struct {
 	suite.Suite
 
 	ctx      context.Context
-	cm       *system.CleanupManager
+	cm       *cleanup.CleanupManager
 	node     *ipfs.Node
 	cid      string
 	provider model.Provider[model.StorageSourceType, storage.Storage]
@@ -38,7 +38,7 @@ func TestParallelStorageSuite(t *testing.T) {
 
 func (s *ParallelStorageSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.cm = system.NewCleanupManager()
+	s.cm = cleanup.NewCleanupManager()
 
 	// Setup required IPFS node and client
 	node, err := ipfs.NewLocalNode(s.ctx, s.cm, []string{})

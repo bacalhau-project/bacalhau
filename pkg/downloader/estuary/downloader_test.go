@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
@@ -25,7 +25,7 @@ func TestFetchResult(t *testing.T) {
 	settings := &model.DownloaderSettings{
 		Timeout: time.Second * 60,
 	}
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 	downloader := NewEstuaryDownloader(cm, settings)
 
 	tests := []struct {

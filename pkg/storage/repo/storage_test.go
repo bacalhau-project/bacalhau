@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	apicopy "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -40,12 +41,12 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	system.SetupBacalhauRepoForTesting(s.T())
 }
 
 func getIpfsStorage() (*apicopy.StorageProvider, error) {
 	ctx := context.Background()
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 
 	node, err := ipfs.NewLocalNode(ctx, cm, []string{})
 	if err != nil {
@@ -73,7 +74,7 @@ func getIpfsStorage() (*apicopy.StorageProvider, error) {
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 	storage, err := getIpfsStorage()
 	if err != nil {
 		panic(err)
@@ -96,7 +97,7 @@ func (s *StorageSuite) TestNewStorageProvider() {
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 	ctx := context.Background()
 	storage, err := getIpfsStorage()
 	if err != nil {
@@ -142,7 +143,7 @@ func (s *StorageSuite) TestCloneRepo() {
 		name := fmt.Sprintf("%s-%s", ftc.Site, ftc.URL)
 
 		hash, err := func() (string, error) {
-			cm := system.NewCleanupManager()
+			cm := cleanup.NewCleanupManager()
 			ctx := context.Background()
 			storage, err := getIpfsStorage()
 			if err != nil {

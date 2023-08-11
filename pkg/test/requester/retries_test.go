@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	testing2 "github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -23,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -42,7 +42,7 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	system.SetupBacalhauRepoForTesting(s.T())
 
 	nodeOverrides := []node.NodeConfig{
 		{

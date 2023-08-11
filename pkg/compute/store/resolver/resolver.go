@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/waiter"
 )
 
 var DefaultStateResolverParams = StateResolverParams{
@@ -43,7 +43,7 @@ func (r *StateResolver) Wait(
 	ctx context.Context,
 	executionID string,
 	checkStateFunctions ...CheckStateFunction) error {
-	waiter := &system.FunctionWaiter{
+	waiter := &waiter.FunctionWaiter{
 		Name:        "Wait for execution state",
 		MaxAttempts: r.maxWaitAttempts,
 		Delay:       r.waitDelay,

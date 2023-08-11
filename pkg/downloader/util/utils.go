@@ -5,11 +5,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/estuary"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 func NewStandardDownloaders(
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	settings *model.DownloaderSettings) downloader.DownloaderProvider {
 	ipfsDownloader := ipfs.NewIPFSDownloader(cm, settings)
 	estuaryDownloader := estuary.NewEstuaryDownloader(cm, settings)

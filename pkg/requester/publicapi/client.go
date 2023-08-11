@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 // APIRetryCount - for some queries (like read events and read state)
@@ -54,7 +55,7 @@ func (apiClient *RequesterAPIClient) List(
 	sortReverse bool,
 ) (
 	[]*model.JobWithInfo, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.List")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.List")
 	defer span.End()
 
 	req := listRequest{
@@ -78,7 +79,7 @@ func (apiClient *RequesterAPIClient) List(
 }
 
 func (apiClient *RequesterAPIClient) Nodes(ctx context.Context) ([]model.NodeInfo, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Nodes")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Nodes")
 	defer span.End()
 
 	var nodes []model.NodeInfo
@@ -93,7 +94,7 @@ func (apiClient *RequesterAPIClient) Nodes(ctx context.Context) ([]model.NodeInf
 // Cancel will request that the job with the specified ID is stopped. The JobInfo will be returned if the cancel
 // was submitted. If no match is found, Cancel returns false with a nil error.
 func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, reason string) (*model.JobState, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Cancel")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Cancel")
 	defer span.End()
 
 	if jobID == "" {
@@ -131,7 +132,7 @@ func (apiClient *RequesterAPIClient) Cancel(ctx context.Context, jobID string, r
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*model.JobWithInfo, bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Get")
 	defer span.End()
 
 	if jobID == "" {
@@ -151,7 +152,7 @@ func (apiClient *RequesterAPIClient) Get(ctx context.Context, jobID string) (*mo
 }
 
 func (apiClient *RequesterAPIClient) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetJobState")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetJobState")
 	defer span.End()
 
 	if jobID == "" {
@@ -198,7 +199,7 @@ func (apiClient *RequesterAPIClient) GetEvents(
 	ctx context.Context,
 	jobID string,
 	options EventFilterOptions) (events []model.JobHistory, err error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetEvents")
 	defer span.End()
 
 	if jobID == "" {
@@ -233,7 +234,7 @@ func (apiClient *RequesterAPIClient) GetEvents(
 }
 
 func (apiClient *RequesterAPIClient) GetResults(ctx context.Context, jobID string) (results []model.PublishedResult, err error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetResults")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.GetResults")
 	defer span.End()
 
 	if jobID == "" {
@@ -258,7 +259,7 @@ func (apiClient *RequesterAPIClient) Submit(
 	ctx context.Context,
 	j *model.Job,
 ) (*model.Job, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Submit")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Submit")
 	defer span.End()
 
 	data := model.JobCreatePayload{
@@ -281,7 +282,7 @@ func (apiClient *RequesterAPIClient) Approve(
 	jobID string,
 	response bidstrategy.BidStrategyResponse,
 ) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Approve")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Approve")
 	defer span.End()
 
 	data := bidstrategy.ModerateJobRequest{
@@ -301,7 +302,7 @@ func (apiClient *RequesterAPIClient) Logs(
 	executionID string,
 	withHistory bool,
 	follow bool) (*websocket.Conn, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Logs")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Logs")
 	defer span.End()
 
 	if jobID == "" {
@@ -360,7 +361,7 @@ func (apiClient *RequesterAPIClient) Logs(
 }
 
 func (apiClient *RequesterAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Debug")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/requester/publicapi.RequesterAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

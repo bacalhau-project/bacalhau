@@ -35,7 +35,7 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	system.InitConfigForTesting(s.T())
+	system.SetupBacalhauRepoForTesting(s.T())
 
 	ctx := context.Background()
 

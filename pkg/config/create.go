@@ -82,7 +82,6 @@ func InitConfig(configPath string) error {
 
 func LoadConfig(configPath string) error {
 	// configure viper.
-	viper.Reset()
 	viper.SetConfigName(configName)
 	viper.SetConfigType(configType)
 	viper.SetEnvPrefix(environmentVariablePrefix)

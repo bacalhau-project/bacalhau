@@ -3,7 +3,7 @@ package util
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 )
 
 type contextKey struct {
@@ -12,6 +12,6 @@ type contextKey struct {
 
 var SystemManagerKey = contextKey{name: "context key for storing the system manager"}
 
-func GetCleanupManager(ctx context.Context) *system.CleanupManager {
-	return ctx.Value(SystemManagerKey).(*system.CleanupManager)
+func GetCleanupManager(ctx context.Context) *cleanup.CleanupManager {
+	return ctx.Value(SystemManagerKey).(*cleanup.CleanupManager)
 }

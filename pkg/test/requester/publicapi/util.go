@@ -11,11 +11,12 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/libp2p"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	requester_publicapi "github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 //nolint:unused // used in tests
@@ -26,10 +27,10 @@ func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterA
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
-	system.InitConfigForTesting(t)
+	system.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
-	cm := system.NewCleanupManager()
+	cm := cleanup.NewCleanupManager()
 	t.Cleanup(func() { cm.Cleanup(context.Background()) })
 
 	dir, _ := os.MkdirTemp("", "bacalhau-jobstore-test")
@@ -47,7 +48,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
-		CleanupManager:            system.NewCleanupManager(),
+		CleanupManager:            cleanup.NewCleanupManager(),
 		Host:                      libp2pHost,
 		HostAddress:               "0.0.0.0",
 		APIPort:                   0,

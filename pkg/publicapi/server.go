@@ -21,7 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/handlerwrapper"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -147,7 +147,7 @@ func (apiServer *APIServer) GetURI() *url.URL {
 // ListenAndServe listens for and serves HTTP requests against the API server.
 //
 //nolint:lll
-func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
+func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *cleanup.CleanupManager) error {
 	apiServer.handlersMu.Lock()
 	if apiServer.started {
 		apiServer.handlersMu.Unlock()

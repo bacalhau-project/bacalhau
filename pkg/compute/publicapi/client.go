@@ -5,7 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/tracing"
 )
 
 // ComputeAPIClient is a utility for interacting with a node's API server.
@@ -30,7 +30,7 @@ func NewComputeAPIClientFromClient(baseClient *publicapi.APIClient) *ComputeAPIC
 */
 
 func (apiClient *ComputeAPIClient) Debug(ctx context.Context) (map[string]model.DebugInfo, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute/publicapi.ComputeAPIClient.Debug")
+	ctx, span := tracing.NewSpan(ctx, tracing.GetTracer(), "pkg/compute/publicapi.ComputeAPIClient.Debug")
 	defer span.End()
 
 	req := struct{}{}

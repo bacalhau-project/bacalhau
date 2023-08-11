@@ -15,7 +15,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -65,13 +65,13 @@ func NewHost(port int, opts ...libp2p.Option) (host.Host, error) {
 	return h, err
 }
 
-func ConnectToPeersContinuously(ctx context.Context, cm *system.CleanupManager, h host.Host, peers []multiaddr.Multiaddr) error {
+func ConnectToPeersContinuously(ctx context.Context, cm *cleanup.CleanupManager, h host.Host, peers []multiaddr.Multiaddr) error {
 	return ConnectToPeersContinuouslyWithRetryDuration(ctx, cm, h, peers, continuouslyConnectPeersLoopDelay)
 }
 
 func ConnectToPeersContinuouslyWithRetryDuration(
 	ctx context.Context,
-	cm *system.CleanupManager,
+	cm *cleanup.CleanupManager,
 	h host.Host,
 	peers []multiaddr.Multiaddr,
 	tickDuration time.Duration,
