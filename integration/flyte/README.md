@@ -52,7 +52,8 @@ def my_workflow():
     )
 ```
 
-Curious to see more examples, find more [in this folder](./plugins/flytekit-bacalhau/examples/).
+Curious to see more complex workflows 🧐?
+Find more [in the examples folder](./plugins/flytekit-bacalhau/examples/) ✨.
 
 
 
