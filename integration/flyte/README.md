@@ -68,7 +68,7 @@ You'll have to install our [custom Bacalhau Agent](https://docs.flyte.org/projec
 
 ## Development :computer:
 
-Similarly to the [official development guidelines](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#contribute-code), we use a virtual environment to develop this Flytekit plugin.
+Likewise the [official development guidelines](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#contribute-code), we use a virtual environment to develop this Flytekit plugin.
 
 ### 1. Setup (Do Once)
 
