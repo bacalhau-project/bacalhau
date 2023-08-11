@@ -12,7 +12,10 @@ pip install flytekitplugins-bacalhau
 
 ## Examples
 
-Here's a Hello World workflow submitting a job to Bacalhau. Run it with: `pyflyte run my-wf-file.py my_workflow`
+Here's a Hello World workflow submitting a task that runs on Bacalhau.
+For further details regarding the `api_version` and `spec` parameters, please check the [Bacalhau python sdk](../../python/).
+
+Run it with: `pyflyte run my-wf-file.py my_workflow`.
 
 ```python
 from flytekit import workflow, kwtypes
@@ -51,7 +54,7 @@ def my_workflow():
                 }
             ],
             deal={"concurrency": 1},
-            do_not_track=True,
+            do_not_track=False,
         ),
     )
     print(my_bacalhau_task)
