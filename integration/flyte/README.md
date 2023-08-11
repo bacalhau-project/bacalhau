@@ -4,7 +4,7 @@ This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg
 
 ## Install 
 
-The only prerequisite is having `flytekit` installed (via pip).
+The only prerequisite is having `flytekit` installed (via pip) ⚡️
 
 ```
 pip install flytekitplugins-bacalhau
