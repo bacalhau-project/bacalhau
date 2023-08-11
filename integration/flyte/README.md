@@ -4,6 +4,12 @@ This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg
 
 ## Install 
 
+The only prerequisite is having `flytekit` installed (via pip).
+
+```
+pip install flytekitplugins-bacalhau
+```
+
 ## Examples
 
 Here's a Hello World workflow submitting a job to Bacalhau. Run it with: `pyflyte run my-wf-file.py my_workflow`
@@ -48,6 +54,7 @@ def my_workflow():
             do_not_track=True,
         ),
     )
+    print(my_bacalhau_task)
 ```
 
 Curious to see more complex workflows 🧐?

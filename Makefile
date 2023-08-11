@@ -149,6 +149,14 @@ release-bacalhau-airflow:
 	@echo "Python bacalhau-airflow pushed to PyPi."
 
 ################################################################################
+# Target: release-bacalhau-flyte
+################################################################################
+.PHONY: release-bacalhau-flyte
+release-bacalhau-flyte:
+	cd integration/flyte && ${MAKE} release
+	@echo "Python flyteplugins-bacalhau pushed to PyPi."
+
+################################################################################
 # Target: build
 ################################################################################
 .PHONY: build

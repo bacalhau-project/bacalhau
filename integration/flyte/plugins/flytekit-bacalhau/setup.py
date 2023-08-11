@@ -1,3 +1,4 @@
+import os
 from setuptools import setup
 
 PLUGIN_NAME = "bacalhau"
@@ -14,11 +15,11 @@ plugin_requires = [
     "marshmallow-enum>=1.5.1",
 ]
 
-__version__ = ""
+pypi_version = os.getenv("PYPI_VERSION", "0.0.0")
 
 setup(
     name=microlib_name,
-    version=__version__,
+    version=pypi_version,
     author="flyteorg",
     author_email="admin@flyte.org",
     # TODO Edit the description

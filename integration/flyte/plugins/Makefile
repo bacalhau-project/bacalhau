@@ -23,7 +23,7 @@ build_all_plugins:
 
 .PHONY: publish_all_plugins
 publish_all_plugins:
-	twine upload */dist/*
+	twine upload --verbose */dist/* -u __token__ -p ${PYPI_TOKEN}
 
 .PHONY: all_requirements
 all_requirements:

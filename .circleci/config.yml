@@ -197,6 +197,13 @@ jobs:
                   tox
                   cd ../..
             - run:
+                name: Test Python Flyte plugin
+                command: |
+                  cd integration/flyte
+                  make setup
+                  make test
+                  cd ../..
+            - run:
                 name: Upload results
                 command: |
                   export DEBIAN_FRONTEND=noninteractive
@@ -442,6 +449,11 @@ jobs:
           command: |
             pip3 install twine==4.0.2
             make release-bacalhau-airflow
+      - run :
+          name: Release python Flyte integration
+          command: |
+            pip3 install twine==4.0.2
+            make release-bacalhau-flyte
 
   update_metadata:
     executor: linux-amd64
@@ -654,6 +666,17 @@ jobs:
           name: Build Python Bacalhau Airflow
           command: |
             make build-bacalhau-airflow
+      - run:
+          name: Install Flyte plugin pre-requistes
+          command: |
+            cd integration/flyte
+            # installs flytekit, flyteidl and deps.
+            make setup
+      - run:
+          name: Build Python Bacalhau Flyte plugin
+          command: |
+            cd plugins/
+            make build_all_plugins
       - persist_to_workspace:
           root: integration/airflow/dist
           paths:
