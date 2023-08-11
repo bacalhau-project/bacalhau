@@ -1,10 +1,8 @@
 # Flyte Bacalhau Plugin
 
-## Repo structure
+This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins and is structured such that the `plugins/flytekit-bacalhau` folder can be moved into Flytekit repository.
 
-TODO - expand on why this struct...
-
-This repo adheres to the [Flyte official guidelines](https://github.com/flyteorg/flytekit/tree/master/plugins#guidelines-) for flytekit plugins.
+Author: `@enricorotundo`[https://github.com/enricorotundo]
 
 ## Development :computer:
 
@@ -33,21 +31,17 @@ pip install -e .
 
 This should install all the plugins in editable mode as well.
 
-### 3. Pre-commit hooks
-
-TODO
-https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#pre-commit-hooks
-### 4. Formatting
-
-TODO
-https://docs.flyte.org/projects/flytekit/en/latest/contributing.html#pre-commit-hooks
-
---- 
-
-
-
-### Unit tests
+#### Unit tests
 
 ```bash
 make test
+```
+
+### Formatting, Linting, etc.
+
+```bash
+source ~/.virtualenvs/flytekit/bin/activate
+make fmt
+make lint
+make spellcheck
 ```
