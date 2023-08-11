@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
@@ -60,9 +59,6 @@ type DevStackConfig struct {
 	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
 	NodeInfoPublisherInterval  routing.NodeInfoPublisherIntervalConfig
 	ExecutorPlugins            bool // when true pluggable executors will be used.
-
-	// TODO I HATE THAT I AM PUTTING THIS HERE!
-	Repo *repo.FsRepo
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {

@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -72,22 +74,12 @@ type DevStack struct {
 func Setup(
 	ctx context.Context,
 	cm *cleanup.CleanupManager,
+	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
 	stackConfig := defaultDevStackConfig()
 	for _, opt := range opts {
 		opt(stackConfig)
-	}
-
-	// TODO this is messy
-	if stackConfig.Repo != nil {
-		repoPath, err := stackConfig.Repo.Path()
-		if err != nil {
-			return nil, fmt.Errorf("devstack was provided an uninitalized repo: %w", err)
-		}
-		if err := config.LoadConfig(repoPath); err != nil {
-			return nil, fmt.Errorf("failed to load config for devstack: %w", err)
-		}
 	}
 
 	if err := stackConfig.Validate(); err != nil {
@@ -164,7 +156,16 @@ func Setup(
 			log.Ctx(ctx).Debug().Msgf("Connecting to first libp2p requester node: %s", libp2pPeer)
 		}
 
-		privKey, err := config.GetLibp2pPrivKey()
+		// TODO(forrest): [devstack] Refactor the devstack s.t. each node has its own repo and config.
+		// previously the config would generate a key using the host port as the postfix
+		// this is not longer the case as a node should have a single libp2p key, but since
+		// all devstack nodes share a repo we will get a self dial error if we use the same
+		// key from the config for each devstack node. The solution here is to refactor the
+		// the devstack such that all nodes in the stack have their own repos and configuration
+		// rather than rely on global values and one off key gen via the config.
+
+		// Creates a new RSA key pair for this host.
+		privKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +229,7 @@ func Setup(
 			DisabledFeatures:          stackConfig.DisabledFeatures,
 			AllowListedLocalPaths:     stackConfig.AllowListedLocalPaths,
 			NodeInfoPublisherInterval: nodeInfoPublisherInterval,
-			FsRepo:                    stackConfig.Repo,
+			FsRepo:                    fsRepo,
 		}
 
 		// allow overriding configs of some nodes

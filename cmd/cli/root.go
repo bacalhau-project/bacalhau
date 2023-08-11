@@ -70,7 +70,6 @@ func NewRootCmd() *cobra.Command {
 		panic(err)
 	}
 	RootCmd.PersistentFlags().String("repo", defaultRepo, "path to bacalhau repo")
-	// TODO binding this flag will cause it to be written to the config, which is annoying..
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
 		panic(err)
 	}

@@ -27,7 +27,7 @@ func setupNodeForTest(t *testing.T) (*node.Node, *requester_publicapi.RequesterA
 
 //nolint:unused // used in tests
 func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) (*node.Node, *requester_publicapi.RequesterAPIClient) {
-	system.SetupBacalhauRepoForTesting(t)
+	fsRepo := system.SetupBacalhauRepoForTesting(t)
 	ctx := context.Background()
 
 	cm := cleanup.NewCleanupManager()
@@ -59,6 +59,7 @@ func setupNodeForTestWithConfig(t *testing.T, config publicapi.APIServerConfig) 
 		IsComputeNode:             true,
 		DependencyInjector:        devstack.NewNoopNodeDependencyInjector(),
 		NodeInfoPublisherInterval: node.TestNodeInfoPublishConfig,
+		FsRepo:                    fsRepo,
 	}
 
 	n, err := node.NewNode(ctx, nodeConfig)

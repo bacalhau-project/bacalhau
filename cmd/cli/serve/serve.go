@@ -323,6 +323,9 @@ func serve(cmd *cobra.Command, OS *ServeOptions) error {
 	if err != nil {
 		return err
 	}
+	if err := fsRepo.Init(); err != nil {
+		return err
+	}
 
 	isComputeNode, isRequesterNode := false, false
 	for _, nodeType := range OS.NodeType {

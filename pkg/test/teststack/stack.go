@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
@@ -46,12 +45,12 @@ func Setup(
 	t testing.TB,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
-	system.SetupBacalhauRepoForTesting(t)
+	fsRepo := system.SetupBacalhauRepoForTesting(t)
 	cm := cleanup.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.Setup(ctx, cm, append(testDevStackConfig().Options(), opts...)...)
+	stack, err := devstack.Setup(ctx, cm, fsRepo, append(testDevStackConfig().Options(), opts...)...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)
 	}
@@ -72,12 +71,6 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig) devstack.ConfigOp
 			noopFactory:     devstack.NewNoopExecutorsFactoryWithConfig(noopConfig),
 		},
 	})
-}
-
-func WithRepo(r *repo.FsRepo) devstack.ConfigOption {
-	return func(cfg *devstack.DevStackConfig) {
-		cfg.Repo = r
-	}
 }
 
 func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {

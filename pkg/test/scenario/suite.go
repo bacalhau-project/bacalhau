@@ -14,9 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/system/cleanup"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -40,13 +38,11 @@ type ScenarioTestSuite interface {
 // their own set up or tear down routines.
 type ScenarioRunner struct {
 	suite.Suite
-	Ctx  context.Context
-	Repo *repo.FsRepo
+	Ctx context.Context
 }
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Repo = system.SetupBacalhauRepoForTesting(s.T())
 
 	s.Ctx = context.Background()
 
@@ -91,7 +87,6 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *c
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
 			testutils.WithNoopExecutor(config.ExecutorConfig),
-			testutils.WithRepo(s.Repo),
 		)...,
 	)
 

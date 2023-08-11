@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -139,6 +141,14 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 
 	cm := util.GetCleanupManager(ctx)
 
+	fsRepo, err := repo.NewFS(viper.GetString("repo"))
+	if err != nil {
+		return err
+	}
+	if err := fsRepo.Init(); err != nil {
+		return err
+	}
+
 	// make sure we don't run devstack with a custom IPFS path - that must be used only with serve
 	if os.Getenv("BACALHAU_SERVE_IPFS_PATH") != "" {
 		return fmt.Errorf("unset BACALHAU_SERVE_IPFS_PATH in your environment to run devstack")
@@ -176,7 +186,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, OS *serve.Se
 	} else {
 		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector()))
 	}
-	stack, err := devstack.Setup(ctx, cm, options...)
+	stack, err := devstack.Setup(ctx, cm, fsRepo, options...)
 	if err != nil {
 		return err
 	}
